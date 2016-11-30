@@ -1,0 +1,249 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Project Manager &#8212; ilastik 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="ilastik 1.0.0 documentation" href="index.html" />
+    <link rel="next" title="Utility Classes" href="utilities.html" />
+    <link rel="prev" title="Advanced Workflow Design" href="workflow_design.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="utilities.html" title="Utility Classes"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="workflow_design.html" title="Advanced Workflow Design"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">ilastik 1.0.0 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="project-manager">
+<h1>Project Manager<a class="headerlink" href="#project-manager" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="ilastik.shell.projectManager.ProjectManager">
+<em class="property">class </em><code class="descclassname">ilastik.shell.projectManager.</code><code class="descname">ProjectManager</code><span class="sig-paren">(</span><em>shell</em>, <em>workflowClass</em>, <em>headless=False</em>, <em>workflow_cmdline_args=None</em>, <em>project_creation_args=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class manages creating, opening, importing, saving, and closing project files.
+It instantiates a workflow object and loads its applets with the settings from the 
+project file by using the applets&#8217; serializer objects.</p>
+<p>To open a project file, instantiate a ProjectManager object.
+To close the project file, delete the ProjectManager object.</p>
+<p>Once the project manager has been instantiated, clients can access its <code class="docutils literal"><span class="pre">workflow</span></code>
+member for direct access to its applets and their top-level operators.</p>
+<dl class="method">
+<dt id="ilastik.shell.projectManager.ProjectManager.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>shell</em>, <em>workflowClass</em>, <em>headless=False</em>, <em>workflow_cmdline_args=None</em>, <em>project_creation_args=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>workflowClass</strong> &#8211; A subclass of ilastik.workflow.Workflow (the class, not an instance).</li>
+<li><strong>headless</strong> &#8211; A bool that is passed to the workflow constructor, 
+indicating whether or not the workflow should be opened in &#8216;headless&#8217; mode.</li>
+<li><strong>workflow_cmdline_args</strong> &#8211; A list of strings from the command-line to configure the workflow.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="exception">
+<dt id="ilastik.shell.projectManager.ProjectManager.ProjectVersionError">
+<em class="property">exception </em><code class="descname">ProjectVersionError</code><span class="sig-paren">(</span><em>projectVersion</em>, <em>expectedVersion</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.ProjectVersionError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.ProjectVersionError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raised if an attempt is made to open a project file that was generated with an old version of ilastik.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="ilastik.shell.projectManager.ProjectManager.FileMissingError">
+<em class="property">exception </em><code class="descclassname">ProjectManager.</code><code class="descname">FileMissingError</code><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.FileMissingError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.FileMissingError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raised if an attempt is made to open a project file that can&#8217;t be found on disk.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="ilastik.shell.projectManager.ProjectManager.SaveError">
+<em class="property">exception </em><code class="descclassname">ProjectManager.</code><code class="descname">SaveError</code><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.SaveError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.SaveError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raised if saving the project results in an error of some kind.
+The project file will be in an UNKNOWN and potentially inconsistent state!</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="ilastik.shell.projectManager.ProjectManager.createBlankProjectFile">
+<em class="property">classmethod </em><code class="descclassname">ProjectManager.</code><code class="descname">createBlankProjectFile</code><span class="sig-paren">(</span><em>projectFilePath</em>, <em>workflow_class=None</em>, <em>workflow_cmdline_args=None</em>, <em>h5_file_kwargs={}</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.createBlankProjectFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.createBlankProjectFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new ilp file at the given path and initialize it with a project version.</p>
+<p>Class method. If a file already exists at the location, it
+will be overwritten with a blank project (i.e. the mode is
+fixed to &#8216;w&#8217;).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>projectFilePath</strong> &#8211; Full path of the new project (for instance &#8216;/tmp/MyProject.ilp&#8217;).</li>
+<li><strong>workflow_class</strong> &#8211; If not None, add dataset containing the name of the workflow_class.</li>
+<li><strong>workflow_cmdline_args</strong> &#8211; If not None, add dataset containing the commandline arguments.</li>
+<li><strong>h5_file_kwargs</strong> &#8211; Passed directly to h5py.File.__init__(); all standard params except &#8216;mode&#8217; are allowed.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">h5py.File</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="ilastik.shell.projectManager.ProjectManager.openProjectFile">
+<em class="property">classmethod </em><code class="descclassname">ProjectManager.</code><code class="descname">openProjectFile</code><span class="sig-paren">(</span><em>projectFilePath</em>, <em>forceReadOnly=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.openProjectFile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.openProjectFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class method.
+Attempt to open the given path to an existing project file.
+If it doesn&#8217;t exist, raise a <code class="docutils literal"><span class="pre">ProjectManager.FileMissingError</span></code>.
+If its version is outdated, raise a <code class="docutils literal"><span class="pre">ProjectManager.ProjectVersionError.</span></code></p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="ilastik.shell.projectManager.ProjectManager.downloadProjectFromDvid">
+<em class="property">classmethod </em><code class="descclassname">ProjectManager.</code><code class="descname">downloadProjectFromDvid</code><span class="sig-paren">(</span><em>hostname</em>, <em>node_uuid</em>, <em>keyvalue_name</em>, <em>project_key=None</em>, <em>local_filepath=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.downloadProjectFromDvid"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.downloadProjectFromDvid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download a file from a dvid keyvalue data instance and store it to the given local_filepath.
+If no local_filepath is given, create a new temporary file.
+Returns the path to the downloaded file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.shell.projectManager.ProjectManager.cleanUp">
+<code class="descclassname">ProjectManager.</code><code class="descname">cleanUp</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.cleanUp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.cleanUp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Should be called when the Projectmanager is canceled. Closes the project file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.shell.projectManager.ProjectManager.getDirtyAppletNames">
+<code class="descclassname">ProjectManager.</code><code class="descname">getDirtyAppletNames</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.getDirtyAppletNames"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.getDirtyAppletNames" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check the serializers for every applet in the workflow.
+If a serializer declares itself to be dirty (i.e. it is-out-of-sync with the applet&#8217;s operator),
+then the applet&#8217;s name is appended to the resulting list.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.shell.projectManager.ProjectManager.saveProject">
+<code class="descclassname">ProjectManager.</code><code class="descname">saveProject</code><span class="sig-paren">(</span><em>force_all_save=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.saveProject"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.saveProject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the project file with the state of the current workflow settings.
+Must not be called if the project file was opened in read-only mode.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.shell.projectManager.ProjectManager.saveProjectSnapshot">
+<code class="descclassname">ProjectManager.</code><code class="descname">saveProjectSnapshot</code><span class="sig-paren">(</span><em>snapshotPath</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.saveProjectSnapshot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.saveProjectSnapshot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy the project file as it is, then serialize any dirty state into the copy.
+Original serializers and project file should not be touched.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.shell.projectManager.ProjectManager.saveProjectAs">
+<code class="descclassname">ProjectManager.</code><code class="descname">saveProjectAs</code><span class="sig-paren">(</span><em>newPath</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/shell/projectManager.html#ProjectManager.saveProjectAs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.shell.projectManager.ProjectManager.saveProjectAs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implement &#8220;Save As&#8221;
+Equivalent to the following steps (but done without closing the current project file):</p>
+<ol class="arabic simple">
+<li>rename Old.ilp -&gt; New.ilp</li>
+<li>touch Old.ilp</li>
+<li>copycontents New.ilp -&gt; Old.ilp</li>
+</ol>
+<p>4) Save current applet state to current project (New.ilp)
+Postconditions: - Original project state is saved to a new file with the original name.
+- Current project file is still open, but has a new name.
+- Current project file has been saved (it is in sync with the applet states)</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="workflow_design.html"
+                        title="previous chapter">Advanced Workflow Design</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="utilities.html"
+                        title="next chapter">Utility Classes</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/projectManager.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="utilities.html" title="Utility Classes"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="workflow_design.html" title="Advanced Workflow Design"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">ilastik 1.0.0 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

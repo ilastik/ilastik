@@ -1,0 +1,270 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.applets.base.standardApplet &#8212; ilastik 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="top" title="ilastik 1.0.0 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for ilastik.applets.base.standardApplet</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#   ilastik: interactive learning and segmentation toolkit</span>
+<span class="c1">#</span>
+<span class="c1">#       Copyright (C) 2011-2014, the ilastik developers</span>
+<span class="c1">#                                &lt;team@ilastik.org&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software; you can redistribute it and/or</span>
+<span class="c1"># modify it under the terms of the GNU General Public License</span>
+<span class="c1"># as published by the Free Software Foundation; either version 2</span>
+<span class="c1"># of the License, or (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># In addition, as a special exception, the copyright holders of</span>
+<span class="c1"># ilastik give you permission to combine ilastik with applets,</span>
+<span class="c1"># workflows and plugins which are not covered under the GNU</span>
+<span class="c1"># General Public License.</span>
+<span class="c1">#</span>
+<span class="c1"># See the LICENSE file for details. License information is also available</span>
+<span class="c1"># on the ilastik web site at:</span>
+<span class="c1">#		   http://ilastik.org/license.html</span>
+<span class="c1">###############################################################################</span>
+<span class="kn">from</span> <span class="nn">ilastik.utility</span> <span class="k">import</span> <span class="n">MultiLaneOperatorABC</span><span class="p">,</span> <span class="n">OpMultiLaneWrapper</span>
+<span class="kn">from</span> <span class="nn">ilastik.applets.base.applet</span> <span class="k">import</span> <span class="n">Applet</span>
+<span class="kn">from</span> <span class="nn">ilastik.applets.base.singleToMultiGuiAdapter</span> <span class="k">import</span> <span class="n">SingleToMultiGuiAdapter</span>
+
+<div class="viewcode-block" id="StandardApplet"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.standardApplet.StandardApplet">[docs]</a><span class="k">class</span> <span class="nc">StandardApplet</span><span class="p">(</span> <span class="n">Applet</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    In most cases, it is easiest to use StandardApplet as a base class for your custom applet.</span>
+<span class="sd">    StandardApplets are designed to simplify two tasks for most use-cases: Creating a *top-level operator* and creating a GUI.</span>
+<span class="sd">    </span>
+<span class="sd">    StandardApplet subclasses may expose their *top-level operator* in one of two ways:</span>
+<span class="sd">    </span>
+<span class="sd">    1) (Advanced) Override the :py:attr:`Applet.topLevelOperator&lt;ilastik.applets.base.applet.Applet.topLevelOperator&gt;` property directly.</span>
+<span class="sd">    2) (Simple) Override BOTH :py:attr:`singleLaneOperatorClass` and :py:attr:`broadcastingSlots`, in which case a default implementation of :py:attr:`topLevelOperator` is provided for you.</span>
+<span class="sd">    </span>
+<span class="sd">    StandardApplet subclasses may expose their GUI in one of three ways:</span>
+<span class="sd">    </span>
+<span class="sd">    1) (Advanced) Override :py:meth:`createMultiLaneGui`.</span>
+<span class="sd">    2) (Simpler) Override :py:meth:`createSingleLaneGui`, in which case a default implementation of :py:meth:`createMultiLaneGui` is provided for you.</span>
+<span class="sd">    3) (Simplest) Override :py:attr:`singleLaneGuiClass`, in which case default implementations of :py:meth:`createSingleLaneGui` and :py:meth:`createMultiLaneGui` are provided for you.  </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="StandardApplet.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.standardApplet.StandardApplet.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">workflow</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructor.</span>
+
+<span class="sd">        :param name: The applet&#39;s name as it will appear in the GUI (e.g. the Applet Drawer title).</span>
+<span class="sd">        :param workflow: The workflow this applet belongs to (not required if the subclass provides its own topLevelOperator).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">StandardApplet</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">interactive</span><span class="o">=</span><span class="n">interactive</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__topLevelOperator</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__workflow</span> <span class="o">=</span> <span class="n">workflow</span></div>
+
+    <span class="c1">#</span>
+    <span class="c1"># Top-Level Operator</span>
+    <span class="c1">#</span>
+    <span class="c1"># Subclasses have 2 Choices:</span>
+    <span class="c1">#   - Override topLevelOperator (advanced)</span>
+    <span class="c1">#   - Override singleLaneOpeartorClass AND broadcastingSlots (easier; uses default topLevelOperator implementation)</span>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">singleLaneOperatorClass</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the operator class which handles a single image.</span>
+<span class="sd">        Single-lane applets should override this property.</span>
+<span class="sd">        (Multi-lane applets must override ``topLevelOperator`` directly.)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">singleLaneOperatorInitArgs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">((),</span> <span class="p">{})</span> <span class="c1"># args, kwargs</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">broadcastingSlots</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Slots that should be connected to all image lanes are referred to as &quot;broadcasting&quot; slots.</span>
+<span class="sd">        Single-lane applets should override this property to return a list of the broadcasting slots&#39; names.</span>
+<span class="sd">        (Multi-lane applets must override ``topLevelOperator`` directly.)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">topLevelOperator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the top-level (multi-image-lane) operator for the applet.</span>
+<span class="sd">        This default implementation uses ``singleLaneOperatorClass`` </span>
+<span class="sd">        and ``broadcastingSlots`` to generate the top-level operator.</span>
+<span class="sd">        Applets that must be multi-image-lane-aware must override this property.</span>
+<span class="sd">        Note that the top-level operator must adhere to the ``MultiLaneOperatorABC`` interface.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__topLevelOperator</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__createTopLevelOperator</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__topLevelOperator</span>
+
+    <span class="c1">#</span>
+    <span class="c1"># GUI</span>
+    <span class="c1">#</span>
+    <span class="c1"># Subclasses have 3 choices:</span>
+    <span class="c1"># - Override createMultiLaneGui (advanced)</span>
+    <span class="c1"># - Override createSingleLaneGui (easier: uses default createMultiLaneGui implementation)</span>
+    <span class="c1"># - Override singleLaneGuiClass (easiest: uses default createSingleLaneGui and createMultiLaneGui implementations)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">singleLaneGuiClass</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the class that will be instantiated for each image lane the applet needs.</span>
+<span class="sd">        The class constructor should accept a single parameter: a single-lane of the top-level operator.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+<div class="viewcode-block" id="StandardApplet.createSingleLaneGui"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.standardApplet.StandardApplet.createSingleLaneGui">[docs]</a>    <span class="k">def</span> <span class="nf">createSingleLaneGui</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageLaneIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This function is called to create new instances of single-lane applet GUIs.</span>
+<span class="sd">        If your applet&#39;s single-lane GUI requires special constructor arguments, then override this method.</span>
+<span class="sd">        Otherwise, this default implementation generates instances of your ``singleLaneGuiClass``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__createSingleLaneGui</span><span class="p">(</span><span class="n">imageLaneIndex</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="StandardApplet.getMultiLaneGui"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.standardApplet.StandardApplet.getMultiLaneGui">[docs]</a>    <span class="k">def</span> <span class="nf">getMultiLaneGui</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Override from Applet base class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__createMultiLaneGui</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gui</span></div>
+    
+    <span class="c1">#</span>
+    <span class="c1"># Private</span>
+    <span class="c1">#</span>
+
+    <span class="k">def</span> <span class="nf">__createSingleLaneGui</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">imageLaneIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Default implementation of createSingleLaneGui</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">singleLaneGuiClass</span> <span class="ow">is</span> <span class="bp">NotImplemented</span><span class="p">:</span>
+            <span class="n">message</span>  <span class="o">=</span> <span class="s2">&quot;Cannot create GUI.</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="n">message</span> <span class="o">+=</span> <span class="s2">&quot;StandardApplet subclasses must implement ONE of the following:</span><span class="se">\n</span><span class="s2">&quot;</span> 
+            <span class="n">message</span> <span class="o">+=</span> <span class="s2">&quot;singleLaneGuiClass, createSingleLaneGui, or getMultiLaneGui&quot;</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        <span class="n">singleLaneOperator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">topLevelOperator</span><span class="o">.</span><span class="n">getLane</span><span class="p">(</span> <span class="n">imageLaneIndex</span> <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">singleLaneGuiClass</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="n">singleLaneOperator</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__createMultiLaneGui</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This function serves as the default implementation of createMultiLaneGui().</span>
+<span class="sd">        It bundles multiple GUIs instantiated with ``createSingleLaneGui`` into one multi-image gui, </span>
+<span class="sd">        which is what the Applet interface expects.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">cls</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span><span class="o">.</span><span class="n">__mro__</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;createMultiLaneGui&#39;</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">__dict__</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">createMultiLaneGui</span><span class="p">()</span>
+            <span class="k">if</span> <span class="s1">&#39;createSingleLaneGui&#39;</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">__dict__</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">SingleToMultiGuiAdapter</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">createSingleLaneGui</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">topLevelOperator</span> <span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;singleLaneGuiClass&#39;</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">__dict__</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">topLevelOperator</span><span class="p">,</span> <span class="n">MultiLaneOperatorABC</span><span class="p">),</span> <span class="s2">&quot;If your applet&#39;s top-level operator doesn&#39;t satisfy MultiLaneOperatorABC, you must implement createMultiLaneGui yourself.&quot;</span>
+                <span class="k">return</span> <span class="n">SingleToMultiGuiAdapter</span><span class="p">(</span> <span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">__createSingleLaneGui</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">topLevelOperator</span> <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Your applet must override one of the GUI creation methods.  See StandardApplet docs for details.&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__createTopLevelOperator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Called by the default implementation of ``topLevelOperator`` to create a multi-image operator by wrapping single-image operators.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">__topLevelOperator</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="n">operatorClass</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">singleLaneOperatorClass</span>
+        <span class="n">operatorInitArgs</span><span class="p">,</span> <span class="n">operatorInitKwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">singleLaneOperatorInitArgs</span>
+        
+        <span class="n">broadcastingSlots</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">broadcastingSlots</span>
+        <span class="k">if</span> <span class="n">operatorClass</span> <span class="ow">is</span> <span class="bp">NotImplemented</span> <span class="ow">or</span> <span class="n">broadcastingSlots</span> <span class="ow">is</span> <span class="bp">NotImplemented</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;Could not create top-level operator for </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span> <span class="p">)</span>
+            <span class="n">message</span> <span class="o">+=</span> <span class="s2">&quot;StandardApplet subclasses must implement the singleLaneOperatorClass and broadcastingSlots&quot;</span>
+            <span class="n">message</span> <span class="o">+=</span> <span class="s2">&quot; members OR override topLevelOperator themselves.&quot;</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__workflow</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;Could not create top-level operator for </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">__class__</span> <span class="p">)</span>
+            <span class="n">message</span> <span class="o">+=</span> <span class="s2">&quot;Please initialize StandardApplet base class with a workflow object.&quot;</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">__topLevelOperator</span> <span class="o">=</span> <span class="n">OpMultiLaneWrapper</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">singleLaneOperatorClass</span><span class="p">,</span>
+                                                      <span class="n">operator_args</span><span class="o">=</span><span class="n">operatorInitArgs</span><span class="p">,</span>
+                                                      <span class="n">operator_kwargs</span><span class="o">=</span><span class="n">operatorInitKwargs</span><span class="p">,</span>
+                                                      <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">__workflow</span><span class="p">,</span>
+                                                      <span class="n">broadcastingSlotNames</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">broadcastingSlots</span> <span class="p">)</span></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

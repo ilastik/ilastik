@@ -1,0 +1,174 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.utility.multiLaneOperator &#8212; ilastik 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="top" title="ilastik 1.0.0 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for ilastik.utility.multiLaneOperator</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#   ilastik: interactive learning and segmentation toolkit</span>
+<span class="c1">#</span>
+<span class="c1">#       Copyright (C) 2011-2014, the ilastik developers</span>
+<span class="c1">#                                &lt;team@ilastik.org&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software; you can redistribute it and/or</span>
+<span class="c1"># modify it under the terms of the GNU General Public License</span>
+<span class="c1"># as published by the Free Software Foundation; either version 2</span>
+<span class="c1"># of the License, or (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># In addition, as a special exception, the copyright holders of</span>
+<span class="c1"># ilastik give you permission to combine ilastik with applets,</span>
+<span class="c1"># workflows and plugins which are not covered under the GNU</span>
+<span class="c1"># General Public License.</span>
+<span class="c1">#</span>
+<span class="c1"># See the LICENSE file for details. License information is also available</span>
+<span class="c1"># on the ilastik web site at:</span>
+<span class="c1">#		   http://ilastik.org/license.html</span>
+<span class="c1">###############################################################################</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="k">import</span> <span class="n">ABCMeta</span><span class="p">,</span> <span class="n">abstractmethod</span>
+
+<span class="k">def</span> <span class="nf">_has_attribute</span><span class="p">(</span> <span class="n">cls</span><span class="p">,</span> <span class="n">attr</span> <span class="p">):</span>
+    <span class="k">return</span> <span class="kc">True</span> <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">attr</span> <span class="ow">in</span> <span class="n">B</span><span class="o">.</span><span class="n">__dict__</span> <span class="k">for</span> <span class="n">B</span> <span class="ow">in</span> <span class="n">cls</span><span class="o">.</span><span class="n">__mro__</span><span class="p">)</span> <span class="k">else</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="MultiLaneOperatorABC"><a class="viewcode-back" href="../../../utilities.html#ilastik.utility.MultiLaneOperatorABC">[docs]</a><span class="k">class</span> <span class="nc">MultiLaneOperatorABC</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This abstract base class specifies the interface to which all top-level applet operators must adhere.</span>
+<span class="sd">    The distinguishing characteristic of a top-level operator is the fact that they must be capable of </span>
+<span class="sd">    supporting multiple images via multi-slots that are indexed by image lane number.</span>
+<span class="sd">    </span>
+<span class="sd">    Image lanes of the top-level operator are added, removed, and accessed via the ``addLane``, ``removeLane``, and ``getLane`` functions.</span>
+<span class="sd">    </span>
+<span class="sd">    .. note:: Most applets can simply inherit from the :py:class:`StandardApplet &lt;ilastik.applets.base.standardApplet.StandardApplet&gt;` base class, </span>
+<span class="sd">              which will automatically adapt single-lane top-level operators to satisfy this interface. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">ABCMeta</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="MultiLaneOperatorABC.addLane"><a class="viewcode-back" href="../../../utilities.html#ilastik.utility.MultiLaneOperatorABC.addLane">[docs]</a>    <span class="k">def</span> <span class="nf">addLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add an image lane.  Called by the workflow when the user has added a new image to the pipeline.</span>
+<span class="sd">        </span>
+<span class="sd">        *Postcondition:* The operator must be fully prepared to accept a new image.</span>
+<span class="sd">                         All input and output slots that are used by the image lane must be resized.</span>
+<span class="sd">                         Any internal operators that are part of the lane must be expanded).</span>
+<span class="sd">        </span>
+<span class="sd">        .. note:: Multi-slots that are connected together are auto-resized to stay in sync.  </span>
+<span class="sd">                  To resize a network of connected multi-slots (including OperatorWrapper inputs and </span>
+<span class="sd">                  outputs), it is generally sufficient to resize only one of the multi-slots.  </span>
+<span class="sd">                  The others will auto-resize to adjust.  See lazyflow documentation for details.  </span>
+<span class="sd">                  If your operator has any slots that are NOT connected to the rest of the inputs or </span>
+<span class="sd">                  outputs, then be sure to resize it explicitly in this function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="MultiLaneOperatorABC.removeLane"><a class="viewcode-back" href="../../../utilities.html#ilastik.utility.MultiLaneOperatorABC.removeLane">[docs]</a>    <span class="k">def</span> <span class="nf">removeLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove an image lane.  Called by the workflow when the user has removed an image from the pipeline.</span>
+<span class="sd">        </span>
+<span class="sd">        *Postcondition:* The lane must be removed from all slots that were added in :py:func:`addLane()`</span>
+<span class="sd">        </span>
+<span class="sd">        .. note:: See note in :py:func:`addLane()` documentation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="MultiLaneOperatorABC.getLane"><a class="viewcode-back" href="../../../utilities.html#ilastik.utility.MultiLaneOperatorABC.getLane">[docs]</a>    <span class="k">def</span> <span class="nf">getLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get an object that exposes the relevant slots for the specific lane.</span>
+<span class="sd">        The object may be an operator, or may merely be an operator-like &quot;view&quot; object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+    
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">__subclasshook__</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">C</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This function allows us to compare objects to the MultiLaneOperator interface</span>
+<span class="sd">        even if they don&#39;t happen to inherit from this base class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">cls</span> <span class="ow">is</span> <span class="n">MultiLaneOperatorABC</span><span class="p">:</span>
+            <span class="n">retval</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">retval</span> <span class="o">&amp;=</span> <span class="n">_has_attribute</span><span class="p">(</span> <span class="n">C</span><span class="p">,</span> <span class="s1">&#39;addLane&#39;</span> <span class="p">)</span>
+            <span class="n">retval</span> <span class="o">&amp;=</span> <span class="n">_has_attribute</span><span class="p">(</span> <span class="n">C</span><span class="p">,</span> <span class="s1">&#39;removeLane&#39;</span> <span class="p">)</span>
+            <span class="n">retval</span> <span class="o">&amp;=</span> <span class="n">_has_attribute</span><span class="p">(</span> <span class="n">C</span><span class="p">,</span> <span class="s1">&#39;getLane&#39;</span> <span class="p">)</span>
+            <span class="k">return</span> <span class="n">retval</span>
+        <span class="k">return</span> <span class="bp">NotImplemented</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

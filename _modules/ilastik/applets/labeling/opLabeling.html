@@ -1,0 +1,279 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.applets.labeling.opLabeling &#8212; ilastik 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="top" title="ilastik 1.0.0 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for ilastik.applets.labeling.opLabeling</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#   ilastik: interactive learning and segmentation toolkit</span>
+<span class="c1">#</span>
+<span class="c1">#       Copyright (C) 2011-2014, the ilastik developers</span>
+<span class="c1">#                                &lt;team@ilastik.org&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software; you can redistribute it and/or</span>
+<span class="c1"># modify it under the terms of the GNU General Public License</span>
+<span class="c1"># as published by the Free Software Foundation; either version 2</span>
+<span class="c1"># of the License, or (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># In addition, as a special exception, the copyright holders of</span>
+<span class="c1"># ilastik give you permission to combine ilastik with applets,</span>
+<span class="c1"># workflows and plugins which are not covered under the GNU</span>
+<span class="c1"># General Public License.</span>
+<span class="c1">#</span>
+<span class="c1"># See the LICENSE file for details. License information is also available</span>
+<span class="c1"># on the ilastik web site at:</span>
+<span class="c1">#		   http://ilastik.org/license.html</span>
+<span class="c1">###############################################################################</span>
+<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="k">import</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">InputSlot</span><span class="p">,</span> <span class="n">OutputSlot</span>
+<span class="kn">from</span> <span class="nn">lazyflow.operators</span> <span class="k">import</span> <span class="n">OpCompressedUserLabelArray</span>
+<span class="kn">from</span> <span class="nn">ilastik.utility.operatorSubView</span> <span class="k">import</span> <span class="n">OperatorSubView</span>
+<span class="kn">from</span> <span class="nn">ilastik.utility</span> <span class="k">import</span> <span class="n">OpMultiLaneWrapper</span>
+
+<div class="viewcode-block" id="OpLabelingTopLevel"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel">[docs]</a><span class="k">class</span> <span class="nc">OpLabelingTopLevel</span><span class="p">(</span> <span class="n">Operator</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Top-level operator for the labelingApplet base class.</span>
+<span class="sd">    Provides all the slots needed by the labeling GUI, but any operator that provides the necessary slots can also be used with the LabelingGui.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;OpLabelingTopLevel&quot;</span>
+
+    <span class="c1"># Input slots</span>
+    <span class="n">InputImages</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1">#: Original input data.</span>
+    <span class="n">LabelInputs</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1">#: Input for providing label data from an external source</span>
+    
+    <span class="n">LabelEraserValue</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span> <span class="c1">#: The label value that signifies the &#39;eraser&#39;, i.e. voxels to clear labels from</span>
+    <span class="n">LabelDelete</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span> <span class="c1">#: When this input is set to a value, all labels of that value are deleted from the operator&#39;s data.</span>
+
+    <span class="c1"># Output slots</span>
+    <span class="n">LabelImages</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1">#: Stored labels from the user</span>
+    <span class="n">NonzeroLabelBlocks</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="c1">#: A list if slices that contain non-zero label values</span>
+
+    <span class="n">LabelNames</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+    <span class="n">LabelColors</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blockDims</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span> <span class="n">OpLabelingTopLevel</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span>
+
+        <span class="c1"># Use a wrapper to create a labeling operator for each image lane</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span> <span class="o">=</span> <span class="n">OpMultiLaneWrapper</span><span class="p">(</span> <span class="n">OpLabelingSingleLane</span><span class="p">,</span> <span class="n">operator_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;blockDims&#39;</span> <span class="p">:</span> <span class="n">blockDims</span><span class="p">},</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span> <span class="p">)</span>
+
+        <span class="c1"># Special connection: Label Input must get its metadata (shape, axistags) from the main input image.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span> <span class="p">)</span>
+
+        <span class="c1"># Connect external inputs -&gt; internal inputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">InputImage</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">LabelInput</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelInputs</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">LabelEraserValue</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelEraserValue</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">LabelDelete</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelDelete</span> <span class="p">)</span>
+
+        <span class="c1"># Initialize the delete input to -1, which means &quot;no label&quot;.</span>
+        <span class="c1"># Now changing this input to a positive value will cause label deletions.</span>
+        <span class="c1"># (The deleteLabel input is monitored for changes.)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelDelete</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Connect internal outputs -&gt; external outputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelImages</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">LabelImage</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">NonzeroLabelBlocks</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opLabelLane</span><span class="o">.</span><span class="n">NonzeroLabelBlocks</span> <span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelColors</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="p">[]</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelNames</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="p">[]</span> <span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="c1"># Nothing to do here: All outputs are directly connected to </span>
+        <span class="c1">#  internal operators that handle their own dirty propagation.</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">setInSlot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c1"># Nothing to do here: All inputs that support __setitem__</span>
+        <span class="c1">#   are directly connected to internal operators.</span>
+        <span class="k">pass</span>
+    
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelNames</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelNames</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelColors</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelColors</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+
+    <span class="c1">###</span>
+    <span class="c1"># MultiLaneOperatorABC</span>
+    <span class="c1">###</span>
+
+<div class="viewcode-block" id="OpLabelingTopLevel.addLane"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.addLane">[docs]</a>    <span class="k">def</span> <span class="nf">addLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add an image lane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">laneIndex</span> <span class="o">==</span> <span class="n">numLanes</span><span class="p">,</span> <span class="s2">&quot;Lanes must be appended&quot;</span>
+
+        <span class="c1"># Just resize one of our multi-inputs.</span>
+        <span class="c1"># The others will resize automatically</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">numLanes</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="OpLabelingTopLevel.removeLane"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.removeLane">[docs]</a>    <span class="k">def</span> <span class="nf">removeLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Remove an image lane.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">InputImages</span><span class="o">.</span><span class="n">removeSlot</span><span class="p">(</span><span class="n">laneIndex</span><span class="p">,</span> <span class="n">numLanes</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">getLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">OperatorSubView</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="OpLabelingSingleLane"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane">[docs]</a><span class="k">class</span> <span class="nc">OpLabelingSingleLane</span><span class="p">(</span> <span class="n">Operator</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This is a single-lane operator that can be used with the labeling applet gui.</span>
+<span class="sd">    It is basically a wrapper around the ``OpCompressedUserLabelArray`` (lazyflow), </span>
+<span class="sd">    with the &#39;shape&#39; and &#39;blockshape&#39; input slots taken care of for you.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;OpLabelingSingleLane&quot;</span>
+
+    <span class="c1"># Input slots</span>
+    <span class="n">InputImage</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">()</span> <span class="c1">#: Original input data.</span>
+    <span class="n">LabelInput</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">optional</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="c1">#: Input for providing label data from an external source</span>
+    
+    <span class="n">LabelEraserValue</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span> <span class="c1">#: The label value that signifies the &#39;eraser&#39;, i.e. voxels to clear labels from</span>
+    <span class="n">LabelDelete</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">value</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="c1">#: When this input is set to a value, all labels of that value are deleted from the operator&#39;s data.</span>
+
+    <span class="c1"># Output slots</span>
+    <span class="n">LabelImage</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c1">#: Stored labels from the user</span>
+    <span class="n">NonzeroLabelBlocks</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c1">#: A list if slices that contain non-zero label values</span>
+
+    <span class="c1"># These are used in the single-lane case.</span>
+    <span class="c1"># When using the multi-lane operator (above),</span>
+    <span class="c1">#  its LabelNames and LabelColors slots are used instead.    </span>
+    <span class="n">LabelNames</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+    <span class="n">LabelColors</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blockDims</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Instantiate all internal operators and connect them together.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpLabelingSingleLane</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span>
+
+        <span class="c1"># Configuration options</span>
+        <span class="k">if</span> <span class="n">blockDims</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">blockDims</span> <span class="o">=</span> <span class="p">{</span> <span class="s1">&#39;t&#39;</span> <span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span> <span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span> <span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s1">&#39;z&#39;</span> <span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s1">&#39;c&#39;</span> <span class="p">:</span> <span class="mi">1</span> <span class="p">}</span> 
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">blockDims</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_blockDims</span> <span class="o">=</span> <span class="n">blockDims</span>
+
+        <span class="c1"># Create internal operator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span> <span class="o">=</span> <span class="n">OpCompressedUserLabelArray</span><span class="p">(</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">LabelInput</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">eraser</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelEraserValue</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">deleteLabel</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">LabelDelete</span><span class="p">)</span>
+        
+        <span class="c1"># Connect our internal outputs to our external outputs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelImage</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">Output</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">NonzeroLabelBlocks</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">nonzeroBlocks</span> <span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelNames</span><span class="o">.</span><span class="n">setValue</span><span class="p">([])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelColors</span><span class="o">.</span><span class="n">setValue</span><span class="p">([])</span>
+        
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelNames</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelNames</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelColors</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="nb">object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelColors</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setupCache</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_blockDims</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setupCache</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blockDims</span><span class="p">):</span>
+        <span class="c1"># Set the blockshapes for each input image separately, depending on which axistags it has.</span>
+        <span class="n">axisOrder</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">tag</span><span class="p">:</span> <span class="n">tag</span><span class="o">.</span><span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">InputImage</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="p">)</span>
+        
+        <span class="c1">## Label Array blocks</span>
+        <span class="n">blockShape</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span> <span class="n">blockDims</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">axisOrder</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">opLabelArray</span><span class="o">.</span><span class="n">blockShape</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="n">blockShape</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">cleanUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">LabelInput</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">(</span> <span class="n">OpLabelingSingleLane</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">cleanUp</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="c1"># Nothing to do here: All outputs are directly connected to </span>
+        <span class="c1">#  internal operators that handle their own dirty propagation.</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">setInSlot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="c1"># Nothing to do here: All inputs that support __setitem__</span>
+        <span class="c1">#   are directly connected to internal operators.</span>
+        <span class="k">pass</span></div>
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

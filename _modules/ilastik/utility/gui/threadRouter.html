@@ -1,0 +1,204 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.utility.gui.threadRouter &#8212; ilastik 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="top" title="ilastik 1.0.0 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for ilastik.utility.gui.threadRouter</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#   ilastik: interactive learning and segmentation toolkit</span>
+<span class="c1">#</span>
+<span class="c1">#       Copyright (C) 2011-2014, the ilastik developers</span>
+<span class="c1">#                                &lt;team@ilastik.org&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software; you can redistribute it and/or</span>
+<span class="c1"># modify it under the terms of the GNU General Public License</span>
+<span class="c1"># as published by the Free Software Foundation; either version 2</span>
+<span class="c1"># of the License, or (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># In addition, as a special exception, the copyright holders of</span>
+<span class="c1"># ilastik give you permission to combine ilastik with applets,</span>
+<span class="c1"># workflows and plugins which are not covered under the GNU</span>
+<span class="c1"># General Public License.</span>
+<span class="c1">#</span>
+<span class="c1"># See the LICENSE file for details. License information is also available</span>
+<span class="c1"># on the ilastik web site at:</span>
+<span class="c1">#		   http://ilastik.org/license.html</span>
+<span class="c1">###############################################################################</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">partial</span><span class="p">,</span> <span class="n">wraps</span>
+<span class="kn">from</span> <span class="nn">PyQt4.QtCore</span> <span class="k">import</span> <span class="n">QObject</span><span class="p">,</span> <span class="n">pyqtSignal</span><span class="p">,</span> <span class="n">Qt</span>
+
+<div class="viewcode-block" id="ThreadRouter"><a class="viewcode-back" href="../../../../utilities.html#ilastik.utility.gui.ThreadRouter">[docs]</a><span class="k">class</span> <span class="nc">ThreadRouter</span><span class="p">(</span><span class="n">QObject</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create an instance of this class called &#39;threadRouter&#39; to enable the :py:func:`@threadRouted&lt;threadRouted&gt;` decorator for methods of your object.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">routeToParent</span> <span class="o">=</span> <span class="n">pyqtSignal</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+    
+    <span class="c1"># The main window of the app should set this to True when the </span>
+    <span class="c1">#  app is shutting down and thus no gui events should be processed any more.</span>
+    <span class="n">app_is_shutting_down</span> <span class="o">=</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="ThreadRouter.__init__"><a class="viewcode-back" href="../../../../utilities.html#ilastik.utility.gui.ThreadRouter.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct a threadRouter object.  You must call it ``self.threadRouter``.</span>
+<span class="sd">        </span>
+<span class="sd">        :param parent: The parent object, which whose thread will be used for all :py:func:`@threadRouted&lt;threadRouted&gt;` functions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Can&#39;t use ThreadRouter without a parent QObject.&quot;</span>
+        <span class="n">QObject</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ident</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">current_thread</span><span class="p">()</span><span class="o">.</span><span class="n">ident</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">routeToParent</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">handleRoutedFunc</span><span class="p">,</span> <span class="n">Qt</span><span class="o">.</span><span class="n">BlockingQueuedConnection</span> <span class="p">)</span></div>
+    
+    <span class="k">def</span> <span class="nf">handleRoutedFunc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">f</span><span class="p">()</span></div>
+    
+<span class="k">def</span> <span class="nf">threadRoutedWithRouter</span><span class="p">(</span><span class="n">threadRouter</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_threadRouted</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Decorator that routes calls to the given member function into the object&#39;s parent thread.</span>
+<span class="sd">        If a member function ``f`` is decorated with ``@threadRouted``, all calls to ``f`` will execute in the GUI thread.</span>
+<span class="sd">        The calling thread will block while ``f`` is executing, so the call will appear synchronous.</span>
+<span class="sd">        This mechanism is slow, and should only be used for functions that MUST execute in the GUI thread. </span>
+<span class="sd">        </span>
+<span class="sd">        .. note:: Objects that use the @threadRouted decorator MUST have a :py:class:`ThreadRouter` member called ``self.threadRouter``</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nd">@wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">routed</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">ThreadRouter</span><span class="o">.</span><span class="n">app_is_shutting_down</span><span class="p">:</span>
+                <span class="k">return</span>
+            
+            <span class="n">router</span> <span class="o">=</span> <span class="n">threadRouter</span>
+            <span class="k">if</span> <span class="n">router</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                <span class="n">obj</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">QObject</span><span class="p">)</span>
+                <span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s1">&#39;threadRouter&#39;</span><span class="p">),</span> \
+                    <span class="s2">&quot;Can&#39;t use the @threadRouted decorator unless your object has a member called self.threadRouter&quot;</span>
+                <span class="n">router</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">threadRouter</span>
+    
+            <span class="c1"># If we&#39;re already in the parent thread, then we can call the function directly</span>
+            <span class="k">if</span> <span class="n">router</span><span class="o">.</span><span class="n">ident</span> <span class="o">==</span> <span class="n">threading</span><span class="o">.</span><span class="n">current_thread</span><span class="p">()</span><span class="o">.</span><span class="n">ident</span><span class="p">:</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="c1"># We rely on Qt signals (below) so it is an error to </span>
+                <span class="c1">#  use @threadRouted with a function that gives a return value</span>
+                <span class="k">assert</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Can&#39;t return a value from an @threadRouted function.&quot;</span>
+            
+            <span class="c1"># Otherwise, we rely on the Qt BlockingQueuedConnection </span>
+            <span class="c1">#  signal behavior to transfer the call to the parent thread. </span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">router</span><span class="o">.</span><span class="n">routeToParent</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span> <span class="n">partial</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="p">)</span>
+                     
+        <span class="n">routed</span><span class="o">.</span><span class="n">__wrapped__</span> <span class="o">=</span> <span class="n">func</span> <span class="c1"># Emulate python 3 behavior of @wraps</span>
+        <span class="k">return</span> <span class="n">routed</span>
+    <span class="k">return</span> <span class="n">_threadRouted</span>
+
+<span class="n">threadRouted</span> <span class="o">=</span> <span class="n">threadRoutedWithRouter</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">time</span>
+    <span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="k">import</span> <span class="n">QApplication</span>
+
+    <span class="k">class</span> <span class="nc">TestObject</span><span class="p">(</span><span class="n">QObject</span><span class="p">):</span>
+        
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">QObject</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">threadRouter</span> <span class="o">=</span> <span class="n">ThreadRouter</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="nd">@threadRouted</span>
+        <span class="k">def</span> <span class="nf">printThreadId</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+            <span class="nb">print</span> <span class="s2">&quot;thread id = &quot;</span><span class="p">,</span> <span class="n">threading</span><span class="o">.</span><span class="n">current_thread</span><span class="p">()</span><span class="o">.</span><span class="n">ident</span>
+
+    <span class="n">app</span> <span class="o">=</span> <span class="n">QApplication</span><span class="p">([])</span>
+    
+    <span class="n">o</span> <span class="o">=</span> <span class="n">TestObject</span><span class="p">()</span>
+    
+    <span class="k">def</span> <span class="nf">test</span><span class="p">():</span>
+        <span class="nb">print</span> <span class="s2">&quot;thread id = &quot;</span><span class="p">,</span> <span class="n">threading</span><span class="o">.</span><span class="n">current_thread</span><span class="p">()</span><span class="o">.</span><span class="n">ident</span>
+        <span class="n">o</span><span class="o">.</span><span class="n">printThreadId</span><span class="p">()</span>
+        <span class="nb">print</span> <span class="s2">&quot;Finished.&quot;</span>
+    
+    <span class="n">th</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">test</span><span class="p">)</span>
+    <span class="n">th</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    
+    <span class="n">app</span><span class="o">.</span><span class="n">exec_</span><span class="p">()</span>
+    
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

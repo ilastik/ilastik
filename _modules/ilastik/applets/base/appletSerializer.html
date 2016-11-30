@@ -1,0 +1,1148 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.applets.base.appletSerializer &#8212; ilastik 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="top" title="ilastik 1.0.0 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for ilastik.applets.base.appletSerializer</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#   ilastik: interactive learning and segmentation toolkit</span>
+<span class="c1">#</span>
+<span class="c1">#       Copyright (C) 2011-2014, the ilastik developers</span>
+<span class="c1">#                                &lt;team@ilastik.org&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software; you can redistribute it and/or</span>
+<span class="c1"># modify it under the terms of the GNU General Public License</span>
+<span class="c1"># as published by the Free Software Foundation; either version 2</span>
+<span class="c1"># of the License, or (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># In addition, as a special exception, the copyright holders of</span>
+<span class="c1"># ilastik give you permission to combine ilastik with applets,</span>
+<span class="c1"># workflows and plugins which are not covered under the GNU</span>
+<span class="c1"># General Public License.</span>
+<span class="c1">#</span>
+<span class="c1"># See the LICENSE file for details. License information is also available</span>
+<span class="c1"># on the ilastik web site at:</span>
+<span class="c1">#		   http://ilastik.org/license.html</span>
+<span class="c1">###############################################################################</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">abc</span> <span class="k">import</span> <span class="n">ABCMeta</span>
+
+<span class="kn">from</span> <span class="nn">ilastik.config</span> <span class="k">import</span> <span class="n">cfg</span> <span class="k">as</span> <span class="n">ilastik_config</span>
+<span class="kn">from</span> <span class="nn">ilastik.utility.simpleSignal</span> <span class="k">import</span> <span class="n">SimpleSignal</span>
+<span class="kn">from</span> <span class="nn">ilastik.utility.maybe</span> <span class="k">import</span> <span class="n">maybe</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span> <span class="nn">h5py</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">cPickle</span> <span class="k">as</span> <span class="nn">pickle</span>
+
+<span class="kn">from</span> <span class="nn">lazyflow.roi</span> <span class="k">import</span> <span class="n">TinyVector</span><span class="p">,</span> <span class="n">roiToSlice</span><span class="p">,</span> <span class="n">sliceToRoi</span>
+<span class="kn">from</span> <span class="nn">lazyflow.utility</span> <span class="k">import</span> <span class="n">timeLogged</span>
+<span class="kn">from</span> <span class="nn">lazyflow.slot</span> <span class="k">import</span> <span class="n">OutputSlot</span>
+
+<span class="c1">#######################</span>
+<span class="c1"># Convenience methods #</span>
+<span class="c1">#######################</span>
+
+<span class="k">def</span> <span class="nf">getOrCreateGroup</span><span class="p">(</span><span class="n">parentGroup</span><span class="p">,</span> <span class="n">groupName</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns parentGroup[groupName], creating first it if</span>
+<span class="sd">    necessary.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">parentGroup</span><span class="o">.</span><span class="n">require_group</span><span class="p">(</span><span class="n">groupName</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">deleteIfPresent</span><span class="p">(</span><span class="n">parentGroup</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Deletes parentGroup[name], if it exists.&quot;&quot;&quot;</span>
+    <span class="c1"># Check first. If we try to delete a non-existent key, </span>
+    <span class="c1"># hdf5 will complain on the console.</span>
+    <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">parentGroup</span><span class="p">:</span>
+        <span class="k">del</span> <span class="n">parentGroup</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+<span class="k">def</span> <span class="nf">slicingToString</span><span class="p">(</span><span class="n">slicing</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Convert the given slicing into a string of the form</span>
+<span class="sd">    &#39;[0:1,2:3,4:5]&#39;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">strSlicing</span> <span class="o">=</span> <span class="s1">&#39;[&#39;</span>
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">slicing</span><span class="p">:</span>
+        <span class="n">strSlicing</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">start</span><span class="p">)</span>
+        <span class="n">strSlicing</span> <span class="o">+=</span> <span class="s1">&#39;:&#39;</span>
+        <span class="n">strSlicing</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">stop</span><span class="p">)</span>
+        <span class="n">strSlicing</span> <span class="o">+=</span> <span class="s1">&#39;,&#39;</span>
+
+    <span class="n">strSlicing</span> <span class="o">=</span> <span class="n">strSlicing</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="c1"># Drop the last comma</span>
+    <span class="n">strSlicing</span> <span class="o">+=</span> <span class="s1">&#39;]&#39;</span>
+    <span class="k">return</span> <span class="n">strSlicing</span>
+
+<span class="k">def</span> <span class="nf">stringToSlicing</span><span class="p">(</span><span class="n">strSlicing</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Parse a string of the form &#39;[0:1,2:3,4:5]&#39; into a slicing (i.e.</span>
+<span class="sd">    list of slices)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">slicing</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">strSlicing</span> <span class="o">=</span> <span class="n">strSlicing</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="c1"># Drop brackets</span>
+    <span class="n">sliceStrings</span> <span class="o">=</span> <span class="n">strSlicing</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">sliceStrings</span><span class="p">:</span>
+        <span class="n">ends</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">)</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ends</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">stop</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ends</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">slicing</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">slicing</span>
+
+
+<div class="viewcode-block" id="SerialSlot"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot">[docs]</a><span class="k">class</span> <span class="nc">SerialSlot</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Implements the logic for serializing a slot.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="SerialSlot.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">inslot</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">subname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">depends</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">selfdepends</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param slot: where to get data to save</span>
+
+<span class="sd">        :param inslot: where to put loaded data. If None, it is the</span>
+<span class="sd">        same as &#39;slot&#39;.</span>
+
+<span class="sd">        :param name: name used for the group in the hdf5 file.</span>
+
+<span class="sd">        :param subname: used for creating subgroups for multislots.</span>
+<span class="sd">          should be able to call subname.format(i), where i is an</span>
+<span class="sd">          integer.</span>
+
+<span class="sd">        :param default: DEPRECATED</span>
+
+<span class="sd">        :param depends: a list of slots which must be ready before this slot</span>
+<span class="sd">          can be serialized. If None, defaults to [].</span>
+
+<span class="sd">        :param selfdepends: whether &#39;slot&#39; should be added to &#39;depends&#39;</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># FIXME: recursive serialization, to support arbitrary levels</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;slots of levels &gt; 1 not supported&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">slot</span> <span class="o">=</span> <span class="n">slot</span>
+        <span class="k">if</span> <span class="n">inslot</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">inslot</span> <span class="o">=</span> <span class="n">slot</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inslot</span> <span class="o">=</span> <span class="n">inslot</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">default</span> <span class="o">=</span> <span class="n">default</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">depends</span> <span class="o">=</span> <span class="n">maybe</span><span class="p">(</span><span class="n">depends</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">if</span> <span class="n">selfdepends</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">depends</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">slot</span><span class="o">.</span><span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">if</span> <span class="n">subname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">subname</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{:04d}</span><span class="s1">&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subname</span> <span class="o">=</span> <span class="n">subname</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dirty</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bind</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ignoreDirty</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dirty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dirty</span>
+
+    <span class="nd">@dirty</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">dirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">isDirty</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">isDirty</span> <span class="ow">or</span> <span class="p">(</span><span class="n">isDirty</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">ignoreDirty</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_dirty</span> <span class="o">=</span> <span class="n">isDirty</span>
+
+    <span class="k">def</span> <span class="nf">setDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">_bind</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Setup so that when slot is dirty, set appropriate dirty</span>
+<span class="sd">        flag.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">slot</span> <span class="o">=</span> <span class="n">maybe</span><span class="p">(</span><span class="n">slot</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">doMulti</span><span class="p">(</span><span class="n">slot</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">size</span><span class="p">):</span>
+            <span class="n">slot</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">notifyDirty</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">)</span>
+            <span class="n">slot</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">notifyValueChanged</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">slot</span><span class="o">.</span><span class="n">notifyDirty</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">)</span>
+            <span class="n">slot</span><span class="o">.</span><span class="n">notifyValueChanged</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">slot</span><span class="o">.</span><span class="n">notifyInserted</span><span class="p">(</span><span class="n">doMulti</span><span class="p">)</span>
+            <span class="n">slot</span><span class="o">.</span><span class="n">notifyRemoved</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">setDirty</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SerialSlot.shouldSerialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.shouldSerialize">[docs]</a>    <span class="k">def</span> <span class="nf">shouldSerialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Whether to serialize or not.&quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span>
+        <span class="n">result</span> <span class="o">|=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">depends</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">&amp;=</span> <span class="n">s</span><span class="o">.</span><span class="n">ready</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+
+<div class="viewcode-block" id="SerialSlot.serialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.serialize">[docs]</a>    <span class="k">def</span> <span class="nf">serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Performs tasks common to all serializations, like changing</span>
+<span class="sd">        dirty status.</span>
+
+<span class="sd">        Do not override (unless for some reason this function does not</span>
+<span class="sd">        do the right thing in your case). Instead override</span>
+<span class="sd">        _serialize().</span>
+
+<span class="sd">        :param group: The parent group in which to create this slot&#39;s</span>
+<span class="sd">                      group.</span>
+<span class="sd">        :type group: h5py.Group</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">shouldSerialize</span><span class="p">(</span><span class="n">group</span><span class="p">):</span>
+            <span class="k">return</span>
+        <span class="n">deleteIfPresent</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="o">.</span><span class="n">ready</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_serialize</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_saveValue</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Seperate so that subclasses can override, if necessary.</span>
+
+<span class="sd">        For instance, SerialListSlot needs to save an extra attribute</span>
+<span class="sd">        if the value is an empty list.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SerialSlot._serialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot._serialize">[docs]</a>    <span class="k">def</span> <span class="nf">_serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param group: The parent group.</span>
+<span class="sd">        :type group: h5py.Group</span>
+<span class="sd">        :param name: The name of the data or group</span>
+<span class="sd">        :type name: string</span>
+<span class="sd">        :param slot: the slot to serialize</span>
+<span class="sd">        :type slot: SerialSlot</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_saveValue</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">slot</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_saveValue</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">slot</span><span class="p">(())</span><span class="o">.</span><span class="n">wait</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">subgroup</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">subslot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">slot</span><span class="p">):</span>
+                <span class="n">subname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_serialize</span><span class="p">(</span><span class="n">subgroup</span><span class="p">,</span> <span class="n">subname</span><span class="p">,</span> <span class="n">slot</span><span class="p">[</span><span class="n">i</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="SerialSlot.deserialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot.deserialize">[docs]</a>    <span class="k">def</span> <span class="nf">deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Performs tasks common to all deserializations.</span>
+
+<span class="sd">        Do not override (unless for some reason this function does not</span>
+<span class="sd">        do the right thing in your case). Instead override</span>
+<span class="sd">        _deserialize.</span>
+
+<span class="sd">        :param group: The parent group in which to create this slot&#39;s</span>
+<span class="sd">            group.</span>
+<span class="sd">        :type group: h5py.Group</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">group</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_deserialize</span><span class="p">(</span><span class="n">group</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">inslot</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_getValue</span><span class="p">(</span><span class="n">subgroup</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">subgroup</span><span class="p">[()]</span>
+        <span class="n">slot</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SerialSlot._deserialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialSlot._deserialize">[docs]</a>    <span class="k">def</span> <span class="nf">_deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subgroup</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param subgroup: *not* the parent group. This slot&#39;s group.</span>
+<span class="sd">        :type subgroup: h5py.Group</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_getValue</span><span class="p">(</span><span class="n">subgroup</span><span class="p">,</span> <span class="n">slot</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Pair stored indexes with their keys,</span>
+            <span class="c1"># e.g. [(0,&#39;0&#39;), (2, &#39;2&#39;), (3, &#39;3&#39;)]</span>
+            <span class="c1"># Note that in some cases an index might be intentionally skipped.</span>
+            <span class="n">indexes_to_keys</span> <span class="o">=</span> <span class="p">{</span> <span class="nb">int</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="p">:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">subgroup</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="p">}</span>
+            
+            <span class="c1"># Ensure the slot is at least big enough to deserialize into.</span>
+            <span class="k">if</span> <span class="n">indexes_to_keys</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="o">==</span> <span class="p">[]:</span>
+                <span class="n">max_index</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">max_index</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span> <span class="n">indexes_to_keys</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">max_index</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">slot</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">max_index</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="c1"># Now retrieve the data</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">subslot</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">slot</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indexes_to_keys</span><span class="p">:</span>
+                    <span class="n">key</span> <span class="o">=</span> <span class="n">indexes_to_keys</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                    <span class="c1"># Sadly, we can&#39;t use the following assertion because it would break  </span>
+                    <span class="c1">#  backwards compatibility with a bug we used to have in the key names.</span>
+                    <span class="c1">#assert key == self.subname.format(i)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_deserialize</span><span class="p">(</span><span class="n">subgroup</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">subslot</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Since there was no data for this subslot in the project file,</span>
+                    <span class="c1"># we disconnect the subslot.</span>
+                    <span class="n">subslot</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span></div></div>
+
+<span class="c1">#######################################################</span>
+<span class="c1"># some serial slots that are used in multiple applets #</span>
+<span class="c1">#######################################################</span>
+
+<div class="viewcode-block" id="SerialListSlot"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialListSlot">[docs]</a><span class="k">class</span> <span class="nc">SerialListSlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;As the name implies: used for serializing a list.</span>
+
+<span class="sd">    The only differences from the base class are:</span>
+
+<span class="sd">    - if deserializing fails, sets the slot value to [].</span>
+
+<span class="sd">    - if it succeeds, applies a transform to every element of the list</span>
+<span class="sd">      (for instance, to convert it to the proper type).</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+<div class="viewcode-block" id="SerialListSlot.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialListSlot.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">inslot</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">subname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">depends</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">selfdepends</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">store_transform</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">iterable</span><span class="o">=</span><span class="nb">list</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param transform: function applied to members on deserialization.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># TODO: implement for multislots</span>
+        <span class="k">if</span> <span class="n">slot</span><span class="o">.</span><span class="n">level</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">SerialListSlot</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span>
+            <span class="n">slot</span><span class="p">,</span> <span class="n">inslot</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">subname</span><span class="p">,</span> <span class="n">default</span><span class="p">,</span> <span class="n">depends</span><span class="p">,</span> <span class="n">selfdepends</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">transform</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">transform</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transform</span> <span class="o">=</span> <span class="n">transform</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_iterable</span> <span class="o">=</span> <span class="n">iterable</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_store_transform</span> <span class="o">=</span> <span class="n">store_transform</span>
+        <span class="k">if</span> <span class="n">store_transform</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_store_transform</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span><span class="n">x</span></div>
+
+    <span class="k">def</span> <span class="nf">_saveValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">isempty</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">isempty</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">1</span><span class="p">,))</span>
+        <span class="n">sg</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="nb">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_store_transform</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+        <span class="n">sg</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;isEmpty&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">isempty</span>
+
+    <span class="nd">@timeLogged</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Deserializing ListSlot: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">subgroup</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">logger</span><span class="o">.</span><span class="n">isEnabledFor</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">):</span>
+                <span class="c1"># Only show this warning when debugging serialization</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;Deserialization: Could not locate value for slot &#39;</span><span class="si">{}</span><span class="s2">&#39;.  Skipping.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="p">))</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="s1">&#39;isEmpty&#39;</span> <span class="ow">in</span> <span class="n">subgroup</span><span class="o">.</span><span class="n">attrs</span> <span class="ow">and</span> <span class="n">subgroup</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;isEmpty&#39;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inslot</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iterable</span><span class="p">([])</span> <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">subgroup</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">subgroup</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># How can this happen, anyway...?</span>
+                <span class="k">return</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">inslot</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_iterable</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">,</span> <span class="n">subgroup</span><span class="p">[()])))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="SerialBlockSlot"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialBlockSlot">[docs]</a><span class="k">class</span> <span class="nc">SerialBlockSlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A slot which only saves nonzero blocks.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="SerialBlockSlot.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialBlockSlot.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">inslot</span><span class="p">,</span> <span class="n">blockslot</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">subname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">depends</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">selfdepends</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">shrink_to_bb</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">compression_level</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param blockslot: provides non-zero blocks.</span>
+<span class="sd">        :param shrink_to_bb: If true, reduce each block of data from the slot to  </span>
+<span class="sd">                             its nonzero bounding box before feeding saving it.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slot</span><span class="p">,</span> <span class="n">OutputSlot</span><span class="p">),</span> <span class="s2">&quot;slot is of wrong type: &#39;</span><span class="si">{}</span><span class="s2">&#39; is not an OutputSlot&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">slot</span><span class="o">.</span><span class="n">name</span> <span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SerialBlockSlot</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span>
+            <span class="n">slot</span><span class="p">,</span> <span class="n">inslot</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">subname</span><span class="p">,</span> <span class="n">default</span><span class="p">,</span> <span class="n">depends</span><span class="p">,</span> <span class="n">selfdepends</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">blockslot</span> <span class="o">=</span> <span class="n">blockslot</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bind</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shrink_to_bb</span> <span class="o">=</span> <span class="n">shrink_to_bb</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compression_level</span> <span class="o">=</span> <span class="n">compression_level</span></div>
+
+    <span class="k">def</span> <span class="nf">shouldSerialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="c1"># Should this be a docstring?</span>
+        <span class="c1">#</span>
+        <span class="c1"># Must be overloaded as SerialBlockSlot does not serialize itself in the simple way that other SerialSlot do</span>
+        <span class="c1"># as a consequence of the nesting of groups required. Follows the same logic as _serialize and checks to see</span>
+        <span class="c1"># if each relevant subgroup has been created and if any are missing or their data is missing it should be</span>
+        <span class="c1"># serialized. Otherwise, if everything is intact, it doesn&#39;t suggest serialization unless the state has changed.</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Checking whether to serialize BlockSlot: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;BlockSlot </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2"> appears to be dirty. Should serialize.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="c1"># SerialSlot interchanges self.name and name when they frequently are the same thing. It is not clear if using</span>
+        <span class="c1"># self.name would be acceptable here or whether name should be an input to shouldSerialize or if there should be</span>
+        <span class="c1"># a _shouldSerialize method, which takes the name.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">group</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Missing </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2"> in group </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">group</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2"> belonging to BlockSlot </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">. Should serialize.&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Found </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2"> in group </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">group</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2"> belonging to BlockSlot </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Just because the group was serialized doesn&#39;t mean that the relevant data was.</span>
+        <span class="n">mygroup</span> <span class="o">=</span> <span class="n">group</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blockslot</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num</span><span class="p">):</span>
+            <span class="n">subname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+
+            <span class="c1"># Check to se if each subname has been created as a group</span>
+            <span class="k">if</span> <span class="n">subname</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">mygroup</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Missing </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">subname</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2"> from </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">mygroup</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2"> belonging to BlockSlot </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">. Should serialize.&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Found </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">subname</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2"> from </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">mygroup</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2"> belonging to BlockSlot </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+            <span class="n">subgroup</span> <span class="o">=</span> <span class="n">mygroup</span><span class="p">[</span><span class="n">subname</span><span class="p">]</span>
+
+            <span class="n">nonZeroBlocks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">blockslot</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">for</span> <span class="n">blockIndex</span> <span class="ow">in</span> <span class="n">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nonZeroBlocks</span><span class="p">)):</span>
+                <span class="n">blockName</span> <span class="o">=</span> <span class="s1">&#39;block</span><span class="si">{:04d}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">blockIndex</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">blockName</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">subgroup</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Missing </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">blockName</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2"> from </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">subgroup</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">. Should serialize.&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="kc">True</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Found </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">blockName</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2"> from </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">subgroup</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2"> belonging to BlockSlot </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Everything belonging to BlockSlot </span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2"> appears to be in order. Should not serialize.&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="nd">@timeLogged</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Serializing BlockSlot: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="p">))</span>
+        <span class="n">mygroup</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blockslot</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num</span><span class="p">):</span>
+            <span class="n">subname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+            <span class="n">subgroup</span> <span class="o">=</span> <span class="n">mygroup</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">subname</span><span class="p">)</span>
+            <span class="n">nonZeroBlocks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">blockslot</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">for</span> <span class="n">blockIndex</span><span class="p">,</span> <span class="n">slicing</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">nonZeroBlocks</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slicing</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">slice</span><span class="p">):</span>
+                    <span class="n">slicing</span> <span class="o">=</span> <span class="n">roiToSlice</span><span class="p">(</span><span class="o">*</span><span class="n">slicing</span><span class="p">)</span>
+
+                <span class="n">block</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="p">[</span><span class="n">index</span><span class="p">][</span><span class="n">slicing</span><span class="p">]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+                <span class="n">blockName</span> <span class="o">=</span> <span class="s1">&#39;block</span><span class="si">{:04d}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">blockIndex</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shrink_to_bb</span><span class="p">:</span>
+                    <span class="n">nonzero_coords</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonzero_coords</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">block_start</span> <span class="o">=</span> <span class="n">sliceToRoi</span><span class="p">(</span> <span class="n">slicing</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span> <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                        <span class="n">block_bounding_box_start</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span> <span class="nb">map</span><span class="p">(</span> <span class="n">numpy</span><span class="o">.</span><span class="n">min</span><span class="p">,</span> <span class="n">nonzero_coords</span> <span class="p">)</span> <span class="p">)</span>
+                        <span class="n">block_bounding_box_stop</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span> <span class="nb">map</span><span class="p">(</span> <span class="n">numpy</span><span class="o">.</span><span class="n">max</span><span class="p">,</span> <span class="n">nonzero_coords</span> <span class="p">)</span> <span class="p">)</span>
+                        <span class="n">block_slicing</span> <span class="o">=</span> <span class="n">roiToSlice</span><span class="p">(</span> <span class="n">block_bounding_box_start</span><span class="p">,</span> <span class="n">block_bounding_box_stop</span> <span class="p">)</span>
+                        <span class="n">bounding_box_roi</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">block_bounding_box_start</span><span class="p">,</span> <span class="n">block_bounding_box_stop</span><span class="p">])</span>
+                        <span class="n">bounding_box_roi</span> <span class="o">+=</span> <span class="n">block_start</span>
+                        
+                        <span class="c1"># Overwrite the vars that are written to the file</span>
+                        <span class="n">slicing</span> <span class="o">=</span> <span class="n">roiToSlice</span><span class="p">(</span><span class="o">*</span><span class="n">bounding_box_roi</span><span class="p">)</span>
+                        <span class="n">block</span> <span class="o">=</span> <span class="n">block</span><span class="p">[</span><span class="n">block_slicing</span><span class="p">]</span>
+
+                <span class="c1"># If we have a masked array, convert it to a structured array so that h5py can handle it.</span>
+                <span class="k">if</span> <span class="n">slot</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">has_mask</span><span class="p">:</span>
+                    <span class="n">mygroup</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;meta.has_mask&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+                    <span class="n">block_group</span> <span class="o">=</span> <span class="n">subgroup</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">blockName</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compression_level</span><span class="p">:</span>
+                        <span class="n">block_group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span>
+                                                   <span class="n">data</span><span class="o">=</span><span class="n">block</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+                                                   <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;gzip&#39;</span><span class="p">,</span>
+                                                   <span class="n">compression_opts</span><span class="o">=</span><span class="n">compression_level</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">block_group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">block</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+                        
+                    <span class="n">block_group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span>
+                        <span class="s2">&quot;mask&quot;</span><span class="p">,</span>
+                        <span class="n">data</span><span class="o">=</span><span class="n">block</span><span class="o">.</span><span class="n">mask</span><span class="p">,</span>
+                        <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;gzip&quot;</span><span class="p">,</span>
+                        <span class="n">compression_opts</span><span class="o">=</span><span class="mi">2</span>
+                    <span class="p">)</span>
+                    <span class="n">block_group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="s2">&quot;fill_value&quot;</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">block</span><span class="o">.</span><span class="n">fill_value</span><span class="p">)</span>
+
+                    <span class="n">block_group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;blockSlice&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slicingToString</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">subgroup</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">blockName</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">block</span><span class="p">)</span>
+                    <span class="n">subgroup</span><span class="p">[</span><span class="n">blockName</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;blockSlice&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slicingToString</span><span class="p">(</span><span class="n">slicing</span><span class="p">)</span>
+
+    <span class="nd">@timeLogged</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mygroup</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Deserializing BlockSlot: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="p">))</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">mygroup</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inslot</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">num</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inslot</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+        <span class="c1"># Annoyingly, some applets store their groups with names like, img0,img1,img2,..,img9,img10,img11</span>
+        <span class="c1"># which means that sorted() needs a special key to avoid sorting img10 before img2</span>
+        <span class="c1"># We have to find the index and sort according to its numerical value.</span>
+        <span class="n">index_capture</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">r&#39;[^0-9]*(\d*).*&#39;</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">extract_index</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">index_capture</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">mygroup</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="n">v</span><span class="p">):</span> <span class="n">extract_index</span><span class="p">(</span><span class="n">k</span><span class="p">))):</span>
+            <span class="n">groupName</span><span class="p">,</span> <span class="n">labelGroup</span> <span class="o">=</span> <span class="n">t</span>
+            <span class="k">for</span> <span class="n">blockData</span> <span class="ow">in</span> <span class="n">labelGroup</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="n">slicing</span> <span class="o">=</span> <span class="n">stringToSlicing</span><span class="p">(</span><span class="n">blockData</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;blockSlice&#39;</span><span class="p">])</span>
+
+                <span class="c1"># If it is suppose to be a masked array,</span>
+                <span class="c1"># deserialize the pieces and rebuild the masked array.</span>
+                <span class="k">assert</span> <span class="n">slot</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">has_mask</span> <span class="o">==</span> <span class="n">mygroup</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;meta.has_mask&quot;</span><span class="p">),</span> \
+                       <span class="s2">&quot;The slot and stored data have different values for&quot;</span> <span class="o">+</span> \
+                       <span class="s2">&quot; `has_mask`. They are&quot;</span> <span class="o">+</span> \
+                       <span class="s2">&quot; `bool(slot[index].meta.has_mask)`=&quot;</span> <span class="o">+</span> \
+                       <span class="nb">repr</span><span class="p">(</span><span class="nb">bool</span><span class="p">(</span><span class="n">slot</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">has_mask</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot; and&quot;</span> <span class="o">+</span> \
+                       <span class="s2">&quot; `mygroup.attrs.get(</span><span class="se">\&quot;</span><span class="s2">meta.has_mask</span><span class="se">\&quot;</span><span class="s2">, False)`=&quot;</span> <span class="o">+</span> \
+                       <span class="nb">repr</span><span class="p">(</span><span class="n">mygroup</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;meta.has_mask&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span> <span class="o">+</span> \
+                       <span class="s2">&quot;. Please fix this to proceed with deserialization.&quot;</span>
+                <span class="k">if</span> <span class="n">slot</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">has_mask</span><span class="p">:</span>
+                    <span class="n">blockArray</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">masked_array</span><span class="p">(</span>
+                        <span class="n">blockData</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][()],</span>
+                        <span class="n">mask</span><span class="o">=</span><span class="n">blockData</span><span class="p">[</span><span class="s2">&quot;mask&quot;</span><span class="p">][()],</span>
+                        <span class="n">fill_value</span><span class="o">=</span><span class="n">blockData</span><span class="p">[</span><span class="s2">&quot;fill_value&quot;</span><span class="p">][()],</span>
+                        <span class="n">shrink</span><span class="o">=</span><span class="kc">False</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">blockArray</span> <span class="o">=</span> <span class="n">blockData</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">inslot</span><span class="p">[</span><span class="n">index</span><span class="p">][</span><span class="n">slicing</span><span class="p">]</span> <span class="o">=</span> <span class="n">blockArray</span></div>
+
+<span class="k">class</span> <span class="nc">SerialHdf5BlockSlot</span><span class="p">(</span><span class="n">SerialBlockSlot</span><span class="p">):</span>
+
+    <span class="k">def</span> <span class="nf">_serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="n">mygroup</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">blockslot</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num</span><span class="p">):</span>
+            <span class="n">subname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+            <span class="n">subgroup</span> <span class="o">=</span> <span class="n">mygroup</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">subname</span><span class="p">)</span>
+            <span class="n">cleanBlockRois</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">blockslot</span><span class="p">[</span><span class="n">index</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">for</span> <span class="n">roi</span> <span class="ow">in</span> <span class="n">cleanBlockRois</span><span class="p">:</span>
+                <span class="c1"># The protocol for hdf5 slots is that they create appropriately </span>
+                <span class="c1">#  named datasets within the subgroup that we provide via writeInto()</span>
+                <span class="n">req</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">slot</span><span class="p">[</span><span class="n">index</span><span class="p">](</span> <span class="o">*</span><span class="n">roi</span> <span class="p">)</span>
+                <span class="n">req</span><span class="o">.</span><span class="n">writeInto</span><span class="p">(</span> <span class="n">subgroup</span> <span class="p">)</span>
+                <span class="n">req</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mygroup</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="n">num</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">mygroup</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inslot</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">num</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inslot</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+        
+        <span class="c1"># Annoyingly, some applets store their groups with names like, img0,img1,img2,..,img9,img10,img11</span>
+        <span class="c1"># which means that sorted() needs a special key to avoid sorting img10 before img2</span>
+        <span class="c1"># We have to find the index and sort according to its numerical value.</span>
+        <span class="n">index_capture</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">r&#39;[^0-9]*(\d*).*&#39;</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">extract_index</span><span class="p">(</span><span class="n">s</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">index_capture</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">mygroup</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span><span class="n">v</span><span class="p">):</span> <span class="n">extract_index</span><span class="p">(</span><span class="n">k</span><span class="p">))):</span>
+            <span class="n">groupName</span><span class="p">,</span> <span class="n">labelGroup</span> <span class="o">=</span> <span class="n">t</span>
+            <span class="k">assert</span> <span class="n">extract_index</span><span class="p">(</span><span class="n">groupName</span><span class="p">)</span> <span class="o">==</span> <span class="n">index</span><span class="p">,</span> <span class="s2">&quot;subgroup extraction order should be numerical order!&quot;</span>
+            <span class="k">for</span> <span class="n">blockRoiString</span><span class="p">,</span> <span class="n">blockDataset</span> <span class="ow">in</span> <span class="n">labelGroup</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">blockRoi</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">blockRoiString</span><span class="p">)</span>
+                <span class="n">roiShape</span> <span class="o">=</span> <span class="n">TinyVector</span><span class="p">(</span><span class="n">blockRoi</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="n">TinyVector</span><span class="p">(</span><span class="n">blockRoi</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="k">assert</span> <span class="n">roiShape</span> <span class="o">==</span> <span class="n">blockDataset</span><span class="o">.</span><span class="n">shape</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">inslot</span><span class="p">[</span><span class="n">index</span><span class="p">][</span><span class="n">roiToSlice</span><span class="p">(</span> <span class="o">*</span><span class="n">blockRoi</span> <span class="p">)]</span> <span class="o">=</span> <span class="n">blockDataset</span>
+
+<div class="viewcode-block" id="SerialClassifierSlot"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot">[docs]</a><span class="k">class</span> <span class="nc">SerialClassifierSlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;For saving a classifier.  Here we assume the classifier is stored in the .&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="SerialClassifierSlot.__init__"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">cache</span><span class="p">,</span> <span class="n">inslot</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">depends</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">selfdepends</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SerialClassifierSlot</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span>
+            <span class="n">slot</span><span class="p">,</span> <span class="n">inslot</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">default</span><span class="p">,</span> <span class="n">depends</span><span class="p">,</span> <span class="n">selfdepends</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="o">=</span> <span class="n">cache</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">slot</span><span class="o">.</span><span class="n">name</span>
+        
+        <span class="c1"># We want to bind to the INPUT, not Output:</span>
+        <span class="c1"># - if the input becomes dirty, we want to make sure the cache is deleted</span>
+        <span class="c1"># - if the input becomes dirty and then the cache is reloaded, we&#39;ll save the classifier.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bind</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">Input</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="SerialClassifierSlot._serialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot._serialize">[docs]</a>    <span class="k">def</span> <span class="nf">_serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="c1"># Is the cache up-to-date?</span>
+        <span class="c1"># if not, we&#39;ll just return (don&#39;t recompute the classifier just to save it)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">_dirty</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">classifier</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">value</span>
+
+        <span class="c1"># Classifier can be None if there isn&#39;t any training data yet.</span>
+        <span class="k">if</span> <span class="n">classifier</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">classifier_group</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span> <span class="n">name</span> <span class="p">)</span>
+        <span class="n">classifier</span><span class="o">.</span><span class="n">serialize_hdf5</span><span class="p">(</span> <span class="n">classifier_group</span> <span class="p">)</span></div>
+
+<div class="viewcode-block" id="SerialClassifierSlot.deserialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot.deserialize">[docs]</a>    <span class="k">def</span> <span class="nf">deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Have to override this to ensure that dirty is always set False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SerialClassifierSlot</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="SerialClassifierSlot._deserialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.SerialClassifierSlot._deserialize">[docs]</a>    <span class="k">def</span> <span class="nf">_deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">classifierGroup</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">classifier_type</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span> <span class="n">classifierGroup</span><span class="p">[</span><span class="s1">&#39;pickled_type&#39;</span><span class="p">][()]</span> <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="c1"># For compatibility with old project files, choose the default classifier.</span>
+            <span class="kn">from</span> <span class="nn">lazyflow.classifiers</span> <span class="k">import</span> <span class="n">ParallelVigraRfLazyflowClassifier</span>
+            <span class="n">classifier_type</span> <span class="o">=</span> <span class="n">ParallelVigraRfLazyflowClassifier</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">classifier</span> <span class="o">=</span> <span class="n">classifier_type</span><span class="o">.</span><span class="n">deserialize_hdf5</span><span class="p">(</span> <span class="n">classifierGroup</span> <span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span> <span class="s2">&quot;Wasn&#39;t able to deserialize the saved classifier.  &quot;</span>
+                           <span class="s2">&quot;It will need to be retrainied&quot;</span> <span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Now force the classifier into our classifier cache. The</span>
+        <span class="c1"># downstream operators (e.g. the prediction operator) can</span>
+        <span class="c1"># use the classifier without inducing it to be re-trained.</span>
+        <span class="c1"># (This assumes that the classifier we are loading is</span>
+        <span class="c1"># consistent with the images and labels that we just</span>
+        <span class="c1"># loaded. As soon as training input changes, it will be</span>
+        <span class="c1"># retrained.)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">forceValue</span><span class="p">(</span> <span class="n">classifier</span> <span class="p">)</span></div></div>
+
+<span class="k">class</span> <span class="nc">SerialPickledValueSlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    For storing value slots whose data is a python object (not an array or a simple number).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SerialPickledValueSlot</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">slot</span><span class="p">)</span>
+    
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_saveValue</span><span class="p">(</span><span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_getValue</span><span class="p">(</span><span class="n">subgroup</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">subgroup</span><span class="p">[()]</span>
+        <span class="n">slot</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">val</span><span class="p">))</span>
+
+
+<span class="k">class</span> <span class="nc">SerialCountingSlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;For saving a random forest classifier.&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">cache</span><span class="p">,</span> <span class="n">inslot</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">depends</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">selfdepends</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SerialCountingSlot</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span>
+            <span class="n">slot</span><span class="p">,</span> <span class="n">inslot</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="s2">&quot;wrapper</span><span class="si">{:04d}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">default</span><span class="p">,</span> <span class="n">depends</span><span class="p">,</span> <span class="n">selfdepends</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="o">=</span> <span class="n">cache</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">slot</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">subname</span> <span class="o">=</span> <span class="s2">&quot;wrapper</span><span class="si">{:04d}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># We want to bind to the INPUT, not Output:</span>
+        <span class="c1"># - if the input becomes dirty, we want to make sure the cache is deleted</span>
+        <span class="c1"># - if the input becomes dirty and then the cache is reloaded, we&#39;ll save the classifier.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bind</span><span class="p">(</span><span class="n">cache</span><span class="o">.</span><span class="n">Input</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_serialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">_dirty</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">classifier_forests</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">Output</span><span class="o">.</span><span class="n">value</span>
+
+        <span class="c1"># Classifier can be None if there isn&#39;t any training data yet.</span>
+        <span class="k">if</span> <span class="n">classifier_forests</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+        <span class="k">for</span> <span class="n">forest</span> <span class="ow">in</span> <span class="n">classifier_forests</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">forest</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span>
+
+        <span class="c1"># Due to non-shared hdf5 dlls, vigra can&#39;t write directly to</span>
+        <span class="c1"># our open hdf5 group. Instead, we&#39;ll use vigra to write the</span>
+        <span class="c1"># classifier to a temporary file.</span>
+        <span class="n">tmpDir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">cachePath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tmpDir</span><span class="p">,</span> <span class="s1">&#39;tmp_classifier_cache.h5&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;/&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">forest</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">classifier_forests</span><span class="p">):</span>
+            <span class="n">targetname</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/</span><span class="si">{1}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">subname</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+            <span class="n">forest</span><span class="o">.</span><span class="n">writeHDF5</span><span class="p">(</span><span class="n">cachePath</span><span class="p">,</span> <span class="n">targetname</span><span class="p">)</span>
+
+        <span class="c1"># Open the temp file and copy to our project group</span>
+        <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">cachePath</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">cacheFile</span><span class="p">:</span>
+            <span class="n">group</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">cacheFile</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">name</span><span class="p">)</span>
+
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">cachePath</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">rmdir</span><span class="p">(</span><span class="n">tmpDir</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Have to override this to ensure that dirty is always set False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SerialCountingSlot</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dirty</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">_deserialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">classifierGroup</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="c1"># Due to non-shared hdf5 dlls, vigra can&#39;t read directly</span>
+        <span class="c1"># from our open hdf5 group. Instead, we&#39;ll copy the</span>
+        <span class="c1"># classfier data to a temporary file and give it to vigra.</span>
+        <span class="n">tmpDir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">cachePath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tmpDir</span><span class="p">,</span> <span class="s1">&#39;tmp_classifier_cache.h5&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;/&#39;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">h5py</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">cachePath</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">cacheFile</span><span class="p">:</span>
+            <span class="n">cacheFile</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">classifierGroup</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">forests</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">forestGroup</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">classifierGroup</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+                <span class="n">targetname</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{0}</span><span class="s1">/</span><span class="si">{1}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+                <span class="c1">#forests.append(vigra.learning.RandomForest(cachePath, targetname))</span>
+                <span class="kn">from</span> <span class="nn">ilastik.applets.counting.countingsvr</span> <span class="k">import</span> <span class="n">SVR</span>
+                <span class="n">forests</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">SVR</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">cachePath</span><span class="p">,</span> <span class="n">targetname</span><span class="p">))</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span> <span class="s2">&quot;Wasn&#39;t able to deserialize the saved classifier.  &quot;</span>
+                           <span class="s2">&quot;It will need to be retrainied&quot;</span> <span class="p">)</span>
+            <span class="k">return</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">cachePath</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">rmdir</span><span class="p">(</span><span class="n">tmpDir</span><span class="p">)</span>
+
+        <span class="c1"># Now force the classifier into our classifier cache. The</span>
+        <span class="c1"># downstream operators (e.g. the prediction operator) can</span>
+        <span class="c1"># use the classifier without inducing it to be re-trained.</span>
+        <span class="c1"># (This assumes that the classifier we are loading is</span>
+        <span class="c1"># consistent with the images and labels that we just</span>
+        <span class="c1"># loaded. As soon as training input changes, it will be</span>
+        <span class="c1"># retrained.)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">forceValue</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">forests</span><span class="p">))</span>
+
+<span class="k">class</span> <span class="nc">SerialDictSlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;For saving a dictionary.&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">inslot</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">subname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">depends</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">selfdepends</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param transform: a function called on each key before</span>
+<span class="sd">        inserting it into the dictionary.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">SerialDictSlot</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span>
+            <span class="n">slot</span><span class="p">,</span> <span class="n">inslot</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">subname</span><span class="p">,</span> <span class="n">default</span><span class="p">,</span> <span class="n">depends</span><span class="p">,</span> <span class="n">selfdepends</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">transform</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">transform</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transform</span> <span class="o">=</span> <span class="n">transform</span>
+
+    <span class="k">def</span> <span class="nf">_saveValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">sg</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_group</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_saveValue</span><span class="p">(</span><span class="n">sg</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">sg</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="n">data</span><span class="o">=</span><span class="n">v</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_getValueHelper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subgroup</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">subgroup</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">subgroup</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">h5py</span><span class="o">.</span><span class="n">Group</span><span class="p">):</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getValueHelper</span><span class="p">(</span><span class="n">subgroup</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">subgroup</span><span class="p">[</span><span class="n">key</span><span class="p">][()]</span>
+            <span class="n">result</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">key</span><span class="p">)]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">_getValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">subgroup</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getValueHelper</span><span class="p">(</span><span class="n">subgroup</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">slot</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AssertionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;setValue() failed. message: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">message</span><span class="p">))</span>
+
+<span class="k">class</span> <span class="nc">SerialClassifierFactorySlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span> <span class="n">SerialClassifierFactorySlot</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="n">slot</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_failed_to_deserialize</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">assert</span> <span class="n">slot</span><span class="o">.</span><span class="n">ready</span><span class="p">(),</span> \
+            <span class="s2">&quot;ClassifierFactory slots must be given a default value &quot;</span>\
+            <span class="s2">&quot;(in case the classifier can&#39;t be deserialized in a future version of ilastik).&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">_saveValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">pickled</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span> <span class="n">value</span> <span class="p">)</span>
+        <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">pickled</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_failed_to_deserialize</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">shouldSerialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_failed_to_deserialize</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">SerialClassifierFactorySlot</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">shouldSerialize</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_getValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dset</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="n">pickled</span> <span class="o">=</span> <span class="n">dset</span><span class="p">[()]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Attempt to unpickle</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">pickled</span><span class="p">)</span>
+            
+            <span class="c1"># Verify that the VERSION of the classifier factory in the currently executing code</span>
+            <span class="c1">#  has not changed since this classifier was stored.</span>
+            <span class="k">assert</span> <span class="s1">&#39;VERSION&#39;</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">__dict__</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">VERSION</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">VERSION</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_failed_to_deserialize</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;This project file uses an old or unsupported classifier storage format. &quot;</span>
+                          <span class="s2">&quot;The classifier will be stored in the new format when you save your project.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">slot</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="n">value</span> <span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">SerialPickleableSlot</span><span class="p">(</span><span class="n">SerialSlot</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">default</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span> <span class="n">SerialPickleableSlot</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span> <span class="n">slot</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_failed_to_deserialize</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_version</span> <span class="o">=</span> <span class="n">version</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_default</span> <span class="o">=</span> <span class="n">default</span>
+
+    <span class="k">def</span> <span class="nf">_saveValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">pickled</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span> <span class="n">value</span> <span class="p">)</span>
+        <span class="n">dset</span> <span class="o">=</span> <span class="n">group</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">pickled</span><span class="p">)</span>
+        <span class="n">dset</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;version&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_version</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_failed_to_deserialize</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">shouldSerialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_failed_to_deserialize</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">SerialPickleableSlot</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">shouldSerialize</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_getValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dset</span><span class="p">,</span> <span class="n">slot</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># first check that the version of the deserialized and the expected value are the same</span>
+            <span class="n">loaded_version</span> <span class="o">=</span> <span class="n">dset</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;version&#39;</span><span class="p">]</span>
+            <span class="k">assert</span> <span class="n">loaded_version</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_version</span>
+
+            <span class="c1"># Attempt to unpickle</span>
+            <span class="n">pickled</span> <span class="o">=</span> <span class="n">dset</span><span class="p">[()]</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">pickled</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_failed_to_deserialize</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;This project file uses an old or unsupported storage format. &quot;</span>
+                          <span class="s2">&quot;When save the project the next time, it will be stored in the new format.&quot;</span><span class="p">)</span>
+            <span class="n">slot</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_default</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">slot</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="n">value</span> <span class="p">)</span>
+
+<span class="c1">####################################</span>
+<span class="c1"># the base applet serializer class #</span>
+<span class="c1">####################################</span>
+
+<div class="viewcode-block" id="AppletSerializer"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer">[docs]</a><span class="k">class</span> <span class="nc">AppletSerializer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Base class for all AppletSerializers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Force subclasses to override abstract methods and properties</span>
+    <span class="n">__metaclass__</span> <span class="o">=</span> <span class="n">ABCMeta</span>
+    <span class="n">base_initialized</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1"># override if necessary</span>
+    <span class="n">version</span> <span class="o">=</span> <span class="s2">&quot;0.1&quot;</span>
+
+    <span class="k">class</span> <span class="nc">IncompatibleProjectVersionError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="c1">#########################</span>
+    <span class="c1"># Semi-abstract methods #</span>
+    <span class="c1">#########################</span>
+
+<div class="viewcode-block" id="AppletSerializer._serializeToHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer._serializeToHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">_serializeToHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topGroup</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+
+        <span class="sd">&quot;&quot;&quot;Child classes should override this function, if</span>
+<span class="sd">        necessary.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+<div class="viewcode-block" id="AppletSerializer._deserializeFromHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer._deserializeFromHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">_deserializeFromHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topGroup</span><span class="p">,</span> <span class="n">groupVersion</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span>
+                             <span class="n">projectFilePath</span><span class="p">,</span> <span class="n">headless</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Child classes should override this function, if</span>
+<span class="sd">        necessary.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+    <span class="c1">#############################</span>
+    <span class="c1"># Base class implementation #</span>
+    <span class="c1">#############################</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">topGroupName</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">operator</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Constructor. Subclasses must call this method in their own</span>
+<span class="sd">        __init__ functions. If they fail to do so, the shell raises an</span>
+<span class="sd">        exception.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        :param topGroupName: name of this applet&#39;s data group in the file.</span>
+<span class="sd">            Defaults to the name of the operator.</span>
+<span class="sd">        :param slots: a list of SerialSlots</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span> <span class="o">=</span> <span class="n">SimpleSignal</span><span class="p">()</span> <span class="c1"># Signature: emit(percentComplete)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_initialized</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">topGroupName</span> <span class="o">=</span> <span class="n">topGroupName</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">serialSlots</span> <span class="o">=</span> <span class="n">maybe</span><span class="p">(</span><span class="n">slots</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">operator</span> <span class="o">=</span> <span class="n">operator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">caresOfHeadless</span> <span class="o">=</span> <span class="kc">False</span> <span class="c1"># should _deserializeFromHdf5 should be called with headless-argument?</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ignoreDirty</span> <span class="o">=</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="AppletSerializer.isDirty"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.isDirty">[docs]</a>    <span class="k">def</span> <span class="nf">isDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns true if the current state of this item (in memory)</span>
+<span class="sd">        does not match the state of the HDF5 group on disk.</span>
+
+<span class="sd">        Subclasses only need override this method if ORing the flags</span>
+<span class="sd">        is not enough.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">ss</span><span class="o">.</span><span class="n">dirty</span> <span class="k">for</span> <span class="n">ss</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">serialSlots</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="AppletSerializer.shouldSerialize"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.shouldSerialize">[docs]</a>    <span class="k">def</span> <span class="nf">shouldSerialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Whether to serialize or not.&quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">isDirty</span><span class="p">():</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="c1"># Need to check if slots should be serialized. First must verify that self.topGroupName is not an empty string</span>
+        <span class="c1"># (as this seems to happen sometimes).</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">topGroupName</span><span class="p">:</span>
+            <span class="n">topGroup</span> <span class="o">=</span> <span class="n">getOrCreateGroup</span><span class="p">(</span><span class="n">hdf5File</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">topGroupName</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">any</span><span class="p">([</span><span class="n">ss</span><span class="o">.</span><span class="n">shouldSerialize</span><span class="p">(</span><span class="n">topGroup</span><span class="p">)</span> <span class="k">for</span> <span class="n">ss</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">serialSlots</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">ignoreDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ignoreDirty</span>
+
+    <span class="nd">@ignoreDirty</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">ignoreDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ignoreDirty</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="k">for</span> <span class="n">ss</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">serialSlots</span><span class="p">:</span>
+            <span class="n">ss</span><span class="o">.</span><span class="n">ignoreDirty</span> <span class="o">=</span> <span class="n">value</span>
+
+<div class="viewcode-block" id="AppletSerializer.progressIncrement"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.progressIncrement">[docs]</a>    <span class="k">def</span> <span class="nf">progressIncrement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the percentage progress for each slot.</span>
+
+<span class="sd">        :param group: If None, all all slots are assumed to be</span>
+<span class="sd">            processed. Otherwise, decides for each slot by calling</span>
+<span class="sd">            slot.shouldSerialize(group).</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">group</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">nslots</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">serialSlots</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">nslots</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">ss</span><span class="o">.</span><span class="n">shouldSerialize</span><span class="p">(</span><span class="n">group</span><span class="p">)</span> <span class="k">for</span> <span class="n">ss</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">serialSlots</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">nslots</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="nb">divmod</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">nslots</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="AppletSerializer.serializeToHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.serializeToHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">serializeToHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Serialize the current applet state to the given hdf5 file.</span>
+
+<span class="sd">        Subclasses should **not** override this method. Instead,</span>
+<span class="sd">        subclasses override the &#39;private&#39; version, *_serializetoHdf5*</span>
+
+<span class="sd">        :param hdf5File: An h5py.File handle to the project file,</span>
+<span class="sd">            which should already be open</span>
+
+<span class="sd">        :param projectFilePath: The path to the given file handle.</span>
+<span class="sd">            (Most serializers do not use this parameter.)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">topGroup</span> <span class="o">=</span> <span class="n">getOrCreateGroup</span><span class="p">(</span><span class="n">hdf5File</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">topGroupName</span><span class="p">)</span>
+
+        <span class="n">progress</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">progress</span><span class="p">)</span>
+
+        <span class="c1"># Set the version</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="s1">&#39;StorageVersion&#39;</span>
+        <span class="n">deleteIfPresent</span><span class="p">(</span><span class="n">topGroup</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+        <span class="n">topGroup</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">inc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">progressIncrement</span><span class="p">(</span><span class="n">topGroup</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">ss</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">serialSlots</span><span class="p">:</span>
+                <span class="n">ss</span><span class="o">.</span><span class="n">serialize</span><span class="p">(</span><span class="n">topGroup</span><span class="p">)</span>
+                <span class="n">progress</span> <span class="o">+=</span> <span class="n">inc</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">progress</span><span class="p">)</span>
+
+            <span class="c1"># Call the subclass to do remaining work, if any</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_serializeToHdf5</span><span class="p">(</span><span class="n">topGroup</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="AppletSerializer.deserializeFromHdf5"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.deserializeFromHdf5">[docs]</a>    <span class="k">def</span> <span class="nf">deserializeFromHdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">,</span> <span class="n">headless</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Read the the current applet state from the given hdf5File</span>
+<span class="sd">        handle, which should already be open.</span>
+
+<span class="sd">        Subclasses should **not** override this method. Instead,</span>
+<span class="sd">        subclasses override the &#39;private&#39; version,</span>
+<span class="sd">        *_deserializeFromHdf5*</span>
+
+<span class="sd">        :param hdf5File: An h5py.File handle to the project file,</span>
+<span class="sd">            which should already be open</span>
+
+<span class="sd">        :param projectFilePath: The path to the given file handle.</span>
+<span class="sd">            (Most serializers do not use this parameter.)</span>
+<span class="sd">        </span>
+<span class="sd">        :param headless: Are we called in headless mode?</span>
+<span class="sd">            (in headless mode corrupted files cannot be fixed via the GUI)</span>
+<span class="sd">        </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># If the top group isn&#39;t there, call initWithoutTopGroup</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">topGroup</span> <span class="o">=</span> <span class="n">hdf5File</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">topGroupName</span><span class="p">]</span>
+            <span class="n">groupVersion</span> <span class="o">=</span> <span class="n">topGroup</span><span class="p">[</span><span class="s1">&#39;StorageVersion&#39;</span><span class="p">][()]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="n">topGroup</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">groupVersion</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">topGroup</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">inc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">progressIncrement</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">ss</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">serialSlots</span><span class="p">:</span>
+                    <span class="n">ss</span><span class="o">.</span><span class="n">deserialize</span><span class="p">(</span><span class="n">topGroup</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="n">inc</span><span class="p">)</span>
+
+                <span class="c1"># Call the subclass to do remaining work</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">caresOfHeadless</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_deserializeFromHdf5</span><span class="p">(</span><span class="n">topGroup</span><span class="p">,</span> <span class="n">groupVersion</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">,</span> <span class="n">headless</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_deserializeFromHdf5</span><span class="p">(</span><span class="n">topGroup</span><span class="p">,</span> <span class="n">groupVersion</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">initWithoutTopGroup</span><span class="p">(</span><span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progressSignal</span><span class="o">.</span><span class="n">emit</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="AppletSerializer.repairFile"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.repairFile">[docs]</a>    <span class="k">def</span> <span class="nf">repairFile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">path</span><span class="p">,</span><span class="n">filt</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;get new path to lost file&quot;&quot;&quot;</span>
+        
+        <span class="kn">from</span> <span class="nn">PyQt4.QtGui</span> <span class="k">import</span> <span class="n">QFileDialog</span><span class="p">,</span><span class="n">QMessageBox</span>
+        <span class="kn">from</span> <span class="nn">volumina.utility</span> <span class="k">import</span> <span class="n">encode_from_qstring</span>
+        
+        <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;The file at </span><span class="si">{}</span><span class="s2"> could not be found any more. Do you want to search for it at another directory?&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">QMessageBox</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;update external data&quot;</span><span class="p">,</span><span class="n">text</span><span class="p">,</span> <span class="n">QMessageBox</span><span class="o">.</span><span class="n">Ok</span> <span class="o">|</span> <span class="n">QMessageBox</span><span class="o">.</span><span class="n">Cancel</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">c</span> <span class="o">==</span> <span class="n">QMessageBox</span><span class="o">.</span><span class="n">Cancel</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Could not find external data: &quot;</span> <span class="o">+</span> <span class="n">path</span><span class="p">)</span>
+        
+        <span class="n">options</span> <span class="o">=</span> <span class="n">QFileDialog</span><span class="o">.</span><span class="n">Options</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">ilastik_config</span><span class="o">.</span><span class="n">getboolean</span><span class="p">(</span><span class="s2">&quot;ilastik&quot;</span><span class="p">,</span> <span class="s2">&quot;debug&quot;</span><span class="p">):</span>
+            <span class="n">options</span> <span class="o">|=</span>  <span class="n">QFileDialog</span><span class="o">.</span><span class="n">DontUseNativeDialog</span>
+        <span class="n">fileName</span> <span class="o">=</span> <span class="n">QFileDialog</span><span class="o">.</span><span class="n">getOpenFileName</span><span class="p">(</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;repair files&quot;</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">filt</span><span class="p">,</span> <span class="n">options</span><span class="o">=</span><span class="n">options</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fileName</span><span class="o">.</span><span class="n">isEmpty</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Could not find external data: &quot;</span> <span class="o">+</span> <span class="n">path</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">encode_from_qstring</span><span class="p">(</span><span class="n">fileName</span><span class="p">)</span></div>
+        
+    <span class="c1">#######################</span>
+    <span class="c1"># Optional methods    #</span>
+    <span class="c1">#######################</span>
+    
+<div class="viewcode-block" id="AppletSerializer.initWithoutTopGroup"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.initWithoutTopGroup">[docs]</a>    <span class="k">def</span> <span class="nf">initWithoutTopGroup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5File</span><span class="p">,</span> <span class="n">projectFilePath</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Optional override for subclasses. Called when there is no</span>
+<span class="sd">        top group to deserialize.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+    
+<div class="viewcode-block" id="AppletSerializer.updateWorkingDirectory"><a class="viewcode-back" href="../../../../applet_api.html#ilastik.applets.base.appletSerializer.AppletSerializer.updateWorkingDirectory">[docs]</a>    <span class="k">def</span> <span class="nf">updateWorkingDirectory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">newdir</span><span class="p">,</span><span class="n">olddir</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Optional override for subclasses. Called when the</span>
+<span class="sd">        working directory is changed and relative paths have</span>
+<span class="sd">        to be updated. Child Classes should overwrite this method</span>
+<span class="sd">        if they store relative paths.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

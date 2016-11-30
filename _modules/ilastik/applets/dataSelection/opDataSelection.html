@@ -1,0 +1,619 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>ilastik.applets.dataSelection.opDataSelection &#8212; ilastik 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="top" title="ilastik 1.0.0 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" accesskey="U">Module code</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for ilastik.applets.dataSelection.opDataSelection</h1><div class="highlight"><pre>
+<span></span><span class="c1">###############################################################################</span>
+<span class="c1">#   ilastik: interactive learning and segmentation toolkit</span>
+<span class="c1">#</span>
+<span class="c1">#       Copyright (C) 2011-2014, the ilastik developers</span>
+<span class="c1">#                                &lt;team@ilastik.org&gt;</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software; you can redistribute it and/or</span>
+<span class="c1"># modify it under the terms of the GNU General Public License</span>
+<span class="c1"># as published by the Free Software Foundation; either version 2</span>
+<span class="c1"># of the License, or (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># In addition, as a special exception, the copyright holders of</span>
+<span class="c1"># ilastik give you permission to combine ilastik with applets,</span>
+<span class="c1"># workflows and plugins which are not covered under the GNU</span>
+<span class="c1"># General Public License.</span>
+<span class="c1">#</span>
+<span class="c1"># See the LICENSE file for details. License information is also available</span>
+<span class="c1"># on the ilastik web site at:</span>
+<span class="c1">#		   http://ilastik.org/license.html</span>
+<span class="c1">###############################################################################</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">uuid</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">vigra</span>
+
+<span class="kn">from</span> <span class="nn">lazyflow.graph</span> <span class="k">import</span> <span class="n">Operator</span><span class="p">,</span> <span class="n">InputSlot</span><span class="p">,</span> <span class="n">OutputSlot</span><span class="p">,</span> <span class="n">OperatorWrapper</span>
+<span class="kn">from</span> <span class="nn">lazyflow.utility.jsonConfig</span> <span class="k">import</span> <span class="n">RoiTuple</span>
+<span class="kn">from</span> <span class="nn">lazyflow.operators.ioOperators</span> <span class="k">import</span> <span class="n">OpStreamingHdf5Reader</span><span class="p">,</span> <span class="n">OpInputDataReader</span>
+<span class="kn">from</span> <span class="nn">lazyflow.operators.valueProviders</span> <span class="k">import</span> <span class="n">OpMetadataInjector</span>
+<span class="kn">from</span> <span class="nn">lazyflow.operators.opArrayPiper</span> <span class="k">import</span> <span class="n">OpArrayPiper</span>
+<span class="kn">from</span> <span class="nn">ilastik.applets.base.applet</span> <span class="k">import</span> <span class="n">DatasetConstraintError</span>
+
+<span class="kn">from</span> <span class="nn">ilastik.utility</span> <span class="k">import</span> <span class="n">OpMultiLaneWrapper</span>
+<span class="kn">from</span> <span class="nn">lazyflow.utility</span> <span class="k">import</span> <span class="n">PathComponents</span><span class="p">,</span> <span class="n">isUrl</span><span class="p">,</span> <span class="n">make_absolute</span>
+<span class="kn">from</span> <span class="nn">lazyflow.operators.opReorderAxes</span> <span class="k">import</span> <span class="n">OpReorderAxes</span>
+
+<span class="k">class</span> <span class="nc">DatasetInfo</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Struct-like class for describing dataset info.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">class</span> <span class="nc">Location</span><span class="p">():</span>
+        <span class="n">FileSystem</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">ProjectInternal</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">PreloadedArray</span> <span class="o">=</span> <span class="mi">2</span>
+        
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filepath</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">jsonNamespace</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">preloaded_array</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        filepath: may be a globstring or a full hdf5 path+dataset</span>
+<span class="sd">        </span>
+<span class="sd">        jsonNamespace: If provided, overrides default settings after filepath is applied</span>
+<span class="sd">        </span>
+<span class="sd">        cwd: The working directory for interpeting relative paths.  If not provided, os.getcwd() is used.</span>
+<span class="sd">        </span>
+<span class="sd">        preloaded_array: Instead of providing a filePath to read from, a pre-loaded array can be directly provided.</span>
+<span class="sd">                         In that case, you&#39;ll probably want to configure the axistags member, or provide a tagged vigra.VigraArray.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">preloaded_array</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;You can&#39;t provide filepath and a preloaded_array&quot;</span>
+        <span class="n">cwd</span> <span class="o">=</span> <span class="n">cwd</span> <span class="ow">or</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">preloaded_array</span> <span class="o">=</span> <span class="n">preloaded_array</span> <span class="c1"># See description above.</span>
+        <span class="n">Location</span> <span class="o">=</span> <span class="n">DatasetInfo</span><span class="o">.</span><span class="n">Location</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_filePath</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>                 <span class="c1"># The original path to the data (also used as a fallback if the data isn&#39;t in the project yet)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_datasetId</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>                <span class="c1"># The name of the data within the project file (if it is stored locally)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">allowLabels</span> <span class="o">=</span> <span class="kc">True</span>             <span class="c1"># OBSOLETE: Whether or not this dataset should be used for training a classifier.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drange</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">normalizeDisplay</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fromstack</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nickname</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subvolume_roi</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="n">Location</span><span class="o">.</span><span class="n">FileSystem</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">display_mode</span> <span class="o">=</span> <span class="s1">&#39;default&#39;</span> <span class="c1"># choices: default, grayscale, rgba, random-colortable, binary-mask.</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">preloaded_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filePath</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span> <span class="c1"># set property to ensure unique _datasetId</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="n">Location</span><span class="o">.</span><span class="n">PreloadedArray</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fromstack</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nickname</span> <span class="o">=</span> <span class="s2">&quot;preloaded-</span><span class="si">{}</span><span class="s2">-array&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">preloaded_array</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">name</span> <span class="p">)</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">preloaded_array</span><span class="p">,</span> <span class="s1">&#39;axistags&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">preloaded_array</span><span class="o">.</span><span class="n">axistags</span>
+
+        <span class="c1"># Set defaults for location, nickname, filepath, and fromstack</span>
+        <span class="k">if</span> <span class="n">filepath</span><span class="p">:</span>
+            <span class="c1"># Check for sequences (either globstring or separated paths),</span>
+            <span class="n">file_list</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="s1">&#39;*&#39;</span> <span class="ow">in</span> <span class="n">filepath</span><span class="p">:</span>
+                <span class="n">file_list</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+                <span class="n">file_list</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">file_list</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">isUrl</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pathsep</span> <span class="ow">in</span> <span class="n">filepath</span><span class="p">:</span>
+                <span class="n">file_list</span> <span class="o">=</span> <span class="n">filepath</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pathsep</span><span class="p">)</span>
+            
+            <span class="c1"># For stacks, choose nickname based on a common prefix</span>
+            <span class="k">if</span> <span class="n">file_list</span><span class="p">:</span>
+                <span class="n">fromstack</span> <span class="o">=</span> <span class="kc">True</span>
+    
+                <span class="c1"># Convert all paths to absolute </span>
+                <span class="n">file_list</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">f</span><span class="p">:</span> <span class="n">make_absolute</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">cwd</span><span class="p">),</span> <span class="n">file_list</span><span class="p">)</span>
+                <span class="k">if</span> <span class="s1">&#39;*&#39;</span> <span class="ow">in</span> <span class="n">filepath</span><span class="p">:</span>
+                    <span class="n">filepath</span> <span class="o">=</span> <span class="n">make_absolute</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">cwd</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">filepath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">pathsep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="n">file_list</span> <span class="p">)</span>
+    
+                <span class="c1"># Add an underscore for each wildcard digit</span>
+                <span class="n">prefix</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">commonprefix</span><span class="p">(</span><span class="n">file_list</span><span class="p">)</span>
+                <span class="n">num_wildcards</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">file_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">file_list</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])[</span><span class="mi">1</span><span class="p">]</span> <span class="p">)</span>
+                <span class="n">nickname</span> <span class="o">=</span> <span class="n">PathComponents</span><span class="p">(</span><span class="n">prefix</span><span class="p">)</span><span class="o">.</span><span class="n">filenameBase</span> <span class="o">+</span> <span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="o">*</span><span class="n">num_wildcards</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">fromstack</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">isUrl</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+                    <span class="c1"># Convert all (non-url) paths to absolute </span>
+                    <span class="n">filepath</span> <span class="o">=</span> <span class="n">make_absolute</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">cwd</span><span class="p">)</span>
+                <span class="n">nickname</span> <span class="o">=</span> <span class="n">PathComponents</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span><span class="o">.</span><span class="n">filenameBase</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="n">DatasetInfo</span><span class="o">.</span><span class="n">Location</span><span class="o">.</span><span class="n">FileSystem</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nickname</span> <span class="o">=</span> <span class="n">nickname</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filePath</span> <span class="o">=</span> <span class="n">filepath</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fromstack</span> <span class="o">=</span> <span class="n">fromstack</span>
+
+        <span class="k">if</span> <span class="n">jsonNamespace</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">updateFromJson</span><span class="p">(</span> <span class="n">jsonNamespace</span> <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">filePath</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_filePath</span>
+    
+    <span class="nd">@filePath</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">filePath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">newPath</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_filePath</span> <span class="o">=</span> <span class="n">newPath</span>
+        <span class="c1"># Reset our id any time the filepath changes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_datasetId</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid1</span><span class="p">())</span>
+    
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">datasetId</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_datasetId</span>
+    
+    <span class="n">DatasetInfoSchema</span> <span class="o">=</span> \
+    <span class="p">{</span>
+        <span class="s2">&quot;_schema_name&quot;</span> <span class="p">:</span> <span class="s2">&quot;dataset-info&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;_schema_version&quot;</span> <span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+        
+        <span class="s2">&quot;filepath&quot;</span> <span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="s2">&quot;drange&quot;</span> <span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span>
+        <span class="s2">&quot;nickname&quot;</span> <span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="s2">&quot;axistags&quot;</span> <span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="s2">&quot;subvolume_roi&quot;</span> <span class="p">:</span> <span class="n">RoiTuple</span><span class="p">()</span>
+    <span class="p">}</span>
+    
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="s2">&quot;{ &quot;</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;filepath: </span><span class="si">{}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filePath</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;location: </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="p">{</span> <span class="n">DatasetInfo</span><span class="o">.</span><span class="n">Location</span><span class="o">.</span><span class="n">FileSystem</span><span class="p">:</span> <span class="s2">&quot;FileSystem&quot;</span><span class="p">,</span>
+                                        <span class="n">DatasetInfo</span><span class="o">.</span><span class="n">Location</span><span class="o">.</span><span class="n">ProjectInternal</span><span class="p">:</span> <span class="s2">&quot;ProjectInternal&quot;</span><span class="p">,</span>
+                                        <span class="n">DatasetInfo</span><span class="o">.</span><span class="n">Location</span><span class="o">.</span><span class="n">PreloadedArray</span><span class="p">:</span> <span class="s2">&quot;PreloadedArray&quot;</span>
+                                      <span class="p">}[</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">]</span> <span class="p">)</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;nickname: </span><span class="si">{}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">nickname</span> <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axistags</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">+=</span><span class="s2">&quot;axistags: </span><span class="si">{}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">axistags</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">drange</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;drange: </span><span class="si">{}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">drange</span> <span class="p">)</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;normalizeDisplay: </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">normalizeDisplay</span> <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">fromstack</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;fromstack: </span><span class="si">{}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">fromstack</span> <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">subvolume_roi</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot;subvolume_roi: </span><span class="si">{}</span><span class="s2">,</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">subvolume_roi</span> <span class="p">)</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="s2">&quot; }</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="n">s</span>
+
+    <span class="k">def</span> <span class="nf">updateFromJson</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">namespace</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Given a namespace object returned by a JsonConfigParser,</span>
+<span class="sd">        update the corresponding non-None fields of this DatasetInfo.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filePath</span> <span class="o">=</span> <span class="n">namespace</span><span class="o">.</span><span class="n">filepath</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">filePath</span>        
+        <span class="bp">self</span><span class="o">.</span><span class="n">drange</span> <span class="o">=</span> <span class="n">namespace</span><span class="o">.</span><span class="n">drange</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">drange</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nickname</span> <span class="o">=</span> <span class="n">namespace</span><span class="o">.</span><span class="n">nickname</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">nickname</span>
+        <span class="k">if</span> <span class="n">namespace</span><span class="o">.</span><span class="n">axistags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">axistags</span> <span class="o">=</span> <span class="n">vigra</span><span class="o">.</span><span class="n">defaultAxistags</span><span class="p">(</span><span class="n">namespace</span><span class="o">.</span><span class="n">axistags</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subvolume_roi</span> <span class="o">=</span> <span class="n">namespace</span><span class="o">.</span><span class="n">subvolume_roi</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">subvolume_roi</span>
+
+<div class="viewcode-block" id="OpDataSelection"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.dataSelection.opDataSelection.OpDataSelection">[docs]</a><span class="k">class</span> <span class="nc">OpDataSelection</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The top-level operator for the data selection applet, implemented as a single-image operator.</span>
+<span class="sd">    The applet uses an OperatorWrapper to make it suitable for use in a workflow.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;OpDataSelection&quot;</span>
+    <span class="n">category</span> <span class="o">=</span> <span class="s2">&quot;Top-level&quot;</span>
+    
+    <span class="n">SupportedExtensions</span> <span class="o">=</span> <span class="n">OpInputDataReader</span><span class="o">.</span><span class="n">SupportedExtensions</span>
+
+    <span class="c1"># Inputs</span>
+    <span class="n">RoleName</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s1">&#39;string&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">ProjectFile</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s1">&#39;object&#39;</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="c1">#: The project hdf5 File object (already opened)</span>
+    <span class="n">ProjectDataGroup</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s1">&#39;string&#39;</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="c1">#: The internal path to the hdf5 group where project-local datasets are stored within the project file</span>
+    <span class="n">WorkingDirectory</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s1">&#39;filestring&#39;</span><span class="p">)</span> <span class="c1">#: The filesystem directory where the project file is located</span>
+    <span class="n">Dataset</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s1">&#39;object&#39;</span><span class="p">)</span> <span class="c1">#: A DatasetInfo object</span>
+
+    <span class="c1"># Outputs</span>
+    <span class="n">Image</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c1">#: The output image</span>
+    <span class="n">AllowLabels</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s1">&#39;bool&#39;</span><span class="p">)</span> <span class="c1">#: A bool indicating whether or not this image can be used for training</span>
+
+    <span class="n">_NonTransposedImage</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c1">#: The output slot, in the data&#39;s original axis ordering (regardless of forceAxisOrder)</span>
+
+    <span class="n">ImageName</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s1">&#39;string&#39;</span><span class="p">)</span> <span class="c1">#: The name of the output image</span>
+    
+<div class="viewcode-block" id="OpDataSelection.InvalidDimensionalityError"><a class="viewcode-back" href="../../../../applet_library.html#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.InvalidDimensionalityError">[docs]</a>    <span class="k">class</span> <span class="nc">InvalidDimensionalityError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Raised if the user tries to replace the dataset with a new one of differing dimensionality.&quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span> <span class="p">):</span>
+            <span class="nb">super</span><span class="p">(</span> <span class="n">OpDataSelection</span><span class="o">.</span><span class="n">InvalidDimensionalityError</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span>
+        
+        <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">message</span></div>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">forceAxisOrder</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpDataSelection</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">forceAxisOrder</span> <span class="o">=</span> <span class="n">forceAxisOrder</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opReaders</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># If the gui calls disconnect() on an input slot without replacing it with something else,</span>
+        <span class="c1">#  we still need to clean up the internal operator that was providing our data.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ProjectFile</span><span class="o">.</span><span class="n">notifyUnready</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">internalCleanup</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ProjectDataGroup</span><span class="o">.</span><span class="n">notifyUnready</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">internalCleanup</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">WorkingDirectory</span><span class="o">.</span><span class="n">notifyUnready</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">internalCleanup</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">notifyUnready</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">internalCleanup</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">internalCleanup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opReaders</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_NonTransposedImage</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">reader</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opReaders</span><span class="p">):</span>
+                <span class="n">reader</span><span class="o">.</span><span class="n">cleanUp</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_opReaders</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">internalCleanup</span><span class="p">()</span>
+        <span class="n">datasetInfo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">value</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Data only comes from the project file if the user said so AND it exists in the project</span>
+            <span class="n">datasetInProject</span> <span class="o">=</span> <span class="p">(</span><span class="n">datasetInfo</span><span class="o">.</span><span class="n">location</span> <span class="o">==</span> <span class="n">DatasetInfo</span><span class="o">.</span><span class="n">Location</span><span class="o">.</span><span class="n">ProjectInternal</span><span class="p">)</span>
+            <span class="n">datasetInProject</span> <span class="o">&amp;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ProjectFile</span><span class="o">.</span><span class="n">ready</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">datasetInProject</span><span class="p">:</span>
+                <span class="n">internalPath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ProjectDataGroup</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span> <span class="s1">&#39;/&#39;</span> <span class="o">+</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">datasetId</span>
+                <span class="n">datasetInProject</span> <span class="o">&amp;=</span> <span class="n">internalPath</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ProjectFile</span><span class="o">.</span><span class="n">value</span>
+    
+            <span class="c1"># If we should find the data in the project file, use a dataset reader</span>
+            <span class="k">if</span> <span class="n">datasetInProject</span><span class="p">:</span>
+                <span class="n">opReader</span> <span class="o">=</span> <span class="n">OpStreamingHdf5Reader</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+                <span class="n">opReader</span><span class="o">.</span><span class="n">Hdf5File</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ProjectFile</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+                <span class="n">opReader</span><span class="o">.</span><span class="n">InternalPath</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">internalPath</span><span class="p">)</span>
+                <span class="n">providerSlot</span> <span class="o">=</span> <span class="n">opReader</span><span class="o">.</span><span class="n">OutputImage</span>
+            <span class="k">elif</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">location</span> <span class="o">==</span> <span class="n">DatasetInfo</span><span class="o">.</span><span class="n">Location</span><span class="o">.</span><span class="n">PreloadedArray</span><span class="p">:</span>
+                <span class="n">preloaded_array</span> <span class="o">=</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">preloaded_array</span>
+                <span class="k">assert</span> <span class="n">preloaded_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">preloaded_array</span><span class="p">,</span> <span class="s1">&#39;axistags&#39;</span><span class="p">):</span>
+                    <span class="c1"># Guess the axis order, since one was not provided.</span>
+                    <span class="n">axisorders</span> <span class="o">=</span> <span class="p">{</span> <span class="mi">2</span> <span class="p">:</span> <span class="s1">&#39;yx&#39;</span><span class="p">,</span>
+                                   <span class="mi">3</span> <span class="p">:</span> <span class="s1">&#39;zyx&#39;</span><span class="p">,</span>
+                                   <span class="mi">4</span> <span class="p">:</span> <span class="s1">&#39;zyxc&#39;</span><span class="p">,</span>
+                                   <span class="mi">5</span> <span class="p">:</span> <span class="s1">&#39;tzyxc&#39;</span> <span class="p">}</span>
+
+                    <span class="n">shape</span> <span class="o">=</span> <span class="n">preloaded_array</span><span class="o">.</span><span class="n">shape</span>
+                    <span class="n">ndim</span> <span class="o">=</span> <span class="n">preloaded_array</span><span class="o">.</span><span class="n">ndim</span>            
+                    <span class="k">assert</span> <span class="n">ndim</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Support for 0-D data not yet supported&quot;</span>
+                    <span class="k">assert</span> <span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Support for 1-D data not yet supported&quot;</span>
+                    <span class="k">assert</span> <span class="n">ndim</span> <span class="o">&lt;=</span> <span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;No support for data with more than 5 dimensions.&quot;</span>
+        
+                    <span class="n">axisorder</span> <span class="o">=</span> <span class="n">axisorders</span><span class="p">[</span><span class="n">ndim</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">ndim</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">and</span> <span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">4</span><span class="p">:</span>
+                        <span class="c1"># Special case: If the 3rd dim is small, assume it&#39;s &#39;c&#39;, not &#39;z&#39;</span>
+                        <span class="n">axisorder</span> <span class="o">=</span> <span class="s1">&#39;yxc&#39;</span>
+                    <span class="n">preloaded_array</span> <span class="o">=</span> <span class="n">vigra</span><span class="o">.</span><span class="n">taggedView</span><span class="p">(</span><span class="n">preloaded_array</span><span class="p">,</span> <span class="n">axisorder</span><span class="p">)</span>
+                <span class="n">opReader</span> <span class="o">=</span> <span class="n">OpArrayPiper</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+                <span class="n">opReader</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="n">preloaded_array</span> <span class="p">)</span>
+                <span class="n">providerSlot</span> <span class="o">=</span> <span class="n">opReader</span><span class="o">.</span><span class="n">Output</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Use a normal (filesystem) reader</span>
+                <span class="n">opReader</span> <span class="o">=</span> <span class="n">OpInputDataReader</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">subvolume_roi</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">opReader</span><span class="o">.</span><span class="n">SubVolumeRoi</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">subvolume_roi</span> <span class="p">)</span>
+                <span class="n">opReader</span><span class="o">.</span><span class="n">WorkingDirectory</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">WorkingDirectory</span><span class="o">.</span><span class="n">value</span> <span class="p">)</span>
+                <span class="n">opReader</span><span class="o">.</span><span class="n">FilePath</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">datasetInfo</span><span class="o">.</span><span class="n">filePath</span><span class="p">)</span>
+                <span class="n">providerSlot</span> <span class="o">=</span> <span class="n">opReader</span><span class="o">.</span><span class="n">Output</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_opReaders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">opReader</span><span class="p">)</span>
+            
+            <span class="c1"># Inject metadata if the dataset info specified any.</span>
+            <span class="c1"># Also, inject if if dtype is uint8, which we can reasonably assume has drange (0,255)</span>
+            <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;display_mode&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">display_mode</span>
+            <span class="n">role_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">RoleName</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="s1">&#39;c&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">providerSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getTaggedShape</span><span class="p">():</span>
+                <span class="n">num_channels</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">num_channels</span> <span class="o">=</span> <span class="n">providerSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getTaggedShape</span><span class="p">()[</span><span class="s1">&#39;c&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">num_channels</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;channel_names&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">-</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">role_name</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_channels</span><span class="p">)]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;channel_names&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">role_name</span><span class="p">]</span>
+                 
+            <span class="k">if</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">drange</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;drange&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">drange</span>
+            <span class="k">elif</span> <span class="n">providerSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">numpy</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+                <span class="c1"># SPECIAL case for uint8 data: Provide a default drange.</span>
+                <span class="c1"># The user can always override this herself if she wants.</span>
+                <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;drange&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">255</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">normalizeDisplay</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;normalizeDisplay&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">normalizeDisplay</span>
+            <span class="k">if</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">axistags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">datasetInfo</span><span class="o">.</span><span class="n">axistags</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">providerSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">):</span>
+                    <span class="c1"># This usually only happens when we copied a DatasetInfo from another lane,</span>
+                    <span class="c1"># and used it as a &#39;template&#39; to initialize this lane.</span>
+                    <span class="c1"># This happens in the BatchProcessingApplet when it attempts to guess the axistags of </span>
+                    <span class="c1"># batch images based on the axistags chosen by the user in the interactive images.</span>
+                    <span class="c1"># If the interactive image tags don&#39;t make sense for the batch image, you get this error.</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span> <span class="s2">&quot;Your dataset&#39;s provided axistags (</span><span class="si">{}</span><span class="s2">) do not have the &quot;</span>
+                                     <span class="s2">&quot;correct dimensionality for your dataset, which has </span><span class="si">{}</span><span class="s2"> dimensions.&quot;</span>
+                                     <span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tag</span><span class="o">.</span><span class="n">key</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">axistags</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">providerSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="p">)</span> <span class="p">)</span>
+                <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;axistags&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">axistags</span>
+            <span class="k">if</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">subvolume_roi</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;subvolume_roi&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">subvolume_roi</span>
+                
+                <span class="c1"># FIXME: We are overwriting the axistags metadata to intentionally allow </span>
+                <span class="c1">#        the user to change our interpretation of which axis is which.</span>
+                <span class="c1">#        That&#39;s okay, but technically there&#39;s a special corner case if </span>
+                <span class="c1">#        the user redefines the channel axis index.  </span>
+                <span class="c1">#        Technically, it invalidates the meaning of meta.ram_usage_per_requested_pixel.</span>
+                <span class="c1">#        For most use-cases, that won&#39;t really matter, which is why I&#39;m not worrying about it right now.</span>
+            
+            <span class="n">opMetadataInjector</span> <span class="o">=</span> <span class="n">OpMetadataInjector</span><span class="p">(</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span> <span class="p">)</span>
+            <span class="n">opMetadataInjector</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">providerSlot</span> <span class="p">)</span>
+            <span class="n">opMetadataInjector</span><span class="o">.</span><span class="n">Metadata</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="n">metadata</span> <span class="p">)</span>
+            <span class="n">providerSlot</span> <span class="o">=</span> <span class="n">opMetadataInjector</span><span class="o">.</span><span class="n">Output</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_opReaders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">opMetadataInjector</span> <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_NonTransposedImage</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">providerSlot</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">forceAxisOrder</span><span class="p">:</span>
+                <span class="c1"># Before we re-order, make sure no non-singleton </span>
+                <span class="c1">#  axes would be dropped by the forced order.</span>
+                <span class="n">output_order</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">forceAxisOrder</span><span class="p">)</span>
+                <span class="n">provider_order</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">providerSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getAxisKeys</span><span class="p">())</span>
+                <span class="n">tagged_provider_shape</span> <span class="o">=</span> <span class="n">providerSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getTaggedShape</span><span class="p">()</span>
+                <span class="n">dropped_axes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">provider_order</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">output_order</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">tagged_provider_shape</span><span class="p">[</span><span class="n">a</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">dropped_axes</span><span class="p">):</span>
+                    <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;The axes of your dataset (</span><span class="si">{}</span><span class="s2">) are not compatible with the axes used by this workflow (</span><span class="si">{}</span><span class="s2">). Please fix them.&quot;</span>\
+                          <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">provider_order</span><span class="p">,</span> <span class="n">output_order</span><span class="p">)</span>
+                    <span class="k">raise</span> <span class="n">DatasetConstraintError</span><span class="p">(</span><span class="s2">&quot;DataSelection&quot;</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
+
+                <span class="n">op5</span> <span class="o">=</span> <span class="n">OpReorderAxes</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+                <span class="n">op5</span><span class="o">.</span><span class="n">AxisOrder</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">forceAxisOrder</span><span class="p">)</span>
+                <span class="n">op5</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">providerSlot</span><span class="p">)</span>
+                <span class="n">providerSlot</span> <span class="o">=</span> <span class="n">op5</span><span class="o">.</span><span class="n">Output</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_opReaders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">op5</span><span class="p">)</span>
+            
+            <span class="c1"># If the channel axis is not last (or is missing),</span>
+            <span class="c1">#  make sure the axes are re-ordered so that channel is last.</span>
+            <span class="k">if</span> <span class="n">providerSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s1">&#39;c&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span> <span class="n">providerSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">axistags</span> <span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">op5</span> <span class="o">=</span> <span class="n">OpReorderAxes</span><span class="p">(</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span> <span class="p">)</span>
+                <span class="n">keys</span> <span class="o">=</span> <span class="n">providerSlot</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">getTaggedShape</span><span class="p">()</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Remove if present.</span>
+                    <span class="n">keys</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;c&#39;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                <span class="c1"># Append</span>
+                <span class="n">keys</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;c&#39;</span><span class="p">)</span>
+                <span class="n">op5</span><span class="o">.</span><span class="n">AxisOrder</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="n">keys</span> <span class="p">)</span> <span class="p">)</span>
+                <span class="n">op5</span><span class="o">.</span><span class="n">Input</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">providerSlot</span> <span class="p">)</span>
+                <span class="n">providerSlot</span> <span class="o">=</span> <span class="n">op5</span><span class="o">.</span><span class="n">Output</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_opReaders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">op5</span> <span class="p">)</span>
+            
+            <span class="c1"># Connect our external outputs to the internal operators we chose</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">providerSlot</span><span class="p">)</span>
+            
+            <span class="c1"># Set the image name and usage flag</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">AllowLabels</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">allowLabels</span> <span class="p">)</span>
+            
+            <span class="c1"># If the reading operator provides a nickname, use it.</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">nickname</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">datasetInfo</span><span class="o">.</span><span class="n">nickname</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">nickname</span>
+            
+            <span class="n">imageName</span> <span class="o">=</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">nickname</span>
+            <span class="k">if</span> <span class="n">imageName</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+                <span class="n">imageName</span> <span class="o">=</span> <span class="n">datasetInfo</span><span class="o">.</span><span class="n">filePath</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ImageName</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="n">imageName</span><span class="p">)</span>
+        
+        <span class="k">except</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">internalCleanup</span><span class="p">()</span>
+            <span class="k">raise</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="c1"># Output slots are directly connected to internal operators</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">getInternalDatasets</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">filePath</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">OpInputDataReader</span><span class="o">.</span><span class="n">getInternalDatasets</span><span class="p">(</span> <span class="n">filePath</span> <span class="p">)</span></div>
+
+<span class="k">class</span> <span class="nc">OpDataSelectionGroup</span><span class="p">(</span> <span class="n">Operator</span> <span class="p">):</span>
+    <span class="c1"># Inputs</span>
+    <span class="n">ProjectFile</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s1">&#39;object&#39;</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">ProjectDataGroup</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s1">&#39;string&#39;</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">WorkingDirectory</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s1">&#39;filestring&#39;</span><span class="p">)</span>
+    <span class="n">DatasetRoles</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s1">&#39;object&#39;</span><span class="p">)</span>
+
+    <span class="n">DatasetGroup</span> <span class="o">=</span> <span class="n">InputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s1">&#39;object&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="c1"># Must mark as optional because not all subslots are required.</span>
+
+    <span class="c1"># Outputs</span>
+    <span class="n">ImageGroup</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1"># These output slots are provided as a convenience, since otherwise it is tricky to create a lane-wise multislot of level-1 for only a single role.</span>
+    <span class="c1"># (It can be done, but requires OpTransposeSlots to invert the level-2 multislot indexes...) </span>
+    <span class="n">Image</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c1"># The first dataset. Equivalent to ImageGroup[0]</span>
+    <span class="n">Image1</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c1"># The second dataset. Equivalent to ImageGroup[1]</span>
+    <span class="n">Image2</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c1"># The third dataset. Equivalent to ImageGroup[2]</span>
+    <span class="n">AllowLabels</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">stype</span><span class="o">=</span><span class="s1">&#39;bool&#39;</span><span class="p">)</span> <span class="c1"># Pulled from the first dataset only.</span>
+
+    <span class="n">_NonTransposedImageGroup</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Must be the LAST slot declared in this class.</span>
+    <span class="c1"># When the shell detects that this slot has been resized,</span>
+    <span class="c1">#  it assumes all the others have already been resized.</span>
+    <span class="n">ImageName</span> <span class="o">=</span> <span class="n">OutputSlot</span><span class="p">()</span> <span class="c1"># Name of the first dataset is used.  Other names are ignored.</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">forceAxisOrder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">OpDataSelectionGroup</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_roles</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_forceAxisOrder</span> <span class="o">=</span> <span class="n">forceAxisOrder</span>
+
+        <span class="k">def</span> <span class="nf">handleNewRoles</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">DatasetGroup</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">DatasetRoles</span><span class="o">.</span><span class="n">value</span><span class="p">)</span> <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">DatasetRoles</span><span class="o">.</span><span class="n">notifyReady</span><span class="p">(</span> <span class="n">handleNewRoles</span> <span class="p">)</span>
+        
+    <span class="k">def</span> <span class="nf">setupOutputs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Create internal operators</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">DatasetRoles</span><span class="o">.</span><span class="n">value</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_roles</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_roles</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DatasetRoles</span><span class="o">.</span><span class="n">value</span>
+            <span class="c1"># Clean up the old operators</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ImageGroup</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Image1</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Image2</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_NonTransposedImageGroup</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">cleanUp</span><span class="p">()</span>
+    
+            <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span> <span class="o">=</span> <span class="n">OperatorWrapper</span><span class="p">(</span> <span class="n">OpDataSelection</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">operator_kwargs</span><span class="o">=</span><span class="p">{</span> <span class="s1">&#39;forceAxisOrder&#39;</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_forceAxisOrder</span> <span class="p">},</span>
+                                                <span class="n">broadcastingSlotNames</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;ProjectFile&#39;</span><span class="p">,</span> <span class="s1">&#39;ProjectDataGroup&#39;</span><span class="p">,</span> <span class="s1">&#39;WorkingDirectory&#39;</span><span class="p">]</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ImageGroup</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">Image</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_NonTransposedImageGroup</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">_NonTransposedImage</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">DatasetGroup</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">ProjectFile</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">ProjectFile</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">ProjectDataGroup</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">ProjectDataGroup</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">WorkingDirectory</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">WorkingDirectory</span> <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">role_index</span><span class="p">,</span> <span class="n">opDataSelection</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="p">):</span>
+            <span class="n">opDataSelection</span><span class="o">.</span><span class="n">RoleName</span><span class="o">.</span><span class="n">setValue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_roles</span><span class="p">[</span><span class="n">role_index</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">Image</span> <span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">Image</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">)</span>
+            
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">Image1</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">Image</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">Image1</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">Image1</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">NOTREADY</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">Image</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">Image2</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">Image</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">Image2</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">Image2</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">NOTREADY</span> <span class="o">=</span> <span class="kc">True</span>
+                
+            <span class="bp">self</span><span class="o">.</span><span class="n">ImageName</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">ImageName</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">AllowLabels</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opDatasets</span><span class="o">.</span><span class="n">AllowLabels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Image1</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Image2</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ImageName</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">AllowLabels</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">NOTREADY</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Image1</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">NOTREADY</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Image2</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">NOTREADY</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ImageName</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">NOTREADY</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">AllowLabels</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">NOTREADY</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">rroi</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;Unknown or unconnected output slot: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="n">slot</span><span class="o">.</span><span class="n">name</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">propagateDirty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slot</span><span class="p">,</span> <span class="n">subindex</span><span class="p">,</span> <span class="n">roi</span><span class="p">):</span>
+        <span class="c1"># Output slots are directly connected to internal operators</span>
+        <span class="k">pass</span>
+
+<span class="k">class</span> <span class="nc">OpMultiLaneDataSelectionGroup</span><span class="p">(</span> <span class="n">OpMultiLaneWrapper</span> <span class="p">):</span>
+    <span class="c1"># TODO: Provide output slots DatasetsByRole and ImagesByRole as a convenience </span>
+    <span class="c1">#       to save clients the trouble of instantiating/using OpTransposeSlots.</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">forceAxisOrder</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span> <span class="p">{</span> <span class="s1">&#39;operator_kwargs&#39;</span> <span class="p">:</span> <span class="p">{</span><span class="s1">&#39;forceAxisOrder&#39;</span> <span class="p">:</span> <span class="n">forceAxisOrder</span><span class="p">},</span>
+                         <span class="s1">&#39;broadcastingSlotNames&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="s1">&#39;ProjectFile&#39;</span><span class="p">,</span> <span class="s1">&#39;ProjectDataGroup&#39;</span><span class="p">,</span> <span class="s1">&#39;WorkingDirectory&#39;</span><span class="p">,</span> <span class="s1">&#39;DatasetRoles&#39;</span><span class="p">]</span> <span class="p">}</span> <span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span> <span class="n">OpMultiLaneDataSelectionGroup</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">__init__</span><span class="p">(</span><span class="n">OpDataSelectionGroup</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span> <span class="p">)</span>
+    
+        <span class="c1"># &#39;value&#39; slots</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">ProjectFile</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">ProjectDataGroup</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">WorkingDirectory</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">DatasetRoles</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">0</span>
+        
+        <span class="c1"># Indexed by [lane][role]</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">DatasetGroup</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;DatasetGroup is supposed to be a level-2 slot, indexed by [lane][role]&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">addLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Reimplemented from base class.&quot;&quot;&quot;</span>
+        <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">innerOperators</span><span class="p">)</span>
+        
+        <span class="c1"># Only add this lane if we don&#39;t already have it</span>
+        <span class="c1"># We might be called from within the context of our own insertSlot signal.</span>
+        <span class="k">if</span> <span class="n">numLanes</span> <span class="o">==</span> <span class="n">laneIndex</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span> <span class="n">OpMultiLaneDataSelectionGroup</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">addLane</span><span class="p">(</span> <span class="n">laneIndex</span> <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">removeLane</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Reimplemented from base class.&quot;&quot;&quot;</span>
+        <span class="n">numLanes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">innerOperators</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">numLanes</span> <span class="o">&gt;</span> <span class="n">finalLength</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">(</span> <span class="n">OpMultiLaneDataSelectionGroup</span><span class="p">,</span> <span class="bp">self</span> <span class="p">)</span><span class="o">.</span><span class="n">removeLane</span><span class="p">(</span> <span class="n">laneIndex</span><span class="p">,</span> <span class="n">finalLength</span> <span class="p">)</span>
+
+
+
+
+
+
+
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../../../index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../../index.html" >Module code</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>

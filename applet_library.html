@@ -1,0 +1,1042 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Applet Library &#8212; ilastik 1.0.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="top" title="ilastik 1.0.0 documentation" href="index.html" />
+    <link rel="up" title="Applet API" href="applet_api.html" />
+    <link rel="next" title="Advanced Workflow Design" href="workflow_design.html" />
+    <link rel="prev" title="Applet API" href="applet_api.html" /> 
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="workflow_design.html" title="Advanced Workflow Design"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="applet_api.html" title="Applet API"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="applet_api.html" accesskey="U">Applet API</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="applet-library">
+<h1>Applet Library<a class="headerlink" href="#applet-library" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="example-applets">
+<h2>Example Applets<a class="headerlink" href="#example-applets" title="Permalink to this headline">¶</a></h2>
+<p>These applets aren&#8217;t very useful, but they have simple, clean implementations.
+Their source files are the right place to look if you&#8217;re just getting started.</p>
+<div class="section" id="threshold-masking">
+<h3>Threshold Masking<a class="headerlink" href="#threshold-masking" title="Permalink to this headline">¶</a></h3>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/ThresholdMasking-Top-Level-Operator.svg"><img alt="Threshold Masking Top-Level Operator" src="_images/ThresholdMasking-Top-Level-Operator.svg" /></a>
+</div>
+<dl class="class">
+<dt id="ilastik.applets.thresholdMasking.thresholdMaskingApplet.ThresholdMaskingApplet">
+<em class="property">class </em><code class="descclassname">ilastik.applets.thresholdMasking.thresholdMaskingApplet.</code><code class="descname">ThresholdMaskingApplet</code><span class="sig-paren">(</span><em>workflow</em>, <em>guiName</em>, <em>projectFileGroupName</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/thresholdMasking/thresholdMaskingApplet.html#ThresholdMaskingApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.thresholdMasking.thresholdMaskingApplet.ThresholdMaskingApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a simple thresholding applet</p>
+</dd></dl>
+
+</div>
+<div class="section" id="deviation-from-mean">
+<h3>Deviation From Mean<a class="headerlink" href="#deviation-from-mean" title="Permalink to this headline">¶</a></h3>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/DeviationFromMean-Top-Level-Operator.svg"><img alt="Deviation-From-Mean Top-Level Operator" src="_images/DeviationFromMean-Top-Level-Operator.svg" /></a>
+</div>
+<dl class="class">
+<dt id="ilastik.applets.deviationFromMean.deviationFromMeanApplet.DeviationFromMeanApplet">
+<em class="property">class </em><code class="descclassname">ilastik.applets.deviationFromMean.deviationFromMeanApplet.</code><code class="descname">DeviationFromMeanApplet</code><span class="sig-paren">(</span><em>workflow</em>, <em>projectFileGroupName</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/deviationFromMean/deviationFromMeanApplet.html#DeviationFromMeanApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.deviationFromMean.deviationFromMeanApplet.DeviationFromMeanApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This applet serves as an example multi-image-lane applet.
+The GUI is not aware of multiple image lanes (it is written as if the applet were single-image only).
+The top-level operator is explicitly multi-image (it is not wrapped in an operatorwrapper).</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="useful-base-classes">
+<h2>Useful Base Classes<a class="headerlink" href="#useful-base-classes" title="Permalink to this headline">¶</a></h2>
+<p>Many applets or applet GUIs are based on these classes.</p>
+<div class="section" id="layer-viewer">
+<span id="id1"></span><h3>Layer Viewer<a class="headerlink" href="#layer-viewer" title="Permalink to this headline">¶</a></h3>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/LayerViewer-Top-Level-Operator.svg"><img alt="LayerViewer Top-Level Operator" src="_images/LayerViewer-Top-Level-Operator.svg" /></a>
+</div>
+<dl class="class">
+<dt id="ilastik.applets.layerViewer.layerViewerApplet.LayerViewerApplet">
+<em class="property">class </em><code class="descclassname">ilastik.applets.layerViewer.layerViewerApplet.</code><code class="descname">LayerViewerApplet</code><span class="sig-paren">(</span><em>workflow</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerApplet.html#LayerViewerApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerApplet.LayerViewerApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This applet can be used as a simple viewer of raw image data.  
+Its main purpose is to provide a simple example of how to use the LayerViewerGui, 
+which is intended to be used as a base class for most other applet GUIs.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.layerViewer.opLayerViewer.OpLayerViewer">
+<em class="property">class </em><code class="descclassname">ilastik.applets.layerViewer.opLayerViewer.</code><code class="descname">OpLayerViewer</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/layerViewer/opLayerViewer.html#OpLayerViewer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.opLayerViewer.OpLayerViewer" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is the default top-level operator for the layer-viewer class.
+Note that applets based on the LayerViewer applet (and the LayerViewerGui) do NOT need to use this operator.
+Any operator will work with the LayerViewerGui base class.</p>
+<dl class="method">
+<dt id="ilastik.applets.layerViewer.opLayerViewer.OpLayerViewer.checkConstraints">
+<code class="descname">checkConstraints</code><span class="sig-paren">(</span><em>*args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/layerViewer/opLayerViewer.html#OpLayerViewer.checkConstraints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.opLayerViewer.OpLayerViewer.checkConstraints" title="Permalink to this definition">¶</a></dt>
+<dd><p>Example of how to check input data constraints.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui">
+<em class="property">class </em><code class="descclassname">ilastik.applets.layerViewer.layerViewerGui.</code><code class="descname">LayerViewerGui</code><span class="sig-paren">(</span><em>parentApplet</em>, <em>topLevelOperatorView</em>, <em>additionalMonitoredSlots=[]</em>, <em>centralWidgetOnly=False</em>, <em>crosshair=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implements an applet GUI whose central widget is a VolumeEditor
+and whose layer controls simply contains a layer list widget.
+Intended to be used as a subclass for applet GUI objects.</p>
+<p>Provides: Central widget (viewer), View Menu, and Layer controls
+Provides an EMPTY applet drawer widget.  Subclasses should replace it with their own applet drawer.</p>
+<dl class="method">
+<dt id="ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>parentApplet</em>, <em>topLevelOperatorView</em>, <em>additionalMonitoredSlots=[]</em>, <em>centralWidgetOnly=False</em>, <em>crosshair=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.  <strong>All</strong> slots of the provided <em>topLevelOperatorView</em> will be monitored for changes.
+Changes include slot resize events, and slot ready/unready status changes.
+When a change is detected, the <cite>setupLayers()</cite> function is called, and the result is used to update the list of layers shown in the central widget.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>topLevelOperatorView</strong> &#8211; The top-level operator for the applet this GUI belongs to.</li>
+<li><strong>additionalMonitoredSlots</strong> &#8211; Optional.  Can be used to add additional slots to the set of viewable layers (all slots from the top-level operator are already monitored).</li>
+<li><strong>centralWidgetOnly</strong> &#8211; If True, provide only a central widget without drawer or viewer controls.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.setupLayers">
+<code class="descname">setupLayers</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui.setupLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.setupLayers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a list of layers to be displayed in the central widget.
+Subclasses should override this method to create the list of layers that can be displayed.
+For debug and development purposes, the base class implementation simply generates layers for all topLevelOperatorView slots.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.createStandardLayerFromSlot">
+<em class="property">classmethod </em><code class="descname">createStandardLayerFromSlot</code><span class="sig-paren">(</span><em>slot</em>, <em>lastChannelIsAlpha=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui.createStandardLayerFromSlot"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.createStandardLayerFromSlot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convenience function.
+Generates a volumina layer using the given slot.  
+Will be either a GrayscaleLayer or RGBALayer, depending on the channel metadata.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>slot</strong> &#8211; The slot to generate a layer from</li>
+<li><strong>lastChannelIsAlpha</strong> &#8211; If True, the last channel in the slot is assumed to be an alpha channel.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.initViewerControlUi">
+<code class="descname">initViewerControlUi</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui.initViewerControlUi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.initViewerControlUi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load the viewer controls GUI, which appears below the applet bar.
+In our case, the viewer control GUI consists mainly of a layer list.
+Subclasses should override this if they provide their own viewer control widget.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.initAppletDrawerUi">
+<code class="descname">initAppletDrawerUi</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/layerViewer/layerViewerGui.html#LayerViewerGui.initAppletDrawerUi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.layerViewer.layerViewerGui.LayerViewerGui.initAppletDrawerUi" title="Permalink to this definition">¶</a></dt>
+<dd><p>By default, this base class provides a blank applet drawer.
+Override this in a subclass to get a real applet drawer.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="labeling">
+<h3>Labeling<a class="headerlink" href="#labeling" title="Permalink to this headline">¶</a></h3>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/Labeling-Top-Level-Operator.svg"><img alt="Labeling Top-Level Operator" src="_images/Labeling-Top-Level-Operator.svg" /></a>
+</div>
+<dl class="class">
+<dt id="ilastik.applets.labeling.labelingApplet.LabelingApplet">
+<em class="property">class </em><code class="descclassname">ilastik.applets.labeling.labelingApplet.</code><code class="descname">LabelingApplet</code><span class="sig-paren">(</span><em>workflow</em>, <em>projectFileGroupName</em>, <em>blockDims=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingApplet.html#LabelingApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingApplet.LabelingApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This applet demonstrates how to use the LabelingGui base class, which serves as a reusable base class for other applet GUIs that need a labeling UI.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane">
+<em class="property">class </em><code class="descclassname">ilastik.applets.labeling.opLabeling.</code><code class="descname">OpLabelingSingleLane</code><span class="sig-paren">(</span><em>blockDims=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabelingSingleLane"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is a single-lane operator that can be used with the labeling applet gui.
+It is basically a wrapper around the <code class="docutils literal"><span class="pre">OpCompressedUserLabelArray</span></code> (lazyflow), 
+with the &#8216;shape&#8217; and &#8216;blockshape&#8217; input slots taken care of for you.</p>
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.InputImage">
+<code class="descname">InputImage</code><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.InputImage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Original input data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelInput">
+<code class="descname">LabelInput</code><em class="property"> = InputSlot(optional=True)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelInput" title="Permalink to this definition">¶</a></dt>
+<dd><p>Input for providing label data from an external source</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelEraserValue">
+<code class="descname">LabelEraserValue</code><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelEraserValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>The label value that signifies the &#8216;eraser&#8217;, i.e. voxels to clear labels from</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelDelete">
+<code class="descname">LabelDelete</code><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelDelete" title="Permalink to this definition">¶</a></dt>
+<dd><p>When this input is set to a value, all labels of that value are deleted from the operator&#8217;s data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelImage">
+<code class="descname">LabelImage</code><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.LabelImage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stored labels from the user</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.NonzeroLabelBlocks">
+<code class="descname">NonzeroLabelBlocks</code><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingSingleLane.NonzeroLabelBlocks" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list if slices that contain non-zero label values</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel">
+<em class="property">class </em><code class="descclassname">ilastik.applets.labeling.opLabeling.</code><code class="descname">OpLabelingTopLevel</code><span class="sig-paren">(</span><em>blockDims=None</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabelingTopLevel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Top-level operator for the labelingApplet base class.
+Provides all the slots needed by the labeling GUI, but any operator that provides the necessary slots can also be used with the LabelingGui.</p>
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.InputImages">
+<code class="descname">InputImages</code><em class="property"> = InputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.InputImages" title="Permalink to this definition">¶</a></dt>
+<dd><p>Original input data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelInputs">
+<code class="descname">LabelInputs</code><em class="property"> = InputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelInputs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Input for providing label data from an external source</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelEraserValue">
+<code class="descname">LabelEraserValue</code><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelEraserValue" title="Permalink to this definition">¶</a></dt>
+<dd><p>The label value that signifies the &#8216;eraser&#8217;, i.e. voxels to clear labels from</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelDelete">
+<code class="descname">LabelDelete</code><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelDelete" title="Permalink to this definition">¶</a></dt>
+<dd><p>When this input is set to a value, all labels of that value are deleted from the operator&#8217;s data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelImages">
+<code class="descname">LabelImages</code><em class="property"> = OutputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.LabelImages" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stored labels from the user</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.NonzeroLabelBlocks">
+<code class="descname">NonzeroLabelBlocks</code><em class="property"> = OutputSlot(level=1)</em><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.NonzeroLabelBlocks" title="Permalink to this definition">¶</a></dt>
+<dd><p>A list if slices that contain non-zero label values</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.addLane">
+<code class="descname">addLane</code><span class="sig-paren">(</span><em>laneIndex</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabelingTopLevel.addLane"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.addLane" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an image lane.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.removeLane">
+<code class="descname">removeLane</code><span class="sig-paren">(</span><em>laneIndex</em>, <em>finalLength</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/opLabeling.html#OpLabelingTopLevel.removeLane"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.opLabeling.OpLabelingTopLevel.removeLane" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove an image lane.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui">
+<em class="property">class </em><code class="descclassname">ilastik.applets.labeling.labelingGui.</code><code class="descname">LabelingGui</code><span class="sig-paren">(</span><em>parentApplet</em>, <em>labelingSlots</em>, <em>topLevelOperatorView</em>, <em>drawerUiPath=None</em>, <em>rawInputSlot=None</em>, <em>crosshair=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui" title="Permalink to this definition">¶</a></dt>
+<dd><p>Provides all the functionality of a simple layerviewer
+applet with the added functionality of labeling.</p>
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>parentApplet</em>, <em>labelingSlots</em>, <em>topLevelOperatorView</em>, <em>drawerUiPath=None</em>, <em>rawInputSlot=None</em>, <em>crosshair=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.__init__"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Constructor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>labelingSlots</strong> &#8211; Provides the slots needed for sourcing/sinking label data.  See LabelingGui.LabelingSlots
+class source for details.</li>
+<li><strong>topLevelOperatorView</strong> &#8211; is provided to the LayerViewerGui (the base class)</li>
+<li><strong>drawerUiPath</strong> &#8211; can be given if you provide an extended drawer UI file.  Otherwise a default one is used.</li>
+<li><strong>rawInputSlot</strong> &#8211; Data from the rawInputSlot parameter will be displayed directly underneath the elements
+(if provided).</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.selectLabel">
+<code class="descname">selectLabel</code><span class="sig-paren">(</span><em>labelIndex</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.selectLabel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.selectLabel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Programmatically select the given labelIndex, which start from 0.
+Equivalent to clicking on the (labelIndex+1)&#8217;th position in the label widget.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.LabelingSlots">
+<em class="property">class </em><code class="descname">LabelingSlots</code><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.LabelingSlots"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.LabelingSlots" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class serves as the parameter for the LabelingGui constructor.
+It provides the slots that the labeling GUI uses to source labels to the display and sink labels from the
+user&#8217;s mouse clicks.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.onLabelListDataChanged">
+<code class="descclassname">LabelingGui.</code><code class="descname">onLabelListDataChanged</code><span class="sig-paren">(</span><em>topLeft</em>, <em>bottomRight</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.onLabelListDataChanged"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelListDataChanged" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handle changes to the label list selections.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.hideEvent">
+<code class="descclassname">LabelingGui.</code><code class="descname">hideEvent</code><span class="sig-paren">(</span><em>event</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.hideEvent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.hideEvent" title="Permalink to this definition">¶</a></dt>
+<dd><p>QT event handler.
+The user has selected another applet or is closing the whole app.
+Save all preferences.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelName">
+<code class="descclassname">LabelingGui.</code><code class="descname">getNextLabelName</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.getNextLabelName"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelName" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a suitable name for the next label added by the user.
+Subclasses may override this.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelColor">
+<code class="descclassname">LabelingGui.</code><code class="descname">getNextLabelColor</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.getNextLabelColor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.getNextLabelColor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a QColor to use for the next label.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.getNextPmapColor">
+<code class="descclassname">LabelingGui.</code><code class="descname">getNextPmapColor</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.getNextPmapColor"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.getNextPmapColor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a QColor to use for the next label.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.onLabelNameChanged">
+<code class="descclassname">LabelingGui.</code><code class="descname">onLabelNameChanged</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.onLabelNameChanged"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelNameChanged" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses can override this to respond to changes in the label names.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.onLabelColorChanged">
+<code class="descclassname">LabelingGui.</code><code class="descname">onLabelColorChanged</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.onLabelColorChanged"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.onLabelColorChanged" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses can override this to respond to changes in the label colors.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.onPmapColorChanged">
+<code class="descclassname">LabelingGui.</code><code class="descname">onPmapColorChanged</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.onPmapColorChanged"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.onPmapColorChanged" title="Permalink to this definition">¶</a></dt>
+<dd><p>Subclasses can override this to respond to changes in a label associated probability color.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.getLayer">
+<code class="descclassname">LabelingGui.</code><code class="descname">getLayer</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.getLayer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.getLayer" title="Permalink to this definition">¶</a></dt>
+<dd><p>find a layer by name</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.createLabelLayer">
+<code class="descclassname">LabelingGui.</code><code class="descname">createLabelLayer</code><span class="sig-paren">(</span><em>direct=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.createLabelLayer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.createLabelLayer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a colortable layer that displays the label slot data, along with its associated label source.
+direct: whether this layer is drawn synchronously by volumina</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.setupLayers">
+<code class="descclassname">LabelingGui.</code><code class="descname">setupLayers</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.setupLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.setupLayers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets up the label layer for display by our base class (LayerViewerGui).
+If our subclass overrides this function to add his own layers,
+he <strong>must</strong> call this function explicitly.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.labeling.labelingGui.LabelingGui.allowDeleteLastLabelOnly">
+<code class="descclassname">LabelingGui.</code><code class="descname">allowDeleteLastLabelOnly</code><span class="sig-paren">(</span><em>enabled</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/labeling/labelingGui.html#LabelingGui.allowDeleteLastLabelOnly"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.labeling.labelingGui.LabelingGui.allowDeleteLastLabelOnly" title="Permalink to this definition">¶</a></dt>
+<dd><p>In the TrackingWorkflow when labeling 0/1/2/.../N mergers we do not allow
+to remove another label but the first, as the following processing steps
+assume that all previous cell counts are given.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="standard-applets">
+<h2>Standard Applets<a class="headerlink" href="#standard-applets" title="Permalink to this headline">¶</a></h2>
+<p>These applets are likely to be re-used in many, if not most, worklows.</p>
+<div class="section" id="project-metadata">
+<h3>Project Metadata<a class="headerlink" href="#project-metadata" title="Permalink to this headline">¶</a></h3>
+<dl class="class">
+<dt id="ilastik.applets.projectMetadata.projectMetadataApplet.ProjectMetadataApplet">
+<em class="property">class </em><code class="descclassname">ilastik.applets.projectMetadata.projectMetadataApplet.</code><code class="descname">ProjectMetadataApplet</code><a class="reference internal" href="_modules/ilastik/applets/projectMetadata/projectMetadataApplet.html#ProjectMetadataApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.projectMetadata.projectMetadataApplet.ProjectMetadataApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This applet allows the user to enter project metadata (e.g. Project name, labeler name, etc.).</p>
+<p>Note that this applet does not affect the processing pipeline and has no top-level operator.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="data-selection">
+<h3>Data Selection<a class="headerlink" href="#data-selection" title="Permalink to this headline">¶</a></h3>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/DataSelection-Top-level-Operator.svg"><img alt="DataSelection Top-Level Operator" src="_images/DataSelection-Top-level-Operator.svg" /></a>
+</div>
+<dl class="class">
+<dt id="ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet">
+<em class="property">class </em><code class="descclassname">ilastik.applets.dataSelection.dataSelectionApplet.</code><code class="descname">DataSelectionApplet</code><span class="sig-paren">(</span><em>workflow</em>, <em>title</em>, <em>projectFileGroupName</em>, <em>supportIlastik05Import=False</em>, <em>batchDataGui=False</em>, <em>forceAxisOrder=None</em>, <em>instructionText='Use the controls shown to the right to add image files to this workflow.'</em>, <em>max_lanes=None</em>, <em>show_axis_details=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/dataSelection/dataSelectionApplet.html#DataSelectionApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This applet allows the user to select sets of input data, 
+which are provided as outputs in the corresponding top-level applet operator.</p>
+<dl class="classmethod">
+<dt id="ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet.parse_known_cmdline_args">
+<em class="property">classmethod </em><code class="descname">parse_known_cmdline_args</code><span class="sig-paren">(</span><em>cmdline_args</em>, <em>role_names</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/dataSelection/dataSelectionApplet.html#DataSelectionApplet.parse_known_cmdline_args"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet.parse_known_cmdline_args" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function for headless workflows.
+Parses command-line args that can be used to configure the <code class="docutils literal"><span class="pre">DataSelectionApplet</span></code> top-level operator 
+and returns <code class="docutils literal"><span class="pre">(parsed_args,</span> <span class="pre">unused_args)</span></code>, similar to <code class="docutils literal"><span class="pre">argparse.ArgumentParser.parse_known_args()</span></code></p>
+<p>Relative paths are converted to absolute paths <strong>according to ``os.getcwd()``</strong>, 
+not according to the project file location, since this more likely to be what headless users expect.</p>
+<p>See also: <a class="reference internal" href="#ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet.configure_operator_with_parsed_args" title="ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet.configure_operator_with_parsed_args"><code class="xref py py-meth docutils literal"><span class="pre">configure_operator_with_parsed_args()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet.configure_operator_with_parsed_args">
+<code class="descname">configure_operator_with_parsed_args</code><span class="sig-paren">(</span><em>parsed_args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/dataSelection/dataSelectionApplet.html#DataSelectionApplet.configure_operator_with_parsed_args"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet.configure_operator_with_parsed_args" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function for headless workflows.
+Configures this applet&#8217;s top-level operator according to the settings provided in <code class="docutils literal"><span class="pre">parsed_args</span></code>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>parsed_args</strong> &#8211; Must be an <code class="docutils literal"><span class="pre">argparse.Namespace</span></code> as returned by <a class="reference internal" href="#ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet.parse_known_cmdline_args" title="ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet.parse_known_cmdline_args"><code class="xref py py-meth docutils literal"><span class="pre">parse_known_cmdline_args()</span></code></a>.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet.convertStacksToH5">
+<em class="property">classmethod </em><code class="descname">convertStacksToH5</code><span class="sig-paren">(</span><em>filePaths</em>, <em>stackVolumeCacheDir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/dataSelection/dataSelectionApplet.html#DataSelectionApplet.convertStacksToH5"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.dataSelectionApplet.DataSelectionApplet.convertStacksToH5" title="Permalink to this definition">¶</a></dt>
+<dd><p>If any of the files in filePaths appear to be globstrings for a stack,
+convert the given stack to hdf5 format.</p>
+<p>Return the filePaths list with globstrings replaced by the paths to the new hdf5 volumes.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection">
+<em class="property">class </em><code class="descclassname">ilastik.applets.dataSelection.opDataSelection.</code><code class="descname">OpDataSelection</code><span class="sig-paren">(</span><em>forceAxisOrder=False</em>, <em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/dataSelection/opDataSelection.html#OpDataSelection"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection" title="Permalink to this definition">¶</a></dt>
+<dd><p>The top-level operator for the data selection applet, implemented as a single-image operator.
+The applet uses an OperatorWrapper to make it suitable for use in a workflow.</p>
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ProjectFile">
+<code class="descname">ProjectFile</code><em class="property"> = InputSlot(optional=True)</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ProjectFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>The project hdf5 File object (already opened)</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ProjectDataGroup">
+<code class="descname">ProjectDataGroup</code><em class="property"> = InputSlot(optional=True)</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ProjectDataGroup" title="Permalink to this definition">¶</a></dt>
+<dd><p>The internal path to the hdf5 group where project-local datasets are stored within the project file</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.WorkingDirectory">
+<code class="descname">WorkingDirectory</code><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.WorkingDirectory" title="Permalink to this definition">¶</a></dt>
+<dd><p>The filesystem directory where the project file is located</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.Dataset">
+<code class="descname">Dataset</code><em class="property"> = InputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.Dataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>A DatasetInfo object</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.Image">
+<code class="descname">Image</code><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.Image" title="Permalink to this definition">¶</a></dt>
+<dd><p>The output image</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.AllowLabels">
+<code class="descname">AllowLabels</code><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.AllowLabels" title="Permalink to this definition">¶</a></dt>
+<dd><p>A bool indicating whether or not this image can be used for training</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ImageName">
+<code class="descname">ImageName</code><em class="property"> = OutputSlot()</em><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.ImageName" title="Permalink to this definition">¶</a></dt>
+<dd><p>The name of the output image</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="ilastik.applets.dataSelection.opDataSelection.OpDataSelection.InvalidDimensionalityError">
+<em class="property">exception </em><code class="descname">InvalidDimensionalityError</code><span class="sig-paren">(</span><em>message</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/dataSelection/opDataSelection.html#OpDataSelection.InvalidDimensionalityError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.dataSelection.opDataSelection.OpDataSelection.InvalidDimensionalityError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raised if the user tries to replace the dataset with a new one of differing dimensionality.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="batch-output">
+<h3>Batch Output<a class="headerlink" href="#batch-output" title="Permalink to this headline">¶</a></h3>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/BatchOutput-Top-Level-Operator.svg"><img alt="Batch Output Top-Level Operator" src="_images/BatchOutput-Top-Level-Operator.svg" /></a>
+</div>
+</div>
+</div>
+<div class="section" id="workflow-specific-applets">
+<h2>Workflow-specific Applets<a class="headerlink" href="#workflow-specific-applets" title="Permalink to this headline">¶</a></h2>
+<p>These applets were designed with particular workflows in mind, but they could be used with future workflows, too.</p>
+<div class="section" id="feature-selection">
+<h3>Feature Selection<a class="headerlink" href="#feature-selection" title="Permalink to this headline">¶</a></h3>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/Wrapped-OpFeatureSelection.svg"><img alt="Feature Selection Top-Level Operator" src="_images/Wrapped-OpFeatureSelection.svg" /></a>
+</div>
+<dl class="class">
+<dt id="ilastik.applets.featureSelection.featureSelectionApplet.FeatureSelectionApplet">
+<em class="property">class </em><code class="descclassname">ilastik.applets.featureSelection.featureSelectionApplet.</code><code class="descname">FeatureSelectionApplet</code><span class="sig-paren">(</span><em>workflow</em>, <em>guiName</em>, <em>projectFileGroupName</em>, <em>filter_implementation='Original'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/featureSelection/featureSelectionApplet.html#FeatureSelectionApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.featureSelection.featureSelectionApplet.FeatureSelectionApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>This applet allows the user to select sets of input data, 
+which are provided as outputs in the corresponding top-level applet operator.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="pixel-classification">
+<h3>Pixel Classification<a class="headerlink" href="#pixel-classification" title="Permalink to this headline">¶</a></h3>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/opPixelClassification.svg"><img alt="Pixel Classification Top-Level Operator" src="_images/opPixelClassification.svg" /></a>
+</div>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/OpPixelClassification_detailed.png"><img alt="Pixel Classification Top-Level Operator" src="_images/OpPixelClassification_detailed.png" style="width: 1139.0px; height: 497.4px;" /></a>
+</div>
+<dl class="class">
+<dt id="ilastik.applets.pixelClassification.pixelClassificationApplet.PixelClassificationApplet">
+<em class="property">class </em><code class="descclassname">ilastik.applets.pixelClassification.pixelClassificationApplet.</code><code class="descname">PixelClassificationApplet</code><span class="sig-paren">(</span><em>workflow</em>, <em>projectFileGroupName</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/pixelClassification/pixelClassificationApplet.html#PixelClassificationApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.pixelClassification.pixelClassificationApplet.PixelClassificationApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implements the pixel classification &#8220;applet&#8221;, which allows the ilastik shell to use it.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="watershed-viewer">
+<h3>Watershed Viewer<a class="headerlink" href="#watershed-viewer" title="Permalink to this headline">¶</a></h3>
+<div class="figure">
+<a class="reference internal image-reference" href="_images/VigraWatershedViewer-Top-Level-Operator.svg"><img alt="Watershed Viewer Top-Level Operator" src="_images/VigraWatershedViewer-Top-Level-Operator.svg" /></a>
+</div>
+<dl class="class">
+<dt id="ilastik.applets.vigraWatershedViewer.vigraWatershedViewerApplet.VigraWatershedViewerApplet">
+<em class="property">class </em><code class="descclassname">ilastik.applets.vigraWatershedViewer.vigraWatershedViewerApplet.</code><code class="descname">VigraWatershedViewerApplet</code><span class="sig-paren">(</span><em>workflow</em>, <em>guiName</em>, <em>projectFileGroupName</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/vigraWatershedViewer/vigraWatershedViewerApplet.html#VigraWatershedViewerApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.vigraWatershedViewer.vigraWatershedViewerApplet.VigraWatershedViewerApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Viewer for watershed results, with minimal configuration controls.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="object-extraction">
+<h3>Object Extraction<a class="headerlink" href="#object-extraction" title="Permalink to this headline">¶</a></h3>
+<p>The object extraction applet takes as input a data image and an object
+mask. It then computes object features on the objects and makes them
+available to downstream applets.</p>
+<p>The available features are provided by a plugin system. Each plugin
+reports the names of the features it supports, and handles the actual
+calculation. The GUI queries all plugins for the features they provide
+and present them to the user. The user selects some features, and the
+selection is sent to the operator, which calls the appropriate plugins
+and aggregates the results. A detailed example of a user-defined plugin
+with object features can be found in the $ILASTIK/examples directory.
+To get your plugins discovered by ilastik, you have to add their path
+to the .ilastikrc file in your home directory. The file should look
+as follows:</p>
+<blockquote>
+<div><p>[ilastik]</p>
+<p>plugin_directories: /path/to/cool_features</p>
+</div></blockquote>
+<p>The cool_features directory in this case should contain the .py and the .yapsy-plugin files.</p>
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.objectExtractionApplet.ObjectExtractionApplet">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectExtraction.objectExtractionApplet.</code><code class="descname">ObjectExtractionApplet</code><span class="sig-paren">(</span><em>name='Object Extraction'</em>, <em>workflow=None</em>, <em>projectFileGroupName='ObjectExtraction'</em>, <em>interactive=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/objectExtractionApplet.html#ObjectExtractionApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.objectExtractionApplet.ObjectExtractionApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates object features for each object in an image.</p>
+<p>Features are provided by plugins, which are responsible for
+performing the actual computation.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin">
+<em class="property">class </em><code class="descclassname">ilastik.plugins.</code><code class="descname">ObjectFeaturesPlugin</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plugins of this class calculate object features.</p>
+<dl class="method">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin.availableFeatures">
+<code class="descname">availableFeatures</code><span class="sig-paren">(</span><em>image</em>, <em>labels</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin.availableFeatures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin.availableFeatures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reports which features this plugin can compute on a
+particular image and label image.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>image</strong> &#8211; numpy.ndarray</li>
+<li><strong>labels</strong> &#8211; numpy.ndarray, dtype=int</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a nested dictionary, where dict[feature_name] is a
+dictionary of parameters.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin.compute_global">
+<code class="descname">compute_global</code><span class="sig-paren">(</span><em>image</em>, <em>labels</em>, <em>features</em>, <em>axes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin.compute_global"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin.compute_global" title="Permalink to this definition">¶</a></dt>
+<dd><p>calculate the requested features.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>image</strong> &#8211; np.ndarray</li>
+<li><strong>labels</strong> &#8211; np.ndarray, dtype=int</li>
+<li><strong>features</strong> &#8211; which features to compute</li>
+<li><strong>axes</strong> &#8211; axis tags</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a dictionary with one entry per feature.
+dict[feature_name] is a numpy.ndarray with ndim=2 and
+shape[0] == number of objects</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin.compute_local">
+<code class="descname">compute_local</code><span class="sig-paren">(</span><em>image</em>, <em>binary_bbox</em>, <em>features</em>, <em>axes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin.compute_local"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin.compute_local" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate features on a single object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>image</strong> &#8211; np.ndarray - image[expanded bounding box]</li>
+<li><strong>binary_bbox</strong> &#8211; binarize(labels[expanded bounding box])</li>
+<li><strong>features</strong> &#8211; which features to compute</li>
+<li><strong>axes</strong> &#8211; axis tags</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a dictionary with one entry per feature.
+dict[feature_name] is a numpy.ndarray with ndim=1</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin.fill_properties">
+<code class="descname">fill_properties</code><span class="sig-paren">(</span><em>feature_dict</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin.fill_properties"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin.fill_properties" title="Permalink to this definition">¶</a></dt>
+<dd><p>For every feature in the feature dictionary, fill in its properties,
+such as &#8216;detailtext&#8217;, which will be displayed in help, or &#8216;displaytext&#8217;
+which will be displayed instead of the feature name
+Args:</p>
+<blockquote>
+<div>feature_dict: dictionary of features</div></blockquote>
+<dl class="docutils">
+<dt>Returns:</dt>
+<dd>same dictionary, with additional fields filled for each feature</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.plugins.ObjectFeaturesPlugin.do_channels">
+<code class="descname">do_channels</code><span class="sig-paren">(</span><em>fn</em>, <em>image</em>, <em>axes</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/plugins.html#ObjectFeaturesPlugin.do_channels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.plugins.ObjectFeaturesPlugin.do_channels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper for features that only take one channel.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>fn</strong> &#8211; function that computes features</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpObjectExtraction">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</code><code class="descname">OpObjectExtraction</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpObjectExtraction"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpObjectExtraction" title="Permalink to this definition">¶</a></dt>
+<dd><p>The top-level operator for the object extraction applet.</p>
+<p>Computes object features and object center images.</p>
+<dl class="staticmethod">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpObjectExtraction.createExportTable">
+<em class="property">static </em><code class="descname">createExportTable</code><span class="sig-paren">(</span><em>features</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpObjectExtraction.createExportTable"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpObjectExtraction.createExportTable" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function takes the features as produced by the RegionFeatures slot
+and transforms them into a flat table, which is later used for exporting
+object-level data to csv and h5 files. The columns of the table are as follows:
+(t, object index, feature 1, feature 2, ...). Row-wise object index increases
+faster than time, so first all objects for time 0 are exported, then for time 1, etc</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpAdaptTimeListRoi">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</code><code class="descname">OpAdaptTimeListRoi</code><span class="sig-paren">(</span><em>parent=None</em>, <em>graph=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpAdaptTimeListRoi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpAdaptTimeListRoi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adapts the t array output from OpRegionFeatures to an Output
+slot that is called with a &#8216;List&#8217; rtype, where the roi is a list
+of time slices, and the output is a dictionary of (time,
+featuredict) pairs.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpCachedRegionFeatures">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</code><code class="descname">OpCachedRegionFeatures</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpCachedRegionFeatures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpCachedRegionFeatures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Caches the region features computed by OpRegionFeatures.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</code><code class="descname">OpRegionFeatures</code><span class="sig-paren">(</span><em>parent=None</em>, <em>graph=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produces region features for time-stacked 3d+c volumes</p>
+<p>The image&#8217;s axes are extended to the full xyzc shape, one t-slice at a
+time.</p>
+<p>Inputs:</p>
+<ul class="simple">
+<li>RawVolume : the raw data on which to compute features</li>
+<li>LabelVolume : a volume of connected components for each object
+in the raw data.</li>
+<li>Features : a nested dictionary of features to compute.
+Features[plugin name][feature name][parameter name] = parameter value</li>
+</ul>
+<p>Outputs:</p>
+<ul class="simple">
+<li>Output : a nested dictionary of features.
+Output[plugin name][feature name] = numpy.ndarray</li>
+</ul>
+<dl class="method">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures.compute_extent">
+<code class="descname">compute_extent</code><span class="sig-paren">(</span><em>i</em>, <em>image</em>, <em>mincoords</em>, <em>maxcoords</em>, <em>axes</em>, <em>margin</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures.compute_extent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures.compute_extent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a slicing to extract object i from the image.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures.compute_rawbbox">
+<code class="descname">compute_rawbbox</code><span class="sig-paren">(</span><em>image</em>, <em>extent</em>, <em>axes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpRegionFeatures.compute_rawbbox"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpRegionFeatures.compute_rawbbox" title="Permalink to this definition">¶</a></dt>
+<dd><p>essentially returns image[extent], preserving all channels.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectExtraction.opObjectExtraction.OpObjectCenterImage">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectExtraction.opObjectExtraction.</code><code class="descname">OpObjectCenterImage</code><span class="sig-paren">(</span><em>parent=None</em>, <em>graph=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectExtraction/opObjectExtraction.html#OpObjectCenterImage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectExtraction.opObjectExtraction.OpObjectCenterImage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Produceds an image with a cross in the center of each connected
+component.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="object-classification">
+<h3>Object Classification<a class="headerlink" href="#object-classification" title="Permalink to this headline">¶</a></h3>
+<p>The object classification applet provides functionality for labeling
+objects, training a classifier, and visualizing the prediction
+results. The top-level operator receives connected component images
+and object features from upstream operators, and it receives object
+labels from the object classification GUI. In addition to providing
+the usual output slots for classification, such as probabilities and
+predictions for each object, it also provides warnings for bad objects
+(i.e., those with missing or mangled features).</p>
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.objectClassificationApplet.ObjectClassificationApplet">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectClassification.objectClassificationApplet.</code><code class="descname">ObjectClassificationApplet</code><span class="sig-paren">(</span><em>name='Object Classification'</em>, <em>workflow=None</em>, <em>projectFileGroupName='ObjectClassification'</em>, <em>selectedFeatures={}</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/objectClassificationApplet.html#ObjectClassificationApplet"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.objectClassificationApplet.ObjectClassificationApplet" title="Permalink to this definition">¶</a></dt>
+<dd><p>An applet for labeling and classifying objects.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectClassification.opObjectClassification.</code><code class="descname">OpObjectClassification</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectClassification"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification" title="Permalink to this definition">¶</a></dt>
+<dd><p>The top-level operator for object classification.</p>
+<p>Most functionality is handled by specialized operators such as
+OpObjectTrain and OpObjectPredict.</p>
+<p>Also transfers existing labels if the upstream object segmentation
+changes. The transfer is conservative: labels only get transfered
+from an old object to a new object if they overlap sufficiently,
+and the label does not overlap with other objects.</p>
+<dl class="method">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.setupCaches">
+<code class="descname">setupCaches</code><span class="sig-paren">(</span><em>imageIndex</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectClassification.setupCaches"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.setupCaches" title="Permalink to this definition">¶</a></dt>
+<dd><p>Setup the label input and caches to correct dimensions</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.assignObjectLabel">
+<code class="descname">assignObjectLabel</code><span class="sig-paren">(</span><em>imageIndex</em>, <em>coordinate</em>, <em>assignedLabel</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectClassification.assignObjectLabel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.assignObjectLabel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update the assigned label of the object located at the given coordinate.
+Does nothing if no object resides at the given coordinate.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.exportLabelInfo">
+<code class="descname">exportLabelInfo</code><span class="sig-paren">(</span><em>file_path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectClassification.exportLabelInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.exportLabelInfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>For all images with labels, export object bounding boxes and label classes as JSON.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.importLabelInfo">
+<code class="descname">importLabelInfo</code><span class="sig-paren">(</span><em>file_path</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectClassification.importLabelInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.importLabelInfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read labels and bounding boxes from a JSON file.  
+For all image lanes in the JSON file, replace all labels in that image.  
+For image lanes NOT listed in the JSON file, keep the existing labels.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.save_export_progress_dialog">
+<code class="descname">save_export_progress_dialog</code><span class="sig-paren">(</span><em>dialog</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectClassification.save_export_progress_dialog"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.save_export_progress_dialog" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implements ExportOperator.save_export_progress_dialog
+Without this the progress dialog would be hidden after the export
+:param dialog: the ProgressDialog to save</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.do_export">
+<code class="descname">do_export</code><span class="sig-paren">(</span><em>settings</em>, <em>selected_features</em>, <em>progress_slot</em>, <em>lane_index</em>, <em>filename_suffix=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectClassification.do_export"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectClassification.do_export" title="Permalink to this definition">¶</a></dt>
+<dd><p>Implements ExportOperator.do_export(settings, selected_features, progress_slot
+Most likely called from ExportOperator.export_object_data
+:param settings: the settings for the exporter, see
+:param selected_features:
+:param progress_slot:
+:return:</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectTrain">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectClassification.opObjectClassification.</code><code class="descname">OpObjectTrain</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectTrain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectTrain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Trains a random forest on all labeled objects.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpObjectPredict">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectClassification.opObjectClassification.</code><code class="descname">OpObjectPredict</code><span class="sig-paren">(</span><em>parent=None</em>, <em>graph=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpObjectPredict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpObjectPredict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Predicts object labels in a single image.</p>
+<p>Performs prediction on all objects in a time slice at once, and
+caches the result.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpRelabelSegmentation">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectClassification.opObjectClassification.</code><code class="descname">OpRelabelSegmentation</code><span class="sig-paren">(</span><em>parent=None</em>, <em>graph=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpRelabelSegmentation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpRelabelSegmentation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes a segmentation image and a mapping and returns the
+mapped image.</p>
+<p>For instance, map prediction labels onto objects.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpMultiRelabelSegmentation">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectClassification.opObjectClassification.</code><code class="descname">OpMultiRelabelSegmentation</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpMultiRelabelSegmentation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpMultiRelabelSegmentation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes a segmentation image and multiple mappings and returns the
+mapped images.</p>
+<p>For instance, map prediction probabilities for different classes
+onto objects.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.opObjectClassification.OpMaxLabel">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectClassification.opObjectClassification.</code><code class="descname">OpMaxLabel</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/opObjectClassification.html#OpMaxLabel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.opObjectClassification.OpMaxLabel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds the maximum label value in the input labels.</p>
+<p>Special operator for object classification labels, expects
+inputs to be in a dictionary</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="ilastik.applets.objectClassification.objectClassificationGui.ObjectClassificationGui">
+<em class="property">class </em><code class="descclassname">ilastik.applets.objectClassification.objectClassificationGui.</code><code class="descname">ObjectClassificationGui</code><span class="sig-paren">(</span><em>parentApplet</em>, <em>op</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/objectClassificationGui.html#ObjectClassificationGui"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.objectClassificationGui.ObjectClassificationGui" title="Permalink to this definition">¶</a></dt>
+<dd><p>A subclass of LabelingGui for labeling objects.</p>
+<p>Handles labeling objects, viewing the predicted results, and
+displaying warnings from the top level operator. Also provides a
+dialog for choosing subsets of the precalculated features provided
+by the object extraction applet.</p>
+<dl class="method">
+<dt id="ilastik.applets.objectClassification.objectClassificationGui.ObjectClassificationGui.initAppletDrawerUi">
+<code class="descname">initAppletDrawerUi</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/objectClassificationGui.html#ObjectClassificationGui.initAppletDrawerUi"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.objectClassificationGui.ObjectClassificationGui.initAppletDrawerUi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load the ui file for the applet drawer, which we own.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.objectClassification.objectClassificationGui.ObjectClassificationGui.createLabelLayer">
+<code class="descname">createLabelLayer</code><span class="sig-paren">(</span><em>direct=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/objectClassificationGui.html#ObjectClassificationGui.createLabelLayer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.objectClassificationGui.ObjectClassificationGui.createLabelLayer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a colortable layer that displays the label slot
+data, along with its associated label source.</p>
+<p>direct: whether this layer is drawn synchronously by volumina</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.objectClassification.objectClassificationGui.ObjectClassificationGui.onClick">
+<code class="descname">onClick</code><span class="sig-paren">(</span><em>layer</em>, <em>pos5d</em>, <em>pos</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/objectClassificationGui.html#ObjectClassificationGui.onClick"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.objectClassificationGui.ObjectClassificationGui.onClick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extracts the object index that was clicked on and updates
+that object&#8217;s label.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="ilastik.applets.objectClassification.objectClassificationGui.ObjectClassificationGui.handleWarnings">
+<code class="descname">handleWarnings</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/ilastik/applets/objectClassification/objectClassificationGui.html#ObjectClassificationGui.handleWarnings"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#ilastik.applets.objectClassification.objectClassificationGui.ObjectClassificationGui.handleWarnings" title="Permalink to this definition">¶</a></dt>
+<dd><p>handle incoming warning messages by opening a pop-up window</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Applet Library</a><ul>
+<li><a class="reference internal" href="#example-applets">Example Applets</a><ul>
+<li><a class="reference internal" href="#threshold-masking">Threshold Masking</a></li>
+<li><a class="reference internal" href="#deviation-from-mean">Deviation From Mean</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#useful-base-classes">Useful Base Classes</a><ul>
+<li><a class="reference internal" href="#layer-viewer">Layer Viewer</a></li>
+<li><a class="reference internal" href="#labeling">Labeling</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#standard-applets">Standard Applets</a><ul>
+<li><a class="reference internal" href="#project-metadata">Project Metadata</a></li>
+<li><a class="reference internal" href="#data-selection">Data Selection</a></li>
+<li><a class="reference internal" href="#batch-output">Batch Output</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#workflow-specific-applets">Workflow-specific Applets</a><ul>
+<li><a class="reference internal" href="#feature-selection">Feature Selection</a></li>
+<li><a class="reference internal" href="#pixel-classification">Pixel Classification</a></li>
+<li><a class="reference internal" href="#watershed-viewer">Watershed Viewer</a></li>
+<li><a class="reference internal" href="#object-extraction">Object Extraction</a></li>
+<li><a class="reference internal" href="#object-classification">Object Classification</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="applet_api.html"
+                        title="previous chapter">Applet API</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="workflow_design.html"
+                        title="next chapter">Advanced Workflow Design</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/applet_library.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="workflow_design.html" title="Advanced Workflow Design"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="applet_api.html" title="Applet API"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">ilastik 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="applet_api.html" >Applet API</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.
+    </div>
+  </body>
+</html>
