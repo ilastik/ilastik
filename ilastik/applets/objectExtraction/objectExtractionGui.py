@@ -234,13 +234,13 @@ class FeatureSelectionDialog(QDialog):
         # Because we maintain self.ui.treeWidget.currentItem @ None
         # the self.ui.treeWidget.currentItem only gets changed when the signal is triggered by clicking on the text.
         # Relies on self.ui.treeWidget.setCurrentItem(None) in populate()
+        if col == 1:
+            self.showItemHelp(item)
+            return
+        
         itemParent = item.parent()
         currentItem = self.ui.treeWidget.currentItem()
         if item.childCount()>0: # user clicked a Plugin Name or a group
-            if col==1:
-                # early return, since the user clicked on "help" and didn't want to check the feature
-                self.ui.textBrowser.setText("here we will have plugin help")
-                return
             if itemParent is not None:
                 # it's a group, nothing happens when you click
                 return
@@ -267,17 +267,7 @@ class FeatureSelectionDialog(QDialog):
                 # this feature is in a group
                 pluginItem = itemParent.parent()
             pluginName=str(pluginItem.text(0))
-            itemName=str(item.text(0))
 
-            plugin_feature_name = self.displayNamesDict[itemName]
-            try:
-                self.ui.textBrowser.setText(self.featureDict[pluginName][plugin_feature_name]["detailtext"])
-            except KeyError:
-                self.ui.textBrowser.setText("Sorry, no detailed description is available for this feature")
-
-            if col==1:
-                #early return, since the user clicked on "help" and didn't want to check the feature
-                return
             if currentItem == item: # user clicked on the text, check the box for the user
                 if item.checkState(0) == Qt.Checked:
                     item.setCheckState(0, Qt.Unchecked)
@@ -303,6 +293,31 @@ class FeatureSelectionDialog(QDialog):
                     pluginItem.setCheckState(0, Qt.PartiallyChecked)
 
             self.updateToolTip(pluginItem)
+
+    def showItemHelp(self, item):
+        """
+        Change the help message in the text browser widget to correspond to the given treewidget item.
+        """
+        if item.childCount() > 0:
+            # user clicked a Plugin Name or a group
+            self.ui.textBrowser.setText("")
+            return
+        
+        if item.parent().parent() is None:
+            # this feature is not in a group, but in a plugin directly
+            pluginItem = item.parent()
+        else:
+            # this feature is in a group
+            pluginItem = item.parent().parent()
+
+        pluginName=str(pluginItem.text(0))
+        itemName=str(item.text(0))
+
+        plugin_feature_name = self.displayNamesDict[itemName]
+        try:
+            self.ui.textBrowser.setText(self.featureDict[pluginName][plugin_feature_name]["detailtext"])
+        except KeyError:
+            self.ui.textBrowser.setText("Sorry, no detailed description is available for this feature")
 
     def updateToolTip(self, item):
         name = str(item.text(0))
