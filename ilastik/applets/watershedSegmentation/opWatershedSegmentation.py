@@ -26,6 +26,11 @@ class OpWatershedSegmentation(Operator):
     Initialize the parameters for the calculations (and Gui)
     Provide execution function for the execution of the watershed algorithm
     """
+    #TODO
+    #seeds muessen 1, 2, 3 sein, also kann man auch 120 180, etc verwenden, 
+    #rest aussen rum muss schwarz=0 sein
+    #bei den membranen: die membrane selbst muessen 255 sein und der rest 0=schwarz
+    #help(vigra.analysis.watershedsNew)
 
     ############################################################
     # Inputslots for inputs from other applets
@@ -44,17 +49,12 @@ class OpWatershedSegmentation(Operator):
     BrushValue          = InputSlot(value=0)
 
     ############################################################
-    # watershed algorithm parameters
+    # watershed algorithm parameters (optional)
     ############################################################
     WSNeighbors         = InputSlot(value="direct")
     WSMethod            = InputSlot(value="RegionGrowing")
     WSTerminate         = InputSlot(value=vigra.analysis.SRGType.CompleteGrow)
     WSMaxCost           = InputSlot(value=0)
-
-        #neighborhood
-        #method
-        #terminate
-        #max_cost
 
 
     ############################################################
@@ -98,12 +98,10 @@ class OpWatershedSegmentation(Operator):
         self.opWSC.Boundaries   .connect( self.Boundaries )
         self.opWSC.Seeds        .connect( self.CorrectedSeedsOut )
         #Input Parameters (optional)
-        '''
         self.opWSC.Neighbors    .connect( self.WSNeighbors )
         self.opWSC.Method       .connect( self.WSMethod )
         self.opWSC.MaxCost      .connect( self.WSMaxCost )
         self.opWSC.Terminate    .connect( self.WSTerminate )
-        '''
         #Output
         self.WatershedCalc.connect( self.opWSC.Output )
 
@@ -222,14 +220,17 @@ class OpWatershedSegmentationCalculation( Operator ):
 
         # detect the correct dimension for the watershed algorithm
         method, neighbors, terminate, maxCost = self.prepareInputParameter(seeds.ndim)
+        '''
         print neighbors
         print method
         print terminate
         print maxCost
+        '''
 
-        #UnionFind with seeds=None
+        #UnionFind doesn't support seeds and max_cost
         if (method == "UnionFind"):
             seeds = None
+            maxCost = 0
 
         # watershedAlgoirthm itself
         (labelImage, maxRegionLabel) = vigra.analysis.watershedsNew(\
@@ -238,47 +239,83 @@ class OpWatershedSegmentationCalculation( Operator ):
                 neighborhood    = neighbors,
                 method          = method,
                 terminate       = terminate,
-                max_cost        = maxCost)
+                max_cost        = 200)
+                #max_cost        = maxCost)
 
-        #TODO
-        #seeds muessen 1, 2, 3 sein, also kann man auch 120 180, etc verwenden, 
-        #rest aussen rum muss schwarz=0 sein
-        #bei den membranen: die membrane selbst muessen 255 sein und der rest 0=schwarz
-        #help(vigra.analysis.watershedsNew)
 
         return (labelImage, maxRegionLabel)
 
 
+    def arrayConversion(self, boundaries, seeds):
+        """
+        :param boundaries: array 1
+        :param seeds: array2
+        :return: boundaries, seeds
+        convert the array in a numpy array that is necessary for vigra.analysis.watershedsNew
+        """
+        #boundaries
+        # input image: uint8 or float32, (float32 includes more information)
+        boundaries     = boundaries.astype(np.float32)
+
+        #for the seeds
+        # uint32
+        seeds          = seeds.astype(np.uint32)
+        return boundaries, seeds
+
+    def getArrays(self):
+        """
+        get the arrays: boundaries and seeds from the slot 
+        and check, whether the fit together in sense of shape and order of axes
+        :return: boundaries, seeds
+        """
+        #get the data from boundaries and seeds
+        boundaries    = self.Boundaries[:].wait()
+        seeds         = self.Seeds[:].wait()
+
+        #both shapes must be the same, and the axistags (means where x, y,z,t,c are)
+        assert seeds.shape == boundaries.shape
+        assert self.Seeds.meta.axistags == self.Boundaries.meta.axistags
+
+        return boundaries, seeds
 
     def execWatershedAlgorithm(self):
         """
         handles the execution of the watershed algorithm 
         """
+
+        
+        boundaries, seeds = self.getArrays()
+
+        # necessary for vigra.analysis.watershedsNew
+        boundaries, seeds = self.arrayConversion(boundaries, seeds)
+
+        # check the axes and return, whether the time is used and the number of its axis
+        (tUsed, tAxis) = self.evaluateSlicing(self.Seeds)
+
+        # needed for vigra to remove the channel axis
+        (boundaries, seeds) = self.removeChannelAxis(boundaries, seeds)
+
+
+        # doesn't matter whether image is 2D or 3D, at least we do slicing over time
+        # because 2D or 3D does vigra for us
+        # slice over time
+        if tUsed:
+            labelImageArray = self.slicedWatershedAlgorithm(boundaries, seeds, tAxis)
+
+            # no slicing
+        else:
+            (labelImageArray, maxRegionLabel) =\
+                self.watershedAlgorithm(boundaries, seeds)
+
+        # needed for ilastik to have a channel axis
+        labelImageArray = self.addChannelAxis(labelImageArray)
+
+        # set the value of the OutputSlot to the calculated array
+        self.Output.setValue(labelImageArray)
+
         ############################################################
         # BEGIN TODO
         ############################################################
-
-
-        # maybe checkout into function
-
-        #get the data from boundaries and seeds
-        arrayBoundaries    = self.Boundaries[:].wait()
-        arraySeeds         = self.Seeds[:].wait()
-
-        #both shapes must be the same, and the axistags (means where x, y,z,t,c are)
-        assert arraySeeds.shape == arrayBoundaries.shape
-        assert self.Seeds.meta.axistags == self.Boundaries.meta.axistags
-
-
-        # TODO dataconversion depending on the input-paramter slot for which method to choose
-        ######## data conversion #####
-        #boundaries
-        #input image: uint8 or float32
-        arrayBoundaries     = arrayBoundaries.astype(np.float32)
-
-        #for the seeds
-        # uint32
-        arraySeeds          = arraySeeds.astype(np.uint32)
 
         #TODO integrate process bar
 
@@ -286,37 +323,6 @@ class OpWatershedSegmentationCalculation( Operator ):
         ############################################################
         # END TODO
         ############################################################
-
-
-        ############################################################
-        #
-        ############################################################
-
-        # check the axes and return, whether the time is used and the number of its axis
-        (tUsed, tAxis) = self.evaluateSlicing(self.Seeds)
-
-        # needed for vigra to remove the channel axis
-        (arrayBoundaries, arraySeeds) = self.removeChannelAxis(arrayBoundaries, arraySeeds)
-
-
-        # doesn't matter whether image is 2D or 3D, at least we do slicing over time
-        # because 2D or 3D does vigra for us
-        if tUsed:
-            labelImageArray = self.slicedWatershedAlgorithm(arrayBoundaries, arraySeeds, tAxis)
-
-            # no slicing
-        else:
-            (labelImageArray, maxRegionLabel) =\
-                self.watershedAlgorithm(arrayBoundaries, arraySeeds)
-
-
-        # needed for ilastik to have a channel axis
-        labelImageArray = self.addChannelAxis(labelImageArray)
-
-
-        # set the value of the OutputSlot to the calculated array
-        self.Output.setValue(labelImageArray)
-
         ''' 
         #for debugging
         tUsed = True if (tId < dims) else False
@@ -350,10 +356,10 @@ class OpWatershedSegmentationCalculation( Operator ):
         #print self.Output
         #of the last image
         #print maxRegionLabel
-        #print arrayBoundaries.dtype
-        #print arraySeeds.dtype
-        #print arrayBoundaries.shape
-        #print arraySeeds.shape
+        #print boundaries.dtype
+        #print seeds.dtype
+        #print boundaries.shape
+        #print seeds.shape
         '''
     ############################################################
     # helping functions
@@ -416,7 +422,7 @@ class OpWatershedSegmentationCalculation( Operator ):
     def slicedWatershedAlgorithm(self, boundaries, seeds, tAxis):
         """
         uses watershedAlgorithm for the main algorithm execution
-        but slices the data, sothat that algorithm can be used easily
+        but slices the data for it, so that that algorithm can be used easily
 
         :param boundaries: the array, that contains the boundaries data
         :param seeds: the array, that contains the seeds data
@@ -505,6 +511,8 @@ class OpWatershedSegmentationCalculation( Operator ):
         terminateArray  = [terminate0, terminate1, terminate2, terminate3]
         terminateName   = "Terminate"
 
+        #maxCost must be a number: int, long or float
+
         data =\
             [[method, methodArray, methodName],
             [neighbors, neighborsArray, neighborsName],
@@ -521,8 +529,8 @@ class OpWatershedSegmentationCalculation( Operator ):
                 logger.info("Input " + name +" is wrong; use default configuration")
                 parameter = None
 
-        #maxCost must be integer
-        if (not isinstance(maxCost, int) or None ):
+        #maxCost must be a number (int, long, float)
+        if (not isinstance(maxCost, (int, long, float))):
             logger.info("Input maxCost is wrong; use default configuration")
             maxCost = None
 
