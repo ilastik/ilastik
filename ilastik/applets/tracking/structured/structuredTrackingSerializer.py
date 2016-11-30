@@ -96,6 +96,8 @@ class StructuredTrackingSerializer(AppletSerializer):
                   SerialDictSlot(topLevelOperator.EventsVector, transform=str, selfdepends=True),
                   SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
                   SerialPickledValueSlot(topLevelOperator.ExportSettings),
+                  SerialPickledValueSlot(topLevelOperator.HypothesesGraph),
+                  SerialPickledValueSlot(topLevelOperator.ResolvedMergers),
                   SerialSlot(topLevelOperator.DivisionWeight),
                   SerialSlot(topLevelOperator.DetectionWeight),
                   SerialSlot(topLevelOperator.TransitionWeight),
