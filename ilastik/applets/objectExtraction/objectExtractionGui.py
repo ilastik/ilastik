@@ -18,9 +18,9 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QColor, QTreeWidgetItem, QMessageBox, QHeaderView, QResizeEvent
+from PyQt4.QtGui import QColor, QTreeWidgetItem, QMessageBox, QHeaderView, QResizeEvent, QMouseEvent
 from PyQt4 import uic
-from PyQt4.QtCore import Qt
+from PyQt4.QtCore import Qt, QEvent
 
 from lazyflow.rtype import SubRegion
 import os
@@ -84,7 +84,11 @@ class FeatureSelectionDialog(QDialog):
 
         self.ui.treeWidget.header().setResizeMode(QHeaderView.Interactive)
         self.ui.treeWidget.header().setStretchLastSection(True)
-        self.ui.treeWidget.installEventFilter(self)
+        self.ui.treeWidget.viewport().setMouseTracking(True)
+
+        # Must intercept events from the viewport, since the TreeWidget apparently
+        # swallows them up before we can process them in our own eventFilter
+        self.ui.treeWidget.viewport().installEventFilter(self)
 
         self.ui.textBrowser.setText("Click on the \"?\" to get detailed information about a feature")
 
@@ -101,10 +105,18 @@ class FeatureSelectionDialog(QDialog):
         """
         Reset the TreeWidget column widths whenever the dialog is resized
         """
-        assert watched is self.ui.treeWidget
+        assert watched is self.ui.treeWidget.viewport()
+
         if isinstance(event, QResizeEvent):
             self.ui.treeWidget.header().resizeSection(0, self.ui.treeWidget.width() - 50)
             self.ui.treeWidget.header().resizeSection(1, 50)
+
+        # Auto-show the help text when the mouse hovers over an item.
+        if isinstance(event, QMouseEvent) and event.type() == QEvent.MouseMove:
+            item = self.ui.treeWidget.itemAt(event.pos())
+            if item is not None:
+                self.updateTree(item, 1) # Simulate clicking on the '?' column
+
         return False
 
     def populate(self):
