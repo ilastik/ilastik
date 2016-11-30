@@ -147,6 +147,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             if not self.Parameters.ready():
                 raise Exception("Parameter slot is not ready")
             parameters = self.Parameters.value
+            resolvedMergers = self.ResolvedMergers.value
             
             # Assume [t,x,y,z,c] order           
             trange = range(roi.start[0], roi.stop[0])
@@ -156,7 +157,7 @@ class OpConservationTracking(Operator, ExportingOperator):
 
             for t in trange:
                 if 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]:
-                    if self.ResolvedMergers.value:
+                    if resolvedMergers:
                         self._labelMergers(result[t-roi.start[0],...,0], t, offset)
                     result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t)
                 else:
@@ -165,6 +166,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Output showing mergers only    
         elif slot is self.MergerOutput:
             parameters = self.Parameters.value
+            resolvedMergers = self.ResolvedMergers.value
             
             # Assume [t,x,y,z,c] order
             trange = range(roi.start[0], roi.stop[0])
@@ -174,7 +176,7 @@ class OpConservationTracking(Operator, ExportingOperator):
    
             for t in trange:
                 if 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]:
-                    if self.ResolvedMergers.value:
+                    if resolvedMergers:
                         self._labelMergers(result[t-roi.start[0],...,0], t, offset)   
                     result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True)
                 else:
@@ -183,6 +185,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Output showing object Ids (before lineage IDs are assigned)   
         elif slot is self.RelabeledImage:
             parameters = self.Parameters.value
+            resolvedMergers = self.ResolvedMergers.value
             
             # Assume [t,x,y,z,c] order
             trange = range(roi.start[0], roi.stop[0])
@@ -191,7 +194,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             result[:] =  self.LabelImage.get(roi).wait()
             
             for t in trange:
-                if self.ResolvedMergers.value and 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]:
+                if resolvedMergers and 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]:
                     self._labelMergers(result[t-roi.start[0],...,0], t, offset)
         
         # Cache blocks            
@@ -600,8 +603,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                 if time not in resolvedMergersDict:
                     idxs = []
                 else:
-                    newIds = [nodeDict['newIds'] for _, nodeDict in resolvedMergersDict[time].items()]
-                    newIds = [id for ids in newIds for id in ids]
+                    newIds = [newId for _, nodeDict in resolvedMergersDict[time].items() for newId in nodeDict['newIds']]
                     idxs = [id for id in idxs if id in newIds]
             else:
                 idxs = [idx for idx in idxs if idx > 0 and hypothesesGraph.hasNode((time,idx)) and hypothesesGraph._graph.node[(time,idx)]['value'] > 1]
@@ -675,36 +677,82 @@ class OpConservationTracking(Operator, ExportingOperator):
         if not hypothesesGraph:
             raise DatasetConstraintError('Tracking', 'Tracking solution not ready: Did you forgot to press the Track button?')
 
+        with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
+
         obj_count = list(objects_per_frame(label_image_slot))        
         object_ids_generator = ilastik_ids(obj_count)
-         
+        
+        # Tracking results data 
         object_ids = [] 
         lineage_ids = []
         track_ids = []
+        
+        # Division table data
+        div_timesteps = []
+        div_object_ids = []
+        div_lineage_ids = []
+        div_track_ids = []
+        div_child1_oids = []
+        div_child1_track_ids = []
+        div_child2_oids = []
+        div_child2_track_ids = []        
           
         for (time, object_id) in object_ids_generator: 
-            object_ids.append((time, object_id))
+            node = (time, object_id)
             
-            if hypothesesGraph.hasNode((time,object_id)):        
+            # Populate results table
+            object_ids.append(node)
+            
+            if hypothesesGraph.hasNode(node):        
                 lineage_id = hypothesesGraph.getLineageId(time, object_id)
-                if lineage_id:    
-                    lineage_ids.append(lineage_id)
-                else:
-                    logger.debug("Empty lineage ID for node ({},{})".format(time, object_id))
-                    lineage_ids.append(0)
+                if not lineage_id:    
+                    lineage_id = 0
+                lineage_ids.append(lineage_id)
                     
                 track_id = hypothesesGraph.getTrackId(time, object_id)    
-                if track_id:
-                    track_ids.append(track_id)
-                else:
-                    track_ids.append(0) 
+                if not track_id:
+                    track_id = 0
+                track_ids.append(track_id) 
+                
+                # Populate division table  
+                if with_divisions and 'divisionValue' in hypothesesGraph._graph.node[node] and hypothesesGraph._graph.node[node]['divisionValue']:
+                    div_timesteps.append(time)
+                    div_object_ids.append(object_id)
+                    
+                    if not lineage_id:
+                        lineage_id = 0
+                    div_lineage_ids.append(object_id)
+                                        
+                    if not track_id:
+                        track_id = 0
+                    div_track_ids.append(track_id)
+                    
+                    assert len(hypothesesGraph._graph.out_edges(node)) != 2, "Division node {}, does not contain 2 children".format(node) 
+                    
+                    child1 = hypothesesGraph._graph.out_edges(node)[0][1]
+                    child1_time = child1[0]
+                    child1_object_id = child1[1]
+                    div_child1_oids.append(child1_object_id)
+                    child1_track_id = hypothesesGraph.getTrackId(child1_time, child1_object_id)
+                    if not child1_track_id:
+                        child1_track_id = 0
+                    div_child1_track_ids.append(child1_track_id)
+                    
+                    child2 = hypothesesGraph._graph.out_edges(node)[1][1]
+                    child2_time = child2[0]
+                    child2_object_id = child2[1]
+                    div_child2_oids.append(child2_object_id)
+                    child2_track_id = hypothesesGraph.getTrackId(child2_time, child2_object_id)
+                    if not child2_track_id:
+                        child2_track_id = 0
+                    div_child2_track_ids.append(child2_track_id)
+                                          
             else:
                 lineage_ids.append(0)
                 track_ids.append(0)
                 
-
+        # Write results table
         selected_features = list(selected_features)
-        with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
 
         file_path = settings["file path"]
         if filename_suffix:
@@ -723,10 +771,11 @@ class OpConservationTracking(Operator, ExportingOperator):
         export_file.add_columns("table", object_feature_slot, Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
 
+        # Write divisions tab;e
         if with_divisions:
-            # Export divisions here
-            # export_file.add_columns("divisions", divisions, Mode.List, Default.DivisionNames)
-            pass
+            divisions_data = zip(div_timesteps, div_object_ids, div_lineage_ids, div_track_ids, div_child1_oids, div_child1_track_ids, div_child2_oids, div_child2_track_ids)
+            if divisions_data:
+                export_file.add_columns("divisions", divisions_data, Mode.List, Default.DivisionNames)
 
         if settings["file type"] == "h5":
             export_file.add_rois(Default.LabelRoiPath, label_image_slot, "table", settings["margin"], "labeling")
@@ -734,6 +783,8 @@ class OpConservationTracking(Operator, ExportingOperator):
                 export_file.add_image(Default.RawPath, self.RawImage)
             else:
                 export_file.add_rois(Default.RawRoiPath, self.RawImage, "table", settings["margin"])
+                
+        # Write files
         export_file.write_all(settings["file type"], settings["compression"])
 
         export_file.ExportProgress.unsubscribe(progress_slot)
