@@ -58,7 +58,16 @@ class OpStructuredTracking(OpConservationTracking):
         self.transitionWeight = 1
         self.appearanceWeight = 1
         self.disappearanceWeight = 1
+
         self.Crops.notifyReady(bind(self._updateCropsFromOperator) )
+        self.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
+        self.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
+
+    def _updateLabelsFromOperator(self):
+        self.labels = self.Labels.value
+
+    def _updateDivisionsFromOperator(self):
+        self.divisions = self.Divisions.value
 
     def setupOutputs(self):
         super(OpStructuredTracking, self).setupOutputs()
