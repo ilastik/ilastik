@@ -260,7 +260,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             maxNumObjects=maxObj,
             numNearestNeighbors=max_nearest_neighbors,
             fieldOfView=fieldOfView,
-            withDivisions=False,
+            withDivisions=withDivisions,
             maxNeighborDistance=maxDist,
             divisionThreshold=divThreshold
         )
