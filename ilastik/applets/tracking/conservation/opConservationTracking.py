@@ -433,9 +433,8 @@ class OpConservationTracking(Operator, ExportingOperator):
         trackingGraph.convexifyCosts()
         model = trackingGraph.model
 
-        weights = {u'weights': [transWeight, detWeight, appearance_cost, disappearance_cost]}
-        if withDivisions:
-            weights = {u'weights': [transWeight, detWeight, divWeight, appearance_cost, disappearance_cost]}
+        detWeight = 10.0 # FIXME: Should we store this weight in the parameters slot?
+        weights = trackingGraph.weightsListToDict([transWeight, detWeight, divWeight, appearance_cost, disappearance_cost])
 
         if solverName == 'Flow-based' and dpct:
             result = dpct.trackFlowBased(model, weights)
@@ -443,7 +442,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             result = mht.track(model, weights)
         else:
             raise ValueError("Invalid tracking solver selected")
-        
+
         # Insert the solution into the hypotheses graph and from that deduce the lineages
         if hypothesesGraph:
             hypothesesGraph.insertSolution(result)
