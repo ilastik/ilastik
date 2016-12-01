@@ -260,7 +260,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             maxNumObjects=maxObj,
             numNearestNeighbors=max_nearest_neighbors,
             fieldOfView=fieldOfView,
-            withDivisions=False,
+            withDivisions=withDivisions,
             maxNeighborDistance=maxDist,
             divisionThreshold=divThreshold
         )
@@ -928,9 +928,16 @@ class OpConservationTracking(Operator, ExportingOperator):
                     traxel.set_feature_value("CoordMaximum", i, float(v))
 
                 if with_div:
-                    traxel.add_feature_array("divProb", 1)
+                    traxel.add_feature_array("divProb", 2)
                     # idx+1 because rc and ct start from 1, divProbs starts from 0
-                    traxel.set_feature_value("divProb", 0, float(divProbs[t][idx + 1][1]))
+                    prob = float(divProbs[t][idx + 1][1])
+                    prob = float(prob)
+                    if prob < 0.0000001:
+                        prob = 0.0000001
+                    if prob > 0.99999999:
+                        prob = 0.99999999
+                    traxel.set_feature_value("divProb", 0, 1.0 - prob)
+                    traxel.set_feature_value("divProb", 1, prob)
 
                 if with_classifier_prior:
                     traxel.add_feature_array("detProb", len(detProbs[t][idx + 1]))
