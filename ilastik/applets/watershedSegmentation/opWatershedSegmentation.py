@@ -291,7 +291,8 @@ class OpWatershedSegmentationCalculation( Operator ):
         ############################################################
 
         #TODO integrate process bar
-
+        
+        #TODO integrate the seeds with cache
 
         '''
         how to:::
