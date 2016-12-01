@@ -313,23 +313,24 @@ class OpStructuredTracking(OpConservationTracking):
         model['settings']['optimizerEpGap'] = 0.005
         gt = prunedGraph.getSolutionDictionary()
 
-        initialWeights = {u'weights': [transitionWeight, detectionWeight, appearanceWeight, disappearanceWeight]}
-        if withDivisions:
-            initialWeights = {u'weights': [transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight]}
+        # initialWeights = {u'weights': [transitionWeight, detectionWeight, appearanceWeight, disappearanceWeight]}
+        # if withDivisions:
+        #     initialWeights = {u'weights': [transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight]}
+        initialWeights = trackingGraph.weightsListToDict([transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight])
 
         mht.trainWithWeightInitialization(model,gt, initialWeights)
         weightsDict = mht.train(model, gt)
 
-        weights = weightsDict['weights']
-        if not withDivisions:
-            weights.insert(2,0.0)
+        weights = trackingGraph.weightsDictToList(weightsDict)
+
+
         if not withBatchProcessing and withDivisions and numAllAnnotatedDivisions == 0 and not weights[2] == 0.0:
             gui._informationMessage("Divisible objects are checked, but you did not annotate any divisions in your tracking training. " + \
                                  "The resulting division weight might be arbitrarily and if there are divisions present in the dataset, " +\
                                  "they might not be present in the tracking solution.")
 
         norm = 0
-        for i in range(5):
+        for i in range(len(weights)):
             norm += weights[i]*weights[i]
         norm = math.sqrt(norm)
 
@@ -370,12 +371,10 @@ class OpStructuredTracking(OpConservationTracking):
             model['settings']['nonNegativeWeightsOnly'] = True
             weightsDict = mht.train(model, gt)
 
-            weights = weightsDict['weights']
-            if not withDivisions:
-                weights.insert(2,0.0)
+            weights = trackingGraph.weightsDictToList(weightsDict)
 
             norm = 0
-            for i in range(5):
+            for i in range(len(weights)):
                 norm += weights[i]*weights[i]
             norm = math.sqrt(norm)
 
