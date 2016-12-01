@@ -289,6 +289,16 @@ class StructuredTrackingWorkflowBase( Workflow ):
             ndim = 3
 
         parameters = self.trackingApplet.topLevelOperator.Parameters.value
+        print "parameters",parameters
+
+        crops = self.cropSelectionApplet.topLevelOperator.Crops[lane_index].value
+        print "crops--->",crops,"<---"
+
+        labels = self.annotationsApplet.topLevelOperator.Labels[lane_index].value
+        print "labels===>",labels, "<==="
+        
+        divisions = self.annotationsApplet.topLevelOperator.Divisions[lane_index].value
+        print "divisions===>",divisions, "<==="
 
         # Save state of axis ranges
         if 'time_range' in parameters:
