@@ -43,10 +43,14 @@ class TestConservationTrackingHeadless(object):
     BINARY_SEGMENTATION_FILE = 'data/inputdata/smallVideoSimpleSegmentation.h5'
 
     EXPECTED_TRACKING_RESULT_FILE = 'data/inputdata/smallVideo_Tracking-Result.h5'
+    EXPECTED_SHAPE = (7, 408, 408, 1, 1) # Expected shape for tracking results HDF5 files
+    
     EXPECTED_CSV_FILE = 'data/inputdata/smallVideo-exported_data_table.csv'
-    EXPECTED_SHAPE = (3, 408, 408, 1, 1) # Expected shape for tracking results HDF5 files
-    EXPECTED_NUM_LINES = 11 # Number of lines expected in exported csv file
+    EXPECTED_NUM_ROWS = 25 # Number of lines expected in exported csv file
     EXPECTED_MERGER_NUM = 2 # Number of mergers expected in exported csv file
+    
+    EXPECTED_CSV_DIVISIONS_FILE = 'data/inputdata/smallVideo-exported_data_divisions.csv'
+    EXPECTED_NUM_ROWS_DIVISIONS = 1
 
     @classmethod
     def setupClass(cls):
@@ -65,15 +69,14 @@ class TestConservationTrackingHeadless(object):
 
     @classmethod
     def teardownClass(cls):
-        removeFiles = ['data/inputdata/smallVideo_Tracking-Result.h5', 'data/inputdata/smallVideo-exported_data_table.csv']
-        
+        removeFiles = ['data/inputdata/smallVideo_Tracking-Result.h5', 'data/inputdata/smallVideo-exported_data_table.csv', 'data/inputdata/smallVideo-exported_data_divisions.csv']
+         
         # Clean up: Delete any test files we generated
         for f in removeFiles:
             try:
                 os.remove(f)
             except:
                 pass
-        pass
 
 
     @timeLogged(logger)
@@ -82,14 +85,15 @@ class TestConservationTrackingHeadless(object):
         try:
             import ilastik.workflows.tracking.conservation
         except ImportError as e:
-            logger.warn( "Conservation tracking could not be imported. CPLEX is most likely missing: " + str(e) )
+            logger.warn( "Conservation tracking could not be imported: " + str(e) )
             raise nose.SkipTest 
         
+        # TODO: When Hytra is supported on Windows, we shouldn't skip the test and throw an assert instead
         try:
             import hytra
         except ImportError as e:
-            logger.warn( "New tracking pipeline Hytra couldn't be imported: " + str(e) )
-            raise nose.SkipTest 
+            logger.warn( "Hytra tracking pipeline couldn't be imported: " + str(e) )
+            raise nose.SkipTest
         
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
@@ -116,6 +120,13 @@ class TestConservationTrackingHeadless(object):
             
         # Load csv file
         data = np.genfromtxt(self.EXPECTED_CSV_FILE, dtype=float, delimiter=',', names=True)
+
+        # Check for expected number of rows in csv table
+        assert data.shape[0] == self.EXPECTED_NUM_ROWS, 'Number of rows in csv file differs from expected' 
+
+        # Check that csv contains RegionRadii and RegionAxes (necessary for animal tracking)
+        assert 'RegionRadii_0' in data.dtype.names, 'RegionRadii not found in csv file (required for animal tracking)'
+        assert  'RegionAxes_0' in data.dtype.names, 'RegionAxes not found in csv file (required for animal tracking)'   
         
         # Check for expected number of mergers
         merger_count = 0
@@ -123,15 +134,15 @@ class TestConservationTrackingHeadless(object):
             if id == 0:
                 merger_count += 1
                 
-        assert merger_count == self.EXPECTED_MERGER_NUM, 'Number of mergers in csv file differs from expected'
-        
-        # Check for expected number of lines
-        assert data.shape[0] == self.EXPECTED_NUM_LINES, 'Number of rows in csv file differs from expected'
-                
-        # Check that csv contains RegionRadii and RegionAxes (necessary for animal tracking)
-        assert 'RegionRadii_0' in data.dtype.names, 'RegionRadii not found in csv file (required for animal tracking)'
-        assert  'RegionAxes_0' in data.dtype.names, 'RegionAxes not found in csv file (required for animal tracking)'         
+        assert merger_count == self.EXPECTED_MERGER_NUM, 'Number of mergers in csv file differs from expected'     
 
+        # Load csv divisions file
+        data_divisions = np.genfromtxt(self.EXPECTED_CSV_DIVISIONS_FILE, dtype=float, delimiter=',', names=True)
+        data_divisions = np.atleast_1d(data_divisions)
+        
+        # Check for expected number of rows in divisions csv table (we only have one division in the video)
+        assert data_divisions.shape[0] == self.EXPECTED_NUM_ROWS_DIVISIONS, 'Number of rows in csv divisions file differs from expected' 
+         
 
 if __name__ == "__main__":
     # Make the program quit on Ctrl+C

@@ -101,6 +101,9 @@ class TrackingBaseGui( LayerViewerGui ):
                 merger_ct = self.merger_colortable
             else:
                 merger_ct = self.tracking_colortable
+                
+            # Using same color table for tracking with and without mergers (Is there any reason for using different color tables?)
+            merger_ct = self.tracking_colortable
 
             if self.topLevelOperatorView.MergerCachedOutput.ready():
                 self.mergersrc = LazyflowSource( self.topLevelOperatorView.MergerCachedOutput )
@@ -333,10 +336,7 @@ class TrackingBaseGui( LayerViewerGui ):
                     roi = SubRegion(labelImageSlot, key)
                     labelImage = labelImageSlot.get(roi).wait()
                     labelImage = labelImage[0,...,0]
-                    if self.withMergers:
-                        write_events(events_at, str(directory), t, labelImage, self.mainOperator.resolvedto)
-                    else:
-                        write_events(events_at, str(directory), t, labelImage)
+                    write_events(events_at, str(directory), t, labelImage)
                     _handle_progress(i/num_files * 100)
             except IOError as e:
                 self._criticalMessage("Cannot export the tracking results. Maybe these files already exist. "\

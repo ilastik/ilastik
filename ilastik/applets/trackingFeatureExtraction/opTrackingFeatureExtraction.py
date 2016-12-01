@@ -92,7 +92,7 @@ class OpDivisionFeatures(Operator):
             result[t][config.features_division_name] = res 
         
         stop = time.time()
-        logger.info("TIMING: computing division features took {:.3f}s".format(stop-start))
+        logger.debug("TIMING: computing division features took {:.3f}s".format(stop-start))
         return result
     
     

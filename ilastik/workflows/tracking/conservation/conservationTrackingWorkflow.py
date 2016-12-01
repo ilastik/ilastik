@@ -120,6 +120,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self.dataExportApplet.set_exporting_operator(opTracking)
         self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
         self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
+        self.dataExportApplet.includeTableOnlyOption() # Export table only, without volumes
         
         # configure export settings
         settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}
