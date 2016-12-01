@@ -39,10 +39,17 @@ class WatershedSegmentationApplet( StandardApplet ):
 
     @property
     def broadcastingSlots(self):
-        #TODO
-        return [ 'ChannelSelection',
-                 'BrushValue'
-                ]
+        """
+        Needed to have these inputSlots (and their values) 
+        available for other image lane, means, that if you have 
+        30 images for each ImageInput, change from one to another 
+        Image-tuple, the parameters must stay the same
+        So only needed for multiple image lanes 
+        (must be inplemented for all image lanes)
+
+        :return: the name of the slots as list of string, e.g. ['ChannelSelection', 'BrushValue;]
+        """
+        return [ ]
 
     @property
     def singleLaneGuiClass(self):

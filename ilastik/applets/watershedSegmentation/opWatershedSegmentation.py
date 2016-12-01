@@ -16,6 +16,8 @@ import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
+#for caching the data of the watershed algorithm
+from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import _OpCacheWrapper
 
 import logging
 logger = logging.getLogger(__name__)
@@ -44,9 +46,7 @@ class OpWatershedSegmentation(Operator):
     ############################################################
     # Inputslots for Internal Parameter Usage
     ############################################################
-    #TODO don't need them, also delete them in the serializer and the applet
-    ChannelSelection    = InputSlot(value=0)
-    BrushValue          = InputSlot(value=0)
+    ShowWatershedLayer  = InputSlot(value=False)
 
     ############################################################
     # watershed algorithm parameters (optional)
@@ -64,7 +64,21 @@ class OpWatershedSegmentation(Operator):
     #for the labeling
     CorrectedSeedsOut   = OutputSlot() # Labels from the user, used as seeds for the watershed algorithm
     WatershedCalc       = OutputSlot()
+    #Cached Output should be the output in a layer, nothing more
+    WSCCOCachedOutput   = OutputSlot()  # For the GUI (blockwise-access)
 
+    ############################################################
+    # For serialization (saving in cache) of the watershed Output
+    ############################################################
+    WSCCOInputHdf5      = InputSlot(optional=True)
+    WSCCOOutputHdf5     = OutputSlot()
+    WSCCOCleanBlocks    = OutputSlot()
+
+
+
+    ############################################################
+    # Label slots
+    ############################################################
 
     # GUI-only (not part of the pipeline, but saved to the project)
     LabelNames          = OutputSlot()
@@ -82,7 +96,7 @@ class OpWatershedSegmentation(Operator):
         self.PmapColors.setValue( [] )
 
         ############################################################
-        # Label-Pipeline setup
+        # Label-Pipeline setup = WSLP
         ############################################################
         self.opWSLP = OpWatershedSegmentationLabelPipeline(parent=self)
         #Input
@@ -92,7 +106,7 @@ class OpWatershedSegmentation(Operator):
         self.CorrectedSeedsOut  .connect( self.opWSLP.SeedOutput )
 
         ############################################################
-        # watershed caclculations
+        # watershed calculations = WSC
         ############################################################
         self.opWSC  = OpWatershedSegmentationCalculation( parent=self)
         #Input
@@ -106,6 +120,25 @@ class OpWatershedSegmentation(Operator):
         #Output
         self.WatershedCalc.connect( self.opWSC.Output )
 
+        ############################################################
+        # watershed calculations cached output = WSCCO
+        ############################################################
+        #cache our own output, don't propagate from internal operator
+        self._cache = _OpCacheWrapper(parent=self)
+        self._cache.name = "OpWatershedSegmentation.OpCacheWrapper"
+        # use this output of the cache for displaying in a layer only
+        self.WSCCOCachedOutput.connect(self._cache.Output)
+
+        # Serialization slots
+        self._cache.InputHdf5.connect(self.WSCCOInputHdf5)
+        self.WSCCOCleanBlocks.connect(self._cache.CleanBlocks)
+        self.WSCCOOutputHdf5.connect(self._cache.OutputHdf5)
+
+        # the crux, where to define the Cache-Data
+        self._cache.Input.connect(self.WatershedCalc)
+
+
+
     def setupOutputs(self):
         self.LabelNames.meta.dtype = object
         self.LabelNames.meta.shape = (1,)
@@ -113,6 +146,17 @@ class OpWatershedSegmentation(Operator):
         self.LabelColors.meta.shape = (1,)
         self.PmapColors.meta.dtype = object
         self.PmapColors.meta.shape = (1,)
+
+
+        ############################################################
+        # For serialization 
+        ############################################################
+        # force the cache to emit a dirty signal 
+        # (just taken from applet thresholdTwoLevel)
+        self._cache.Input.connect(self.WatershedCalc)
+        self._cache.Input.setDirty(slice(None))
+
+
     
     def execute(self, slot, subindex, roi, result):
         pass
@@ -188,8 +232,12 @@ class OpWatershedSegmentationCalculation( Operator ):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Boundaries.meta)
-        self.Output.meta.dtype = np.uint8
+        # output of the vigra.analysis.watershedNew is uint32, therefore it should be uint 32 as
+        # well, otherwise it will break with the cached image 
+        self.Output.meta.dtype = np.uint32
+        #only one channel as output
         self.Output.meta.shape = self.Boundaries.meta.shape[:-1] + (1,)
+        #TODO maybe bad with more than 255 labels
         self.Output.meta.drange = (0,255)
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -204,85 +252,10 @@ class OpWatershedSegmentationCalculation( Operator ):
 
 
 
-
-
-    def watershedAlgorithm(self, boundaries, seeds):
-        """
-        :param boundaries: array that contains the boundaries
-        :param seeds: array that contains the seeds
-        :return: labelImage: the array, that contains the results of the watershed algorithm;
-            maxRegionLabel: the number of the watershed areas
-
-        execute the watershed algorithm of vigra on the boundary and seed array
-        therefore extract the parameters from InputSlots for the usage in this algorithm
-
-        compare vigra.analysis.watershedsNew for more information on the meaning of the parameters
-        """
-
-        # detect the correct dimension for the watershed algorithm
-        method, neighbors, terminate, maxCost = self.prepareInputParameter(seeds.ndim)
-        '''
-        print neighbors
-        print method
-        print terminate
-        print maxCost
-        '''
-
-        #UnionFind doesn't support seeds and max_cost
-        if (method == "UnionFind"):
-            seeds = None
-            maxCost = 0
-
-        # watershedAlgoirthm itself
-        (labelImage, maxRegionLabel) = vigra.analysis.watershedsNew(\
-                image           = boundaries,
-                seeds           = seeds,
-                neighborhood    = neighbors,
-                method          = method,
-                terminate       = terminate,
-                max_cost        = maxCost)
-
-
-        return (labelImage, maxRegionLabel)
-
-
-    def arrayConversion(self, boundaries, seeds):
-        """
-        :param boundaries: array 1
-        :param seeds: array2
-        :return: boundaries, seeds
-        convert the array in a numpy array that is necessary for vigra.analysis.watershedsNew
-        """
-        #boundaries
-        # input image: uint8 or float32, (float32 includes more information)
-        boundaries     = boundaries.astype(np.float32)
-
-        #for the seeds
-        # uint32
-        seeds          = seeds.astype(np.uint32)
-        return boundaries, seeds
-
-    def getArrays(self):
-        """
-        get the arrays: boundaries and seeds from the slot 
-        and check, whether the fit together in sense of shape and order of axes
-        :return: boundaries, seeds
-        """
-        #get the data from boundaries and seeds
-        boundaries    = self.Boundaries[:].wait()
-        seeds         = self.Seeds[:].wait()
-
-        #both shapes must be the same, and the axistags (means where x, y,z,t,c are)
-        assert seeds.shape == boundaries.shape
-        assert self.Seeds.meta.axistags == self.Boundaries.meta.axistags
-
-        return boundaries, seeds
-
     def execWatershedAlgorithm(self):
         """
         handles the execution of the watershed algorithm 
         """
-
         
         boundaries, seeds = self.getArrays()
 
@@ -320,6 +293,24 @@ class OpWatershedSegmentationCalculation( Operator ):
         #TODO integrate process bar
 
 
+        '''
+        how to:::
+
+         class ilastik.applets.base.applet.Applet(name, syncWithImageIndex=True, interactive=True)[source]
+
+            progressSignal = None
+
+                Progress signal. When the applet is doing something time-consuming, 
+                this signal tells the shell to show a progress bar.
+                Signature: emit(percentComplete, canceled=false)
+
+        Note
+
+        To update the progress bar correctly,
+        the shell expects that progress updates always begin with at least
+        one zero update and end with at least one 100 update. 
+        That is: self.progressSignal.emit(0) ... more updates ... self.progressSignal.emit(100)
+        '''
         ############################################################
         # END TODO
         ############################################################
@@ -361,9 +352,90 @@ class OpWatershedSegmentationCalculation( Operator ):
         #print boundaries.shape
         #print seeds.shape
         '''
+
+    ############################################################
+    # the function, where the algorithm is executed itself
+    ############################################################
+
+    def watershedAlgorithm(self, boundaries, seeds):
+        """
+        :param boundaries: array that contains the boundaries
+        :param seeds: array that contains the seeds
+        :return: labelImage: (dtype = uint32) the array, that contains the results of the watershed algorithm;
+            maxRegionLabel: the number of the watershed areas
+
+        execute the watershed algorithm of vigra on the boundary and seed array
+        therefore extract the parameters from InputSlots for the usage in this algorithm
+
+        compare vigra.analysis.watershedsNew for more information on the meaning of the parameters
+        """
+
+        # detect the correct dimension for the watershed algorithm
+        method, neighbors, terminate, maxCost = self.prepareInputParameter(seeds.ndim)
+        '''
+        print neighbors
+        print method
+        print terminate
+        print maxCost
+        '''
+
+        #UnionFind doesn't support seeds and max_cost
+        if (method == "UnionFind"):
+            seeds = None
+            maxCost = 0
+
+        # watershedAlgoirthm itself
+        (labelImage, maxRegionLabel) = vigra.analysis.watershedsNew(\
+                image           = boundaries,
+                seeds           = seeds,
+                neighborhood    = neighbors,
+                method          = method,
+                terminate       = terminate,
+                max_cost        = maxCost)
+
+
+
+        return (labelImage, maxRegionLabel)
+
+
+
     ############################################################
     # helping functions
     ############################################################
+
+    def getArrays(self):
+        """
+        get the arrays: boundaries and seeds from the slot 
+        and check, whether the fit together in sense of shape and order of axes
+        :return: boundaries, seeds
+        """
+        #get the data from boundaries and seeds
+        boundaries    = self.Boundaries[:].wait()
+        seeds         = self.Seeds[:].wait()
+
+        #both shapes must be the same, and the axistags (means where x, y,z,t,c are)
+        assert seeds.shape == boundaries.shape
+        assert self.Seeds.meta.axistags == self.Boundaries.meta.axistags
+
+        return boundaries, seeds
+
+    def arrayConversion(self, boundaries, seeds):
+        """
+        :param boundaries: array 1
+        :param seeds: array2
+        :return: boundaries, seeds
+        convert the array in a numpy array that is necessary for vigra.analysis.watershedsNew
+        """
+        #boundaries
+        # input image: uint8 or float32, (float32 includes more information)
+        boundaries     = boundaries.astype(np.float32)
+
+        #for the seeds
+        # uint32
+        seeds          = seeds.astype(np.uint32)
+        return boundaries, seeds
+
+
     def removeChannelAxis(self, boundaries, seeds):
         """
         :param boundaries: array 1
@@ -577,12 +649,4 @@ class OpWatershedSegmentationCalculation( Operator ):
 
 
         return method, neighbors, terminate, maxCost
-
-
-
-
-
-
-
-
 

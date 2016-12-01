@@ -214,14 +214,11 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         # responsable for the watershed algorithm
         self._labelControlUi.runWatershedPushButton.clicked.connect(self.onRunWatershedPushButtonClicked)
-        # init this variable to True, that we know, that the button wasn't clicked before
-        self._firstClick_runWatershedPushButton = True
 
             
         ############################################################
         # BEGIN TODO
         ############################################################
-
 
         #needed?
         #op.RawData.notifyMetaChanged( set_brush_value_box_range )
@@ -261,16 +258,15 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
     @pyqtSlot()
     def onRunWatershedPushButtonClicked(self):
-        #print "runWatershedPushButton clicked"
         """
-        responsable to set the _firstClick_runWatershedPushButton varibable to False, 
-        so that a new Layer for the watershed results can be added
-        executes the watershed algorithm
+        Responsable to set the ShowWatershedLayer slot to True,
+        so that a new Layer for the watershed results can be added.
+        Executes the watershed algorithm
 
         """
-        if self._firstClick_runWatershedPushButton:
-            self._firstClick_runWatershedPushButton = False
-            #print "first time"
+        op = self.topLevelOperatorView
+        if not op.ShowWatershedLayer.value: 
+            op.ShowWatershedLayer.setValue(True)
             self.updateAllLayers()
 
         # execute the watershed algorithm
@@ -345,13 +341,19 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         # CorrectedSeedsOut
         self.initLayer(op.CorrectedSeedsOut,"Corrected Seeds", layers)
 
+        
+
+
 
         # handle the watershed output, 
         # changes in slot ready/unready of all slots lead to the execution of setupLayers
-        # therefore a variable is used to not lose this layer
-        if not self._firstClick_runWatershedPushButton:
+        # therefore a slot is used to not lose this layer (after restart as well, therefore slot)
+        # use the cached version here
+        if op.ShowWatershedLayer.value: 
             # WatershedCalculations
-            self.initLayer(op.WatershedCalc, "Watershed Calculations", layers)
+            #self.initLayer(op.WatershedCalc, "Watershed Calculations", layers)
+            #TODO better name
+            self.initLayer(op.WSCCOCachedOutput,"Watershed Calculations", layers)
 
         return layers
 

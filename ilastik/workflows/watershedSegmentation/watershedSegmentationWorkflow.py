@@ -132,8 +132,12 @@ class WatershedSegmentationWorkflow(Workflow):
 
         # connect the output of the watershed-applet to the inputs of the data-export
         opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
+        # use the user manipulated seeds for this 
+        # TODO use the cached version afterwards, when implemented
         opDataExport.Inputs[0].connect( opWatershedSegmentation.CorrectedSeedsOut )
-        opDataExport.Inputs[1].connect( opWatershedSegmentation.WatershedCalc )
+        # use the cached output of the watershed algorithm, so that reloading the project 
+        # and exporting it will work without an additional calculation
+        opDataExport.Inputs[1].connect( opWatershedSegmentation.WSCCOCachedOutput )
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
         #for more information, see ilastik.org/lazyflow/advanced.html OperatorWrapper class

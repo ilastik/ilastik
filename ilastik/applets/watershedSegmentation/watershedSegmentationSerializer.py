@@ -18,7 +18,8 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialBlockSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, \
+                                             SerialBlockSlot, SerialHdf5BlockSlot
 
 class WatershedSegmentationSerializer(AppletSerializer):
     """
@@ -27,7 +28,21 @@ class WatershedSegmentationSerializer(AppletSerializer):
     """
     
     def __init__(self, operator, projectFileGroupName):
-        slots = [ SerialSlot(operator.ChannelSelection),
-                  SerialSlot(operator.BrushValue)
+        """
+        "param operator: normally the top-level-operator
+        the slots list must include at least all broadcasted slots
+        from the applet-class
+
+        can include more than these slot: e.g. all slots, that are not viewed in the gui, 
+        (means, no input paramters but cached images)
+        """
+        slots = [ #SerialSlot(operator.ChannelSelection),
+                  #SerialSlot(operator.BrushValue),
+                  #used to remember to show the watershed result layer 
+                  SerialSlot(operator.ShowWatershedLayer), 
+                  SerialHdf5BlockSlot(operator.WSCCOOutputHdf5,
+                                      operator.WSCCOInputHdf5,
+                                      operator.WSCCOCleanBlocks,
+                                      name="CachedWatershedOutput")
                 ]
         super(WatershedSegmentationSerializer, self).__init__(projectFileGroupName, slots=slots, operator=operator)
