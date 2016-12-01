@@ -104,7 +104,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
 class TrackingBaseResultsViewer(DataExportLayerViewerGui):
     
     ct = colortables.create_random_16bit()
-    ct[0] = QColor(0,0,0,255).rgba()
+    ct[0] = QColor(0,0,0,255)
     
     def setupLayers(self):
         layers = []
