@@ -28,6 +28,7 @@ except ImportError as e:
     WITH_HYTRA = False
 
 class TrackingSerializer(AppletSerializer):
+    VERSION = 1 # Make sure to bump the version in case you make any changes in the serialization
     
     def __init__(self, mainOperator, projectFileGroupName):
         # Serialization for the new pipeline (HyTra)
@@ -35,9 +36,9 @@ class TrackingSerializer(AppletSerializer):
             slots = [SerialDictSlot(mainOperator.Parameters, selfdepends=True),
                      SerialDictSlot(mainOperator.EventsVector, transform=str, selfdepends=True),
                      SerialDictSlot(mainOperator.FilteredLabels, transform=str, selfdepends=True),
-                     SerialPickledValueSlot(mainOperator.ExportSettings),
-                     SerialPickledValueSlot(mainOperator.HypothesesGraph),
-                     SerialPickledValueSlot(mainOperator.ResolvedMergers)
+                     SerialPickledValueSlot(mainOperator.ExportSettings),                     
+                     SerialPickleableSlot(mainOperator.HypothesesGraph, self.VERSION, None),
+                     SerialPickleableSlot(mainOperator.ResolvedMergers, self.VERSION, None)
                      ]
        
         # Serialization for backward compatibility (for tracking with pgmlink)  
