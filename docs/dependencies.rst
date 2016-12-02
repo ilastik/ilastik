@@ -2,9 +2,10 @@
 Appendix: Development Dependencies
 ==================================
 
-.. note:: The `buildem <http://github.com/janelia-flyem/buildem>`_ project uses ilastik as one of its sub-projects.  
-          If you're having trouble building any of these dependencies, you might try checking buildem's `ilastik-gui.cmake <https://github.com/janelia-flyem/buildem/blob/master/ilastik-gui.cmake>`_
-          script (and it's include files) for hints on the correct build configuration settings.
+.. note::
+   
+   The easiest way to build the ilastik development environment on any platform is to use conda.
+   The necessary steps are explained in the `ilastik-build-conda <https://github.com/ilastik/ilastik-build-conda>`_ repo. 
 
 General
 =======
@@ -42,7 +43,7 @@ Python
 Ilastik Sub-projects
 ====================
 
-* lazyflow (with drtile)
+* lazyflow
 * volumina
 
 Development

@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 import os
 #import tempfile
 import numpy
@@ -36,7 +37,6 @@ traceLogger = logging.getLogger("TRACE." + __name__)
 
 from lazyflow.utility import Tracer
 
-from __future__ import division
 
 class Section():
     Labels = 0

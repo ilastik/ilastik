@@ -102,7 +102,7 @@ class TestOpObjectTrain(unittest.TestCase):
         g = Graph()
         self.featsop = OpRegionFeatures(graph=g)
         self.featsop.LabelVolume.setValue(segimg)
-        self.featsop.RawVolume.setValue( rawimg )
+        self.featsop.RawVolume.setValue(rawimg)
         self.featsop.Features.setValue(feats)
         self.assertTrue(self.featsop.Output.ready(), "The output of operator {} was not ready after connections took place.".format(self.featsop))
 
@@ -141,7 +141,7 @@ class TestOpObjectTrain(unittest.TestCase):
         
         segimg[0,...] = 1
         rawimg[0,...] = 0
-        featsFail = {"Standard Object Features": {"Count":{}}, "TestFeatures": {"fail_on_zero":{}}}
+        featsFail = {"Standard Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, "Coord<Minimum>":{}, "Coord<Maximum>":{}}, "TestFeatures": {"fail_on_zero":{}}}
         
         self.featsop.LabelVolume.setValue(segimg)
         self.featsop.RawVolume.setValue(rawimg)
@@ -176,8 +176,9 @@ class TestOpObjectPredict(unittest.TestCase):
         rawimg.axistags = vigra.defaultAxistags('txyzc')
         
         g = Graph()
-        
-        features = {"Standard Object Features": {"Count":{}}}
+
+        sel_features = {"Standard Object Features": {"Count":{}}}
+        features = {"Standard Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, "Coord<Minimum>":{}, "Coord<Maximum>":{}}}
         
         self.featsop = OpRegionFeatures(graph=g)
         self.featsop.LabelVolume.setValue(segimg)
@@ -192,7 +193,7 @@ class TestOpObjectPredict(unittest.TestCase):
         self.trainop = OpObjectTrain(graph=g)
         self.trainop.Features.resize(1)
         self.trainop.Features[0].connect(self._opRegFeatsAdaptOutput.Output)
-        self.trainop.SelectedFeatures.setValue(features)
+        self.trainop.SelectedFeatures.setValue(sel_features)
         self.trainop.LabelsCount.setValue(2)
         self.trainop.Labels.resize(1)
         self.trainop.Labels.setValues([labels])
@@ -203,7 +204,7 @@ class TestOpObjectPredict(unittest.TestCase):
         self.op = OpObjectPredict(graph=g)
         self.op.Classifier.connect(self.trainop.Classifier)
         self.op.Features.connect(self._opRegFeatsAdaptOutput.Output)
-        self.op.SelectedFeatures.setValue(features)
+        self.op.SelectedFeatures.setValue(sel_features)
         self.op.LabelsCount.connect( self.trainop.LabelsCount )
         self.assertTrue(self.op.Predictions.ready(), "The output of operator {} was not ready after connections took place.".format(self.op))
 
@@ -253,7 +254,7 @@ class TestFeatureSelection(unittest.TestCase):
         g = Graph()
 
         features = {"Standard Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, \
-                                      "Coord<Minimum>":{}, "Coord<Maximum>":{}, "Mean":{}, \
+                                       "Coord<Maximum>":{}, "Mean":{}, \
                                       "Mean in neighborhood":{"margin":(30, 30, 1)}}}
         
         sel_features = {"Standard Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(30, 30, 1)}, "Variance":{}}}
@@ -262,8 +263,13 @@ class TestFeatureSelection(unittest.TestCase):
         self.extrOp.BinaryImage.setValue(binimg)
         self.extrOp.RawImage.setValue(rawimg)
         self.extrOp.Features.setValue(features)
-    
+
         assert self.extrOp.RegionFeatures.ready()
+        feats = self.extrOp.RegionFeatures([0, 1]).wait()
+
+        assert len(feats)==rawimg.shape[0]
+        for key in features["Standard Object Features"]:
+            assert key in feats[0]["Standard Object Features"].keys()
 
         self.trainop = OpObjectTrain(graph=g)
         self.trainop.Features.resize(1)
@@ -420,8 +426,9 @@ class TestFullOperator(unittest.TestCase):
         
     def testExport(self):
         table = self.classOp.createExportTable(0, [])
+
         print table["Object id"]
-        print table["Default features, RegionCenter_ch_1"]
+        print table["Default Features, RegionCenter_ch_1"]
         print table["Prediction"]
         
     def test_unfavorable_conditions(self):

@@ -93,6 +93,20 @@ class ObjectFeaturesPlugin(IPlugin):
         """
         return dict()
 
+    def fill_properties(self, feature_dict):
+        """
+        For every feature in the feature dictionary, fill in its properties,
+        such as 'detailtext', which will be displayed in help, or 'displaytext'
+        which will be displayed instead of the feature name
+        Args:
+            feature_dict: dictionary of features
+
+        Returns:
+            same dictionary, with additional fields filled for each feature
+
+        """
+        return feature_dict
+
     @staticmethod
     def combine_dicts(ds):
         return dict(sum((d.items() for d in ds), []))

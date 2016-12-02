@@ -130,6 +130,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
     # Override functions ExportingOperator mixin
     def configure_table_export_settings(self, settings, selected_features):
         self.ExportSettings.setValue( (settings, selected_features) )
+
     def get_table_export_settings(self):
         if self.ExportSettings.ready() and self.ExportSettings.value:
             (settings, selected_features) = self.ExportSettings.value
@@ -804,6 +805,8 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         export_file.add_columns("table", zip(*probability_columns.values()), Mode.List, {"names": probability_column_names})
 
         # Object features
+        computed_names = self.ComputedFeatureNames.value
+
         export_file.add_columns("table", self.ObjectFeatures[lane_index], Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
 

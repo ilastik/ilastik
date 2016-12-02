@@ -6,10 +6,14 @@ from vigra import AxisTags
 from lazyflow.utility import OrderedSignal
 from sys import stdout
 from zipfile import ZipFile
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 import logging
 
 logger = logging.getLogger(__name__)
-
+try:
+    from ilastik.plugins import pluginManager
+except:
+    logger.warn('could not import pluginManager')
 
 class Default(object):
     DivisionNames = {"names": ("timestep", "object_id", "lineage_id", "track_id", "child1_object_id", "child1_track_id", "child2_object_id", "child2_track_id")}
@@ -58,18 +62,31 @@ def flatten_ilastik_feature_table(table, selection, signal):
 
     signal(0)
 
-    feature_names = []
-    feature_cats = []
+    feature_long_names = [] # For example, "Size in Pixels"
+    feature_short_names = [] # For example, "Count"
+    feature_plugins = []
     feature_channels = []
     feature_types = []
 
-    for cat_name, category in computed_feature[0].iteritems():
-        for feat_name, feat_array in category.iteritems():
-            if (cat_name == "Default features" or \
-                     feat_name in selection) and \
-                     feat_name not in feature_names:
-                feature_names.append(feat_name)
-                feature_cats.append(cat_name)
+    for plugin_name, feature_dict in computed_feature[0].iteritems():
+        if plugin_name==default_features_key:
+            plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
+        else:
+            plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
+        plugin_feature_names = {el:{} for el in feature_dict.keys()}
+        all_props = plugin.plugin_object.fill_properties(plugin_feature_names) #fill in display name and such
+
+        for feat_name, feat_array in feature_dict.iteritems():
+            try:
+                long_name = all_props[feat_name]["displaytext"]
+            except KeyError:
+                long_name = feat_name
+            if (plugin_name == default_features_key or \
+                     long_name in selection) and \
+                     long_name not in feature_long_names:
+                feature_long_names.append(long_name)
+                feature_short_names.append(feat_name)
+                feature_plugins.append(plugin_name)
                 feature_channels.append((feat_array.shape[1]))
                 feature_types.append(feat_array.dtype)
 
@@ -77,7 +94,7 @@ def flatten_ilastik_feature_table(table, selection, signal):
 
     obj_count = []
     for t, cf in computed_feature.iteritems():
-        obj_count.append(cf["Default features"]["Count"].shape[0] - 1)  # no background
+        obj_count.append(cf[default_features_key]["Count"].shape[0] - 1)  # no background
 
     signal(50)
 
@@ -85,16 +102,16 @@ def flatten_ilastik_feature_table(table, selection, signal):
     dtype_types = []
     dtype_to_key = {}
 
-    for i, name in enumerate(feature_names):
+    for i, name in enumerate(feature_long_names):
         if feature_channels[i] > 1:
             for c in xrange(feature_channels[i]):
                 dtype_names.append("%s_%i" % (name, c))
                 dtype_types.append(feature_types[i].name)
-                dtype_to_key[dtype_names[-1]] = (feature_cats[i], name, c)
+                dtype_to_key[dtype_names[-1]] = (feature_plugins[i], feature_short_names[i], c)
         else:
             dtype_names.append(name)
             dtype_types.append(feature_types[i].name)
-            dtype_to_key[dtype_names[-1]] = (feature_cats[i], name, 0)
+            dtype_to_key[dtype_names[-1]] = (feature_plugins[i], feature_short_names[i], 0)
 
     feature_table = np.zeros((sum(obj_count),), dtype=",".join(dtype_types))
     feature_table.dtype.names = map(str, dtype_names)
@@ -105,9 +122,9 @@ def flatten_ilastik_feature_table(table, selection, signal):
     end = obj_count[0]
     for t, cf in computed_feature.iteritems():
         for name in dtype_names:
-            cat, feat_name, index = dtype_to_key[name]
-            data_len = len(cf[cat][feat_name][1:, index])
-            feature_table[name][start:start + data_len] = cf[cat][feat_name][1:, index]
+            plugin, feat_name, index = dtype_to_key[name]
+            data_len = len(cf[plugin][feat_name][1:, index])
+            feature_table[name][start:start + data_len] = cf[plugin][feat_name][1:, index]
         start = end
         try:
             end += obj_count[int(t) + 1]
