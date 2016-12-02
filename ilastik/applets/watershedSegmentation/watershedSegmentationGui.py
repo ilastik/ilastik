@@ -84,6 +84,8 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.topLevelOperatorView = topLevelOperatorView
         op = self.topLevelOperatorView 
 
+        # TODO make serialized slot out of it or better: 
+        # TODO make something totally diffrent from that, and talk to anna about this 
         # init the _existingSeedsSlot variable as True. Only reset it, if there is no seed input given
         self._existingSeedsSlot = True
 
@@ -182,6 +184,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.importAndResetLabels = ImportAndResetLabels (
                 op.CorrectedSeedsIn,
                 self._existingSeedsSlot,
+                op.UseCachedLabels.value,
                 self._labelControlUi.labelListModel, 
                 self._LabelPipeline.opLabelArray,
                 op.LabelNames, 
@@ -193,6 +196,9 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         #   in pixelValueDisplaying
         # import the Labels from CorrectedSeedsIn, if possible
         self.importAndResetLabels.importLabelsFromSlot()
+
+        # use the Cache of the CorrectedSeedsOut for the next Time, the watershed applet will be reloaded
+        op.UseCachedLabels.setValue(True)
 
         # resetSeedsPushButton functionality added by connecting signal with slot
         self._labelControlUi.resetSeedsPushButton.clicked.connect(self.importAndResetLabels.resetLabelsToSlot)
@@ -342,6 +348,8 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.initLayer(op.CorrectedSeedsOut,"Corrected Seeds", layers)
 
         
+        # CorrectedSeedsOutCached
+        #self.initLayer(op.CorrectedSeedsOutCached,"Corrected Seeds Cached", layers)
 
 
 

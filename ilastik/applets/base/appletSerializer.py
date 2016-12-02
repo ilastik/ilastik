@@ -98,7 +98,7 @@ class SerialSlot(object):
         :param slot: where to get data to save
 
         :param inslot: where to put loaded data. If None, it is the
-          same as 'slot'.
+        same as 'slot'.
 
         :param name: name used for the group in the hdf5 file.
 

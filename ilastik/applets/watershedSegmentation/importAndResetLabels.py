@@ -11,6 +11,8 @@ class ImportAndResetLabels(object):
     def __init__(self, 
                 slot, 
                 isSlotContentNotEmpty, 
+                #slotCache,
+                useSlotCache,
                 labelListModel, 
                 opLabelArray, 
                 LabelNames, 
@@ -25,6 +27,9 @@ class ImportAndResetLabels(object):
             that is included in this slot
         :param isSlotContentNotEmpty: Boolean if the initial input slot for the label input was empty or not
             even if it was set to a default value afterwards
+        :param useSlotCache:    bool to indicate if True: use the cached Label data, 
+            and if False: use the Labels/Data of 'slot'
+            This has only effect on the importLabelsFromSlot function
         :param labelListModel: the list in which the labels, there name, color, number etc is saved
             e.g. self._labelControlUi.labelListModel 
         :param opLabelArray:    Operator where the Labels are Saved in Arrays;
@@ -52,10 +57,15 @@ class ImportAndResetLabels(object):
 
         (self can be the class: WatershedSegmentationGui)
         """
+        #:param slotCache:       InputSlot or OutputSlot the labels can be read from 
+            #this is necessary for using the cached data, after a project is reset, so that the user changes
+            #mustn't be saved in a file for reloading it
 
         #variable initialization
         self._slot                  = slot
         self._isSlotContentNotEmpty = isSlotContentNotEmpty
+        #self._slotCache             = slotCache
+        self._useSlotCache          = useSlotCache
         self._labelListModel        = labelListModel
         self._opLabelArray          = opLabelArray
         self._LabelNames            = LabelNames
@@ -162,14 +172,27 @@ class ImportAndResetLabels(object):
         print "\n\n"
     '''
 
-
     def importLabelsFromSlot(self):
         """
-        import the Labels from self._slot
+        handles whether to import Labels from cache or from 
+        the reset-slot
+        
+        """
+        if (self._useSlotCache):
+            logger.info( "Use the cached Labels and do nothing"
+        else:
+            self._importLabelsFromSlot(self._slot)
+
+
+    def _importLabelsFromSlot(self, slot):
+        """
+        import the Labels from the slot given.
+        So there is an option to import from cache or from data selection input slot
+        :param slot: the slot, from where to import
         """
         #if no Seeds are supplied, do nothing
         if self._isSlotContentNotEmpty:
-            self.importLabels( self._slot )
+            self.importLabels( slot )
         else:
             logger.debug("In importLabelsFromSlot: No data supplied, so no labels are imported")
 
@@ -179,6 +202,7 @@ class ImportAndResetLabels(object):
         """
         wipe the LabelList
         import Labels from Slot which overrides the cache
+        use the self._slot for reset
         """
         #decision box with yes or no
         msgBox = QMessageBox()
@@ -203,5 +227,5 @@ class ImportAndResetLabels(object):
             else:
                 self.removeLabelsFromCacheAndList()
 
-            # Finally, import the labels
-            self.importLabelsFromSlot()
+            # Finally, import the labels from the 
+            self._importLabelsFromSlot(self._slot)

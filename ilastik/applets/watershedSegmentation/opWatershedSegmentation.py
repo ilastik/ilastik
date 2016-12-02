@@ -27,6 +27,8 @@ class OpWatershedSegmentation(Operator):
     """
     Initialize the parameters for the calculations (and Gui)
     Provide execution function for the execution of the watershed algorithm
+
+    The names of slots are explained below
     """
     #TODO
     #seeds muessen 1, 2, 3 sein, also kann man auch 120 180, etc verwenden, 
@@ -38,15 +40,16 @@ class OpWatershedSegmentation(Operator):
     # Inputslots for inputs from other applets
     ############################################################
     RawData             = InputSlot() # Used by the GUI for display only
-    Boundaries          = InputSlot() 
+    Boundaries          = InputSlot() # for displaying as layer and as input for the watershed algorithm 
     Seeds               = InputSlot(optional=True) #for displaying in layer only
     CorrectedSeedsIn    = InputSlot(optional=True) #deals as input for the LabelChange stuff 
 
 
     ############################################################
-    # Inputslots for Internal Parameter Usage
+    # Inputslots for Internal Parameter Usage (don't change anything here)
     ############################################################
     ShowWatershedLayer  = InputSlot(value=False)
+    UseCachedLabels     = InputSlot(value=False)
 
     ############################################################
     # watershed algorithm parameters (optional)
@@ -64,16 +67,15 @@ class OpWatershedSegmentation(Operator):
     #for the labeling
     CorrectedSeedsOut   = OutputSlot() # Labels from the user, used as seeds for the watershed algorithm
     WatershedCalc       = OutputSlot()
-    #Cached Output should be the output in a layer, nothing more
+    #Cached Output of watershed should be the output in a layer, nothing more
     WSCCOCachedOutput   = OutputSlot()  # For the GUI (blockwise-access)
 
     ############################################################
-    # For serialization (saving in cache) of the watershed Output
+    # Watershed: For serialization (saving in cache) of the watershed Output
     ############################################################
     WSCCOInputHdf5      = InputSlot(optional=True)
     WSCCOOutputHdf5     = OutputSlot()
     WSCCOCleanBlocks    = OutputSlot()
-
 
 
     ############################################################
@@ -90,7 +92,8 @@ class OpWatershedSegmentation(Operator):
     def __init__(self, *args, **kwargs):
         super( OpWatershedSegmentation, self ).__init__(*args, **kwargs)
 
-        # Default values for some input slots
+        # Default values for the slots, where the Names of the Labels for the 
+        # LabelListModel, the color and the pixelMap is saved in
         self.LabelNames.setValue( [] )
         self.LabelColors.setValue( [] )
         self.PmapColors.setValue( [] )
@@ -155,7 +158,6 @@ class OpWatershedSegmentation(Operator):
         # (just taken from applet thresholdTwoLevel)
         self._cache.Input.connect(self.WatershedCalc)
         self._cache.Input.setDirty(slice(None))
-
 
     
     def execute(self, slot, subindex, roi, result):
@@ -651,3 +653,135 @@ class OpWatershedSegmentationCalculation( Operator ):
 
         return method, neighbors, terminate, maxCost
 
+'''
+
+from lazyflow.operators import OpPixelOperator, OpLabelVolume,\
+    OpCompressedCache, OpColorizeLabels,\
+    OpSingleChannelSelector, OperatorWrapper,\
+    OpMultiArrayStacker, OpMultiArraySlicer,\
+    OpReorderAxes, OpFilterLabels
+
+from ConfigParser import NoOptionError
+import ilastik.config
+# determine labeling implementation
+try:
+    _labeling_impl = ilastik.config.cfg.get("ilastik", "labeling")
+except NoOptionError:
+    _labeling_impl = "vigra"
+#FIXME check validity of implementation
+logger.info("Using '{}' labeling implemetation".format(_labeling_impl))
+
+
+
+
+
+#HACK this ensures backwards compatibility by providing serialization slots
+# with xyzct axes
+class _OpCacheWrapperDepri(Operator):
+    name = "OpCacheWrapper"
+    Input = InputSlot()
+
+    Output = OutputSlot()
+
+    InputHdf5 = InputSlot(optional=True)
+    CleanBlocks = OutputSlot()
+    OutputHdf5 = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super(_OpCacheWrapperDepri, self).__init__(*args, **kwargs)
+        self._cache = None
+
+    def setupOutputs(self):
+        self._disconnectInternals()
+
+        # we need a new cache
+        cache = OpCompressedCache(parent=self)
+        cache.name = self.name + "WrappedCache"
+
+        # connect cache outputs
+        self.CleanBlocks.connect(cache.CleanBlocks)
+        self.OutputHdf5.connect(cache.OutputHdf5)
+        self.Output.connect(cache.Output)
+
+        # connect cache inputs
+        cache.InputHdf5.connect(self.InputHdf5)
+        cache.Input.connect(self.Input)
+
+
+        #TODO
+        # get the  dimensions used:
+        tags = self.Input.meta.axistags
+        print tags
+        xId = tags.index('x')
+        yId = tags.index('y')
+        zId = tags.index('z')
+        tId = tags.index('t')
+        cId = tags.index('c')
+        #number of dimensions
+        dims = len(self.Input.meta.shape)
+        
+        string = ''
+        if xId < dims:
+            string += 'x'
+        if yId < dims:
+            string += 'y'
+        if zId < dims:
+            string += 'z'
+        if tId < dims:
+            string += 't'
+        if cId < dims:
+            string += 'c'
+        print string
+
+
+        tagged_shape = self.Input.meta.getTaggedShape()
+        tagged_shape['t'] = 1
+        tagged_shape['c'] = 1
+        print "\n\n"
+        print tagged_shape
+        print "\n\n"
+
+        # channel dimension must be the last one
+        assert cId == dims - 1
+        #TODO end
+        print self.Input.meta
+
+
+        # set the cache block shape
+        cacheshape = map(lambda k: tagged_shape[k], 'tyxc')
+        #cacheshape = map(lambda k: tagged_shape[k], string)
+        cacheshape += (1,)
+        print cacheshape
+        if _labeling_impl == "lazy":
+            #HACK hardcoded block shape
+            blockshape = numpy.minimum(cacheshape, 256)
+        else:
+            # use full spatial volume if not lazy
+            blockshape = cacheshape
+        cache.BlockShape.setValue(tuple(blockshape))
+        print blockshape
+
+        self._cache = cache
+
+    def execute(self, slot, subindex, roi, result):
+        assert False
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
+
+    def setInSlot(self, slot, subindex, key, value):
+        assert slot == self.InputHdf5,\
+            "setInSlot not implemented for slot {}".format(slot.name)
+        assert self._cache is not None,\
+            "setInSlot called before input was configured"
+        self._cache.setInSlot(self._cache.InputHdf5, subindex, key, value)
+
+    def _disconnectInternals(self):
+        self.CleanBlocks.disconnect()
+        self.OutputHdf5.disconnect()
+
+        if self._cache is not None:
+            self._cache.InputHdf5.disconnect()
+            self._cache.Input.disconnect()
+            del self._cache
+'''

@@ -46,6 +46,7 @@ class WatershedSegmentationApplet( StandardApplet ):
         Image-tuple, the parameters must stay the same
         So only needed for multiple image lanes 
         (must be inplemented for all image lanes)
+        Mainly to restore the gui-parameters
 
         :return: the name of the slots as list of string, e.g. ['ChannelSelection', 'BrushValue;]
         """
