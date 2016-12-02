@@ -20,8 +20,8 @@
    version="1.0"
    style="enable-background:new"
    inkscape:export-filename="/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik/ilastik-splash.png"
-   inkscape:export-xdpi="27.922573"
-   inkscape:export-ydpi="27.922573">
+   inkscape:export-xdpi="28.408316"
+   inkscape:export-ydpi="28.408316">
   <defs
      id="defs10421">
     <linearGradient
@@ -291,9 +291,9 @@
      objecttolerance="10"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.33728602"
-     inkscape:cx="580.90382"
-     inkscape:cy="492.58835"
+     inkscape:zoom="0.3"
+     inkscape:cx="754.36301"
+     inkscape:cy="500.76756"
      inkscape:document-units="px"
      inkscape:current-layer="layer2"
      showgrid="false"
@@ -709,7 +709,7 @@
            height="103.76949"
            x="1351.9683"
            y="179.08908" /></flowRegion><flowPara
-         id="flowPara3543"></flowPara></flowRoot>  </g>
+         id="flowPara3543" /></flowRoot>  </g>
   <g
      inkscape:groupmode="layer"
      id="layer3"
