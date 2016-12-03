@@ -23,11 +23,6 @@ import numpy as np
 import os.path as path
 import vigra
 
-try:
-    import pgmlink
-except:
-    import pgmlinkNoIlpSolver as pgmlink
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -77,6 +72,11 @@ def get_events(eventsVector):
     return events
 
 def get_events_at(eventsVector, t):  
+    try:
+        import pgmlink
+    except:
+        import pgmlinkNoIlpSolver as pgmlink
+
     dis = []
     app = []
     div = []
@@ -188,6 +188,11 @@ class LineageTrees():
 
     def createLineageTrees(self, fn=None, width=None, height=None, circular=False, withAppearing=True, from_t=0, to_t=0):
         from ete2 import Tree, NodeStyle, AttrFace
+
+        try:
+            import pgmlink
+        except:
+            import pgmlinkNoIlpSolver as pgmlink
         
         tree = Tree()        
         style = self.getNodeStyle()
