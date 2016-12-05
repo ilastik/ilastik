@@ -71,7 +71,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
 
         # -- DataSelection applet
         #
-        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data")
+        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", forceAxisOrder=['zyxc', 'yxc'])
 
         # Dataset inputs
         opDataSelection = self.dataSelectionApplet.topLevelOperator
