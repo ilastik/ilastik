@@ -119,12 +119,16 @@ class TestPlugins(object):
 
         # Raw image is arbitrary for our purposes. Just re-use the
         # label image
-        self.op.RawImage.setValue(rawImage())
+        rm = rawImage()
+        rm = rm[:, :, :, 0:1, :]
+        self.op.RawImage.setValue(rm)
         self.Features_standard = FEATURES
         self.Features_convex_hull = {'2D Convex Hull Features': {'Perimeter': {}, 'Defect Area Kurtosis': {}}}
         self.Features_skeleton = {'2D Skeleton Features': {'Diameter': {}, 'Total Length': {}}}
         #self.op.Features.setValue(FEATURES)
-        self.op.BinaryImage.setValue(binaryImage())
+        bm = binaryImage()
+        bm = bm[:, :, :, 0:1, :] 
+        self.op.BinaryImage.setValue(bm)
 
     def test_plugins(self):
         self.op.Features.setValue(self.Features_standard)
