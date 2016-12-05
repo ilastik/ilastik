@@ -58,7 +58,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 default_features = {'Coord<Minimum>':{}, 'Coord<Maximum>':{}, 'RegionCenter': {}, 'Count':{}}
 
 # to distinguish them, they go in their own category with this name
-default_features_key = 'Default Features'
+default_features_key = 'Default features'
 
 
 def max_margin(d, default=(0, 0, 0)):
