@@ -177,7 +177,7 @@ class OpTrackingFeatureExtraction(Operator):
         self._objectExtraction.RawImage.connect(self.RawImage)
         self._objectExtraction.BinaryImage.connect(self.BinaryImage)
 
-        self._objectExtraction.Features.connect(self.FeatureNamesVigra)
+        self._objectExtraction.FeaturesWithDefault.connect(self.FeatureNamesVigra)
         self._objectExtraction.RegionFeaturesCacheInput.connect(self.RegionFeaturesCacheInputVigra)
         self._objectExtraction.LabelImageCacheInput.connect(self.LabelImageCacheInput)
         self.CleanLabelBlocks.connect(self._objectExtraction.CleanLabelBlocks)
