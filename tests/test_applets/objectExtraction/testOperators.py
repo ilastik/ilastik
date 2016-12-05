@@ -112,6 +112,27 @@ class TestOpRegionFeatures(object):
         print "feature length:", len(feats)
         OpObjectExtraction.createExportTable(feats)
 
+class TestPlugins(object):
+    def setUp(self):
+        g = Graph()
+        self.op = OpObjectExtraction(graph=g)
+
+        # Raw image is arbitrary for our purposes. Just re-use the
+        # label image
+        self.op.RawImage.setValue(rawImage())
+        self.Features_standard = FEATURES
+        self.Features_convex_hull = {'2D Convex Hull Features': {'Perimeter': {}, 'Defect Area Kurtosis': {}}}
+        self.Features_skeleton = {'2D Skeleton Features': {'Diameter': {}, 'Total Length': {}}}
+        #self.op.Features.setValue(FEATURES)
+        self.op.BinaryImage.setValue(binaryImage())
+
+    def test_plugins(self):
+        self.op.Features.setValue(self.Features_standard)
+        feats = self.op.RegionFeatures([0]).wait()
+        self.op.Features.setValue(self.Features_convex_hull)
+        feats = self.op.RegionFeatures([0]).wait()
+        self.op.Features.setValue(self.Features_skeleton)
+        feats = self.op.RegionFeatures([0]).wait()
 
 class testOpRegionFeaturesAgainstNumpy(object):
     def setUp(self):
