@@ -64,7 +64,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
             "Input Data",
             "Input Data",
             batchDataGui=False,
-            forceAxisOrder='txyzc',
+            forceAxisOrder=['txyzc'],
             instructionText=data_instructions,
             max_lanes=1)
 

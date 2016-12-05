@@ -45,7 +45,7 @@ class IIBoostPixelClassificationWorkflow(PixelClassificationWorkflow):
                                     "Input Data",
                                     "Input Data",
                                     supportIlastik05Import=True,
-                                    forceAxisOrder='zyxc', # This workflow requires 3D data and assumes zyxc order in feature computation and prediction.
+                                    forceAxisOrder=['zyxc'], # This workflow requires 3D data and assumes zyxc order in feature computation and prediction.
                                     instructionText=data_instructions,
                                     show_axis_details=True ) # IIBoost supports/requires information about anisotropy.
 

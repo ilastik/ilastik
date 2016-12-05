@@ -51,7 +51,7 @@ class ManualTrackingWorkflow( Workflow ):
         self.dataSelectionApplet = DataSelectionApplet(self, 
                                                        "Input Data", 
                                                        "Input Data", 
-                                                       forceAxisOrder='txyzc',
+                                                       forceAxisOrder=['txyzc'],
                                                        instructionText=data_instructions,
                                                        max_lanes=1
                                                        )
