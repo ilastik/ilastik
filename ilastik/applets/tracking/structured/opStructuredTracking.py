@@ -8,6 +8,7 @@ from ilastik.utility import bind
 
 from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
 from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 try:
     import multiHypoTracking_with_cplex as mht
@@ -209,7 +210,7 @@ class OpStructuredTracking(OpConservationTracking):
                                     break
 
                                 trackSet = labels[time][label]
-                                center = self.features[time]['Default features']['RegionCenter'][label]
+                                center = self.features[time][default_features_key]['RegionCenter'][label]
                                 trackCount = len(trackSet)
 
                                 if trackCount > maxObj:

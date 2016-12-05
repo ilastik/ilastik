@@ -13,6 +13,7 @@ from lazyflow.roi import sliceToRoi
 from ilastik.applets.tracking.conservation.opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility import bind
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import sys
 
@@ -347,7 +348,7 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
                                             break
 
                                         trackSet = labels[time][label]
-                                        center = self.features[time]['Default features']['RegionCenter'][label]
+                                        center = self.features[time][default_features_key]['RegionCenter'][label]
                                         trackCount = len(trackSet)
 
                                         for track in trackSet:
@@ -901,7 +902,7 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
                                     break
 
                                 trackSet = labels[time][label]
-                                center = self.features[time]['Default features']['RegionCenter'][label]
+                                center = self.features[time][default_features_key]['RegionCenter'][label]
                                 trackCount = len(trackSet)
 
                                 if trackCount > maxObj:
