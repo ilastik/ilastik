@@ -42,6 +42,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 
 from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import logging
 logger = logging.getLogger(__name__)
@@ -619,8 +620,8 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
                 object_features_timewise = object_feature_slot([t]).wait()
                 object_features = object_features_timewise[t]
 
-                min_coords = object_features["Default features"]["Coord<Minimum>"]
-                max_coords = object_features["Default features"]["Coord<Maximum>"]
+                min_coords = object_features[default_features_key]["Coord<Minimum>"]
+                max_coords = object_features[default_features_key]["Coord<Maximum>"]
 
                 # Don't bother saving info for objects that aren't labeled
                 min_coords = min_coords[labels.nonzero()]
@@ -672,8 +673,8 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
                 old_features = old_features_timewise[time]
                 
                 current_bboxes = {}
-                current_bboxes["Coord<Minimum>"] = old_features["Default features"]["Coord<Minimum>"]
-                current_bboxes["Coord<Maximum>"] = old_features["Default features"]["Coord<Maximum>"]
+                current_bboxes["Coord<Minimum>"] = old_features[default_features_key]["Coord<Minimum>"]
+                current_bboxes["Coord<Maximum>"] = old_features[default_features_key]["Coord<Maximum>"]
 
                 json_data_this_time = json_data_this_lane[time_str]
                 saved_labels = numpy.array( json_data_this_time["labels"] )

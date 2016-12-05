@@ -49,6 +49,7 @@ from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 from lazyflow.operators.valueProviders import OpAttributeSelector
 from lazyflow.roi import TinyVector
 from lazyflow.utility import PathComponents
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import logging
 logger = logging.getLogger(__name__)
@@ -466,7 +467,7 @@ class ObjectClassificationWorkflow(Workflow):
         # FIRST, remove all objects that lie outside the block (i.e. remove the ones in the halo)
         region_features = opBatchClassify.BlockwiseRegionFeatures( *sub_block_roi ).wait()
         region_features_dict = region_features.flat[0]
-        region_centers = region_features_dict['Default features']['RegionCenter']
+        region_centers = region_features_dict[default_features_key]['RegionCenter']
 
         opBlockPipeline = opBatchClassify._blockPipelines[ tuple(roi[0]) ]
 
@@ -510,9 +511,9 @@ class ObjectClassificationWorkflow(Workflow):
         total_offset_5d = halo_roi[0] + image_offset
         total_offset_3d = total_offset_5d[1:-1]
 
-        filtered_features["Default features"]["RegionCenter"] += total_offset_3d
-        filtered_features["Default features"]["Coord<Minimum>"] += total_offset_3d
-        filtered_features["Default features"]["Coord<Maximum>"] += total_offset_3d
+        filtered_features[default_features_key]["RegionCenter"] += total_offset_3d
+        filtered_features[default_features_key]["Coord<Minimum>"] += total_offset_3d
+        filtered_features[default_features_key]["Coord<Maximum>"] += total_offset_3d
 
         # Finally, write the features to hdf5
         h5File = blockwise_fileset.getOpenHdf5FileForBlock( roi[0] )
@@ -525,10 +526,10 @@ class ObjectClassificationWorkflow(Workflow):
         pickled_features = vectorized_pickle_dumps(numpy.array((filtered_features,)))
         dataset[0] = pickled_features
 
-        object_centers_xyz = filtered_features["Default features"]["RegionCenter"].astype(int)
-        object_min_coords_xyz = filtered_features["Default features"]["Coord<Minimum>"].astype(int)
-        object_max_coords_xyz = filtered_features["Default features"]["Coord<Maximum>"].astype(int)
-        object_sizes = filtered_features["Default features"]["Count"][:,0].astype(int)
+        object_centers_xyz = filtered_features[default_features_key]["RegionCenter"].astype(int)
+        object_min_coords_xyz = filtered_features[default_features_key]["Coord<Minimum>"].astype(int)
+        object_max_coords_xyz = filtered_features[default_features_key]["Coord<Maximum>"].astype(int)
+        object_sizes = filtered_features[default_features_key]["Count"][:,0].astype(int)
 
         # Also, write out selected features as a 'point cloud' csv file.
         # (Store the csv file next to this block's h5 file.)

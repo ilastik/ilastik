@@ -40,6 +40,7 @@ from ilastik.config import cfg as ilastik_config
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
 import volumina.colortables as colortables
 from volumina.utility import encode_from_qstring
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import vigra
 import numpy
@@ -592,7 +593,7 @@ class ObjectExtractionGui(LayerViewerGui):
 
             try:
                 for pname, pfeats in feats[0].iteritems():
-                    if pname != 'Default features':
+                    if pname != default_features_key:
                         for featname, feat in pfeats.iteritems():
                             nchannels += feat.shape[1]
                             nfeatures += 1
