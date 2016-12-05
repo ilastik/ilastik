@@ -12,7 +12,13 @@ from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.roi import sliceToRoi
 from ilastik.applets.tracking.conservation.opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
+<<<<<<< HEAD
 import sys
+=======
+from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
+from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+>>>>>>> 1ce5221... accessing default features keys from opObjectExtraction
 
 
 import logging
