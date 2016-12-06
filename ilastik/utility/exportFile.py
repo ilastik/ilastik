@@ -69,17 +69,20 @@ def flatten_ilastik_feature_table(table, selection, signal):
     feature_types = []
 
     for plugin_name, feature_dict in computed_feature[0].iteritems():
+        all_props = None
+        
         if plugin_name==default_features_key:
             plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
         else:
             plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-        plugin_feature_names = {el:{} for el in feature_dict.keys()}
-        all_props = plugin.plugin_object.fill_properties(plugin_feature_names) #fill in display name and such
+        if plugin:
+            plugin_feature_names = {el:{} for el in feature_dict.keys()}
+            all_props = plugin.plugin_object.fill_properties(plugin_feature_names) #fill in display name and such
 
         for feat_name, feat_array in feature_dict.iteritems():
-            try:
+            if all_props:
                 long_name = all_props[feat_name]["displaytext"]
-            except KeyError:
+            else:
                 long_name = feat_name
             if (plugin_name == default_features_key or \
                      long_name in selection) and \
