@@ -212,6 +212,12 @@ class OpDataSelection(Operator):
             return self.message
 
     def __init__(self, forceAxisOrder=False, *args, **kwargs):
+        """
+        forceAxisOrder: How to auto-reorder the input data before connecting it to the rest of the workflow.
+                        Should be a list of input orders that are allowed by the workflow
+                        For example, if the workflow can handle 2D and 3D, you might pass ['yxc', 'zyxc'].
+                        If it only handles exactly 5D, you might pass 'tzyxc', assuming that's how you wrote the workflow.
+        """
         super(OpDataSelection, self).__init__(*args, **kwargs)
         self.forceAxisOrder = forceAxisOrder
         self._opReaders = []
@@ -335,19 +341,34 @@ class OpDataSelection(Operator):
             self._NonTransposedImage.connect(providerSlot)
             
             if self.forceAxisOrder:
+                assert isinstance(self.forceAxisOrder, list), \
+                    "forceAxisOrder should be a *list* of preferred axis orders"
+                
                 # Before we re-order, make sure no non-singleton 
                 #  axes would be dropped by the forced order.
-                output_order = "".join(self.forceAxisOrder)
                 provider_order = "".join(providerSlot.meta.getAxisKeys())
                 tagged_provider_shape = providerSlot.meta.getTaggedShape()
-                dropped_axes = set(provider_order) - set(output_order)
-                if any(tagged_provider_shape[a] > 1 for a in dropped_axes):
-                    msg = "The axes of your dataset ({}) are not compatible with the axes used by this workflow ({}). Please fix them."\
-                          .format(provider_order, output_order)
+
+                minimal_axes = filter( lambda (k,v): v > 1, tagged_provider_shape.items() )
+                minimal_axes = set(k for k,v in minimal_axes)
+
+                # Pick the shortest of the possible 'forced' orders that
+                # still contains all the axes of the original dataset.
+                candidate_orders = list(self.forceAxisOrder)
+                candidate_orders = filter(lambda order: minimal_axes.issubset(set(order)),
+                                          candidate_orders)
+
+                if len(candidate_orders) == 0:
+                    msg = "The axes of your dataset ({}) are not compatible with any of the allowed"\
+                          " axis configurations used by this workflow ({}). Please fix them."\
+                          .format(provider_order, self.forceAxisOrder)
                     raise DatasetConstraintError("DataSelection", msg)
 
+                output_order = sorted(candidate_orders, key=len)[0] # the shortest one
+                output_order = "".join( output_order )
+
                 op5 = OpReorderAxes(parent=self)
-                op5.AxisOrder.setValue(self.forceAxisOrder)
+                op5.AxisOrder.setValue(output_order)
                 op5.Input.connect(providerSlot)
                 providerSlot = op5.Output
                 self._opReaders.append(op5)

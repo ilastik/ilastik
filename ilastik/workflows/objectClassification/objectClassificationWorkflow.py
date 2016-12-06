@@ -676,7 +676,7 @@ class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
                                                         "Input Data",
                                                         "Input Data",
                                                         batchDataGui=False,
-                                                        forceAxisOrder='txyzc',
+                                                        forceAxisOrder=['txyzc'],
                                                         instructionText=data_instructions )
 
         opData = self.dataSelectionApplet.topLevelOperator
@@ -716,7 +716,7 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
                                                         "Input Data",
                                                         "Input Data",
                                                         batchDataGui=False,
-                                                        forceAxisOrder='txyzc',
+                                                        forceAxisOrder=['txyzc'],
                                                         instructionText=data_instructions )
 
         opData = self.dataSelectionApplet.topLevelOperator
