@@ -210,8 +210,6 @@ class OpTrackingFeatureExtraction(Operator):
         self.ComputedFeatureNamesNoDivisions.meta.assignFrom(self.FeatureNamesVigra.meta)
         self.RegionFeaturesAll.meta.assignFrom(self.RegionFeaturesVigra.meta)
 
-        self._objectExtraction.augmentFeatureNames()
-
     def execute(self, slot, subindex, roi, result):
         if slot == self.ComputedFeatureNamesAll:
             feat_names_vigra = self.FeatureNamesVigra([]).wait()
