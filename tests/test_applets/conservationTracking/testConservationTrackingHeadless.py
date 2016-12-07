@@ -80,14 +80,7 @@ class TestConservationTrackingHeadless(object):
 
 
     @timeLogged(logger)
-    def testTrackingHeadless(self):
-        # Skip test if conservation tracking can't be imported. If it fails the problem is most likely that CPLEX is not installed.
-        try:
-            import ilastik.workflows.tracking.conservation
-        except ImportError as e:
-            logger.warn( "Conservation tracking could not be imported: " + str(e) )
-            raise nose.SkipTest 
-        
+    def testTrackingHeadless(self):        
         # TODO: When Hytra is supported on Windows, we shouldn't skip the test and throw an assert instead
         try:
             import hytra
