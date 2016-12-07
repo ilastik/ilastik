@@ -70,7 +70,7 @@ class TestConservationTrackingHeadless(object):
     @classmethod
     def teardownClass(cls):
         removeFiles = ['data/inputdata/smallVideo_Tracking-Result.h5', 'data/inputdata/smallVideo-exported_data_table.csv', 'data/inputdata/smallVideo-exported_data_divisions.csv']
-         
+          
         # Clean up: Delete any test files we generated
         for f in removeFiles:
             try:
@@ -80,14 +80,7 @@ class TestConservationTrackingHeadless(object):
 
 
     @timeLogged(logger)
-    def testTrackingHeadless(self):
-        # Skip test if conservation tracking can't be imported. If it fails the problem is most likely that CPLEX is not installed.
-        try:
-            import ilastik.workflows.tracking.conservation
-        except ImportError as e:
-            logger.warn( "Conservation tracking could not be imported: " + str(e) )
-            raise nose.SkipTest 
-        
+    def testTrackingHeadless(self):        
         # TODO: When Hytra is supported on Windows, we shouldn't skip the test and throw an assert instead
         try:
             import hytra
@@ -125,8 +118,8 @@ class TestConservationTrackingHeadless(object):
         assert data.shape[0] == self.EXPECTED_NUM_ROWS, 'Number of rows in csv file differs from expected' 
 
         # Check that csv contains RegionRadii and RegionAxes (necessary for animal tracking)
-        assert 'RegionRadii_0' in data.dtype.names, 'RegionRadii not found in csv file (required for animal tracking)'
-        assert  'RegionAxes_0' in data.dtype.names, 'RegionAxes not found in csv file (required for animal tracking)'   
+        assert 'Radii_of_the_object_0' in data.dtype.names, 'RegionRadii not found in csv file (required for animal tracking)'
+        assert  'Principal_components_of_the_object_0' in data.dtype.names, 'RegionAxes not found in csv file (required for animal tracking)'   
         
         # Check for expected number of mergers
         merger_count = 0
