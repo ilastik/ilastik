@@ -85,7 +85,8 @@ def flatten_ilastik_feature_table(table, selection, signal):
             else:
                 long_name = feat_name
             if (plugin_name == default_features_key or \
-                     long_name in selection) and \
+                     long_name in selection or \
+                     feat_name in selection) and \
                      long_name not in feature_long_names:
                 feature_long_names.append(long_name)
                 feature_short_names.append(feat_name)
