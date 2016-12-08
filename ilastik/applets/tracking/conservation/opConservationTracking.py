@@ -8,7 +8,6 @@ from lazyflow.stype import Opaque
 
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpRegionFeatures
-from ilastik.applets.tracking.base.trackingUtilities import get_dict_value, get_events
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import OpZeroDefault
 from lazyflow.roi import sliceToRoi
