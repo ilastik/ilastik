@@ -131,13 +131,13 @@ class TestStructuredLearningTrackingHeadless(object):
         assert 'labelimage_oid' in data.dtype.names, "'labelimage_oid' not found in the csv file!"
         assert 'lineage_id' in data.dtype.names, "'lineage_id' not found in the csv file!"
         assert 'track_id' in data.dtype.names, "'track_id' not found in the csv file!"
-        assert 'Count' in data.dtype.names, "'Count' not found in the csv file!"
-        assert 'CoordMinimum_0' in data.dtype.names, "'Coord<Minimum>_0' not found in the csv file!"
-        assert 'CoordMinimum_1' in data.dtype.names, "'Coord<Minimum>_1' not found in the csv file!"
-        assert 'RegionCenter_0' in data.dtype.names, "'RegionCenter_0' not found in the csv file!"
-        assert 'RegionCenter_1' in data.dtype.names, "'RegionCenter_1' not found in the csv file!"
-        assert 'CoordMaximum_0' in data.dtype.names, "'Coord<Maximum>_0' not found in the csv file!"
-        assert 'CoordMaximum_1' in data.dtype.names, "'Coord<Maximum>_1' not found in the csv file!"
+        assert 'Size_in_pixels' in data.dtype.names, "'Size_in_pixels' not found in the csv file!"
+        assert 'Bounding_Box_Minimum_0' in data.dtype.names, "'Bounding_Box_Minimum_0' not found in the csv file!"
+        assert 'Bounding_Box_Minimum_1' in data.dtype.names, "'Bounding_Box_Minimum_1' not found in the csv file!"
+        assert 'Center_of_the_object_0' in data.dtype.names, "'Center_of_the_object_0' not found in the csv file!"
+        assert 'Center_of_the_object_1' in data.dtype.names, "'Center_of_the_object_1' not found in the csv file!"
+        assert 'Bounding_Box_Maximum_0' in data.dtype.names, "'Bounding_Box_Maximum_0' not found in the csv file!"
+        assert 'Bounding_Box_Maximum_1' in data.dtype.names, "'Bounding_Box_Maximum_1' not found in the csv file!"
 
         # Check for expected number of mergers
         merger_count = 0
