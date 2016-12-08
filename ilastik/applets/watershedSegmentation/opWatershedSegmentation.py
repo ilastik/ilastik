@@ -141,14 +141,21 @@ class OpWatershedSegmentation(Operator):
         self._cache.Input.connect(self.WatershedCalc)
 
 
+        '''
+        OpPixelClassification.LabelNames : 	{_ready : True, NOTREADY : None, shape : (1,), dtype : <type 'object'>, has_mask : None, _dirty : False}
+
+        {_ready : True, NOTREADY : None, shape : (1,), dtype : <type 'object'>, has_mask : None, _dirty : False}
+        ['Bang', 'Label 2', 'Huch']
+        '''
 
     def setupOutputs(self):
-        self.LabelNames.meta.dtype = object
-        self.LabelNames.meta.shape = (1,)
+        self.LabelNames.meta.dtype  = object
+        #self.LabelNames.meta.shape = (1,)
+        self.LabelNames.meta.shape  = (1,)
         self.LabelColors.meta.dtype = object
         self.LabelColors.meta.shape = (1,)
-        self.PmapColors.meta.dtype = object
-        self.PmapColors.meta.shape = (1,)
+        self.PmapColors.meta.dtype  = object
+        self.PmapColors.meta.shape  = (1,)
 
 
         ############################################################

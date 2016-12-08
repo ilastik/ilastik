@@ -36,11 +36,14 @@ class WatershedSegmentationSerializer(AppletSerializer):
         can include more than these slot: e.g. all slots, that are not viewed in the gui, 
         (means, no input paramters but cached images)
         """
-        slots = [ #SerialSlot(operator.ChannelSelection),
-                  #SerialSlot(operator.BrushValue),
-                  SerialListSlot(operator.LabelNames, transform=str),
-                  SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
-                  SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
+
+        slots = [ 
+                 
+                  #SerialListSlot(operator.LabelNames),                  
+                  #SerialListSlot(operator.LabelNames, transform=str),
+                  #SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
+                  #SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
+
                   #used to remember to show the watershed result layer 
                   SerialSlot(operator.ShowWatershedLayer), 
                   SerialSlot(operator.UseCachedLabels), 
@@ -56,6 +59,7 @@ class WatershedSegmentationSerializer(AppletSerializer):
         super(WatershedSegmentationSerializer, self).__init__(projectFileGroupName, slots=slots, operator=operator)
 
 
+    '''
     #TODO copied from pixelclassification. maybe needed, maybe not
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         """
@@ -121,3 +125,4 @@ class WatershedSegmentationSerializer(AppletSerializer):
                     # Delete the classifier from the operator
                     logger.info( "Resetting classifier... will be forced to retrain" )
                     self.operator.classifier_cache.resetValue()
+    '''

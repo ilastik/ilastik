@@ -1,6 +1,8 @@
 import volumina.colortables as colortables
 from PyQt4.Qt import pyqtSlot
 from PyQt4.QtGui import QMessageBox
+import logging
+logger = logging.getLogger(__name__)
 
 class ImportAndResetLabels(object):
     """
@@ -179,7 +181,7 @@ class ImportAndResetLabels(object):
         
         """
         if (self._useSlotCache):
-            logger.info( "Use the cached Labels and do nothing"
+            logger.info( "Use the cached Labels and do nothing")
         else:
             self._importLabelsFromSlot(self._slot)
 

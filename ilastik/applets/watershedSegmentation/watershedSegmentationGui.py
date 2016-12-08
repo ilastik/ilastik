@@ -275,8 +275,13 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             op.ShowWatershedLayer.setValue(True)
             self.updateAllLayers()
 
+        print op.LabelNames
+        print op.LabelNames.meta
+        print op.LabelNames.value
+
         # execute the watershed algorithm
         self.topLevelOperatorView.opWSC.execWatershedAlgorithm()
+
 
 
 
@@ -359,8 +364,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         # use the cached version here
         if op.ShowWatershedLayer.value: 
             # WatershedCalculations
-            #self.initLayer(op.WatershedCalc, "Watershed Calculations", layers)
-            #TODO better name
             self.initLayer(op.WSCCOCachedOutput,"Watershed Calculations", layers)
 
         return layers
