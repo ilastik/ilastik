@@ -315,7 +315,6 @@ class OpObjectExtraction(Operator):
     # dict[plugin_name][feature_name][parameter_name] = parameter_value
     # for example {"Standard Object Features": {"Mean in neighborhood":{"margin": (5, 5, 2)}}}
     Features = InputSlot(rtype=List, stype=Opaque, value={})
-    FeaturesWithDefault = InputSlot(rtype=List, stype=Opaque, value={})
 
     LabelImage = OutputSlot()
     ObjectCenterImage = OutputSlot()
@@ -362,7 +361,7 @@ class OpObjectExtraction(Operator):
 
         self._opRegFeats.RawImage.connect(self.RawImage)
         self._opRegFeats.LabelImage.connect(self._opLabelVolume.CachedOutput)
-        self._opRegFeats.Features.connect(self.FeaturesWithDefault)
+        self._opRegFeats.Features.connect(self.Features)
         self.RegionFeaturesCleanBlocks.connect(self._opRegFeats.CleanBlocks)
 
         self._opRegFeats.CacheInput.connect(self.RegionFeaturesCacheInput)
@@ -375,10 +374,6 @@ class OpObjectExtraction(Operator):
         self._opCenterCache = OpCompressedCache(parent=self)
         self._opCenterCache.name = "OpObjectExtraction._opCenterCache"
         self._opCenterCache.Input.connect(self._opObjectCenterImage.Output)
-
-        # Add default features if the value of features has changed
-        self.Features.notifyDirty(self.augmentFeatureNames)
-        self.Features.notifyValueChanged(self.augmentFeatureNames)
 
         # connect outputs
         self.LabelImage.connect(self._opLabelVolume.CachedOutput)
@@ -418,8 +413,6 @@ class OpObjectExtraction(Operator):
             #     taggedShape[k] = 256
         self._opCenterCache.BlockShape.setValue(tuple(taggedShape.values()))
 
-        self.augmentFeatureNames()
-
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here."
 
@@ -432,32 +425,6 @@ class OpObjectExtraction(Operator):
         # Nothing to do here.
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
-
-    def augmentFeatureNames(self, *args):
-        # Take a dictionary of feature names, augment it by default features and set to Features() slot
-
-        if self.Features.ready():
-            feature_names = self.Features([]).wait()
-            feature_names_with_default = deepcopy(feature_names)
-
-            #expand the feature list by our default features
-            logger.debug("attaching default features {} to vigra features {}".format(default_features, feature_names))
-            plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
-            all_default_props = plugin.plugin_object.fill_properties(default_features) #fill in display name and such
-            feature_names_with_default[default_features_key] = all_default_props
-
-            if not "Standard Object Features" in feature_names.keys():
-                # The user has not selected any standard features. Add them now
-                feature_names_with_default["Standard Object Features"] = {}
-
-            for default_feature_name, default_feature_props in default_features.iteritems():
-                if default_feature_name not in feature_names_with_default["Standard Object Features"]:
-                    # this feature has not been selected by the user, add it now.
-                    feature_names_with_default["Standard Object Features"][default_feature_name] = all_default_props[default_feature_name]
-                    feature_names_with_default["Standard Object Features"][default_feature_name]["selected"] = False
-
-            self.FeaturesWithDefault.setValue(feature_names_with_default)
-
 
     @staticmethod
     def createExportTable(features):
@@ -654,6 +621,30 @@ class OpRegionFeatures(Operator):
         key.insert(axes.c, slice(None))
         return image[tuple(key)]
 
+    def _augmentFeatureNames(self, features):
+        # Take a dictionary of feature names, augment it by default features and set to Features() slot
+        
+        feature_names = features
+        feature_names_with_default = deepcopy(feature_names)
+
+        #expand the feature list by our default features
+        logger.debug("attaching default features {} to vigra features {}".format(default_features, feature_names))
+        plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
+        all_default_props = plugin.plugin_object.fill_properties(default_features) #fill in display name and such
+        feature_names_with_default[default_features_key] = all_default_props
+
+        if not "Standard Object Features" in feature_names.keys():
+            # The user has not selected any standard features. Add them now
+            feature_names_with_default["Standard Object Features"] = {}
+
+        for default_feature_name, default_feature_props in default_features.iteritems():
+            if default_feature_name not in feature_names_with_default["Standard Object Features"]:
+                # this feature has not been selected by the user, add it now.
+                feature_names_with_default["Standard Object Features"][default_feature_name] = all_default_props[default_feature_name]
+                feature_names_with_default["Standard Object Features"][default_feature_name]["selected"] = False
+
+        return feature_names_with_default
+
     def _extract(self, image, labels):
         if not (image.ndim == labels.ndim == 4):
             raise Exception("both images must be 4D. raw image shape: {}"
@@ -676,6 +667,7 @@ class OpRegionFeatures(Operator):
 
         #These are the feature names, selected by the user and the default feature names.
         feature_names = deepcopy(self.Features([]).wait())
+        feature_names = self._augmentFeatureNames(feature_names)
 
         # do global features
         logger.debug("computing global features")
