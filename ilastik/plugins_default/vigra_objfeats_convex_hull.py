@@ -168,7 +168,10 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
         try:
             nobj = result[features[0]].shape[0]
         except  Exception as e:
-            logger.info("Feature name not found in computed features, exception: {}".format(e))
+            logger.error("Feature name not found in computed features.\n"
+                         "Your project file might be using obsolete features.\n"
+                         "Please select new features, and re-train your classifier.\n"
+                         "(Exception was: {})".format(e))
         
         #NOTE: this removes the background object!!!
         #The background object is always present (even if there is no 0 label) and is always removed here
