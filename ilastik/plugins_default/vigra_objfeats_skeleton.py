@@ -49,13 +49,8 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
     ndim = None
     
     def availableFeatures(self, image, labels):
-        
-        try:
-            names = vigra.analysis.supportedSkeletonFeatures(labels)
-            logger.debug('2D Skeleton Features: Supported Skeleton Features: done.')
-        except:
-            logger.error('2D Skeleton Features: Supported Skeleton Features: failed (Vigra commit must be f8e48031abb1158ea804ca3cbfe781ccc62d09a2 or newer).')
-            names = []
+        names = vigra.analysis.supportedSkeletonFeatures(labels)
+        logger.debug('2D Skeleton Features: Supported Skeleton Features: done.')
 
         if 'Center' in names:
             # To avoid name clashes with convex hull features,
