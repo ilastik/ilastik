@@ -287,7 +287,7 @@ class OpStructuredTracking(OpConservationTracking):
                                 hypothesesGraph._graph.node[parentNode]['divisionValue'] = 1
                                 foundAllArcs = False
                                 for child in children:
-                                    for edge in hypothesesGraph._graph.out_edges(parent): # an edge is a tuple of source and target nodes
+                                    for edge in hypothesesGraph._graph.out_edges(parentNode): # an edge is a tuple of source and target nodes
                                         if edge[1][0] == time+1 and edge[1][1] == int(child): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
                                             foundAllArcs = True
                                             hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = 1
