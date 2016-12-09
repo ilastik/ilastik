@@ -147,6 +147,27 @@ class ObjectFeaturesPlugin(IPlugin):
         
         return self.combine_dicts_with_numpy(results)
 
+class TrackingExportFormatPlugin(IPlugin):
+    """Plugins of this class can export a tracking solution."""
+
+    name = "Base Tracking export format plugin"
+    exportsToFile = True # depending on this setting, the user can choose a file or a folder where to export 
+
+    def __init__(self, *args, **kwargs):
+        super(TrackingExportFormatPlugin, self).__init__(*args, **kwargs)
+
+    def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot):
+        """Export the tracking solution stored in the hypotheses graph's "value" and "divisionValue"
+        attributes (or the "lineageId" and "trackId" attribs). See https://github.com/chaubold/hytra for more details.
+
+        :param filename: string of the file where to save the result (or folder where to put the export files)
+        :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
+        :param objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output 
+               of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
+        
+        :returns: True on success, False otherwise
+        """
+        return False
 
 ###############
 # the manager #
@@ -157,6 +178,7 @@ pluginManager.setPluginPlaces(plugin_paths)
 
 pluginManager.setCategoriesFilter({
    "ObjectFeatures" : ObjectFeaturesPlugin,
+   "TrackingExportFormats": TrackingExportFormatPlugin
    })
 
 pluginManager.collectPlugins()

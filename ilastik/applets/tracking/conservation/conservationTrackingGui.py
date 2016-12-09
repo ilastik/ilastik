@@ -6,6 +6,7 @@ import sys
 import re
 import traceback
 from PyQt4.QtCore import pyqtSignal
+from volumina.utility import encode_from_qstring
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility import log_exception
 from ilastik.utility.exportingOperator import ExportingGui
@@ -14,6 +15,8 @@ from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.utility.ipcProtocol import Protocol
 from ilastik.shell.gui.ipcManager import IPCFacade
 from ilastik.config import cfg as ilastik_config
+from ilastik.plugins import pluginManager
+
 
 from lazyflow.request.request import Request
 
@@ -201,6 +204,46 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
         self._drawer.mergerResolutionBox.stateChanged.connect(self._onMaxObjectsBoxChanged)
 
+        if not WITH_HYTRA:
+            self._drawer.exportTypeComboBox.hide()
+            self._drawer.exportTypeLabel.hide()
+            self._drawer.exportTypeButton.hide()
+        else:
+            exportPlugins = pluginManager.getPluginsOfCategory('TrackingExportFormats')
+            availableExportPlugins = [pluginInfo.name for pluginInfo in exportPlugins]
+            self._drawer.exportTypeComboBox.addItems(availableExportPlugins)
+            self._drawer.exportTypeButton.pressed.connect(self._onExportTypeButtonPressed)
+            self._updateExportButtonsEnabledState()
+            self._drawer.exportButton.hide()
+
+    @threadRouted
+    def _onExportTypeButtonPressed(self):
+        '''
+        Export the tracking solution in the format selected in exportTypeComboBox.
+        '''
+        selectedExportType = self._drawer.exportTypeComboBox.currentText()
+        exportPluginInfo = pluginManager.getPluginByName(selectedExportType, category="TrackingExportFormats")
+        if exportPluginInfo is None:
+            logger.error("Could not find selected plugin %s" % exportPluginInfo)
+        else:
+            exportPlugin = exportPluginInfo.plugin_object
+            logger.info("Exporting tracking result using %s" %selectedExportType)
+
+            options = QFileDialog.Options()
+            if ilastik_config.getboolean("ilastik", "debug"):
+                options |= QFileDialog.DontUseNativeDialog
+
+            if exportPlugin.exportsToFile:
+                filename = encode_from_qstring(QFileDialog.getSaveFileName(self, 'Select export location', os.path.expanduser("~"), options=options))
+            else:
+                filename = encode_from_qstring(QFileDialog.getExistingDirectory(self, 'Select Directory', os.path.expanduser("~"), options=options))
+
+            if filename is None or len(str(filename)) == 0:
+                logger.info( "cancelled." )
+                return
+            
+            self.mainOperator.exportPlugin(filename, exportPlugin)
+
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
         inString = str(self._drawer.timeoutBox.text())
@@ -296,21 +339,17 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     withClassifierPrior=classifierPrior,
                     ndim=ndim,
                     withMergerResolution=withMergerResolution,
-                    borderAwareWidth = borderAwareWidth,
-                    withArmaCoordinates = withArmaCoordinates,
-                    cplex_timeout = cplex_timeout,
-                    appearance_cost = appearanceCost,
-                    disappearance_cost = disappearanceCost,
+                    borderAwareWidth =borderAwareWidth,
+                    withArmaCoordinates =withArmaCoordinates,
+                    cplex_timeout =cplex_timeout,
+                    appearance_cost =appearanceCost,
+                    disappearance_cost =disappearanceCost,
                     motionModelWeight=motionModelWeight,
-                    force_build_hypotheses_graph = False,
+                    force_build_hypotheses_graph =False,
                     max_nearest_neighbors=self._drawer.maxNearestNeighborsSpinBox.value(),
                     solverName=solver
                     )
 
-                # update showing the merger legend,
-                # as it might be (no longer) needed if merger resolving
-                # is disabled(enabled)
-                self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
             except Exception as ex:
                 log_exception(logger, "Error during tracking.  See above error traceback.")
                 self._criticalMessage("Error during tracking.  See error log.\n\n"
@@ -324,7 +363,15 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.TrackButton.setEnabled(True)
             self._drawer.exportButton.setEnabled(True)
             self._drawer.exportTifButton.setEnabled(True)
-            self._setLayerVisible("Objects", False) 
+            self._setLayerVisible("Objects", False)
+            
+            # update showing the merger legend,
+            # as it might be (no longer) needed if merger resolving
+            # is disabled(enabled)
+            self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
+
+            if WITH_HYTRA:
+                self._updateExportButtonsEnabledState() 
             
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False
@@ -340,6 +387,17 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
         req.submit()
+
+    def _updateExportButtonsEnabledState(self):
+        if self.topLevelOperatorView.isTrackingSolutionAvailable():
+            state = True
+        else:
+            state = False
+        
+        self._drawer.exportTypeButton.setEnabled(state)
+        self._drawer.exportTypeComboBox.setEnabled(state)
+        self._drawer.exportTypeLabel.setEnabled(state)
+
 
     def menus(self):
         m = QtGui.QMenu("&Export", self.volumeEditorWidget)

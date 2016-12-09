@@ -632,6 +632,27 @@ class OpConservationTracking(Operator, ExportingOperator):
 
         return opRelabeledRegionFeatures
 
+    def exportPlugin(self, filename, plugin):
+        with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
+        with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False
+
+        if with_divisions:
+            object_feature_slot = self.ObjectFeaturesWithDivFeatures
+        else:
+            object_feature_slot = self.ObjectFeatures
+
+        if with_merger_resolution:
+            label_image = self.RelabeledImage
+
+            opRelabeledRegionFeatures = self._setupRelabeledFeatureSlot(object_feature_slot)
+            object_feature_slot = opRelabeledRegionFeatures.RegionFeatures
+        else:
+            label_image = self.LabelImage
+        
+        hypothesesGraph = self.HypothesesGraph.value
+        if not plugin.export(filename, hypothesesGraph, object_feature_slot, label_image):
+            raise RuntimeError('Exporting tracking solution with plugin failed')
+
     def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
         """
         Implements ExportOperator.do_export(settings, selected_features, progress_slot
@@ -991,4 +1012,23 @@ class OpConservationTracking(Operator, ExportingOperator):
         :param dialog: the ProgressDialog to save
         """
         self.export_progress_dialog = dialog
+    
+    def isTrackingSolutionAvailable(self):
+        """
+        check whether the hypotheses graph is filled and contains a tracking solution
         
+        :return: True if there is a tracking solution available, False otherwise
+        """
+        hypothesesGraph = self.HypothesesGraph.value
+
+        from hytra.core.hypothesesgraph import HypothesesGraph
+        if isinstance(hypothesesGraph, HypothesesGraph):
+            print("Have hypotheses graph") 
+            hypothesesGraph = hypothesesGraph.referenceTraxelGraph if hypothesesGraph.withTracklets else hypothesesGraph
+            if 'value' in hypothesesGraph._graph.nodes(data='True')[0][1]:
+                print("have value")
+                return True
+            print("But no value")
+        
+        print("No hypotheses graph")
+        return False
