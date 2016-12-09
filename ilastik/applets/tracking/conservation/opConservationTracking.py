@@ -723,26 +723,27 @@ class OpConservationTracking(Operator, ExportingOperator):
                         track_id = 0
                     div_track_ids.append(track_id)
                     
-                    assert len(hypothesesGraph._graph.out_edges(node)) != 2, "Division node {}, does not contain 2 children".format(node) 
+                    assert len(hypothesesGraph.countOutgoingObjects(node)) != (2,2), "Division node {}, does not contain 2 children".format(node) 
                     
-                    child1 = hypothesesGraph._graph.out_edges(node)[0][1]
-                    child1_time = child1[0]
-                    child1_object_id = child1[1]
-                    div_child1_oids.append(child1_object_id)
-                    child1_track_id = hypothesesGraph.getTrackId(child1_time, child1_object_id)
-                    if not child1_track_id:
-                        child1_track_id = 0
-                    div_child1_track_ids.append(child1_track_id)
-                    
-                    child2 = hypothesesGraph._graph.out_edges(node)[1][1]
-                    child2_time = child2[0]
-                    child2_object_id = child2[1]
-                    div_child2_oids.append(child2_object_id)
-                    child2_track_id = hypothesesGraph.getTrackId(child2_time, child2_object_id)
-                    if not child2_track_id:
-                        child2_track_id = 0
-                    div_child2_track_ids.append(child2_track_id)
-                                          
+                    childIdx = 1
+                    for outEdge in hypothesesGraph._graph.out_edges(node):
+                        if hypothesesGraph._graph.edge[outEdge[0]][outEdge[1]]['value'] == 1:
+                            child = outEdge[1]
+                            child_time = child[0]
+                            child_object_id = child[1]
+                            child_track_id = hypothesesGraph.getTrackId(child_time, child_object_id)
+                            if not child_track_id:
+                                child_track_id = 0
+
+                            if childIdx == 1:
+                                div_child1_oids.append(child_object_id)
+                                div_child1_track_ids.append(child_track_id)
+                            else:
+                                div_child2_oids.append(child_object_id)
+                                div_child2_track_ids.append(child_track_id)
+                            
+                            childIdx += 1 # next child will be 2nd
+                    assert(childIdx == 3)
             else:
                 lineage_ids.append(0)
                 track_ids.append(0)
