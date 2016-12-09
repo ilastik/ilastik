@@ -240,6 +240,7 @@ class SerialSlot(object):
         """
         if not self.name in group:
             return
+        
         self._deserialize(group[self.name], self.inslot)
         self.dirty = False
 
@@ -247,6 +248,7 @@ class SerialSlot(object):
     def _getValue(subgroup, slot):
         val = subgroup[()]
         slot.setValue(val)
+
 
     def _deserialize(self, subgroup, slot):
         """
@@ -257,31 +259,39 @@ class SerialSlot(object):
         if slot.level == 0:
             self._getValue(subgroup, slot)
         else:
-            # Pair stored indexes with their keys,
-            # e.g. [(0,'0'), (2, '2'), (3, '3')]
-            # Note that in some cases an index might be intentionally skipped.
-            indexes_to_keys = { int(k) : k for k in subgroup.keys() }
-            
-            # Ensure the slot is at least big enough to deserialize into.
-            if indexes_to_keys.keys() == []:
-                max_index = 0
-            else:
-                max_index = max( indexes_to_keys.keys() )
-            if len(slot) < max_index+1:
-                slot.resize(max_index+1)
+            self._deserializeLevelAboveZero(subgroup, slot)
 
-            # Now retrieve the data
-            for i, subslot in enumerate(slot):
-                if i in indexes_to_keys:
-                    key = indexes_to_keys[i]
-                    # Sadly, we can't use the following assertion because it would break  
-                    #  backwards compatibility with a bug we used to have in the key names.
-                    #assert key == self.subname.format(i)
-                    self._deserialize(subgroup[key], subslot)
-                else:
-                    # Since there was no data for this subslot in the project file,
-                    # we disconnect the subslot.
-                    subslot.disconnect()
+    def _deserializeLevelAboveZero(self, subgroup, slot):
+        """
+        Used for Slots with level 1 (or higher? not tested)
+        this breakes the slots down to its subslots, 
+        so the slot.level == 0 mustn't be changed for higher dimensionalities
+        """
+        # Pair stored indexes with their keys,
+        # e.g. [(0,'0'), (2, '2'), (3, '3')]
+        # Note that in some cases an index might be intentionally skipped.
+        indexes_to_keys = { int(k) : k for k in subgroup.keys() }
+        
+        # Ensure the slot is at least big enough to deserialize into.
+        if indexes_to_keys.keys() == []:
+            max_index = 0
+        else:
+            max_index = max( indexes_to_keys.keys() )
+        if len(slot) < max_index+1:
+            slot.resize(max_index+1)
+
+        # Now retrieve the data
+        for i, subslot in enumerate(slot):
+            if i in indexes_to_keys:
+                key = indexes_to_keys[i]
+                # Sadly, we can't use the following assertion because it would break  
+                #  backwards compatibility with a bug we used to have in the key names.
+                #assert key == self.subname.format(i)
+                self._deserialize(subgroup[key], subslot)
+            else:
+                # Since there was no data for this subslot in the project file,
+                # we disconnect the subslot.
+                subslot.disconnect()
 
 #######################################################
 # some serial slots that are used in multiple applets #
@@ -304,9 +314,6 @@ class SerialListSlot(SerialSlot):
         :param transform: function applied to members on deserialization.
 
         """
-        # TODO: implement for multislots
-        if slot.level > 0:
-            raise NotImplementedError()
 
         super(SerialListSlot, self).__init__(
             slot, inslot, name, subname, default, depends, selfdepends
@@ -327,6 +334,29 @@ class SerialListSlot(SerialSlot):
         sg = group.create_dataset(name, data=map(self._store_transform, value))
         sg.attrs['isEmpty'] = isempty
 
+    
+    @timeLogged(logger, logging.DEBUG)
+    def _deserialize(self, subgroup, slot):
+        """ capable of slots level=1
+            but under construction right now TODO
+        """
+        logger.debug("Deserializing ListSlot: {}".format(self.name))
+
+        #extentsion for slots of level 1 or higher
+        if slot.level == 0:
+            if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
+                self.inslot.setValue( self._iterable([]) )
+            else:
+                if len(subgroup.shape) == 0 or subgroup.shape[0] == 0:
+                    # How can this happen, anyway...?
+                    return
+                else:
+                    self.inslot.setValue(self._iterable(map(self.transform, subgroup[()])))
+            self.dirty = False
+        else:
+            self._deserializeLevelAboveZero(subgroup, slot)
+
+    ''' changes of the original
     @timeLogged(logger, logging.DEBUG)
     def deserialize(self, group):
         logger.debug("Deserializing ListSlot: {}".format(self.name))
@@ -337,6 +367,7 @@ class SerialListSlot(SerialSlot):
                 # Only show this warning when debugging serialization
                 warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
             return
+
         if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
             self.inslot.setValue( self._iterable([]) )
         else:
@@ -346,6 +377,7 @@ class SerialListSlot(SerialSlot):
             else:
                 self.inslot.setValue(self._iterable(map(self.transform, subgroup[()])))
         self.dirty = False
+    '''
 
 class SerialBlockSlot(SerialSlot):
     """A slot which only saves nonzero blocks."""
