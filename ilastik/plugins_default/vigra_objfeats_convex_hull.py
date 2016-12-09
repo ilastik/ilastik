@@ -165,7 +165,10 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
         result = vigra.analysis.extract2DConvexHullFeatures(labels.squeeze().astype(numpy.uint32), ignoreLabel=0)
         
         # find the number of objects
-        nobj = result[features[0]].shape[0]
+        try:
+            nobj = result[features[0]].shape[0]
+        except  Exception as e:
+            logger.info("Feature name not found in computed features, exception: {}".format(e))
         
         #NOTE: this removes the background object!!!
         #The background object is always present (even if there is no 0 label) and is always removed here
