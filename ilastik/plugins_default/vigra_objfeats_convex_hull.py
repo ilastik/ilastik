@@ -52,7 +52,7 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
     
     def availableFeatures(self, image, labels):
         try:
-            names = vigra.analysis.supportedConvexHullFeatures(labels)
+            names = vigra.analysis.extract2DConvexHullFeatures(labels, list_features_only=True)
             logger.debug('2D Convex Hull Features: Supported Convex Hull Features: done.')
         except:
             logger.error('2D Convex Hull Features: Supported Convex Hull Features: failed (Vigra commit must be f8e48031abb1158ea804ca3cbfe781ccc62d09a2 or newer).')
@@ -178,7 +178,7 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
         
         # ignoreLabel=None calculates background label parameters
         # ignoreLabel=0 ignores calculation of background label parameters
-        result = vigra.analysis.extractConvexHullFeatures(labels.squeeze().astype(numpy.uint32), ignoreLabel=0)
+        result = vigra.analysis.extract2DConvexHullFeatures(labels.squeeze().astype(numpy.uint32), ignoreLabel=0)
         
         # 'Polygon' is NOT usable as a feature
         del result['Polygon']
