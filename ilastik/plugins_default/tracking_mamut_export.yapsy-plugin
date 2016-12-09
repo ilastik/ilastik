@@ -1,0 +1,9 @@
+[Core]
+Name = Fiji's MaMuT
+Module = tracking_mamut_export
+
+[Documentation]
+Author = Carsten Haubold
+Version = 0.1
+Website = ilastik.org
+Description = "Plugin to export the ilastik tracking results to Fiji's MaMuT"
