@@ -384,6 +384,11 @@ class SerialBlockSlot(SerialSlot):
     def __init__(self, slot, inslot, blockslot, name=None, subname=None,
                  default=None, depends=None, selfdepends=True, shrink_to_bb=False, compression_level=0):
         """
+        :param slot: this slot contains the data, that shall be saved. 
+            e.g. the LabelsOut of the LabelPipeline
+        :param inslot: in this slot, the data will be copied after reloading the project
+            e.g. the LabelsIn of the LabelPipeline, so that the Labels can be used and manipulated 
+            after project restart
         :param blockslot: provides non-zero blocks.
         :param shrink_to_bb: If true, reduce each block of data from the slot to  
                              its nonzero bounding box before feeding saving it.

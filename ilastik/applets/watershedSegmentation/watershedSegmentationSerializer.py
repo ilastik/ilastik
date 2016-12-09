@@ -40,26 +40,34 @@ class WatershedSegmentationSerializer(AppletSerializer):
         """
 
         slots = [ 
-                  SerialListSlot(operator.LabelNames, transform=str),
 
-                  #SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
-                  #SerialListSlot(operator.LabelNames),                  
-                  #SerialListSlot(operator.LabelNames),                  
-                  #SerialListSlot(operator.LabelNames, transform=str),
-                  SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
-                  SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
+                # serialize the slots for the LabelListModel
+                # because we use a list, we have to transform it to something, the 
+                # SerialListSlot can work with. 
+                SerialListSlot(operator.LabelNames, transform=str),
+                SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
+                SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
 
-                  #used to remember to show the watershed result layer 
-                  SerialSlot(operator.ShowWatershedLayer), 
-                  SerialSlot(operator.UseCachedLabels), 
-                  SerialHdf5BlockSlot(operator.WSCCOOutputHdf5,
-                                      operator.WSCCOInputHdf5,
-                                      operator.WSCCOCleanBlocks,
-                                      name="CachedWatershedOutput")
-                  #SerialHdf5BlockSlot(operator.LabelOutputHdf5,
-                                      #operator.LabelInputHdf5,
-                                      #operator.LabelCleanBlocks,
-                                      #name="CorrectedSeedsOutCached")
+                # serialize the Labels of the user, so that the data (not the Labels)
+                # are shown after project restart
+                SerialBlockSlot(operator.CorrectedSeedsOut,
+                    operator.CorrectedSeedsIn,
+                    operator.NonZeroBlocks,
+                    name='LabelSets',
+                    subname='labels{:03d}',
+                    selfdepends=False,
+                    shrink_to_bb=True),
+                # used to remember to show the watershed result layer 
+                #TODO maybe change something if level changes
+                SerialSlot(operator.ShowWatershedLayer), 
+                SerialSlot(operator.UseCachedLabels), 
+
+                # serialize the output of the watershed algorithm, 
+                # so it won't be lost after restarting the project
+                SerialHdf5BlockSlot(operator.WSCCOOutputHdf5,
+                    operator.WSCCOInputHdf5,
+                    operator.WSCCOCleanBlocks,
+                    name="CachedWatershedOutput")
                 ]
         super(WatershedSegmentationSerializer, self).__init__(projectFileGroupName, slots=slots, operator=operator)
 

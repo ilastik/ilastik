@@ -69,6 +69,10 @@ class OpWatershedSegmentation(Operator):
     WatershedCalc       = OutputSlot()
     #Cached Output of watershed should be the output in a layer, nothing more
     WSCCOCachedOutput   = OutputSlot()  # For the GUI (blockwise-access)
+    '''
+    # Cached version for serialization
+    CorrectedSeedsOutCached   = OutputSlot()  
+    '''
 
     ############################################################
     # Watershed: For serialization (saving in cache) of the watershed Output
@@ -77,15 +81,25 @@ class OpWatershedSegmentation(Operator):
     WSCCOOutputHdf5     = OutputSlot()
     WSCCOCleanBlocks    = OutputSlot()
 
+    '''
+    ############################################################
+    # Labels: For serialization (saving in cache) of the Labels changed by the user
+    ############################################################
+    LabelInputHdf5      = InputSlot(optional=True)
+    LabelOutputHdf5     = OutputSlot()
+    LabelCleanBlocks    = OutputSlot()
+    '''
 
     ############################################################
-    # Label slots
+    # Label slots (for the LabelListModel)
     ############################################################
 
     # GUI-only (not part of the pipeline, but saved to the project)
     LabelNames          = OutputSlot()
     LabelColors         = OutputSlot()
     PmapColors          = OutputSlot()
+
+    NonZeroBlocks       = OutputSlot()
 
 
 
@@ -107,6 +121,8 @@ class OpWatershedSegmentation(Operator):
         self.opWSLP.SeedInput   .connect( self.CorrectedSeedsIn )
         #Output
         self.CorrectedSeedsOut  .connect( self.opWSLP.SeedOutput )
+        # (optional)
+        self.NonZeroBlocks      .connect( self.opWSLP.NonZeroBlocks )
 
         ############################################################
         # watershed calculations = WSC
@@ -142,10 +158,22 @@ class OpWatershedSegmentation(Operator):
 
 
         '''
-        OpPixelClassification.LabelNames : 	{_ready : True, NOTREADY : None, shape : (1,), dtype : <type 'object'>, has_mask : None, _dirty : False}
+        ############################################################
+        # Labels from User cached
+        ############################################################
+        #cache our own output, don't propagate from internal operator
+        self._cacheLabel = _OpCacheWrapper(parent=self)
+        self._cacheLabel.name = "OpWatershedSegmentation.OpCacheWrapper.Label"
+        # use this output of the cache for displaying in a layer only
+        self.CorrectedSeedsOutCached.connect(self._cacheLabel.Output)
 
-        {_ready : True, NOTREADY : None, shape : (1,), dtype : <type 'object'>, has_mask : None, _dirty : False}
-        ['Bang', 'Label 2', 'Huch']
+        # Serialization slots
+        self._cacheLabel.InputHdf5.connect(self.LabelInputHdf5)
+        self.LabelCleanBlocks.connect(self._cacheLabel.CleanBlocks)
+        self.LabelOutputHdf5.connect(self._cacheLabel.OutputHdf5)
+
+        # the crux, where to define the Cache-Data
+        self._cacheLabel.Input.connect(self.CorrectedSeedsOut)
         '''
 
     def setupOutputs(self):
@@ -166,6 +194,10 @@ class OpWatershedSegmentation(Operator):
         self._cache.Input.connect(self.WatershedCalc)
         self._cache.Input.setDirty(slice(None))
 
+        '''
+        self._cacheLabel.Input.connect(self.CorrectedSeedsOut)
+        self._cacheLabel.Input.setDirty(slice(None))
+        '''
     
     def execute(self, slot, subindex, roi, result):
         pass
@@ -186,6 +218,7 @@ class OpWatershedSegmentationLabelPipeline( Operator ):
     RawData     = InputSlot()
     SeedInput   = InputSlot()
     SeedOutput  = OutputSlot()
+    NonZeroBlocks = OutputSlot()
     
     
     def __init__(self, *args, **kwargs):
@@ -198,8 +231,19 @@ class OpWatershedSegmentationLabelPipeline( Operator ):
 
         #Output
         self.SeedOutput.connect( self.opLabelPipeline.Output )
+        self.NonZeroBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
 
     def setupOutputs(self):
+        '''
+        self.SeedOutput.meta.assignFrom(self.SeedInput.meta)
+        # output of the vigra.analysis.watershedNew is uint32, therefore it should be uint 32 as
+        # well, otherwise it will break with the cached image 
+        self.SeedOutput.meta.dtype = np.uint8
+        #only one channel as output
+        #self.SeedOutput.meta.shape = self.Boundaries.meta.shape[:-1] + (1,)
+        #TODO maybe bad with more than 255 labels
+        #self.SeedOutput.meta.drange = (0,255)
+        '''
         pass
 
     def setInSlot(self, slot, subindex, roi, value):

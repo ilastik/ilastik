@@ -275,10 +275,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             op.ShowWatershedLayer.setValue(True)
             self.updateAllLayers()
 
-        print op.LabelNames
-        print op.LabelNames.meta
-        print op.LabelNames.value
-
         # execute the watershed algorithm
         self.topLevelOperatorView.opWSC.execWatershedAlgorithm()
 

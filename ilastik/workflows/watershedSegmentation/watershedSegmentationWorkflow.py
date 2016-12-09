@@ -84,6 +84,19 @@ class WatershedSegmentationWorkflow(Workflow):
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
         opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )
 
+        #TODO add the labelNames and their colors for export as well
+        '''
+        self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.PmapColors.connect( opClassify.PmapColors )
+        opDataExport.LabelNames.connect( opClassify.LabelNames )
+        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )        
+        '''
+
+
+
+
         # -- BatchProcessing applet
         #
         self.batchProcessingApplet = BatchProcessingApplet(self,
