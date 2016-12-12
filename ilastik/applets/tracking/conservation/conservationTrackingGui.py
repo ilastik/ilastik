@@ -384,14 +384,38 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             menu.exec_(win_coord)
             return
         
-        hypothesesGraph = self.mainOperator.HypothesesGraph.value
-
-        if hypothesesGraph == None:
-            color = None
-            track = None
+        # Get color and track from hypotheses graph (which is a slot in the new operator)
+        # TODO: Remove pgmlink section after old operator is phased out
+        if WITH_HYTRA:
+            hypothesesGraph = self.mainOperator.HypothesesGraph.value
+    
+            if hypothesesGraph == None:
+                color = None
+                track = None
+            else:
+                color = hypothesesGraph.getLineageId(time, obj)
+                track = hypothesesGraph.getTrackId(time, obj)
         else:
-            color = hypothesesGraph.getLineageId(time, obj)
-            track = hypothesesGraph.getTrackId(time, obj)
+            try:
+                extra = self.mainOperator.extra_track_ids
+            except (IndexError, KeyError):
+                extra = {}
+    
+            # if this is a resolved merger, find which of the merged IDs we actually clicked on
+            if time in extra and obj in extra[time]:
+                colors = [self.mainOperator.label2color[time][t] for t in extra[time][obj]]
+                tracks = [self.mainOperator.track_id[time][t] for t in extra[time][obj]]
+                selected_track = self.get_color(position5d)
+                idx = colors.index(selected_track)
+                color = colors[idx]
+                track = tracks[idx]
+            else:
+                try:
+                    color = self.mainOperator.label2color[time][obj]
+                    track = [self.mainOperator.track_id[time][obj]][0]
+                except (IndexError, KeyError):
+                    color = None
+                    track = []
 
         children = None 
         parents = None
