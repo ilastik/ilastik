@@ -328,6 +328,11 @@ class SerialListSlot(SerialSlot):
             self._store_transform = lambda x:x
 
     def _saveValue(self, group, name, value):
+        print "\n\n"
+        print group
+        print name
+        print value
+        print "\n\n"
         isempty = (len(value) == 0)
         if isempty:
             value = numpy.empty((1,))

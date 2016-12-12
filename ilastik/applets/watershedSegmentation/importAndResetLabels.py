@@ -117,8 +117,10 @@ class ImportAndResetLabels(object):
         """
         original version from: pixelClassificationGui.importLabels
         Add the data included in the slot to the LabelArray by ingestData
-        Add as many Labels as long as the tallest Label-Number and the ones before have a 
-        Label to draw with
+        Only use this when the colors and Labels are reset. 
+        The LabelColors, Pmaps and ListNames are reset and added with the default 
+        properties to the list and slots
+        
 
         :param slot:        slot with the data, that includes the Labeldata
         """
@@ -126,41 +128,32 @@ class ImportAndResetLabels(object):
         # Returns: the max label found in the slot.
         new_max = self._opLabelArray.ingestData( slot )
 
-        # Add to the list of label names if there's a new max label with correct colors
-        old_names = self._LabelNames.value
-        old_max = len(old_names)
-        if new_max > old_max:
-            #new_names = old_names + map( lambda x: "Seed {}".format(x), 
-            #                             range(old_max+1, new_max+1) )
-            new_names = old_names + map( lambda x: self._LabelDefaultListName + " {}".format(x), 
-                                         range(old_max+1, new_max+1) )
-            #add the new Labelnames
-            self._LabelNames.setValue(new_names)
+        # Add to the list of label names 
+        new_names = map( lambda x: self._LabelDefaultListName + " {}".format(x), 
+                                         range(1, new_max+1) )
+        #add the new Labelnames
+        self._LabelNames.setValue(new_names)
 
-            #set the colorvalue and the color that is displayed in the labellist to the correct color
+        #set the colorvalue and the color that is displayed in the labellist to the correct color
 
-            # Use the 8bit colortable that is used everywhere else
-            # means: for new labels, for layer displaying etc
-            default_colors = self._colortable
-            label_colors = self._LabelColors.value
-            pmap_colors = self._PmapColors.value
-            
-            #correct the color here
-            self._LabelColors.setValue( label_colors + default_colors[old_max:new_max] )
-            self._PmapColors.setValue( pmap_colors + default_colors[old_max:new_max] )
+        # Use the given colortable that is used everywhere else
+        # means: for new labels, for layer displaying etc
+        default_colors = self._colortable
+        self._LabelColors.setValue( default_colors[:new_max] )
+        self._PmapColors.setValue( default_colors[:new_max] )
 
-            #for debug reasons
-            #colors
-            '''
-            print "\n\n"
-            print "old_max=", old_max, "; new_max=", new_max
-            for i in range(old_max, new_max):
-                color = QColor(default_colors[i])
-                intern_color = QColor(self._colortable[i])
-                print i, ": ", color.red(),", ", color.green(),", ",  color.blue()
-                print  i, ": ", intern_color.red(),", ", intern_color.green(),", ",  intern_color.blue()
-            print "\n\n"
-            '''
+        #for debug reasons
+        #colors
+        '''
+        print "\n\n"
+        print "old_max=", old_max, "; new_max=", new_max
+        for i in range(old_max, new_max):
+            color = QColor(default_colors[i])
+            intern_color = QColor(self._colortable[i])
+            print i, ": ", color.red(),", ", color.green(),", ",  color.blue()
+            print  i, ": ", intern_color.red(),", ", intern_color.green(),", ",  intern_color.blue()
+        print "\n\n"
+        '''
 
     '''
     def print_colortable(self, color):
@@ -229,5 +222,5 @@ class ImportAndResetLabels(object):
             else:
                 self.removeLabelsFromCacheAndList()
 
-            # Finally, import the labels from the 
+            # Finally, import the labels from the original slot
             self._importLabelsFromSlot(self._slot)
