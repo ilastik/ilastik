@@ -28,24 +28,13 @@ class OpBigTiffReader(Operator):
 
     def setupOutputs(self):
         filepath = self.Filepath.value
-
-        with open(filepath, 'r') as f:
-            # inspect the 3rd byte of the header
-            # For regular tiff, should be 0x2a
-            # For BigTiff, should be 0x2b
-            header_start = f.read(4)
-            if ord(header_start[2]) == 0x2a:
-                raise OpBigTiffReader.NotBigTiffError(filepath)
-            if ord(header_start[2]) != 0x2b:
-                raise RuntimeError(
-                    "File '{}' does not appear to start with a valid tiff or bigtiff header."
-                    .format(filepath))
+        if not pytiff.utils.is_bigtiff(filepath):
+            raise OpBigTiffReader.NotBigTiffError(filepath)
 
         bigtiff = pytiff.Tiff(filepath)
 
         if bigtiff.number_of_pages != 1:
             raise RuntimeError("Multipage BigTiff not supported yet.")
-
         
         self.Output.meta.dtype = bigtiff.dtype
 
