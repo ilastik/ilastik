@@ -32,7 +32,7 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph
 from lazyflow.operators import OpRelabelConsecutive, OpBlockedArrayCache, OpSimpleStacker
-from lazyflow.operators.generic import OpConvertDtype
+from lazyflow.operators.generic import OpConvertDtype, OpPixelOperator
 from lazyflow.operators.valueProviders import OpPrecomputedInput
 
 import logging
@@ -184,6 +184,18 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opConvertProbabilities.ConversionDtype.setValue( np.float32 )
         opConvertProbabilities.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
 
+        # PROBABILITIES: Normalize drange to [0.0, 1.0]
+        opNormalizeProbabilities = OpPixelOperator( parent=self )
+        def normalize_inplace(a):
+            drange = opNormalizeProbabilities.Input.meta.drange
+            if drange is None or (drange[0] == 0.0 and drange[1] == 1.0):
+                return a
+            a[:] -= drange[0]
+            a[:] /= ( drange[1] - drange[0] )
+            return a
+        opNormalizeProbabilities.Input.connect( opConvertProbabilities.Output )
+        opNormalizeProbabilities.Function.setValue( normalize_inplace )
+
         # GROUNDTRUTH: Convert to uint32, relabel, and cache
         opConvertGroundtruth = OpConvertDtype( parent=self )
         opConvertGroundtruth.ConversionDtype.setValue( np.uint32 )
@@ -198,13 +210,13 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
 
         # watershed inputs
         opWsdt.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        opWsdt.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
+        opWsdt.Input.connect( opNormalizeProbabilities.Output )
 
         # Actual computation is done with both RawData and Probabilities
         opStackRawAndVoxels = OpSimpleStacker( parent=self )
         opStackRawAndVoxels.Images.resize(2)
         opStackRawAndVoxels.Images[0].connect( opConvertRaw.Output )
-        opStackRawAndVoxels.Images[1].connect( opConvertProbabilities.Output )
+        opStackRawAndVoxels.Images[1].connect( opNormalizeProbabilities.Output )
         opStackRawAndVoxels.AxisFlag.setValue('c')
 
         # If superpixels are available from a file, use it.
