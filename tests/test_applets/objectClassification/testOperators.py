@@ -427,9 +427,9 @@ class TestFullOperator(unittest.TestCase):
     def testExport(self):
         table = self.classOp.createExportTable(0, [])
 
-        print table["Object id"]
-        print table["Default Features, RegionCenter_ch_1"]
-        print table["Prediction"]
+        #print table["Object id"]
+        #print table["Default Features, RegionCenter_ch_1"]
+        #print table["Prediction"]
         
     def test_unfavorable_conditions(self):
         #TODO write test with not so nice input
