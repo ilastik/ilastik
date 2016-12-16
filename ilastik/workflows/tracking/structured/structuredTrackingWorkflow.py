@@ -275,6 +275,9 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opDataTrackingExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
 
     def prepare_lane_for_export(self, lane_index):
+        import logging
+        logger = logging.getLogger(__name__)
+
         maxt = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[0]
         maxx = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[1]
         maxy = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[2]
@@ -289,17 +292,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
             ndim = 3
 
         parameters = self.trackingApplet.topLevelOperator.Parameters.value
-        print "parameters",parameters
-
-        crops = self.cropSelectionApplet.topLevelOperator.Crops[lane_index].value
-        print "crops--->",crops,"<---"
-
-        labels = self.annotationsApplet.topLevelOperator.Labels[lane_index].value
-        print "labels===>",labels, "<==="
-        
-        divisions = self.annotationsApplet.topLevelOperator.Divisions[lane_index].value
-        print "divisions===>",divisions, "<==="
-
         # Save state of axis ranges
         if 'time_range' in parameters:
             self.prev_time_range = parameters['time_range']
@@ -321,6 +313,30 @@ class StructuredTrackingWorkflowBase( Workflow ):
         else:
             self.prev_z_range = z_range
 
+        # batch processing starts a new lane, so training data needs to be copied from the lane that loaded the project
+        loaded_project_lane_index=0
+        self.annotationsApplet.topLevelOperator[lane_index].Annotations.setValue(
+            self.trackingApplet.topLevelOperator[loaded_project_lane_index].Annotations.value)
+
+        self.cropSelectionApplet.topLevelOperator[lane_index].Crops.setValue(
+            self.trackingApplet.topLevelOperator[loaded_project_lane_index].Crops.value)
+
+        logger.info("Test: Structured Learning")
+        weights = self.trackingApplet.topLevelOperator[lane_index]._runStructuredLearning(
+            z_range,
+            parameters['maxObj'],
+            parameters['max_nearest_neighbors'],
+            parameters['maxDist'],
+            parameters['divThreshold'],
+            [parameters['scales'][0],parameters['scales'][1],parameters['scales'][2]],
+            parameters['size_range'],
+            parameters['withDivisions'],
+            parameters['borderAwareWidth'],
+            parameters['withClassifierPrior'],
+            withBatchProcessing=True)
+        logger.info("weights: {}".format(weights))
+
+        logger.info("Test: Tracking")
         self.trackingApplet.topLevelOperator[lane_index].track(
             time_range = time_enum,
             x_range = x_range,

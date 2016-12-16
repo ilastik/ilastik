@@ -49,7 +49,7 @@ class TestStructuredLearningTrackingHeadless(object):
     # EXPECTED_MERGER_NUM = 0 # Number of mergers expected in exported csv file
 
 
-    PROJECT_FILE = 'data/inputdata/mitocheckStructuredLearningTrackingHytraWithMergers_2.ilp'
+    PROJECT_FILE = 'data/inputdata/mitocheckStructuredLearningTrackingHytraWithMergers.ilp'
     RAW_DATA_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers.h5'
     PREDICTION_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers_export.h5'
 
@@ -76,8 +76,7 @@ class TestStructuredLearningTrackingHeadless(object):
 
     @classmethod
     def teardownClass(cls):
-        removeFiles = []#'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers_Tracking-Result.h5','data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers-tracking_exported_data_table.csv']
-        #removeFiles = ['data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_Tracking-Result.h5','data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t-tracking_exported_data_table.csv']
+        removeFiles = ['data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers_Tracking-Result.h5','data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers-tracking_exported_data_table.csv']
 
         # Clean up: Delete any test files we generated
         for f in removeFiles:
@@ -123,6 +122,7 @@ class TestStructuredLearningTrackingHeadless(object):
         data = np.genfromtxt(self.EXPECTED_CSV_FILE, dtype=float, delimiter=',', names=True)
 
         # Check for expected number of lines
+        logger.info("Number of rows in the csv file: {}".format(data.shape[0]))
         assert data.shape[0] == self.EXPECTED_NUM_LINES, 'Number of rows in the csv file differs from expected'
 
         # Check that the csv file contains the default fields.
@@ -145,6 +145,7 @@ class TestStructuredLearningTrackingHeadless(object):
             if id == 0:
                 merger_count += 1
 
+        logger.info("Number of mergers in the csv file: {}".format(merger_count))
         assert merger_count == self.EXPECTED_MERGER_NUM, 'Number of mergers in the csv file differs from expected'
 
 if __name__ == "__main__":

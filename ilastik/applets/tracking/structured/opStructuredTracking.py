@@ -157,6 +157,7 @@ class OpStructuredTracking(OpConservationTracking):
         parameters['max_nearest_neighbors'] = maxNearestNeighbors
         while not foundAllArcs and maxObjOK and new_max_nearest_neighbors<10:
             new_max_nearest_neighbors += 1
+            logger.info("new_max_nearest_neighbors: {}".format(new_max_nearest_neighbors))
 
             time_range = range (0,self.LabelImage.meta.shape[0])
 
@@ -250,7 +251,7 @@ class OpStructuredTracking(OpConservationTracking):
                                         sink = (time, int(label))
                                         foundAllArcs = False
                                         for edge in hypothesesGraph._graph.in_edges(sink): # an edge is a tuple of source and target nodes
-                                            print "Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label)
+                                            logger.info("Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label))
                                             if edge[0][0] == time-1 and edge[0][1] == int(previous_label): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
                                                 foundAllArcs = True
                                                 hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = int(trackCountIntersection)
@@ -265,8 +266,14 @@ class OpStructuredTracking(OpConservationTracking):
                                     raise DatasetConstraintError('Structured Learning', mergeMsgStr)
 
                                 elif type[0] in ["FIRST", "LAST", "INTERMEDIATE"]:
-                                    hypothesesGraph._graph.node[(time, int(label))]['value'] = trackCount
-                                    logger.info("[structuredTrackingGui] NODES: {} {}".format(time, int(label)))
+                                    if (time, int(label)) in hypothesesGraph._graph.node.keys():
+                                        hypothesesGraph._graph.node[(time, int(label))]['value'] = trackCount
+                                        logger.info("[structuredTrackingGui] NODES: {} {}".format(time, int(label)))
+                                    else:
+                                        logger.info("[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label)))
+
+                                        foundAllArcs = False
+                                        break
 
                     if foundAllArcs and "divisions" in crop.keys():
                         divisions = crop["divisions"]
@@ -298,7 +305,7 @@ class OpStructuredTracking(OpConservationTracking):
                                 if not foundAllArcs:
                                     logger.info("[structuredTrackingGui] Increasing max nearest neighbors! DIVISION {} {}".format(time, parent))
                                     break
-        logger.info("max nearest neighbors=".format(new_max_nearest_neighbors))
+        logger.info("max nearest neighbors= {}".format(new_max_nearest_neighbors))
 
         if new_max_nearest_neighbors > maxNearestNeighbors:
             maxNearestNeighbors = new_max_nearest_neighbors
@@ -312,7 +319,12 @@ class OpStructuredTracking(OpConservationTracking):
         disappearanceWeight = self.DisappearanceWeight.value
         appearanceWeight = self.AppearanceWeight.value
 
+        if not foundAllArcs:
+            logger.info("[structuredTracking] Increasing max nearest neighbors did not result in finding all training arcs!")
+            return [transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight]
+
         hypothesesGraph.insertEnergies()
+
         # crops away everything (arcs and nodes) that doesn't have 'value' set
         prunedGraph = hypothesesGraph.pruneGraphToSolution(distanceToSolution=0) # width of non-annotated border needed for negative training examples
 
@@ -323,9 +335,6 @@ class OpStructuredTracking(OpConservationTracking):
         model['settings']['optimizerEpGap'] = 0.005
         gt = prunedGraph.getSolutionDictionary()
 
-        # initialWeights = {u'weights': [transitionWeight, detectionWeight, appearanceWeight, disappearanceWeight]}
-        # if withDivisions:
-        #     initialWeights = {u'weights': [transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight]}
         initialWeights = trackingGraph.weightsListToDict([transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight])
 
         mht.trainWithWeightInitialization(model,gt, initialWeights)
