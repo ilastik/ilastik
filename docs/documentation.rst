@@ -91,7 +91,27 @@ Troubleshooting:
   ilastik/ilastik 
   ilastik/lazyflow (link)
 
+* ImportError: No module named ilastik_feature_selection
+  
+  Add the following to your conf.py file:
 
+  .. code::
+  
+        sys.path.append('/home/andreas/miniconda2/envs/ilastik-devel/lib/python2.7/site-packages')
+
+
+* the PyQt4.QtCore and PyQt5.QtCore modules both wrap the QObject class
+
+  That means, that e.g. matplotlib uses PyQt5 and ilastik uses PyQt4, 
+  therefore there is a conflict.
+
+  As a workaround, add the following lines at the top of the conf.py in your documentaion
+  
+  .. code::
+
+          from PyQt4 import QtGui, QtCore
+          import matplotlib #new line
+          matplotlib.use("Qt4Agg") #new line
 
 
 * No module vigra found

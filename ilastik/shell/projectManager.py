@@ -348,6 +348,7 @@ class ProjectManager(object):
         2) touch Old.ilp
         3) copycontents New.ilp -> Old.ilp
         4) Save current applet state to current project (New.ilp)
+
         Postconditions: - Original project state is saved to a new file with the original name.
         - Current project file is still open, but has a new name.
         - Current project file has been saved (it is in sync with the applet states)

@@ -11,6 +11,9 @@ so that ilastik has everything it wants to have:
 
 Show workflow in ilastik
 ========================================
+.. TODO das hier muss alles ueberarbeitet werden
+
+Open the file
 
 .. code::
 
@@ -36,9 +39,10 @@ ilastik/workflows/
 with the name workflowExample:
 In this directory there are 2 files:
 #. __init__.py
+
 .. literalinclude:: ../ilastik/workflows/workflowExample/__init__.py
-    :linenos:
-    :language: python
+   :linenos:
+   :language: python
 
 #. workflowExampleWorkflow.py
    * Includes all the applets for this workflow and how they are connected with each other
@@ -47,16 +51,9 @@ In this directory there are 2 files:
 The lines marked with TODO should be replaced for a new workflow.
 There you can include the desired applets.
 
-
-.. currentmodule:: ilastik.workflows.workflowExample
-.. currentmodule:: ilastik.workflows.workflowExample.workflowExampleWorkflow
-.. autoclass:: WorkflowExampleWorkflow
-   :members:
    
 
-
-
-Basic Structure in *Workflow.py
+Basic Structure in \*Workflow.py
 ========================================
 
 Our Workflow should inherit from the class 
@@ -75,7 +72,7 @@ to the InputSlot of the second applet. That means, the second applet gets the ou
 Normally this looks like this:
 
 .. currentmodule:: ilastik.applets.watershedSegmentation.watershedSegmentationApplet
-.. autoclass:: watershedSegmentationApplet
+.. autoclass:: WatershedSegmentationApplet
    :members:
 
    .. automethod:: __init__
