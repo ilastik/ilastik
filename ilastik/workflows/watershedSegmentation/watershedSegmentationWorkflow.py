@@ -128,6 +128,8 @@ class WatershedSegmentationWorkflow(Workflow):
         Override from base class.
         Connect the output and the input of each applet with each other
         """
+
+        # get the correct image-lane
         opDataSelection         = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opWatershedSegmentation = self.watershedSegmentationApplet.topLevelOperator.getLane(laneIndex)
         opDataExport            = self.dataExportApplet.topLevelOperator.getLane(laneIndex)

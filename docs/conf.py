@@ -11,6 +11,12 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+# caution, don't remove this from here
+# matplotlib needs to use the qt4 version, otherwise there are about 20 errors in the compiling
+from PyQt4 import QtGui, QtCore
+import matplotlib #new line
+matplotlib.use("Qt4Agg") #new line
+
 import sys, os
 
 # If extensions (or modules to document with autodoc) are in another directory,

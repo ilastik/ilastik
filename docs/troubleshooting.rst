@@ -1,3 +1,6 @@
+Troubleshooting
+====================================
+
 When you run ilastik and read in images and you get the following message:
 
 .. code::

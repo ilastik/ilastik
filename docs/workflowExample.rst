@@ -28,7 +28,7 @@ between which other workflows it should lie:
             logger.warn("Failed to import 'workflowExample' workflow; check dependencies: " + str(e))
 
 
-Basic Structure
+Basic File Structure
 ========================================
 
 Then create a folder in 
@@ -56,7 +56,26 @@ There you can include the desired applets.
 
 
 
+Basic Structure in *Workflow.py
+========================================
 
+Our Workflow should inherit from the class 
+TODO Workflow.
 
-Image Lanes
------------
+The function 
+
+.. code::
+
+    def connectLane(self, laneIndex):
+
+connecects applets with each other. 
+Therefore one TODO OutputSlot of the frist applet can be connected via 'pyQt: connect'
+to the InputSlot of the second applet. That means, the second applet gets the output of the first applet. 
+
+Normally this looks like this:
+
+.. currentmodule:: ilastik.applets.watershedSegmentation.watershedSegmentationApplet
+.. autoclass:: watershedSegmentationApplet
+   :members:
+
+   .. automethod:: __init__

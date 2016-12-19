@@ -41,6 +41,17 @@ Add any new file to the index.rst file into the table of contents.
 Troubleshooting:
 =================
 
+* 
+  .. code::
+        
+        copying static files... WARNING: html_static_path entry u'/*/ilastik/docs/_static' does not exist
+
+  Can be omitted with:
+  
+  .. code::
+        
+        mkdir _static
+
 * At first, check if you are working in the ilastik-devel environment, 
 
   Otherwise change to the environment like this:
