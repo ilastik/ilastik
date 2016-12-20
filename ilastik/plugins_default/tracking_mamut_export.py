@@ -1,7 +1,7 @@
 import os.path
 from ilastik.plugins import TrackingExportFormatPlugin
-from ilastik.plugins_default.mamutxmlbuilder import MamutXmlBuilder
-from ilastik.plugins_default.bigdataviewervolumeexporter import BigDataViewerVolumeExporter
+from mamutexport.mamutxmlbuilder import MamutXmlBuilder
+from mamutexport.bigdataviewervolumeexporter import BigDataViewerVolumeExporter
 
 class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
     """MaMuT export"""
