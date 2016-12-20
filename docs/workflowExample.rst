@@ -70,6 +70,7 @@ Our Workflow should inherit from:
 
 .. currentmodule:: ilastik.workflow
 .. class:: Workflow
+        :noindex:
 
 
 In the init, you create all necessary applets for later use.

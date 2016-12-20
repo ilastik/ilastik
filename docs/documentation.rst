@@ -105,8 +105,7 @@ Troubleshooting:
 
         * ImportError: No module named qimage2ndarray
 
-          Download the repository for qimage2ndarray from: 
-                https://github.com/hmeine/qimage2ndarray
+          Download the repository for qimage2ndarray from https://github.com/hmeine/qimage2ndarray
           and unzip it. 
 
           .. code::
