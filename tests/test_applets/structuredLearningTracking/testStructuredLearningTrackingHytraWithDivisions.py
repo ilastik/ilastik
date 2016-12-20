@@ -39,15 +39,18 @@ logger = logging.getLogger(__name__)
 
 class TestStructuredLearningTrackingHeadless(object):    
 
-    PROJECT_FILE = 'data/inputdata/mitocheckStructuredLearningTrackingHytraWithMergers.ilp'
-    RAW_DATA_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers.h5'
-    PREDICTION_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers_export.h5'
+    PROJECT_FILE = 'data/inputdata/mitocheckStructuredLearningTrackingHytraWithDivisions.ilp'
+    RAW_DATA_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t.h5'
+    PREDICTION_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_export.h5'
 
-    EXPECTED_TRACKING_RESULT_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers_Tracking-Result.h5'
-    EXPECTED_CSV_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers-tracking_exported_data_table.csv'
-    EXPECTED_SHAPE = (6, 66, 62, 1, 1) # Expected shape for tracking results HDF5 files
-    EXPECTED_NUM_LINES = 29 # Number of lines expected in exported csv file
-    EXPECTED_MERGER_NUM = 5 # Number of mergers expected in exported csv file
+    EXPECTED_TRACKING_RESULT_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_Tracking-Result.h5'
+    EXPECTED_DIVISIONS_CSV_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t-tracking_exported_data_divisions.csv'
+    EXPECTED_CSV_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t-tracking_exported_data_table.csv'
+    EXPECTED_SHAPE = (9, 99, 105, 1, 1) # Expected shape for tracking results HDF5 files
+    EXPECTED_NUM_LINES_TRACKING = 25 # Number of lines expected in exported csv file
+    EXPECTED_NUM_LINES_DIVISIONS = 2 # Number of lines expected in exported csv file
+    EXPECTED_MERGER_NUM = 0 # Number of mergers expected in exported csv file
+    EXPECTED_FALSE_DETECTIONS_NUM = 1 # Number of false detections expected in exported csv file
 
     @classmethod
     def setupClass(cls):
@@ -66,7 +69,9 @@ class TestStructuredLearningTrackingHeadless(object):
 
     @classmethod
     def teardownClass(cls):
-        removeFiles = ['data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers_Tracking-Result.h5','data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers-tracking_exported_data_table.csv']
+        removeFiles = ['data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_Tracking-Result.h5',
+                       'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t-tracking_exported_data_table.csv',
+                       'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t-tracking_exported_data_divisions.csv']
 
         # Clean up: Delete any test files we generated
         for f in removeFiles:
@@ -113,7 +118,8 @@ class TestStructuredLearningTrackingHeadless(object):
 
         # Check for expected number of lines
         logger.info("Number of rows in the csv file: {}".format(data.shape[0]))
-        assert data.shape[0] == self.EXPECTED_NUM_LINES, 'Number of rows in the csv file differs from expected'
+        print "Number of rows in the csv file: {}".format(data.shape[0])
+        assert data.shape[0] == self.EXPECTED_NUM_LINES_TRACKING, 'Number of rows in the csv file differs from expected'
 
         # Check that the csv file contains the default fields.
         assert 'object_id' in data.dtype.names, "'object_id' not found in the csv file!"
@@ -134,9 +140,35 @@ class TestStructuredLearningTrackingHeadless(object):
         for id in data['lineage_id']:
             if id == 0:
                 merger_count += 1
-
         logger.info("Number of mergers in the csv file: {}".format(merger_count))
         assert merger_count == self.EXPECTED_MERGER_NUM, 'Number of mergers in the csv file differs from expected'
+
+        # Check for expected number of false detections
+        false_detection_count = 0
+        for id in data['lineage_id']:
+            if id == -1:
+                false_detection_count += 1
+        logger.info("Number of false detections in the csv file: {}".format(false_detection_count))
+        assert false_detection_count == self.EXPECTED_FALSE_DETECTIONS_NUM, 'Number of false detections in the csv file differs from expected'
+
+
+        # Load divisions csv file
+        data = np.genfromtxt(self.EXPECTED_DIVISIONS_CSV_FILE, dtype=float, delimiter=',', names=True)
+
+        # Check for expected number of lines
+        logger.info("Number of rows in the divisions csv file: {}".format(data.shape[0]))
+        print "Number of rows in the divisions csv file: {}".format(data.shape[0])
+        assert data.shape[0] == self.EXPECTED_NUM_LINES_DIVISIONS, 'Number of rows in the divisions csv file differs from expected'
+
+        # Check that the csv file contains the default fields.
+        assert 'object_id' in data.dtype.names, "'object_id' not found in the csv file!"
+        assert 'timestep' in data.dtype.names, "'timestep' not found in the csv file!"
+        assert 'lineage_id' in data.dtype.names, "'lineage_id' not found in the csv file!"
+        assert 'track_id' in data.dtype.names, "'track_id' not found in the csv file!"
+        assert 'child1_object_id' in data.dtype.names, "'child1_object_id' not found in the csv file!"
+        assert 'child1_track_id' in data.dtype.names, "'child1_track_id' not found in the csv file!"
+        assert 'child2_object_id' in data.dtype.names, "'child2_object_id' not found in the csv file!"
+        assert 'child2_track_id' in data.dtype.names, "'child2_track_id' not found in the csv file!"
 
 if __name__ == "__main__":
     # Make the program quit on Ctrl+C
