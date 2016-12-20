@@ -26,7 +26,7 @@ from watershedSegmentationSerializer import WatershedSegmentationSerializer
 
 class WatershedSegmentationApplet( StandardApplet ):
     """
-    Distance-transform-based watershed applet
+    applet for the watershed segmentation
     """
     def __init__( self, workflow, guiName, projectFileGroupName ):
         super(WatershedSegmentationApplet, self).__init__(guiName, workflow)
@@ -40,13 +40,14 @@ class WatershedSegmentationApplet( StandardApplet ):
     @property
     def broadcastingSlots(self):
         """
-        Needed to have these inputSlots (and their values) 
-        available for other image lane, means, that if you have 
-        30 images for each ImageInput, change from one to another 
-        Image-tuple, the parameters must stay the same
-        So only needed for multiple image lanes 
+        Only needed for multiple image lanes 
         (must be inplemented for all image lanes)
         Mainly to restore the gui-parameters
+
+        Needed to have these inputSlots (and their values) 
+        available for other image lanes, means, that if you have 
+        30 images for each ImageInput, change from one to another 
+        Image-tuple, the parameters must stay the same.
 
         :return: the name of the slots as list of string, e.g. ['ChannelSelection', 'BrushValue;]
         """

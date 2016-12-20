@@ -30,9 +30,10 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 from lazyflow.graph import Graph
 
 class WatershedSegmentationWorkflow(Workflow):
+    # name that will be displayed when opening a new project
     workflowName = "Watershed Segmentation ['Raw Data', 'Boundaries', 'Seeds (optional)']"
     workflowDescription = "A workflow that uses a seeded watershed applets for algorithmic calculations"
-    defaultAppletIndex = 0 # show DataSelection by default
+    defaultAppletIndex = 0 # show DataSelection (first applet) by default
 
     # give your input data a number, so the group can be found for them
     DATA_ROLE_RAW           = 0
@@ -147,11 +148,10 @@ class WatershedSegmentationWorkflow(Workflow):
 
         # connect the output of the watershed-applet to the inputs of the data-export
         opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
-        # use the user manipulated seeds for this 
-        # TODO use the cached version afterwards, when implemented
+        # 0. use the user manipulated seeds for this 
+        # 1. use the cached output of the watershed algorithm, so that reloading the project 
+        #    and exporting it will work without an additional calculation
         opDataExport.Inputs[0].connect( opWatershedSegmentation.CorrectedSeedsOut )
-        # use the cached output of the watershed algorithm, so that reloading the project 
-        # and exporting it will work without an additional calculation
         opDataExport.Inputs[1].connect( opWatershedSegmentation.WSCCOCachedOutput )
         for slot in opDataExport.Inputs:
             assert slot.partner is not None

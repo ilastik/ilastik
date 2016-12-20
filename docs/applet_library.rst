@@ -117,9 +117,10 @@ Batch Output
    :scale: 100  %
    :alt: Batch Output Top-Level Operator
 
-.. currentmodule:: ilastik.applets.batchIo.batchIoApplet
-.. autoclass:: BatchIoApplet
-   :members:
+.. TODO doesn't work in the original docu as well 
+        .. currentmodule:: ilastik.applets.batchIo.batchIoApplet
+        .. autoclass:: BatchIoApplet
+           :members:
 
 
 Workflow-specific Applets
@@ -210,8 +211,9 @@ The cool_features directory in this case should contain the .py and the .yapsy-p
 .. autoclass:: OpRegionFeatures
    :members:
 
-.. autoclass:: OpRegionFeatures3d
-   :members:
+.. TODO this class isn't existing anymore
+        .. autoclass:: OpRegionFeatures3d
+           :members:
 
 .. autoclass:: OpObjectCenterImage
    :members:

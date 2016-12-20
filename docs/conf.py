@@ -30,6 +30,12 @@ sys.path.append(os.path.abspath('../../volumina'))
 # necessary for the 'ImportError: No module named ilastik_feature_selection'
 # adjust this to your own needs
 sys.path.append('/home/andreas/miniconda2/envs/ilastik-devel/lib/python2.7/site-packages')
+
+
+# necessary for ImportError: No module named qimage2ndarray
+# adjust this to your own needs
+sys.path.append('/home/andreas/qimage2ndarray/qimage2ndarray-master')
+
 #print sys.path
 
 # -- General configuration -----------------------------------------------------

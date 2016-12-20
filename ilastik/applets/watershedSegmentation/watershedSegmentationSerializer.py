@@ -26,17 +26,21 @@ logger = logging.getLogger(__name__)
 class WatershedSegmentationSerializer(AppletSerializer):
     """
     Add all the slots, you want to use in the gui later, into its __init__
-    operator is mainly the topLevelOperator
+    These slots are stored/cached, so that they can be used after project restart. 
+
+    e.g. the result of a calculation can be stored in cache, so that it can be 
+    reviewed after a project restart without calculating once more.
     """
     
     def __init__(self, operator, projectFileGroupName):
         """
-        "param operator: normally the top-level-operator
         the slots list must include at least all broadcasted slots
         from the applet-class
 
         can include more than these slot: e.g. all slots, that are not viewed in the gui, 
         (means, no input paramters but cached images)
+
+        :param operator: normally the top-level-operator
         """
 
         slots = [ 

@@ -1,43 +1,82 @@
 ================================================================================
-Building your own applet: appletExample
+Building your own applet using the watershedSegmentation applet
 ================================================================================
 
-Basic Structure
+Basic File Structure
 ========================================
 
-A good example of a basic applet could watershedSegmentation, that is based on the wsdti applet.
-
-Then create a folder in 
-ilastik/applets/
-with the name appletExample:
-In this directory there are 5 files:
 #. __init__.py
 
-.. literalinclude:: ../ilastik/applets/appletExample/__init__.py
-   :linenos:
-   :language: python
+        .. literalinclude:: ../ilastik/applets/watershedSegmentation/__init__.py
+           :linenos:
+           :language: python
 
-#. appletExampleApplet.py
-   * for initialization
-   * for communication with workflow (e.g. with slotbroadcasting)
-#. appletExampleGui.py
-   * handles the graphical user interface and the slots, that are 
-   * handles the views of the layer
-#. appletExampleSerializer.py
-   include here all the slots used in before, that can be used in the applet
-#. opAppletExample.py
-   * The algorithms are executed here
+#. opWatershedSegmentation.py
+
+   * This file includes the InputSlots and OutputSlots and how they are used internally. 
+
+   * The main calculations can be found here as well.
 
    * more Information, how you can implement or use operators can be looked up in the lazyflow 
      documentation under the point of 'operator overview' and 'advanced concepts' 
      which is worth reading for a better understanding
+
+#. watershedSegmentationApplet.py
+
+   * Handles what happens when the applet is created. 
+
+   * Mainly only the function broadcastingSlots should be changed, in particular only the return value. 
+     Look at the function description for more information.
+
+     .. currentmodule:: ilastik.applets.watershedSegmentation.watershedSegmentationApplet
+     .. autoclass:: WatershedSegmentationApplet
+             :members: broadcastingSlots
+
+
+#. watershedSegmentationSerializer.py
+
+   * Handles which OutputSlots shall be serialized. This means, that these slots have the same content
+     after project restart. 
    
+   * For more information see the following documentation and the code and the comments in its __init__ function.
+
+     .. currentmodule:: ilastik.applets.watershedSegmentation.watershedSegmentationSerializer
+     .. autoclass:: WatershedSegmentationSerializer
+             :members: __init__
+
+
+#. watersehdSegmentationGui.py
+
+   * handles the graphical user interface and the slots, that are 
+
+   * handles the views of the layer
+
+   * this file is discussed in more detail in :ref:`The Gui <applet_gui>`.
+
+
+#. addtional files:
+   Normally the files above are necessary. Sometimes classes or cached versions of operators are 
+   excluded into addtional files. This is only for a better overview and maintenance.
+
+
+.. _applet_gui:
+
+The Gui
+========================================
+
+
+     .. currentmodule:: ilastik.applets.watershedSegmentation.watershedSegmentationGui
+     .. autoclass:: WatershedSegmentationGui
+             :members: 
 
 
 
 
-The lines marked with TODO should be replaced for a new applet.
-There you can include the desired applets.
+Basic Structure
+========================================
+
+
+
 
 For an additional widget that shall be seen for this specific applet, 
 you can use the following files in volumina/volumina/widgets:

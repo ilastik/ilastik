@@ -41,7 +41,7 @@ Add any new file to the index.rst file into the table of contents.
 Troubleshooting:
 =================
 
-* 
+* folder _static does not exist 
   .. code::
         
         copying static files... WARNING: html_static_path entry u'/*/ilastik/docs/_static' does not exist
@@ -91,13 +91,27 @@ Troubleshooting:
   ilastik/ilastik 
   ilastik/lazyflow (link)
 
-* ImportError: No module named ilastik_feature_selection
-  
-  Add the following to your conf.py file:
+* ImportError:
+        Add a path to the sys.path in the conf.py file in the docs directory. 
+        The path should be adapted to your needs and a directory with the module name must 
+        be found in the added path. 
 
-  .. code::
-  
-        sys.path.append('/home/andreas/miniconda2/envs/ilastik-devel/lib/python2.7/site-packages')
+        * ImportError: No module named ilastik_feature_selection
+          
+          .. code::
+          
+                sys.path.append('/home/USER/miniconda2/envs/ilastik-devel/lib/python2.7/site-packages')
+
+
+        * ImportError: No module named qimage2ndarray
+
+          Download the repository for qimage2ndarray from: 
+                https://github.com/hmeine/qimage2ndarray
+          and unzip it. 
+
+          .. code::
+          
+                sys.path.append('/home/USER/qimage2ndarray/qimage2ndarray-master')
 
 
 * the PyQt4.QtCore and PyQt5.QtCore modules both wrap the QObject class
