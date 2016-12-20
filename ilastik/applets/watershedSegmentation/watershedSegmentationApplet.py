@@ -50,6 +50,7 @@ class WatershedSegmentationApplet( StandardApplet ):
         Image-tuple, the parameters must stay the same.
 
         :return: the name of the slots as list of string, e.g. ['ChannelSelection', 'BrushValue;]
+        :rtype: list of str
         """
         return [ ]
 

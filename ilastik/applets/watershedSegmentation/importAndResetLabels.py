@@ -25,37 +25,49 @@ class ImportAndResetLabels(object):
                 resetLayerName="Seeds", 
                 outputLayerName="Corrected Seeds Out"):
         """
-        :param slot:       InputSlot or OutputSlot the labels will be reset to the data 
+        :param slot:        the labels will be reset to the data 
             that is included in this slot
-        :param isSlotContentNotEmpty: Boolean if the initial input slot for the label input was empty or not
+        :type slot: InputSlot or OutputSlot
+        :param isSlotContentNotEmpty: if the initial input slot for the label input was empty or not
             even if it was set to a default value afterwards
-        :param useSlotCache:    bool to indicate if True: use the cached Label data, 
+        :type isSlotContentNotEmpty: bool
+        :param useSlotCache:    to indicate if True: use the cached Label data, 
             and if False: use the Labels/Data of 'slot'
             This has only effect on the importLabelsFromSlot function
+        :type useSlotCache: bool
         :param labelListModel: the list in which the labels, there name, color, number etc is saved
             e.g. self._labelControlUi.labelListModel 
+        :type labelListModel: LabelListModel or LabelListModelWithNumber
         :param opLabelArray:    Operator where the Labels are Saved in Arrays;
             used for deleting Labels out of the cache and to read in labels to the cache
             member functions of opLabelArray used: clearLabel, ingestData
             e.g.  topLevelOperatorView.opLabelPipeline.opLabelArray
+        :type opLabelArray: operator
         :param LabelNames: Slot that contains the names of the Labels
             When importing Labels, new Labels are added here 
             GUI-only (not part of the pipeline, but saved to the project)
+        :type LabelNames: OutputSlot
         :param LabelColors: Slot that contains the Colors, with which the labels shall be drawn
             When importing Labels, new LabelsColors from the colortable are added here 
             GUI-only (not part of the pipeline, but saved to the project)
+        :type LabelColors: OutputSlot
         :param PmapColors: Slot that contains the Colors, that is related to a Label; 
             When importing Labels, new LabelsColors from the colortable are added here 
             GUI-only (not part of the pipeline, but saved to the project)
+        :type PmapColors: OutputSlot
         :param colortable: list of colors, that is used for LabelColors and PmapColors
+        :type colortable: list of QColors
         :param LabelDefaultListName: give a default name, that is displayed in the labelListModel, 
             when importing new labels
-        :param resetLayerName: str name of the Layer, that is displayed in the setupLayer that 
+        :type LabelDefaultListName: str
+        :param resetLayerName: name of the Layer, that is displayed in the setupLayer that 
             shows the original data, to which this operator will be reset 
             (only used for the MessageBox-question to really reset)
-        :param outputLayerName: str name of the Layer, that is displayed in the setupLayer that 
+        :type resetLayerName: str
+        :param outputLayerName: name of the Layer, that is displayed in the setupLayer that 
             shows the output data, including all added labels 
             (only used for the MessageBox-question to really reset)
+        :type outputLayerName: str
 
         (self can be the class: WatershedSegmentationGui)
         """

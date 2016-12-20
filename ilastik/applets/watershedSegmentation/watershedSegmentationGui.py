@@ -284,13 +284,16 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
 
 
-
-    def initLayer(self, slot, name, layerList, visible=True, opacity=1.0, layerFunction=None):
+    def _initLayer(self, slot, name, layerList, visible=True, opacity=1.0, layerFunction=None):
         """
-        :param slot: InputSlot or OutputSlot for which a layer will be created
-        :param name: str is the name of the layer, that will be displayed in the gui
-        :param visible: bool whether the layer is visible or not (at the initialization)
-        :param opacity: float from 0.0 to 1.0; describes how much you can see through this layer 
+        :param slot: for which a layer will be created
+        :type slot: InputSlot or OutputSlot 
+        :param name:  is the name of the layer, that will be displayed in the gui
+        :type name: str
+        :param visible: whether the layer is visible or not (at the initialization)
+        :type visible: bool
+        :param opacity: describes how much you can see through this layer 
+        :type opacity: float from 0.0 to 1.0 
         :param layerFunction: if layerFunction is None, then use the default: 
             self._create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot
         """
@@ -317,11 +320,19 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
     def setupLayers(self):
         """
-        Responsable for the elements in the 'Viewer Controls'
+        For illustration of what a layer is, see: http://ilastik.org/documentation/basics/layers
+
+        Responsable for the elements in the 'Viewer Controls'.
+
         These are the views (e.g. opacity of Raw Data)
         that can be adjusted in the left corner of the program
         And for the Elements, that can be seen in the 'Central Widget', 
-        these are excactly the one, that are shown in the Viewer Controls
+        These are excactly the one, that are shown in the Viewer Controls.
+
+        Uses :py:meth:`_initLayer` to create a each single layer
+
+        :returns: the list with the layers that are created in this function
+        :rtype: list of layers
 
         """
 
@@ -349,11 +360,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.initLayer(op.CorrectedSeedsOut,"Corrected Seeds", layers)
 
         
-        # CorrectedSeedsOutCached
-        #self.initLayer(op.CorrectedSeedsOutCached,"Corrected Seeds Cached", layers)
-
-
-
         # handle the watershed output, 
         # changes in slot ready/unready of all slots lead to the execution of setupLayers
         # therefore a slot is used to not lose this layer (after restart as well, therefore slot)
@@ -363,5 +369,4 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             self.initLayer(op.WSCCOCachedOutput,"Watershed Calculations", layers)
 
         return layers
-
 

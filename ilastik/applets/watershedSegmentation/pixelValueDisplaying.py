@@ -15,16 +15,19 @@ class PixelValueDisplaying(object):
     def __init__(self, slot, pixelValue, pixelValueCheckBox, quadViewStatusBar, channel=0):
         """
         :param slot:       InputSlot or OutputSlot  for which the value will be displayed
-        :param pixelValue: QLabel, where you can set the text for the pixelvalue
+        :param pixelValue: where you can set the text for the pixelvalue
             e.g. self._labelControlUi.pixelValue 
+        :type pixelValue: QLabel
         :param pixelValueCheckBox: 
             QCheckbox for controlling whether to show the pixel value or whether to not show the value
             e.g. self._labelControlUi.pixelValueCheckBox 
+        :type pixelValueCheckBox: QCheckbox
         :param quadViewStatusBar: 
             the status bar from ilastik, where you can find the coordinates 
             e.g. self.volumeEditorWidget.quadViewStatusBar
         (self can be the class: WatershedSegmentationGui)
-        :param channel:  int   the channel which shall be displayed 
+        :param channel:  the channel which shall be displayed 
+        :type channel: int
         """
         #variable initialization
         self.data               = slot
@@ -78,7 +81,8 @@ class PixelValueDisplaying(object):
     def _checkChannelIndex(self, channelToCheck):
         """
         Checks whether the channel-number fits together with the slot-metadata-shape 
-        :returns: Boolean; True if channelToCheck is a valid channel-number; False else
+        :returns: True if channelToCheck is a valid channel-number; False else
+        :rtype: bool
         """
         # zero is always possible
         if (channelToCheck == 0) :
@@ -108,7 +112,8 @@ class PixelValueDisplaying(object):
         The spinbox has updated its value, 
         so the new value i (of signal) == x.SpinBox.value() (for y,z as well)
         i remains unused
-        :param i: int is not used
+        :param i: is not used
+        :type i: int
 
         """
         x = self._statusBar.xSpinBox.value()

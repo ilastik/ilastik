@@ -29,8 +29,7 @@ Basic File Structure
      Look at the function description for more information.
 
      .. currentmodule:: ilastik.applets.watershedSegmentation.watershedSegmentationApplet
-     .. autoclass:: WatershedSegmentationApplet
-             :members: broadcastingSlots
+     .. autoattribute:: WatershedSegmentationApplet.broadcastingSlots
 
 
 #. watershedSegmentationSerializer.py
@@ -51,30 +50,35 @@ Basic File Structure
 
    * handles the views of the layer
 
-   * this file is discussed in more detail in :ref:`The Gui <applet_gui>`.
+   * this file is discussed in more detail in :ref:`the Gui <applet_gui>`.
 
 
 #. addtional files:
-   Normally the files above are necessary. Sometimes classes or cached versions of operators are 
+   Normally these files above are sufficient. Sometimes classes or cached versions of operators are 
    excluded into addtional files. This is only for a better overview and maintenance.
 
 
 .. _applet_gui:
 
-The Gui
-========================================
+Basic Structure in watershedSegmentationGui
+====================================================
 
+.. currentmodule:: ilastik.applets.watershedSegmentation.watershedSegmentationGui
 
-     .. currentmodule:: ilastik.applets.watershedSegmentation.watershedSegmentationGui
-     .. autoclass:: WatershedSegmentationGui
-             :members: 
+The Gui uses mainly these functions:
+
+#. setupLayers
+
+     .. automethod:: WatershedSegmentationGui.setupLayers
+     .. automethod:: WatershedSegmentationGui._initLayer
+
 
 
 
 
 Basic Structure
 ========================================
-
+.. TODO
 
 
 
