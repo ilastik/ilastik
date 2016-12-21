@@ -675,6 +675,8 @@ class OpConservationTracking(Operator, ExportingOperator):
 
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
 
+        resolvedMergersDict = self.ResolvedMergers.value
+
         obj_count = list(objects_per_frame(label_image_slot))        
         object_ids_generator = ilastik_ids(obj_count)
         
@@ -692,38 +694,52 @@ class OpConservationTracking(Operator, ExportingOperator):
         div_child1_track_ids = []
         div_child2_oids = []
         div_child2_track_ids = []        
-          
+        
+        # these will be set for false detections
+        false_detection_lineage_id = 1
+        false_detection_track_id = 1
+
+        # these will be set for resolved mergers:
+        resolved_merger_lineage_id = 0
+        resolved_merger_track_id = 0
+
         for (time, object_id) in object_ids_generator: 
             node = (time, object_id)
             
             # Populate results table
             object_ids.append(node)
             
-            if hypothesesGraph.hasNode(node):        
+            if hypothesesGraph.hasNode(node):     
                 lineage_id = hypothesesGraph.getLineageId(time, object_id)
-                if not lineage_id:    
-                    lineage_id = 0
+
+                if (resolvedMergersDict is not None) and (time in resolvedMergersDict) and (object_id in resolvedMergersDict[time]):
+                    isMerger = True
+                else:
+                    isMerger = False
+
+                if not lineage_id:
+                    if isMerger: 
+                        lineage_id = resolved_merger_lineage_id
+                    else:
+                        lineage_id = false_detection_lineage_id
                 lineage_ids.append(lineage_id)
                     
                 track_id = hypothesesGraph.getTrackId(time, object_id)    
                 if not track_id:
-                    track_id = 0
+                    if isMerger: 
+                        track_id = resolved_merger_track_id
+                    else:
+                        track_id = false_detection_track_id
                 track_ids.append(track_id) 
                 
                 # Populate division table  
                 if with_divisions and 'divisionValue' in hypothesesGraph._graph.node[node] and hypothesesGraph._graph.node[node]['divisionValue']:
                     div_timesteps.append(time)
                     div_object_ids.append(object_id)
-                    
-                    if not lineage_id:
-                        lineage_id = 0
                     div_lineage_ids.append(object_id)
-                                        
-                    if not track_id:
-                        track_id = 0
                     div_track_ids.append(track_id)
                     
-                    assert len(hypothesesGraph.countOutgoingObjects(node)) != (2,2), "Division node {}, does not contain 2 children".format(node) 
+                    assert len(hypothesesGraph.countOutgoingObjects(node)) != (2,2), "Division node {}, does not have 2 separate children".format(node) 
                     
                     childIdx = 1
                     for outEdge in hypothesesGraph._graph.out_edges(node):
@@ -733,6 +749,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                             child_object_id = child[1]
                             child_track_id = hypothesesGraph.getTrackId(child_time, child_object_id)
                             if not child_track_id:
+                                logger.warning("Node {} in frame {} has no track ID set but is child of a division...".format(child_time, child_object_id))
                                 child_track_id = 0
 
                             if childIdx == 1:
