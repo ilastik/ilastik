@@ -66,7 +66,7 @@ class TestStructuredLearningTrackingHeadless(object):
 
     @classmethod
     def teardownClass(cls):
-        removeFiles = ['data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers_Tracking-Result.h5','data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers-tracking_exported_data_table.csv']
+        removeFiles = []#'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers_Tracking-Result.h5','data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers-tracking_exported_data_table.csv']
 
         # Clean up: Delete any test files we generated
         for f in removeFiles:
@@ -113,7 +113,7 @@ class TestStructuredLearningTrackingHeadless(object):
 
         # Check for expected number of lines
         logger.info("Number of rows in the csv file: {}".format(data.shape[0]))
-        assert data.shape[0] == self.EXPECTED_NUM_LINES, 'Number of rows in the csv file differs from expected'
+        assert data.shape[0] == self.EXPECTED_NUM_LINES, 'Number of rows {} in the csv file differs from expected {}.'.format(data.shape[0],self.EXPECTED_NUM_LINES)
 
         # Check that the csv file contains the default fields.
         assert 'object_id' in data.dtype.names, "'object_id' not found in the csv file!"
@@ -136,7 +136,7 @@ class TestStructuredLearningTrackingHeadless(object):
                 merger_count += 1
 
         logger.info("Number of mergers in the csv file: {}".format(merger_count))
-        assert merger_count == self.EXPECTED_MERGER_NUM, 'Number of mergers in the csv file differs from expected'
+        assert merger_count == self.EXPECTED_MERGER_NUM, 'Number of mergers {} in the csv file differs from expected {}.'.format(merger_count,self.EXPECTED_MERGER_NUM)
 
 if __name__ == "__main__":
     # Make the program quit on Ctrl+C

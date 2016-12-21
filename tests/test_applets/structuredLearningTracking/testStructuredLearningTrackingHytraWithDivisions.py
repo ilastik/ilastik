@@ -141,15 +141,15 @@ class TestStructuredLearningTrackingHeadless(object):
             if id == 0:
                 merger_count += 1
         logger.info("Number of mergers in the csv file: {}".format(merger_count))
-        assert merger_count == self.EXPECTED_MERGER_NUM, 'Number of mergers in the csv file differs from expected'
+        assert merger_count == self.EXPECTED_MERGER_NUM, 'Number of mergers {} in the csv file differs from expected {}.'.format(merger_count, self.EXPECTED_MERGER_NUM)
 
         # Check for expected number of false detections
         false_detection_count = 0
         for id in data['lineage_id']:
-            if id == -1:
+            if id == 1:
                 false_detection_count += 1
         logger.info("Number of false detections in the csv file: {}".format(false_detection_count))
-        assert false_detection_count == self.EXPECTED_FALSE_DETECTIONS_NUM, 'Number of false detections in the csv file differs from expected'
+        assert false_detection_count == self.EXPECTED_FALSE_DETECTIONS_NUM, 'Number of false detections {} in the csv file differs from expected {}.'.format(false_detection_count,self.EXPECTED_FALSE_DETECTIONS_NUM)
 
 
         # Load divisions csv file
@@ -158,7 +158,7 @@ class TestStructuredLearningTrackingHeadless(object):
         # Check for expected number of lines
         logger.info("Number of rows in the divisions csv file: {}".format(data.shape[0]))
         print "Number of rows in the divisions csv file: {}".format(data.shape[0])
-        assert data.shape[0] == self.EXPECTED_NUM_LINES_DIVISIONS, 'Number of rows in the divisions csv file differs from expected'
+        assert data.shape[0] == self.EXPECTED_NUM_LINES_DIVISIONS, 'Number of rows {} in the divisions csv file differs from expected {}.'.format(data.shape[0],self.EXPECTED_NUM_LINES_DIVISIONS)
 
         # Check that the csv file contains the default fields.
         assert 'object_id' in data.dtype.names, "'object_id' not found in the csv file!"
