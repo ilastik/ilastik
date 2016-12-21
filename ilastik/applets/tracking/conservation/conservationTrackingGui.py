@@ -244,6 +244,9 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             
             self.mainOperator.exportPlugin(filename, exportPlugin)
 
+            QMessageBox.information(self, "Export done", "The files have been successfully exported in the requested format." )
+
+
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
         inString = str(self._drawer.timeoutBox.text())
