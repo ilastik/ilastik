@@ -110,11 +110,16 @@ class OpStructuredTracking(OpConservationTracking):
         if not withBatchProcessing:
             gui = self.parent.parent.trackingApplet._gui.currentGui()
 
-        if self.Annotations.value == {}:
-            if not withBatchProcessing:
-                gui._criticalMessage("Error: Weights can not be calculated because there are no training annotations. " +\
+        emptyAnnotations = False
+        for crop in self.Annotations.value.keys():
+            emptyCrop = self.Annotations.value[crop]["divisions"]=={} and self.Annotations.value[crop]["labels"]=={}
+            if emptyCrop and not withBatchProcessing:
+                gui._criticalMessage("Error: Weights can not be calculated because training annotations for crop {} are missing. ".format(crop) +\
                                   "Go back to Training applet and Save your training for each crop.")
-            return
+            emptyAnnotations = emptyAnnotations or emptyCrop
+
+        if emptyAnnotations:
+            return [self.DetectionWeight.value, self.DivisionWeight.value, self.TransitionWeight.value, self.AppearanceWeight.value, self.DisappearanceWeight.value]
 
         self._updateCropsFromOperator()
         median_obj_size = [0]
@@ -192,7 +197,7 @@ class OpStructuredTracking(OpConservationTracking):
                         if not withBatchProcessing:
                             gui._criticalMessage("You have not trained or saved your training for " + str(cropKey) + \
                                               ". \nGo back to the Training applet and save all your training!")
-                        return
+                        return [self.DetectionWeight.value, self.DivisionWeight.value, self.TransitionWeight.value, self.AppearanceWeight.value, self.DisappearanceWeight.value]
 
                     crop = self.Annotations.value[cropKey]
 
