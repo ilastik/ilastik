@@ -2,10 +2,17 @@
 Building your own applet using the watershedSegmentation applet
 ================================================================================
 
+This applet gets images for RawData, Boundaries and Seeds and 
+returns the calculated watershed segmentation and the used Labels. 
+
+More information on how you can use this applet can be found in 
+`Link <http://ilastik.org/documentation/>`_ under ILASTIK WORKFLOWS.
+
+
 Basic File Structure
 ========================================
 
-#. __init__.py
+#. __init__.py 
 
         .. literalinclude:: ../ilastik/applets/watershedSegmentation/__init__.py
            :linenos:
@@ -54,6 +61,7 @@ Basic File Structure
 
 
 #. addtional files:
+
    Normally these files above are sufficient. Sometimes classes or cached versions of operators are 
    excluded into addtional files. This is only for a better overview and maintenance.
 
@@ -65,28 +73,49 @@ Basic Structure in watershedSegmentationGui
 
 .. currentmodule:: ilastik.applets.watershedSegmentation.watershedSegmentationGui
 
-The Gui uses mainly these functions:
+#. Inheritance
+   
+        The Gui inherits from the WatershedLabelingGui which handles all about the labels.
+
+        Inheritance-tree:
+
+        LayerViewerGui->LabelingGui->WatershedLabelingGui
+
+        More information can be found in the :ref:`watershed labeling gui <applet_labeling_gui>` section.
+
+
+        The Gui uses mainly these functions:
 
 #. setupLayers
 
      .. automethod:: WatershedSegmentationGui.setupLayers
      .. automethod:: WatershedSegmentationGui._initLayer
 
+#. __init__
+
+   Includes all the functionality that you can use with the side panel within your applet. 
+   Some parts can be used of existing classes, some need to be done manually.
+
+   * The slots for the base class for the labels are initialized here.
+     Only needed for LabelingGui or WatershedLabelingGui.
+
+     Otherwise you have to supply your own userinterface and their functionality. 
+
+
+   * Handling what happens when you push a button, click on a checkbox or any other action.
 
 
 
+.. _applet_labeling_gui:
 
-Basic Structure
-========================================
-.. TODO
+Basic Structure in watershedLabelingGui
+====================================================
 
+The whole functionality of everything that depends on labeling 
+is handled within this class. 
 
+.. TODO explain more about this here
 
-For an additional widget that shall be seen for this specific applet, 
-you can use the following files in volumina/volumina/widgets:
+.. TODO explain more about the classes of LabelModelList 
 
-TODO create these two files
-
-#. appletExampleWidget.py
-#. ui/appletExampleWidget.ui
 

@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 
 
 
-#LayerViewerGui->LabelingGui->WatershedSegmentationGui
+#LayerViewerGui->LabelingGui->WatershedLabelingGui
 class WatershedSegmentationGui(WatershedLabelingGui):
 
     ###########################################
@@ -222,16 +222,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self._labelControlUi.runWatershedPushButton.clicked.connect(self.onRunWatershedPushButtonClicked)
 
             
-        ############################################################
-        # BEGIN TODO
-        ############################################################
-
-        #needed?
-        #op.RawData.notifyMetaChanged( set_brush_value_box_range )
-
-        ############################################################
-        # END TODO
-        ############################################################
 
     '''
     def initAppletDrawerUi(self):
@@ -326,10 +316,10 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         These are the views (e.g. opacity of Raw Data)
         that can be adjusted in the left corner of the program
-        And for the Elements, that can be seen in the 'Central Widget', 
-        These are excactly the one, that are shown in the Viewer Controls.
+        and for the Elements, that can be seen in the 'Central Widget'. 
+        These are excactly the ones, that are shown in the Viewer Controls.
 
-        Uses :py:meth:`_initLayer` to create a each single layer
+        Uses :py:meth:`_initLayer` to create a single layer
 
         :returns: the list with the layers that are created in this function
         :rtype: list of layers
@@ -345,28 +335,31 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         op = self.topLevelOperatorView
 
-        # Raw Data
-        self.initLayer(op.RawData,          "Raw Data",     layers, visible=False, 
-                layerFunction=self.createStandardLayerFromSlot ) 
-
-        # Boundaries
-        self.initLayer(op.Boundaries,       "Boundaries",   layers, opacity=0.1, 
-                layerFunction=self.createGrayscaleLayer) 
-
-        # Seeds
-        self.initLayer(op.Seeds,            "Seeds",        layers, visible=False)
-
-        # CorrectedSeedsOut
-        self.initLayer(op.CorrectedSeedsOut,"Corrected Seeds", layers)
-
-        
         # handle the watershed output, 
         # changes in slot ready/unready of all slots lead to the execution of setupLayers
         # therefore a slot is used to not lose this layer (after restart as well, therefore slot)
         # use the cached version here
         if op.ShowWatershedLayer.value: 
             # WatershedCalculations
-            self.initLayer(op.WSCCOCachedOutput,"Watershed Calculations", layers)
+            self._initLayer(op.WSCCOCachedOutput,"Watershed Calculations", layers)
+
+        # CorrectedSeedsOut
+        self._initLayer(op.CorrectedSeedsOut,"Corrected Seeds", layers)
+
+        # Seeds
+        self._initLayer(op.Seeds,            "Seeds",        layers, visible=False)
+
+        
+        # Boundaries
+        self._initLayer(op.Boundaries,       "Boundaries",   layers, opacity=0.5, 
+                layerFunction=self.createGrayscaleLayer) 
+
+
+        # Raw Data
+        self._initLayer(op.RawData,          "Raw Data",     layers, 
+                layerFunction=self.createStandardLayerFromSlot ) 
+
+
 
         return layers
 

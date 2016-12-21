@@ -22,6 +22,7 @@ Contents:
    plugin_system
    dependencies
    testing
+   nice2know
    documentation
    troubleshooting
 

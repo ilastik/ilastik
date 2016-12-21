@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 class PixelValueDisplaying(object):
     """
     class for showing the pixel-value of one slot with a particular channel
+
     inherit from object to make the @property and the @X.setter work correctly
 
     """

@@ -62,7 +62,6 @@ class WatershedSegmentationSerializer(AppletSerializer):
                     selfdepends=False,
                     shrink_to_bb=True),
                 # used to remember to show the watershed result layer 
-                #TODO maybe change something if level changes
                 SerialSlot(operator.ShowWatershedLayer), 
                 SerialSlot(operator.UseCachedLabels), 
 
