@@ -123,7 +123,7 @@ class TestPlugins(object):
         rm = rm[:, :, :, 0:1, :]
         self.op.RawImage.setValue(rm)
         self.Features_standard = FEATURES
-        self.Features_convex_hull = {'2D Convex Hull Features': {'Perimeter': {}, 'Defect Area Kurtosis': {}}}
+        self.Features_convex_hull = {'2D Convex Hull Features': {'HullVolume': {}, 'DefectVolumeKurtosis': {}}}
         self.Features_skeleton = {'2D Skeleton Features': {'Diameter': {}, 'Total Length': {}}}
         #self.op.Features.setValue(FEATURES)
         bm = binaryImage()
