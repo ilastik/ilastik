@@ -240,7 +240,7 @@ class OpStructuredTracking(OpConservationTracking):
                                         if type == None:
                                             raise DatasetConstraintError('Structured Learning', mergeMsgStr)
 
-                                        elif type[0] == "LAST" or type[0] == "INTERMEDIATE" or type[0] == "SINGLETON(FIRST_LAST)":
+                                        elif type[0] in ["LAST", "INTERMEDIATE", "SINGLETON(FIRST_LAST)"]:
                                             if type[0] == "SINGLETON(FIRST_LAST)":
                                                 trackCountIntersection = len(trackSet)
                                             else:
