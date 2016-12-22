@@ -141,15 +141,16 @@ class AnnotationsGui(LayerViewerGui):
                     upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
 
                     addAnnotation = False
-                    if len(lower) == 2:
-                        if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
-                            addAnnotation = True
-                    else:
-                        if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
-                            crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
-                            addAnnotation = True
+                    if len(self.topLevelOperatorView.labels[time][label]) > 0:
+                        if len(lower) == 2:
+                            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
+                                addAnnotation = True
+                        else:
+                            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
+                                crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
+                                addAnnotation = True
 
                     if addAnnotation:
                         num += 1
@@ -881,7 +882,7 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.TrackImage, [t])
             self._setDirty(self.mainOperator.UntrackedImage, [t])
             self._setDirty(self.mainOperator.Labels, [t])
-            
+
         elif selection in delSubtrackToEnd.keys():
             track2remove = delSubtrackToEnd[selection]
             maxt = self.mainOperator.LabelImage.meta.shape[0]
@@ -990,6 +991,10 @@ class AnnotationsGui(LayerViewerGui):
             return False
         
         self.mainOperator.labels[t][oid].remove(track2remove)
+        if len(self.mainOperator.labels[t][oid])==0:
+            res = self.mainOperator.labels
+            del res[t][oid]
+            self.mainOperator.labels = res
         self._setDirty(self.mainOperator.Labels, [t])
         self._setDirty(self.mainOperator.TrackImage, [t])
         self._setDirty(self.mainOperator.UntrackedImage, [t])
