@@ -775,21 +775,29 @@ class WatershedLabelingGui(LabelingGui):
 
     def getNextLabelName(self):
         """
-        Return a suitable name for the next label added by the user.
         Subclasses may override this.
         Overriden
+
+        :return: a suitable name for the next label added by the user.
+        :rtype: str
         """
         number = self.getNextLabelNumber()
         return "Seed {}".format(number)
 
     def getNextLabelNumber(self):
         """
-        Return a suitable value for the next label added by the user.
-        first label =>   1
-        second label => 2
-        ...
         go through all the labels and look at their number/value (not their position)
         and return the highest number of these labels
+
+        first label =>   1
+
+        second label => 2
+
+        etc
+
+
+        :return: a suitable value for the next label added by the user
+        :rtype: int
         """
         maxNum = 0
         for index, label in enumerate(self._labelControlUi.labelListModel):
@@ -800,13 +808,15 @@ class WatershedLabelingGui(LabelingGui):
 
     def getNextLabelColor(self):
         """
-        Return a QColor to use for the next label.
-        Then take the color of the colortable to have common colors
+        Take the color of the colortable to have common colors
+
+        :return: a QColor to use for the next label.
+        :rtype: QColor
         """
         number = self.getNextLabelNumber()
 
         color = QColor()
-        color.setRgba(self._colorTable[number]) # First entry is transparent (for zero label)
+        color.setRgba(self._colorTable[number]) # First entry is transparent (for zero label), if using the default colormap
         return color
 
     '''
@@ -874,18 +884,35 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
     def _beforeLabelRemoved(self, number):
         """
         catch the information of the labelValue that shall be deleted from cache, 
-        because of the deletion of a label of the labelList
+        because of the deletion of a label of the labelList.
+
+
+        The number comes from a signal, that is emitted on removing the labelListEntry in LabelListModelWithNumber.
         """
         self._deleteLabelValue = number
 
     def _onLabelRemoved(self, parent, start, end):
         """
-        reset the focus
-        if labelnames aren't up to date with the number of labels, then:
-        delete the label with the value: _deleteLabelValue from labelCache and 
-        (this data comes from a signal, that is emitted on removing the 
-        labelListEntry in LabelListModelWithNumber)
-        delete the labeName from labeNames slot
+        1. Copied from superclass.
+            Some not so interesting things.
+            Select a new label if the current one is deleted.
+            Disable Labeling if the last label is removed.
+        
+        2.  If the slot labelNames isn't up to date with the number of labels saved in the LabelListModel, 
+            which is the default case (that's why we handle it here), then:
+
+            1. delete the label with the value: '_deleteLabelValue' (see :py:meth:`_beforeLabelRemoved`) from
+                the cache, in which the Labels are saved and which is displayed in the Gui. 
+                That means that the label with this particular number is deleted from Cache and can't be viewed anymore. 
+
+                The value: '_deleteLabelValue' (see :py:meth:`_beforeLabelRemoved` ) comes from
+                a signal, that is emitted on removing the labelListEntry in LabelListModelWithNumber)
+            2. delete the labelName from the slot labelNames 
+
+            It is important that the deleteLabel slot is not used, because this 
+            deletes one slot and reorders the labels and give them new number. 
+            This means that the value of each label would change to number-1 and that would be fatal
+
         """
 
         

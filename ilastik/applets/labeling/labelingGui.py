@@ -140,6 +140,13 @@ class LabelingGui(LayerViewerGui):
         :param drawerUiPath: can be given if you provide an extended drawer UI file.  Otherwise a default one is used.
         :param rawInputSlot: Data from the rawInputSlot parameter will be displayed directly underneath the elements
                              (if provided).
+
+        1. test if the provided labelingSlots are not None
+        2. set class members like the minLabelNumber, maxLabelNumber, colorTable16, etc
+        3. set the user interface and functionality for the labels, using the :py:meth:`_initLabelUic`
+        4. init base class
+        5. init shortcuts
+        6. handle thunk events and the interaction mode 
         """
 
         # Do have have all the slots we need?
@@ -164,6 +171,7 @@ class LabelingGui(LayerViewerGui):
         self._colorTable16 = self._createDefault16ColorColorTable()
         self._programmaticallyRemovingLabels = False
 
+        # 3. set the user interface and functionality for the labels, using the :py:meth:`_initLabelUic`
         if drawerUiPath is None:
             # Default ui file
             drawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
@@ -192,6 +200,16 @@ class LabelingGui(LayerViewerGui):
         return model
 
     def _initLabelUic(self, drawerUiPath):
+        """
+        1. define the labelListModel (how the labels shall be displayed in the labelListView)
+        2. define functions for merging and clearing labels
+        3. 'add a new label' button functionality 
+        4. navigation, paintBrush, eraser and threshold get icons and functionality
+        5. define the brushsizes
+
+        :param drawerUiPath: path including the definit file of the user interface
+        
+        """
         _labelControlUi = uic.loadUi(drawerUiPath)
 
         # We own the applet bar ui

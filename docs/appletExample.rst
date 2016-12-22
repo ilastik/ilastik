@@ -114,8 +114,53 @@ Basic Structure in watershedLabelingGui
 The whole functionality of everything that depends on labeling 
 is handled within this class. 
 
-.. TODO explain more about this here
+The labeling gui is an applet itself, so it has a serializer, an operator and so on. 
+But most of the things can be used from the superclass. 
+
+
+WatershedLabelingGui inherits from LabelingGui. First of all it is sufficient to understand what happens in the LabelingGui. 
+
+
+LabelingGui 
+----------------------------------------------------
+
+
+.. currentmodule:: ilastik.applets.labeling.labelingGui
+
+#. In the beginning, there are lots of properties and setters. 
+
+
+#.     
+       .. automethod:: LabelingGui.__init__
+                :noindex:
+       .. automethod:: LabelingGui._initLabelUic
+
+#. the rest is more or less the structure and methods that make this class work well, but it is not 
+   so essential for the main understanding of this class.
+
+   .. TODO maybe comment more functions and explain more about this here, 
+
+
+Changes in WatershedLabelingGui compared to the LabelingGui
+--------------------------------------------------------------------
+
+All changes in the WatershedLabelingGui compared to the LabelingGui:
+
+.. currentmodule:: ilastik.applets.watershedLabeling.watershedLabelingGui
+.. autoclass:: WatershedLabelingGui
+        :members: _defineModel, _changeInteractionMode, _onLabelSelected, _defineLabel, _beforeLabelRemoved, _onLabelRemoved, getNextLabelName, getNextLabelColor, getNextLabelNumber
+
+
+
+To supply the WatershedLabelingGui with a LabelListModel that displays the value of the labels, a new class was necessary. 
 
 .. TODO explain more about the classes of LabelModelList 
+
+
+
+
+.. TODO die maximale anzahl an labels ist im labelingGui in der Init festgelet, diese kann man spaeter aber noch erweitern, ueber setter. 
+        self._maxLabelNumber = 99 #100 or 255 is reserved for eraser
+        def maxLabelNumber(self, n):
 
 
