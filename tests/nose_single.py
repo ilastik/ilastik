@@ -43,7 +43,7 @@ def _init_threading_h5py_monkeypatch():
 
 _init_threading_h5py_monkeypatch()
 
-from .helpers import mainThreadHelpers
+from helpers import mainThreadHelpers
 
 # For some mysterious reason, we need to make sure that volumina.api gets imported 
 #  from the main thread before nose imports it from a separate thread.
@@ -60,7 +60,6 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         sys.stderr.write( "Usage: python {} FILE [--nocapture] [--nologcapture]\n".format(sys.argv[0]) )
         sys.exit(1)
-
     #
     # Run a SINGLE test file using nosetests, which is launched in a separate thread.
     # The main thread (i.e. this one) is left available for launching other tasks (e.g. the GUI).

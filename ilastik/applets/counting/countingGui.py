@@ -71,7 +71,7 @@ def _listReplace(old, new):
 
 
 
-from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint,QString,QVariant
+from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint,QVariant
 from PyQt4.QtGui import QRubberBand,QRubberBand,qRed,QPalette,QBrush,QColor,QGraphicsColorizeEffect,\
         QStylePainter, QPen
 

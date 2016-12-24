@@ -38,7 +38,6 @@ from ilastik.config import cfg as ilastik_config
 
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
 import volumina.colortables as colortables
-from volumina.utility import encode_from_qstring
 
 import vigra
 import numpy as np
@@ -507,7 +506,7 @@ class ObjectExtractionGui(LayerViewerGui):
         fname = QFileDialog.getSaveFileName(self, caption='Export Computed Features', 
                                         filter="Pickled Objects (*.pkl);;All Files (*)")
         
-        fname = encode_from_qstring( fname )
+        fname = fname
         if len(fname)>0: #not cancelled
             with open(fname, 'w') as f:
                 pickle.dump(mainOperator.RegionFeatures(list()).wait(), f)

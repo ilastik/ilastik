@@ -44,8 +44,6 @@ from ilastik.utility.exportingOperator import ExportingGui
 
 from ilastik.config import cfg as ilastik_config
 
-from volumina.utility import encode_from_qstring
-    
 
 class ManualTrackingGui(LayerViewerGui, ExportingGui):
 
@@ -926,7 +924,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtGui.QFileDialog.DontUseNativeDialog
 
-        out_fn = encode_from_qstring(QtGui.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/divisions.csv", options=options))
+        out_fn = QtGui.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/divisions.csv", options=options)
         
         if out_fn is None or str(out_fn) == '':            
             return
@@ -953,7 +951,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtGui.QFileDialog.DontUseNativeDialog
 
-        out_fn = encode_from_qstring(QtGui.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/mergers.csv", options=options))
+        out_fn = QtGui.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/mergers.csv", options=options)
         
         if out_fn is None or str(out_fn) == '':            
             return
@@ -983,7 +981,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtGui.QFileDialog.DontUseNativeDialog
 
-        directory = encode_from_qstring(QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))      
+        directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options)
         
         if directory is None or str(directory) == '':            
             return
@@ -1107,7 +1105,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtGui.QFileDialog.DontUseNativeDialog
 
-        directory = encode_from_qstring(QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))    
+        directory = QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options)
         if directory is None or len(str(directory)) == 0:
             return
         

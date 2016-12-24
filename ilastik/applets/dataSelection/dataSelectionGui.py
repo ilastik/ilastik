@@ -25,7 +25,6 @@ import h5py
 import numpy
 from functools import partial
 import logging
-from builtins import False
 logger = logging.getLogger(__name__)
 
 #PyQt
@@ -38,7 +37,7 @@ from PyQt4.QtGui import QWidget, QStackedWidget, QMessageBox, QFileDialog, \
 from lazyflow.request import Request
 
 #volumina
-from volumina.utility import PreferencesManager, encode_from_qstring
+from volumina.utility import PreferencesManager
 
 #ilastik
 from ilastik.config import cfg as ilastik_config
@@ -451,7 +450,7 @@ class DataSelectionGui(QWidget):
             # otherwise, use native dialog of the present platform
             fileNames = QFileDialog.getOpenFileNames(parent_window, "Select Images", defaultDirectory, filt_all_str)
         # Convert from QtString to python str
-        fileNames = list(map(encode_from_qstring, fileNames))
+        fileNames = list(fileNames)
         return fileNames
 
     def _findFirstEmptyLane(self, roleIndex):

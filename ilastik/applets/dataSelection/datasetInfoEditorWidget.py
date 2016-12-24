@@ -27,10 +27,8 @@ import numpy
 import vigra
 
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, QEvent, QVariant, QString
+from PyQt4.QtCore import Qt, QEvent, QVariant
 from PyQt4.QtGui import QDialog, QMessageBox, QDoubleSpinBox, QApplication
-
-from volumina.utility import encode_from_qstring, decode_to_qstring
 
 from ilastik.utility import log_exception
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -153,7 +151,7 @@ class DatasetInfoEditorWidget(QDialog):
     def rangeDisplay(self, box, val):
         drange = self._getCommonMetadataValue("drange")
         if drange is None:
-            return QString("")
+            return ""
         return QDoubleSpinBox.textFromValue(box, val)
 
     def _setUpEventFilters(self):
@@ -290,10 +288,10 @@ class DatasetInfoEditorWidget(QDialog):
         if nickname is None:
             self.nicknameEdit.setText("<multiple>")
         else:
-            self.nicknameEdit.setText( decode_to_qstring(nickname, 'utf-8') )
+            self.nicknameEdit.setText( nickname )
 
     def _applyNicknameToTempOps(self):
-        newNickname = encode_from_qstring(self.nicknameEdit.text(), 'utf-8')
+        newNickname = self.nicknameEdit.text()
         if "<multiple>" in newNickname:
             return
 
@@ -749,9 +747,9 @@ class DatasetInfoEditorWidget(QDialog):
 
         if showpaths:
             self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
-            self.storageComboBox.addItem( decode_to_qstring("Absolute Link: " + absPath), userData=StorageLocation.AbsoluteLink )
+            self.storageComboBox.addItem("Absolute Link: " + absPath, userData=StorageLocation.AbsoluteLink )
             if relPath is not None:
-                self.storageComboBox.addItem( decode_to_qstring("Relative Link: " + relPath), userData=StorageLocation.RelativeLink )
+                self.storageComboBox.addItem( "Relative Link: " + relPath, userData=StorageLocation.RelativeLink )
         else:
             self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
             self.storageComboBox.addItem( "Absolute Link", userData=StorageLocation.AbsoluteLink )

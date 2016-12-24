@@ -35,10 +35,6 @@ submodule_dir = os.path.dirname(ilastik_repo_dir)
 from . import expose_submodules
 expose_submodules.expose_submodules(submodule_dir)
 
-# switch on QString in Python3
-import sip
-sip.setapi('QString', 1)
-
 ##################
 ## Version info ##
 ##################

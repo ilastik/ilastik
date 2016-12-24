@@ -31,7 +31,6 @@ import vigra
 from volumina.utility import PreferencesManager
 
 import ilastik.config
-from volumina.utility import encode_from_qstring, decode_to_qstring
 
 from lazyflow.operators.ioOperators import OpStackLoader
 
@@ -119,16 +118,16 @@ class StackFileSelectionWidget(QDialog):
             # User cancelled
             return
 
-        directory = encode_from_qstring( directory )
+        directory = directory
         PreferencesManager().set('DataSelection', 'recent stack directory', directory)
 
-        self.directoryEdit.setText( decode_to_qstring(directory) )
+        self.directoryEdit.setText( directory )
         globstring = self._getGlobString(directory)
         if globstring:
             filenames = OpStackLoader.expandGlobStrings(globstring)
             self._updateFileList( sorted(filenames) )
             # As a convenience, also show the glob string in the pattern field
-            self.patternEdit.setText( decode_to_qstring(globstring) )
+            self.patternEdit.setText( globstring )
 
     def _getGlobString(self, directory):
         all_filenames = []
@@ -185,7 +184,7 @@ class StackFileSelectionWidget(QDialog):
         fileNames = QFileDialog.getOpenFileNames( 
                      self, "Select Images for Stack", defaultDirectory, filt, options=options )
         
-        fileNames = list(map(encode_from_qstring, fileNames))
+        fileNames = list(fileNames)
 
         if len(fileNames) == 0:
             return
@@ -203,7 +202,7 @@ class StackFileSelectionWidget(QDialog):
         self._updateFileList( fileNames )
 
     def _applyPattern(self):
-        globStrings = encode_from_qstring(self.patternEdit.text())
+        globStrings = self.patternEdit.text()
         filenames = OpStackLoader.expandGlobStrings(globStrings)
         self._updateFileList(filenames)
 
@@ -213,7 +212,7 @@ class StackFileSelectionWidget(QDialog):
         self.fileListWidget.clear()
         
         for f in self.selectedFiles:
-            self.fileListWidget.addItem(decode_to_qstring(f))
+            self.fileListWidget.addItem(f)
 
     def eventFilter(self, watched, event):
         if watched == self.patternEdit:

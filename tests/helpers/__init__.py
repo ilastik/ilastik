@@ -18,5 +18,13 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+submodule_dir = '/Users/saurabh/miniconda3/envs/ilastik-py3/ilastik-meta'
+# Add all submodules to the PYTHONPATH
+from . import expose_submodules
+expose_submodules.expose_submodules(submodule_dir)
+
+#import sys
+#print(sys.path)
+
 from .shellGuiTestCaseBase import ShellGuiTestCaseBase
 from . import mainThreadHelpers

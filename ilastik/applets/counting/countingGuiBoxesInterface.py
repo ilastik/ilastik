@@ -297,7 +297,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     @pyqtSlot()
     def _setupTextItem(self):
         #Set up the text
-        self.textItem=QtGui.QGraphicsTextItem(QtCore.QString(""),parent=self)
+        self.textItem=QtGui.QGraphicsTextItem("",parent=self)
         textItem=self.textItem
         font=QFont()
         font.setPointSize(self._fontSize)
@@ -308,7 +308,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
         if self._dbg:
             #another text item only for debug
-            self.textItemBottom=QtGui.QGraphicsTextItem(QtCore.QString(""),parent=self)
+            self.textItemBottom=QtGui.QGraphicsTextItem("",parent=self)
             self.textItemBottom.setPos(QtCore.QPointF(self.width,self.height))
             self.textItemBottom.setDefaultTextColor(QColor(255, 255, 255))
 
@@ -316,7 +316,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
 
     @pyqtSlot(str)
     def _updateTextBottom(self,string):
-        self.textItemBottom.setPlainText(QtCore.QString(string))
+        self.textItemBottom.setPlainText(string)
 
     def setNewSize(self, constrainAxis, size, flip=False):
 
@@ -458,7 +458,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     @pyqtSlot(str)
     def updateText(self,string):
 
-        self.textItem.setPlainText(QtCore.QString(string))
+        self.textItem.setPlainText(string)
 
 
     def mouseReleaseEvent(self, event):
@@ -601,8 +601,7 @@ class CoupledRectangleElement(object):
             self._rectItem.updateText("%.1f"%(value))
 
             if self.boxLabel!=None:
-                from PyQt4.QtCore import QString
-                self.boxLabel.density=QString("%.1f"%value)
+                self.boxLabel.density="%.1f"%value
         except Exception as e:
             import warnings
             warnings.warn("Warning: invalid subregion", RuntimeWarning)

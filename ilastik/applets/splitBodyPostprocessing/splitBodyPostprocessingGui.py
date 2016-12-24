@@ -30,7 +30,6 @@ from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager
 
 from ilastik.utility import bind
-from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.splitBodyCarving.bodySplitInfoWidget import BodySplitInfoWidget
 
@@ -92,9 +91,7 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
             logger.info( "Export progress: {}%".format( progress ) )
 
         op = self.topLevelOperatorView
-        req = op.exportFinalSegmentation( encode_from_qstring( exportPath ), 
-                                          "zyx",
-                                          handleProgress )
+        req = op.exportFinalSegmentation( exportPath, "zyx", handleProgress )
         self._drawer.exportButton.setEnabled(False)
         def handleFinish(*args):
             self._drawer.exportButton.setEnabled(True)

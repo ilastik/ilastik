@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage, QDialog,QColorDialog,QGraphicsTextItem
-from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal,QString,QVariant
+from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal,QVariant
 from .listModel import ListModel,ListElement,_NPIXELS
 #from labelListModel import LabelListModel
 import logging
@@ -330,7 +330,7 @@ class BoxListModel(ListModel):
                 value=float(value.toString())
                 self._elements[index.row()].isFixed=True
                 row=index.row()
-                self._elements[row].fixvalue=QString("%.1f"%value)
+                self._elements[row].fixvalue="%.1f"%value
                 self.dataChanged.emit(index,index)
                 return True
             except:

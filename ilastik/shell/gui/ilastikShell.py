@@ -52,8 +52,7 @@ from lazyflow.utility import timeLogged, isUrl
 from lazyflow.request import Request
 
 # volumina
-from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, \
-    encode_from_qstring
+from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager
 
 # ilastik
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
@@ -675,7 +674,7 @@ class IlastikShell(QMainWindow):
                 options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
             if not statsPath.isNull():
-                stats_path = encode_from_qstring(statsPath)
+                stats_path = statsPath
                 pstats_path = os.path.splitext(stats_path)[0] + '.pstats'
                 PreferencesManager().set('shell', 'recent sorted profile stats', stats_path)
 
@@ -708,7 +707,7 @@ class IlastikShell(QMainWindow):
                 options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
             if not statsPath.isNull():
-                stats_path = encode_from_qstring(statsPath)
+                stats_path = statsPath
                 PreferencesManager().set('shell', 'recent sorted profile stats', stats_path)
 
                 # Export the yappi stats to builtin pstats format, 
@@ -830,7 +829,7 @@ class IlastikShell(QMainWindow):
                 options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
             if not htmlPath.isNull():
-                html_path = encode_from_qstring(htmlPath)
+                html_path = htmlPath
                 PreferencesManager().set('shell', 'allocation tracking output html', html_path)
                 self._allocation_tracker.write_html(html_path)
 
@@ -905,7 +904,7 @@ class IlastikShell(QMainWindow):
             options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
         if not svgPath.isNull():
-            svgPath = encode_from_qstring(svgPath)
+            svgPath = svgPath
             PreferencesManager().set('shell', 'recent debug diagram', svgPath)
             lazyflow.tools.schematic.generateSvgFileForOperator(svgPath, op, detail)
             QDesktopServices.openUrl(QUrl.fromLocalFile(svgPath))
@@ -939,7 +938,7 @@ class IlastikShell(QMainWindow):
             if readOnly:
                 windowTitle += " [Read Only]"
 
-        self.setWindowTitle(decode_to_qstring(windowTitle))
+        self.setWindowTitle(windowTitle)
 
         # Enable/Disable menu items
         projectIsOpen = self.projectManager is not None and not self.projectManager.closed
@@ -1265,9 +1264,9 @@ class IlastikShell(QMainWindow):
             projectFilePath = QFileDialog.getSaveFileName(self, caption, defaultPath,
                                                           "Ilastik project files (*.ilp)", options=options)
             # If the user cancelled, stop now
-            if projectFilePath.isEmpty():
+            if projectFilePath == "":
                 return None
-            projectFilePath = encode_from_qstring(projectFilePath)
+            projectFilePath = projectFilePath
             fileSelected = True
 
             # Add extension if necessary
@@ -1376,7 +1375,7 @@ class IlastikShell(QMainWindow):
         if projectFilePath.isNull():
             return None
 
-        return encode_from_qstring(projectFilePath)
+        return projectFilePath
 
     def onOpenProjectActionTriggered(self):
         logger.debug("Open Project action triggered")

@@ -1024,7 +1024,6 @@ class AppletSerializer(object, metaclass=ABCMeta):
         """get new path to lost file"""
         
         from PyQt4.QtGui import QFileDialog,QMessageBox
-        from volumina.utility import encode_from_qstring
         
         text = "The file at {} could not be found any more. Do you want to search for it at another directory?".format(path)
         logger.info(text)
@@ -1040,7 +1039,7 @@ class AppletSerializer(object, metaclass=ABCMeta):
         if fileName.isEmpty():
             raise RuntimeError("Could not find external data: " + path)
         else:
-            return encode_from_qstring(fileName)
+            return fileName
         
     #######################
     # Optional methods    #

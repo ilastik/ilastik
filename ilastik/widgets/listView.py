@@ -23,7 +23,7 @@ from PyQt4.QtGui import QTableView, \
     QAbstractItemView, \
     QHeaderView,  QStackedWidget, \
     QLabel, QSizePolicy
-from PyQt4.QtCore import Qt, QString
+from PyQt4.QtCore import Qt
 
 import logging
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ class ListView(QStackedWidget):
         self._table.setShowGrid(False)
     
     def resetEmptyMessage(self,pystring):
-        self.emptyMessage.setText(QString(pystring))
+        self.emptyMessage.setText(pystring)
 
     def tableViewCellClicked(self, modelIndex):
         '''

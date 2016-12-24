@@ -30,7 +30,6 @@ import numpy
 
 import PyQt4
 from PyQt4 import uic, QtCore
-from PyQt4.QtCore import QString
 from PyQt4.QtGui import QIcon, QMessageBox
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -72,8 +71,8 @@ class NansheDictionaryLearningGui(LayerViewerGui):
         self._drawer.NansheDictionaryLearningInfo.setIcon(QIcon(ilastikIcons.Dialog))
         self._drawer.NansheDictionaryLearningInfo.clicked.connect(
             lambda : QMessageBox.about(None,
-                                       QString("About Dictionary Learning"),
-                                       QString("""Arguments to be used by SPAMS dictionary learning algorithm. ( <a href="http://spams-devel.gforge.inria.fr/doc-python/html/doc_spams004.html#sec5">http://spams-devel.gforge.inria.fr/doc-python/html/doc_spams004.html#sec5</a> )""")
+                                       "About Dictionary Learning",
+                                       """Arguments to be used by SPAMS dictionary learning algorithm. ( <a href="http://spams-devel.gforge.inria.fr/doc-python/html/doc_spams004.html#sec5">http://spams-devel.gforge.inria.fr/doc-python/html/doc_spams004.html#sec5</a> )"""
             )
         )
 

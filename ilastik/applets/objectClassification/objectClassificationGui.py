@@ -53,7 +53,6 @@ import volumina.colortables as colortables
 from volumina.api import \
     LazyflowSource, GrayscaleLayer, ColortableLayer, AlphaModulatedLayer, \
     ClickableColortableLayer, LazyflowSinkSource
-from volumina.utility import encode_from_qstring
 
 from volumina.interpreter import ClickInterpreter
 from volumina.utility import ShortcutManager
@@ -935,6 +934,6 @@ class BadObjectsDialog(QMessageBox):
         parts = []
         for s in (self.text(), self.informativeText(), self.detailedText()):
             if len(s) > 0:
-                parts.append(encode_from_qstring(s))
+                parts.append(s)
         msg = "\n".join(parts)
         logger.warn(msg)
