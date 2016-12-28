@@ -79,7 +79,8 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
-        self._drawer.saveAnnotations.pressed.connect(self._onSaveAnnotations)
+        self.topLevelOperatorView.Crops.notifyDirty(bind(self._onSaveAnnotations))
+        self._drawer.saveAnnotations.setVisible(False)
         self._drawer.initializeAnnotations.pressed.connect(self._onInitializeAnnotations)
         self._drawer.activeTrackBox.setToolTip("Active track label and colour.")
 
@@ -374,36 +375,92 @@ class AnnotationsGui(LayerViewerGui):
                 self.layerstack.append( layerraw )
 
     def _initAnnotations(self):
-        for name in self.topLevelOperatorView.Crops.value.keys():
-            self._onSaveAnnotations(name=name)
+        self._onSaveAnnotations()
         self.topLevelOperatorView.Labels.setValue(self.topLevelOperatorView.labels)
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
 
-    def _onSaveAnnotations(self, name=""):
-        if name == "":
-            name = self._currentCropName
-            crop = self.getCurrentCrop()
-        else:
+    def _onSaveAnnotations(self):
+        for name in self.topLevelOperatorView.Crops.value.keys():
             crop = self.topLevelOperatorView.Crops.value[name]
 
+            if name not in self.topLevelOperatorView.Annotations.value.keys():
+                self.topLevelOperatorView.Annotations.value[name] = {}
+            if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
+                self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
+            for parentTrack in self.topLevelOperatorView.divisions.keys():
+                time = self.topLevelOperatorView.divisions[parentTrack][1]
+                child1Track = self.topLevelOperatorView.divisions[parentTrack][0][0]
+                child2Track = self.topLevelOperatorView.divisions[parentTrack][0][1]
 
-        if name not in self.topLevelOperatorView.Annotations.value.keys():
-            self.topLevelOperatorView.Annotations.value[name] = {}
-        if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
-            self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
-        for time in range(crop["time"][0],crop["time"][1]+1):
-            if time in self.topLevelOperatorView.labels.keys():
+                parent = self.getLabel(time, parentTrack)
+                child1 = self.getLabel(time+1, child1Track)
+                child2 = self.getLabel(time+1, child2Track)
+
+                if not (parent and child1 and child2):
+                    logger.info("WARNING:Your divisions and labels do not match for time {} and parent track {} with label {}!".format(time,parentTrack,parent))
+                    pass
+                else:
+                    lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
+                    upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
+
+                    lowerChild1 = self.features[time+1][default_features_key]['Coord<Minimum>'][child1]
+                    upperChild1 = self.features[time+1][default_features_key]['Coord<Maximum>'][child1]
+
+                    lowerChild2 = self.features[time+1][default_features_key]['Coord<Minimum>'][child2]
+                    upperChild2 = self.features[time+1][default_features_key]['Coord<Maximum>'][child2]
+
+                    addAnnotation = False
+                    if len(lowerParent) == 2:
+                        if (crop["time"][0] <= time and time <= crop["time"][1]) and \
+                            ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1]) and \
+                            ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1]) and \
+                            ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1])):
+                            addAnnotation = True
+                    else:
+                        if (crop["time"][0] <= time and time <= crop["time"][1]) and \
+                            ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1] and \
+                            crop["starts"][2] <= upperParent[2] and lowerParent[2] <= crop["stops"][2]) and \
+                            ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1] and \
+                            crop["starts"][2] <= upperChild1[2] and lowerChild1[2] <= crop["stops"][2]) and \
+                            ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1] and \
+                            crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
+                            addAnnotation = True
+                    if addAnnotation:
+                        if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
+                            self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
+                        self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
+                    else:
+                        annotations = self.topLevelOperatorView.Annotations.value
+                        del annotations[name]["divisions"][parentTrack]
+                        self.topLevelOperatorView.Annotations.setValue(annotations)
+
+            if name not in self.topLevelOperatorView.Annotations.value.keys():
+                self.topLevelOperatorView.Annotations.value[name] = {}
+            if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
+                self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
+
+            print "range",range(crop["time"][0],crop["time"][1]+1)
+            print "keys",self.topLevelOperatorView.labels.keys()
+            for time in self.topLevelOperatorView.labels.keys():
                 for label in self.topLevelOperatorView.labels[time].keys():
                     lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
                     upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
 
                     addAnnotation = False
                     if len(lower) == 2:
-                        if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                        if  crop["time"][0] <= time and time <= crop["time"][1] and \
+                            crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
                             crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
                             addAnnotation = True
                     else:
-                        if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                        if  crop["time"][0] <= time and time <= crop["time"][1] and \
+                            crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
                             crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
                             crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
                             addAnnotation = True
@@ -412,59 +469,14 @@ class AnnotationsGui(LayerViewerGui):
                         if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
                             self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
                         self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
+                    else:
+                        del self.topLevelOperatorView.labels[time][label]
+                        annotations = self.topLevelOperatorView.Annotations.value
+                        del annotations[name]["labels"][time][label]
+                        if annotations[name]["labels"][time] == {}:
+                            del annotations[name]["labels"][time]
+                        self.topLevelOperatorView.Annotations.setValue(annotations)
 
-        if name not in self.topLevelOperatorView.Annotations.value.keys():
-            self.topLevelOperatorView.Annotations.value[name] = {}
-        if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
-            self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
-        for parentTrack in self.topLevelOperatorView.divisions.keys():
-            time = self.topLevelOperatorView.divisions[parentTrack][1]
-            child1Track = self.topLevelOperatorView.divisions[parentTrack][0][0]
-            child2Track = self.topLevelOperatorView.divisions[parentTrack][0][1]
-
-            parent = self.getLabel(time, parentTrack)
-            child1 = self.getLabel(time+1, child1Track)
-            child2 = self.getLabel(time+1, child2Track)
-
-            if not (parent and child1 and child2):
-                logger.info("WARNING:Your divisions and labels do not match for time {} and parent track {} with label {}!".format(time,parentTrack,parent))
-                pass
-            else:
-                lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
-                upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
-
-                lowerChild1 = self.features[time+1][default_features_key]['Coord<Minimum>'][child1]
-                upperChild1 = self.features[time+1][default_features_key]['Coord<Maximum>'][child1]
-
-                lowerChild2 = self.features[time+1][default_features_key]['Coord<Minimum>'][child2]
-                upperChild2 = self.features[time+1][default_features_key]['Coord<Maximum>'][child2]
-
-                addAnnotation = False
-                if len(lowerParent) == 2:
-                    if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
-                        ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
-                        crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1]) or \
-                        ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
-                        crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1]) or \
-                        ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
-                        crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1])):
-                        addAnnotation = True
-                else:
-                    if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
-                        ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
-                        crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1] and \
-                        crop["starts"][2] <= upperParent[2] and lowerParent[2] <= crop["stops"][2]) or \
-                        ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
-                        crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1] and \
-                        crop["starts"][2] <= upperChild1[2] and lowerChild1[2] <= crop["stops"][2]) or \
-                        ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
-                        crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1] and \
-                        crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
-                        addAnnotation = True
-                if addAnnotation:
-                    if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
-                        self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
-                    self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
         self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
         self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
         self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
@@ -476,9 +488,6 @@ class AnnotationsGui(LayerViewerGui):
         return False
 
     def getCurrentCrop(self):
-        # self._drawer.cropListView still exists and can be reused
-        # row = self._drawer.cropListModel.selectedRow()
-        # name = self._drawer.cropListModel[row].name
         row = self._drawer.cropBoxView.currentIndex()
         name = self._drawer.cropBoxView.itemText(row)
         crop = self.topLevelOperatorView.Crops.value[str(name)]
@@ -487,7 +496,6 @@ class AnnotationsGui(LayerViewerGui):
     def _onCropSelected(self, row):
 
         self._selectedRow = row
-        #currentName = self._drawer.cropListModel[row].name
         currentName = str(self._drawer.cropBoxView.itemText(row))
         self.editor.brushingModel.setDrawnNumber(row+1)
         brushColor = self._drawer.cropListModel[row].brushColor()
@@ -982,8 +990,8 @@ class AnnotationsGui(LayerViewerGui):
     def _onNewTrackPressed(self):
         self._addNewTrack()
     
-    def _delLabel(self, t, oid, track2remove):        
-        if t in self.labelsWithDivisions.keys() and track2remove in self.labelsWithDivisions[t]:
+    def _delLabel(self, t, oid, track2remove, errorMessage=True):
+        if t in self.labelsWithDivisions.keys() and track2remove in self.labelsWithDivisions[t] and errorMessage:
             self._criticalMessage("Error: Cannot remove label " + str(track2remove) +
                                        " at t=" + str(t) + ", since it is involved in a division event." + 
                                        " Remove division event first by right clicking on the parent.")
