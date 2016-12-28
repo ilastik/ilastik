@@ -24,8 +24,10 @@ from functools import partial
 
 import numpy
 from PyQt4 import uic
-from PyQt4.QtGui import QVBoxLayout, QSpacerItem, QSizePolicy, QColor
-from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject
+from PyQt4 import QtGui
+from PyQt4.QtGui import QVBoxLayout, QSpacerItem, QSizePolicy, QColor, QMessageBox
+from PyQt4 import QtCore
+from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, SIGNAL
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.widgets.cropListView import CropListView
@@ -100,6 +102,9 @@ class CropSelectionGui(CroppingGui):
                 self.render = False
 
         self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeButtonsCrop(True)
+        self.allowCropResize = False
+        self.allowCropResizeCount = 0
+        self.connect( self, QtCore.SIGNAL('postQuestionMessage(QString)'), self.postQuestionMessage)
 
     def initAppletDrawerUi(self):
         localDir = os.path.split(__file__)[0]
@@ -120,7 +125,7 @@ class CropSelectionGui(CroppingGui):
         self._cropControlUi.labelMaxZ.setVisible(data_has_z_axis)
 
         self._cropControlUi.AddCropButton.clicked.connect( bind (self.newCrop) )
-        self._cropControlUi.SetCropButton.clicked.connect( bind (self.setCrop) )
+        self._cropControlUi.SetCropButton.setVisible(False)
 
         self.topLevelOperatorView.MinValueT.notifyDirty(self.apply_operator_settings_to_gui)
         self.topLevelOperatorView.MaxValueT.notifyDirty(self.apply_operator_settings_to_gui)
@@ -307,21 +312,22 @@ class CropSelectionGui(CroppingGui):
     def setCrop(self):
         self.apply_gui_settings_to_operator()
         row = self._cropControlUi.cropListModel.selectedRow()
-        color1 = self._cropControlUi.cropListModel[row].brushColor()
-        color2 = self._cropControlUi.cropListModel[row].pmapColor()
-        self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]= {
-            "time": (self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value),
-            "starts": self.editor.cropModel.get_roi_3d()[0],
-            "stops": self.editor.cropModel.get_roi_3d()[1],
-            "cropColor": (color1.red(), color1.green(),color1.blue()),
-            "pmapColor": (color2.red(), color2.green(),color2.blue())
-        }
-        if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
-            cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
-            for i in range(3):
-                self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
-            self.editor.navCtrl.changeTime(self.editor.cropModel._crop_times[0])
-        self._setDirty(self.topLevelOperatorView.Crops,[])
+        if row>=0:
+            color1 = self._cropControlUi.cropListModel[row].brushColor()
+            color2 = self._cropControlUi.cropListModel[row].pmapColor()
+            self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]= {
+                "time": (self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value),
+                "starts": self.editor.cropModel.get_roi_3d()[0],
+                "stops": self.editor.cropModel.get_roi_3d()[1],
+                "cropColor": (color1.red(), color1.green(),color1.blue()),
+                "pmapColor": (color2.red(), color2.green(),color2.blue())
+            }
+            if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
+                cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
+                for i in range(3):
+                    self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
+                self.editor.navCtrl.changeTime(self.editor.cropModel._crop_times[0])
+            self._setDirty(self.topLevelOperatorView.Crops,[])
 
     def _setDirty(self, slot, timesteps):
         if slot is self.topLevelOperatorView.Crops:
@@ -385,55 +391,118 @@ class CropSelectionGui(CroppingGui):
                 if delta < 0:
                     self.editor.navCtrl.changeTimeRelative(delta)
 
-    def _onMinSliderTMoved(self):
-        delta = self._cropControlUi._minSliderT.value() - self.editor.posModel.time
-        if delta > 0:
-            self.editor.navCtrl.changeTimeRelative(delta)
-        self.topLevelOperatorView.MinValueT.setValue(self._cropControlUi._minSliderT.value())
-        if self._cropControlUi._minSliderT.value() <= self.editor.posModel.time and self.editor.posModel.time <= self.editor.cropModel.get_roi_t()[1]:
-            for imgView in self.editor.imageViews:
-                imgView._croppingMarkers._shading_item.set_paint_full_frame(False)
+    def getCurrentCropName(self):
+        row = self._cropControlUi.cropListModel.selectedRow()
+        name = self._cropControlUi.cropListModel[row].name
+        return name
+
+    def checkAnnotationsOfCurrentCrop(self):
+        cropName = self.getCurrentCropName()
+        lane_index = 0
+        if not self.allowCropResize and self.allowCropResizeCount % 2 == 1 and \
+                not self.topLevelOperatorView.parent.parent.annotationsApplet.topLevelOperator.Annotations[lane_index].value[cropName] == {}:
+            self._questionMessage("You are resizing crop '{}' but your annotations for this crop are NOT empty. ".format(cropName) + \
+                                  "You will loose annotations outside the new boundary for this crop. Do you really want to continue?")
         else:
-            for imgView in self.editor.imageViews:
-                imgView._croppingMarkers._shading_item.set_paint_full_frame(True)
-        self.editor.cropModel.set_roi_t([self._cropControlUi._minSliderT.value(),self.editor.cropModel.get_roi_t()[1]])
+            self.allowCropResizeCount += 1
+
+    def _onMinSliderTMoved(self):
+        self.checkAnnotationsOfCurrentCrop()
+        if self.allowCropResize:
+            delta = self._cropControlUi._minSliderT.value() - self.editor.posModel.time
+            if delta > 0:
+                self.editor.navCtrl.changeTimeRelative(delta)
+            self.topLevelOperatorView.MinValueT.setValue(self._cropControlUi._minSliderT.value())
+            if self._cropControlUi._minSliderT.value() <= self.editor.posModel.time and self.editor.posModel.time <= self.editor.cropModel.get_roi_t()[1]:
+                for imgView in self.editor.imageViews:
+                    imgView._croppingMarkers._shading_item.set_paint_full_frame(False)
+            else:
+                for imgView in self.editor.imageViews:
+                    imgView._croppingMarkers._shading_item.set_paint_full_frame(True)
+            self.editor.cropModel.set_roi_t([self._cropControlUi._minSliderT.value(),self.editor.cropModel.get_roi_t()[1]])
+        else:
+            cropName = self.getCurrentCropName()
+            self.topLevelOperatorView.MinValueT.setValue(self.topLevelOperatorView.Crops.value[cropName]["time"][0])
+            self._cropControlUi._minSliderT.setValue(self.topLevelOperatorView.Crops.value[cropName]["time"][0])
 
     def _onMaxSliderTMoved(self):
-        delta = self._cropControlUi._maxSliderT.value() - self.editor.posModel.time
-        if delta < 0:
-            self.editor.navCtrl.changeTimeRelative(delta)
-        self.topLevelOperatorView.MaxValueT.setValue(self._cropControlUi._maxSliderT.value())
-        if self.editor.cropModel.get_roi_t()[0] <= self.editor.posModel.time and self.editor.posModel.time <= self._cropControlUi._maxSliderT.value():
-            for imgView in self.editor.imageViews:
-                imgView._croppingMarkers._shading_item.set_paint_full_frame(False)
+        self.checkAnnotationsOfCurrentCrop()
+        if self.allowCropResize:
+            delta = self._cropControlUi._maxSliderT.value() - self.editor.posModel.time
+            if delta < 0:
+                self.editor.navCtrl.changeTimeRelative(delta)
+            self.topLevelOperatorView.MaxValueT.setValue(self._cropControlUi._maxSliderT.value())
+            if self.editor.cropModel.get_roi_t()[0] <= self.editor.posModel.time and self.editor.posModel.time <= self._cropControlUi._maxSliderT.value():
+                for imgView in self.editor.imageViews:
+                    imgView._croppingMarkers._shading_item.set_paint_full_frame(False)
+            else:
+                for imgView in self.editor.imageViews:
+                    imgView._croppingMarkers._shading_item.set_paint_full_frame(True)
+            self.editor.cropModel.set_roi_t([self.editor.cropModel.get_roi_t()[0],self._cropControlUi._maxSliderT.value()])
         else:
-            for imgView in self.editor.imageViews:
-                imgView._croppingMarkers._shading_item.set_paint_full_frame(True)
-        self.editor.cropModel.set_roi_t([self.editor.cropModel.get_roi_t()[0],self._cropControlUi._maxSliderT.value()])
+            cropName = self.getCurrentCropName()
+            self.topLevelOperatorView.MaxValueT.setValue(self.topLevelOperatorView.Crops.value[cropName]["time"][1])
+            self._cropControlUi._maxSliderT.setValue(self.topLevelOperatorView.Crops.value[cropName]["time"][1])
 
     def _onMinSliderXMoved(self):
-        [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
-        self.editor.cropModel.set_roi_3d([(self._cropControlUi._minSliderX.value(),minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)])
+        self.checkAnnotationsOfCurrentCrop()
+        if self.allowCropResize:
+            [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
+            self.editor.cropModel.set_roi_3d([(self._cropControlUi._minSliderX.value(),minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)])
+        else:
+            cropName = self.getCurrentCropName()
+            self.topLevelOperatorView.MinValueX.setValue(self.topLevelOperatorView.Crops.value[cropName]["starts"][0])
+            self._cropControlUi._minSliderX.setValue(self.topLevelOperatorView.Crops.value[cropName]["starts"][0])
 
     def _onMaxSliderXMoved(self):
-        [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
-        self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(self._cropControlUi._maxSliderX.value()+1,maxValueY,maxValueZ)])
+        self.checkAnnotationsOfCurrentCrop()
+        if self.allowCropResize:
+            [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
+            self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(self._cropControlUi._maxSliderX.value()+1,maxValueY,maxValueZ)])
+        else:
+            cropName = self.getCurrentCropName()
+            self.topLevelOperatorView.MaxValueX.setValue(self.topLevelOperatorView.Crops.value[cropName]["stops"][0])
+            self._cropControlUi._maxSliderX.setValue(self.topLevelOperatorView.Crops.value[cropName]["stops"][0])
 
     def _onMinSliderYMoved(self):
-        [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
-        self.editor.cropModel.set_roi_3d([(minValueX,self._cropControlUi._minSliderY.value(),minValueZ),(maxValueX,maxValueY,maxValueZ)])
+        self.checkAnnotationsOfCurrentCrop()
+        if self.allowCropResize:
+            [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
+            self.editor.cropModel.set_roi_3d([(minValueX,self._cropControlUi._minSliderY.value(),minValueZ),(maxValueX,maxValueY,maxValueZ)])
+        else:
+            cropName = self.getCurrentCropName()
+            self.topLevelOperatorView.MinValueY.setValue(self.topLevelOperatorView.Crops.value[cropName]["starts"][1])
+            self._cropControlUi._minSliderY.setValue(self.topLevelOperatorView.Crops.value[cropName]["starts"][1])
 
     def _onMaxSliderYMoved(self):
-        [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
-        self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(maxValueX,self._cropControlUi._maxSliderY.value()+1,maxValueZ)])
+        self.checkAnnotationsOfCurrentCrop()
+        if self.allowCropResize:
+            [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
+            self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(maxValueX,self._cropControlUi._maxSliderY.value()+1,maxValueZ)])
+        else:
+            cropName = self.getCurrentCropName()
+            self.topLevelOperatorView.MaxValueY.setValue(self.topLevelOperatorView.Crops.value[cropName]["stops"][1])
+            self._cropControlUi._maxSliderY.setValue(self.topLevelOperatorView.Crops.value[cropName]["stops"][1])
 
     def _onMinSliderZMoved(self):
-        [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
-        self.editor.cropModel.set_roi_3d([(minValueX,minValueY,self._cropControlUi._minSliderZ.value()),(maxValueX,maxValueY,maxValueZ)])
+        self.checkAnnotationsOfCurrentCrop()
+        if self.allowCropResize:
+            [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
+            self.editor.cropModel.set_roi_3d([(minValueX,minValueY,self._cropControlUi._minSliderZ.value()),(maxValueX,maxValueY,maxValueZ)])
+        else:
+            cropName = self.getCurrentCropName()
+            self.topLevelOperatorView.MinValueZ.setValue(self.topLevelOperatorView.Crops.value[cropName]["starts"][2])
+            self._cropControlUi._minSliderZ.setValue(self.topLevelOperatorView.Crops.value[cropName]["starts"][2])
 
     def _onMaxSliderZMoved(self):
-        [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
-        self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,self._cropControlUi._maxSliderZ.value()+1)])
+        self.checkAnnotationsOfCurrentCrop()
+        if self.allowCropResize:
+            [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
+            self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,self._cropControlUi._maxSliderZ.value()+1)])
+        else:
+            cropName = self.getCurrentCropName()
+            self.topLevelOperatorView.MaxValueZ.setValue(self.topLevelOperatorView.Crops.value[cropName]["stops"][2])
+            self._cropControlUi._maxSliderZ.setValue(self.topLevelOperatorView.Crops.value[cropName]["stops"][2])
 
     def onCropModelChanged(self):
         starts, stops = self.editor.cropModel.get_roi_3d()
@@ -449,6 +518,7 @@ class CropSelectionGui(CroppingGui):
                 self.topLevelOperatorView.MaxValueZ.setValue(stop)
             else:
                 logger.info("ERROR: Setting up an axis that does NOT exist!")
+        self.setCrop()
 
         return [[start, stop] for dim, start, stop in zip("xyz", starts, stops)]
 
@@ -668,5 +738,21 @@ class CropSelectionGui(CroppingGui):
 
         minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ = self.defaultValues()
         self._cropControlUi.setValue(minValueT, maxValueT, minValueX, maxValueX-1, minValueY, maxValueY-1, minValueZ, maxValueZ-1)
+
+    def _questionMessage(self, prompt):
+        self.emit( QtCore.SIGNAL('postQuestionMessage(QString)'), prompt)
+
+    @threadRouted
+    def postQuestionMessage(self, prompt):
+        qBox = QtGui.QMessageBox()
+        qBox.setWindowTitle("Confirm")
+        qBox.setText(prompt)
+        qBox.setStandardButtons( QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel)
+        qBox.setDefaultButton( QtGui.QMessageBox.Cancel )
+        retVal = qBox.exec_()
+        if retVal == QtGui.QMessageBox.Ok:
+            print "....>",True
+            self.allowCropResize = True
+        self.allowCropResizeCount += 1
 
 
