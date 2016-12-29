@@ -399,7 +399,7 @@ class CropSelectionGui(CroppingGui):
     def checkAnnotationsOfCurrentCrop(self):
         cropName = self.getCurrentCropName()
         lane_index = 0
-        if not self.allowCropResize and self.allowCropResizeCount % 2 == 1 and \
+        if not self.allowCropResize and self.allowCropResizeCount % 4 == 1 and \
                 not self.topLevelOperatorView.parent.parent.annotationsApplet.topLevelOperator.Annotations[lane_index].value[cropName] == {}:
             self._questionMessage("You are resizing crop '{}' but your annotations for this crop are NOT empty. ".format(cropName) + \
                                   "You will loose annotations outside the new boundary for this crop. Do you really want to continue?")

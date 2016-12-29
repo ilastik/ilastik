@@ -445,8 +445,6 @@ class AnnotationsGui(LayerViewerGui):
             if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
                 self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
 
-            print "range",range(crop["time"][0],crop["time"][1]+1)
-            print "keys",self.topLevelOperatorView.labels.keys()
             for time in self.topLevelOperatorView.labels.keys():
                 for label in self.topLevelOperatorView.labels[time].keys():
                     lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
