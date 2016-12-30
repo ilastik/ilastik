@@ -932,6 +932,23 @@ class AnnotationsGui(LayerViewerGui):
         if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
             self._informationMessage("Info: All objects in the current crop have been assigned a track label.")
 
+    def handleEditorToolTip(self, position5d, globalWindowCoordiante):
+        oid = self._getObject(self.mainOperator.LabelImage, position5d)
+        trackids = []
+        t = position5d[0]
+        if t in self.mainOperator.labels.keys() and oid in self.mainOperator.labels[t].keys():
+            for l in self.mainOperator.labels[t][oid]:
+                trackids.append(l)
+
+        if oid == 0:
+            self.setToolTip("Move your mouse to an object you would like to label!")
+        elif trackids == []:
+            self.setToolTip("Left click to add the active track to this unlabelled object. Right click for more option.")
+        else:
+            self.setToolTip("Left click to add the active track to this object. Right click for more options.")
+        return
+
+
     def _delDivisionEvent(self, parent_label):
         children = self.mainOperator.divisions[parent_label][0]            
         text = "%d: %d, %d" % (parent_label, children[0], children[1])
