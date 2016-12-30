@@ -181,7 +181,7 @@ class LayerViewerGui(QWidget):
         
         # By default, we start out disabled until we have at least one layer.
         self.centralWidget().setEnabled(False)
-        
+
     def _after_init(self):
         self._initialized = True
         self.updateAllLayers()
@@ -618,7 +618,8 @@ class LayerViewerGui(QWidget):
         self.editor.setNavigationInterpreter( self.clickReporter )
         self.clickReporter.rightClickReceived.connect( self._handleEditorRightClick )
         self.clickReporter.leftClickReceived.connect( self._handleEditorLeftClick )
-        
+        self.clickReporter.toolTipReceived.connect( self._handleEditorToolTip )
+
         clickReporter2 = ClickReportingInterpreter( self.editor.brushingInterpreter, self.editor.posModel )
         clickReporter2.rightClickReceived.connect( self._handleEditorRightClick )
         self.editor.brushingInterpreter = clickReporter2
@@ -681,5 +682,14 @@ class LayerViewerGui(QWidget):
         pass
 
     def handleEditorLeftClick(self, position5d, globalWindowCoordiante):
+        # Override me
+        pass
+
+    def _handleEditorToolTip(self, position5d, globalWindowCoordinate):
+        if len(self.layerstack) > 0:
+            dataPosition = self._convertPositionToDataSpace(position5d)
+            self.handleEditorToolTip(dataPosition, globalWindowCoordinate)
+
+    def handleEditorToolTip(self, position5d, globalWindowCoordinate):
         # Override me
         pass
