@@ -316,11 +316,6 @@ class CropSelectionGui(CroppingGui):
             "cropColor": (color1.red(), color1.green(),color1.blue()),
             "pmapColor": (color2.red(), color2.green(),color2.blue())
         }
-        if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
-            cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
-            for i in range(3):
-                self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
-            self.editor.navCtrl.changeTime(self.editor.cropModel._crop_times[0])
         self._setDirty(self.topLevelOperatorView.Crops,[])
 
     def _setDirty(self, slot, timesteps):
