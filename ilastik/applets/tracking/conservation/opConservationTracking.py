@@ -255,7 +255,7 @@ class OpConservationTracking(Operator, ExportingOperator):
 
         hypothesesGraph = IlastikHypothesesGraph(
             probabilityGenerator=traxelstore,
-            timeRange=(0,time_range[-1]+1),
+            timeRange=(time_range[0],time_range[-1]+1),
             maxNumObjects=maxObj,
             numNearestNeighbors=max_nearest_neighbors,
             fieldOfView=fieldOfView,
