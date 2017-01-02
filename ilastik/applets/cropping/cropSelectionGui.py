@@ -395,6 +395,7 @@ class CropSelectionGui(CroppingGui):
             for imgView in self.editor.imageViews:
                 imgView._croppingMarkers._shading_item.set_paint_full_frame(True)
         self.editor.cropModel.set_roi_t([self._cropControlUi._minSliderT.value(),self.editor.cropModel.get_roi_t()[1]])
+        self.setCrop()
 
     def _onMaxSliderTMoved(self):
         delta = self._cropControlUi._maxSliderT.value() - self.editor.posModel.time
@@ -408,6 +409,7 @@ class CropSelectionGui(CroppingGui):
             for imgView in self.editor.imageViews:
                 imgView._croppingMarkers._shading_item.set_paint_full_frame(True)
         self.editor.cropModel.set_roi_t([self.editor.cropModel.get_roi_t()[0],self._cropControlUi._maxSliderT.value()])
+        self.setCrop()
 
     def _onMinSliderXMoved(self):
         [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
