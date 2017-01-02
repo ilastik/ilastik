@@ -989,7 +989,9 @@ class AnnotationsGui(LayerViewerGui):
         self.labelsWithDivisions[t_parent+1].remove(children[1])
         
         self._setDirty(self.mainOperator.Divisions, [])
-    
+
+        self._onSaveAnnotations
+
     def _currentActiveTrackChanged(self):
         self.mainOperator.ActiveTrack.setValue(self._getActiveTrack())
 
@@ -1047,6 +1049,8 @@ class AnnotationsGui(LayerViewerGui):
         self._setDirty(self.mainOperator.Labels, [t])
         self._setDirty(self.mainOperator.TrackImage, [t])
         self._setDirty(self.mainOperator.UntrackedImage, [t])
+
+        self._onSaveAnnotations
         return True
         
     def _onDelTrackPressed(self):        
@@ -1074,7 +1078,9 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.TrackImage, affectedT)
             self._setDirty(self.mainOperator.UntrackedImage, affectedT)
             self._setDirty(self.mainOperator.Labels, affectedT)
-    
+
+        self._onSaveAnnotations
+
     def _addObjectToTrack(self, activeTrack, oid, t):
 
         crop = self.getCurrentCrop()
@@ -1266,6 +1272,7 @@ class AnnotationsGui(LayerViewerGui):
         
         self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=(not self.divLock))                      
 
+        self._onSaveAnnotations
 
     def _setStyleSheet(self, widget, qcolor, qType="QComboBox"):
         values = "{r}, {g}, {b}, {a}".format(r = qcolor.red(),
@@ -1324,7 +1331,8 @@ class AnnotationsGui(LayerViewerGui):
             self._drawer.markMisdetection.setText("Mark as False Detection")
             self._enableButtons(exceptButtons=[self._drawer.markMisdetection], enable=True)
         
-        
+        self._onSaveAnnotations
+
     @staticmethod
     def _appendUnique(lst, obj):
         if obj not in lst:
