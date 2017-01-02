@@ -469,7 +469,6 @@ class AnnotationsGui(LayerViewerGui):
                             self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
                         self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
                     else:
-                        del self.topLevelOperatorView.labels[time][label]
                         annotations = self.topLevelOperatorView.Annotations.value
                         if time in annotations[name]["labels"].keys() and \
                                 label in annotations[name]["labels"][time].keys():
@@ -487,6 +486,16 @@ class AnnotationsGui(LayerViewerGui):
                 del annotations[name]["divisions"]
                 del annotations[name]
                 self.topLevelOperatorView.Annotations.setValue(annotations)
+
+        for time in self.topLevelOperatorView.labels.keys():
+            for label in self.topLevelOperatorView.labels[time].keys():
+                labelFound = False
+                for name in self.topLevelOperatorView.Annotations.value.keys():
+                    for time in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
+                        if label in self.topLevelOperatorView.Annotations.value[name]["labels"][time].keys():
+                            labelFound = True
+                if not labelFound:
+                    del self.topLevelOperatorView.labels[time][label]
 
         self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
         self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
