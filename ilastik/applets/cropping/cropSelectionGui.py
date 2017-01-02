@@ -120,7 +120,8 @@ class CropSelectionGui(CroppingGui):
         self._cropControlUi.labelMaxZ.setVisible(data_has_z_axis)
 
         self._cropControlUi.AddCropButton.clicked.connect( bind (self.newCrop) )
-        self._cropControlUi.SetCropButton.clicked.connect( bind (self.setCrop) )
+        self._cropControlUi.SetCropButton.setVisible(False)
+        self.editor.cropModel.mouseRelease.connect(bind(self.setCrop))
 
         self.topLevelOperatorView.MinValueT.notifyDirty(self.apply_operator_settings_to_gui)
         self.topLevelOperatorView.MaxValueT.notifyDirty(self.apply_operator_settings_to_gui)
@@ -302,21 +303,23 @@ class CropSelectionGui(CroppingGui):
             unicode("cropColor"): (color1.red(), color1.green(),color1.blue()),
             unicode("pmapColor"): (color2.red(), color2.green(),color2.blue())
         }
-        self._cropControlUi.cropListModel.select(selectedRow)
+        self._cropControlUi.cropListView.selectRow(selectedRow)
+        self.setCrop()
 
     def setCrop(self):
         self.apply_gui_settings_to_operator()
         row = self._cropControlUi.cropListModel.selectedRow()
-        color1 = self._cropControlUi.cropListModel[row].brushColor()
-        color2 = self._cropControlUi.cropListModel[row].pmapColor()
-        self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]= {
-            "time": (self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value),
-            "starts": self.editor.cropModel.get_roi_3d()[0],
-            "stops": self.editor.cropModel.get_roi_3d()[1],
-            "cropColor": (color1.red(), color1.green(),color1.blue()),
-            "pmapColor": (color2.red(), color2.green(),color2.blue())
-        }
-        self._setDirty(self.topLevelOperatorView.Crops,[])
+        if row>=0:
+            color1 = self._cropControlUi.cropListModel[row].brushColor()
+            color2 = self._cropControlUi.cropListModel[row].pmapColor()
+            self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]= {
+                "time": (self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value),
+                "starts": self.editor.cropModel.get_roi_3d()[0],
+                "stops": self.editor.cropModel.get_roi_3d()[1],
+                "cropColor": (color1.red(), color1.green(),color1.blue()),
+                "pmapColor": (color2.red(), color2.green(),color2.blue())
+            }
+            self._setDirty(self.topLevelOperatorView.Crops,[])
 
     def _setDirty(self, slot, timesteps):
         if slot is self.topLevelOperatorView.Crops:

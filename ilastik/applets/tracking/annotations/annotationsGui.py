@@ -79,7 +79,7 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
-        self.topLevelOperatorView.Crops.notifyDirty(bind(self._onSaveAnnotations))
+        self.editor.cropModel.mouseRelease.connect(bind(self._onSaveAnnotations))
         self._drawer.saveAnnotations.setVisible(False)
         self._drawer.initializeAnnotations.pressed.connect(self._onInitializeAnnotations)
         self._drawer.activeTrackBox.setToolTip("Active track label and colour.")
@@ -437,7 +437,8 @@ class AnnotationsGui(LayerViewerGui):
                         self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
                     else:
                         annotations = self.topLevelOperatorView.Annotations.value
-                        del annotations[name]["divisions"][parentTrack]
+                        if parentTrack in annotations[name]["divisions"].keys():
+                            del annotations[name]["divisions"][parentTrack]
                         self.topLevelOperatorView.Annotations.setValue(annotations)
 
             if name not in self.topLevelOperatorView.Annotations.value.keys():
@@ -470,10 +471,22 @@ class AnnotationsGui(LayerViewerGui):
                     else:
                         del self.topLevelOperatorView.labels[time][label]
                         annotations = self.topLevelOperatorView.Annotations.value
-                        del annotations[name]["labels"][time][label]
-                        if annotations[name]["labels"][time] == {}:
+                        if time in annotations[name]["labels"].keys() and \
+                                label in annotations[name]["labels"][time].keys():
+                            del annotations[name]["labels"][time][label]
+                        if time in annotations[name]["labels"].keys() and \
+                                annotations[name]["labels"][time] == {}:
                             del annotations[name]["labels"][time]
                         self.topLevelOperatorView.Annotations.setValue(annotations)
+
+        for name in self.topLevelOperatorView.Annotations.value.keys():
+            if self.topLevelOperatorView.Annotations.value[name]["divisions"] == {} and \
+                    self.topLevelOperatorView.Annotations.value[name]["labels"] == {}:
+                annotations = self.topLevelOperatorView.Annotations.value
+                del annotations[name]["labels"]
+                del annotations[name]["divisions"]
+                del annotations[name]
+                self.topLevelOperatorView.Annotations.setValue(annotations)
 
         self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
         self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
@@ -799,6 +812,8 @@ class AnnotationsGui(LayerViewerGui):
         if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
             self._informationMessage("Info: All objects in the current crop have been assigned a track label.")
 
+        self._onSaveAnnotations
+
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
         crop = self.getCurrentCrop()
         unlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
@@ -931,6 +946,8 @@ class AnnotationsGui(LayerViewerGui):
 
         if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
             self._informationMessage("Info: All objects in the current crop have been assigned a track label.")
+
+        self._onSaveAnnotations
 
     def handleEditorToolTip(self, position5d, globalWindowCoordiante):
         oid = self._getObject(self.mainOperator.LabelImage, position5d)
