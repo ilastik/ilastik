@@ -39,7 +39,9 @@ from volumina.utility import PreferencesManager
 
 #lazyflow
 import lazyflow
-from lazyflow.utility import chunked_bincount
+#the function chunked_bincount doesn't exist anymore
+#from lazyflow.utility import chunked_bincount
+
 from lazyflow.roi import TinyVector, roiToSlice, roiFromShape
 from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators.opReorderAxes import OpReorderAxes

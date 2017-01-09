@@ -210,11 +210,31 @@
       </layout>
      </item>
      <item>
-      <widget class="QPushButton" name="resetSeedsPushButton">
-       <property name="text">
-        <string>Reset &quot;Correted Seeds Out&quot; to &quot;Seeds&quot;</string>
-       </property>
-      </widget>
+      <layout class="QHBoxLayout" name="horizontalLayout_4">
+       <item>
+        <widget class="QLabel" name="neighborsLabel">
+         <property name="text">
+          <string>Neighbors:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QComboBox" name="neighborsComboBox"/>
+       </item>
+      </layout>
      </item>
      <item>
       <spacer name="verticalSpacer">
@@ -228,6 +248,13 @@
         </size>
        </property>
       </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="resetSeedsPushButton">
+       <property name="text">
+        <string>Reset &quot;Correted Seeds Out&quot; to &quot;Seeds&quot;</string>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QPushButton" name="runWatershedPushButton">

@@ -23,6 +23,7 @@ import numpy as np
 from ilastik.workflow import Workflow
 
 from ilastik.applets.dataSelection import DataSelectionApplet
+from ilastik.applets.seeds.seedsApplet import SeedsApplet
 from ilastik.applets.watershedSegmentation.watershedSegmentationApplet import WatershedSegmentationApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
@@ -70,6 +71,10 @@ class WatershedSegmentationWorkflow(Workflow):
         # Dataset inputs
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( self.ROLE_NAMES )
+
+        # -- Seeds applet
+        #
+        self.seedsApplet = SeedsApplet(self, "Seeds", "SeedsGroup")
 
         # -- WatershedSegmentation applet
         #
@@ -132,13 +137,21 @@ class WatershedSegmentationWorkflow(Workflow):
 
         # get the correct image-lane
         opDataSelection         = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opSeeds                 = self.seedsApplet.topLevelOperator.getLane(laneIndex)
         opWatershedSegmentation = self.watershedSegmentationApplet.topLevelOperator.getLane(laneIndex)
         opDataExport            = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
+
+        # seeds inputs
+        opSeeds.RawData.connect(    opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
+        opSeeds.Boundaries.connect( opDataSelection.ImageGroup[self.DATA_ROLE_BOUNDARIES] )
+        opSeeds.Seeds.connect(      opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
 
         # watershed inputs
         opWatershedSegmentation.RawData.connect(    opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
         opWatershedSegmentation.Boundaries.connect( opDataSelection.ImageGroup[self.DATA_ROLE_BOUNDARIES] )
+        #TODO get the Seeds from opSeeds
         opWatershedSegmentation.Seeds.connect(      opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
+        #TODO get the Seeds from opSeeds
         opWatershedSegmentation.CorrectedSeedsIn.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
 
         # DataExport inputs

@@ -167,6 +167,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         labelSlots.labelDelete      = self._LabelPipeline.DeleteLabel
         labelSlots.labelNames       = op.LabelNames
 
+
         '''
         import os
         # We provide our own UI file (which adds an extra control for interactive mode)
@@ -176,7 +177,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         super(WatershedSegmentationGui, self).__init__( parentApplet, \
                 labelSlots, topLevelOperatorView, watershedLabelingDrawerUiPath )
-
 
 
     
@@ -223,6 +223,30 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
             
 
+
+        ############################################################
+        # BEGIN TODO
+        ############################################################
+
+
+        # Neighbors
+        # add the options for the neighbors and set the default value
+        defaultIndex = 0
+        self._labelControlUi.neighborsComboBox.addItems(["direct","indirect"])
+        self._labelControlUi.neighborsComboBox.setCurrentIndex(defaultIndex)
+        
+        op.WSNeighbors.setValue( self._labelControlUi.neighborsComboBox.itemText(defaultIndex) )
+        # connect the change Event
+        self._labelControlUi.neighborsComboBox.currentIndexChanged.connect(self.onNeighborsComboBoxCurrentIndexChanged)
+
+
+
+        ############################################################
+        # END TODO
+        ############################################################
+
+
+
     '''
     def initAppletDrawerUi(self):
         """
@@ -251,6 +275,13 @@ class WatershedSegmentationGui(WatershedLabelingGui):
                 begin = False
             return row_layout
     '''
+
+    @pyqtSlot(int)
+    def onNeighborsComboBoxCurrentIndexChanged(self, index):
+        op = self.topLevelOperatorView 
+        op.WSNeighbors.setValue( self._labelControlUi.neighborsComboBox.itemText(index) )
+        #TODO
+        print op.WSNeighbors.value
 
     @pyqtSlot()
     def onRunWatershedPushButtonClicked(self):

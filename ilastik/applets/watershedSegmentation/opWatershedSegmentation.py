@@ -30,7 +30,7 @@ class OpWatershedSegmentation(Operator):
 
     The names of slots are explained below
     """
-    #TODO
+    #TODO in doku fuer nutzung aufnehmen
     #seeds muessen 1, 2, 3 sein, also kann man auch 120 180, etc verwenden, 
     #rest aussen rum muss schwarz=0 sein
     #bei den membranen: die membrane selbst muessen 255 sein und der rest 0=schwarz
@@ -55,8 +55,9 @@ class OpWatershedSegmentation(Operator):
     # watershed algorithm parameters (optional)
     ############################################################
     # a list of options can be found in function: prepareInputParameter
-    WSNeighbors         = InputSlot(value="indirect")
+    WSNeighbors         = InputSlot(value="direct")
     WSMethod            = InputSlot(value="RegionGrowing")
+    # default values
     WSTerminate         = InputSlot(value=vigra.analysis.SRGType.CompleteGrow)
     WSMaxCost           = InputSlot(value=0)
 
@@ -402,6 +403,7 @@ class OpWatershedSegmentationCalculation( Operator ):
             seeds = None
             maxCost = 0
 
+        print "neighbors: '" + str(neighbors) + "'\nmethod: '" + str(method) + "'\nterminate: '" + str(terminate) + "'\nmaxCost: '" + str(maxCost) + "'\n"
         # watershedAlgoirthm itself
         (labelImage, maxRegionLabel) = vigra.analysis.watershedsNew(\
                 image           = boundaries,

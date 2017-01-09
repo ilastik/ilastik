@@ -20,22 +20,21 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-#from opWatershedSegmentation import OpCachedWatershedSegmentation
-from opWatershedSegmentation import OpWatershedSegmentation
-from watershedSegmentationSerializer import WatershedSegmentationSerializer
+#from opSeeds import OpCachedSeeds
+from opSeeds import OpSeeds
+from seedsSerializer import SeedsSerializer
 
-class WatershedSegmentationApplet( StandardApplet ):
+class SeedsApplet( StandardApplet ):
     """
     applet for the watershed segmentation
     """
     def __init__( self, workflow, guiName, projectFileGroupName ):
-        super(WatershedSegmentationApplet, self).__init__(guiName, workflow)
-        self._serializableItems = [ WatershedSegmentationSerializer(self.topLevelOperator, projectFileGroupName) ]
+        super(SeedsApplet, self).__init__(guiName, workflow)
+        self._serializableItems = [ SeedsSerializer(self.topLevelOperator, projectFileGroupName) ]
 
     @property
     def singleLaneOperatorClass(self):
-        return OpWatershedSegmentation
-        #return OpCachedWatershedSegmentation
+        return OpSeeds
 
     @property
     def broadcastingSlots(self):
@@ -52,12 +51,12 @@ class WatershedSegmentationApplet( StandardApplet ):
         :return: the name of the slots as list of string, e.g. ['ChannelSelection', 'BrushValue;]
         :rtype: list of str
         """
-        return ['WSNeighbors' ]
+        return [ ]
 
     @property
     def singleLaneGuiClass(self):
-        from watershedSegmentationGui import WatershedSegmentationGui
-        return WatershedSegmentationGui
+        from seedsGui import SeedsGui
+        return SeedsGui
 
     @property
     def dataSerializers(self):
