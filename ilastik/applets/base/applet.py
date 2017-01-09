@@ -57,13 +57,13 @@ class Applet( object ):
 
         #: Shell request signal is used to trigger certain shell actions.
         #: Signature: ``emit(request)``
-        #:  where ``request`` is an integer corresponding to the action the shell should take.  
+        #: where ``request`` is an integer corresponding to the action the shell should take.  
         #: The allowable actions are enumerated in the :py:class:`ShellRequest` class.
         #: Example invocation: ``self.shellRequest.emit(ShellRequest.RequestSave)``
         self.shellRequestSignal = SimpleSignal()
 
         #: This signal informs the workflow that something has changed that might
-        #:  affect the usability of various applets in the workflow.
+        #: affect the usability of various applets in the workflow.
         #: Signature: ``emit()``
         self.appletStateUpdateRequested = SimpleSignal()
         

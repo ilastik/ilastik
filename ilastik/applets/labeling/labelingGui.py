@@ -140,6 +140,13 @@ class LabelingGui(LayerViewerGui):
         :param drawerUiPath: can be given if you provide an extended drawer UI file.  Otherwise a default one is used.
         :param rawInputSlot: Data from the rawInputSlot parameter will be displayed directly underneath the elements
                              (if provided).
+
+        1. test if the provided labelingSlots are not None
+        2. set class members like the minLabelNumber, maxLabelNumber, colorTable16, etc
+        3. set the user interface and functionality for the labels, using the :py:meth:`_initLabelUic`
+        4. init base class
+        5. init shortcuts
+        6. handle thunk events and the interaction mode 
         """
 
         # Do have have all the slots we need?
@@ -164,6 +171,7 @@ class LabelingGui(LayerViewerGui):
         self._colorTable16 = self._createDefault16ColorColorTable()
         self._programmaticallyRemovingLabels = False
 
+        # 3. set the user interface and functionality for the labels, using the :py:meth:`_initLabelUic`
         if drawerUiPath is None:
             # Default ui file
             drawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
@@ -183,14 +191,33 @@ class LabelingGui(LayerViewerGui):
         self.thunkEventHandler = ThunkEventHandler(self)
         self._changeInteractionMode(Tool.Navigation)
 
+    def _defineModel(self):
+        """
+        excluded from _initLabelUic to enable other ListModel-Functions in subclasses
+        Subclasses may override this
+        """
+        model = LabelListModel()
+        return model
+
     def _initLabelUic(self, drawerUiPath):
+        """
+        1. define the labelListModel (how the labels shall be displayed in the labelListView)
+        2. define functions for merging and clearing labels
+        3. 'add a new label' button functionality 
+        4. navigation, paintBrush, eraser and threshold get icons and functionality
+        5. define the brushsizes
+
+        :param drawerUiPath: path including the definit file of the user interface
+        
+        """
         _labelControlUi = uic.loadUi(drawerUiPath)
 
         # We own the applet bar ui
         self._labelControlUi = _labelControlUi
 
         # Initialize the label list model
-        model = LabelListModel()
+        #model = LabelListModel()
+        model = self._defineModel()
         _labelControlUi.labelListView.setModel(model)
         _labelControlUi.labelListModel=model
         _labelControlUi.labelListModel.rowsRemoved.connect(self._onLabelRemoved)
@@ -601,6 +628,16 @@ class LabelingGui(LayerViewerGui):
         if hasattr(self._labelControlUi, "AddLabelButton"):
             self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
 
+    def _defineLabel(self):
+        """
+        excluded from _addNewLabel to enable other Label-Functions in subclasses
+        Subclasses may override this
+        """
+        label = Label( self.getNextLabelName(), self.getNextLabelColor(),
+                       pmapColor=self.getNextPmapColor(),
+                   )
+        return label
+
     def _addNewLabel(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
@@ -608,9 +645,7 @@ class LabelingGui(LayerViewerGui):
         Add a new label to the label list GUI control.
         Return the new number of labels in the control.
         """
-        label = Label( self.getNextLabelName(), self.getNextLabelColor(),
-                       pmapColor=self.getNextPmapColor(),
-                   )
+        label = self._defineLabel()
         label.nameChanged.connect(self._updateLabelShortcuts)
         label.nameChanged.connect(self.onLabelNameChanged)
         label.colorChanged.connect(self.onLabelColorChanged)
@@ -686,6 +721,9 @@ class LabelingGui(LayerViewerGui):
     def getNextPmapColor(self):
         """
         Return a QColor to use for the next label.
+        
+        in class Label in ilastik/widgets/labeListModel.py
+        if pmapColor is none, then the color for the drawing is used for the pmap
         """
         return None
 

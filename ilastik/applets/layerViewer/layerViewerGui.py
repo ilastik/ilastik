@@ -25,6 +25,8 @@ import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
+import colorsys
+
 # SciPy
 import numpy
 
@@ -41,10 +43,12 @@ from lazyflow.operators import OpSingleChannelSelector, OpWrapSlot
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 #volumina
+import volumina
 from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, AlphaModulatedLayer, LayerStackModel, generateRandomColors
 from volumina.volumeEditor import VolumeEditor
 from volumina.utility import ShortcutManager
 from volumina.interpreter import ClickReportingInterpreter
+import volumina.colortables as colortables
 
 #ilastik
 from ilastik.utility import bind
@@ -307,6 +311,72 @@ class LayerViewerGui(QWidget):
         normalize = cls._should_normalize_display(slot)
         layer.set_normalize( 0, normalize )
         return layer
+
+    @classmethod
+    def createGrayscaleLayer(cls, slot):
+        source = LazyflowSource(slot)
+        layer = GrayscaleLayer(source)
+        return layer
+
+    @classmethod
+    def _create_single_color_layer_from_slot(cls, slot, channelNumber):
+        """
+        only handle a single channel of an input-slot and give it a destinct color
+        :param channelNumber: integer to define the color multiplied with the multiplicator and 
+        used in the hsv-scheme
+        """
+
+        # HSV: (h, s, v)
+        # h: colorvalue [0, 359] (0=red)
+        # s: saturation [0, 255] (255 = very colorful, ca. 0 = gray)
+        # v: value or brightness [0, 255] (255 = very bright)
+
+        # add an entry for each brightness, but the color stays the same
+        saturation = 255
+        multiplicator = 70 #prime factorization of 360 and multiplicator need to be diffrent
+        colorValue = (channelNumber * multiplicator) % 360
+        colortable = []
+
+        for brightness in range(255):
+            #color = QColor()
+            color = QColor.fromHsv(colorValue, saturation, brightness)
+            #print color.getRgb()
+            colortable.append(color)
+
+        #layer = ColortableLayer(LazyflowSource(slot), colortable)
+
+        #choose single channel
+        provider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
+        provider.Input.connect(slot)
+        provider.Index.setValue( channelNumber )
+        source = LazyflowSource( provider.Output )
+        source.additional_owned_ops.append( provider )
+
+        layer = ColortableLayer(source, colortable)
+        return layer
+
+    @classmethod
+    def create_8bit_ordered_random_colortable_layer_from_slot(cls, slot):
+        """
+        Use the volumina random colortable 8bit
+        it includes a definite and ordered list of colors. This order is always the same
+        But the colors aren't ordered in sense of green follows blue, etc. 
+        """
+        colortable = colortables.create_random_8bit()
+        layer = ColortableLayer(LazyflowSource(slot), colortable)
+        return layer
+
+    @classmethod
+    def create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot(cls, slot):
+        """
+        Use the volumina random colortable 8bit
+        it includes a definite and ordered list of colors. This order is always the same
+        But the colors aren't ordered in sense of green follows blue, etc. 
+        """
+        colortable = colortables.create_random_8bit_zero_transparent()
+        layer = ColortableLayer(LazyflowSource(slot), colortable)
+        return layer
+
 
     @classmethod
     def _create_random_colortable_layer_from_slot(cls, slot, num_colors=256):

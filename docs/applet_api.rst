@@ -82,8 +82,9 @@ Applet Base Class
    
    .. automethod:: __init__
 
-.. autoclass:: ControlCommand
-   :members:
+.. TODO this class isn't existing anymore
+        .. autoclass:: ControlCommand
+           :members:
 
 .. autoclass:: ShellRequest
    :members:

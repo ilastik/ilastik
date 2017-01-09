@@ -20,8 +20,10 @@
 ###############################################################################
 from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QImage
 from PyQt4.QtCore import Qt, pyqtSignal
-from listModel import ListModel,ListElement,_NPIXELS
+from listModel import ListModel,ListElement,_NPIXELS, ListElementWithNumber
 
+#for the LabelListModelWithNumber
+from volumina.utility import encode_from_qstring, decode_to_qstring
 
 import logging
 logger = logging.getLogger(__name__)
@@ -63,6 +65,22 @@ class Label(ListElement):
         return "<Label name={}, color={}>".format(
             self.name, self._brushColor)
 
+
+class LabelWithNumber(Label, ListElementWithNumber):
+    """
+    used in watershedLabelingGui.py
+    to see the value/number of the label, with which the label will be drawn
+    """
+    def __init__(self, number, name, color, parent = None, pmapColor=None):
+        #ListElementWithNumber: see widgets->listModel.py
+        ListElementWithNumber.__init__(self, number, name, parent)
+        self._brushColor = color
+        if pmapColor is None:
+            self._pmapColor = color
+        else:
+            self._pmapColor = pmapColor
+
+
 class LabelListModel(ListModel):
     labelSelected = pyqtSignal(int)
     
@@ -76,10 +94,10 @@ class LabelListModel(ListModel):
         ncols=3
     
     def __init__(self, labels=None, parent=None):
-        ListModel.__init__(self,labels, parent)
+        ListModel.__init__(self, labels, parent)
 
 
-        self._labels=self._elements
+        self._labels = self._elements
         self.elementSelected.connect(self.labelSelected.emit)
 
 
@@ -167,4 +185,61 @@ class LabelListModel(ListModel):
         self._selectionModel.select(self.index(row, self.ColumnID.Name),
                                     QItemSelectionModel.Select)
 
+
+from PyQt4.QtCore import QModelIndex, pyqtSignal
+class LabelListModelWithNumber(LabelListModel, ListModel):
+    """ 
+    expand the LabelListModel by displaying a number which this label has
+    this number could be used for drawing with the value of this number
+    """
+    labelValueToBeDeleted = pyqtSignal(int)
+    class ColumnID():
+        Number = 0
+        Color  = 1
+        Name   = 2
+        Delete = 3
+        
+        ncols  = 4
+
+
+    def data(self, index, role):
+        #handle the case of the Number
+        #for everything else, use the Model 'data' of LabelListModel (which uses listModel internally)
+
+        #for hover of the element and see some text
+        if role == Qt.ToolTipRole and index.column() == self.ColumnID.Number:
+            suffix = self._getToolTipSuffix(index.row())
+            s = "value: {}\n".format(
+                str(self._elements[index.row()].number))
+            return decode_to_qstring(s, 'utf-8')
+        #show the data
+        elif role == Qt.DisplayRole and index.column() == self.ColumnID.Number:
+            number = str(self._elements[index.row()].number)
+            return decode_to_qstring(number, 'utf-8')
+        
+        else:
+            return LabelListModel.data(self,index,role)
+
+    def flags(self, index):
+        if  index.column() == self.ColumnID.Number:
+            #return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            return Qt.NoItemFlags
+        else:
+            return LabelListModel.flags(self, index)
+
+
+
+    '''
+    '''
+    def removeRow(self, position, parent=QModelIndex()):
+        """
+        reimplemented the removeRow from superclass,
+        to emit a signal with the value of the label deleted
+        """
+        #emit signal with the value of the row, otherwise you can't get this value anymore
+        value = self._elements[position].number
+        self.labelValueToBeDeleted.emit(value)
+        #print value
+
+        super(LabelListModelWithNumber, self).removeRow(position, parent)
 
