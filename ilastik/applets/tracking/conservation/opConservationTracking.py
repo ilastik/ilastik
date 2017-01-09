@@ -1040,12 +1040,7 @@ class OpConservationTracking(Operator, ExportingOperator):
 
         from hytra.core.hypothesesgraph import HypothesesGraph
         if isinstance(hypothesesGraph, HypothesesGraph):
-            print("Have hypotheses graph") 
             hypothesesGraph = hypothesesGraph.referenceTraxelGraph if hypothesesGraph.withTracklets else hypothesesGraph
             if 'value' in hypothesesGraph._graph.nodes(data='True')[0][1]:
-                print("have value")
                 return True
-            print("But no value")
-        
-        print("No hypotheses graph")
         return False
