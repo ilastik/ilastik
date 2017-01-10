@@ -88,8 +88,10 @@ Basic Structure in watershedSegmentationGui
 
 #. setupLayers
 
-     .. automethod:: WatershedSegmentationGui.setupLayers
-     .. automethod:: WatershedSegmentationGui._initLayer
+   .. automethod:: WatershedSegmentationGui.setupLayers
+   .. currentmodule:: ilastik.applets.layerViewer.layerViewerGui
+   .. automethod:: LayerViewerGui._initLayer
+   .. currentmodule:: ilastik.applets.watershedSegmentation.watershedSegmentationGui
 
 #. __init__
 

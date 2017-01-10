@@ -44,6 +44,12 @@ class SeedsSerializer(AppletSerializer):
         """
 
         slots = [ 
+                SerialSlot(operator.WSMethodIn), 
+                #parameters
+                SerialSlot(operator.Unseeded),
+                SerialSlot(operator.SmoothingMethod),
+                SerialSlot(operator.SmoothingSigma),      
+                SerialSlot(operator.ComputeMethod)      
                 ]
         super(SeedsSerializer, self).__init__(projectFileGroupName, slots=slots, operator=operator)
 

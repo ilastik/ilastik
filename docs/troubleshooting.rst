@@ -33,3 +33,28 @@ Troubleshooting
                 IndexError: list index out of range
 
    Then check your workflow, whether the errorous applet is correctly integrated
+
+*
+
+        .. code::
+
+                File "~/miniconda2/envs/ilastik-devel/lib/python2.7/site-packages/h5py/_hl/dataset.py", line 93, in make_new_dset
+                tid = h5t.py_create(dtype, logical=1)
+                File "h5py/h5t.pyx", line 1450, in h5py.h5t.py_create (-------src-dir-------/h5py/h5t.c:16211)
+                File "h5py/h5t.pyx", line 1470, in h5py.h5t.py_create (-------src-dir-------/h5py/h5t.c:16042)
+                File "h5py/h5t.pyx", line 1525, in h5py.h5t.py_create (-------src-dir-------/h5py/h5t.c:15944)
+                TypeError: Object dtype dtype('O') has no native HDF5 equivalent
+
+                ERROR 2017-01-10 15:51:25,204 log_exception 20991 140606414022400 Project Save Action failed due to the exception shown above.
+
+
+        Then it is possible, that an operator was set with an invalid value, like a QString. 
+        Conversion to string may help:
+
+        .. code::
+
+                op.MyOperator.setValue( str( self._labelControlUi.neighborsComboBox.itemText(index) ) )
+
+                
+
+

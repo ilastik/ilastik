@@ -88,6 +88,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         # TODO make something totally diffrent from that, and talk to anna about this 
         # init the _existingSeedsSlot variable as True. Only reset it, if there is no seed input given
         self._existingSeedsSlot = True
+        print op.WSMethod.value
 
 
         ############################################################
@@ -150,6 +151,12 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         # END TODO
         ############################################################
 
+        ############################################################
+        # BEGIN TODO
+        ############################################################
+        ############################################################
+        # END TODO
+        ############################################################
 
         ############################################################
         # for the Labels
@@ -224,27 +231,9 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             
 
 
-        ############################################################
-        # BEGIN TODO
-        ############################################################
+        # handle the init values and the sync with the operator
+        self._initNeighborsComboBox()
 
-
-        # Neighbors
-        # add the options for the neighbors and set the default value
-        defaultIndex = 0
-        self._labelControlUi.neighborsComboBox.addItems(["direct","indirect"])
-        self._labelControlUi.neighborsComboBox.setCurrentIndex(defaultIndex)
-        
-        # TODO emit signal instead, so that the default index is the value of the WSNeighbors
-        op.WSNeighbors.setValue( self._labelControlUi.neighborsComboBox.itemText(defaultIndex) )
-        # connect the change Event
-        self._labelControlUi.neighborsComboBox.currentIndexChanged.connect(self.onNeighborsComboBoxCurrentIndexChanged)
-
-
-
-        ############################################################
-        # END TODO
-        ############################################################
 
 
 
@@ -277,12 +266,34 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             return row_layout
     '''
 
+    def _initNeighborsComboBox(self):
+        """
+        Handle the init values and the sync with the operator.
+
+        See opWatershedSegmentation for default value of WSNeighbors.
+        """
+
+        op = self.topLevelOperatorView 
+        # add the options for the neighbors and set the default value
+        self._labelControlUi.neighborsComboBox.addItems(["direct","indirect"])
+        defaultIndex = self._labelControlUi.neighborsComboBox.findText(op.WSNeighbors.value)
+        self._labelControlUi.neighborsComboBox.setCurrentIndex(defaultIndex)
+        
+        # connect the change event
+        self._labelControlUi.neighborsComboBox.currentIndexChanged.connect(self.onNeighborsComboBoxCurrentIndexChanged)
+
+
     @pyqtSlot(int)
     def onNeighborsComboBoxCurrentIndexChanged(self, index):
+        """
+        Change the value of the operator WSNeighbor 
+        when the user has changed the element of the combobox.
+
+        :param index: index of the text selected in the combobox
+        :type index: int
+        """
         op = self.topLevelOperatorView 
-        op.WSNeighbors.setValue( self._labelControlUi.neighborsComboBox.itemText(index) )
-        #TODO
-        print op.WSNeighbors.value
+        op.WSNeighbors.setValue( str(self._labelControlUi.neighborsComboBox.itemText(index)) )
 
     @pyqtSlot()
     def onRunWatershedPushButtonClicked(self):
@@ -303,43 +314,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
 
 
-
-
-
-    def _initLayer(self, slot, name, layerList, visible=True, opacity=1.0, layerFunction=None):
-        """
-        :param slot: for which a layer will be created
-        :type slot: InputSlot or OutputSlot 
-        :param name:  is the name of the layer, that will be displayed in the gui
-        :type name: str
-        :param visible: whether the layer is visible or not (at the initialization)
-        :type visible: bool
-        :param opacity: describes how much you can see through this layer 
-        :type opacity: float from 0.0 to 1.0 
-        :param layerFunction: if layerFunction is None, then use the default: 
-            self._create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot
-        """
-        #if you have a channel-box in the gui, that shall be synchronized with the layer channel
-        #layer.channelChanged.connect(self.channel_box.setValue)
-        #setValue() will emit valueChanged() if the new value is different from the old one.
-        #not necessary: self.channel_box.valueChanged.emit(i)
-
-        if layerFunction is None:
-            layerFunction = self.create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot
-
-        if slot.ready():
-            layer           = layerFunction(slot)
-            layer.name      = name
-            layer.visible   = visible
-            layer.opacity   = opacity
-            layerList.append(layer)
-            del layer
-        else:
-            logger.info("slot not ready; didn't add a layer with name: " + name)
-
-
-
-
     def setupLayers(self):
         """
         For illustration of what a layer is, see: http://ilastik.org/documentation/basics/layers
@@ -351,7 +325,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         and for the Elements, that can be seen in the 'Central Widget'. 
         These are excactly the ones, that are shown in the Viewer Controls.
 
-        Uses :py:meth:`_initLayer` to create a single layer
+        Uses :py:meth:`_initLayer` to create a single layer (see base-class LayerViewerGui)
 
         :returns: the list with the layers that are created in this function
         :rtype: list of layers

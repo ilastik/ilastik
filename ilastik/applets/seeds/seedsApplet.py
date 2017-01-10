@@ -51,7 +51,13 @@ class SeedsApplet( StandardApplet ):
         :return: the name of the slots as list of string, e.g. ['ChannelSelection', 'BrushValue;]
         :rtype: list of str
         """
-        return [ ]
+        return ['WSMethodIn', 
+                #parameter
+                'Unseeded',
+                'SmoothingMethod',
+                'SmoothingSigma',
+                'ComputeMethod'      
+                ]
 
     @property
     def singleLaneGuiClass(self):

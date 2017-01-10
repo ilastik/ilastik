@@ -203,6 +203,47 @@ class LayerViewerGui(QWidget):
             self.updateAllLayers()
         super( LayerViewerGui, self ).showEvent(event)
 
+
+
+
+    def _initLayer(self, slot, name, layerList, visible=True, opacity=1.0, layerFunction=None):
+        """
+        Create and add a new layer in the setupLayer function in one line.
+
+        e.g. 
+        self._initLayer(op.Boundaries,       "Boundaries",   layers, opacity=0.5, 
+        layerFunction=self.createGrayscaleLayer) 
+
+
+        :param slot: for which a layer will be created
+        :type slot: InputSlot or OutputSlot 
+        :param name:  is the name of the layer, that will be displayed in the gui
+        :type name: str
+        :param visible: whether the layer is visible or not (at the initialization)
+        :type visible: bool
+        :param opacity: describes how much you can see through this layer 
+        :type opacity: float from 0.0 to 1.0 
+        :param layerFunction: if layerFunction is None, then use the default: 
+            self._create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot
+        """
+        #if you have a channel-box in the gui, that shall be synchronized with the layer channel
+        #layer.channelChanged.connect(self.channel_box.setValue)
+        #setValue() will emit valueChanged() if the new value is different from the old one.
+        #not necessary: self.channel_box.valueChanged.emit(i)
+
+        if layerFunction is None:
+            layerFunction = self.create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot
+
+        if slot.ready():
+            layer           = layerFunction(slot)
+            layer.name      = name
+            layer.visible   = visible
+            layer.opacity   = opacity
+            layerList.append(layer)
+            del layer
+        else:
+            logger.info("slot not ready; didn't add a layer with name: " + name)
+
     def setupLayers( self ):
         """
         Create a list of layers to be displayed in the central widget.

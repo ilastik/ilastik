@@ -19,10 +19,12 @@
 #           http://ilastik.org/license.html
 ##############################################################################
 
-#import numpy as Qtnp
+import numpy 
 from PyQt4.Qt import pyqtSlot
-from PyQt4 import uic, QtCore
+from PyQt4 import uic
 import os
+from functools import partial
+from contextlib import contextmanager
 
 #from ilastik.applets.watershedLabeling.watershedLabelingGui import WatershedLabelingGui
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -49,27 +51,133 @@ class SeedsGui(LayerViewerGui):
     ###########################################
     ###########################################
 
+    def __init__(self, parentApplet, topLevelOperatorView, DrawerUiPath=None ):
+        self.topLevelOperatorView = topLevelOperatorView
+        op = self.topLevelOperatorView 
+        self.__cleanup_fns = []
+        self._currently_updating = False
+        super( SeedsGui, self ).__init__(parentApplet, topLevelOperatorView)
+
+        # init the Comboboxes with values
+        self.initComboBoxes()
+
 
     def initAppletDrawerUi(self):
         """
         Reimplemented from LayerViewerGui base class.
         """
+        op = self.topLevelOperatorView
+
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/seeds.ui")
-    
-    def __init__(self, parentApplet, topLevelOperatorView, DrawerUiPath=None ):
 
-        self.topLevelOperatorView = topLevelOperatorView
-        op = self.topLevelOperatorView 
-
-        self.__cleanup_fns = []
-        super( SeedsGui, self ).__init__(parentApplet, topLevelOperatorView)
-
+        # give function to the unseeded checkbox
         self._drawer.unseededCheckBox.stateChanged.connect(self.onUnseededCheckBoxStateChanged)
 
 
+        # to connect gui with operators
+        def configure_update_handlers( qt_signal, op_slot ):
+            qt_signal.connect( self.configure_operator_from_gui )
+            op_slot.notifyDirty( self.configure_gui_from_operator )
+            self.__cleanup_fns.append( partial( op_slot.unregisterDirty, self.configure_gui_from_operator ) )
+
+
+
+        # handle the connection of gui elements and operators
+        configure_update_handlers( self._drawer.unseededCheckBox.toggled, op.Unseeded )
+        configure_update_handlers( self._drawer.smoothingComboBox.currentIndexChanged, op.SmoothingMethod )
+        configure_update_handlers( self._drawer.smoothingDoubleSpinBox.valueChanged, op.SmoothingSigma )
+        configure_update_handlers( self._drawer.computeComboBox.currentIndexChanged, op.ComputeMethod )
+
+
+
+        # Initialize everything with the operator's initial values
+        self.configure_gui_from_operator()
+
+
+        # set the right watershed method given the current settings 
+        # (of checkbox (now correct in gui) and boundaries dtype)
+        self.onUnseededCheckBoxStateChanged()
+
+
+    ############################################################
+    # synchronisation of gui elements and operators
+    ############################################################
+    @contextmanager
+    def set_updating(self):
+        """
+        used for the state while updating the gui from operators or vice versa
+        """
+        assert not self._currently_updating
+        self._currently_updating = True
+        yield
+        self._currently_updating = False
+
+    def configure_gui_from_operator(self, *args):
+        """
+        Used to set the Gui with the values of the operators
+        """
+        if self._currently_updating:
+            return False
+        with self.set_updating():
+            op = self.topLevelOperatorView
+            '''
+            self.channel_box.setValue( op.ChannelSelection.value )
+            input_layer = self.getLayerByName("Input")
+            if input_layer:
+                input_layer.channel = op.ChannelSelection.value
+            
+            self.threshold_box.setValue( op.Pmin.value )
+            self.membrane_size_box.setValue( op.MinMembraneSize.value )
+            self.superpixel_size_box.setValue( op.MinSegmentSize.value )
+            self.seed_presmoothing_box.setValue( op.SigmaMinima.value )
+            self.watershed_presmoothing_box.setValue( op.SigmaWeights.value )
+            self.seed_method_combo.setCurrentIndex( int(op.GroupSeeds.value) )
+            self.preserve_pmaps_box.setChecked( op.PreserveMembranePmaps.value )
+            '''
+            self._drawer.unseededCheckBox.setChecked( op.Unseeded.value )
+            self._drawer.smoothingComboBox.setCurrentIndex( int(op.SmoothingMethod.value) )
+            self._drawer.smoothingDoubleSpinBox.setValue( op.SmoothingSigma.value )
+            self._drawer.computeComboBox.setCurrentIndex( int(op.ComputeMethod.value) )
+            
+
+    def configure_operator_from_gui(self):
+        if self._currently_updating:
+            return False
+        with self.set_updating():
+            op = self.topLevelOperatorView
+            '''
+            op.ChannelSelection.setValue( self.channel_box.value() )
+            op.Pmin.setValue( self.threshold_box.value() )
+            op.MinMembraneSize.setValue( self.membrane_size_box.value() )
+            op.MinSegmentSize.setValue( self.superpixel_size_box.value() )
+            op.SigmaMinima.setValue( self.seed_presmoothing_box.value() )
+            op.SigmaWeights.setValue( self.watershed_presmoothing_box.value() )
+            op.GroupSeeds.setValue( bool(self.seed_method_combo.currentIndex()) )
+            op.PreserveMembranePmaps.setValue( self.preserve_pmaps_box.isChecked() )
+            '''
+            op.Unseeded.setValue( self._drawer.unseededCheckBox.isChecked() )
+            op.SmoothingMethod.setValue( self._drawer.smoothingComboBox.currentIndex() )
+            op.SmoothingSigma.setValue( self._drawer.smoothingDoubleSpinBox.value() )
+            op.ComputeMethod.setValue( self._drawer.computeComboBox.currentIndex() )
+
+    
+
+
+
+    ############################################################
+    # synchronisation of gui elements and operators
+    ############################################################
+
     def setEnabledEverthingButUnseeded(self, enable):
+        """
+        Enables or disables all gui elements except the unseeded checkbox. 
+        Gui-Elements must be added manually.
+
+        :param enable: if True, enable all gui elements, else: disable
+        :type enable: bool
+        """
         gui = self._drawer
         guiElements = [
             gui.smoothingComboBox,
@@ -81,77 +189,69 @@ class SeedsGui(LayerViewerGui):
         for widget in guiElements:
             widget.setEnabled(enable) 
 
-    def onUnseededCheckBoxStateChanged(self,state):
-        if (state == QtCore.Qt.Checked):
+
+    @pyqtSlot()
+    def onUnseededCheckBoxStateChanged(self):
+        """
+        See if the Unseeded-CheckBox is checked or not.
+
+        Checked: Use UnionFind as watershed method
+            and disable all gui-elements except this checkbox
+
+        Unchecked: use setWatershedMethodToTurboOrRegionGrowing to decide whether Turbo or RegionGrowing
+            and enable all gui-elements 
+        """
+
+        op = self.topLevelOperatorView 
+        # change the enable state of the gui elements
+        #if (state == QtCore.Qt.Checked):
+        if self._drawer.unseededCheckBox.isChecked():
             self.setEnabledEverthingButUnseeded(False)
+            
+            op.WSMethodIn.setValue("UnionFind") 
         else:
             self.setEnabledEverthingButUnseeded(True)
+            self.setWatershedMethodToTurboOrRegionGrowing()
 
 
-
-
-
-    '''
-    def initAppletDrawerUi(self):
+    def setWatershedMethodToTurboOrRegionGrowing(self):
         """
-        Overridden from base class (LayerViewerGui)
+        Set the correct watershed method
+        boundaries-input uint8: Turbo
+        boundaries-input not uint8: RegionGrowing
         """
-        def control_layout(*args):
-            """
-            Define the way, how the input widgets are shown in the gui
-            They are added to a horizontal BoxLayout and afterwards 
-            this layout is added to a vertivalLayoutBox
-            """
-            space=10
-            row_layout = QHBoxLayout()
-            begin = True
-            # Add all arguments passed on
-            for widget in args:
-                #convert strings to QLabel
-                #for python3.x add:
-                #basestring = str
-                if isinstance(widget, basestring):
-                    widget = QLabel(widget)
-                #only add space after first widget
-                if not begin:
-                    row_layout.addSpacerItem( QSpacerItem(space, 0, QSizePolicy.Expanding) )
-                row_layout.addWidget(widget)
-                begin = False
-            return row_layout
-    '''
-
-
-
-    def _initLayer(self, slot, name, layerList, visible=True, opacity=1.0, layerFunction=None):
-        """
-        :param slot: for which a layer will be created
-        :type slot: InputSlot or OutputSlot 
-        :param name:  is the name of the layer, that will be displayed in the gui
-        :type name: str
-        :param visible: whether the layer is visible or not (at the initialization)
-        :type visible: bool
-        :param opacity: describes how much you can see through this layer 
-        :type opacity: float from 0.0 to 1.0 
-        :param layerFunction: if layerFunction is None, then use the default: 
-            self._create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot
-        """
-        #if you have a channel-box in the gui, that shall be synchronized with the layer channel
-        #layer.channelChanged.connect(self.channel_box.setValue)
-        #setValue() will emit valueChanged() if the new value is different from the old one.
-        #not necessary: self.channel_box.valueChanged.emit(i)
-
-        if layerFunction is None:
-            layerFunction = self.create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot
-
-        if slot.ready():
-            layer           = layerFunction(slot)
-            layer.name      = name
-            layer.visible   = visible
-            layer.opacity   = opacity
-            layerList.append(layer)
-            del layer
+        op = self.topLevelOperatorView 
+        # if boundaries has type uint8, then use Turbo, otherwise RegionGrowing
+        if (op.Boundaries.meta.dtype == numpy.uint8):
+            op.WSMethodIn.setValue("Turbo") 
         else:
-            logger.info("slot not ready; didn't add a layer with name: " + name)
+            op.WSMethodIn.setValue("RegionGrowing") 
+
+
+
+    ############################################################
+    # initialization of the Comboboxes with values
+    ############################################################
+    def initComboBoxes(self):
+        op = self.topLevelOperatorView 
+        # this value needs to be preserved, because adding some new elements 
+        # changes the op.SmoothingMethod.value
+        temp1 = op.SmoothingMethod.value
+        temp2 = op.ComputeMethod.value
+
+        self.initSmoothingComboBox()
+        self.initComputeComboBox()
+
+        op.SmoothingMethod.setValue(temp1)
+        op.ComputeMethod.setValue(temp2)
+
+    def initSmoothingComboBox(self):
+        itemList = ["Gaussian", "MedianFilter"]
+        self._drawer.smoothingComboBox.addItems(itemList)
+
+    def initComputeComboBox(self):
+        itemList = ["HeightMap", "DistanceTransform"]
+        self._drawer.computeComboBox.addItems(itemList)
 
 
 
@@ -167,7 +267,7 @@ class SeedsGui(LayerViewerGui):
         and for the Elements, that can be seen in the 'Central Widget'. 
         These are excactly the ones, that are shown in the Viewer Controls.
 
-        Uses :py:meth:`_initLayer` to create a single layer
+        Uses :py:meth:`_initLayer` to create a single layer (see base-class LayerViewerGui)
 
         :returns: the list with the layers that are created in this function
         :rtype: list of layers

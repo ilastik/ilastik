@@ -36,8 +36,19 @@ class OpSeeds(Operator):
     RawData             = InputSlot() # Used by the GUI for display only
     Boundaries          = InputSlot() # for displaying as layer and as input for the watershed algorithm 
     Seeds               = InputSlot(optional=True) #for displaying in layer only
+    
+    # transmit the WSMethod to the WatershedSegmentationApplet (see Workflow)
+    WSMethodIn          = InputSlot()
+    WSMethodOut         = OutputSlot()
 
-    Output              = OutputSlot()
+    #Parameters and their default values
+    Unseeded            = InputSlot(value=False)
+    SmoothingMethod     = InputSlot(value=0) #index=0
+    SmoothingSigma      = InputSlot(value=1.0)
+    ComputeMethod       = InputSlot(value=0) #index=0
+
+
+
     '''
     CorrectedSeedsIn    = InputSlot(optional=True) #deals as input for the LabelChange stuff 
 
@@ -148,6 +159,7 @@ class OpSeeds(Operator):
 
 
     def setupOutputs(self):
+        self.WSMethodOut.setValue( self.WSMethodIn.value )
         '''
         self.LabelNames.meta.dtype  = object
         #self.LabelNames.meta.shape = (1,)
@@ -156,6 +168,7 @@ class OpSeeds(Operator):
         self.LabelColors.meta.shape = (1,)
         self.PmapColors.meta.dtype  = object
         self.PmapColors.meta.shape  = (1,)
+        
 
 
         ############################################################

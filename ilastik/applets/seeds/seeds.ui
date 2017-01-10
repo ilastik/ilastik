@@ -73,7 +73,22 @@
         <widget class="QComboBox" name="smoothingComboBox"/>
        </item>
        <item>
-        <widget class="QDoubleSpinBox" name="smoothingDoubleSpinBox"/>
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QLabel" name="smoothingSigmaLabel">
+           <property name="text">
+            <string>sigma:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QDoubleSpinBox" name="smoothingDoubleSpinBox">
+           <property name="value">
+            <double>1.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </item>
