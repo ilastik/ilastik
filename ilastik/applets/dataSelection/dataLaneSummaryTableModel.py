@@ -20,8 +20,6 @@
 ###############################################################################
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 
-from volumina.utility import decode_to_qstring
-
 from lazyflow.utility import PathComponents
 from ilastik.utility import bind
 from opDataSelection import DatasetInfo
@@ -171,7 +169,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         if datasetInfoIndex == DatasetInfoColumn.Name:
             if datasetInfo.nickname is not None and datasetInfo.nickname != "":
                 return datasetInfo.nickname
-            return decode_to_qstring( PathComponents( datasetInfo.filePath ).filename )
+            return PathComponents( datasetInfo.filePath ).filename.decode()
 
         if datasetInfoIndex == DatasetInfoColumn.Location:
             LocationNames = { DatasetInfo.Location.FileSystem : "External File",

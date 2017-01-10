@@ -108,7 +108,7 @@ class NansheWorkflow(Workflow):
     def _import_configuration(self):
         from PyQt5.QtWidgets import QFileDialog
 
-        filename = QFileDialog.getOpenFileName(caption="Import Configuration", filter="*.json")
+        filename, _filter = QFileDialog.getOpenFileName(caption="Import Configuration", filter="*.json")
         filename = str(filename)
 
         config_all = read_parameters(filename)
@@ -279,7 +279,7 @@ class NansheWorkflow(Workflow):
         from collections import OrderedDict
 
 
-        filename = QFileDialog.getSaveFileName(caption="Export Configuration", filter="*.json")
+        filename, _filter = QFileDialog.getSaveFileName(caption="Export Configuration", filter="*.json")
         filename = str(filename)
 
 

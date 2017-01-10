@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
+import sys
 import numpy
 
 from PyQt5 import uic
@@ -28,7 +29,6 @@ from PyQt5.QtGui import QColor
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 
-from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 import logging
@@ -50,12 +50,12 @@ class SplitBodySupervoxelExportGui(LayerViewerGui):
 
     def exportRelabeling(self):
         # Ask for the export path
-        exportPath = QFileDialog.getSaveFileName( self,
+        exportPath, _filter = QFileDialog.getSaveFileName( self,
                                                   "Save supervoxel relabeling",
                                                   "",
                                                   "Hdf5 Files (*.h5 *.hdf5)",
                                                   options=QFileDialog.Options(QFileDialog.DontUseNativeDialog) )
-        if exportPath.isNull():
+        if not exportPath:
             return
 
         def handleProgress(progress):
@@ -63,7 +63,7 @@ class SplitBodySupervoxelExportGui(LayerViewerGui):
             logger.info( "Export progress: {}%".format( progress ) )
 
         op = self.topLevelOperatorView
-        req = op.exportFinalSupervoxels( encode_from_qstring( exportPath ), 
+        req = op.exportFinalSupervoxels( exportPath.encode( sys.getfilesystemencoding() ), 
                                           "zyx",
                                           handleProgress )
         self._drawer.exportButton.setEnabled(False)

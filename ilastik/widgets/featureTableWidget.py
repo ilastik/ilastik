@@ -27,7 +27,6 @@ from PyQt5.QtWidgets import QVBoxLayout, QLabel, QTableWidgetItem, QItemDelegate
 from PyQt5.QtCore import Qt, QRect, QSize, QEvent, QPoint, pyqtSignal
 
 import numpy
-from volumina.utility import decode_to_qstring
 
 class FeatureEntry:
     def __init__(self, name):
@@ -122,7 +121,7 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
         
     def setNameAndBrush(self, sigma, color=Qt.black):
         self.sigma = sigma
-        self.setText(decode_to_qstring("σ=%.1fpx" % self.sigma, 'utf-8')) # This file is encoded as utf-8, so this string should be decoded as such.
+        self.setText(u"σ={:.1f}px".format(self.sigma))
         total_window = (1 + 2 * int(self.sigma * self.window_size + 0.5) )
         self.setToolTip( "sigma = {:.1f} pixels, window diameter = {:.1f}".format(self.sigma, total_window) )
         font = QFont() 

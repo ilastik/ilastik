@@ -32,6 +32,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
 import os
+import sys
 import copy
 import vigra
 
@@ -54,7 +55,6 @@ import volumina.colortables as colortables
 from volumina.api import \
     LazyflowSource, GrayscaleLayer, ColortableLayer, AlphaModulatedLayer, \
     ClickableColortableLayer, LazyflowSinkSource
-from volumina.utility import encode_from_qstring
 
 from volumina.interpreter import ClickInterpreter
 from volumina.utility import ShortcutManager
@@ -220,12 +220,12 @@ class ObjectClassificationGui(LabelingGui):
         return [m]
 
     def exportLabelInfo(self):
-        file_path = QFileDialog.getSaveFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")
+        file_path, _filter = QFileDialog.getSaveFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")
         topLevelOp = self.topLevelOperatorView.viewed_operator()
         topLevelOp.exportLabelInfo(file_path)
 
     def importLabelInfo(self):
-        file_path = QFileDialog.getOpenFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")        
+        file_path, _filter = QFileDialog.getOpenFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")        
         topLevelOp = self.topLevelOperatorView.viewed_operator()
         topLevelOp.importLabelInfo(file_path)
 
@@ -938,6 +938,6 @@ class BadObjectsDialog(QMessageBox):
         parts = []
         for s in (self.text(), self.informativeText(), self.detailedText()):
             if len(s) > 0:
-                parts.append(encode_from_qstring(s))
+                parts.append(s.encode( sys.getfilesystemencoding() ))
         msg = "\n".join(parts)
         logger.warn(msg)

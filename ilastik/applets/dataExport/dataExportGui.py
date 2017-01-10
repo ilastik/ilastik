@@ -36,7 +36,6 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from opDataExport import get_model_op
-from volumina.utility import decode_to_qstring
 from volumina.widgets.dataExportOptionsDlg import DataExportOptionsDlg
 
 import logging
@@ -297,8 +296,8 @@ class DataExportGui(QWidget):
             # (It's therefore possible for RawDatasetInfo[row] to be ready() even though it's upstream partner is NOT ready.
             return
                 
-        self.batchOutputTableWidget.setItem( row, Column.Dataset, QTableWidgetItem( decode_to_qstring(nickname, 'utf-8') ) )
-        self.batchOutputTableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( decode_to_qstring(exportPath) ) )
+        self.batchOutputTableWidget.setItem( row, Column.Dataset, QTableWidgetItem( nickname.decode('utf-8') ) )
+        self.batchOutputTableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( exportPath.decode('utf-8') ) )
 
         exportNowButton = QPushButton("Export")
         exportNowButton.setToolTip("Generate individual batch output dataset.")

@@ -29,9 +29,6 @@ from PyQt5.QtWidgets import QDialog, QVBoxLayout, QTreeWidget, QTreeWidgetItem
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 from lazyflow.operators.opCache import MemInfoNode
 
-#volumina
-from volumina.utility.qstring_codec import encode_from_qstring
-
 import warnings
 
 #===------------------------------------------------------------------------===
@@ -123,7 +120,7 @@ class TreeNode(QTreeWidgetItem):
 
     @staticmethod
     def extract_numeric_size(txt):
-        split = encode_from_qstring(txt.toString()).split()
+        split = txt.split()
         if len(split) == 0:
             return 0.0
         else:

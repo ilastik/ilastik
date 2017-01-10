@@ -231,7 +231,7 @@ class ExportObjectInfoDialog(QDialog):
         filters = ";;".join(DIALOG_FILTERS.values())
         current_extension = FILE_TYPES[self.ui.fileFormat.currentIndex()]
         current_filter = DIALOG_FILTERS[current_extension]
-        path = QFileDialog.getSaveFileName(self.parent(), "Save File", self.ui.exportPath.text(), filters,
+        path, _filter = QFileDialog.getSaveFileName(self.parent(), "Save File", self.ui.exportPath.text(), filters,
                                            current_filter)
         path = unicode(path)
         if path != "":

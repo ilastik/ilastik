@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
+import sys
 import numpy
 from functools import partial
 
@@ -31,7 +32,6 @@ from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager
 
 from ilastik.utility import bind
-from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.splitBodyCarving.bodySplitInfoWidget import BodySplitInfoWidget
 
@@ -80,12 +80,12 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
         
     def exportFinalSegmentation(self):
         # Ask for the export path
-        exportPath = QFileDialog.getSaveFileName( self,
+        exportPath, _filter = QFileDialog.getSaveFileName( self,
                                                   "Save final segmentation",
                                                   "",
                                                   "Hdf5 Files (*.h5 *.hdf5)",
                                                   options=QFileDialog.Options(QFileDialog.DontUseNativeDialog) )
-        if exportPath.isNull():
+        if not exportPath:
             return
 
         def handleProgress(progress):
@@ -93,7 +93,7 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
             logger.info( "Export progress: {}%".format( progress ) )
 
         op = self.topLevelOperatorView
-        req = op.exportFinalSegmentation( encode_from_qstring( exportPath ), 
+        req = op.exportFinalSegmentation( exportPath.encode( sys.getfilesystemencoding() ), 
                                           "zyx",
                                           handleProgress )
         self._drawer.exportButton.setEnabled(False)

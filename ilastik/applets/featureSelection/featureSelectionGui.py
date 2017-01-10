@@ -21,6 +21,7 @@
 # Python
 from __future__ import division
 import os
+import sys
 from functools import partial
 import logging
 logger = logging.getLogger(__name__)
@@ -47,7 +48,6 @@ from volumina.widgets.layercontextmenu import layercontextmenu
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.utility import bind
-from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 
@@ -298,8 +298,8 @@ class FeatureSelectionGui(LayerViewerGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
-        filenames = QFileDialog.getOpenFileNames(self, 'Open Feature Files', '.', options=options)
-        filenames = map(encode_from_qstring, filenames)
+        filenames, _filter = QFileDialog.getOpenFileNames(self, 'Open Feature Files', '.', options=options)
+        filenames = [fn.encode(sys.getfilesystemencoding()) for fn in filenames]
         
         # Check if file exists
         if not filenames:

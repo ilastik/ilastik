@@ -28,7 +28,6 @@ from PyQt5.QtWidgets import QWidget, QFileDialog, QMessageBox, QTreeWidgetItem, 
                             QPushButton, QTableView, QHeaderView, QProgressBar
 from PyQt5.QtGui import QIcon
 
-from volumina.utility import encode_from_qstring, decode_to_qstring
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import log_exception
 
@@ -117,17 +116,17 @@ class BodySplitInfoWidget( QWidget ):
         if self._annotation_filepath is not None:
             navDir = os.path.split( self._annotation_filepath )[0]
 
-        selected_file = QFileDialog.getOpenFileName(self,
+        selected_file, _filter = QFileDialog.getOpenFileName(self,
                                     "Load Split Annotation File",
                                     navDir,
                                     "JSON files (*.json)",
                                      options=QFileDialog.DontUseNativeDialog)
 
-        self.refreshButton.setEnabled( not selected_file.isNull() )
-        if selected_file.isNull():
+        self.refreshButton.setEnabled( selected_file != "" )
+        if selected_file:
             return
 
-        self._loadAnnotationFile( encode_from_qstring( selected_file ) )
+        self._loadAnnotationFile( selected_file.encode() )
     
     def _loadAnnotationFile(self, annotation_filepath):
         """
@@ -143,7 +142,7 @@ class BodySplitInfoWidget( QWidget ):
 
             # Update gui
             self._reloadInfoWidgets()
-            self.annotationFilepathEdit.setText( decode_to_qstring(annotation_filepath) )
+            self.annotationFilepathEdit.setText( annotation_filepath.decode() )
             
         except OpParseAnnotations.AnnotationParsingException as ex :
             if ex.original_exc is not None:

@@ -27,6 +27,7 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.utility.simpleSignal import SimpleSignal
 from ilastik.utility.maybe import maybe
 import os
+import sys
 import re
 import tempfile
 import h5py
@@ -1026,7 +1027,6 @@ class AppletSerializer(object):
         """get new path to lost file"""
         
         from PyQt5.QtWidgets import QFileDialog,QMessageBox
-        from volumina.utility import encode_from_qstring
         
         text = "The file at {} could not be found any more. Do you want to search for it at another directory?".format(path)
         logger.info(text)
@@ -1038,11 +1038,11 @@ class AppletSerializer(object):
         options = QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
             options |=  QFileDialog.DontUseNativeDialog
-        fileName = QFileDialog.getOpenFileName( None, "repair files", path, filt, options=options)
-        if fileName.isEmpty():
+        fileName, _filter = QFileDialog.getOpenFileName( None, "repair files", path, filt, options=options)
+        if not fileName:
             raise RuntimeError("Could not find external data: " + path)
         else:
-            return encode_from_qstring(fileName)
+            return fileName.encode( sys.getfilesystemencoding() )
         
     #######################
     # Optional methods    #
