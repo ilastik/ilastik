@@ -37,7 +37,6 @@ import h5py
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.tracking.base.trackingUtilities import relabel,write_events
 from volumina.layer import GrayscaleLayer
-from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from ilastik.config import cfg as ilastik_config
@@ -299,7 +298,7 @@ class TrackingBaseGui( LayerViewerGui ):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
-        directory = encode_from_qstring(QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))
+        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options).encode()
 
         if directory is None or len(str(directory)) == 0:
             logger.info( "cancelled." )
@@ -376,7 +375,7 @@ class TrackingBaseGui( LayerViewerGui ):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
-        directory = encode_from_qstring(QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))
+        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options).encode()
 
         if directory is None or len(str(directory)) == 0:
             logger.info( "cancelled." )
@@ -430,7 +429,7 @@ class TrackingBaseGui( LayerViewerGui ):
         options = QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
-        fn = QFileDialog.getSaveFileName(self, 'Save Lineage Trees', os.getenv('HOME'), options=options)
+        fn, _filter = QFileDialog.getSaveFileName(self, 'Save Lineage Trees', os.getenv('HOME'), options=options)
         if fn is None:
             logger.info( "cancelled." )
             return

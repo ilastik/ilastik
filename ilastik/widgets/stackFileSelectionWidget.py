@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
+import sys
 import glob
 from functools import partial
 
@@ -33,7 +34,6 @@ import vigra
 from volumina.utility import PreferencesManager
 
 import ilastik.config
-from volumina.utility import encode_from_qstring, decode_to_qstring
 
 from lazyflow.operators.ioOperators import (
     OpStackLoader, OpStreamingHdf5SequenceReaderM,
@@ -142,6 +142,7 @@ class StackFileSelectionWidget(QDialog):
         # Find the directory of the most recently opened image file
         mostRecentStackDirectory = PreferencesManager().get( 'DataSelection', 'recent stack directory' )
         if mostRecentStackDirectory is not None:
+            mostRecentStackDirectory = mostRecentStackDirectory.decode( sys.getfilesystemencoding() )
             defaultDirectory = os.path.split(mostRecentStackDirectory)[0]
         else:
             defaultDirectory = os.path.expanduser('~')
@@ -154,20 +155,19 @@ class StackFileSelectionWidget(QDialog):
         directory = QFileDialog.getExistingDirectory( 
                      self, "Image Stack Directory", defaultDirectory, options=options )
 
-        if directory.isNull():
+        if not directory:
             # User cancelled
             return
 
-        directory = encode_from_qstring( directory )
-        PreferencesManager().set('DataSelection', 'recent stack directory', directory)
+        PreferencesManager().set('DataSelection', 'recent stack directory', directory.encode(sys.getfilesystemencoding()))
 
-        self.directoryEdit.setText( decode_to_qstring(directory) )
+        self.directoryEdit.setText( directory )
         try:
             globstring = self._getGlobString(directory)
         except StackFileSelectionWidget.DetermineStackError, e:
             QMessageBox.warning(self, "Invalid selection", str(e))
         if globstring:
-            self.patternEdit.setText(decode_to_qstring(globstring))
+            self.patternEdit.setText( globstring )
             self._applyPattern()
 
     def _getGlobString(self, directory):
@@ -259,6 +259,7 @@ class StackFileSelectionWidget(QDialog):
         # Find the directory of the most recently opened image file
         mostRecentStackDirectory = PreferencesManager().get( 'DataSelection', 'recent stack directory' )
         if mostRecentStackDirectory is not None:
+            mostRecentStackDirectory = mostRecentStackDirectory.decode( sys.getfilesystemencoding() )
             defaultDirectory = os.path.split(mostRecentStackDirectory)[0]
         else:
             defaultDirectory = os.path.expanduser('~')
@@ -275,10 +276,10 @@ class StackFileSelectionWidget(QDialog):
         options = QFileDialog.Options()
         if ilastik.config.cfg.getboolean("ilastik", "debug"):
             options |=  QFileDialog.DontUseNativeDialog
-        fileNames = QFileDialog.getOpenFileNames( 
+        fileNames, _filter = QFileDialog.getOpenFileNames( 
                      self, "Select Images for Stack", defaultDirectory, filt, options=options )
         
-        fileNames = map(encode_from_qstring, fileNames)
+        fileNames = [name.encode(sys.getfilesystemencoding()) for name in fileNames]
 
         msg = ''
         if len(fileNames) == 0:
@@ -321,7 +322,7 @@ class StackFileSelectionWidget(QDialog):
         self._updateFileList(fileNames)
 
     def _applyPattern(self):
-        globStrings = encode_from_qstring(self.patternEdit.text())
+        globStrings = self.patternEdit.text()
         H5EXTS = OpStreamingHdf5SequenceReaderM.H5EXTS
         filenames = []
         # see if some glob strings include HDF5 files
@@ -371,7 +372,7 @@ class StackFileSelectionWidget(QDialog):
         self.fileListWidget.clear()
         
         for f in self.selectedFiles:
-            self.fileListWidget.addItem(decode_to_qstring(f))
+            self.fileListWidget.addItem(f)
 
     def eventFilter(self, watched, event):
         if watched == self.patternEdit:

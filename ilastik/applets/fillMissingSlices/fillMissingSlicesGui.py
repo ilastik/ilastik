@@ -89,7 +89,7 @@ class FillMissingSlicesGui(LayerViewerGui):
             self.haloSizeChanged, update=True)
 
     def _loadDetectorButtonPressed(self):
-        fname = QFileDialog.getOpenFileName(
+        fname, _filter = QFileDialog.getOpenFileName(
             self, caption='Open Detector File',
             filter="Pickled Objects (*.pkl);;All Files (*)",
             directory=self._recentDetectorDir)
@@ -105,7 +105,7 @@ class FillMissingSlicesGui(LayerViewerGui):
             self._recentDetectorDir = os.path.dirname(qstring2str(fname))
 
     def _loadHistogramsButtonPressed(self):
-        fname = QFileDialog.getOpenFileName(
+        fname, _filter = QFileDialog.getOpenFileName(
             self, caption='Open Histogram File',
             filter="HDF5 Files (*.h5 *.hdf5);;All Files (*)",
             directory=QDir.homePath())
@@ -121,7 +121,7 @@ class FillMissingSlicesGui(LayerViewerGui):
                 fname, histos.shape))
 
     def _exportDetectorButtonPressed(self):
-        fname = QFileDialog.getSaveFileName(
+        fname, _filter = QFileDialog.getSaveFileName(
             self, caption='Export Trained Detector',
             filter="Pickled Objects (*.pkl);;All Files (*)",
             directory=self._recentExportDir)

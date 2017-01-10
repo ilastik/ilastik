@@ -25,6 +25,7 @@ from PyQt5.QtCore import Qt, QEvent
 
 from lazyflow.rtype import SubRegion
 import os
+import sys
 from collections import defaultdict
 from copy import deepcopy
 
@@ -40,7 +41,6 @@ from ilastik.config import cfg as ilastik_config
 
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
 import volumina.colortables as colortables
-from volumina.utility import encode_from_qstring
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import vigra
@@ -636,10 +636,10 @@ class ObjectExtractionGui(LayerViewerGui):
             mexBox.exec_()
             return
             
-        fname = QFileDialog.getSaveFileName(self, caption='Export Computed Features', 
+        fname, _filter = QFileDialog.getSaveFileName(self, caption='Export Computed Features', 
                                         filter="Pickled Objects (*.pkl);;All Files (*)")
         
-        fname = encode_from_qstring( fname )
+        fname = fname.encode( sys.getfilesystemencoding() )
         if len(fname)>0: #not cancelled
             with open(fname, 'w') as f:
                 pickle.dump(mainOperator.RegionFeatures(list()).wait(), f)

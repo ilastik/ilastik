@@ -239,7 +239,7 @@ class BoxListView(ListView):
 
         def saveCSVList():
             import os
-            filename = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Boxes to txt', os.path.expanduser("~"), ".txt")
+            filename, _filter = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Boxes to txt', os.path.expanduser("~"), ".txt")
             filename=str(filename)
 
 

@@ -22,6 +22,7 @@ from __future__ import division
 from PyQt5 import uic, QtWidgets, QtCore
 from PyQt5.QtGui import QColor, QPixmap, QIcon
 
+import sys
 import os
 import numpy
 import vigra
@@ -48,8 +49,6 @@ from volumina.utility import ShortcutManager
 
 from ilastik.config import cfg as ilastik_config
 
-from volumina.utility import encode_from_qstring
-    
 
 class AnnotationsGui(LayerViewerGui):
 
@@ -1536,7 +1535,7 @@ class AnnotationsGui(LayerViewerGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
-        out_fn = encode_from_qstring(QtWidgets.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/divisions.csv", options=options))
+        out_fn, _filter = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/divisions.csv", options=options).encode()
         
         if out_fn is None or str(out_fn) == '':            
             return
@@ -1563,7 +1562,8 @@ class AnnotationsGui(LayerViewerGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
-        out_fn = encode_from_qstring(QtWidgets.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/mergers.csv", options=options))
+        out_fn, _filter = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/mergers.csv", options=options)
+        out_fn = out_fn.encode( sys.getfilesystemencoding() )
         
         if out_fn is None or str(out_fn) == '':            
             return
@@ -1593,7 +1593,8 @@ class AnnotationsGui(LayerViewerGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
-        directory = encode_from_qstring(QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))      
+        directory = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options)
+        directory = directory.encode( sys.getfilesystemencoding() )      
         
         if directory is None or str(directory) == '':            
             return
@@ -1717,7 +1718,8 @@ class AnnotationsGui(LayerViewerGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
-        directory = encode_from_qstring(QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))    
+        directory = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options)
+        directory = directory.encode( sys.getfilesystemencoding() )
         if directory is None or len(str(directory)) == 0:
             return
         

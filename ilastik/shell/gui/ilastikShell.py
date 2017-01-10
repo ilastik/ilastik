@@ -54,8 +54,7 @@ from lazyflow.utility import timeLogged, isUrl
 from lazyflow.request import Request
 
 # volumina
-from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, \
-    encode_from_qstring
+from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager
 
 # ilastik
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
@@ -672,12 +671,12 @@ class IlastikShell(QMainWindow):
                 defaultPath = os.path.join(os.path.expanduser('~'), filename)
             else:
                 defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
-            statsPath = QFileDialog.getSaveFileName(
+            statsPath, _filter = QFileDialog.getSaveFileName(
                 self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
                 options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
-            if not statsPath.isNull():
-                stats_path = encode_from_qstring(statsPath)
+            if statsPath:
+                stats_path = statsPath.encode('utf-8')
                 pstats_path = os.path.splitext(stats_path)[0] + '.pstats'
                 PreferencesManager().set('shell', 'recent sorted profile stats', stats_path)
 
@@ -705,12 +704,12 @@ class IlastikShell(QMainWindow):
                 defaultPath = os.path.join(os.path.expanduser('~'), filename)
             else:
                 defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
-            statsPath = QFileDialog.getSaveFileName(
+            statsPath, _filter = QFileDialog.getSaveFileName(
                 self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
                 options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
-            if not statsPath.isNull():
-                stats_path = encode_from_qstring(statsPath)
+            if statsPath:
+                stats_path = statsPath.encode('utf-8')
                 PreferencesManager().set('shell', 'recent sorted profile stats', stats_path)
 
                 # Export the yappi stats to builtin pstats format, 
@@ -827,12 +826,12 @@ class IlastikShell(QMainWindow):
             else:
                 defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
             
-            htmlPath = QFileDialog.getSaveFileName(
+            htmlPath, _filter = QFileDialog.getSaveFileName(
                 self, "Export allocation tracking table", defaultPath, "HTML files (*.html)",
                 options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
-            if not htmlPath.isNull():
-                html_path = encode_from_qstring(htmlPath)
+            if htmlPath:
+                html_path = htmlPath.encode('utf-8')
                 PreferencesManager().set('shell', 'allocation tracking output html', html_path)
                 self._allocation_tracker.write_html(html_path)
 
@@ -902,12 +901,12 @@ class IlastikShell(QMainWindow):
         else:
             defaultPath = os.path.join(os.path.split(recentPath)[0], op.name + '.svg')
 
-        svgPath = QFileDialog.getSaveFileName(
+        svgPath, _filter = QFileDialog.getSaveFileName(
             self, "Save operator diagram", defaultPath, "Inkscape Files (*.svg)",
             options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
-        if not svgPath.isNull():
-            svgPath = encode_from_qstring(svgPath)
+        if svgPath:
+            svgPath = svgPath.encode()
             PreferencesManager().set('shell', 'recent debug diagram', svgPath)
             lazyflow.tools.schematic.generateSvgFileForOperator(svgPath, op, detail)
             QDesktopServices.openUrl(QUrl.fromLocalFile(svgPath))
@@ -941,7 +940,7 @@ class IlastikShell(QMainWindow):
             if readOnly:
                 windowTitle += " [Read Only]"
 
-        self.setWindowTitle(decode_to_qstring(windowTitle))
+        self.setWindowTitle(windowTitle.decode())
 
         # Enable/Disable menu items
         projectIsOpen = self.projectManager is not None and not self.projectManager.closed
@@ -1264,12 +1263,12 @@ class IlastikShell(QMainWindow):
                 # For testing, it's easier if we don't record the overwrite confirmation
                 options |= QFileDialog.DontConfirmOverwrite
 
-            projectFilePath = QFileDialog.getSaveFileName(self, caption, defaultPath,
+            projectFilePath, _filter = QFileDialog.getSaveFileName(self, caption, defaultPath,
                                                           "Ilastik project files (*.ilp)", options=options)
             # If the user cancelled, stop now
-            if projectFilePath.isEmpty():
+            if not projectFilePath:
                 return None
-            projectFilePath = encode_from_qstring(projectFilePath)
+            projectFilePath = projectFilePath.encode()
             fileSelected = True
 
             # Add extension if necessary
@@ -1371,14 +1370,14 @@ class IlastikShell(QMainWindow):
         if ilastik_config.getboolean("ilastik", "debug"):
             options = QFileDialog.Options(QFileDialog.DontUseNativeDialog)
 
-        projectFilePath = QFileDialog.getOpenFileName(
+        projectFilePath, _filter = QFileDialog.getOpenFileName(
             self, "Open Ilastik Project", defaultDirectory, "Ilastik project files (*.ilp)", options=options)
 
         # If the user canceled, stop now
-        if projectFilePath.isNull():
+        if not projectFilePath:
             return None
 
-        return encode_from_qstring(projectFilePath)
+        return projectFilePath.encode()
 
     def onOpenProjectActionTriggered(self):
         logger.debug("Open Project action triggered")
