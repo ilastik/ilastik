@@ -60,7 +60,7 @@ class WatershedSegmentationWorkflow(Workflow):
         super(WatershedSegmentationWorkflow, self).__init__( \
                 shell, headless, workflow_cmdline_args, project_creation_workflow, graph=graph, *args, **kwargs)
         ############################################################
-        # Init and add the applets
+        # Init and add the applets, and expose to shell
         ############################################################
         self._applets = []
 
@@ -112,6 +112,7 @@ class WatershedSegmentationWorkflow(Workflow):
 
         # -- Expose applets to shell
         self._applets.append(self.dataSelectionApplet)
+        self._applets.append(self.seedsApplet)
         self._applets.append(self.watershedSegmentationApplet)
         self._applets.append(self.dataExportApplet)
         self._applets.append(self.batchProcessingApplet)
@@ -188,11 +189,14 @@ class WatershedSegmentationWorkflow(Workflow):
 
     def handleAppletStateUpdateRequested(self):
         """
-        Overridden from Workflow base class
-        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
+        Overridden from Workflow base class.
+        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`.
+
+        Handles that the applet can be seen and used in the gui.
         """
-        opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataSelection         = self.dataSelectionApplet.topLevelOperator
+        opDataExport            = self.dataExportApplet.topLevelOperator
+        opSeeds                 = self.seedsApplet.topLevelOperator
         opWatershedSegmentation = self.watershedSegmentationApplet.topLevelOperator
 
         # If no data, nothing else is ready.
@@ -205,6 +209,8 @@ class WatershedSegmentationWorkflow(Workflow):
                 not batch_processing_busy )
         self._shell.setAppletEnabled( self.watershedSegmentationApplet,\
                 not batch_processing_busy and input_ready )
+        self._shell.setAppletEnabled( self.seedsApplet,\
+                not batch_processing_busy and input_ready )
         self._shell.setAppletEnabled( self.dataExportApplet,\
                 not batch_processing_busy and input_ready ) #TODO (add the watershedSegementation here)
                 #and opWatershedSegmentation.Superpixels.ready())
@@ -215,6 +221,7 @@ class WatershedSegmentationWorkflow(Workflow):
         #  should prevent the shell from closing the project.
         busy = False
         busy |= self.dataSelectionApplet.busy
+        busy |= self.seedsApplet.busy
         busy |= self.watershedSegmentationApplet.busy
         busy |= self.dataExportApplet.busy
         busy |= self.batchProcessingApplet.busy

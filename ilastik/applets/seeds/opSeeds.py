@@ -36,6 +36,8 @@ class OpSeeds(Operator):
     RawData             = InputSlot() # Used by the GUI for display only
     Boundaries          = InputSlot() # for displaying as layer and as input for the watershed algorithm 
     Seeds               = InputSlot(optional=True) #for displaying in layer only
+
+    Output              = OutputSlot()
     '''
     CorrectedSeedsIn    = InputSlot(optional=True) #deals as input for the LabelChange stuff 
 

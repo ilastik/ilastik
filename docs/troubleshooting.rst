@@ -31,3 +31,5 @@ Troubleshooting
             File "~/miniconda2/envs/ilastik-devel/ilastik-meta/lazyflow/lazyflow/slot.py", line 968, in __getitem__
             return self._subSlots[key]
                 IndexError: list index out of range
+
+   Then check your workflow, whether the errorous applet is correctly integrated

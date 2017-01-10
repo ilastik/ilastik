@@ -73,27 +73,37 @@ Our Workflow should inherit from:
         :noindex:
 
 
-In the init, you create all necessary applets for later use.
+* In the init, you create all necessary applets for later use and expose them to the shell
+        .. currentmodule:: ilastik.workflows.watershedSegmentation.watershedSegmentationWorkflow
+        .. automethod:: WatershedSegmentationWorkflow.__init__
 
-The function 
+* The function 
 
-.. code::
+        .. code::
 
-    def connectLane(self, laneIndex):
+            def connectLane(self, laneIndex):
 
-connects applets with each other. 
-Therefore one OutputSlot of the frist applet can be connected via 'pyQt: connect'
-to the InputSlot of the second applet. That means, the second applet gets the output of the first applet. 
+        connects applets with each other. 
+        Therefore one OutputSlot of the frist applet can be connected via 'pyQt: connect'
+        to the InputSlot of the second applet. That means, the second applet gets the output of the first applet. 
 
-Normally this looks like this (click on the source link for viewing the code):
+        Normally this looks like this (click on the source link for viewing the code):
 
-.. currentmodule:: ilastik.workflows.watershedSegmentation.watershedSegmentationWorkflow
-.. autoclass:: WatershedSegmentationWorkflow
-        :members: connectLane
-
-
-The residual of the class isn't that important for the basic understanding and make your workflow just work. 
-Of course it handles all the headless and batch modes and more. 
+        .. currentmodule:: ilastik.workflows.watershedSegmentation.watershedSegmentationWorkflow
+        .. autoclass:: WatershedSegmentationWorkflow
+                :members: connectLane
 
 
-For further information, you can read the comments in the watershedSegmentationWorkflow and look at other workflows to get a better understanding.
+
+*  
+        .. automethod:: WatershedSegmentationWorkflow.handleAppletStateUpdateRequested
+
+
+
+* In conclusion, look for "ataSelection" to get all the important parts, where you have to add something
+
+        The residual of the class isn't that important for the basic understanding and make your workflow just work. 
+        Of course it handles all the headless and batch modes and more. 
+
+
+        For further information, you can read the comments in the watershedSegmentationWorkflow and look at other workflows to get a better understanding.

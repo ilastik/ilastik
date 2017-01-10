@@ -235,6 +235,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self._labelControlUi.neighborsComboBox.addItems(["direct","indirect"])
         self._labelControlUi.neighborsComboBox.setCurrentIndex(defaultIndex)
         
+        # TODO emit signal instead, so that the default index is the value of the WSNeighbors
         op.WSNeighbors.setValue( self._labelControlUi.neighborsComboBox.itemText(defaultIndex) )
         # connect the change Event
         self._labelControlUi.neighborsComboBox.currentIndexChanged.connect(self.onNeighborsComboBoxCurrentIndexChanged)

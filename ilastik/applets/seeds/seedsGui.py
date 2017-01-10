@@ -19,10 +19,13 @@
 #           http://ilastik.org/license.html
 ##############################################################################
 
-#import numpy as np
+#import numpy as Qtnp
 from PyQt4.Qt import pyqtSlot
+from PyQt4 import uic, QtCore
+import os
 
-from ilastik.applets.watershedLabeling.watershedLabelingGui import WatershedLabelingGui
+#from ilastik.applets.watershedLabeling.watershedLabelingGui import WatershedLabelingGui
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 import logging
 logger = logging.getLogger(__name__)
@@ -32,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 #LayerViewerGui->LabelingGui->WatershedLabelingGui
 class SeedsGui(LayerViewerGui):
+#class SeedsGui(WatershedLabelingGui):
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -40,15 +44,51 @@ class SeedsGui(LayerViewerGui):
         return self
     
 
+    def appletDrawer(self):
+        return self._drawer
+    ###########################################
+    ###########################################
+
+
+    def initAppletDrawerUi(self):
+        """
+        Reimplemented from LayerViewerGui base class.
+        """
+        # Load the ui file (find it in our own directory)
+        localDir = os.path.split(__file__)[0]
+        self._drawer = uic.loadUi(localDir+"/seeds.ui")
     
     def __init__(self, parentApplet, topLevelOperatorView, DrawerUiPath=None ):
 
         self.topLevelOperatorView = topLevelOperatorView
         op = self.topLevelOperatorView 
 
-        #TODO
-        super(SeedsGui, self).__init__( parentApplet, \
-                labelSlots, topLevelOperatorView, watershedLabelingDrawerUiPath )
+        self.__cleanup_fns = []
+        super( SeedsGui, self ).__init__(parentApplet, topLevelOperatorView)
+
+        self._drawer.unseededCheckBox.stateChanged.connect(self.onUnseededCheckBoxStateChanged)
+
+
+    def setEnabledEverthingButUnseeded(self, enable):
+        gui = self._drawer
+        guiElements = [
+            gui.smoothingComboBox,
+            gui.smoothingDoubleSpinBox,
+            gui.computeComboBox,
+            gui.generateButton
+        ]
+
+        for widget in guiElements:
+            widget.setEnabled(enable) 
+
+    def onUnseededCheckBoxStateChanged(self,state):
+        if (state == QtCore.Qt.Checked):
+            self.setEnabledEverthingButUnseeded(False)
+        else:
+            self.setEnabledEverthingButUnseeded(True)
+
+
+
 
 
     '''
