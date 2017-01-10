@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage
-from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal
+from PyQt5.QtGui import QColor, QPixmap, QIcon, QPainter, QPen, QImage
+from PyQt5.QtCore import QObject, QAbstractTableModel, QItemSelectionModel, Qt, QModelIndex, pyqtSignal
 
 # unicode support
 from volumina.utility import encode_from_qstring, decode_to_qstring

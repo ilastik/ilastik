@@ -1025,7 +1025,7 @@ class AppletSerializer(object):
     def repairFile(self,path,filt = None):
         """get new path to lost file"""
         
-        from PyQt4.QtGui import QFileDialog,QMessageBox
+        from PyQt5.QtWidgets import QFileDialog,QMessageBox
         from volumina.utility import encode_from_qstring
         
         text = "The file at {} could not be found any more. Do you want to search for it at another directory?".format(path)

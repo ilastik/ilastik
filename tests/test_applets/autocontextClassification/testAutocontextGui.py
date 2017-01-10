@@ -20,7 +20,7 @@
 ###############################################################################
 import os
 import numpy
-from PyQt4.QtGui import QApplication
+from PyQt5.QtWidgets import QApplication
 from volumina.layer import AlphaModulatedLayer
 from ilastik.workflows.autocontextClassification.autocontextClassificationWorkflow import AutocontextClassificationWorkflow
 from tests.helpers import ShellGuiTestCaseBase

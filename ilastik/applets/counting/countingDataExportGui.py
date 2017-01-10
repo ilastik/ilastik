@@ -19,7 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
-from PyQt4.QtGui import QColor, QMessageBox, QFileDialog
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QMessageBox, QFileDialog
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
 

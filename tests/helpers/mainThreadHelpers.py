@@ -22,8 +22,9 @@ import nose
 import threading
 from functools import partial
 
-from PyQt4.QtCore import Qt, QEvent, QPoint, QTimer, Qt
-from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, qApp
+from PyQt5.QtCore import Qt, QEvent, QPoint, QTimer, Qt
+from PyQt5.QtWidgets import QApplication, qApp
+from PyQt5.QtGui import QPixmap, QMouseEvent
 
 mainThreadPauseEvent = threading.Event()
 mainFunc = None

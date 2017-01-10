@@ -33,7 +33,7 @@ def init_early_exit_excepthook():
     This excepthook is used during automated testing.
     If an unhandled exception occurs, it is logged and the app exits immediately.
     """
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
     def print_exc_and_exit(*exc_info):
         _log_exception( *exc_info )
         logger.error("Exiting early due to an unhandled exception.  See error output above.\n")

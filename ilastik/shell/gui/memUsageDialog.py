@@ -22,8 +22,8 @@
 import numpy
 
 #PyQt
-from PyQt4.QtCore import QTimer, Qt
-from PyQt4.QtGui import QDialog, QVBoxLayout, QTreeWidget, QTreeWidgetItem
+from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QTreeWidget, QTreeWidgetItem
 
 #lazyflow
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
@@ -179,7 +179,7 @@ class MemUsageDialog(QDialog):
 
 
 if __name__ == "__main__":
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
     import pickle
 
     app = QApplication([])

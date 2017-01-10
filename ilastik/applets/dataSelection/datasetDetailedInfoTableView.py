@@ -18,9 +18,10 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
-from PyQt4.QtGui import QTableView, QHeaderView, QMenu, QAction, QWidget, \
-        QHBoxLayout, QPushButton, QIcon, QItemDelegate
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QAction, QWidget, \
+                            QHBoxLayout, QPushButton, QItemDelegate
 
 from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
 from addFileButton import AddFileButton, FILEPATH

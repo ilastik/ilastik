@@ -83,7 +83,7 @@ class NansheWorkflow(Workflow):
         opDataExport.Inputs[0].connect( opPostprocessing.Output )
 
     def menus(self):
-        from PyQt4.QtGui import QMenu
+        from PyQt5.QtWidgets import QMenu
 
         if self._menus is None:
             self._menus = []
@@ -106,7 +106,7 @@ class NansheWorkflow(Workflow):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
     def _import_configuration(self):
-        from PyQt4.QtGui import QFileDialog
+        from PyQt5.QtWidgets import QFileDialog
 
         filename = QFileDialog.getOpenFileName(caption="Import Configuration", filter="*.json")
         filename = str(filename)
@@ -274,7 +274,7 @@ class NansheWorkflow(Workflow):
         )
 
     def _export_configuration(self):
-        from PyQt4.QtGui import QFileDialog
+        from PyQt5.QtWidgets import QFileDialog
         import json
         from collections import OrderedDict
 

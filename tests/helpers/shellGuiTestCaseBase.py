@@ -26,8 +26,9 @@ import atexit
 import platform
 from functools import partial
 
-from PyQt4.QtCore import Qt, QEvent, QPoint, QTimer
-from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, qApp
+from PyQt5.QtCore import Qt, QEvent, QPoint, QTimer
+from PyQt5.QtGui import QPixmap, QMouseEvent
+from PyQt5.QtWidgets import QApplication, qApp
 
 import ilastik.config
 from ilastik.shell.gui.startShellGui import launchShell

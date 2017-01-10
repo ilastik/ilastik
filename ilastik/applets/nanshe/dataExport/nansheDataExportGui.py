@@ -23,10 +23,10 @@ __date__ = "$Nov 12, 2014 13:41:31 EST$"
 
 
 
-import PyQt4
-from PyQt4 import uic, QtCore
-from PyQt4.QtGui import QColor
-from PyQt4.QtCore import Qt
+import PyQt5
+from PyQt5 import uic, QtCore
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import Qt
 
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 

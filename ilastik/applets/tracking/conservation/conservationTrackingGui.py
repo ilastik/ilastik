@@ -1,11 +1,12 @@
-from PyQt4 import uic, QtGui
-from PyQt4.QtGui import *
+from PyQt5 import uic, QtWidgets
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 import os
 import logging
 import sys
 import re
 import traceback
-from PyQt4.QtCore import pyqtSignal
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility import log_exception
 from ilastik.utility.exportingOperator import ExportingGui
@@ -342,7 +343,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         req.submit()
 
     def menus(self):
-        m = QtGui.QMenu("&Export", self.volumeEditorWidget)
+        m = QtWidgets.QMenu("&Export", self.volumeEditorWidget)
         m.addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
 
         return [m]

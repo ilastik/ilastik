@@ -20,7 +20,7 @@
 ###############################################################################
 import sys
 from functools import partial
-from PyQt4.QtGui import QApplication
+from PyQt5.QtWidgets import QApplication
 
 import threading
 # This function was copied from: http://bugs.python.org/issue1230540

@@ -1,4 +1,4 @@
-from PyQt4 import uic, QtGui, QtCore
+from PyQt5 import uic, QtWidgets, QtCore
 
 import os
 import logging
@@ -880,7 +880,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         req.submit()
 
     def menus(self):
-        m = QtGui.QMenu("&Export", self.volumeEditorWidget)
+        m = QtWidgets.QMenu("&Export", self.volumeEditorWidget)
         m.addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
 
         return [m]
@@ -991,5 +991,5 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
     @threadRouted
     def postInformationMessage(self, prompt):
-        QtGui.QMessageBox.information(self, "Info:", prompt, QtGui.QMessageBox.Ok)
+        QtWidgets.QMessageBox.information(self, "Info:", prompt, QtWidgets.QMessageBox.Ok)
 

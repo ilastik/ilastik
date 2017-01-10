@@ -36,5 +36,5 @@ setup(name='ilastik',
       description='Interactive Image Analysis',
       url='https://github.com/Ilastik',
       packages=packages,
-      package_data=package_data, requires=['PyQt4', 'numpy', 'h5py']
+      package_data=package_data, requires=['PyQt5', 'numpy', 'h5py']
      )

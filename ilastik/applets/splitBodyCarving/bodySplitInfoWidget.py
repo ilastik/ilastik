@@ -22,10 +22,11 @@ import sys
 import os
 from functools import partial
 
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, pyqtSignal
-from PyQt4.QtGui import QWidget, QFileDialog, QMessageBox, QTreeWidgetItem, QTableWidgetItem, \
-                        QPushButton, QTableView, QHeaderView, QIcon, QProgressBar
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtWidgets import QWidget, QFileDialog, QMessageBox, QTreeWidgetItem, QTableWidgetItem, \
+                            QPushButton, QTableView, QHeaderView, QProgressBar
+from PyQt5.QtGui import QIcon
 
 from volumina.utility import encode_from_qstring, decode_to_qstring
 from ilastik.shell.gui.iconMgr import ilastikIcons

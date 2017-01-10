@@ -24,9 +24,10 @@ import threading
 
 import numpy as np
 
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QComboBox, QVBoxLayout, \
-                        QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QPushButton, QIcon
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QPen, QIcon
+from PyQt5.QtWidgets import QWidget, QLabel, QDoubleSpinBox, QComboBox, QVBoxLayout, \
+                            QHBoxLayout, QSpacerItem, QSizePolicy, QPushButton
 
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource

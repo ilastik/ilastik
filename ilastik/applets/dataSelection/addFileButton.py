@@ -18,8 +18,9 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtCore import pyqtSignal
-from PyQt4.QtGui import QMenu, QPushButton, QIcon
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QMenu, QPushButton
+from PyQt5.QtGui import QIcon
 
 # this is used to find the location of the icon file
 import os.path

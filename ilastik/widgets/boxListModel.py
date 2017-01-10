@@ -18,13 +18,13 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage, QDialog,QColorDialog,QGraphicsTextItem
-from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal,QString,QVariant
-from listModel import ListModel,ListElement,_NPIXELS
+from PyQt5 import uic
+from PyQt5.QtGui import QColor, QPixmap, QIcon, QPainter, QPen, QImage
+from PyQt5.QtWidgets import QDialog, QColorDialog, QGraphicsTextItem
+from PyQt5.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal, QVariant, QItemSelectionModel
+from listModel import ListModel, ListElement, _NPIXELS
 #from labelListModel import LabelListModel
 import logging
-from PyQt4.uic.Compiler.qtproxies import QtGui
-from PyQt4 import uic
 import os
 logger = logging.getLogger(__name__)
 

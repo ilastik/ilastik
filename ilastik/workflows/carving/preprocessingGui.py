@@ -24,8 +24,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 #PyQt
-from PyQt4 import uic
-from PyQt4.QtGui import QMainWindow, QIcon, QMessageBox
+from PyQt5 import uic
+from PyQt5.QtWidgets import QMainWindow, QMessageBox
+from PyQt5.QtGui import QIcon
 
 #ilastik
 from ilastik.shell.gui.iconMgr import ilastikIcons

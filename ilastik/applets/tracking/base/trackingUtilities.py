@@ -316,7 +316,7 @@ class LineageTrees():
                   show_branch_length=False, circularTree=False, show_division_nodes=True, 
                   distance_between_branches=4, show_border=False, width=None, height=None):            
         from ete2 import TreeStyle        
-        from PyQt4 import QtSvg, QtCore, QtGui
+        from PyQt5 import QtSvg, QtCore, QtWidgets
         from ete2.treeview import qt4_render, drawer, main
         
           
@@ -367,7 +367,7 @@ class LineageTrees():
             svg.setFileName("test.svg")
             svg.setSize(QtCore.QSize(w, h))
             svg.setViewBox(size)
-            pp = QtGui.QPainter()
+            pp = QtWidgets.QPainter()
             pp.begin(svg)            
             scene.render(pp, tree_item.rect(), tree_item.rect(), QtCore.Qt.KeepAspectRatio)
 

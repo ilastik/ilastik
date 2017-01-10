@@ -18,9 +18,10 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QColor, QTreeWidgetItem, QMessageBox, QHeaderView, QResizeEvent, QMouseEvent
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, QEvent
+from PyQt5.QtWidgets import QTreeWidgetItem, QMessageBox, QHeaderView, QResizeEvent, QMouseEvent
+from PyQt5.QtGui import QColor
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, QEvent
 
 from lazyflow.rtype import SubRegion
 import os
@@ -44,8 +45,8 @@ from volumina.utility import encode_from_qstring
 import vigra
 import numpy
 
-from PyQt4 import QtGui
-from PyQt4.QtGui import QDialog, QFileDialog
+from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import QDialog, QFileDialog
 
 import cPickle as pickle
 import threading
@@ -646,7 +647,7 @@ class ObjectExtractionGui(LayerViewerGui):
         logger.debug("Exported object features to file '{}'".format(fname))
 
 
-from PyQt4.QtGui import QWidget
+from PyQt5.QtWidgets import QWidget
 class ObjectExtractionGuiNonInteractive(QWidget):
     """
     In non-interactive mode, we don't use any object extraction gui at all.
@@ -678,8 +679,8 @@ class ObjectExtractionGuiNonInteractive(QWidget):
 # Quick GUI testing...
 #
 if __name__ == "__main__":
-    from PyQt4.QtGui import QApplication
-    from PyQt4.QtCore import QTimer
+    from PyQt5.QtWidgets import QApplication
+    from PyQt5.QtCore import QTimer
     
     app = QApplication([])
     

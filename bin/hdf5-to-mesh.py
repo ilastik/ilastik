@@ -16,8 +16,8 @@ import shutil
 import tempfile
 
 import h5py
-from PyQt4.QtCore import QTimer
-from PyQt4.QtGui import QApplication
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication
 from vtk import vtkPolyDataWriter
 
 from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog

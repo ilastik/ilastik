@@ -18,8 +18,9 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QColor, QPushButton, QVBoxLayout
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QPushButton, QVBoxLayout
+from PyQt5.QtGui import QColor
 from ilastik.utility.exportingOperator import ExportingGui
 import volumina.colortables as colortables
 

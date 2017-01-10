@@ -18,9 +18,9 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QImage
-from PyQt4.QtCore import Qt, pyqtSignal, QModelIndex
-from listModel import ListModel,ListElement,_NPIXELS
+from PyQt5.QtGui import QColor, QPixmap, QIcon, QImage
+from PyQt5.QtCore import Qt, pyqtSignal, QModelIndex, QItemSelectionModel
+from listModel import ListModel, ListElement, _NPIXELS
 
 import logging
 logger = logging.getLogger(__name__)

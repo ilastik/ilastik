@@ -33,7 +33,7 @@ DATA_FILES = []
 
 includes = [\
                 'h5py', 'h5py.defs', 'h5py.utils', 'h5py._proxy', 'h5py._errors', 'h5py.h5ac', 'h5py._objects',
-                'PyQt4.pyqtconfig', 'PyQt4.uic','PyQt4.QtCore','PyQt4.QtGui',
+                'PyQt5.pyqtconfig', 'PyQt5.uic','PyQt5.QtCore','PyQt5.QtGui','PyQt5.QtWidgets',
                 'site', 'os',
                 'vtk',
                 'rank_filter', 'nanshe',
@@ -44,7 +44,7 @@ includes = [\
 
 # The py2app dependency walker finds this code, which is intended only for Python3.
 # Exclude it!
-excludes= ['PyQt4.uic.port_v3']
+excludes= ['PyQt5.uic.port_v3']
 
 # By default, cplex is excluded from the bundle.
 if '--include-cplex' in sys.argv:

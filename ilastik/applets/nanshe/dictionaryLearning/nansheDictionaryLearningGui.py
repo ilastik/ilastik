@@ -28,10 +28,11 @@ import os
 
 import numpy
 
-import PyQt4
-from PyQt4 import uic, QtCore
-from PyQt4.QtCore import QString
-from PyQt4.QtGui import QIcon, QMessageBox
+import PyQt5
+from PyQt5 import uic, QtCore
+from PyQt5.QtCore import QString
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QMessageBox
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 

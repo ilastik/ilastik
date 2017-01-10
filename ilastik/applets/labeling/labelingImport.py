@@ -30,9 +30,9 @@ from lazyflow.operators import opArrayCache
 logger = logging.getLogger(__name__)
 
 #Qt
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, QEvent
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox, QCheckBox, QSpinBox, QLabel, QValidator, QProgressDialog, QApplication, QCloseEvent
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QMessageBox, QCheckBox, QSpinBox, QLabel, QValidator, QProgressDialog, QApplication, QCloseEvent
 
 # volumina
 from volumina.utility import PreferencesManager

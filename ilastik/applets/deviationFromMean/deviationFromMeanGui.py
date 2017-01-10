@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4 import uic
+from PyQt5 import uic
 
 import os
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui

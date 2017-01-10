@@ -28,12 +28,9 @@
 #===============================================================================
 
 
-from PyQt4 import QtCore,QtGui
-from PyQt4.QtCore import QObject, pyqtSignal, QEvent
-from PyQt4.QtGui import QBrush,QColor,QMouseEvent
-from PyQt4.QtCore import Qt,QTimer,SIGNAL, QPointF
-from PyQt4.QtGui import QPen
-from PyQt4.QtGui import QApplication
+from PyQt5.QtGui import QBrush, QColor, QMouseEvent, QPen, QBrush
+from PyQt5.QtCore import Qt, QObject, pyqtSignal, QEvent, QTimer, SIGNAL, QPointF
+from PyQt5.QtWidgets import QApplication, QGraphicsEllipseItem
 
 
 from volumina.pixelpipeline.datasources import LazyflowSource
@@ -89,17 +86,17 @@ class DotSignaller(QObject):
     deletedSignal = pyqtSignal(object)
     
 
-class QDot(QtGui.QGraphicsEllipseItem):
-    hoverColor    = QtGui.QColor(255, 255, 255)
+class QDot(QGraphicsEllipseItem):
+    hoverColor    = QColor(255, 255, 255)
 
-    def __init__(self, pos, radius,Signaller=DotSignaller(),normalColor=QtGui.QColor(255, 0, 0)):
+    def __init__(self, pos, radius,Signaller=DotSignaller(),normalColor=QColor(255, 0, 0)):
         y, x = pos
         x = x + 0.5
         y = y + 0.5
         size = radius * 2
         super(QDot, self).__init__(y - radius, x - radius, size, size)
         self.setAcceptHoverEvents(True)
-        self.setAcceptedMouseButtons(QtCore.Qt.RightButton)
+        self.setAcceptedMouseButtons(Qt.RightButton)
         self.x = x
         self.y = y
         self._radius = radius
@@ -112,7 +109,7 @@ class QDot(QtGui.QGraphicsEllipseItem):
     def hoverEnterEvent(self, event):
         event.setAccepted(True)
         self.hovering = True
-        self.setCursor(QtCore.Qt.BlankCursor)
+        self.setCursor(Qt.BlankCursor)
         self.radius = self.radius # modified radius b/c hovering
         self.updateColor()
 
@@ -124,7 +121,7 @@ class QDot(QtGui.QGraphicsEllipseItem):
         self.updateColor()
 
     def mousePressEvent(self, event):
-        if QtCore.Qt.RightButton == event.button():
+        if Qt.RightButton == event.button():
             event.setAccepted(True)
             self.Signaller.deletedSignal.emit(self)
 
@@ -147,8 +144,8 @@ class QDot(QtGui.QGraphicsEllipseItem):
 
     def updateColor(self):
         color = self.hoverColor if self.hovering else self._normalColor
-        self.setPen(QtGui.QPen(color))
-        self.setBrush(QtGui.QBrush(color, QtCore.Qt.SolidPattern))
+        self.setPen(QPen(color))
+        self.setBrush(QBrush(color, Qt.SolidPattern))
 
     def pos(self):
         return (self.y-0.5,self.x-0.5)
@@ -193,7 +190,7 @@ class DotInterpreter(BrushingInterpreter):
             
             if event.type()==QEvent.KeyPress:
                 if event.key()==Qt.Key_Control :
-                    QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
+                    QApplication.setOverrideCursor(Qt.OpenHandCursor)
 
             if event.type()==QEvent.KeyRelease:
                 if event.key()==Qt.Key_Control :

@@ -27,9 +27,11 @@ from functools import partial
 
 # Third-party
 import numpy
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtGui import QColor, QKeySequence, QIcon
+from PyQt5.QtWidgets import QMessageBox, QShortcut, QPushButton, QWidget
+
 
 # HCI
 from lazyflow.utility import Tracer, traceLogged

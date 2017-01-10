@@ -28,8 +28,8 @@ import os
 
 import numpy
 
-import PyQt4
-from PyQt4 import uic, QtCore
+import PyQt5
+from PyQt5 import uic, QtCore
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 

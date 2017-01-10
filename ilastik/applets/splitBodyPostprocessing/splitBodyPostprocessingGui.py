@@ -22,8 +22,9 @@ import os
 import numpy
 from functools import partial
 
-from PyQt4 import uic
-from PyQt4.QtGui import QColor, QFileDialog, QShortcut, QKeySequence
+from PyQt5 import uic
+from PyQt5.QtWidgets import QFileDialog, QShortcut
+from PyQt5.QtGui import QColor, QKeySequence
 
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer

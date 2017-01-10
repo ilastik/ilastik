@@ -24,9 +24,9 @@ import logging
 from functools import partial
 
 # Qt
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, QEvent
-from PyQt4.QtGui import QColor
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtGui import QColor
 
 from ilastik.utility.gui import threadRouted
 from volumina.api import LazyflowSource, ColortableLayer

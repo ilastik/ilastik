@@ -19,7 +19,9 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from functools import partial
-from PyQt4.QtGui import QColor, QFileDialog, QMessageBox, QMenu, QWidgetAction, QLabel
+from PyQt5.QtWidgets import QFileDialog, QMessageBox, QMenu, QWidgetAction, QLabel
+from PyQt5.QtGui import QColor
+
 
 from volumina.api import LazyflowSource, ColortableLayer
 import volumina.colortables as colortables

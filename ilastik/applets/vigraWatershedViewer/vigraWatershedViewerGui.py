@@ -20,9 +20,10 @@
 ##############################################################################
 
 import sip
-from PyQt4 import uic
-from PyQt4.QtCore import pyqtSlot
-from PyQt4.QtGui import QShortcut, QKeySequence
+from PyQt5 import uic
+from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtWidgets import QShortcut
+from PyQt5.QtGui import QKeySequence
 
 import os
 import time

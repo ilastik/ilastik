@@ -18,10 +18,11 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import *
-from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal
-from PyQt4.QtGui import QFileDialog
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5 import uic
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal
+from PyQt5.QtWidgets import QFileDialog
 from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
 
 from ilastik.widgets.featureTableWidget import FeatureEntry

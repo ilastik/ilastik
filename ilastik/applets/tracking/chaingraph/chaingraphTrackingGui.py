@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4 import uic, QtGui
+from PyQt5 import uic
 import os
 
 import logging

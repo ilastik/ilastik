@@ -29,7 +29,7 @@ import os
 import sys
 import numpy
 import vigra
-from PyQt4.QtGui import QApplication
+from PyQt5.QtWidgets import QApplication
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 

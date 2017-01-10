@@ -18,8 +18,9 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QWidget, QVBoxLayout, QColor
-from PyQt4 import uic
+from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtGui import QColor
+from PyQt5 import uic
 from volumina.api import ColortableLayer
 from volumina.pixelpipeline.datasources import LazyflowSource
 

@@ -24,7 +24,8 @@ import os
 from functools import partial
 import numpy
 
-from PyQt4.QtGui import QColor, QShortcut, QKeySequence
+from PyQt5.QtWidgets import QShortcut
+from PyQt5.QtGui import QColor, QKeySequence
 
 from lazyflow.roi import TinyVector
 

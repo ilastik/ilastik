@@ -26,9 +26,10 @@ from functools import partial
 
 # Third-party
 import numpy
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, pyqtSlot, QVariant, pyqtRemoveInputHook, pyqtRestoreInputHook
-from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem, QApplication, QCursor, QAction
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, pyqtSlot, QVariant, pyqtRemoveInputHook, pyqtRestoreInputHook
+from PyQt5.QtWidgets import QMessageBox, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem, QApplication, QAction
+from PyQt5.QtGui import QColor, QIcon, QMenu, QDialog, QCursor
 
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer

@@ -22,8 +22,8 @@ import os
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt4 import uic
-from PyQt4.QtGui import QWidget
+from PyQt5 import uic
+from PyQt5.QtWidgets import QWidget
 
 from volumina.utility import encode_from_qstring, decode_to_qstring
 
