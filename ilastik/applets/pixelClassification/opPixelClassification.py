@@ -43,7 +43,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
-#from PyQt4.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
+#from PyQt5.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
 
 class OpPixelClassification( Operator ):
     """

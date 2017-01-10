@@ -21,10 +21,10 @@
 import os
 from functools import partial
 
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, pyqtSignal
-from PyQt4.QtGui import QColorDialog, QVBoxLayout, QPushButton, QDialog, \
-                        QColor, QWidget, QMenu
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QColorDialog, QVBoxLayout, QPushButton, QDialog, QWidget, QMenu
 
 from labelListModel import LabelListModel, Label
 from listView import ListView
@@ -109,7 +109,7 @@ class LabelListView(ListView):
 if __name__ == '__main__':
     import numpy
     import sys
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
 

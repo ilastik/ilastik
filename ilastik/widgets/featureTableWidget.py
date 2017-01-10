@@ -19,12 +19,12 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QVBoxLayout, QLabel, QPixmap, QPainter, \
-                        QTableWidgetItem, QItemDelegate, QStyle, QHBoxLayout, QIcon, QHeaderView, \
-                        QAbstractItemView, QDialog, QToolButton, \
-                        QTableWidget, QBrush, QColor, QPalette, \
-                        QFont, QPen, QPolygon, QSlider, QImage
-from PyQt4.QtCore import Qt, QRect, QSize, QEvent, QPoint, pyqtSignal
+from PyQt5.QtGui import QPixmap, QPainter, QIcon, QBrush, QColor, \
+                        QPalette, QFont, QPen, QPolygon, QImage
+from PyQt5.QtWidgets import QVBoxLayout, QLabel, QTableWidgetItem, QItemDelegate, QStyle, \
+                            QHBoxLayout, QHeaderView, QAbstractItemView, QDialog, QToolButton, \
+                            QTableWidget, QSlider, 
+from PyQt5.QtCore import Qt, QRect, QSize, QEvent, QPoint, pyqtSignal
 
 import numpy
 from volumina.utility import decode_to_qstring
@@ -720,7 +720,7 @@ class SliderDlg(QDialog):
             return self.oldSigma
 
 if __name__ == '__main__':
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
 
     app = QApplication([])
     t = FeatureTableWidget()

@@ -1,7 +1,8 @@
 import collections
 
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QDialog, QPushButton, QWidget, QLabel, QTableWidget, QTableWidgetItem, QGridLayout, QColor
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QDialog, QPushButton, QWidget, QLabel, QTableWidget, QTableWidgetItem, QGridLayout
+from PyQt5.QtGui import QColor
 import re
 
 # Overload QTableWidgetItem class to allow comparisons of float instead of strings
@@ -85,7 +86,7 @@ class VariableImportanceDialog(QDialog):
         self.setLayout(layout)
 
 if __name__ == "__main__":
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
     
     named_importances = { 'feature_1' : [1.2,4.3,3.1,4.8], 'feature_2' : [7.4,3.4,5.5,5.9], 'feature_3' : [1,2,3.5,5.2] , 'feature_4' : [1.9,9.1,2.5,7.1] , 'feature_5' : [6.4,2.0,8.5,1.1]  }
 

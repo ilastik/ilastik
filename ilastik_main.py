@@ -335,7 +335,7 @@ def _prepare_test_recording_and_playback( parsed_args ):
         eventcapture_mode = 'record'
     elif parsed_args.playback_script is not None:
         # Only import GUI modules in non-headless mode.
-        from PyQt4.QtGui import QApplication
+        from PyQt5.QtWidgets import QApplication
         eventcapture_mode = 'playback'
         # See EventRecordingApp.create_app() for details
         playback_args['playback_script'] = parsed_args.playback_script

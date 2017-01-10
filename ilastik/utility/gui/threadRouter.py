@@ -20,7 +20,7 @@
 ###############################################################################
 import threading
 from functools import partial, wraps
-from PyQt4.QtCore import QObject, pyqtSignal, Qt
+from PyQt5.QtCore import QObject, pyqtSignal, Qt
 
 class ThreadRouter(QObject):
     """
@@ -90,7 +90,7 @@ threadRouted = threadRoutedWithRouter(None)
 
 if __name__ == "__main__":
     import time
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
 
     class TestObject(QObject):
         

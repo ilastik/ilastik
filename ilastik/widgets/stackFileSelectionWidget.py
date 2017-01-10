@@ -22,9 +22,9 @@ import os
 import glob
 from functools import partial
 
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, QEvent
-from PyQt4.QtGui import (
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtWidgets import (
     QDialogButtonBox, QComboBox, QDialog, QFileDialog, QLabel, QMessageBox, QVBoxLayout
 )
 
@@ -387,7 +387,7 @@ class StackFileSelectionWidget(QDialog):
         return False
 
 if __name__ == "__main__":
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
     
     app = QApplication([])
     w = StackFileSelectionWidget(None)

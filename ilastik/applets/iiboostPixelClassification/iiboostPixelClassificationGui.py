@@ -1,6 +1,6 @@
 import os
 
-from PyQt4.QtGui import QMessageBox, QPushButton
+from PyQt5.QtWidgets import QMessageBox, QPushButton
 
 from ilastik.applets.pixelClassification.pixelClassificationGui import PixelClassificationGui
 

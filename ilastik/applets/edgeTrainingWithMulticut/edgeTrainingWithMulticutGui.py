@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy
 
 from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingGui
 from ilastik.applets.multicut.multicutGui import MulticutGuiMixin

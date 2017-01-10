@@ -30,9 +30,10 @@ import numpy
 import h5py
 
 # PyQt
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QApplication, QAbstractItemView, QFileDialog, QMessageBox, QCursor
-from PyQt4 import uic
+from PyQt5 import uic
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QCursor
+from PyQt5.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QMessageBox
 
 # lazyflow
 from lazyflow.operators.generic import OpSubRegion

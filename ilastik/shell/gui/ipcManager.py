@@ -6,7 +6,7 @@ import json
 from itertools import chain
 from collections import OrderedDict
 from operator import itemgetter
-from PyQt4.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 from ilastik.utility.commandProcessor import CommandProcessor
 
 try:
@@ -14,7 +14,7 @@ try:
 except ImportError:
     zmq = None
 from sys import platform as platform_
-from PyQt4.QtGui import QInputDialog
+from PyQt5.QtWidgets import QInputDialog
 
 from ilastik.widgets.ipcserver.ipcServerInfoWindow import IPCServerInfoWindow
 from ilastik.utility.decorators import lazy

@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QTreeWidgetItem, QTreeWidget, QTreeWidgetItemIterator
-from PyQt4.QtCore import pyqtSignal, Qt, QEvent, SIGNAL
+from PyQt5.QtWidgets import QTreeWidgetItem, QTreeWidget, QTreeWidgetItemIterator
+from PyQt5.QtCore import pyqtSignal, Qt, QEvent, SIGNAL
 
 class OverlayTreeWidgetIter(QTreeWidgetItemIterator):
     def __init__(self, *args):
@@ -166,7 +166,7 @@ if __name__ == "__main__":
     #make the program quit on Ctrl+C
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    from PyQt4.QtGui import *
+    from PyQt5.QtWidgets import *
         
     app = QApplication(sys.argv)
     

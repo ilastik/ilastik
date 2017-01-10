@@ -23,10 +23,11 @@ from contextlib import contextmanager
 
 import numpy as np
 
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, \
-                        QSpacerItem, QSizePolicy, QColor, QPen, QPushButton, QMessageBox, \
-                        QAction, QMenu, QIcon
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QPen, QIcon
+from PyQt5.QtWidgets import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, \
+                            QSpacerItem, QSizePolicy, QPushButton, QMessageBox, \
+                            QAction, QMenu
 
 from ilastikrag.gui import FeatureSelectionDialog
 

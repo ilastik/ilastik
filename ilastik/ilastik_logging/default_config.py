@@ -140,7 +140,7 @@ def get_default_config( prefix="",
             # This logger captures warnings module warnings
             "py.warnings":                             {  "level":"WARN", "handlers":warnings_module_handlers, "propagate": False },
 
-            "PyQt4": {"level":"INFO"},
+            "PyQt5": {"level":"INFO"},
             
             # The requests module spits out a lot of INFO messages by default.
             "requests": {"level":"WARN"},

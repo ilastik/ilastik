@@ -19,8 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from functools import partial
-from PyQt4.QtCore import pyqtSignal, Qt
-from PyQt4.QtGui import QTableView, QHeaderView, QItemSelection, QItemSelectionModel, QMenu, QPushButton, QAction
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtWidgets import QTableView, QHeaderView, QItemSelection, QItemSelectionModel, QMenu, QPushButton, QAction
 
 from dataLaneSummaryTableModel import DataLaneSummaryTableModel, LaneColumn, DatasetInfoColumn
 from addFileButton import AddFileButton

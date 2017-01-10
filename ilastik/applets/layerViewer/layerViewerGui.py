@@ -29,9 +29,10 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 import numpy
 
 #PyQt
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import *
-from PyQt4 import uic
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5 import uic
 
 import vigra
 

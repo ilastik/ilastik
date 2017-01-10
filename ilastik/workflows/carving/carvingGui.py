@@ -26,9 +26,10 @@ from collections import defaultdict
 import numpy
 
 #PyQt
-from PyQt4 import uic
-from PyQt4.QtCore import QTimer
-from PyQt4.QtGui import QColor, QMenu, QMessageBox, QFileDialog
+from PyQt5 import uic
+from PyQt5.QtCore import QTimer
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QMenu, QMessageBox, QFileDialog
 
 #volumina
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource

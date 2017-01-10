@@ -1,5 +1,5 @@
-from PyQt4.QtCore import pyqtSignal
-from PyQt4.QtGui import QToolBox
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QToolBox
 
 class AppletDrawerToolBox(QToolBox):
     """
@@ -177,7 +177,7 @@ class AppletDrawerToolBox(QToolBox):
         return -1
 
 if __name__ == "__main__":
-    from PyQt4.QtGui import QApplication, QWidget, QLabel
+    from PyQt5.QtWidgets import QApplication, QWidget, QLabel
 
     app = QApplication([])
     w = QWidget()

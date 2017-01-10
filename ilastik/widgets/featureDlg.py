@@ -18,13 +18,14 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QDialog
 import sys        
 import os
-from PyQt4 import uic
 import qimage2ndarray
 import numpy
 import preView
+
+from PyQt5 import uic
+from PyQt5.QtWidgets import QDialog
 
 class FeatureDlg(QDialog):
     def __init__(self, parent=None):
@@ -84,7 +85,7 @@ if __name__ == "__main__":
     #make the program quit on Ctrl+C
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
     from featureTableWidget import FeatureEntry
     
     app = QApplication(sys.argv)

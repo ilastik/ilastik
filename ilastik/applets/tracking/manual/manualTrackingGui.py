@@ -19,8 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from PyQt4 import uic, QtGui, QtCore
-from PyQt4.QtGui import QColor
+from PyQt5 import uic, QtWidgets, QtCore
+from PyQt5.QtGui import QColor
 
 import os
 import numpy
@@ -264,7 +264,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
 
     @threadRouted
     def _addDivisionToListWidget(self, trackid, child1, child2, t_parent):
-        divItem = QtGui.QListWidgetItem("%d: %d, %d" % (trackid, child1, child2))
+        divItem = QtWidgets.QListWidgetItem("%d: %d, %d" % (trackid, child1, child2))
         divItem.setBackground(QColor(self.ct[trackid]))
         divItem.setCheckState(False)
         self._drawer.divisionsList.addItem(divItem)
@@ -437,9 +437,9 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             title += " contains track id " + str(trackids[0]) + "."
         else:
             title += " contains track ids " + str(trackids) + "."
-        menu = QtGui.QMenu( self )
+        menu = QtWidgets.QMenu( self )
         
-        menuTitle = QtGui.QAction(title, menu)
+        menuTitle = QtWidgets.QAction(title, menu)
         font = menuTitle.font()
         font.setItalic(True)
         font.setBold(True)
@@ -922,11 +922,11 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         return oid2tids, disapps, apps, divs, moves, mergers, multiMoves
         
     def _onExportDivisionsButtonPressed(self):
-        options = QtGui.QFileDialog.Options()
+        options = QtWidgets.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
-            options |= QtGui.QFileDialog.DontUseNativeDialog
+            options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
-        out_fn = encode_from_qstring(QtGui.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/divisions.csv", options=options))
+        out_fn = encode_from_qstring(QtWidgets.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/divisions.csv", options=options))
         
         if out_fn is None or str(out_fn) == '':            
             return
@@ -949,11 +949,11 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             self.applet.appletStateUpdateRequested.emit()  
     
     def _onExportMergersButtonPressed(self):        
-        options = QtGui.QFileDialog.Options()
+        options = QtWidgets.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
-            options |= QtGui.QFileDialog.DontUseNativeDialog
+            options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
-        out_fn = encode_from_qstring(QtGui.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/mergers.csv", options=options))
+        out_fn = encode_from_qstring(QtWidgets.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/mergers.csv", options=options))
         
         if out_fn is None or str(out_fn) == '':            
             return
@@ -979,11 +979,11 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             
     def _onExportButtonPressed(self):
         import h5py        
-        options = QtGui.QFileDialog.Options()
+        options = QtWidgets.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
-            options |= QtGui.QFileDialog.DontUseNativeDialog
+            options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
-        directory = encode_from_qstring(QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))      
+        directory = encode_from_qstring(QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))      
         
         if directory is None or str(directory) == '':            
             return
@@ -1103,11 +1103,11 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
     def _onExportTifButtonPressed(self):
         import vigra        
         
-        options = QtGui.QFileDialog.Options()
+        options = QtWidgets.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
-            options |= QtGui.QFileDialog.DontUseNativeDialog
+            options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
-        directory = encode_from_qstring(QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))    
+        directory = encode_from_qstring(QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))    
         if directory is None or len(str(directory)) == 0:
             return
         
@@ -1218,7 +1218,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
     @threadRouted
     def _log(self, prompt):
         self._drawer.logOutput.append(prompt)
-        self._drawer.logOutput.moveCursor(QtGui.QTextCursor.End)
+        self._drawer.logOutput.moveCursor(QtWidgets.QTextCursor.End)
         logger.info( prompt )
 
 
@@ -1246,7 +1246,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
 
     @threadRouted
     def postCriticalMessage(self, prompt):
-        QtGui.QMessageBox.critical(self, "Error", prompt, QtGui.QMessageBox.Ok)
+        QtWidgets.QMessageBox.critical(self, "Error", prompt, QtWidgets.QMessageBox.Ok)
         
     @threadRouted
     def _enableButtons(self, exceptButtons=None, enable=True):
@@ -1265,7 +1265,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
     def menus(self):
         menu_list = []
         if ilastik_config.getboolean("ilastik", "debug"):
-            menu_list.append(QtGui.QMenu("&Export", self.volumeEditorWidget))
+            menu_list.append(QtWidgets.QMenu("&Export", self.volumeEditorWidget))
             menu_list[-1].addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
 
         return menu_list

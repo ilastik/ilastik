@@ -2,7 +2,7 @@
 This is a minimal test to ensure that the app can be launched in headless mode, create a project, and exit cleanly.
 
 In particular, this test should fail if a developer has accidentally added a GUI module import statement 
-(such as "import PyQt4") in a place that might be reached during "headless mode".
+(such as "import PyQt5") in a place that might be reached during "headless mode".
 In headless mode, such import statements will fail, and so will this test.
 
 NOTE: This test only works properly 

@@ -25,9 +25,11 @@ import threading
 import numpy as np
 
 import sip
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QDoubleSpinBox, QVBoxLayout, QMenu, QAction, \
-                        QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QComboBox, QPushButton
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QPen
+from PyQt5.QtWidgets import QWidget, QLabel, QSpinBox, QDoubleSpinBox, QVBoxLayout, \
+                            QHBoxLayout, QSpacerItem, QSizePolicy, QComboBox, QPushButton, \
+                            QMenu, QAction
 
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
@@ -38,7 +40,7 @@ from lazyflow.request import Request
 from lazyflow.utility import TransposedView
 
 import logging
-from PyQt4.Qt import QCheckBox
+from PyQt5.Qt import QCheckBox
 logger = logging.getLogger(__name__)
 
 class WsdtGui(LayerViewerGui):

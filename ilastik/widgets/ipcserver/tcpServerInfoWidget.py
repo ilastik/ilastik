@@ -1,6 +1,7 @@
-from PyQt4.QtGui import *
-from PyQt4 import uic
-from PyQt4.QtCore import *
+from PyQt5 import uic
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QColor, QBrush
+from PyQt5.QtWidgets import QWidget, QMenu, QListWidgetItem
 
 import logging
 import os

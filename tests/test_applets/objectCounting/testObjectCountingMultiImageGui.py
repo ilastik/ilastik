@@ -27,8 +27,9 @@
 import os
 import numpy
 import vigra
-from PyQt4.QtGui import QApplication,QKeyEvent
-from PyQt4.QtCore import QEvent,Qt
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QKeyEvent
+from PyQt5.QtCore import QEvent,Qt
 from ilastik.workflows.counting import CountingWorkflow
 from tests.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed

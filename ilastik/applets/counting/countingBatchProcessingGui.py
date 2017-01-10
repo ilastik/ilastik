@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QPushButton, QFileDialog
+from PyQt5.QtWidgets import QPushButton, QFileDialog
 from ilastik.applets.batchProcessing.batchProcessingGui import BatchProcessingGui
 
 class CountingBatchProcessingGui(BatchProcessingGui):

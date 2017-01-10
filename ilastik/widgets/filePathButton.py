@@ -1,5 +1,5 @@
 import os
-from PyQt4.QtGui import QToolButton, QSizePolicy
+from PyQt5.QtWidgets import QToolButton, QSizePolicy
 
 class FilePathButton(QToolButton):
     """
@@ -54,7 +54,7 @@ class FilePathButton(QToolButton):
             ideal_width = self.minimumSizeHint().width()
 
 if __name__ == "__main__":
-    from PyQt4.QtGui import QApplication, QWidget, QVBoxLayout
+    from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout
     
     app = QApplication([])
 

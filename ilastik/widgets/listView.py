@@ -19,11 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
-from PyQt4.QtGui import QTableView, \
-    QAbstractItemView, \
-    QHeaderView,  QStackedWidget, \
-    QLabel, QSizePolicy
-from PyQt4.QtCore import Qt, QString
+from PyQt5.QtWidgets import QTableView, QAbstractItemView, QHeaderView,  QStackedWidget, QLabel, QSizePolicy
+from PyQt5.QtCore import Qt, QString
 
 import logging
 logger = logging.getLogger(__name__)
@@ -148,7 +145,7 @@ class ListView(QStackedWidget):
         contentH = max(90, contentH) 
         
         h = hHeader.height() + contentH + doubleFrame;
-        from PyQt4.QtCore import QSize
+        from PyQt5.QtCore import QSize
         return QSize(w,h)
 
     def sizeHint(self):

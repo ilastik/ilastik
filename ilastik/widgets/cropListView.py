@@ -19,10 +19,10 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
-from PyQt4.QtGui import QColorDialog, QVBoxLayout, QPushButton, QDialog,\
-    QColor, QWidget
-from PyQt4.QtCore import Qt, pyqtSignal, QObject, QModelIndex
-from PyQt4 import uic
+from PyQt5.QtWidgets import QColorDialog, QVBoxLayout, QPushButton, QDialog, QWidget
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import Qt, pyqtSignal, QObject, QModelIndex
+from PyQt5 import uic
 from cropListModel import CropListModel, Crop
 from listView import ListView
 

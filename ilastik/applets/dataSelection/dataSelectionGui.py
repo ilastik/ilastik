@@ -29,9 +29,9 @@ from __builtin__ import False
 logger = logging.getLogger(__name__)
 
 #PyQt
-from PyQt4 import uic
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import (
+from PyQt5 import uic
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (
     QDialog, QFileDialog, QMessageBox, QStackedWidget, QWidget
 )
 #lazyflow

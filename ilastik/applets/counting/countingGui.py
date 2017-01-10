@@ -27,9 +27,11 @@ import importlib
 
 # Third-party
 import numpy
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon, QApplication, QAction
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, pyqtSlot, QObject, QRect, QSize, pyqtSignal, QEvent, QPoint, QVariant
+from PyQt5.QtGui import QBrush, QColor, QKeySequence, QIcon, QPen
+from PyQt5.QtWidgets import QMessageBox, QShortcut, QPushButton, QWidget, QApplication, QAction, \
+                            QRubberBand, QRubberBand, qRed, QPalette, QGraphicsColorizeEffect, QStylePainter
 
 # HCI
 from lazyflow.utility import traceLogged
@@ -50,7 +52,6 @@ from ilastik.applets.base.applet import ShellRequest
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter
 from ilastik.applets.base.appletSerializer import SerialListSlot
-from PyQt4 import QtGui
 
 
 try:
@@ -71,9 +72,6 @@ def _listReplace(old, new):
 
 
 
-from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint,QString,QVariant
-from PyQt4.QtGui import QRubberBand,QRubberBand,qRed,QPalette,QBrush,QColor,QGraphicsColorizeEffect,\
-        QStylePainter, QPen
 
 from countingGuiBoxesInterface import BoxController,BoxInterpreter,Tool
 

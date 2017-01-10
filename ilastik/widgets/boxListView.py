@@ -21,14 +21,15 @@
 import os
 import logging
 
-from PyQt4.QtGui import QTableView, QColorDialog, \
-    QAbstractItemView, QVBoxLayout, QPushButton, \
-    QColor, QWidget, QHeaderView, QDialog, QStackedWidget, \
-    QLabel, QSizePolicy,QItemSelectionModel, \
-    QMenu, QAction
-from PyQt4 import QtGui
-from PyQt4.QtCore import Qt, QString,QModelIndex, pyqtSignal
-from PyQt4 import uic
+from PyQt5.QtWidgets import QTableView, QColorDialog, \
+                            QAbstractItemView, QVBoxLayout, QPushButton, \
+                            QWidget, QHeaderView, QDialog, QStackedWidget, \
+                            QLabel, QSizePolicy, QItemSelectionModel, \
+                            QMenu, QAction
+from PyQt5.QtGui import QColor
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import Qt, QString,QModelIndex, pyqtSignal
+from PyQt5 import uic
 from labelListModel import LabelListModel, Label
 from listView import ListView
 
@@ -238,7 +239,7 @@ class BoxListView(ListView):
 
         def saveCSVList():
             import os
-            filename = QtGui.QFileDialog.getSaveFileName(None, 'Save Boxes to txt', os.path.expanduser("~"), ".txt")
+            filename = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Boxes to txt', os.path.expanduser("~"), ".txt")
             filename=str(filename)
 
 
@@ -290,7 +291,7 @@ if __name__=="__main__":
     from boxListModel import BoxListModel,BoxLabel
     import numpy
     import sys
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
 

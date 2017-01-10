@@ -25,12 +25,10 @@
 #===============================================================================
 
 
-from PyQt4 import QtCore,QtGui
-from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint, pyqtSlot
-from PyQt4.QtGui import QRubberBand,QBrush,QColor,QMouseEvent
-from PyQt4.QtCore import Qt,QTimer,SIGNAL, QPointF
-from PyQt4.QtGui import QGraphicsRectItem,QGraphicsItem, QPen,QFont
-from PyQt4.QtGui import QApplication
+from PyQt5 import QtCore
+from PyQt5.QtCore import Qt, QTimer, SIGNAL, QPointF, QRectF, QObject, QRect, QSize, pyqtSignal, QEvent, QPoint, pyqtSlot
+from PyQt5.QtGui import QPen, QFont, QBrush, QColor, QMouseEvent
+from PyQt5.QtWidgets import QApplication, QGraphicsItem, QGraphicsRectItem, QGraphicsTextItem, QRubberBand, QStylePainter
 
 
 from volumina.pixelpipeline.datasources import LazyflowSource
@@ -84,7 +82,7 @@ class ResizeHandle(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         self.setAcceptedMouseButtons(Qt.LeftButton | Qt.RightButton)
         self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable);
-        self.setFlag(QtGui.QGraphicsItem.ItemSendsGeometryChanges ,True)
+        self.setFlag(QGraphicsItem.ItemSendsGeometryChanges ,True)
         self._updateColor()
 
     def resetOffset(self,constrainAxis,rect=None):
@@ -121,9 +119,9 @@ class ResizeHandle(QGraphicsRectItem):
             self.parentItem()._editor:
             if hasattr(self.parentItem()._editor.eventSwitch.interpreter, "acceptBoxManipulation"):
                 if self._constrainAxis == 0:
-                    QtGui.QApplication.setOverrideCursor(QtCore.Qt.SplitVCursor)
+                    QApplication.setOverrideCursor(Qt.SplitVCursor)
                 else:
-                    QtGui.QApplication.setOverrideCursor(QtCore.Qt.SplitHCursor)
+                    QApplication.setOverrideCursor(Qt.SplitHCursor)
                 
 
             
@@ -132,7 +130,7 @@ class ResizeHandle(QGraphicsRectItem):
         super(ResizeHandle, self).hoverLeaveEvent(event)
         self._hoverOver = False
         self._updateColor()
-        QtGui.QApplication.restoreOverrideCursor()
+        QApplication.restoreOverrideCursor()
 
 
     def mouseMoveEvent(self, event):
@@ -297,26 +295,26 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     @pyqtSlot()
     def _setupTextItem(self):
         #Set up the text
-        self.textItem=QtGui.QGraphicsTextItem(QtCore.QString(""),parent=self)
+        self.textItem=QGraphicsTextItem("",parent=self)
         textItem=self.textItem
         font=QFont()
         font.setPointSize(self._fontSize)
         textItem.setFont(font)
-        textItem.setPos(QtCore.QPointF(0,0)) #upper left corner relative to the father
+        textItem.setPos(QPointF(0,0)) #upper left corner relative to the father
 
         textItem.setDefaultTextColor(self._fontColor)
 
         if self._dbg:
             #another text item only for debug
-            self.textItemBottom=QtGui.QGraphicsTextItem(QtCore.QString(""),parent=self)
-            self.textItemBottom.setPos(QtCore.QPointF(self.width,self.height))
+            self.textItemBottom=QGraphicsTextItem("",parent=self)
+            self.textItemBottom.setPos(QPointF(self.width,self.height))
             self.textItemBottom.setDefaultTextColor(QColor(255, 255, 255))
 
             self._updateTextBottom("shape " +str(self.shape))
 
     @pyqtSlot(str)
     def _updateTextBottom(self,string):
-        self.textItemBottom.setPlainText(QtCore.QString(string))
+        self.textItemBottom.setPlainText(string)
 
     def setNewSize(self, constrainAxis, size, flip=False):
 
@@ -331,7 +329,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             w=-w
         if flip and constrainAxis ==1:
             h=-h
-        newrect=QtCore.QRectF(0, 0, w, h).normalized()
+        newrect=QRectF(0, 0, w, h).normalized()
         self.setRect(newrect)
         self.width=self.rect().width()
         self.height=self.rect().height()
@@ -342,10 +340,10 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         b=0
         if w<=0: a=w
         if h<=0: b=h
-        self.textItem.setPos(QtCore.QPointF(a,b))
+        self.textItem.setPos(QPointF(a,b))
 
         if self._dbg:
-            self.textItemBottom.setPos(QtCore.QPointF(self.width,self.height))
+            self.textItemBottom.setPos(QPointF(self.width,self.height))
 
         for el in self._resizeHandles:
             #print "shape = %s , left = %s , right = %s , top = %s , bottm , %s "%(self.shape,self.rect().left(),self.rect().right(),self.rect().top(),self.rect().bottom())
@@ -358,7 +356,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def hoverEnterEvent(self, event):
         event.setAccepted(True)
         self._hovering = True
-        #elf.setCursor(QtCore.Qt.BlankCursor)
+        #elf.setCursor(Qt.BlankCursor)
         #self.radius = self.radius # modified radius b/c _hovering
         self.updateColor()
         self.setSelected(True)
@@ -410,7 +408,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def updateColor(self):
         color = self.hoverColor if (self._hovering or self.isSelected())  else self._normalColor
         self.setPen(QPen(color,self._lineWidth))
-        self.setBrush(QBrush(color, QtCore.Qt.NoBrush))
+        self.setBrush(QBrush(color, Qt.NoBrush))
 
     def dataPos(self):
         dataPos = self.scenePos()
@@ -432,7 +430,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def mousePressEvent(self,event):
         modifiers=QApplication.queryKeyboardModifiers()
         if modifiers == Qt.ControlModifier:
-            QApplication.setOverrideCursor(QtCore.Qt.ClosedHandCursor)
+            QApplication.setOverrideCursor(Qt.ClosedHandCursor)
 
     def mouseMoveEvent(self,event):
         pos=self.dataPos()
@@ -458,7 +456,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     @pyqtSlot(str)
     def updateText(self,string):
 
-        self.textItem.setPlainText(QtCore.QString(string))
+        self.textItem.setPlainText(string)
 
 
     def mouseReleaseEvent(self, event):
@@ -521,7 +519,7 @@ class RedRubberBand(QRubberBand):
 #         self.setPalette(palette)
 
     def paintEvent(self,pe):
-        painter=QtGui.QStylePainter(self)
+        painter=QStylePainter(self)
         pen=QPen(QColor("red"),4)
         painter.setPen(pen)
         painter.drawRect(pe.rect())
@@ -601,8 +599,7 @@ class CoupledRectangleElement(object):
             self._rectItem.updateText("%.1f"%(value))
 
             if self.boxLabel!=None:
-                from PyQt4.QtCore import QString
-                self.boxLabel.density=QString("%.1f"%value)
+                self.boxLabel.density = "%.1f" % value
         except Exception,e:
             import warnings
             warnings.warn("Warning: invalid subregion", RuntimeWarning)
@@ -828,7 +825,7 @@ class BoxInterpreter(QObject):
                     #items[0].setZero()
 
             if event.key()==Qt.Key_Control :
-                QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
+                QApplication.setOverrideCursor(Qt.OpenHandCursor)
 
             # #Delete element
             # if event.key()==Qt.Key_Delete:
@@ -1112,8 +1109,8 @@ import numpy as np
 import colorsys
 
 def _createDefault16ColorColorTable():
-    from PyQt4.QtGui import QColor
-    from PyQt4.QtCore import Qt
+    from PyQt5.QtGui import QColor
+    from PyQt5.QtCore import Qt
     colors = []
     # Transparent for the zero label
     colors.append(QColor(0,0,0,0))
@@ -1157,7 +1154,7 @@ def RandomColorGenerator(seed=42):
 # FOR DEBUG PURPOSES ---------
 #===============================================================================
 
-# class MyGraphicsView(QtGui.QGraphicsView):
+# class MyGraphicsView(QtWidgets.QGraphicsView):
 #     #useful class for debug
 #     def __init__ (self,parent=None):
 #         super (MyGraphicsView, self).__init__ (parent)
@@ -1171,7 +1168,7 @@ def RandomColorGenerator(seed=42):
 #
 # def create_qt_default_env():
 #     #useful for debug
-#     from PyQt4.QtGui import QGraphicsScene,QGraphicsView,QApplication
+#     from PyQt5.QtWidgets import QGraphicsScene,QGraphicsView,QApplication
 #     # 1 make the application
 #     app=QApplication([])
 #     # 2 then we need a main window to display stuff
@@ -1240,7 +1237,7 @@ if __name__=="__main__":
     # image then we show a one on the top left corner
     #===========================================================================
     from ilastik.widgets.boxListView import BoxListView
-    from PyQt4.QtGui import QWidget
+    from PyQt5.QtWidgets import QWidget
     app = QApplication([])
 
     boxListModel=BoxListModel()

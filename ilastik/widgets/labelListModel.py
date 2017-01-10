@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QImage
-from PyQt4.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QColor, QPixmap, QIcon, QImage
+from PyQt5.QtCore import Qt, pyqtSignal, QItemSelectionModel
 from listModel import ListModel,ListElement,_NPIXELS
 
 

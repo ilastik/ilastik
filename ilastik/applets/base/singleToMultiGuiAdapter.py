@@ -53,7 +53,7 @@ class SingleToMultiGuiAdapter( object ):
             return self.currentGui().appletDrawer()
         
         if self._imageLaneIndex not in self._tempDrawers:
-            from PyQt4.QtGui import QWidget
+            from PyQt5.QtWidgets import QWidget
             self._tempDrawers[ self._imageLaneIndex ] = QWidget()
         return self._tempDrawers[ self._imageLaneIndex ]
 

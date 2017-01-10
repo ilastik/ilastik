@@ -23,8 +23,9 @@ import threading
 from functools import partial
 
 import sip
-from PyQt4 import uic
-from PyQt4.QtGui import QApplication, QWidget, QIcon, QHeaderView, QStackedWidget, QTableWidgetItem, QPushButton, QMessageBox
+from PyQt5 import uic
+from PyQt5.QtWidgets import QApplication, QWidget, QHeaderView, QStackedWidget, QTableWidgetItem, QPushButton, QMessageBox
+from PyQt5.QtGui import QIcon
 
 from lazyflow.graph import Slot
 

@@ -26,9 +26,9 @@ import h5py
 import numpy
 import vigra
 
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, QEvent, QVariant, QString
-from PyQt4.QtGui import QDialog, QMessageBox, QDoubleSpinBox, QApplication
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, QEvent, QVariant, QString
+from PyQt5.QtWidgets import QDialog, QMessageBox, QDoubleSpinBox, QApplication
 
 from volumina.utility import encode_from_qstring, decode_to_qstring
 
@@ -936,7 +936,7 @@ class DatasetInfoEditorWidget(QDialog):
         
 
 if __name__ == "__main__":
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
 
     # Create a test data file.
     test_data_path = '/tmp/testfile.h5'

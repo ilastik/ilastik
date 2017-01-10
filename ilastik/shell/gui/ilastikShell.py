@@ -34,12 +34,14 @@ import threading
 import numpy
 
 # PyQt
-from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, Qt, QUrl, QTimer
-from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication, \
-    QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
-    QProgressBar, QInputDialog, QIcon, QFont, QToolButton, QVBoxLayout, \
-    QHBoxLayout, QSizePolicy, QDesktopServices, QLabel, QDialog, QSpinBox, QDialogButtonBox
+from PyQt5 import uic
+from PyQt5.QtCore import pyqtSignal, QObject, Qt, QUrl, QTimer
+from PyQt5.QtGui import QKeySequence, QIcon, QFont, QDesktopServices
+from PyQt5.QtWidgets import QMainWindow, QWidget, QMenu, QApplication, \
+                            QStackedWidget, qApp, QFileDialog, QMessageBox, \
+                            QProgressBar, QInputDialog, QToolButton, QVBoxLayout, \
+                            QHBoxLayout, QSizePolicy, QLabel, QDialog, QSpinBox, \
+                            QDialogButtonBox
 
 # lazyflow
 from ilastik.widgets.ipcserver.tcpServerInfoWidget import TCPServerInfoWidget

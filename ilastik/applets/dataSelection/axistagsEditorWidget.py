@@ -1,8 +1,8 @@
 import copy
 import collections
 
-from PyQt4.QtCore import pyqtSignal, Qt, QEvent
-from PyQt4.QtGui import QTableWidget, QDoubleSpinBox, QLineEdit 
+from PyQt5.QtCore import pyqtSignal, Qt, QEvent
+from PyQt5.QtWidgets import QTableWidget, QDoubleSpinBox, QLineEdit 
 
 import numpy
 import vigra
@@ -99,8 +99,8 @@ class AxistagsEditorWidget(QTableWidget):
 
 if __name__ == "__main__":
     from functools import partial
-    from PyQt4.QtCore import QTimer
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtCore import QTimer
+    from PyQt5.QtWidgets import QApplication
     
     tags = vigra.defaultAxistags("xyzc")
     tags['x'].resolution = 2.0
