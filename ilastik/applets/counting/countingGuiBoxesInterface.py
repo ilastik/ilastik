@@ -986,7 +986,7 @@ class BoxController(QObject):
         for box, rect in zip(self.boxListModel._elements, self._currentBoxesList):
             if rect._rectItem.scene() and box.isFixed:
                 boxes["rois"].append([rect.getStart(), rect.getStop()])
-                boxes["values"].append(float(box._fixvalue.toDouble()[0]))
+                boxes["values"].append(float(box._fixvalue))
 
         self.fixedBoxesChanged.emit(boxes)
 
