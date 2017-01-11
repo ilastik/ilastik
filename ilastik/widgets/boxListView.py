@@ -28,7 +28,7 @@ from PyQt5.QtWidgets import QTableView, QColorDialog, \
                             QMenu, QAction
 from PyQt5.QtGui import QColor
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt, QString,QModelIndex, pyqtSignal
+from PyQt5.QtCore import Qt, QModelIndex, pyqtSignal
 from PyQt5 import uic
 from labelListModel import LabelListModel, Label
 from listView import ListView
@@ -152,7 +152,7 @@ class BoxListView(ListView):
 
 
     def resetEmptyMessage(self,pystring):
-        self.emptyMessage.setText(QString(pystring))
+        self.emptyMessage.setText(pystring)
 
 
     def tableViewCellDoubleClicked(self, modelIndex):
@@ -313,7 +313,7 @@ if __name__=="__main__":
 
     def addRandomLabel():
         import numpy as np
-        dens=QString("%.1f"%np.random.rand())
+        dens="%.1f"%np.random.rand()
         ll= BoxLabel("BoxLabel {}".format(model.rowCount() + 1),
                               QColor(numpy.random.randint(0, 255),
                                      numpy.random.randint(0, 255),

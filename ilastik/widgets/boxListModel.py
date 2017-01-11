@@ -330,7 +330,7 @@ class BoxListModel(ListModel):
                 value=float(value.toString())
                 self._elements[index.row()].isFixed=True
                 row=index.row()
-                self._elements[row].fixvalue=QString("%.1f"%value)
+                self._elements[row].fixvalue="%.1f"%value
                 self.dataChanged.emit(index,index)
                 return True
             except:
