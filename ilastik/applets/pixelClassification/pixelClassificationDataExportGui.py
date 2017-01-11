@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+import warnings
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 import warnings
