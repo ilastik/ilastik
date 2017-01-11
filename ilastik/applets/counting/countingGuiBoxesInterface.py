@@ -211,9 +211,10 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         
         self._editor = editor
 
-        QGraphicsRectItem.__init__(self,0,0,w,h,scene=scene,parent=parent)
+        QGraphicsRectItem.__init__(self,0,0,w,h,parent=parent)
         self.Signaller=QGraphicsResizableRectSignaller(parent=parent)
 
+        scene.addItem(self)
 
         #Default Appearence Properties
         self._fontColor=QColor(255, 255, 255)
