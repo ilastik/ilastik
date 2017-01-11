@@ -113,8 +113,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                 builder.addSpot(frame, graph.node[node]['id'], xpos, ypos, zpos, radius, featureDict)
 
         for edge in graph.edges_iter():
-            if graph.edge[edge[0]][edge[1]]['value'] > 0: # and (('divisionValue' in graph.node[edge[0]].keys() \
-               # and graph.node[edge[0]]['divisionValue'] == False) or 'divisionValue' not in graph.node[edge[0]].keys()):
+            if graph.edge[edge[0]][edge[1]]['value'] > 0:
                 builder.addLink(graph.node[edge[0]]['lineageId'], graph.node[edge[0]]['id'], graph.node[edge[1]]['id'])
 
         builder.setBigDataViewerImagePath(os.path.dirname(bigDataViewerFile), os.path.basename(bigDataViewerFile))
