@@ -21,7 +21,7 @@
 from PyQt5 import uic
 from PyQt5.QtGui import QColor, QPixmap, QIcon, QPainter, QPen, QImage
 from PyQt5.QtWidgets import QDialog, QColorDialog, QGraphicsTextItem
-from PyQt5.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal, QVariant, QItemSelectionModel
+from PyQt5.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal, QItemSelectionModel
 from listModel import ListModel, ListElement, _NPIXELS
 #from labelListModel import LabelListModel
 import logging
@@ -233,7 +233,7 @@ class BoxListModel(ListModel):
                 color=QColor(Qt.red)
 
                 color.setAlphaF(0.5)
-                return QVariant(color)
+                return color
 
         if role == Qt.DisplayRole and index.column() == self.ColumnID.Text:
             row = index.row()

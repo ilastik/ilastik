@@ -27,7 +27,7 @@ import numpy
 import vigra
 
 from PyQt5 import uic
-from PyQt5.QtCore import Qt, QEvent, QVariant
+from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtWidgets import QDialog, QMessageBox, QDoubleSpinBox, QApplication
 
 from ilastik.utility import log_exception
@@ -785,7 +785,7 @@ class DatasetInfoEditorWidget(QDialog):
         if sharedStorageSetting == -1:
             self.storageComboBox.setCurrentIndex(-1)
         else:
-            comboIndex = self.storageComboBox.findData( QVariant(sharedStorageSetting) )
+            comboIndex = self.storageComboBox.findData( sharedStorageSetting )
             self.storageComboBox.setCurrentIndex( comboIndex )
 
         disableLinks = False
@@ -797,8 +797,8 @@ class DatasetInfoEditorWidget(QDialog):
         
         if disableLinks:
             # If any of the files were loaded from a stack, then you can't refer to them via a link.
-            absIndex = self.storageComboBox.findData( QVariant(StorageLocation.AbsoluteLink) )
-            relIndex = self.storageComboBox.findData( QVariant(StorageLocation.RelativeLink) )
+            absIndex = self.storageComboBox.findData( StorageLocation.AbsoluteLink )
+            relIndex = self.storageComboBox.findData( StorageLocation.RelativeLink )
 
             # http://theworldwideinternet.blogspot.com/2011/01/disabling-qcombobox-items.html
             model = self.storageComboBox.model()
