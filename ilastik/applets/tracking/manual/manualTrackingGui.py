@@ -20,7 +20,7 @@
 ###############################################################################
 from __future__ import division
 from PyQt5 import uic, QtWidgets, QtCore
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QTextCursor
 
 import os
 import sys
@@ -1220,7 +1220,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
     @threadRouted
     def _log(self, prompt):
         self._drawer.logOutput.append(prompt)
-        self._drawer.logOutput.moveCursor(QtWidgets.QTextCursor.End)
+        self._drawer.logOutput.moveCursor(QTextCursor.End)
         logger.info( prompt )
 
 

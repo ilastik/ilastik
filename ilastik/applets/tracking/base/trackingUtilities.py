@@ -367,7 +367,7 @@ class LineageTrees():
             svg.setFileName("test.svg")
             svg.setSize(QtCore.QSize(w, h))
             svg.setViewBox(size)
-            pp = QtWidgets.QPainter()
+            pp = QtGui.QPainter()
             pp.begin(svg)            
             scene.render(pp, tree_item.rect(), tree_item.rect(), QtCore.Qt.KeepAspectRatio)
 

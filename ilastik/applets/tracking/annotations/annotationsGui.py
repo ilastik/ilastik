@@ -1690,7 +1690,7 @@ class AnnotationsGui(LayerViewerGui):
     @threadRouted
     def _log(self, prompt):
         self._drawer.logOutput.append(prompt)
-        self._drawer.logOutput.moveCursor(QtWidgets.QTextCursor.End)
+        self._drawer.logOutput.moveCursor(QtGui.QTextCursor.End)
         logger.info( prompt )
 
     #
