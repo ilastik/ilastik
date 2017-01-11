@@ -32,7 +32,8 @@ logger = logging.getLogger(__name__)
 #Qt
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, QEvent
-from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QMessageBox, QCheckBox, QSpinBox, QLabel, QValidator, QProgressDialog, QApplication, QCloseEvent
+from PyQt5.QtGui import QValidator, QCloseEvent
+from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QMessageBox, QCheckBox, QSpinBox, QLabel, QProgressDialog, QApplication 
 
 # volumina
 from volumina.utility import PreferencesManager

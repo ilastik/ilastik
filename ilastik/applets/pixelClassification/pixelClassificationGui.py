@@ -28,8 +28,8 @@ from functools import partial
 import numpy
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, pyqtSlot, pyqtRemoveInputHook, pyqtRestoreInputHook
-from PyQt5.QtWidgets import QMessageBox, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem, QApplication, QAction
-from PyQt5.QtGui import QColor, QIcon, QMenu, QDialog, QCursor
+from PyQt5.QtWidgets import QMessageBox, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem, QApplication, QAction, QMenu, QDialog
+from PyQt5.QtGui import QColor, QIcon, QCursor
 
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
