@@ -221,13 +221,15 @@ class ObjectClassificationGui(LabelingGui):
 
     def exportLabelInfo(self):
         file_path, _filter = QFileDialog.getSaveFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")
-        topLevelOp = self.topLevelOperatorView.viewed_operator()
-        topLevelOp.exportLabelInfo(file_path)
+        if file_path:
+            topLevelOp = self.topLevelOperatorView.viewed_operator()
+            topLevelOp.exportLabelInfo(file_path)
 
     def importLabelInfo(self):
-        file_path, _filter = QFileDialog.getOpenFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")        
-        topLevelOp = self.topLevelOperatorView.viewed_operator()
-        topLevelOp.importLabelInfo(file_path)
+        file_path, _filter = QFileDialog.getOpenFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")
+        if file_path:
+            topLevelOp = self.topLevelOperatorView.viewed_operator()
+            topLevelOp.importLabelInfo(file_path)
 
     @property
     def labelMode(self):
