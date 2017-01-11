@@ -28,7 +28,7 @@ import importlib
 # Third-party
 import numpy
 from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSlot, QObject, QRect, QSize, pyqtSignal, QEvent, QPoint, QVariant
+from PyQt5.QtCore import Qt, pyqtSlot, QObject, QRect, QSize, pyqtSignal, QEvent, QPoint
 from PyQt5.QtGui import QBrush, QColor, QKeySequence, QIcon, QPen
 from PyQt5.QtWidgets import QMessageBox, QShortcut, QPushButton, QWidget, QApplication, QAction, \
                             QRubberBand, QRubberBand, qRed, QPalette, QGraphicsColorizeEffect, QStylePainter
@@ -405,7 +405,7 @@ class CountingGui(LabelingGui):
 
     def _hideParameters(self):
         _ind = self.labelingDrawerUi.SVROptions.currentIndex()
-        option = self.labelingDrawerUi.SVROptions.itemData(_ind).toPyObject()[0]
+        option = self.labelingDrawerUi.SVROptions.itemData(_ind)[0]
         if "svr" not in option["gui"]:
             self.labelingDrawerUi.gridLayout_2.setVisible(False)
         else:
@@ -458,7 +458,7 @@ class CountingGui(LabelingGui):
 
     def _updateSVROptions(self):
         index = self.labelingDrawerUi.SVROptions.currentIndex()
-        option = self.labelingDrawerUi.SVROptions.itemData(index).toPyObject()[0]
+        option = self.labelingDrawerUi.SVROptions.itemData(index)[0]
         self.op.opTrain.SelectedOption.setValue(option["method"])
 
         self._hideFixable(option)
@@ -511,7 +511,7 @@ class CountingGui(LabelingGui):
                 self.boxController.addNewBox(roi[0], roi[1])
                 #boxIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.Fix)
                 #iconIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.FixIcon)
-                #self.boxController.boxListModel.setData(boxIndex,QVariant(val))
+                #self.boxController.boxListModel.setData(boxIndex,val)
                 boxCounter = boxCounter + 1
 
 
@@ -525,7 +525,7 @@ class CountingGui(LabelingGui):
                 self.boxController.addNewBox(roi[0], roi[1])
                 boxIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.Fix)
                 iconIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.FixIcon)
-                self.boxController.boxListModel.setData(boxIndex,QVariant(val))
+                self.boxController.boxListModel.setData(boxIndex,val)
                 boxCounter = boxCounter + 1
         
         op.fixClassifier.setValue(fix)

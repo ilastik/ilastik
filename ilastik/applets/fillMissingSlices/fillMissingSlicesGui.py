@@ -24,7 +24,7 @@ import os.path
 import sys
 
 from PyQt5.QtWidgets import QWidget, QProgressDialog, QMessageBox, QFileDialog
-from PyQt5.QtCore import Qt, QVariant, pyqtSignal, QObject, QDir
+from PyQt5.QtCore import Qt, pyqtSignal, QObject, QDir
 
 import PyQt5
 

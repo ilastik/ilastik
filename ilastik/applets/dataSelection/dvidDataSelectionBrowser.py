@@ -60,7 +60,7 @@ class DvidDataSelectionBrowser(ContentsBrowser):
         and event.type() == QEvent.MouseButtonPress \
         and event.button() == Qt.RightButton:
             item = self._repo_treewidget.itemAt(event.pos())
-            repo_uuid, dataname, typename = item.data(0, Qt.UserRole).toPyObject()
+            repo_uuid, dataname, typename = item.data(0, Qt.UserRole)
             is_roi = (typename == 'roi')
             is_voxels = (typename in ['labelblk', 'uint8blk'])
             if (is_voxels or is_roi) \

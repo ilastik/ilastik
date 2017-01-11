@@ -27,7 +27,7 @@ from functools import partial
 # Third-party
 import numpy
 from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSlot, QVariant, pyqtRemoveInputHook, pyqtRestoreInputHook
+from PyQt5.QtCore import Qt, pyqtSlot, pyqtRemoveInputHook, pyqtRestoreInputHook
 from PyQt5.QtWidgets import QMessageBox, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem, QApplication, QAction
 from PyQt5.QtGui import QColor, QIcon, QMenu, QDialog, QCursor
 
@@ -80,7 +80,7 @@ class ClassifierSelectionDlg(QDialog):
         classifier_factories = self._get_available_classifier_factories()
         for name, classifier_factory in classifier_factories.items():
             item = QListWidgetItem( name )
-            item.setData( Qt.UserRole, QVariant(classifier_factory) )
+            item.setData( Qt.UserRole, classifier_factory )
             classifier_listwidget.addItem(item)
 
         buttonbox = QDialogButtonBox( Qt.Horizontal, parent=self )
@@ -137,7 +137,7 @@ class ClassifierSelectionDlg(QDialog):
     def accept(self):
         # Configure the operator with the newly selected classifier factory
         selected_item = self._classifier_listwidget.selectedItems()[0]
-        selected_factory = selected_item.data(Qt.UserRole).toPyObject()
+        selected_factory = selected_item.data(Qt.UserRole)
         self._op.ClassifierFactory.setValue( selected_factory )
 
         # Close the dlg

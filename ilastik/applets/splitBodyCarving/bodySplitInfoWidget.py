@@ -172,7 +172,7 @@ class BodySplitInfoWidget( QWidget ):
             self._loadAnnotationFile( annotation_filepath )
 
     def _handleAnnotationDoubleClick(self, item):
-        coord3d, ravelerLabel = item.data(Qt.UserRole).toPyObject()
+        coord3d, ravelerLabel = item.data(Qt.UserRole)
         self._selectAnnotation(coord3d, ravelerLabel)
 
         # Highlight the appropriate row in the body list as a convenience
@@ -182,14 +182,14 @@ class BodySplitInfoWidget( QWidget ):
     def _handleBodyTreeDoubleClick(self, item, column):
         if item in self._bodyTreeParentItems.values():
             
-            selectedLabel = item.data(0, Qt.UserRole).toPyObject()
+            selectedLabel = item.data(0, Qt.UserRole)
             
             # Find the first split point for this body
             for coord3d, annotation in self._annotations.items():
                 if selectedLabel == annotation.ravelerLabel:
                     # Find a row to auto-select in the annotation table
                     for row in range( self.annotationTableWidget.rowCount() ):
-                        if selectedLabel == self.annotationTableWidget.itemAt(row, 0).data(Qt.UserRole).toPyObject()[1]:
+                        if selectedLabel == self.annotationTableWidget.itemAt(row, 0).data(Qt.UserRole)[1]:
                             self.annotationTableWidget.selectRow( row )
                             break
                     self._selectAnnotation(coord3d, selectedLabel)
