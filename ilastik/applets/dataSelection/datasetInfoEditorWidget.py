@@ -27,7 +27,7 @@ import numpy
 import vigra
 
 from PyQt5 import uic
-from PyQt5.QtCore import Qt, QEvent, QVariant, QString
+from PyQt5.QtCore import Qt, QEvent, QVariant
 from PyQt5.QtWidgets import QDialog, QMessageBox, QDoubleSpinBox, QApplication
 
 from ilastik.utility import log_exception
@@ -151,7 +151,7 @@ class DatasetInfoEditorWidget(QDialog):
     def rangeDisplay(self, box, val):
         drange = self._getCommonMetadataValue("drange")
         if drange is None:
-            return QString("")
+            return ""
         return QDoubleSpinBox.textFromValue(box, val)
 
     def _setUpEventFilters(self):

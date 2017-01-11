@@ -24,7 +24,7 @@ import os.path
 import sys
 
 from PyQt5.QtWidgets import QWidget, QProgressDialog, QMessageBox, QFileDialog
-from PyQt5.QtCore import Qt, QString, QVariant, pyqtSignal, QObject, QDir
+from PyQt5.QtCore import Qt, QVariant, pyqtSignal, QObject, QDir
 
 import PyQt5
 
@@ -37,10 +37,6 @@ loggerName = __name__
 logger = logging.getLogger(loggerName)
 logger.setLevel(logging.DEBUG)
 
-
-def qstring2str(s):
-    assert type(s) == QString
-    return unicode(s.toUtf8(), "utf-8").encode(sys.getfilesystemencoding())
 
 
 class FillMissingSlicesGui(LayerViewerGui):
@@ -73,12 +69,12 @@ class FillMissingSlicesGui(LayerViewerGui):
             self._patchSizeComboBoxActivated)
 
         for s in self._standardPatchSizes:
-            self._drawer.patchSizeComboBox.addItem(QString(str(s)), userData=s)
+            self._drawer.patchSizeComboBox.addItem(str(s), userData=s)
 
         self._drawer.haloSizeComboBox.activated.connect(
             self._haloSizeComboBoxActivated)
         for s in self._standardHaloSizes:
-            self._drawer.haloSizeComboBox.addItem(QString(str(s)), userData=s)
+            self._drawer.haloSizeComboBox.addItem(str(s), userData=s)
 
         self.patchSizeChanged(update=True)
         self.haloSizeChanged(update=True)
@@ -102,7 +98,7 @@ class FillMissingSlicesGui(LayerViewerGui):
 
             self.topLevelOperatorView.OverloadDetector.setValue(pkl)
             logger.debug("Loaded detectors from file '{}'".format(fname))
-            self._recentDetectorDir = os.path.dirname(qstring2str(fname))
+            self._recentDetectorDir = os.path.dirname( fname.encode( sys.getfilesystemencoding() ))
 
     def _loadHistogramsButtonPressed(self):
         fname, _filter = QFileDialog.getOpenFileName(
@@ -130,7 +126,7 @@ class FillMissingSlicesGui(LayerViewerGui):
                 f.write(self.topLevelOperatorView.Detector[:].wait())
 
             logger.debug("Exported detectors to file '{}'".format(fname))
-            self._recentExportDir = os.path.dirname(qstring2str(fname))
+            self._recentExportDir = os.path.dirname( fname.encode( sys.getfilesystemencoding() ))
 
     def _trainButtonPressed(self):
         self.topLevelOperatorView.train()
