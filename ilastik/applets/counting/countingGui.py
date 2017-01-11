@@ -29,9 +29,9 @@ import importlib
 import numpy
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, pyqtSlot, QObject, QRect, QSize, pyqtSignal, QEvent, QPoint
-from PyQt5.QtGui import QBrush, QColor, QKeySequence, QIcon, QPen
+from PyQt5.QtGui import QBrush, QColor, QKeySequence, QIcon, QPen, qRed, QPalette
 from PyQt5.QtWidgets import QMessageBox, QShortcut, QPushButton, QWidget, QApplication, QAction, \
-                            QRubberBand, QRubberBand, qRed, QPalette, QGraphicsColorizeEffect, QStylePainter
+                            QRubberBand, QRubberBand, QGraphicsColorizeEffect, QStylePainter
 
 # HCI
 from lazyflow.utility import traceLogged
