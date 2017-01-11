@@ -23,7 +23,7 @@ from PyQt5.QtGui import QPixmap, QPainter, QIcon, QBrush, QColor, \
                         QPalette, QFont, QPen, QPolygon, QImage
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QTableWidgetItem, QItemDelegate, QStyle, \
                             QHBoxLayout, QHeaderView, QAbstractItemView, QDialog, QToolButton, \
-                            QTableWidget, QSlider, 
+                            QTableWidget, QSlider
 from PyQt5.QtCore import Qt, QRect, QSize, QEvent, QPoint, pyqtSignal
 
 import numpy

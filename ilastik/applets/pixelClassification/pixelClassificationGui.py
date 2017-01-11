@@ -30,8 +30,9 @@ from PyQt5 import uic
 from PyQt5.QtCore import Qt, pyqtSlot, pyqtRemoveInputHook, pyqtRestoreInputHook
 from PyQt5.QtWidgets import QMessageBox, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem, \
     QApplication, QAction, QPushButton, QLineEdit, QDialog, QComboBox, QTreeWidget, QTreeWidgetItem, \
-    QWidget, QSizePolicy
-from PyQt5.QtGui import QColor, QIcon, QMenu, QDialog, QCursor
+    QWidget, QSizePolicy, QMenu
+from PyQt5.QtGui import QColor, QIcon, QCursor
+    
     
 
 # HCI

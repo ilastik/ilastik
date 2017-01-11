@@ -4,6 +4,7 @@ __author__ = 'fabian'
 import numpy
 # import scipy
 from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtGui import QCursor
 from PyQt5.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
 
 from volumina.widgets import layerwidget
@@ -752,7 +753,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         return n_select_opt
 
     def _run_selection(self):
-        QtWidgets.QApplication.instance().setOverrideCursor( QtWidgets.QCursor(QtCore.Qt.WaitCursor) )
+        QtWidgets.QApplication.instance().setOverrideCursor( QCursor(QtCore.Qt.WaitCursor) )
         '''
         runs the feature selection based on the selected parameters and selection method. Adds a segmentation layer
         showing the segmentation result achieved with the selected set
