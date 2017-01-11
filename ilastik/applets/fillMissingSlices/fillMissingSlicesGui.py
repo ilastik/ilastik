@@ -132,17 +132,11 @@ class FillMissingSlicesGui(LayerViewerGui):
         self.topLevelOperatorView.train()
 
     def _patchSizeComboBoxActivated(self, i):
-        (desiredPatchSize, ok) = \
-            self._drawer.patchSizeComboBox.itemData(i).toInt()
-        if not ok:
-            return
+        desiredPatchSize = self._drawer.patchSizeComboBox.itemData(i)
         self.topLevelOperatorView.PatchSize.setValue(desiredPatchSize)
 
     def _haloSizeComboBoxActivated(self, i):
-        (desiredHaloSize, ok) = \
-            self._drawer.haloSizeComboBox.itemData(i).toInt()
-        if not ok:
-            return
+        desiredHaloSize = self._drawer.haloSizeComboBox.itemData(i)
         self.topLevelOperatorView.HaloSize.setValue(desiredHaloSize)
 
     @staticmethod
@@ -152,11 +146,10 @@ class FillMissingSlicesGui(LayerViewerGui):
         if i < 0:
             j = 0
             for i in range(cb.count()):
-                qvar = cb.itemData(i)
-                (k, ok) = qvar.toInt()
-                if ok and k == n:
+                k = cb.itemData(i)
+                if k == n:
                     return i
-                elif ok and k > n:
+                elif k > n:
                     j = i
                     break
                 else:

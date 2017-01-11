@@ -327,7 +327,7 @@ class BoxListModel(ListModel):
 
         if index.column()==self.ColumnID.Fix:
             try:
-                value=float(value.toString())
+                value=float(value)
                 self._elements[index.row()].isFixed=True
                 row=index.row()
                 self._elements[row].fixvalue="%.1f"%value

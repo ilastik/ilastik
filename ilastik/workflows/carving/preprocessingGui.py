@@ -117,7 +117,7 @@ class PreprocessingGui(QMainWindow):
         self.topLevelOperatorView.Sigma.setValue(self.drawer.sigmaSpin.value())
 
     def handleWatershedSourceChange(self, index):
-        data = self.drawer.watershedSourceCombo.itemData(index).toString()
+        data = self.drawer.watershedSourceCombo.itemData(index)
         self.topLevelOperatorView.WatershedSource.setValue( str(data) )
 
     def handleInvertWatershedSourceChange(self, checked):
