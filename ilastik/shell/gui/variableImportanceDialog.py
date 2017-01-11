@@ -9,11 +9,9 @@ import re
 class QTableWidgetItemWithFloatSorting(QTableWidgetItem):
     def __lt__(self, other):
         if ( isinstance(other, QTableWidgetItem) ):
-            my_value, my_ok = self.data(Qt.EditRole).toFloat()
-            other_value, other_ok = other.data(Qt.EditRole).toFloat()
-
-            if ( my_ok and other_ok ):
-                return my_value < other_value
+            my_value = self.data(Qt.EditRole)
+            other_value = other.data(Qt.EditRole)
+            return my_value < other_value
 
         return super(QTableWidgetItemWithFloatSorting, self).__lt__(other)
 
