@@ -313,8 +313,8 @@ class FeatureTableWidget(QTableWidget):
         
         self.horizontalHeader().setMouseTracking(True)
         self.horizontalHeader().installEventFilter(self)
-        self.horizontalHeader().setResizeMode(QHeaderView.ResizeToContents)
-        self.verticalHeader().setResizeMode(QHeaderView.ResizeToContents)
+        self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         
         self.itemSelectionChanged.connect(self._tableItemSelectionChanged)
         self.cellDoubleClicked.connect(self._featureTableItemDoubleClicked)

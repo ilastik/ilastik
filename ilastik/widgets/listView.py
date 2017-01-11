@@ -87,8 +87,8 @@ class ListView(QStackedWidget):
         table.setShowGrid(False)
         table.horizontalHeader().hide()
         table.verticalHeader().hide()
-        #table.horizontalHeader().setResizeMode(1, QHeaderView.Stretch)
-        table.horizontalHeader().setResizeMode(QHeaderView.ResizeToContents)
+        #table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         
         
         table.setSelectionMode(QAbstractItemView.SingleSelection)

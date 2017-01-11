@@ -189,10 +189,10 @@ class DatasetDetailedInfoTableView(QTableView):
         self.resizeColumnsToContents()
         self.setAlternatingRowColors(True)
         self.setShowGrid(False)
-        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.Nickname, QHeaderView.Interactive)
-        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.Location, QHeaderView.Interactive)
-        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
-        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.Nickname, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.Location, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
 
         self.setItemDelegateForColumn(0, AddButtonDelegate(self))
         

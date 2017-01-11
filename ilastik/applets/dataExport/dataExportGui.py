@@ -191,7 +191,7 @@ class DataExportGui(QWidget):
         self.batchOutputTableWidget.resizeColumnsToContents()
         self.batchOutputTableWidget.setAlternatingRowColors(True)
         self.batchOutputTableWidget.setShowGrid(False)
-        self.batchOutputTableWidget.horizontalHeader().setResizeMode(0, QHeaderView.Interactive)
+        self.batchOutputTableWidget.horizontalHeader().setSectionResizeMode(0, QHeaderView.Interactive)
         
         self.batchOutputTableWidget.horizontalHeader().resizeSection(Column.Dataset, 200)
         self.batchOutputTableWidget.horizontalHeader().resizeSection(Column.ExportLocation, 250)
