@@ -51,8 +51,8 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
     ndim = None
     
     def availableFeatures(self, image, labels):
-        names = vigra.analysis.extract2DConvexHullFeatures(labels, list_features_only=True)
-        logger.debug('2D Convex Hull Features: Supported Convex Hull Features: done.')
+        names = vigra.analysis.supportedConvexHullFeatures(labels)
+        logger.debug('Convex Hull Features: Supported Convex Hull Features: done.')
 
         tooltips = {}
         result = dict((n, {}) for n in names)
@@ -162,7 +162,11 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
         
         # ignoreLabel=None calculates background label parameters
         # ignoreLabel=0 ignores calculation of background label parameters
-        result = vigra.analysis.extract2DConvexHullFeatures(labels.squeeze().astype(numpy.uint32), ignoreLabel=0)
+        assert isinstance(labels, vigra.VigraArray) and hasattr(labels, 'axistags')
+        try:
+            result = vigra.analysis.extract2DConvexHullFeatures(labels.squeeze().astype(numpy.uint32), ignoreLabel=0)
+        except:
+            result = vigra.analysis.extract3DConvexHullFeatures(labels.squeeze().astype(numpy.uint32), ignoreLabel=0)
         
         # find the number of objects
         try:
