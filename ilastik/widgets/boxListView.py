@@ -24,11 +24,10 @@ import logging
 from PyQt5.QtWidgets import QTableView, QColorDialog, \
                             QAbstractItemView, QVBoxLayout, QPushButton, \
                             QWidget, QHeaderView, QDialog, QStackedWidget, \
-                            QLabel, QSizePolicy, QItemSelectionModel, \
-                            QMenu, QAction
+                            QLabel, QSizePolicy, QMenu, QAction
 from PyQt5.QtGui import QColor
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt, QModelIndex, pyqtSignal
+from PyQt5.QtCore import Qt, QModelIndex, pyqtSignal, QItemSelectionModel
 from PyQt5 import uic
 from labelListModel import LabelListModel, Label
 from listView import ListView
