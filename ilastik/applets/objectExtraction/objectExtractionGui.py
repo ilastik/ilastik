@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtWidgets import QTreeWidgetItem, QMessageBox, QHeaderView, QResizeEvent, QMouseEvent
-from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QTreeWidgetItem, QMessageBox, QHeaderView
+from PyQt5.QtGui import QColor, QResizeEvent, QMouseEvent
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, QEvent
 
