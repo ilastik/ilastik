@@ -62,8 +62,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         self.applet = self.mainOperator.parent.parent.trackingApplet
         self._drawer.mergerResolutionBox.setChecked(True)
-        self.connect( self, QtCore.SIGNAL('postInformationMessage(QString)'), self.postInformationMessage)
-
+        
         self.parentApplet = parentApplet
         self._headless = False
 
@@ -720,7 +719,13 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         menu.exec_(win_coord)
 
     def _informationMessage(self, prompt):
-        self.emit( QtCore.SIGNAL('postInformationMessage(QString)'), prompt)
+        #
+        # This function used to be pass-throughs to a signal,
+        # but I don't see why that's necessary.
+        # (It is always called from the main thread.)
+        # So now we just call the target function directly.
+        #
+        self.postInformationMessage(prompt)
 
     @threadRouted
     def postInformationMessage(self, prompt):

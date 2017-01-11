@@ -344,10 +344,6 @@ class AnnotationsGui(LayerViewerGui):
                 self._drawer.windowZBox.setValue(1)
                 self._drawer.windowZBox.setEnabled(False)
         
-        self.connect( self, QtCore.SIGNAL('postCriticalMessage(QString)'), self.postCriticalMessage)
-        self.connect( self, QtCore.SIGNAL('postInformationMessage(QString)'), self.postInformationMessage)
-        self.connect( self, QtCore.SIGNAL('postQuestionMessage(QString)'), self.postQuestionMessage)
-
         self._initShortcuts()
         self.editor.posModel.timeChanged.connect(self.updateTime)
         try:
@@ -1836,14 +1832,20 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.logOutput.moveCursor(QtWidgets.QTextCursor.End)
         logger.info( prompt )
 
+    #
+    # These functions used to be pass-throughs to a signal,
+    # but I don't see why that's necessary.
+    # (They are always called from the main thread.)
+    # So now we just call each target function directly.
+    #
     def _criticalMessage(self, prompt):
-        self.emit( QtCore.SIGNAL('postCriticalMessage(QString)'), prompt)
+        self.postCriticalMessage(prompt)
 
     def _questionMessage(self, prompt):
-        self.emit( QtCore.SIGNAL('postQuestionMessage(QString)'), prompt)
+        self.postQuestionMessage(prompt)
 
     def _informationMessage(self, prompt):
-        self.emit( QtCore.SIGNAL('postInformationMessage(QString)'), prompt)
+        self.postInformationMessage(prompt)
 
     @threadRouted
     def postCriticalMessage(self, prompt):
