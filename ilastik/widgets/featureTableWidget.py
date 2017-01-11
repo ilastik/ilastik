@@ -307,9 +307,9 @@ class FeatureTableWidget(QTableWidget):
         self.viewport().installEventFilter(self)
         self.setMouseTracking(1)
         self.verticalHeader().setHighlightSections(False)
-        self.verticalHeader().setClickable(True)
+        self.verticalHeader().setSectionsClickable(True)
         self.horizontalHeader().setHighlightSections(False)
-        self.horizontalHeader().setClickable(True)
+        self.horizontalHeader().setSectionsClickable(True)
         
         self.horizontalHeader().setMouseTracking(True)
         self.horizontalHeader().installEventFilter(self)
@@ -714,7 +714,7 @@ class SliderDlg(QDialog):
         
     def exec_(self):
         if QDialog.exec_(self) == QDialog.Accepted:
-            return  self.sigma
+            return self.sigma
         else:
             return self.oldSigma
 

@@ -440,8 +440,8 @@ class DataSelectionGui(QWidget):
             file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
             # do not display file types associated with a filter
             # the line for "Image files" is too long otherwise
-            file_dialog.setFilters([filt_all_str] + filters)
-            file_dialog.setNameFilterDetailsVisible(False)
+            file_dialog.setNameFilters([filt_all_str] + filters)
+            #file_dialog.setNameFilterDetailsVisible(False)
             # select multiple files
             file_dialog.setFileMode(QFileDialog.ExistingFiles)
             file_dialog.setDirectory( defaultDirectory )
