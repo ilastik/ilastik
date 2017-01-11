@@ -90,7 +90,7 @@ class BodySplitInfoWidget( QWidget ):
         self.setWindowTitle("Body Split Info")
         
         self.bodyTreeWidget.setHeaderLabels( ['Body ID', 'Progress', ''] )
-        self.bodyTreeWidget.header().setResizeMode( QHeaderView.ResizeToContents )
+        self.bodyTreeWidget.header().setSectionResizeMode( QHeaderView.ResizeToContents )
         self.bodyTreeWidget.header().setStretchLastSection(False)
         self.bodyTreeWidget.itemDoubleClicked.connect( self._handleBodyTreeDoubleClick )
         self.bodyTreeWidget.setExpandsOnDoubleClick(False) # We want to use double-click for auto-navigation
@@ -100,7 +100,7 @@ class BodySplitInfoWidget( QWidget ):
         self._initAnnotationTableHeader()
         self.annotationTableWidget.itemDoubleClicked.connect( self._handleAnnotationDoubleClick )
         self.annotationTableWidget.setSelectionBehavior( QTableView.SelectRows )
-        self.annotationTableWidget.horizontalHeader().setResizeMode( QHeaderView.ResizeToContents )
+        self.annotationTableWidget.horizontalHeader().setSectionResizeMode( QHeaderView.ResizeToContents )
         
         self.loadSplitAnnoationFileButton.pressed.connect( self._loadNewAnnotationFile )
         self.loadSplitAnnoationFileButton.setIcon( QIcon(ilastikIcons.Open) )
