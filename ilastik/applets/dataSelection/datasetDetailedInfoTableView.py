@@ -189,10 +189,6 @@ class DatasetDetailedInfoTableView(QTableView):
         self.resizeColumnsToContents()
         self.setAlternatingRowColors(True)
         self.setShowGrid(False)
-        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.Nickname, QHeaderView.Interactive)
-        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.Location, QHeaderView.Interactive)
-        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
-        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
 
         self.setItemDelegateForColumn(0, AddButtonDelegate(self))
         
@@ -275,12 +271,9 @@ class DatasetDetailedInfoTableView(QTableView):
         widget = QWidget()
         layout = QHBoxLayout(widget)
         self._addButton = button = AddFileButton(widget, new=True)
-        button.addFilesRequested.connect(
-                partial(self.addFilesRequested.emit, -1))
-        button.addStackRequested.connect(
-                partial(self.addStackRequested.emit, -1))
-        button.addRemoteVolumeRequested.connect(
-                partial(self.addRemoteVolumeRequested.emit, -1))
+        button.addFilesRequested.connect( partial(self.addFilesRequested.emit, -1) )
+        button.addStackRequested.connect( partial(self.addStackRequested.emit, -1) )
+        button.addRemoteVolumeRequested.connect( partial(self.addRemoteVolumeRequested.emit, -1) )
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(button)
         layout.addStretch()
@@ -291,6 +284,12 @@ class DatasetDetailedInfoTableView(QTableView):
         self.setIndexWidget( modelIndex, widget )
         # the "Add..." button spans last row
         self.setSpan(lastRow, 0, 1, model.columnCount())
+
+        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.Nickname, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.Location, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
+
 
     def setEnabled(self, status):
         """
