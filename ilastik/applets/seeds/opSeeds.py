@@ -37,7 +37,10 @@ class OpSeeds(Operator):
     Boundaries          = InputSlot() # for displaying as layer and as input for the watershed algorithm 
     Seeds               = InputSlot(optional=True) #for displaying in layer only
 
+    # TODO
     SeedsTest               = InputSlot()
+    Smoothing           = InputSlot()
+    Computing           = InputSlot()
     
     # transmit the WSMethod to the WatershedSegmentationApplet (see Workflow)
     WSMethodIn          = InputSlot()

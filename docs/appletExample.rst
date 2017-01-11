@@ -159,10 +159,3 @@ To supply the WatershedLabelingGui with a LabelListModel that displays the value
 .. TODO explain more about the classes of LabelModelList 
 
 
-
-
-.. TODO die maximale anzahl an labels ist im labelingGui in der Init festgelet, diese kann man spaeter aber noch erweitern, ueber setter. 
-        self._maxLabelNumber = 99 #100 or 255 is reserved for eraser
-        def maxLabelNumber(self, n):
-
-

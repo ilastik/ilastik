@@ -20,6 +20,7 @@
 ##############################################################################
 
 import numpy 
+import numpy as np
 import vigra
 from PyQt4.Qt import pyqtSlot
 from PyQt4 import uic
@@ -84,45 +85,106 @@ class SeedsGui(LayerViewerGui):
         #cut off the channel dimension
         boundaries      = removeChannelAxis(boundaries)
 
-        print sigma
-        print boundaries.dtype
-        print boundaries.shape
+        #print sigma
+        #print boundaries.dtype
+        #print boundaries.shape
 
         # Smoothing
-
         seeds           = vigra.filters.gaussianSmoothing(boundaries, sigma)
+        self.assignSlot(op.Smoothing, op.Boundaries, seeds)
+
         # for distance transform: seeds.dtype === uint32 or float? but not uint8
-        seeds           = seeds.astype(numpy.uint32)
+        seeds           = seeds.astype(numpy.float32)
+
+        # Compute
         seeds           = vigra.filters.distanceTransform(seeds)
-        seeds           = seeds.astype(numpy.uint8)
+        self.assignSlot(op.Computing, op.Boundaries, seeds)
 
-        seeds           = addChannelAxis(seeds)
+        seeds           = seeds.astype(numpy.float32)
+        (tUsed, tId)    = evaluateSlicing(op.Boundaries)
 
+        # Minima/Maxima
+        seeds           = self.slicedMinOrMax(seeds, tId)
+        #seeds           = self.slicedMinOrMax(seeds, tId, minTrue=False)
+
+
+
+        self.assignSlot(op.SeedsTest, op.Boundaries, seeds)
+
+        '''
+        # output sets
         op.SeedsTest.meta.assignFrom(op.Boundaries.meta)
-
-
-
-        # output of the vigra.analysis.watershedNew is uint32, therefore it should be uint 32 as
-        # well, otherwise it will break with the cached image 
-        #self.Output.meta.dtype = np.uint32
         #only one channel as output
         op.SeedsTest.meta.shape = op.Boundaries.meta.shape[:-1] + (1,)
-        #TODO maybe bad with more than 255 labels
         op.SeedsTest.meta.drange = (0,255)
-
-        print seeds.dtype
-        print seeds.shape
-
-
         op.SeedsTest.setValue(seeds)
+        '''
 
-
-        # refresh
+        # refresh the layers
         self.setupLayers()
 
+        #print seeds.dtype
+        #print seeds.shape
+        print op.WSMethodIn.ready()
+        print op.WSMethodOut.ready()
 
 
         print "generate Seeds end"
+
+
+    def assignSlot(self, toSlot, fromSlotMeta, array): 
+        # conversion
+        array           = array.astype(numpy.uint8)
+        array           = addChannelAxis(array)
+        # output sets
+        toSlot.meta.assignFrom(fromSlotMeta.meta)
+        #only one channel as output
+        toSlot.meta.shape = fromSlotMeta.meta.shape[:-1] + (1,)
+        toSlot.meta.drange = (0,255)
+        toSlot.setValue(array)
+
+    def slicedMinOrMax(self, boundaries, tAxis, minTrue=True):
+        #TODO
+        """
+        uses Maxima for the main algorithm execution
+        but slices the data for it, so that that algorithm can be used easily
+
+        :param boundaries: the array, that contains the boundaries data
+        :param seeds: the array, that contains the seeds data
+        :param tAxis: the dimension number of the time axis
+        :return: labelImageArray: the concatenated watershed result of all slices 
+        """
+        labelImageArray = np.ndarray(shape=boundaries.shape, dtype=boundaries.dtype)
+        for i in range(boundaries.shape[tAxis]):
+            # iterate over the axis of the time
+            boundariesSlice  = boundaries.take( i, axis=tAxis)
+            #TODO 2D and 3D
+            marker = 100
+            if minTrue:
+                if (boundaries.ndim - 1 == 2):
+                    function = vigra.analysis.extendedLocalMaxima
+                else:
+                    function = vigra.analysis.extendedLocalMaxima3D
+            else:
+                if (boundaries.ndim - 1 == 2):
+                    function = vigra.analysis.extendedLocalMinima
+                else:
+                    function = vigra.analysis.extendedLocalMinima3D
+
+            labelImage           = function(boundariesSlice, marker=marker)
+
+
+            # write in the correct column of the output array, 
+            # because the dimensions must fit
+            if (tAxis == 0):
+                labelImageArray[i] = labelImage
+            elif (tAxis == 1):
+                labelImageArray[:,i] = labelImage
+            elif (tAxis == 2):
+                labelImageArray[:,:,i] = labelImage
+            elif (tAxis == 3):
+                labelImageArray[:,:,:,i] = labelImage
+        return labelImageArray
 
     def initAppletDrawerUi(self):
         """
@@ -357,9 +419,12 @@ class SeedsGui(LayerViewerGui):
         #TODO if Seeds are supplied already
         # Seeds
         #self._initLayer(op.Seeds,            "Seeds",        layers, visible=False)
-        if op.SeedsTest.ready():
-            self._initLayer(op.SeedsTest,            "Seeds",        layers )
+        self._initLayer(op.SeedsTest,            "Seeds",        layers )
 
+        self._initLayer(op.Smoothing,            "Smoothing",        layers ,
+                layerFunction=self.createGrayscaleLayer) 
+        self._initLayer(op.Computing,            "Computing",        layers ,
+                layerFunction=self.createGrayscaleLayer) 
         
         # Boundaries
         self._initLayer(op.Boundaries,       "Boundaries",   layers, opacity=0.5, 
