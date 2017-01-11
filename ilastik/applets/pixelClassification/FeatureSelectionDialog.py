@@ -251,7 +251,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         self._initialized_all_features_segmentation_layer = False
         self._initialized_current_features_segmentation_layer = False
         self._initialized_feature_matrix = False
-        self.all_feature_sets_combo_box.resetInputContext()
+        #self.all_feature_sets_combo_box.resetInputContext()
         self._selected_feature_set_id = None
 
     def _init_gui(self):
