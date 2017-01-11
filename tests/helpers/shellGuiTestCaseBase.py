@@ -203,7 +203,7 @@ class ShellGuiTestCaseBase(object):
         Example:
             self.getPixelColor(myview, (10,10), 'myview.png')
         """
-        img = QPixmap.grabWidget(imgView).toImage()
+        img = imgView.grab().toImage()
 
         if debugFileName is not None:
             img.save(debugFileName)
