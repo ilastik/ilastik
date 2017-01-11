@@ -151,8 +151,6 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                 self._drawer.windowZBox.setValue(1)
                 self._drawer.windowZBox.setEnabled(False)
         
-        self.connect( self, QtCore.SIGNAL('postCriticalMessage(QString)'), self.postCriticalMessage)
-        
         self._initShortcuts()
         
 
@@ -1245,8 +1243,14 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             self._log('There are no more untracked objects! :-)')   
         
         
-    def _criticalMessage(self, prompt):
-        self.emit( QtCore.SIGNAL('postCriticalMessage(QString)'), prompt)
+    def _criticalMessage(self, prompt):        
+        #
+        # This function used to be pass-throughs to a signal,
+        # but I don't see why that's necessary.
+        # (It is always called from the main thread.)
+        # So now we just call the target function directly.
+        #
+        self.postCriticalMessage(prompt)
 
     @threadRouted
     def postCriticalMessage(self, prompt):
