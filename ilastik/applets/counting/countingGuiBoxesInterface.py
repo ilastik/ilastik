@@ -26,7 +26,7 @@
 
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, QTimer, SIGNAL, QPointF, QRectF, QObject, QRect, QSize, pyqtSignal, QEvent, QPoint, pyqtSlot
+from PyQt5.QtCore import Qt, QTimer, QPointF, QRectF, QObject, QRect, QSize, pyqtSignal, QEvent, QPoint, pyqtSlot
 from PyQt5.QtGui import QPen, QFont, QBrush, QColor, QMouseEvent
 from PyQt5.QtWidgets import QApplication, QGraphicsItem, QGraphicsRectItem, QGraphicsTextItem, QRubberBand, QStylePainter
 
@@ -1277,7 +1277,7 @@ if __name__=="__main__":
 
     do()
 
-    cron.connect(cron, SIGNAL('timeout()'), do)
+    cron.timeout.connect(do)
     ds = LazyflowSource( op.Output )
     layer = ColortableLayer(ds,jet())
 
