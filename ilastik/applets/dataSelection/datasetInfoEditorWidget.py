@@ -809,8 +809,7 @@ class DatasetInfoEditorWidget(QDialog):
         if index == -1:
             return
         
-        newStorageLocation, goodcast = self.storageComboBox.itemData( index ).toInt()
-        assert goodcast
+        newStorageLocation = self.storageComboBox.itemData( index )
         
         # Save a copy of our settings
         oldInfos = {}
@@ -900,7 +899,7 @@ class DatasetInfoEditorWidget(QDialog):
         if index == -1:
             return
         
-        newDisplayMode = str( self.displayModeComboBox.itemData( index ).toString() )
+        newDisplayMode = str( self.displayModeComboBox.itemData( index ) )
         
         # Save a copy of our settings
         oldInfos = {}
