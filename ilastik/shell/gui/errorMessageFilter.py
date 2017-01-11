@@ -37,7 +37,7 @@ class ErrorMessageFilter(QObject):
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
         self.timer.setInterval(1000)
-        self.connect(self.timer, QtCore.SIGNAL("timeout()"), self.timeout)
+        self.timer.timeout.connect( self.timeout )
         
     def showErrorMessage(self, caption, text):
         if not self.timer.isActive():
