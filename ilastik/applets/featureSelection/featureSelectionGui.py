@@ -385,7 +385,6 @@ class FeatureSelectionGui(LayerViewerGui):
                 self.parentApplet.busy = True
                 self.parentApplet.appletStateUpdateRequested.emit()
                 QApplication.instance().setOverrideCursor( QCursor(Qt.WaitCursor) )
-                QApplication.instance().processEvents()
                 
                 try:
                     opFeatureSelection.SelectionMatrix.setValue( featureMatrix )
