@@ -301,7 +301,7 @@ class DatasetDetailedInfoTableView(QTableView):
         """
         self._addButton.setEnabled(status)
 
-    def dataChanged(self, topLeft, bottomRight):
+    def dataChanged(self, topLeft, bottomRight, roles):
         self.dataLaneSelected.emit( self.selectedLanes )
 
     def selectionChanged(self, selected, deselected):
