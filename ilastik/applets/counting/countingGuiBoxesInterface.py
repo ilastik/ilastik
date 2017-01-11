@@ -173,7 +173,7 @@ class ResizeHandle(QGraphicsRectItem):
         """
 
         if change==QGraphicsRectItem.ItemPositionChange:
-            newPos=value.toPointF() #new position in rectangle coordinates
+            newPos=value #new position in rectangle coordinates
             nPosScene=self.parentItem().mapToScene(newPos)
             rect=self.parentItem().scene().sceneRect()
             if not rect.contains(nPosScene):
@@ -473,7 +473,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     
     def itemChange(self, change,value):
         if change==QGraphicsRectItem.ItemPositionChange:
-            newPos=value.toPointF() #new position in scene coordinates
+            newPos=value #new position in scene coordinates
             rect=self.scene().sceneRect()
             topLeftRectCoords=self.rect().topLeft()
             bottomRightRectCoords=self.rect().bottomRight()
