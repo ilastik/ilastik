@@ -20,6 +20,7 @@
 ##############################################################################
 
 import numpy 
+import vigra
 from PyQt4.Qt import pyqtSlot
 from PyQt4 import uic
 import os
@@ -28,6 +29,8 @@ from contextlib import contextmanager
 
 #from ilastik.applets.watershedLabeling.watershedLabelingGui import WatershedLabelingGui
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+
+from ilastik.utility.VigraIlastikConversionFunctions import removeChannelAxis, addChannelAxis, getArray, evaluateSlicing
 
 import logging
 logger = logging.getLogger(__name__)
@@ -61,6 +64,65 @@ class SeedsGui(LayerViewerGui):
         # init the Comboboxes with values
         self.initComboBoxes()
 
+    def onGenerateButtonClicked(self):
+        op = self.topLevelOperatorView 
+        if op.Seeds.ready(): 
+            print "ready"
+        else:
+            print "not ready"
+
+        self.generateSeeds()
+
+    def generateSeeds(self):
+        print "generate Seeds start"
+        op = self.topLevelOperatorView 
+
+        # get boundaries
+        boundaries      = getArray(op.Boundaries)
+        #boundaries     = boundaries.astype(np.float32)
+        sigma           = op.SmoothingSigma.value
+        #cut off the channel dimension
+        boundaries      = removeChannelAxis(boundaries)
+
+        print sigma
+        print boundaries.dtype
+        print boundaries.shape
+
+        # Smoothing
+
+        seeds           = vigra.filters.gaussianSmoothing(boundaries, sigma)
+        # for distance transform: seeds.dtype === uint32 or float? but not uint8
+        seeds           = seeds.astype(numpy.uint32)
+        seeds           = vigra.filters.distanceTransform(seeds)
+        seeds           = seeds.astype(numpy.uint8)
+
+        seeds           = addChannelAxis(seeds)
+
+        op.SeedsTest.meta.assignFrom(op.Boundaries.meta)
+
+
+
+        # output of the vigra.analysis.watershedNew is uint32, therefore it should be uint 32 as
+        # well, otherwise it will break with the cached image 
+        #self.Output.meta.dtype = np.uint32
+        #only one channel as output
+        op.SeedsTest.meta.shape = op.Boundaries.meta.shape[:-1] + (1,)
+        #TODO maybe bad with more than 255 labels
+        op.SeedsTest.meta.drange = (0,255)
+
+        print seeds.dtype
+        print seeds.shape
+
+
+        op.SeedsTest.setValue(seeds)
+
+
+        # refresh
+        self.setupLayers()
+
+
+
+        print "generate Seeds end"
 
     def initAppletDrawerUi(self):
         """
@@ -74,6 +136,7 @@ class SeedsGui(LayerViewerGui):
 
         # give function to the unseeded checkbox
         self._drawer.unseededCheckBox.stateChanged.connect(self.onUnseededCheckBoxStateChanged)
+        self._drawer.generateButton.clicked.connect(self.onGenerateButtonClicked)
 
 
         # to connect gui with operators
@@ -233,25 +296,33 @@ class SeedsGui(LayerViewerGui):
     # initialization of the Comboboxes with values
     ############################################################
     def initComboBoxes(self):
+        """
+        Initializes the Smoothing and Compute ComboBox with selectables
+        Therefore it is important, that the state of the SmoothingMethod and
+        ComputingMethod is stored temporarily, because adding new elements 
+        (probably emit signal for changing this Method index) changes each Method.
+        """
+        def initSmoothingComboBox():
+            itemList = ["Gaussian", "MedianFilter"]
+            self._drawer.smoothingComboBox.addItems(itemList)
+
+        def initComputeComboBox():
+            itemList = ["HeightMap", "DistanceTransform"]
+            self._drawer.computeComboBox.addItems(itemList)
+
         op = self.topLevelOperatorView 
         # this value needs to be preserved, because adding some new elements 
         # changes the op.SmoothingMethod.value
         temp1 = op.SmoothingMethod.value
         temp2 = op.ComputeMethod.value
 
-        self.initSmoothingComboBox()
-        self.initComputeComboBox()
+        initSmoothingComboBox()
+        initComputeComboBox()
 
+        # reset the methods
         op.SmoothingMethod.setValue(temp1)
         op.ComputeMethod.setValue(temp2)
 
-    def initSmoothingComboBox(self):
-        itemList = ["Gaussian", "MedianFilter"]
-        self._drawer.smoothingComboBox.addItems(itemList)
-
-    def initComputeComboBox(self):
-        itemList = ["HeightMap", "DistanceTransform"]
-        self._drawer.computeComboBox.addItems(itemList)
 
 
 
@@ -286,6 +357,8 @@ class SeedsGui(LayerViewerGui):
         #TODO if Seeds are supplied already
         # Seeds
         #self._initLayer(op.Seeds,            "Seeds",        layers, visible=False)
+        if op.SeedsTest.ready():
+            self._initLayer(op.SeedsTest,            "Seeds",        layers )
 
         
         # Boundaries

@@ -19,6 +19,8 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPip
 #for caching the data of the watershed algorithm
 from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import _OpCacheWrapper
 
+from ilastik.utility.VigraIlastikConversionFunctions import removeChannelAxis, addChannelAxis, getArray, evaluateSlicing
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -276,16 +278,20 @@ class OpWatershedSegmentationCalculation( Operator ):
         handles the execution of the watershed algorithm 
         """
         
-        boundaries, seeds = self.getArrays()
+        seeds               = getArray(self.Seeds)
+        boundaries          = getArray(self.Boundaries)
+        #boundaries, seeds  = self.getArrays()
 
         # necessary for vigra.analysis.watershedsNew
-        boundaries, seeds = self.arrayConversion(boundaries, seeds)
+        boundaries, seeds   = self.arrayConversion(boundaries, seeds)
 
         # check the axes and return, whether the time is used and the number of the time axis
-        (tUsed, tAxis) = self.evaluateSlicing(self.Seeds)
+        (tUsed, tAxis)      = evaluateSlicing(self.Seeds)
 
         # needed for vigra to remove the channel axis
-        (boundaries, seeds) = self.removeChannelAxis(boundaries, seeds)
+        seeds               = removeChannelAxis(seeds)
+        boundaries          = removeChannelAxis(boundaries)
+        #(boundaries, seeds) = self.removeChannelAxis(boundaries, seeds)
 
 
         # doesn't matter whether image is 2D or 3D, at least we do slicing over time
@@ -300,7 +306,7 @@ class OpWatershedSegmentationCalculation( Operator ):
                 self.watershedAlgorithm(boundaries, seeds)
 
         # needed for ilastik to have a channel axis
-        labelImageArray = self.addChannelAxis(labelImageArray)
+        labelImageArray     = addChannelAxis(labelImageArray)
 
         # set the value of the OutputSlot to the calculated array
         self.Output.setValue(labelImageArray)
@@ -423,21 +429,6 @@ class OpWatershedSegmentationCalculation( Operator ):
     # helping functions
     ############################################################
 
-    def getArrays(self):
-        """
-        get the arrays: boundaries and seeds from the slot 
-        and check, whether the fit together in sense of shape and order of axes
-        :return: boundaries, seeds
-        """
-        #get the data from boundaries and seeds
-        boundaries    = self.Boundaries[:].wait()
-        seeds         = self.Seeds[:].wait()
-
-        #both shapes must be the same, and the axistags (means where x, y,z,t,c are)
-        assert seeds.shape == boundaries.shape
-        assert self.Seeds.meta.axistags == self.Boundaries.meta.axistags
-
-        return boundaries, seeds
 
     def arrayConversion(self, boundaries, seeds):
         """
@@ -448,7 +439,9 @@ class OpWatershedSegmentationCalculation( Operator ):
         """
         #boundaries
         # input image: uint8 or float32, (float32 includes more information)
-        boundaries     = boundaries.astype(np.float32)
+        # because Turbo works with unint8 more effective
+        if not (boundaries.dtype == np.uint8):
+            boundaries     = boundaries.astype(np.float32)
 
         #for the seeds
         # uint32
@@ -456,60 +449,7 @@ class OpWatershedSegmentationCalculation( Operator ):
         return boundaries, seeds
 
 
-    def removeChannelAxis(self, boundaries, seeds):
-        """
-        :param boundaries: array 1
-        :param seeds: array 2
 
-        Remove the last dimension of array 1 and array 2
-        the last dimension should be the channel, but this is tested in evaluateSlicing
-        :return: (boundaries, seeds) with removed last axis
-        """
-        #cut off the channel dimension
-        boundaries     = boundaries.reshape(boundaries.shape[0:-1])
-        seeds          = seeds.reshape(seeds.shape[0:-1])
-        return (boundaries, seeds)
-
-    def addChannelAxis(self, array):
-        """
-        :param array: array for operation
-        add a new dimension as last dimension to the array
-        this intends to restore the channel dimension
-        :return: the new array with an addtional axis at the end
-        """
-        # add axis for the channel 
-        arrayOut = array[...,np.newaxis]
-        return arrayOut
-
-
-    def evaluateSlicing(self, slot):
-        """
-        :param slot: use the data of the given slot
-        check whether the channel is the last axis
-        check whether the time axis is used or not
-        :return: tUsed True if time-axis is used, else: False
-            tId: the index of the time Axis
-        """
-        # get dimesions
-        tags = slot.meta.axistags
-        xId = tags.index('x')
-        yId = tags.index('y')
-        zId = tags.index('z')
-        tId = tags.index('t')
-        cId = tags.index('c')
-        #number of dimensions
-        dims = len(slot.meta.shape)
-
-        # channel dimension must be the last one
-        assert cId == dims - 1
-
-        #controlling for 2D, 2D with time, 3D, 3D with slicing 
-        tUsed = True if (tId < dims) else False
-        # error if x, y, or c can't aren't used
-        if (cId >= dims or xId >= dims or yId >= dims):
-            logger.info("no channel, x or y used in data; something is probably wrong")
-
-        return (tUsed, tId)
 
     def slicedWatershedAlgorithm(self, boundaries, seeds, tAxis):
         """
@@ -670,4 +610,5 @@ class OpWatershedSegmentationCalculation( Operator ):
 
 
         return method, neighbors, terminate, maxCost
+
 

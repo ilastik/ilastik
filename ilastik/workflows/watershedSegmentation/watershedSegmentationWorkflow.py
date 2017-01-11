@@ -207,15 +207,23 @@ class WatershedSegmentationWorkflow(Workflow):
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
 
+        # TODO may be improved
+        seeds_ready = opSeeds.WSMethodOut.ready()
+
+        # import
         self._shell.setAppletEnabled( self.dataSelectionApplet,\
                 not batch_processing_busy )
-        self._shell.setAppletEnabled( self.watershedSegmentationApplet,\
-                not batch_processing_busy and input_ready )
+        # seeds
         self._shell.setAppletEnabled( self.seedsApplet,\
                 not batch_processing_busy and input_ready )
+        # watershed
+        self._shell.setAppletEnabled( self.watershedSegmentationApplet,\
+                not batch_processing_busy and input_ready and seeds_ready )
+        # export
         self._shell.setAppletEnabled( self.dataExportApplet,\
-                not batch_processing_busy and input_ready ) #TODO (add the watershedSegementation here)
+                not batch_processing_busy and input_ready and seeds_ready ) #TODO (add the watershedSegementation here)
                 #and opWatershedSegmentation.Superpixels.ready())
+        # batch processing
         self._shell.setAppletEnabled( self.batchProcessingApplet,\
                 not batch_processing_busy and input_ready )
 
