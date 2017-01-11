@@ -97,7 +97,7 @@
        <item>
         <widget class="QLabel" name="computeLabel">
          <property name="text">
-          <string>Compute Minima from:</string>
+          <string>Compute Seeds from:</string>
          </property>
         </widget>
        </item>

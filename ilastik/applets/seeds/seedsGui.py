@@ -74,14 +74,105 @@ class SeedsGui(LayerViewerGui):
 
         self.generateSeeds()
 
+    def getAndUseSmoothingMethod(self, boundaries):
+        """
+        :returns: smoothed boundaries
+        :rtype: array
+        """
+        op = self.topLevelOperatorView 
+        method  = self._drawer.smoothingComboBox.currentText()
+        sigma   = self._drawer.smoothingDoubleSpinBox.value()
+
+        if ( method == "Gaussian"):
+            function = vigra.filters.gaussianSmoothing
+
+        elif ( method == "MedianFilter"):
+            #TODO
+            raise NotImplementedError
+        else: 
+            raise NotImplementedError
+
+
+        smoothedBoundaries           = function(boundaries, sigma)
+
+        # add a layer for this array
+        self.assignSlotToLayer(op.Smoothing, op.Boundaries, smoothedBoundaries)
+
+        return smoothedBoundaries
+
+
+
+
+
+    def getAndUseComputingMethod(self, smoothedBoundaries):
+        """
+        :returns: function for smoothing
+        :rtype: function
+        """
+        op = self.topLevelOperatorView 
+        method = self._drawer.computeComboBox.currentText()
+
+        if ( method == "DistanceTransform"):
+
+            # parameters copied from anna's script
+            threshold = 0.3
+            minMemSize = 0
+            #minSegSize = 20
+            sigMinima = 1.0
+            #sigWeights = 0.0
+
+            # compute distance transform
+            distance_to_membrane = signed_distance_transform(smoothedBoundaries, threshold, minMemSize)
+            self.assignSlotToLayer(op.Computing, op.Boundaries, distance_to_membrane)
+
+            # get the seeds from dt
+            binary_seeds = binary_seeds_from_distance_transform(distance_to_membrane, sigMinima)
+            seeds = binary_seeds
+            # from anna
+            #distance_to_membrane = signed_distance_transform(pmap, threshold, minMemSize)
+            #binary_seeds = binary_seeds_from_distance_transform(distance_to_membrane, sigMinima)
+            #labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(binary_seeds.view(numpy.uint8))
+
+
+
+        elif ( method == "HeightMap Min"):
+            (tUsed, tId)    = evaluateSlicing(op.Boundaries)
+            # Minima
+            seeds           = self.slicedMinOrMax(smoothedBoundaries, tId)
+            seeds           = seeds.astype(numpy.float32)
+
+        elif ( method == "HeightMap Max"):
+            (tUsed, tId)    = evaluateSlicing(op.Boundaries)
+            # Maxima
+            seeds           = self.slicedMinOrMax(smoothedBoundaries, tId, minTrue=False)
+            seeds           = seeds.astype(numpy.float32)
+
+
+
+
+        else: 
+            #TODO
+            raise NotImplementedError
+
+
+
+        self.assignSlotToLayer(op.SeedsTest, op.Boundaries, seeds)
+        return seeds
+
     def generateSeeds(self):
+
+        #smoothingMethod = getSmoothingMethod()
+
+    
+
+
         print "generate Seeds start"
         op = self.topLevelOperatorView 
 
         # get boundaries
         boundaries      = getArray(op.Boundaries)
         #boundaries     = boundaries.astype(np.float32)
-        sigma           = op.SmoothingSigma.value
+        #sigma           = op.SmoothingSigma.value
         #cut off the channel dimension
         boundaries      = removeChannelAxis(boundaries)
 
@@ -90,26 +181,22 @@ class SeedsGui(LayerViewerGui):
         #print boundaries.shape
 
         # Smoothing
-        seeds           = vigra.filters.gaussianSmoothing(boundaries, sigma)
-        self.assignSlot(op.Smoothing, op.Boundaries, seeds)
+        #seeds           = vigra.filters.gaussianSmoothing(boundaries, sigma)
+        #seeds           = self.getSmoothingMethod()(boundaries, sigma)
+        #self.assignSlotToLayer(op.Smoothing, op.Boundaries, seeds)
 
+        smoothedBoundaries  = self.getAndUseSmoothingMethod(boundaries)
         # for distance transform: seeds.dtype === uint32 or float? but not uint8
-        seeds           = seeds.astype(numpy.float32)
-
-        # Compute
-        seeds           = vigra.filters.distanceTransform(seeds)
-        self.assignSlot(op.Computing, op.Boundaries, seeds)
-
-        seeds           = seeds.astype(numpy.float32)
-        (tUsed, tId)    = evaluateSlicing(op.Boundaries)
-
-        # Minima/Maxima
-        seeds           = self.slicedMinOrMax(seeds, tId)
-        #seeds           = self.slicedMinOrMax(seeds, tId, minTrue=False)
+        smoothedBoundaries  = smoothedBoundaries.astype(numpy.float32)
 
 
+        # Compute here: distance transform
+        #seeds           = vigra.filters.distanceTransform(seeds)
+        seeds               = self.getAndUseComputingMethod(smoothedBoundaries)
 
-        self.assignSlot(op.SeedsTest, op.Boundaries, seeds)
+        # label the seeds 
+        #labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(binary_seeds.view(numpy.uint8))
+
 
         '''
         # output sets
@@ -132,7 +219,7 @@ class SeedsGui(LayerViewerGui):
         print "generate Seeds end"
 
 
-    def assignSlot(self, toSlot, fromSlotMeta, array): 
+    def assignSlotToLayer(self, toSlot, fromSlotMeta, array): 
         # conversion
         array           = array.astype(numpy.uint8)
         array           = addChannelAxis(array)
@@ -369,7 +456,7 @@ class SeedsGui(LayerViewerGui):
             self._drawer.smoothingComboBox.addItems(itemList)
 
         def initComputeComboBox():
-            itemList = ["HeightMap", "DistanceTransform"]
+            itemList = ["HeightMap Min", "HeightMap Max", "DistanceTransform"]
             self._drawer.computeComboBox.addItems(itemList)
 
         op = self.topLevelOperatorView 
@@ -439,3 +526,72 @@ class SeedsGui(LayerViewerGui):
 
         return layers
 
+
+
+
+
+#copied from wsDT
+def signed_distance_transform(pmap, pmin, minMembraneSize):
+    """
+    Performs a threshold on the given image 'pmap' > pmin, and performs
+    a distance transform to the threshold region border for all pixels outside the
+    threshold boundaries (positive distances) and also all pixels *inside*
+    the boundary (negative distances).
+
+    The result is a signed float32 image.
+    """
+    # get the thresholded pmap
+    binary_membranes = (pmap >= pmin).view(numpy.uint8)
+
+    # delete small CCs
+    labeled = vigra.analysis.labelMultiArrayWithBackground(binary_membranes)
+    del binary_membranes
+
+    # perform signed dt on mask
+    distance_to_membrane = vigra.filters.distanceTransform(labeled)
+
+    # Save RAM with a sneaky trick:
+    # Use distanceTransform in-place, despite the fact that the input and output don't have the same types!
+    # (We can just cast labeled as a float32, since uint32 and float32 are the same size.)
+    distance_to_nonmembrane = labeled.view(numpy.float32)
+    vigra.filters.distanceTransform(labeled, background=False, out=distance_to_nonmembrane)
+    del labeled # Delete this name, not the array
+
+    # Combine the inner/outer distance transforms
+    distance_to_nonmembrane[distance_to_nonmembrane>0] -= 1
+    distance_to_membrane[:] -= distance_to_nonmembrane
+
+    return distance_to_membrane
+
+
+
+# copied from wsDT
+def binary_seeds_from_distance_transform(distance_to_membrane, smoothingSigma):
+    """
+    Return a binary image indicating the local maxima of the given distance transform.
+
+    If smoothingSigma is provided, pre-smooth the distance transform before locating local maxima.
+    """
+    # Can't work in-place: Not allowed to modify input
+    distance_to_membrane = distance_to_membrane.copy()
+
+    if smoothingSigma != 0.0:
+        distance_to_membrane = vigra.filters.gaussianSmoothing(distance_to_membrane, smoothingSigma, out=distance_to_membrane)
+
+    localMaximaND(distance_to_membrane, allowPlateaus=True, allowAtBorder=True, marker=numpy.nan, out=distance_to_membrane)
+    seedsVolume = numpy.isnan(distance_to_membrane)
+
+    return seedsVolume
+
+
+
+def localMaximaND(image, *args, **kwargs):
+    """
+    An ND wrapper for vigra's 2D/3D localMaxima functions.
+    """
+    assert image.ndim in (2,3), \
+        "Unsupported dimensionality: {}".format( image.ndim )
+    if image.ndim == 2:
+        return vigra.analysis.localMaxima(image, *args, **kwargs)
+    if image.ndim == 3:
+        return vigra.analysis.localMaxima3D(image, *args, **kwargs)
