@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from PyQt5.QtWidgets import QTreeWidgetItem, QTreeWidget, QTreeWidgetItemIterator
-from PyQt5.QtCore import pyqtSignal, Qt, QEvent, SIGNAL
+from PyQt5.QtCore import pyqtSignal, Qt, QEvent
 
 class OverlayTreeWidgetIter(QTreeWidgetItemIterator):
     def __init__(self, *args):
@@ -152,7 +152,7 @@ class OverlayTreeWidget(QTreeWidget):
                     
     def event(self, event):
         if (event.type()==QEvent.KeyPress) and (event.key()==Qt.Key_Space):
-            self.emit(SIGNAL("spacePressed"))
+            self.spacePressed.emit()
             return True
         return QTreeWidget.event(self, event)
     
