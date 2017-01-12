@@ -46,6 +46,7 @@ class OpWatershedSegmentation(Operator):
     Seeds               = InputSlot(optional=True) #for displaying in layer only
     CorrectedSeedsIn    = InputSlot(optional=True) #deals as input for the LabelChange stuff 
 
+    SeedsExist          = InputSlot(optional=True, value=True) #default that seeds exist
 
     ############################################################
     # Inputslots for Internal Parameter Usage (don't change anything here)
@@ -382,7 +383,7 @@ class OpWatershedSegmentationCalculation( Operator ):
     # the function, where the algorithm is executed itself
     ############################################################
 
-    def watershedAlgorithm(self, boundaries, seeds):
+    def watershedAlgorithm(self, boundaries, seeds=None):
         """
         :param boundaries: array that contains the boundaries
         :param seeds: array that contains the seeds
@@ -396,7 +397,9 @@ class OpWatershedSegmentationCalculation( Operator ):
         """
 
         # detect the correct dimension for the watershed algorithm
-        method, neighbors, terminate, maxCost = self.prepareInputParameter(seeds.ndim)
+        # if sliced, then the input is only a part of the series, 
+        # and therefore the dimension is still correct
+        method, neighbors, terminate, maxCost = self.prepareInputParameter(boundaries.ndim)
         '''
         print neighbors
         print method
@@ -430,7 +433,7 @@ class OpWatershedSegmentationCalculation( Operator ):
     ############################################################
 
 
-    def arrayConversion(self, boundaries, seeds):
+    def arrayConversion(self, boundaries, seeds=None):
         """
         :param boundaries: array 1
         :param seeds: array2
@@ -445,27 +448,40 @@ class OpWatershedSegmentationCalculation( Operator ):
 
         #for the seeds
         # uint32
-        seeds          = seeds.astype(np.uint32)
+
+        if not (seeds is None):
+            seeds          = seeds.astype(np.uint32)
         return boundaries, seeds
 
 
 
 
-    def slicedWatershedAlgorithm(self, boundaries, seeds, tAxis):
+    def slicedWatershedAlgorithm(self, boundaries, seeds=None, tAxis=0):
         """
-        uses watershedAlgorithm for the main algorithm execution
-        but slices the data for it, so that that algorithm can be used easily
+        Uses watershedAlgorithm for the main algorithm execution
+        but slices the data for it, so that that algorithm can be used easily.
+
+        Handles the case where seeds can be None
 
         :param boundaries: the array, that contains the boundaries data
+        :type boundaries: array
         :param seeds: the array, that contains the seeds data
+        :type seeds: None or array
         :param tAxis: the dimension number of the time axis
+        :type tAxis: int
         :return: labelImageArray: the concatenated watershed result of all slices 
+        :rtype: array
         """
-        labelImageArray = np.ndarray(shape=seeds.shape, dtype=seeds.dtype)
-        for i in range(seeds.shape[tAxis]):
+        labelImageArray = np.ndarray(shape=boundaries.shape, dtype=boundaries.dtype)
+        for i in range(boundaries.shape[tAxis]):
             # iterate over the axis of the time
             boundariesSlice  = boundaries.take( i, axis=tAxis)
-            seedsSlice       = seeds.take(      i, axis=tAxis)
+
+            # handle seeds = None or seeds = array
+            if not (seeds is None):
+                seedsSlice      = seeds.take(      i, axis=tAxis)
+            else:
+                seedsSlice      = None
             (labelImage, maxRegionLabel) =\
                     self.watershedAlgorithm(boundariesSlice, seedsSlice)
 
@@ -495,7 +511,6 @@ class OpWatershedSegmentationCalculation( Operator ):
         includes a list of correct/valid parameters
         """
 
-        ############################################################
         # get the value of the inputSlots
         ############################################################
         # check whether slot is ready (connected)
@@ -519,7 +534,6 @@ class OpWatershedSegmentationCalculation( Operator ):
             maxCost     = self.MaxCost      [:].wait()[0]
 
         
-        ############################################################
         # declare valid variables and their valid inputs
         ############################################################
 
@@ -552,7 +566,6 @@ class OpWatershedSegmentationCalculation( Operator ):
             [terminate, terminateArray, terminateName]]
         
 
-        ############################################################
         # check the input for correctness
         ############################################################
 
@@ -581,14 +594,13 @@ class OpWatershedSegmentationCalculation( Operator ):
             terminate   = None
 
 
-        ############################################################
         # declare default values
         ############################################################
         # method
         if method == None:
             method = method1
 
-        # neighbors, depending von dimention
+        # neighbors, depending on dimension
         if neighbors == None or neighbors == neighbors1:
             if dimension == 2:
                 neighbors = 4

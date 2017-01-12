@@ -150,10 +150,15 @@ class WatershedSegmentationWorkflow(Workflow):
         # watershed inputs
         opWatershedSegmentation.RawData.connect(    opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
         opWatershedSegmentation.Boundaries.connect( opDataSelection.ImageGroup[self.DATA_ROLE_BOUNDARIES] )
-        #TODO get the Seeds from opSeeds
-        opWatershedSegmentation.Seeds.connect(      opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
-        #TODO get the Seeds from opSeeds
-        opWatershedSegmentation.CorrectedSeedsIn.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
+
+        opWatershedSegmentation.SeedsExist.connect( opSeeds.SeedsExist )
+        opWatershedSegmentation.Seeds.connect( opSeeds.SeedsOut )
+        opWatershedSegmentation.CorrectedSeedsIn.connect( opSeeds.SeedsOut )
+        # old
+        #opWatershedSegmentation.Seeds.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
+        #opWatershedSegmentation.CorrectedSeedsIn.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
+
+
         # watershed parameter
         opWatershedSegmentation.WSMethod.connect(    opSeeds.WSMethodOut )
 

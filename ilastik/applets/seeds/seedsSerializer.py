@@ -44,6 +44,8 @@ class SeedsSerializer(AppletSerializer):
         """
 
         slots = [ 
+                SerialSlot(operator.SeedsExist), 
+
                 SerialSlot(operator.WSMethodIn), 
                 #parameters
                 SerialSlot(operator.Unseeded),

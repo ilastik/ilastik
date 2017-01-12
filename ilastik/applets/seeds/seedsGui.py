@@ -65,8 +65,26 @@ class SeedsGui(LayerViewerGui):
         # init the Comboboxes with values
         self.initComboBoxes()
 
+
+        # copy Seeds to generated Seeds if Seeds is ready and GeneratedSeeds is None
+
+        #TODO
+        if op.Seeds.ready():
+            print "seeds supplied"
+        else: 
+            print "no seeds supplied"
+
+        if op.GeneratedSeeds.ready():
+            print "ready"
+            if op.GeneratedSeeds.value == None:
+                print "tst"
+        else:
+            print "not ready"
+
     def onGenerateButtonClicked(self):
         op = self.topLevelOperatorView 
+
+        #TODO
         if op.Seeds.ready(): 
             print "ready"
         else:
@@ -113,19 +131,23 @@ class SeedsGui(LayerViewerGui):
         method = self._drawer.computeComboBox.currentText()
 
         if ( method == "DistanceTransform"):
+            # TODO 
+            # sigMinima is the sigma for an additional smoothing after the distance transform
+            # these functions need to be changed
 
             # parameters copied from anna's script
-            threshold = 0.3
-            minMemSize = 0
+            threshold = 0.91
             #minSegSize = 20
             sigMinima = 1.0
             #sigWeights = 0.0
 
             # compute distance transform
-            distance_to_membrane = signed_distance_transform(smoothedBoundaries, threshold, minMemSize)
+            distance_to_membrane = signed_distance_transform(smoothedBoundaries, threshold)
             self.assignSlotToLayer(op.Computing, op.Boundaries, distance_to_membrane)
 
             # get the seeds from dt
+            # TODO uses smoothing, that is not welcomed and the maximum-function is not working correctly
+            # because t is a dimension there, not a slicing parameter
             binary_seeds = binary_seeds_from_distance_transform(distance_to_membrane, sigMinima)
             seeds = binary_seeds
             # from anna
@@ -133,39 +155,23 @@ class SeedsGui(LayerViewerGui):
             #binary_seeds = binary_seeds_from_distance_transform(distance_to_membrane, sigMinima)
             #labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(binary_seeds.view(numpy.uint8))
 
-
-
         elif ( method == "HeightMap Min"):
             (tUsed, tId)    = evaluateSlicing(op.Boundaries)
             # Minima
-            seeds           = self.slicedMinOrMax(smoothedBoundaries, tId)
+            seeds           = self.MinOrMax(smoothedBoundaries, "Minimum", tUsed, tId)
             seeds           = seeds.astype(numpy.float32)
 
         elif ( method == "HeightMap Max"):
             (tUsed, tId)    = evaluateSlicing(op.Boundaries)
             # Maxima
-            seeds           = self.slicedMinOrMax(smoothedBoundaries, tId, minTrue=False)
+            seeds           = self.MinOrMax(smoothedBoundaries, "Maximum", tUsed, tId)
             seeds           = seeds.astype(numpy.float32)
-
-
-
-
         else: 
-            #TODO
             raise NotImplementedError
 
-
-
-        self.assignSlotToLayer(op.SeedsTest, op.Boundaries, seeds)
         return seeds
 
     def generateSeeds(self):
-
-        #smoothingMethod = getSmoothingMethod()
-
-    
-
-
         print "generate Seeds start"
         op = self.topLevelOperatorView 
 
@@ -173,19 +179,14 @@ class SeedsGui(LayerViewerGui):
         boundaries      = getArray(op.Boundaries)
         #boundaries     = boundaries.astype(np.float32)
         #sigma           = op.SmoothingSigma.value
+
         #cut off the channel dimension
         boundaries      = removeChannelAxis(boundaries)
 
-        #print sigma
-        #print boundaries.dtype
-        #print boundaries.shape
 
         # Smoothing
-        #seeds           = vigra.filters.gaussianSmoothing(boundaries, sigma)
-        #seeds           = self.getSmoothingMethod()(boundaries, sigma)
-        #self.assignSlotToLayer(op.Smoothing, op.Boundaries, seeds)
-
         smoothedBoundaries  = self.getAndUseSmoothingMethod(boundaries)
+
         # for distance transform: seeds.dtype === uint32 or float? but not uint8
         smoothedBoundaries  = smoothedBoundaries.astype(numpy.float32)
 
@@ -195,31 +196,120 @@ class SeedsGui(LayerViewerGui):
         seeds               = self.getAndUseComputingMethod(smoothedBoundaries)
 
         # label the seeds 
-        #labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(binary_seeds.view(numpy.uint8))
+        # TODO label array depending on slicing or not
+        seeds  = seeds.astype(numpy.uint8)
+        labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(seeds)
 
 
-        '''
-        # output sets
-        op.SeedsTest.meta.assignFrom(op.Boundaries.meta)
-        #only one channel as output
-        op.SeedsTest.meta.shape = op.Boundaries.meta.shape[:-1] + (1,)
-        op.SeedsTest.meta.drange = (0,255)
-        op.SeedsTest.setValue(seeds)
-        '''
+        self.assignSlotToLayer(op.GeneratedSeeds, op.Boundaries, labeled_seeds)
+        #self.assignSlotToLayer(op.GeneratedSeeds, op.Boundaries, seeds)
 
         # refresh the layers
         self.setupLayers()
-
-        #print seeds.dtype
-        #print seeds.shape
-        print op.WSMethodIn.ready()
-        print op.WSMethodOut.ready()
 
 
         print "generate Seeds end"
 
 
+
+
+
+
+    
+    ############################################################
+    # setupLayers
+    ############################################################
+    def setupLayers(self):
+        """
+        For illustration of what a layer is, see: http://ilastik.org/documentation/basics/layers
+
+        Responsable for the elements in the 'Viewer Controls'.
+
+        These are the views (e.g. opacity of Raw Data)
+        that can be adjusted in the left corner of the program
+        and for the Elements, that can be seen in the 'Central Widget'. 
+        These are excactly the ones, that are shown in the Viewer Controls.
+
+        Uses :py:meth:`_initLayer` to create a single layer (see base-class LayerViewerGui)
+
+        :returns: the list with the layers that are created in this function
+        :rtype: list of layers
+
+        """
+
+        # Base class provides the label layer.
+        # needed to add here. otherwise the reset button doesn't work well
+        layers = super(SeedsGui, self).setupLayers()
+        #layers[0].visible = False
+        # remove the Label-Layer, because it is not needed here
+        layers = []
+
+        op = self.topLevelOperatorView
+
+        #TODO if Seeds are supplied already
+        # Seeds
+        #self._initLayer(op.Seeds,            "Seeds",        layers, visible=False)
+        self._initLayer(op.GeneratedSeeds,            "Seeds",        layers,  opacity=0.5)
+        #self._initLayer(op.SeedsOut,            "Seeds",        layers,  opacity=0.5)
+
+        self._initLayer(op.Smoothing,            "Smoothing",        layers, opacity=0.5,
+                layerFunction=self.createGrayscaleLayer) 
+        self._initLayer(op.Computing,            "Computing",        layers,
+                layerFunction=self.createGrayscaleLayer) 
+        
+        # Boundaries
+        self._initLayer(op.Boundaries,       "Boundaries",   layers, opacity=0.5, 
+                layerFunction=self.createGrayscaleLayer) 
+
+
+        # Raw Data
+        self._initLayer(op.RawData,          "Raw Data",     layers, 
+                layerFunction=self.createStandardLayerFromSlot ) 
+
+
+
+        return layers
+
+
+
+
+
+    ############################################################
+    # initialization of the Comboboxes with values
+    ############################################################
+    def initComboBoxes(self):
+        """
+        Initializes the Smoothing and Compute ComboBox with selectables
+        Therefore it is important, that the state of the SmoothingMethod and
+        ComputingMethod is stored temporarily, because adding new elements 
+        (probably emit signal for changing this Method index) changes each Method.
+        """
+        def initSmoothingComboBox():
+            itemList = ["Gaussian", "MedianFilter"]
+            self._drawer.smoothingComboBox.addItems(itemList)
+
+        def initComputeComboBox():
+            itemList = ["HeightMap Min", "HeightMap Max", "DistanceTransform"]
+            self._drawer.computeComboBox.addItems(itemList)
+
+        op = self.topLevelOperatorView 
+        # this value needs to be preserved, because adding some new elements 
+        # changes the op.SmoothingMethod.value
+        temp1 = op.SmoothingMethod.value
+        temp2 = op.ComputeMethod.value
+
+        initSmoothingComboBox()
+        initComputeComboBox()
+
+        # reset the methods
+        op.SmoothingMethod.setValue(temp1)
+        op.ComputeMethod.setValue(temp2)
+
+    ############################################################
+    # smoothing and compute functions
+    ############################################################
     def assignSlotToLayer(self, toSlot, fromSlotMeta, array): 
+        #TODO conversion to uint8 is ok?
         # conversion
         array           = array.astype(numpy.uint8)
         array           = addChannelAxis(array)
@@ -230,8 +320,31 @@ class SeedsGui(LayerViewerGui):
         toSlot.meta.drange = (0,255)
         toSlot.setValue(array)
 
-    def slicedMinOrMax(self, boundaries, tAxis, minTrue=True):
-        #TODO
+    def MinOrMax(self, boundaries, functionName="Minimum", tUsed=False, tAxis=0):
+        #TODO docu
+        diff = 0
+        if tUsed:
+            diff = 1
+        if functionName == "Minimum":
+            if (boundaries.ndim - diff == 2):
+                function = vigra.analysis.extendedLocalMinima
+            else:
+                function = vigra.analysis.extendedLocalMinima3D
+        else:
+            if (boundaries.ndim - diff == 2):
+                function = vigra.analysis.extendedLocalMaxima
+            else:
+                function = vigra.analysis.extendedLocalMaxima3D
+
+        marker = 1
+        if tUsed:
+            return self.slicedMinOrMax(boundaries, tAxis, function=function, marker=marker)
+        else:
+            return function(boundaries, marker=marker)
+
+
+    def slicedMinOrMax(self, boundaries, tAxis, function, marker=1):
+        #TODO docu
         """
         uses Maxima for the main algorithm execution
         but slices the data for it, so that that algorithm can be used easily
@@ -241,25 +354,14 @@ class SeedsGui(LayerViewerGui):
         :param tAxis: the dimension number of the time axis
         :return: labelImageArray: the concatenated watershed result of all slices 
         """
+
+            
         labelImageArray = np.ndarray(shape=boundaries.shape, dtype=boundaries.dtype)
         for i in range(boundaries.shape[tAxis]):
             # iterate over the axis of the time
             boundariesSlice  = boundaries.take( i, axis=tAxis)
-            #TODO 2D and 3D
-            marker = 100
-            if minTrue:
-                if (boundaries.ndim - 1 == 2):
-                    function = vigra.analysis.extendedLocalMaxima
-                else:
-                    function = vigra.analysis.extendedLocalMaxima3D
-            else:
-                if (boundaries.ndim - 1 == 2):
-                    function = vigra.analysis.extendedLocalMinima
-                else:
-                    function = vigra.analysis.extendedLocalMinima3D
 
             labelImage           = function(boundariesSlice, marker=marker)
-
 
             # write in the correct column of the output array, 
             # because the dimensions must fit
@@ -272,6 +374,72 @@ class SeedsGui(LayerViewerGui):
             elif (tAxis == 3):
                 labelImageArray[:,:,:,i] = labelImage
         return labelImageArray
+
+
+
+
+    ############################################################
+    # functionality of gui elements
+    ############################################################
+
+    @pyqtSlot()
+    def onUnseededCheckBoxStateChanged(self):
+        """
+        See if the Unseeded-CheckBox is checked or not.
+
+        Checked: Use UnionFind as watershed method
+            and disable all gui-elements except this checkbox
+
+        Unchecked: use setWatershedMethodToTurboOrRegionGrowing to decide whether Turbo or RegionGrowing
+            and enable all gui-elements 
+        """
+
+        op = self.topLevelOperatorView 
+        # change the enable state of the gui elements
+        #if (state == QtCore.Qt.Checked):
+        if self._drawer.unseededCheckBox.isChecked():
+            self.setEnabledEverthingButUnseeded(False)
+            
+            op.WSMethodIn.setValue("UnionFind") 
+        else:
+            self.setEnabledEverthingButUnseeded(True)
+            self.setWatershedMethodToTurboOrRegionGrowing()
+
+    def setEnabledEverthingButUnseeded(self, enable):
+        """
+        Enables or disables all gui elements except the unseeded checkbox. 
+        Gui-Elements must be added manually.
+
+        :param enable: if True, enable all gui elements, else: disable
+        :type enable: bool
+        """
+        gui = self._drawer
+        guiElements = [
+            gui.smoothingComboBox,
+            gui.smoothingDoubleSpinBox,
+            gui.computeComboBox,
+            gui.generateButton
+        ]
+
+        for widget in guiElements:
+            widget.setEnabled(enable) 
+
+    def setWatershedMethodToTurboOrRegionGrowing(self):
+        """
+        Set the correct watershed method
+        boundaries-input uint8: Turbo
+        boundaries-input not uint8: RegionGrowing
+        """
+        op = self.topLevelOperatorView 
+        # if boundaries has type uint8, then use Turbo, otherwise RegionGrowing
+        if (op.Boundaries.meta.dtype == numpy.uint8):
+            op.WSMethodIn.setValue("Turbo") 
+        else:
+            op.WSMethodIn.setValue("RegionGrowing") 
+
+    ############################################################
+    # synchronisation of gui elements and operators and their functionality
+    ############################################################
 
     def initAppletDrawerUi(self):
         """
@@ -312,9 +480,33 @@ class SeedsGui(LayerViewerGui):
         # (of checkbox (now correct in gui) and boundaries dtype)
         self.onUnseededCheckBoxStateChanged()
 
+        '''
+        def control_layout(*args):
+            """
+            Define the way, how the input widgets are shown in the gui
+            They are added to a horizontal BoxLayout and afterwards 
+            this layout is added to a vertivalLayoutBox
+            """
+            space=10
+            row_layout = QHBoxLayout()
+            begin = True
+            # Add all arguments passed on
+            for widget in args:
+                #convert strings to QLabel
+                #for python3.x add:
+                #basestring = str
+                if isinstance(widget, basestring):
+                    widget = QLabel(widget)
+                #only add space after first widget
+                if not begin:
+                    row_layout.addSpacerItem( QSpacerItem(space, 0, QSizePolicy.Expanding) )
+                row_layout.addWidget(widget)
+                begin = False
+            return row_layout
+        '''
 
     ############################################################
-    # synchronisation of gui elements and operators
+    # helping functions: synchronisation of gui elements and operators
     ############################################################
     @contextmanager
     def set_updating(self):
@@ -374,164 +566,14 @@ class SeedsGui(LayerViewerGui):
             op.SmoothingSigma.setValue( self._drawer.smoothingDoubleSpinBox.value() )
             op.ComputeMethod.setValue( self._drawer.computeComboBox.currentIndex() )
 
-    
 
 
+############################################################
+# other stuff
+############################################################
 
-    ############################################################
-    # synchronisation of gui elements and operators
-    ############################################################
-
-    def setEnabledEverthingButUnseeded(self, enable):
-        """
-        Enables or disables all gui elements except the unseeded checkbox. 
-        Gui-Elements must be added manually.
-
-        :param enable: if True, enable all gui elements, else: disable
-        :type enable: bool
-        """
-        gui = self._drawer
-        guiElements = [
-            gui.smoothingComboBox,
-            gui.smoothingDoubleSpinBox,
-            gui.computeComboBox,
-            gui.generateButton
-        ]
-
-        for widget in guiElements:
-            widget.setEnabled(enable) 
-
-
-    @pyqtSlot()
-    def onUnseededCheckBoxStateChanged(self):
-        """
-        See if the Unseeded-CheckBox is checked or not.
-
-        Checked: Use UnionFind as watershed method
-            and disable all gui-elements except this checkbox
-
-        Unchecked: use setWatershedMethodToTurboOrRegionGrowing to decide whether Turbo or RegionGrowing
-            and enable all gui-elements 
-        """
-
-        op = self.topLevelOperatorView 
-        # change the enable state of the gui elements
-        #if (state == QtCore.Qt.Checked):
-        if self._drawer.unseededCheckBox.isChecked():
-            self.setEnabledEverthingButUnseeded(False)
-            
-            op.WSMethodIn.setValue("UnionFind") 
-        else:
-            self.setEnabledEverthingButUnseeded(True)
-            self.setWatershedMethodToTurboOrRegionGrowing()
-
-
-    def setWatershedMethodToTurboOrRegionGrowing(self):
-        """
-        Set the correct watershed method
-        boundaries-input uint8: Turbo
-        boundaries-input not uint8: RegionGrowing
-        """
-        op = self.topLevelOperatorView 
-        # if boundaries has type uint8, then use Turbo, otherwise RegionGrowing
-        if (op.Boundaries.meta.dtype == numpy.uint8):
-            op.WSMethodIn.setValue("Turbo") 
-        else:
-            op.WSMethodIn.setValue("RegionGrowing") 
-
-
-
-    ############################################################
-    # initialization of the Comboboxes with values
-    ############################################################
-    def initComboBoxes(self):
-        """
-        Initializes the Smoothing and Compute ComboBox with selectables
-        Therefore it is important, that the state of the SmoothingMethod and
-        ComputingMethod is stored temporarily, because adding new elements 
-        (probably emit signal for changing this Method index) changes each Method.
-        """
-        def initSmoothingComboBox():
-            itemList = ["Gaussian", "MedianFilter"]
-            self._drawer.smoothingComboBox.addItems(itemList)
-
-        def initComputeComboBox():
-            itemList = ["HeightMap Min", "HeightMap Max", "DistanceTransform"]
-            self._drawer.computeComboBox.addItems(itemList)
-
-        op = self.topLevelOperatorView 
-        # this value needs to be preserved, because adding some new elements 
-        # changes the op.SmoothingMethod.value
-        temp1 = op.SmoothingMethod.value
-        temp2 = op.ComputeMethod.value
-
-        initSmoothingComboBox()
-        initComputeComboBox()
-
-        # reset the methods
-        op.SmoothingMethod.setValue(temp1)
-        op.ComputeMethod.setValue(temp2)
-
-
-
-
-
-    def setupLayers(self):
-        """
-        For illustration of what a layer is, see: http://ilastik.org/documentation/basics/layers
-
-        Responsable for the elements in the 'Viewer Controls'.
-
-        These are the views (e.g. opacity of Raw Data)
-        that can be adjusted in the left corner of the program
-        and for the Elements, that can be seen in the 'Central Widget'. 
-        These are excactly the ones, that are shown in the Viewer Controls.
-
-        Uses :py:meth:`_initLayer` to create a single layer (see base-class LayerViewerGui)
-
-        :returns: the list with the layers that are created in this function
-        :rtype: list of layers
-
-        """
-
-        # Base class provides the label layer.
-        # needed to add here. otherwise the reset button doesn't work well
-        layers = super(SeedsGui, self).setupLayers()
-        #layers[0].visible = False
-        # remove the Label-Layer, because it is not needed here
-        layers = []
-
-        op = self.topLevelOperatorView
-
-        #TODO if Seeds are supplied already
-        # Seeds
-        #self._initLayer(op.Seeds,            "Seeds",        layers, visible=False)
-        self._initLayer(op.SeedsTest,            "Seeds",        layers )
-
-        self._initLayer(op.Smoothing,            "Smoothing",        layers ,
-                layerFunction=self.createGrayscaleLayer) 
-        self._initLayer(op.Computing,            "Computing",        layers ,
-                layerFunction=self.createGrayscaleLayer) 
-        
-        # Boundaries
-        self._initLayer(op.Boundaries,       "Boundaries",   layers, opacity=0.5, 
-                layerFunction=self.createGrayscaleLayer) 
-
-
-        # Raw Data
-        self._initLayer(op.RawData,          "Raw Data",     layers, 
-                layerFunction=self.createStandardLayerFromSlot ) 
-
-
-
-        return layers
-
-
-
-
-
-#copied from wsDT
-def signed_distance_transform(pmap, pmin, minMembraneSize):
+#copied from wsDT, but with a some changes 
+def signed_distance_transform(pmap, pmin):
     """
     Performs a threshold on the given image 'pmap' > pmin, and performs
     a distance transform to the threshold region border for all pixels outside the
@@ -541,7 +583,9 @@ def signed_distance_transform(pmap, pmin, minMembraneSize):
     The result is a signed float32 image.
     """
     # get the thresholded pmap
-    binary_membranes = (pmap >= pmin).view(numpy.uint8)
+    #binary_membranes = (pmap >= pmin).view(numpy.uint8)
+    #TODO changed to threshold the black parts = 255
+    binary_membranes = (pmap <= pmin).view(numpy.uint8)
 
     # delete small CCs
     labeled = vigra.analysis.labelMultiArrayWithBackground(binary_membranes)
@@ -557,11 +601,18 @@ def signed_distance_transform(pmap, pmin, minMembraneSize):
     vigra.filters.distanceTransform(labeled, background=False, out=distance_to_nonmembrane)
     del labeled # Delete this name, not the array
 
+    '''
+    '''
     # Combine the inner/outer distance transforms
     distance_to_nonmembrane[distance_to_nonmembrane>0] -= 1
     distance_to_membrane[:] -= distance_to_nonmembrane
+    '''
+    '''
+    # idea, just distance transform with perhaps better results
+    #distance_to_membrane[:] += distance_to_nonmembrane
 
     return distance_to_membrane
+    #return distance_to_nonmembrane
 
 
 
@@ -592,6 +643,15 @@ def localMaximaND(image, *args, **kwargs):
     assert image.ndim in (2,3), \
         "Unsupported dimensionality: {}".format( image.ndim )
     if image.ndim == 2:
+        print "dim 2"
         return vigra.analysis.localMaxima(image, *args, **kwargs)
     if image.ndim == 3:
+        print "dim 3"
         return vigra.analysis.localMaxima3D(image, *args, **kwargs)
+
+
+
+
+
+
+

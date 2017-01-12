@@ -20,7 +20,7 @@
 ##############################################################################
 
 #import numpy as np
-from PyQt4.Qt import pyqtSlot
+from PyQt4.Qt import pyqtSlot, QMessageBox
 
 from pixelValueDisplaying import PixelValueDisplaying 
 from importAndResetLabels import ImportAndResetLabels 
@@ -84,11 +84,9 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.topLevelOperatorView = topLevelOperatorView
         op = self.topLevelOperatorView 
 
-        # TODO make serialized slot out of it or better: 
-        # TODO make something totally diffrent from that, and talk to anna about this 
-        # init the _existingSeedsSlot variable as True. Only reset it, if there is no seed input given
-        self._existingSeedsSlot = True
-        print op.WSMethod.value
+        #print op.WSMethod.value
+        #print "SeedsExist: " + str(op.SeedsExist.value)
+
 
 
         ############################################################
@@ -117,12 +115,12 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         '''
 
 
+        '''
         lst_seeds = [ op.Seeds , op.CorrectedSeedsIn ]
         #lst_seeds = [ op.Seeds , op.CorrectedSeedsIn, op.opLabelPipeline.LabelInput]
         for operator in lst_seeds:
             if not operator.ready():
                 self._existingSeedsSlot = False
-                '''
                 #TODO setting the CorrectedSeedsIn here
                 #if (not op.CorrectedSeedsIn.ready() and op.CorrectedSeedsIn.meta.shape == None ):
                 if op.Boundaries.ready():
@@ -134,9 +132,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
                 else:
                     logger.info( "Boundaries are not ready," +
                         "can't init seeds and CorrectedSeedsIn with default zeros" )
-                '''
 
-        '''
         #for debug
         for operator in lst:
             if operator.ready():
@@ -186,11 +182,13 @@ class WatershedSegmentationGui(WatershedLabelingGui):
                 labelSlots, topLevelOperatorView, watershedLabelingDrawerUiPath )
 
 
+        #if not (op.WSMethod.value == "UnionFind"):
+        print "\nMethod: '" + op.WSMethod.value + "'\n\n"
     
         # init the class to import and reset Labels
         self.importAndResetLabels = ImportAndResetLabels (
                 op.CorrectedSeedsIn,
-                self._existingSeedsSlot,
+                op.SeedsExist.value,
                 op.UseCachedLabels.value,
                 self._labelControlUi.labelListModel, 
                 self._LabelPipeline.opLabelArray,
@@ -219,6 +217,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
                 channel=0
                 )
         self.pixelValueDisplaying.Label = "Show Corrected Seeds pixel value:"
+
         
 
         ############################################################
@@ -235,36 +234,42 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self._initNeighborsComboBox()
 
 
+    @pyqtSlot()
+    def onRunWatershedPushButtonClicked(self):
+        """
+        Responsable to set the ShowWatershedLayer slot to True,
+        so that a new Layer for the watershed results can be added.
+        Executes the watershed algorithm
+
+        """
+        op = self.topLevelOperatorView
+
+        # if no seeds but not UnionFind => not possible => ErrorMessage
+        if not (op.WSMethod == "UnionFind") and not op.SeedsExist.value:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText("No Seeds supplied and watershed not unseeded")
+            #msg.setInformativeText("This is additional information")
+            msg.setWindowTitle("Action invalid")
+            msg.setStandardButtons(QMessageBox.Ok)
+            #msg.buttonClicked.connect(msgbtn)
+	
+            retval = msg.exec_()
+
+        else:
+            if not op.ShowWatershedLayer.value: 
+                op.ShowWatershedLayer.setValue(True)
+                self.updateAllLayers()
+
+            # execute the watershed algorithm
+            self.topLevelOperatorView.opWSC.execWatershedAlgorithm()
 
 
-    '''
-    def initAppletDrawerUi(self):
-        """
-        Overridden from base class (LayerViewerGui)
-        """
-        def control_layout(*args):
-            """
-            Define the way, how the input widgets are shown in the gui
-            They are added to a horizontal BoxLayout and afterwards 
-            this layout is added to a vertivalLayoutBox
-            """
-            space=10
-            row_layout = QHBoxLayout()
-            begin = True
-            # Add all arguments passed on
-            for widget in args:
-                #convert strings to QLabel
-                #for python3.x add:
-                #basestring = str
-                if isinstance(widget, basestring):
-                    widget = QLabel(widget)
-                #only add space after first widget
-                if not begin:
-                    row_layout.addSpacerItem( QSpacerItem(space, 0, QSizePolicy.Expanding) )
-                row_layout.addWidget(widget)
-                begin = False
-            return row_layout
-    '''
+
+
+    ############################################################
+    # Neighbors
+    ############################################################
 
     def _initNeighborsComboBox(self):
         """
@@ -295,24 +300,10 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         op = self.topLevelOperatorView 
         op.WSNeighbors.setValue( str(self._labelControlUi.neighborsComboBox.itemText(index)) )
 
-    @pyqtSlot()
-    def onRunWatershedPushButtonClicked(self):
-        """
-        Responsable to set the ShowWatershedLayer slot to True,
-        so that a new Layer for the watershed results can be added.
-        Executes the watershed algorithm
 
-        """
-        op = self.topLevelOperatorView
-        if not op.ShowWatershedLayer.value: 
-            op.ShowWatershedLayer.setValue(True)
-            self.updateAllLayers()
-
-        # execute the watershed algorithm
-        self.topLevelOperatorView.opWSC.execWatershedAlgorithm()
-
-
-
+    ############################################################
+    # setupLayers
+    ############################################################
 
     def setupLayers(self):
         """
@@ -349,11 +340,12 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             # WatershedCalculations
             self._initLayer(op.WSCCOCachedOutput,"Watershed Calculations", layers)
 
-        # CorrectedSeedsOut
-        self._initLayer(op.CorrectedSeedsOut,"Corrected Seeds", layers)
+        if op.SeedsExist.value:
+            # CorrectedSeedsOut
+            self._initLayer(op.CorrectedSeedsOut,"Corrected Seeds", layers)
 
-        # Seeds
-        self._initLayer(op.Seeds,            "Seeds",        layers, visible=False)
+            # Seeds
+            self._initLayer(op.Seeds,            "Seeds",        layers, visible=False)
 
         
         # Boundaries

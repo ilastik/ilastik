@@ -214,7 +214,11 @@ class LabelListModelWithNumber(LabelListModel, ListModel):
             return decode_to_qstring(s, 'utf-8')
         #show the data
         elif role == Qt.DisplayRole and index.column() == self.ColumnID.Number:
-            number = str(self._elements[index.row()].number)
+            #number = str(self._elements[index.row()].number)
+            number = self._elements[index.row()].number
+            # say how many leading zeros there should be, so that all numbers can see seen, 
+            # and not just 1-9, 10-99, and afterwards ... instead of a number
+            number = "{:04d}".format(number)
             return decode_to_qstring(number, 'utf-8')
         
         else:

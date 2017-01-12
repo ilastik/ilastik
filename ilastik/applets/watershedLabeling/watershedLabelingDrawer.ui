@@ -252,7 +252,7 @@
      <item>
       <widget class="QPushButton" name="resetSeedsPushButton">
        <property name="text">
-        <string>Reset &quot;Correted Seeds Out&quot; to &quot;Seeds&quot;</string>
+        <string>Reset &quot;Correted Seeds&quot; to &quot;Seeds&quot;</string>
        </property>
       </widget>
      </item>

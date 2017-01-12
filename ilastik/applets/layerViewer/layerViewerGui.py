@@ -242,7 +242,8 @@ class LayerViewerGui(QWidget):
             layerList.append(layer)
             del layer
         else:
-            logger.info("slot not ready; didn't add a layer with name: " + name)
+            #logger.info("slot not ready; didn't add a layer with name: " + name)
+            pass
 
     def setupLayers( self ):
         """

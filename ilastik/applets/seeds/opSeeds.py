@@ -18,6 +18,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
 #for caching the data of the watershed algorithm
 from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import _OpCacheWrapper
+from ilastik.utility.VigraIlastikConversionFunctions import getArray
 
 import logging
 logger = logging.getLogger(__name__)
@@ -37,10 +38,15 @@ class OpSeeds(Operator):
     Boundaries          = InputSlot() # for displaying as layer and as input for the watershed algorithm 
     Seeds               = InputSlot(optional=True) #for displaying in layer only
 
-    # TODO
-    SeedsTest               = InputSlot()
-    Smoothing           = InputSlot()
-    Computing           = InputSlot()
+    #TODO Cache
+    GeneratedSeeds      = InputSlot(optional=True)
+    SeedsOut            = OutputSlot()
+
+    SeedsExist          = OutputSlot()
+
+    #Layer for displaying, not cached TODO maybe do caching
+    Smoothing           = InputSlot(optional=True)
+    Computing           = InputSlot(optional=True)
     
     # transmit the WSMethod to the WatershedSegmentationApplet (see Workflow)
     WSMethodIn          = InputSlot()
@@ -165,6 +171,50 @@ class OpSeeds(Operator):
 
     def setupOutputs(self):
         self.WSMethodOut.setValue( self.WSMethodIn.value )
+
+        # set the correct value of SeedsExist Operator
+        # True if: Seeds | Generated Seeds available
+        if self.Seeds.ready():
+            self.SeedsExist.setValue( True )
+        else:
+            if self.GeneratedSeeds.ready(): 
+                self.SeedsExist.setValue( True )
+            else:
+                self.SeedsExist.setValue( False )
+
+
+        #self.SeedsOut configuration
+        self.SeedsOut.meta.assignFrom(self.Boundaries.meta)
+        #only one channel as output
+        self.SeedsOut.meta.shape = self.Boundaries.meta.shape[:-1] + (1,)
+        self.SeedsOut.meta.drange = (0,255)
+        # value:
+        # if Generated: then use Generated
+        # if not Generated and Seeds: use Seeds
+        # if not Generated and not Seeds: 
+        #       then use format of boundaries with zeros for Seeds to the next applet
+
+        if (self.GeneratedSeeds.ready() and not self.GeneratedSeeds.meta.shape == None):
+            array       = getArray(self.GeneratedSeeds)
+            print "\n\nGenerateSeeds\n\n"
+        elif ( (not self.GeneratedSeeds.ready() and self.GeneratedSeeds.meta.shape == None ) 
+            and self.Seeds.ready() and not self.Seeds.meta.shape == None):
+            array       = getArray(self.Seeds)
+            print "\n\nSeeds\n\n"
+        else:
+            shape       = self.Boundaries.meta.shape
+            array       = np.zeros(shape, dtype=np.uint8)
+            print "\n\nzeros\n\n"
+
+
+        # output sets
+        array           = array.astype(np.uint8)
+        self.SeedsOut.setValue(array)
+
+
+
+
+
         '''
         self.LabelNames.meta.dtype  = object
         #self.LabelNames.meta.shape = (1,)

@@ -44,6 +44,8 @@ class WatershedSegmentationSerializer(AppletSerializer):
         """
 
         slots = [ 
+                #Seeds supplied
+                SerialSlot(operator.SeedsExist), 
                 # neighbors
                 SerialSlot(operator.WSNeighbors), 
 
