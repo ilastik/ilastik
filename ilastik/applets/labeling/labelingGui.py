@@ -95,7 +95,6 @@ class LabelingGui(LayerViewerGui):
         return self._maxLabelNumber
     @maxLabelNumber.setter
     def maxLabelNumber(self, n):
-        self._maxLabelNumber = n
         while self._labelControlUi.labelListModel.rowCount() < n:
             self._removeLastLabel()
 
@@ -154,7 +153,7 @@ class LabelingGui(LayerViewerGui):
 
         self._labelingSlots = labelingSlots
         self._minLabelNumber = 0
-        self._maxLabelNumber = 99 #100 or 255 is reserved for eraser
+        self._maxLabelNumber = 15 #100 or 255 is reserved for eraser
 
         self._rawInputSlot = rawInputSlot
 
