@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import vigra
 
@@ -315,7 +316,7 @@ class TestVigra(unittest.TestCase):
             ref = r()
             if ref is not None:
                 for i, o in enumerate(gc.get_referrers(ref)):
-                    print "Object", i, ":", type(o), ":", o
+                    print("Object", i, ":", type(o), ":", o)
 
             assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
         finally:

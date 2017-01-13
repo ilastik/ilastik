@@ -92,7 +92,7 @@ class _LabelManager(object):
     # or labels.
     @threadsafe
     def register(self):
-        n = self._iterator.next()
+        n = next(self._iterator)
         self._registered.add(n)
         return n
 
@@ -554,7 +554,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
                 continue
 
             if l not in d:
-                nextLabel = labeler.next()
+                nextLabel = next(labeler)
                 d[l] = nextLabel
             newlabels[labels == k] = d[l]
         return newlabels

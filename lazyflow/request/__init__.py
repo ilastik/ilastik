@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -19,4 +20,4 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-from request import *
+from .request import *

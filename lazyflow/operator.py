@@ -41,7 +41,7 @@ class InputDict(collections.OrderedDict):
         return super(InputDict, self).__setitem__(key, value)
 
     def __getitem__(self, key):
-        if self.has_key(key):
+        if key in self:
             return super(InputDict, self).__getitem__(key)
         elif hasattr(self.operator, key):
             return getattr(self.operator, key)
@@ -64,7 +64,7 @@ class OutputDict(collections.OrderedDict):
         return super(OutputDict, self).__setitem__(key, value)
 
     def __getitem__(self, key):
-        if self.has_key(key):
+        if key in self:
             return super(OutputDict, self).__getitem__(key)
         elif hasattr(self.operator, key):
             return getattr(self.operator, key)
@@ -250,14 +250,14 @@ class Operator(object):
         # check for slot uniqueness
         temp = {}
         for i in self.inputSlots:
-            if temp.has_key(i.name):
+            if i.name in temp:
                 raise Exception("ERROR: Operator {} has multiple slots with name {},"
                                 " please make sure that all input and output slot"
                                 " names are unique".format(self.name, i.name))
             temp[i.name] = True
 
         for i in self.outputSlots:
-            if temp.has_key(i.name):
+            if i.name in temp:
                 raise Exception("ERROR: Operator {} has multiple slots with name {},"
                                 " please make sure that all input and output slot"
                                 " names are unique".format(self.name, i.name))
@@ -279,7 +279,7 @@ class Operator(object):
         # replicate input slot connections
         # defined for the operator for the instance
         for i in sorted(self.inputSlots, key=lambda s: s._global_slot_id):
-            if not self.inputs.has_key(i.name):
+            if i.name not in self.inputs:
                 ii = i._getInstance(self)
                 ii.connect(i.partner)
                 self.inputs[i.name] = ii
@@ -290,7 +290,7 @@ class Operator(object):
         # relicate output slots
         # defined for the operator for the instance
         for o in sorted(self.outputSlots, key=lambda s: s._global_slot_id):
-            if not self.outputs.has_key(o.name):
+            if o.name not in self.outputs:
                 oo = o._getInstance(self)
                 self.outputs[o.name] = oo
 
@@ -306,8 +306,8 @@ class Operator(object):
         names with custom instance attributes.
 
         """
-        if self.__dict__.has_key("inputs") and self.__dict__.has_key("outputs"):
-            if self.inputs.has_key(name) or self.outputs.has_key(name):
+        if "inputs" in self.__dict__ and "outputs" in self.__dict__:
+            if name in self.inputs or name in self.outputs:
                 assert isinstance(value, Slot), \
                     ("ERROR: trying to set attribute {} of operator {}"
                      " to value {}, which is not of type Slot !".format(name, self, value))

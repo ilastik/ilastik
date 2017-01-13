@@ -1,6 +1,7 @@
 # This file was copied from the motmot ufmf GitHub repository: https://github.com/motmot/ufmf commit c795ffe369b7e58de69d34926388af33ce71b711
 
 from __future__ import division
+from __future__ import absolute_import
 import sys
 import struct, collections
 import warnings
@@ -17,7 +18,7 @@ import time
 
 import math
 
-import FlyMovieFormat as FMF
+from . import FlyMovieFormat as FMF
 
 class UfmfError(Exception):
     pass
@@ -787,7 +788,7 @@ class UfmfV3(UfmfBase):
                                    self._max_width, self._max_height,
                                    len(self._coding) )
                 self._fd.write(buf)
-            except IOError, err:
+            except IOError as err:
                 if raise_write_errors:
                     raise
                 else:
@@ -995,7 +996,7 @@ class UfmfV4(UfmfV3):
                                    self._isfixedsize,
                                    len(self._coding) )
                 self._fd.write(buf)
-            except IOError, err:
+            except IOError as err:
                 if raise_write_errors:
                     raise
                 else:
@@ -1038,7 +1039,7 @@ def md5sum_headtail(filename):
 
     try:
         fd.seek(-1000,os.SEEK_END)
-    except IOError,err:
+    except IOError as err:
         # it's OK, we'll just read up to another 1000 bytes
         pass
 
@@ -1111,7 +1112,7 @@ class FlyMovieEmulator(object):
             warnings.warn('unsupported argument "allow_partial_frames" ignored')
         try:
             self.seek(fno)
-        except NoSuchFrameError, err:
+        except NoSuchFrameError as err:
             if self._allow_no_such_frame_errors:
                 raise
             else:
@@ -1256,7 +1257,7 @@ class FlyMovieEmulator(object):
                     self._timestamps = npz['timestamps']
                     self._fno2loc = npz['fno2loc']
                     return
-        except Exception, err:
+        except Exception as err:
             if int(os.environ.get('UFMF_FORCE_CACHE','0')):
                 raise
             else:
@@ -1286,7 +1287,7 @@ class FlyMovieEmulator(object):
                      my_hash=my_hash,
                      timestamps=timestamps,
                      fno2loc=fno2loc)
-        except Exception,err:
+        except Exception as err:
             if int(os.environ.get('UFMF_FORCE_CACHE','0')):
                 raise
             else:

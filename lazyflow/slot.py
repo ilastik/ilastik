@@ -236,7 +236,7 @@ class Slot(object):
 
         # Allow slots to be sorted by their order of creation for
         # debug output and diagramming purposes.
-        self._global_slot_id = Slot._global_counter.next()
+        self._global_slot_id = next(Slot._global_counter)
 
 
     ###########################

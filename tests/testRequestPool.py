@@ -43,16 +43,16 @@ def test_basic():
     
     def increase_counter():
         time.sleep(0.001)
-        result_counter.next()
+        next(result_counter)
     
     pool = RequestPool()
     for _ in xrange(500):
         pool.add(Request(increase_counter))
     pool.wait()
     
-    assert result_counter.next() == 500, \
+    assert next(result_counter) == 500, \
         "RequestPool has not run all submitted requests: {} out of 500"\
-        .format(result_counter.next() - 1)
+        .format(next(result_counter) - 1)
 
 @fail_after_timeout(5)
 def test_pool_with_failed_requests():

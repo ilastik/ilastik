@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import copy
 import h5py
@@ -369,17 +370,17 @@ if __name__ == "__main__":
         whole_vol = mphf[datapath][:]
         assert (whole_vol == testvol).all()
 
-        print mphf[u'mygroup'].name
-        print mphf[datapath].attrs.keys()
-        print mphf[datapath].shape
-        print mphf[datapath].dtype
-        print 'mygroup' in mphf
-        print '/mygroup/bigdata' in mphf
-        print 'bigdata' in mphf['mygroup']
+        print(mphf[u'mygroup'].name)
+        print(mphf[datapath].attrs.keys())
+        print(mphf[datapath].shape)
+        print(mphf[datapath].dtype)
+        print('mygroup' in mphf)
+        print('/mygroup/bigdata' in mphf)
+        print('bigdata' in mphf['mygroup'])
 
-        print 'root keys are: ', list(mphf.iterkeys())
-        print 'mygroup keys are: ', list(mphf['mygroup'].iterkeys())
-        print 'othergroup keys are: ', list(mphf['othergroup'].iterkeys())
+        print('root keys are: ', list(mphf.iterkeys()))
+        print('mygroup keys are: ', list(mphf['mygroup'].iterkeys()))
+        print('othergroup keys are: ', list(mphf['othergroup'].iterkeys()))
         
         mphf[datapath].read_direct(whole_vol[0], numpy.s_[0])
 
@@ -400,7 +401,7 @@ if __name__ == "__main__":
 
     bigfile_path = '/tmp/big_testfile7.h5'
     if not os.path.exists(bigfile_path):
-        print "generating test file:", bigfile_path
+        print("generating test file:", bigfile_path)
         with h5py.File(bigfile_path, 'w') as f:
             f.create_dataset( 'data', 
                               data=numpy.random.randint(0,255, (100,10000,1000)).astype(numpy.uint8), 
@@ -442,4 +443,4 @@ if __name__ == "__main__":
             
         stop_time = time.time()
 
-        print "Time: {} seconds".format( stop_time - start_time )
+        print("Time: {} seconds".format( stop_time - start_time ))

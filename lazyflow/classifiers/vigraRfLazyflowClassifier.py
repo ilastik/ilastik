@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import os
 import tempfile
 import cPickle as pickle
@@ -7,7 +8,7 @@ import numpy
 import vigra
 import h5py
 
-from lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
+from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 import logging
 logger = logging.getLogger(__name__)
@@ -78,7 +79,7 @@ class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
         if sort:
             # Sort by "overall" importance (column -2)
             sorted_importances = sorted( named_importances_dict.items(),
-                                         key=lambda (k,v): v[-2] )
+                                         key=lambda k_v: k_v[1][-2] )
             named_importances_dict = collections.OrderedDict( sorted_importances )
 
         for feature_name, importances in named_importances_dict.items():

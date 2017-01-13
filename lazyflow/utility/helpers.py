@@ -22,6 +22,7 @@
 import os,numpy,itertools,copy
 from lazyflow.roi import TinyVector, roiToSlice
 import warnings
+from functools import reduce
 
 def warn_deprecated(msg, stacklevel=0):
     warnings.warn("DEPRECATION WARNING: " + msg,
@@ -96,7 +97,7 @@ def itersubclasses(cls, _seen=None):
 def detectCPUs():
     # Linux, Unix and MacOS:
     if hasattr(os, "sysconf"):
-        if os.sysconf_names.has_key("SC_NPROCESSORS_ONLN"):
+        if "SC_NPROCESSORS_ONLN" in os.sysconf_names:
             # Linux & Unix:
             ncpus = os.sysconf("SC_NPROCESSORS_ONLN")
             if isinstance(ncpus, int) and ncpus > 0:
@@ -104,7 +105,7 @@ def detectCPUs():
         else: # OSX:
             return int(os.popen2("sysctl -n hw.ncpu")[1].read())
     # Windows:
-    if os.environ.has_key("NUMBER_OF_PROCESSORS"):
+    if "NUMBER_OF_PROCESSORS" in os.environ:
         ncpus = int(os.environ["NUMBER_OF_PROCESSORS"]);
         if ncpus > 0:
             return ncpus

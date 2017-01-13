@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -26,7 +27,7 @@ from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection,
 
 import logging
 import warnings
-from memory import Memory
+from .memory import Memory
 logger = logging.getLogger(__name__)
 
 class BigRequestStreamer(object):
@@ -116,7 +117,7 @@ class BigRequestStreamer(object):
             def roiGen():
                 block_iter = block_starts.__iter__()
                 while True:
-                    block_start = block_iter.next()
+                    block_start = next(block_iter)
     
                     # Use offset blocking
                     offset_block_start = block_start - self._bigRoi[0]
@@ -137,7 +138,7 @@ class BigRequestStreamer(object):
             def roiGen():
                 block_iter = block_starts.__iter__()
                 while True:
-                    block_start = block_iter.next()
+                    block_start = next(block_iter)
                     block_bounds = getBlockBounds( outputSlot.meta.shape, blockshape, block_start )
                     block_intersecting_portion = getIntersection( block_bounds, roi )
     

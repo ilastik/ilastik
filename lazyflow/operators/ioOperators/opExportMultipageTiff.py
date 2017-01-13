@@ -20,6 +20,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+from __future__ import print_function
 import os
 import collections
 
@@ -101,7 +102,7 @@ class OpExportMultipageTiff(Operator):
         # Start with a batch of images
         reqs = collections.deque()
         for next_request_index in range( min(parallel_requests, num_pages) ):
-            reqs.append( iter_slice_requests.next() )
+            reqs.append( next(iter_slice_requests) )
         
         self.progressSignal(0)
         pages_written = 0
@@ -114,7 +115,7 @@ class OpExportMultipageTiff(Operator):
             
             # Add a new request to the batch
             if next_request_index < num_pages:
-                reqs.append( iter_slice_requests.next() )
+                reqs.append( next(iter_slice_requests) )
             
             if pages_written == 0:
                 xml_description = OpExportMultipageTiff.generate_ome_xml_description(
@@ -243,7 +244,7 @@ if __name__ == "__main__":
     opWriter.Input.connect( opReader.Output )
     
     opWriter.run_export()
-    print "DONE."
+    print("DONE.")
 
 
  

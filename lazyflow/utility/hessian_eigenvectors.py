@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 import vigra
 
@@ -119,29 +120,29 @@ if __name__ == "__main__":
     #img = joblib.load("testData/img.jlb").astype(numpy.float32)
     img = numpy.random.random((50,100,110)).astype(numpy.float32)
     assert img.ndim == 3
-    print "img.shape:", img.shape
+    print("img.shape:", img.shape)
 
-    print "Computing eigenvalues with vigra"
+    print("Computing eigenvalues with vigra")
     t1 = time.time()
     vigra_eig_vals = vigra.filters.hessianOfGaussianEigenvalues( img, 1.0 )
-    print "...", time.time() - t1, "seconds"
+    print("...", time.time() - t1, "seconds")
 
-    print "Computing eigenvalues with vigra+numpy.linalg"
+    print("Computing eigenvalues with vigra+numpy.linalg")
     t1 = time.time()
     hessian_upper = vigra.filters.hessianOfGaussian(img, 1.0)
     hessian_full = convert_symmetric_tensor_vector_to_full_tensor_matrix(hessian_upper, img.ndim, upper_only=True)
     numpy_eig_vals = numpy.linalg.eigvalsh(hessian_full, 'U')[...,::-1]
-    print "...", time.time() - t1, "seconds"
+    print("...", time.time() - t1, "seconds")
 
-    print "Computing eigenvalues and eigenvectors"    
+    print("Computing eigenvalues and eigenvectors")    
     t1 = time.time()
     sorted_eig_vals, sorted_eig_vects = hessian_eigenvectors(img, 1.0)
-    print "...", time.time() - t1, "seconds"
+    print("...", time.time() - t1, "seconds")
 
     #numpy.save('/tmp/sorted_eig_vals.npy', sorted_eig_vals)
     #numpy.save('/tmp/vigra_eig_vals.npy', vigra_eig_vals)
 
-    print "comparing eigenVALUE results..."
+    print("comparing eigenVALUE results...")
     assert numpy.allclose(sorted_eig_vals, vigra_eig_vals, rtol=0.001, atol=0.1)
     assert numpy.allclose(sorted_eig_vals, numpy_eig_vals, rtol=0.001, atol=0.1)
-    print "DONE. TEST PASSED."
+    print("DONE. TEST PASSED.")

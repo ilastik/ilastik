@@ -25,7 +25,7 @@ import sys
 def expose_submodules( submodule_dir ):
     walker = os.walk(submodule_dir, followlinks=True)
     try:
-        path, dirnames, filenames = walker.next()
+        path, dirnames, filenames = next(walker)
     except StopIteration:
         pass
     else:

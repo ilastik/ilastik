@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -58,7 +59,7 @@ def extractVersion(s):
 try:
     from sklearn import __version__ as sklearnVersion
     svcTakesScaleC = extractVersion(sklearnVersion) < 11
-except (ImportError, VersionError) as _e:
+except ImportError as VersionError:
     logger.warning("Could not import dependency 'sklearn' for SVMs")
     havesklearn = False
 else:

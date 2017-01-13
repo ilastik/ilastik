@@ -20,6 +20,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+from __future__ import print_function
 import sys
 from lazyflow.graph import Operator,InputSlot,OutputSlot
 from lazyflow.utility.helpers import newIterator
@@ -33,6 +34,7 @@ from functools import partial
 from lazyflow.roi import roiToSlice,sliceToRoi
 import collections
 import warnings
+from functools import reduce
 
 class OpBaseVigraFilter(Operator):
     
@@ -584,7 +586,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     try:
                         pos = self.positionMatrix[sig][op]
                     except:
-                        print sig,op
+                        print(sig,op)
                     if opM[sig][op] is not None and pos[1] > cstart and pos[0] < cstop:
                         if opM[sig][op].Input.connected():
                             opM[sig][op].Input.disconnect()

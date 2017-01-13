@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 
 # Note: tifffile can also be imported from skimage.external.tifffile.tifffile_local,
@@ -166,10 +167,10 @@ if __name__ == "__main__":
     graph = Graph()
     opReader = OpTiffReader(graph=graph)
     opReader.Filepath.setValue('/groups/flyem/home/bergs/Downloads/Tiff_t4_HOM3_10frames_4slices_28sec.tif')
-    print opReader.Output.meta.axistags
-    print opReader.Output.meta.shape
-    print opReader.Output.meta.dtype
-    print opReader.Output[2:3,2:3,2:3,10:20,20:50].wait().shape
+    print(opReader.Output.meta.axistags)
+    print(opReader.Output.meta.shape)
+    print(opReader.Output.meta.dtype)
+    print(opReader.Output[2:3,2:3,2:3,10:20,20:50].wait().shape)
 
 #     opReader.Filepath.setValue('/magnetic/data/synapse_small.tiff')
 #     print opReader.Output.meta.axistags

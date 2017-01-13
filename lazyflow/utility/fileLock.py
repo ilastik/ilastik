@@ -81,6 +81,7 @@ The views and conclusions contained in the software and documentation are those
 of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 """
+from __future__ import print_function
 
 import os
 import sys
@@ -196,7 +197,7 @@ if __name__ == "__main__":
     import tempfile
     temp_dir = tempfile.mkdtemp()
     protected_filepath = os.path.join( temp_dir, "somefile.txt" )
-    print "Protecting file: {}".format( protected_filepath )
+    print("Protecting file: {}".format( protected_filepath ))
     fl = FileLock( protected_filepath )
 
     def writeLines(line, repeat=10):

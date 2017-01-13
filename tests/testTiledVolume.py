@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import sys
 import tempfile
@@ -84,7 +85,7 @@ class DataSetup(object):
         self.SPECIAL_Z_VOLUME_DESCRIPTION_FILE = os.path.join( self.TILE_DIRECTORY, 'special_z_volume_description.json' )
     
         if not os.path.exists(self.TILE_DIRECTORY):
-            print "Creating new tile directory: {}".format( self.TILE_DIRECTORY )
+            print("Creating new tile directory: {}".format( self.TILE_DIRECTORY ))
             os.mkdir(self.TILE_DIRECTORY)
     
         if not os.path.exists(self.REFERENCE_VOL_FILE):
@@ -149,7 +150,7 @@ class DataSetup(object):
             for name in files:
                 if name.startswith("tile_z00002"):
                     p = os.path.join(self.TILE_DIRECTORY, name)
-                    print "removing:", p
+                    print("removing:", p)
                     os.remove( p )
                 
     

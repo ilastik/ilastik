@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -34,6 +35,7 @@ from lazyflow.operators.opCache import MemInfoNode
 
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
+from functools import reduce
 
 
 #from lazyflow.request import Request
@@ -395,7 +397,7 @@ class TestOpBlockedArrayCache(unittest.TestCase):
             ref = r()
             if ref is not None:
                 for i, o in enumerate(gc.get_referrers(ref)):
-                    print "Object", i, ":", type(o), ":", o
+                    print("Object", i, ":", type(o), ":", o)
                 
             assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
         finally:

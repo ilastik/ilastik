@@ -99,7 +99,7 @@ class TestThreadPool(object):
                 self.generator = generator
              
             def __call__(self):
-                return self.generator.next()
+                return next(self.generator)
  
         # First time
         g = WrappedGenerator( gen() )

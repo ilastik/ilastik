@@ -272,7 +272,7 @@ class OpStackWriter(Operator):
         # The first non-singleton axis is the step axis.
         # The last 2 non-channel non-singleton axes will be the axes of the slices.
         tagged_items = tagged_shape.items()
-        filtered_items = filter( lambda (k, v): v > 1, tagged_items )
+        filtered_items = filter( lambda k_v: k_v[1] > 1, tagged_items )
         filtered_axes = zip( *filtered_items )[0]
         return filtered_axes
 

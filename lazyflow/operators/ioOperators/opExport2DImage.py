@@ -63,7 +63,7 @@ class OpExport2DImage(Operator):
         """
         # Check for errors...
         tagged_shape = self.Input.meta.getTaggedShape()
-        non_singleton_dims = filter( lambda (k,v): k != 'c' and v > 1, tagged_shape.items() )
+        non_singleton_dims = filter( lambda k_v: k_v[0] != 'c' and k_v[1] > 1, tagged_shape.items() )
         assert len(non_singleton_dims) <= 2, \
             "Image to export must have no more than 2 non-singleton dimensions.\n"\
             "You are attempting to export a {}D result into a 2D file format."\

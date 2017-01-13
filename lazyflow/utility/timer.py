@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -157,15 +158,15 @@ if __name__ == "__main__":
     for _ in range(10):
         with t:
             t.sleep_until(1)
-        print t.seconds()        
+        print(t.seconds())        
     
     @timeLogged(logger, logging.INFO)
     def myfunc(x):
         time.sleep(0.2)
 
-    print "Calling..."
+    print("Calling...")
     
     myfunc(2)
     myfunc(2)
-    print "Finished."
+    print("Finished.")
     

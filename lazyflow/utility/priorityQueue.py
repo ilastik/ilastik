@@ -54,7 +54,7 @@ class PriorityQueue(object):
         """
         convert to internal tuple format, if necessary
         """
-        c = self._count.next()
+        c = next(self._count)
         if isinstance(item, tuple) and len(item) > 1:
             new = list(item)
             new.insert(-1, c)

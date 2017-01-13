@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -658,7 +659,7 @@ class TestRequest(unittest.TestCase):
         finally:         
             # Set it back to what it was
             Request.reset_thread_pool(num_workers)
-            print 'done'
+            print('done')
 
 class TestRequestExceptions(object):
     """

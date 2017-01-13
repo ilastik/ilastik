@@ -344,7 +344,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
             blockDir = self.getDatasetDirectory( block_start )
             try:
                 os.makedirs( blockDir )
-            except OSError, e:
+            except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise
 

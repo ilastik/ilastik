@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -537,13 +538,13 @@ class GraphStructutre(object):
         f.write("} \n")
         f.close()
 
-        print "Writing g.svg file...."
-        print "Working Directory: ", os.getcwd()
+        print("Writing g.svg file....")
+        print("Working Directory: ", os.getcwd())
         if onlyBasics:
-            print subprocess.call(["dot",  "-Tsvg", "gB.dot", "-o", "gB.svg"])
+            print(subprocess.call(["dot",  "-Tsvg", "gB.dot", "-o", "gB.svg"]))
         else:
-            print subprocess.call(["dot",  "-Tsvg", "gC.dot", "-o", "gC.svg"])
-        print "Writing finished..."
+            print(subprocess.call(["dot",  "-Tsvg", "gC.dot", "-o", "gC.svg"]))
+        print("Writing finished...")
 
 
     def _writeInputSlot_C(self,f,node, ios, onlyBasics):

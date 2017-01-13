@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -34,8 +35,8 @@ from lazyflow.utility import Timer
 from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC, \
                                  LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 
-from opFeatureMatrixCache import OpFeatureMatrixCache
-from opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
+from .opFeatureMatrixCache import OpFeatureMatrixCache
+from .opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
 
 logger = logging.getLogger(__name__)
 

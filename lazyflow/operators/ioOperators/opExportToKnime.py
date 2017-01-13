@@ -1,3 +1,4 @@
+from __future__ import print_function
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.stype import Opaque
@@ -130,7 +131,7 @@ class OpExportToKnime(Operator):
     
     def join_struct_arrays(self, arrays):
         newdtype = sum((a.dtype.descr for a in arrays), [])
-        print newdtype
+        print(newdtype)
         newrecarray = numpy.empty(len(arrays[0]), dtype = newdtype)
         for a in arrays:
             for name in a.dtype.names:
@@ -145,7 +146,7 @@ class OpExportToKnime(Operator):
             times = range(self.RawImage.meta.shape[0])
         
         with h5py.File(self.OutputFileName.value, "w") as fout:
-            print "Exporting to:", os.path.join(os.getcwd(), self.OutputFileName.value)
+            print("Exporting to:", os.path.join(os.getcwd(), self.OutputFileName.value))
             gr_images = fout.create_group("images")
             if not self.imagePerObject and not self.imagePerTime:
                 # One image for everything. 
@@ -302,7 +303,7 @@ class OpExportToKnime(Operator):
         #usually do in execute() functions
         
         if not self.RawImage.ready() or not self.CCImage.ready():
-            print "NOT READY"
+            print("NOT READY")
             return False
         
         table = self.ObjectFeatures.value

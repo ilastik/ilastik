@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -51,7 +52,7 @@ class TestRequest(object):
             req.notify(callback)
             req.wait()
             time.sleep(0.001)
-            print s
+            print(s)
             return s
 
         req = Request( test, s = "hallo !")
@@ -99,7 +100,7 @@ class TestRequest(object):
         req.wait()
         h5File.close()
 
-        print "finished testWithH5Py"
+        print("finished testWithH5Py")
         os.remove(filename)
 
     def test_callWaitDuringCallback(self):
@@ -155,23 +156,23 @@ class TestRequest(object):
           pass
 
         req.notify(blubb)
-        print "pausing graph"
+        print("pausing graph")
         global_thread_pool.pause()
         global_thread_pool.unpause()
-        print "resumed graph"
+        print("resumed graph")
         req.wait()
-        print "request finished"
+        print("request finished")
 
         
         # Handler should have been called once for each request we fired
         assert handlerCounter[0] == requestCounter[0]
 
-        print "finished testLotsOfSmallRequests"
+        print("finished testLotsOfSmallRequests")
         
         for r in allRequests:
           assert r.finished
 
-        print "waited for all subrequests"
+        print("waited for all subrequests")
     
     def test_pause_unpause(self):
         handlerCounter = [0]
@@ -222,12 +223,12 @@ class TestRequest(object):
         # Handler should have been called once for each request we fired
         assert handlerCounter[0] == requestCounter[0]
 
-        print "finished pause_unpause"
+        print("finished pause_unpause")
         
         for r in allRequests:
           assert r.finished
 
-        print "waited for all subrequests"
+        print("waited for all subrequests")
 
 
         

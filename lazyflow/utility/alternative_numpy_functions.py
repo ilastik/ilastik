@@ -1,3 +1,4 @@
+from __future__ import print_function
 import vigra
 import numpy as np
     
@@ -41,4 +42,4 @@ if __name__ == "__main__":
     a = np.random.randint(0,100, size=(100,100))
     assert (np.bincount(a.flat) == vigra_bincount(a)).all()
     assert (np.bincount(a.flat) == chunked_bincount(a)).all()
-    print "DONE."
+    print("DONE.")

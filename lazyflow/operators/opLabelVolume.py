@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 
 from threading import Lock as ThreadLock
 from functools import partial
@@ -13,7 +14,7 @@ from lazyflow.rtype import SubRegion
 from lazyflow.metaDict import MetaDict
 from lazyflow.request import Request, RequestPool
 from lazyflow.operators import OpBlockedArrayCache, OpReorderAxes
-from opLazyConnectedComponents import OpLazyConnectedComponents
+from .opLazyConnectedComponents import OpLazyConnectedComponents
 
 logger = logging.getLogger(__name__)
 

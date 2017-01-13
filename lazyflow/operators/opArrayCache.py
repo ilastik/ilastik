@@ -476,7 +476,7 @@ class OpArrayCache(Operator, ManagedCache):
             self.Output._sig_value_changed()
 
         # indicate the finished inprocess state (i.e. CLEAN)
-        if not self._fixed and temp.next() == 0:
+        if not self._fixed and next(temp) == 0:
             with self._lock:
                 blockSet[:] = fastWhere(cond, OpArrayCache.CLEAN, blockSet, numpy.uint8)
                 self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)

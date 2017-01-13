@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -28,7 +29,7 @@ import numpy
 import vigra
 import copy
 
-import MmfParser
+from . import MmfParser
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 

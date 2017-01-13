@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -44,7 +45,7 @@ def axisTagObjectFromFlag(flag):
     elif flag=='t':
         type=vigra.AxisType.Time
     else:
-        print "Requested flag", str(flag)
+        print("Requested flag", str(flag))
         raise
 
     return vigra.AxisTags(vigra.AxisInfo(flag,type))

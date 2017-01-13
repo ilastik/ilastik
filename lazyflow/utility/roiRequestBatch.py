@@ -200,7 +200,7 @@ class RoiRequestBatch( object ):
         Otherwise, raises StopIteration
         """
         # This could raise StopIteration
-        roi = self._roiIter.next()
+        roi = next(self._roiIter)
         req = self._outputSlot( roi[0], roi[1] )
         
         # We have to make sure that we didn't get a so-called "ValueRequest"

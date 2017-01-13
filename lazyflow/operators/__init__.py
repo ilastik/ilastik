@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -29,18 +30,18 @@ from lazyflow.graph import Operator
 from lazyflow.utility.helpers import itersubclasses
 
 # necessary because we used a factory
-from vigraOperators import Op1ToMulti, Op5ToMulti, Op50ToMulti
+from .vigraOperators import Op1ToMulti, Op5ToMulti, Op50ToMulti
 
 try:
     if modules != None:
         pass
 except:
     modules = []
-    import generic
-    import vigraOperators
-    import classifierOperators
-    import valueProviders
-    import operators
+    from . import generic
+    from . import vigraOperators
+    from . import classifierOperators
+    from . import valueProviders
+    from . import operators
     
     ops = itersubclasses(Operator)
     logger.debug("Loading default Operators...")
@@ -51,26 +52,26 @@ except:
     loaded += os.linesep
     logger.debug(loaded)
 
-    from opSimpleStacker import OpSimpleStacker
-    from opBlockedArrayCache import OpBlockedArrayCache
-    from opVigraWatershed import OpVigraWatershed
-    from opVigraLabelVolume import OpVigraLabelVolume
-    from opFilterLabels import OpFilterLabels
-    from opColorizeLabels import OpColorizeLabels
-    from opObjectFeatures import OpObjectFeatures
-    from opCompressedCache import OpCompressedCache
-    from opCompressedUserLabelArray import OpCompressedUserLabelArray
-    from opLabelImage import OpLabelImage
-    from opCachedLabelImage import OpCachedLabelImage
-    from opInterpMissingData import OpInterpMissingData
-    from opCrosshairMarkers import OpCrosshairMarkers
-    from opMaskedWatershed import OpMaskedWatershed
-    from opSelectLabel import OpSelectLabel
-    from opMaskedSelect import OpMaskedSelect
-    from opReorderAxes import OpReorderAxes
-    from opLabelVolume import OpLabelVolume
-    from opResize import OpResize
-    from opRelabelConsecutive import OpRelabelConsecutive
+    from .opSimpleStacker import OpSimpleStacker
+    from .opBlockedArrayCache import OpBlockedArrayCache
+    from .opVigraWatershed import OpVigraWatershed
+    from .opVigraLabelVolume import OpVigraLabelVolume
+    from .opFilterLabels import OpFilterLabels
+    from .opColorizeLabels import OpColorizeLabels
+    from .opObjectFeatures import OpObjectFeatures
+    from .opCompressedCache import OpCompressedCache
+    from .opCompressedUserLabelArray import OpCompressedUserLabelArray
+    from .opLabelImage import OpLabelImage
+    from .opCachedLabelImage import OpCachedLabelImage
+    from .opInterpMissingData import OpInterpMissingData
+    from .opCrosshairMarkers import OpCrosshairMarkers
+    from .opMaskedWatershed import OpMaskedWatershed
+    from .opSelectLabel import OpSelectLabel
+    from .opMaskedSelect import OpMaskedSelect
+    from .opReorderAxes import OpReorderAxes
+    from .opLabelVolume import OpLabelVolume
+    from .opResize import OpResize
+    from .opRelabelConsecutive import OpRelabelConsecutive
 
     ops = list(itersubclasses(Operator))
     '''

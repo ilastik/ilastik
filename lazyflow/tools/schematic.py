@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -19,8 +20,8 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-from schematic_abc import DrawableABC, ConnectableABC
-import svg
+from .schematic_abc import DrawableABC, ConnectableABC
+from . import svg
 import numpy
 from functools import partial
 import itertools

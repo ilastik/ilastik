@@ -257,7 +257,7 @@ class JsonConfigParser( object ):
             try:
                 # Conver the dict we got into a namespace
                 namespace = self._getNamespace(jsonDict)
-            except JsonConfigParser.ParsingError, e:
+            except JsonConfigParser.ParsingError as e:
                 raise type(e)( "Error parsing config file '{f}':\n{msg}".format( f=configFilePath, msg=e.args[0] ) )
 
         return namespace
@@ -280,7 +280,7 @@ class JsonConfigParser( object ):
         """
         try:
             namespace = self._getNamespace(x)
-        except JsonConfigParser.ParsingError, e:
+        except JsonConfigParser.ParsingError as e:
             raise type(e)( "Couldn't parse sub-config:\n{msg}".format( msg=e.args[0] ) )
         return namespace
 
@@ -302,7 +302,7 @@ class JsonConfigParser( object ):
                 fieldType = self._fields[key]
                 try:
                     finalValue = self._transformValue( fieldType, value )
-                except JsonConfigParser.ParsingError, e:
+                except JsonConfigParser.ParsingError as e:
                     raise type(e)( "Error parsing config field '{f}':\n{msg}".format( f=key, msg=e.args[0] ) )
                 else:
                     key = key.replace(' ', '_')

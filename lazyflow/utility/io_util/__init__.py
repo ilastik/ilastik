@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -19,7 +20,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-from blockwiseFileset import BlockwiseFileset, BlockwiseFilesetFactory
-from RESTfulVolume import RESTfulVolume
-from RESTfulBlockwiseFileset import RESTfulBlockwiseFileset
-from tiledVolume import TiledVolume
+from .blockwiseFileset import BlockwiseFileset, BlockwiseFilesetFactory
+from .RESTfulVolume import RESTfulVolume
+from .RESTfulBlockwiseFileset import RESTfulBlockwiseFileset
+from .tiledVolume import TiledVolume

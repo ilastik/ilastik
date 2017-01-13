@@ -144,7 +144,7 @@ class OpColorizeLabels(Operator):
         try:
             if not os.path.exists( lazyflowSettingsDir ):
                 os.makedirs( lazyflowSettingsDir )
-        except Exception, ex:
+        except Exception as ex:
             import warnings
             warnings.warn("Not able to create dir: ~/.lazyflow.  Writing random_color_table.npy to /tmp instead.")
             # Write to a temporary directory.
@@ -177,13 +177,13 @@ class OpColorizeLabels(Operator):
                 try:
                     if not os.path.exists( lazyflowSettingsDir ):
                         os.makedirs( lazyflowSettingsDir )
-                except Exception, ex:
+                except Exception as ex:
                     pass
                 else:
                     try:
                         numpy.save(cachedColortablePath, table)
                         saved = True
-                    except Exception, ex:
+                    except Exception as ex:
                         pass
     
                 if not saved:

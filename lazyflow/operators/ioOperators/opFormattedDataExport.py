@@ -130,7 +130,7 @@ class OpFormattedDataExport(Operator):
         if self.RegionStop.ready():
             # RegionStop is permitted to contain 'None' values, 
             #  which we replace with the full extent of the corresponding axis
-            new_stop = map( lambda (x, extent): x or extent, zip(self.RegionStop.value, total_roi[1]) )
+            new_stop = map( lambda x_extent: x_extent[0] or x_extent[1], zip(self.RegionStop.value, total_roi[1]) )
 
         clipped_start = numpy.maximum(0, new_start)
         clipped_stop = numpy.minimum(total_roi[1], new_stop)

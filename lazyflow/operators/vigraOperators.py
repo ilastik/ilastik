@@ -21,6 +21,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 #Python
+from __future__ import absolute_import
 import os
 from collections import deque
 import itertools
@@ -40,9 +41,9 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow import roi
 from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.request import RequestPool
-from operators import OpArrayPiper
+from .operators import OpArrayPiper
 from lazyflow.rtype import SubRegion
-from generic import OpMultiArrayStacker, popFlagsFromTheKey
+from .generic import OpMultiArrayStacker, popFlagsFromTheKey
 
 #Sven's fast filters 
 try:
@@ -176,7 +177,7 @@ class OpPixelFeaturesPresmoothed(Operator):
         for j, scale in enumerate(self.scales):
             if self.matrix[:,j].any():
                 tagged_shape = self.Input.meta.getTaggedShape()
-                spatial_axes_shape = filter( lambda (k,v): k in 'xyz', tagged_shape.items() )
+                spatial_axes_shape = filter( lambda k_v: k_v[0] in 'xyz', tagged_shape.items() )
                 spatial_shape = zip( *spatial_axes_shape )[1]
                 
                 if (scale * self.WINDOW_SIZE > numpy.array(spatial_shape)).any():
@@ -711,7 +712,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
         
         tagged_shape = self.Input.meta.getTaggedShape()
         tagged_shape['z'] = tagged_shape['z']*z_scale
-        spatial_axes_shape = filter( lambda (k,v): k in 'xyz', tagged_shape.items() )
+        spatial_axes_shape = filter( lambda k_v1: k_v1[0] in 'xyz', tagged_shape.items() )
         spatial_shape = zip( *spatial_axes_shape )[1]
         
         for j, scale in enumerate(self.scales):
@@ -1224,13 +1225,13 @@ class OpBaseFilter(OpArrayPiper):
             if islot.name != "Input":
                 kwparams[islot.name] = islot.value
 
-        if self.inputs.has_key("sigma"):
+        if "sigma" in self.inputs:
             sigma = self.inputs["sigma"].value
-        elif self.inputs.has_key("scale"):
+        elif "scale" in self.inputs:
             sigma = self.inputs["scale"].value
-        elif self.inputs.has_key("sigma0"):
+        elif "sigma0" in self.inputs:
             sigma = self.inputs["sigma0"].value
-        elif self.inputs.has_key("innerScale"):
+        elif "innerScale" in self.inputs:
             sigma = self.inputs["innerScale"].value
 
         windowSize = 3.5
@@ -1382,7 +1383,7 @@ class OpBaseFilter(OpArrayPiper):
                         vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
                         try:
                             temp = self.vigraFilter(image, roi = vroi, **kwparams)
-                        except Exception, e:
+                        except Exception as e:
                             logger.error( "EXCEPT 2.1 {} {} {} {}".format( self.name, image.shape, vroi, kwparams ) )
                             traceback.print_exc(e)
                             import sys
@@ -1390,7 +1391,7 @@ class OpBaseFilter(OpArrayPiper):
                     else:
                         try:
                             temp = self.vigraFilter(image, **kwparams)
-                        except Exception, e:
+                        except Exception as e:
                             logger.error( "EXCEPT 2.2 {} {} {}".format( self.name, image.shape, kwparams ) )
                             traceback.print_exc(e)
                             import sys

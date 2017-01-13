@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -38,7 +39,7 @@ logger = logging.getLogger(__name__)
 import greenlet
 
 # lazyflow
-import threadPool
+from . import threadPool
 
 # This module's code needs to be sanitized if you're not using CPython.
 # In particular, check that set operations like remove() are still atomic.
@@ -216,7 +217,7 @@ class Request( object ):
         self.parent_request = current_request
         self._max_child_priority = 0
         if current_request is None:
-            self._priority = root_priority + [ Request._root_request_counter.next() ]
+            self._priority = root_priority + [ next(Request._root_request_counter) ]
         else:
             with current_request._lock:
                 current_request.child_requests.add(self)

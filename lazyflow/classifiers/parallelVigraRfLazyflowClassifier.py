@@ -20,6 +20,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+from __future__ import absolute_import
 import os
 import tempfile
 from functools import partial
@@ -33,7 +34,7 @@ import random
 
 from lazyflow.utility import Timer
 from lazyflow.request import Request, RequestPool, RequestLock
-from lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
+from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 import logging
 logger = logging.getLogger(__name__)
@@ -259,7 +260,7 @@ def generate_importance_table(named_importances_dict, sort=None, export_path=Non
         assert sort in sort_columns.keys(), "Invalid sort column: '{}'".format(sort)
         sort_column = sort_columns[sort]
         sorted_importances = sorted( named_importances_dict.items(),
-                                     key=lambda (k,v): v[sort_column] )
+                                     key=lambda k_v: k_v[1][sort_column] )
         named_importances_dict = collections.OrderedDict( sorted_importances )
 
     for feature_name, importances in named_importances_dict.items():

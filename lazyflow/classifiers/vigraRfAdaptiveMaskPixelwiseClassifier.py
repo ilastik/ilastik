@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import os
 import tempfile
 import cPickle as pickle
@@ -7,7 +8,7 @@ import scipy.ndimage
 import vigra
 import h5py
 
-from lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
+from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 from lazyflow.utility import Timer
 
 import logging

@@ -273,7 +273,7 @@ class OpUnmanagedCompressedCache(Operator):
 
             fullshape = self.Input.meta.shape
             z = zip(idealshape, blockshape, fullshape)
-            m = map(lambda (i, b, f): b == f or b % i == 0, z)
+            m = map(lambda i_b_f: i_b_f[1] == i_b_f[2] or i_b_f[1] % i_b_f[0] == 0, z)
             return all(m)
 
         if not self._ignore_ideal_blockshape and self.Input.ready():
@@ -381,7 +381,7 @@ class OpUnmanagedCompressedCache(Operator):
                 # Create an in-memory hdf5 file with a unique name 
                 # (the counter ensures that even blocks that have been deleted previously get a unique name when they are re-created).
                 logger.debug("Creating a cache file for block: {}".format( list(block_start) ))
-                filename = str(id(self)) + str(id(self._cacheFiles)) + str(block_start) + str(self._block_id_counter.next())
+                filename = str(id(self)) + str(id(self._cacheFiles)) + str(block_start) + str(next(self._block_id_counter))
                 mem_file = h5py.File(filename, driver='core', backing_store=False, mode='w')
 
                 # h5py will crash if the chunkshape is larger than the dataset shape.
