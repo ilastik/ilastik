@@ -491,8 +491,8 @@ class AnnotationsGui(LayerViewerGui):
             for label in self.topLevelOperatorView.labels[time].keys():
                 labelFound = False
                 for name in self.topLevelOperatorView.Annotations.value.keys():
-                    for time in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
-                        if label in self.topLevelOperatorView.Annotations.value[name]["labels"][time].keys():
+                    for t in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
+                        if label in self.topLevelOperatorView.Annotations.value[name]["labels"][t].keys():
                             labelFound = True
                 if not labelFound:
                     del self.topLevelOperatorView.labels[time][label]
