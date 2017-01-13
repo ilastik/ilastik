@@ -32,7 +32,7 @@ Troubleshooting
             return self._subSlots[key]
                 IndexError: list index out of range
 
-   Then check your workflow, whether the errorous applet is correctly integrated
+   Then check your workflow.py, whether the errorous applet is correctly integrated
 
 *
 
@@ -57,4 +57,19 @@ Troubleshooting
 
                 
 
+* 
+        .. code::
+
+                self._setInSlotInputHdf5(slot, subindex, roi, value)
+                File "~/miniconda2/envs/ilastik-devel/ilastik-meta/lazyflow/lazyflow/operators/opCompressedCache.py", line 572, in _setInSlotInputHdf5
+                assert cachefile['data'].dtype == value.dtype
+
+        Normally: The dtype of the output of the OutputSlot and the dtype of the Cached Version differ from each other
+
+        You can erase this by:
+        .. code::
+
+                
+            def setupOutputs(self):
+                self.Output.meta.dtype = np.uint8 # or uint32, or float32, just what fits to the cache
 

@@ -168,6 +168,7 @@ class WatershedLabelingGui(LabelingGui):
         # _beforeLabelRemoved
         self._labelControlUi.labelListModel.labelValueToBeDeleted.connect(self._beforeLabelRemoved)
         
+
         '''
         # Do have have all the slots we need?
         assert isinstance(watershedLabelingSlots, WatershedLabelingGui.WatershedLabelingSlots)
@@ -216,6 +217,7 @@ class WatershedLabelingGui(LabelingGui):
         Subclasses may override this
         """
         model = LabelListModelWithNumber()
+
         return model
 
     '''

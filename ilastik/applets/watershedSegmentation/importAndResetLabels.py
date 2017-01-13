@@ -1,3 +1,4 @@
+import numpy as np
 import volumina.colortables as colortables
 from PyQt4.Qt import pyqtSlot
 from PyQt4.QtGui import QMessageBox
@@ -98,9 +99,22 @@ class ImportAndResetLabels(object):
         """
         Remove every Label that is in the labelList
         """
+
+        '''
+        import time
+        print "start remove Labels"
+        start = time.time()
+        end = time.time()
+        print  "removed Labels: "+ str(end - start)
+        '''
+
+        # this function could be improved drastically
+        self._opLabelArray.clearAllLabels( )
         rows = self._labelListModel.rowCount()
         for i in range( rows ):
-            self._labelListModel.removeRow(0)
+            self._labelListModel.removeRowWithoutEmittingSignal(0)
+
+
 
     def removeLabelsFromCacheAndList(self):
         """
@@ -114,6 +128,7 @@ class ImportAndResetLabels(object):
             #value = self._labelControlUi.labelListModel.__getitem__(0)._number
             value = self._labelListModel[0].number
 
+            # TODO make this faster
             #delete the label with the value x from cache, means reset value x to zero 
             self._opLabelArray.clearLabel( value )
             #alternatively use:
@@ -154,30 +169,6 @@ class ImportAndResetLabels(object):
         self._LabelColors.setValue( default_colors[:new_max] )
         self._PmapColors.setValue( default_colors[:new_max] )
 
-        #for debug reasons
-        #colors
-        '''
-        print "\n\n"
-        print "old_max=", old_max, "; new_max=", new_max
-        for i in range(old_max, new_max):
-            color = QColor(default_colors[i])
-            intern_color = QColor(self._colortable[i])
-            print i, ": ", color.red(),", ", color.green(),", ",  color.blue()
-            print  i, ": ", intern_color.red(),", ", intern_color.green(),", ",  intern_color.blue()
-        print "\n\n"
-        '''
-
-    '''
-    def print_colortable(self, color):
-        """
-        only used for debugging
-        """
-        print "\n\n"
-        for i in range(13):
-            intern_color = QColor(color[i])
-            print  i, ": ", intern_color.red(),", ", intern_color.green(),", ",  intern_color.blue()
-        print "\n\n"
-    '''
 
     def importLabelsFromSlot(self):
         """

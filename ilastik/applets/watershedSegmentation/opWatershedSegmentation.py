@@ -256,7 +256,8 @@ class OpWatershedSegmentationCalculation( Operator ):
         self.Output.meta.assignFrom(self.Boundaries.meta)
         # output of the vigra.analysis.watershedNew is uint32, therefore it should be uint 32 as
         # well, otherwise it will break with the cached image 
-        self.Output.meta.dtype = np.uint32
+        # UPDATE: actually, this behaviour changed during development, so that uint8 is correct 
+        self.Output.meta.dtype = np.uint8
         #only one channel as output
         self.Output.meta.shape = self.Boundaries.meta.shape[:-1] + (1,)
         #TODO maybe bad with more than 255 labels

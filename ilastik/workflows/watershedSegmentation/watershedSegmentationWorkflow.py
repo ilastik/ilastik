@@ -88,17 +88,10 @@ class WatershedSegmentationWorkflow(Workflow):
         # Configure global DataExport settings
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        #opDataExport.PmapColors.connect( opWatershedSegmentation.PmapColors )
+        #opDataExport.LabelNames.connect( opWatershedSegmentation.LabelNames )
         opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )
 
-        #TODO add the labelNames and their colors for export as well
-        '''
-        self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
-        opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.PmapColors.connect( opClassify.PmapColors )
-        opDataExport.LabelNames.connect( opClassify.LabelNames )
-        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
-        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )        
-        '''
 
 
 
@@ -151,9 +144,12 @@ class WatershedSegmentationWorkflow(Workflow):
         opWatershedSegmentation.RawData.connect(    opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
         opWatershedSegmentation.Boundaries.connect( opDataSelection.ImageGroup[self.DATA_ROLE_BOUNDARIES] )
 
-        opWatershedSegmentation.SeedsExist.connect( opSeeds.SeedsExist )
-        opWatershedSegmentation.Seeds.connect( opSeeds.SeedsOut )
-        opWatershedSegmentation.CorrectedSeedsIn.connect( opSeeds.SeedsOut )
+        opWatershedSegmentation.SeedsExist.connect(         opSeeds.SeedsExist )
+        opWatershedSegmentation.Seeds.connect(              opSeeds.SeedsOut )
+        opWatershedSegmentation.CorrectedSeedsIn.connect(   opSeeds.SeedsOut )
+        #opWatershedSegmentation.Seeds.connect(              opSeeds.SeedsOutCached )
+        #opWatershedSegmentation.CorrectedSeedsIn.connect(   opSeeds.SeedsOutCached )
+
         # old
         #opWatershedSegmentation.Seeds.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
         #opWatershedSegmentation.CorrectedSeedsIn.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
@@ -174,6 +170,7 @@ class WatershedSegmentationWorkflow(Workflow):
         #    and exporting it will work without an additional calculation
         opDataExport.Inputs[0].connect( opWatershedSegmentation.CorrectedSeedsOut )
         opDataExport.Inputs[1].connect( opWatershedSegmentation.WSCCOCachedOutput )
+        #opDataExport.Inputs[2].connect( opWatershedSegmentation.LabelNames )
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
         #for more information, see ilastik.org/lazyflow/advanced.html OperatorWrapper class

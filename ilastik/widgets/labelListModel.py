@@ -233,8 +233,6 @@ class LabelListModelWithNumber(LabelListModel, ListModel):
 
 
 
-    '''
-    '''
     def removeRow(self, position, parent=QModelIndex()):
         """
         reimplemented the removeRow from superclass,
@@ -243,7 +241,19 @@ class LabelListModelWithNumber(LabelListModel, ListModel):
         #emit signal with the value of the row, otherwise you can't get this value anymore
         value = self._elements[position].number
         self.labelValueToBeDeleted.emit(value)
-        #print value
 
+        super(LabelListModelWithNumber, self).removeRow(position, parent)
+
+    def removeRowWithoutEmittingSignal(self, position, parent=QModelIndex()):
+        """
+        This is only used for deleting a single row without signal emitting
+
+        Additional information for watershed Reset seeds functionality:
+        watershedLabelingGui._beforeLabelRemoved needs a number as signal emitted, 
+        and then it removes that label from LabelArrayCache. 
+        But this isn't the desired behaviour for just deleting a single row, 
+        or all after each other for Resetting the Labels and reading in new ones 
+        directly afterwards. Because ingestData overrides the cache
+        """
         super(LabelListModelWithNumber, self).removeRow(position, parent)
 

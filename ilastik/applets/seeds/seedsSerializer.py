@@ -44,6 +44,9 @@ class SeedsSerializer(AppletSerializer):
         """
 
         slots = [ 
+
+
+
                 SerialSlot(operator.SeedsExist), 
 
                 SerialSlot(operator.WSMethodIn), 
@@ -51,7 +54,16 @@ class SeedsSerializer(AppletSerializer):
                 SerialSlot(operator.Unseeded),
                 SerialSlot(operator.SmoothingMethod),
                 SerialSlot(operator.SmoothingSigma),      
-                SerialSlot(operator.ComputeMethod)      
+                SerialSlot(operator.ComputeMethod),
+
+
+
+                # serialize the output of the generated/transmitted Seeds, 
+                # so it won't be lost after restarting the project
+                SerialHdf5BlockSlot(operator.SeedsOutputHdf5,
+                    operator.SeedsInputHdf5,
+                    operator.SeedsCleanBlocks,
+                    name="CachedSeedsOutput")
                 ]
         super(SeedsSerializer, self).__init__(projectFileGroupName, slots=slots, operator=operator)
 
