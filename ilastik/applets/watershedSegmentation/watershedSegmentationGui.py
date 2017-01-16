@@ -84,9 +84,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.topLevelOperatorView = topLevelOperatorView
         op = self.topLevelOperatorView 
 
-        #print op.WSMethod.value
-        #print "SeedsExist: " + str(op.SeedsExist.value)
-
 
 
         ############################################################
@@ -183,7 +180,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
 
         #if not (op.WSMethod.value == "UnionFind"):
-        print "\nMethod: '" + op.WSMethod.value + "'\n\n"
+        #print "\nMethod: '" + op.WSMethod.value + "'\n\n"
     
         # init the class to import and reset Labels
         self.importAndResetLabels = ImportAndResetLabels (

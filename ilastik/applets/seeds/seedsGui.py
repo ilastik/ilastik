@@ -38,13 +38,23 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class SmoothingMethods(object):
+    """
+    class that capsulates the methods and their index in the combobox
+    """
+    def __init__(self):
+        self.methods = [ "Gaussian", "MedianFilter"]
+        
+class ComputeMethods(object):
+    """
+    class that capsulates the methods and their index in the combobox
+    """
+    def __init__(self):
+        self.methods = [ "HeightMap Min", "HeightMap Max", "DistanceTransform"]
 
 
-#LayerViewerGui->LabelingGui->WatershedLabelingGui
 class SeedsGui(LayerViewerGui):
-#class SeedsGui(WatershedLabelingGui):
 
-    ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
     def centralWidget( self ):
@@ -53,7 +63,6 @@ class SeedsGui(LayerViewerGui):
 
     def appletDrawer(self):
         return self._drawer
-    ###########################################
     ###########################################
 
     def __init__(self, parentApplet, topLevelOperatorView, DrawerUiPath=None ):
@@ -68,8 +77,7 @@ class SeedsGui(LayerViewerGui):
 
 
         # copy Seeds to generated Seeds if Seeds is ready and GeneratedSeeds is None
-
-        #TODO
+        #TODO just for debugging and testing
         if op.Seeds.ready():
             print "seeds supplied"
         else: 
@@ -83,9 +91,10 @@ class SeedsGui(LayerViewerGui):
             print "not ready"
 
     def onGenerateButtonClicked(self):
-        op = self.topLevelOperatorView 
-
         #TODO
+        # for testing, commented
+        '''
+        op = self.topLevelOperatorView 
         if op.Seeds.ready(): 
             print "ready"
             msgBox = QMessageBox()
@@ -98,190 +107,15 @@ class SeedsGui(LayerViewerGui):
                 return
         else:
             print "not ready"
+        '''
 
-        self.generateSeeds()
-
-    def getAndUseSmoothingMethod(self, boundaries):
-        """
-        Smoothes the given boundaries with the method of interest
-        :returns: smoothed boundaries
-        :rtype: array
-        """
-        op = self.topLevelOperatorView 
-        method  = self._drawer.smoothingComboBox.currentText()
-        sigma   = self._drawer.smoothingDoubleSpinBox.value()
-        #sigma   = op.SmoothingSigma.value
-        # here: method is the index, which is not good
-        #method  = op.SmoothingMethod.value
-
-        if ( method == "Gaussian"):
-            function = vigra.filters.gaussianSmoothing
-
-        elif ( method == "MedianFilter"):
-            #TODO
-            raise NotImplementedError
-        else: 
-            raise NotImplementedError
-
-
-        smoothedBoundaries           = function(boundaries, sigma)
-
-        # add a layer for this array
-        self.assignSlotToLayer(op.Smoothing, op.Boundaries, smoothedBoundaries)
-
-        return smoothedBoundaries
-
-
-
-
-
-    def getAndUseComputingMethod(self, smoothedBoundaries):
-        """
-        :returns: binary seeds
-        :rtype: function
-        """
-        op = self.topLevelOperatorView 
-        method = self._drawer.computeComboBox.currentText()
-        (tUsed, tId)    = evaluateSlicing(op.Boundaries)
-
-        if ( method == "DistanceTransform"):
-            # TODO 
-            # sigMinima is the sigma for an additional smoothing after the distance transform
-            # these functions need to be changed
-
-            # parameters copied from anna's script
-            threshold = 0.91
-
-            # compute distance transform
-            distance_to_membrane = signed_distance_transform(smoothedBoundaries, threshold)
-            self.assignSlotToLayer(op.Computing, op.Boundaries, distance_to_membrane)
-
-            # get the seeds from dt
-            # TODO uses smoothing, that is not welcomed and the maximum-function is not working correctly
-            # because t is a dimension there, not a slicing parameter
-            # smooth with gaussian after dt to receive less maxima
-            sigma = op.SmoothingSigma.value
-            smoothed_distance_to_membrane = vigra.filters.gaussianSmoothing(distance_to_membrane, sigma, out=distance_to_membrane)
-
-            # get the Maximum
-            seeds           = self.MinOrMax(smoothed_distance_to_membrane, "Maximum", tUsed, tId)
-
-        elif ( method == "HeightMap Min"):
-            # Minima
-            seeds           = self.MinOrMax(smoothedBoundaries, "Minimum", tUsed, tId)
-            seeds           = seeds.astype(numpy.float32)
-
-        elif ( method == "HeightMap Max"):
-            # Maxima
-            seeds           = self.MinOrMax(smoothedBoundaries, "Maximum", tUsed, tId)
-            seeds           = seeds.astype(numpy.float32)
-        else: 
-            raise NotImplementedError
-
-        return seeds
-
-    def generateSeeds(self):
-        print "generate Seeds start"
-        op = self.topLevelOperatorView 
-
-        # get boundaries
-        boundaries      = getArray(op.Boundaries)
-        #boundaries     = boundaries.astype(np.float32)
-        #sigma           = op.SmoothingSigma.value
-
-        #cut off the channel dimension
-        boundaries      = removeChannelAxis(boundaries)
-
-
-        # Smoothing
-        smoothedBoundaries  = self.getAndUseSmoothingMethod(boundaries)
-
-        # for distance transform: seeds.dtype === uint32 or float? but not uint8
-        smoothedBoundaries  = smoothedBoundaries.astype(numpy.float32)
-
-
-        # Compute here: distance transform
-        #seeds           = vigra.filters.distanceTransform(seeds)
-        seeds               = self.getAndUseComputingMethod(smoothedBoundaries)
-
-        # label the seeds 
-        # TODO TODO TODO label array depending on slicing or not Depends on Execute, etc, so don't do it here
-        seeds  = seeds.astype(numpy.uint8)
-        labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(seeds)
-
-
-        self.assignSlotToLayer(op.GeneratedSeeds, op.Boundaries, labeled_seeds)
-        #self.assignSlotToLayer(op.GeneratedSeeds, op.Boundaries, seeds)
+        self.configure_operator_from_gui()
+        for layer in self.layerstack:
+            if "Test" in layer.name:
+                layer.visible = True
 
         # refresh the layers
-        self.setupLayers()
-
-
-        print "generate Seeds end"
-
-
-
-
-
-
-    
-    ############################################################
-    # setupLayers
-    ############################################################
-    def setupLayers(self):
-        """
-        For illustration of what a layer is, see: http://ilastik.org/documentation/basics/layers
-
-        Responsable for the elements in the 'Viewer Controls'.
-
-        These are the views (e.g. opacity of Raw Data)
-        that can be adjusted in the left corner of the program
-        and for the Elements, that can be seen in the 'Central Widget'. 
-        These are excactly the ones, that are shown in the Viewer Controls.
-
-        Uses :py:meth:`_initLayer` to create a single layer (see base-class LayerViewerGui)
-
-        :returns: the list with the layers that are created in this function
-        :rtype: list of layers
-
-        """
-
-        # Base class provides the label layer.
-        # needed to add here. otherwise the reset button doesn't work well
-        layers = super(SeedsGui, self).setupLayers()
-        #layers[0].visible = False
-        # remove the Label-Layer, because it is not needed here
-        layers = []
-
-        op = self.topLevelOperatorView
-
-        '''
-        # only display Seeds if no Generated Seeds are supplied
-        if not op.GeneratedSeeds.ready():
-            self._initLayer(op.Seeds,                "Seeds",        layers, opacity=0.5)
-
-        self._initLayer(op.GeneratedSeeds,       "Generated Seeds",        layers,  opacity=0.5)
-        '''
-        self._initLayer(op.SeedsOut,            "Seeds",        layers,  opacity=0.5)
-
-        self._initLayer(op.Smoothing,            "Smoothing",        layers, opacity=0.5,
-                layerFunction=self.createGrayscaleLayer) 
-        self._initLayer(op.Computing,            "Computing",        layers,
-                layerFunction=self.createGrayscaleLayer) 
-        
-        # Boundaries
-        self._initLayer(op.Boundaries,       "Boundaries",   layers, opacity=0.5, 
-                layerFunction=self.createGrayscaleLayer) 
-
-
-        # Raw Data
-        self._initLayer(op.RawData,          "Raw Data",     layers, 
-                layerFunction=self.createStandardLayerFromSlot ) 
-
-
-
-        return layers
-
+        self.updateAllLayers()
 
 
 
@@ -293,16 +127,19 @@ class SeedsGui(LayerViewerGui):
         """
         Initializes the Smoothing and Compute ComboBox with selectables
         Therefore it is important, that the state of the SmoothingMethod and
-        ComputingMethod is stored temporarily, because adding new elements 
+        ComputeMethod is stored temporarily, because adding new elements 
         (probably emit signal for changing this Method index) changes each Method.
         """
         def initSmoothingComboBox():
-            itemList = ["Gaussian", "MedianFilter"]
-            self._drawer.smoothingComboBox.addItems(itemList)
+            methodList = SmoothingMethods().methods
+            for elem in methodList:
+                self._drawer.smoothingComboBox.addItem(elem)
+
 
         def initComputeComboBox():
-            itemList = ["HeightMap Min", "HeightMap Max", "DistanceTransform"]
-            self._drawer.computeComboBox.addItems(itemList)
+            methodList = ComputeMethods().methods
+            for elem in methodList:
+                self._drawer.computeComboBox.addItem(elem)
 
         op = self.topLevelOperatorView 
         # this value needs to be preserved, because adding some new elements 
@@ -317,115 +154,11 @@ class SeedsGui(LayerViewerGui):
         op.SmoothingMethod.setValue(temp1)
         op.ComputeMethod.setValue(temp2)
 
-    ############################################################
-    # smoothing and compute functions, e.g. distance transformation
-    ############################################################
-    def assignSlotToLayer(self, toSlot, fromSlotMeta, array): 
-        #TODO conversion to uint8 is ok?
-        # conversion
-        array           = array.astype(numpy.uint8)
-        array           = addChannelAxis(array)
-        # output sets
-        toSlot.meta.assignFrom(fromSlotMeta.meta)
-        #only one channel as output
-        toSlot.meta.shape = fromSlotMeta.meta.shape[:-1] + (1,)
-        toSlot.meta.drange = (0,255)
-        toSlot.setValue(array)
-
-    def MinOrMax(self, boundaries, functionName="Minimum", tUsed=False, tAxis=0):
-        #TODO docu
-        diff = 0
-        if tUsed:
-            diff = 1
-        if functionName == "Minimum":
-            if (boundaries.ndim - diff == 2):
-                function = vigra.analysis.extendedLocalMinima
-            else:
-                function = vigra.analysis.extendedLocalMinima3D
-        else:
-            if (boundaries.ndim - diff == 2):
-                function = vigra.analysis.extendedLocalMaxima
-            else:
-                function = vigra.analysis.extendedLocalMaxima3D
-
-        marker = 1
-        if tUsed:
-            return self.slicedMinOrMax(boundaries, tAxis, function=function, marker=marker)
-        else:
-            return function(boundaries, marker=marker)
-
-
-    def slicedMinOrMax(self, boundaries, tAxis, function, marker=1):
-        #TODO docu
-        """
-        uses Maxima for the main algorithm execution
-        but slices the data for it, so that that algorithm can be used easily
-
-        :param boundaries: the array, that contains the boundaries data
-        :param seeds: the array, that contains the seeds data
-        :param tAxis: the dimension number of the time axis
-        :return: labelImageArray: the concatenated watershed result of all slices 
-        """
-
-            
-        labelImageArray = np.ndarray(shape=boundaries.shape, dtype=boundaries.dtype)
-        for i in range(boundaries.shape[tAxis]):
-            # iterate over the axis of the time
-            boundariesSlice  = boundaries.take( i, axis=tAxis)
-
-            labelImage           = function(boundariesSlice, marker=marker)
-
-            # write in the correct column of the output array, 
-            # because the dimensions must fit
-            if (tAxis == 0):
-                labelImageArray[i] = labelImage
-            elif (tAxis == 1):
-                labelImageArray[:,i] = labelImage
-            elif (tAxis == 2):
-                labelImageArray[:,:,i] = labelImage
-            elif (tAxis == 3):
-                labelImageArray[:,:,:,i] = labelImage
-        return labelImageArray
-
-    #copied from wsDT, but with a some changes 
-    def signed_distance_transform(self, pmap, pmax):
-        """
-        Performs a threshold on the given image 'pmap' < pmax, and performs
-        a distance transform to the threshold region border for all pixels outside the
-        threshold boundaries (positive distances) and also all pixels *inside*
-        the boundary (negative distances).
-
-        The result is a signed float32 image.
-        """
-        # get the thresholded pmap
-        # black parts = 255 are not interesting
-        binary_membranes = (pmap <= pmax).view(numpy.uint8)
-
-        # delete small CCs
-        labeled = vigra.analysis.labelMultiArrayWithBackground(binary_membranes)
-        del binary_membranes
-
-        # perform signed dt on mask
-        distance_to_membrane = vigra.filters.distanceTransform(labeled)
-
-        # Save RAM with a sneaky trick:
-        # Use distanceTransform in-place, despite the fact that the input and output don't have the same types!
-        # (We can just cast labeled as a float32, since uint32 and float32 are the same size.)
-        distance_to_nonmembrane = labeled.view(numpy.float32)
-        vigra.filters.distanceTransform(labeled, background=False, out=distance_to_nonmembrane)
-        del labeled # Delete this name, not the array
-
-        # Combine the inner/outer distance transforms
-        distance_to_nonmembrane[distance_to_nonmembrane>0] -= 1
-        distance_to_membrane[:] -= distance_to_nonmembrane
-
-        return distance_to_membrane
-
 
 
 
     ############################################################
-    # functionality of gui elements
+    # unseeded gui element functionality
     ############################################################
 
     @pyqtSlot()
@@ -551,6 +284,9 @@ class SeedsGui(LayerViewerGui):
             return row_layout
         '''
 
+
+
+
     ############################################################
     # helping functions: synchronisation of gui elements and operators
     ############################################################
@@ -572,20 +308,6 @@ class SeedsGui(LayerViewerGui):
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
-            '''
-            self.channel_box.setValue( op.ChannelSelection.value )
-            input_layer = self.getLayerByName("Input")
-            if input_layer:
-                input_layer.channel = op.ChannelSelection.value
-            
-            self.threshold_box.setValue( op.Pmin.value )
-            self.membrane_size_box.setValue( op.MinMembraneSize.value )
-            self.superpixel_size_box.setValue( op.MinSegmentSize.value )
-            self.seed_presmoothing_box.setValue( op.SigmaMinima.value )
-            self.watershed_presmoothing_box.setValue( op.SigmaWeights.value )
-            self.seed_method_combo.setCurrentIndex( int(op.GroupSeeds.value) )
-            self.preserve_pmaps_box.setChecked( op.PreserveMembranePmaps.value )
-            '''
             self._drawer.unseededCheckBox.setChecked( op.Unseeded.value )
             self._drawer.smoothingComboBox.setCurrentIndex( int(op.SmoothingMethod.value) )
             self._drawer.smoothingDoubleSpinBox.setValue( op.SmoothingSigma.value )
@@ -597,16 +319,6 @@ class SeedsGui(LayerViewerGui):
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
-            '''
-            op.ChannelSelection.setValue( self.channel_box.value() )
-            op.Pmin.setValue( self.threshold_box.value() )
-            op.MinMembraneSize.setValue( self.membrane_size_box.value() )
-            op.MinSegmentSize.setValue( self.superpixel_size_box.value() )
-            op.SigmaMinima.setValue( self.seed_presmoothing_box.value() )
-            op.SigmaWeights.setValue( self.watershed_presmoothing_box.value() )
-            op.GroupSeeds.setValue( bool(self.seed_method_combo.currentIndex()) )
-            op.PreserveMembranePmaps.setValue( self.preserve_pmaps_box.isChecked() )
-            '''
             op.Unseeded.setValue( self._drawer.unseededCheckBox.isChecked() )
             op.SmoothingMethod.setValue( self._drawer.smoothingComboBox.currentIndex() )
             op.SmoothingSigma.setValue( self._drawer.smoothingDoubleSpinBox.value() )
@@ -614,3 +326,184 @@ class SeedsGui(LayerViewerGui):
 
 
 
+
+
+
+
+    ############################################################
+    # depricated
+    ############################################################
+
+    def assignSlotToLayer_depricated(self, toSlot, fromSlotMeta, array): 
+        #TODO conversion to uint8 is ok?
+        # conversion
+        array           = array.astype(numpy.uint8)
+        array           = addChannelAxis(array)
+        # output sets
+        toSlot.meta.assignFrom(fromSlotMeta.meta)
+        #only one channel as output
+        toSlot.meta.shape = fromSlotMeta.meta.shape[:-1] + (1,)
+        toSlot.meta.drange = (0,255)
+        toSlot.setValue(array)
+
+
+
+
+    def generateSeeds_depricated(self):
+        print "generate Seeds start"
+        op = self.topLevelOperatorView 
+
+        # get boundaries
+        boundaries      = getArray(op.Boundaries)
+        #boundaries     = boundaries.astype(np.float32)
+        #sigma           = op.SmoothingSigma.value
+
+        #cut off the channel dimension
+        boundaries      = removeChannelAxis(boundaries)
+
+
+        # Smoothing
+        smoothedBoundaries  = self.getAndUseSmoothingMethod(boundaries)
+
+        # for distance transform: seeds.dtype === uint32 or float? but not uint8
+        smoothedBoundaries  = smoothedBoundaries.astype(numpy.float32)
+
+
+        # Compute here: distance transform
+        #seeds           = vigra.filters.distanceTransform(seeds)
+        seeds               = self.getAndUseComputeMethod(smoothedBoundaries)
+
+        # label the seeds 
+        # TODO TODO TODO label array depending on slicing or not Depends on Execute, etc, so don't do it here
+        seeds  = seeds.astype(numpy.uint8)
+        labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(seeds)
+
+
+        #self.assignSlotToLayer(op.GeneratedSeeds, op.Boundaries, labeled_seeds)
+        #self.assignSlotToLayer(op.GeneratedSeeds, op.Boundaries, seeds)
+
+        # refresh the layers
+        #self.updateAllLayers()
+
+
+        print "generate Seeds end"
+
+    def slicedMinOrMax(self, boundaries, tAxis, function, marker=1):
+        # not used anymore, because only one t or all, with execute
+        #TODO docu
+        """
+        uses Maxima for the main algorithm execution
+        but slices the data for it, so that that algorithm can be used easily
+
+        :param boundaries: the array, that contains the boundaries data
+        :param seeds: the array, that contains the seeds data
+        :param tAxis: the dimension number of the time axis
+        :return: labelImageArray: the concatenated watershed result of all slices 
+        """
+
+            
+        labelImageArray = np.ndarray(shape=boundaries.shape, dtype=boundaries.dtype)
+        for i in range(boundaries.shape[tAxis]):
+            # iterate over the axis of the time
+            boundariesSlice  = boundaries.take( i, axis=tAxis)
+
+            labelImage           = function(boundariesSlice, marker=marker)
+
+            # write in the correct column of the output array, 
+            # because the dimensions must fit
+            if (tAxis == 0):
+                labelImageArray[i] = labelImage
+            elif (tAxis == 1):
+                labelImageArray[:,i] = labelImage
+            elif (tAxis == 2):
+                labelImageArray[:,:,i] = labelImage
+            elif (tAxis == 3):
+                labelImageArray[:,:,:,i] = labelImage
+        return labelImageArray
+
+    def MinOrMax_depricated(self, boundaries, functionName="Minimum", tUsed=False, tAxis=0):
+        #TODO docu
+        diff = 0
+        if tUsed:
+            diff = 1
+        if functionName == "Minimum":
+            if (boundaries.ndim - diff == 2):
+                function = vigra.analysis.extendedLocalMinima
+            else:
+                function = vigra.analysis.extendedLocalMinima3D
+        else:
+            if (boundaries.ndim - diff == 2):
+                function = vigra.analysis.extendedLocalMaxima
+            else:
+                function = vigra.analysis.extendedLocalMaxima3D
+
+        marker = 1
+        if tUsed:
+            return self.slicedMinOrMax(boundaries, tAxis, function=function, marker=marker)
+        else:
+            return function(boundaries, marker=marker)
+
+
+
+
+    ############################################################
+    # setupLayers
+    ############################################################
+    def setupLayers(self):
+        """
+        For illustration of what a layer is, see: http://ilastik.org/documentation/basics/layers
+
+        Responsable for the elements in the 'Viewer Controls'.
+
+        These are the views (e.g. opacity of Raw Data)
+        that can be adjusted in the left corner of the program
+        and for the Elements, that can be seen in the 'Central Widget'. 
+        These are excactly the ones, that are shown in the Viewer Controls.
+
+        Uses :py:meth:`_initLayer` to create a single layer (see base-class LayerViewerGui)
+
+        :returns: the list with the layers that are created in this function
+        :rtype: list of layers
+
+        """
+
+        # Base class provides the label layer.
+        # needed to add here. otherwise the reset button doesn't work well
+        layers = super(SeedsGui, self).setupLayers()
+        #layers[0].visible = False
+        # remove the Label-Layer, because it is not needed here
+        layers = []
+
+        op = self.topLevelOperatorView
+
+
+        # TestMe
+        self._initLayer(op.TestMe,          "TestMe",     layers,
+                layerFunction=self.createGrayscaleLayer) 
+
+        '''
+        # only display Seeds if no Generated Seeds are supplied
+        if not op.GeneratedSeeds.ready():
+            self._initLayer(op.Seeds,                "Seeds",        layers, opacity=0.5)
+
+        self._initLayer(op.GeneratedSeeds,       "Generated Seeds",        layers,  opacity=0.5)
+        '''
+        self._initLayer(op.SeedsOut,            "Seeds",        layers,  opacity=0.5)
+
+        self._initLayer(op.Smoothing,            "Smoothing",        layers, opacity=0.5,
+                layerFunction=self.createGrayscaleLayer) 
+        self._initLayer(op.Compute,            "Compute",        layers,
+                layerFunction=self.createGrayscaleLayer) 
+        
+        # Boundaries
+        self._initLayer(op.Boundaries,       "Boundaries",   layers, opacity=0.5, 
+                layerFunction=self.createGrayscaleLayer) 
+
+
+        # Raw Data
+        self._initLayer(op.RawData,          "Raw Data",     layers, 
+                layerFunction=self.createStandardLayerFromSlot ) 
+
+
+
+        return layers

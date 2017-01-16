@@ -14,6 +14,13 @@ def removeChannelAxis(array):
     #cut off the channel dimension
     array          = array.reshape(array.shape[0:-1])
     return array
+def removeTimeAxis(array):
+    array          = array.reshape(array.shape[1:])
+    return array
+
+def addTimeAxis(array):
+    arrayOut = array[np.newaxis,...]
+    return arrayOut
 
 def addChannelAxis(array):
     """
