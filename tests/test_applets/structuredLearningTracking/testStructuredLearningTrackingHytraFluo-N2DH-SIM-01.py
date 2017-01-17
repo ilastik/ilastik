@@ -39,18 +39,18 @@ logger = logging.getLogger(__name__)
 
 class TestStructuredLearningTrackingHeadless(object):    
 
-    PROJECT_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learning-with-segmentation-gt-2017-01-11.ilp'
-    RAW_DATA_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-11.h5'
-    BINARY_SEGMENTATION_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01_GT/SEG/Man_Seg_yx.h5'
+    PROJECT_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learning-with-segmentation-gt-2017-01-17.ilp'
+    RAW_DATA_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17.h5'
+    BINARY_SEGMENTATION_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01_GT/SEG/learningSeg-2017-01-17.h5'
 
-    EXPECTED_TRACKING_RESULT_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-11_Tracking-Result.h5'
-    EXPECTED_DIVISIONS_CSV_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-11-tracking_exported_data_divisions.csv'
-    EXPECTED_CSV_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-11-tracking_exported_data_table.csv'
-    EXPECTED_SHAPE = (56, 495, 534, 1, 1) # Expected shape for tracking results HDF5 files
-    EXPECTED_NUM_LINES_TRACKING = 1492 # Number of lines expected in exported csv file
-    EXPECTED_NUM_LINES_DIVISIONS = 19 # Number of lines expected in exported csv file
+    EXPECTED_TRACKING_RESULT_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_Tracking-Result.h5'
+    EXPECTED_DIVISIONS_CSV_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17-tracking_exported_data_divisions.csv'
+    EXPECTED_CSV_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17-tracking_exported_data_table.csv'
+    EXPECTED_SHAPE = (10, 495, 534, 1, 1) # Expected shape for tracking results HDF5 files
+    EXPECTED_NUM_LINES_TRACKING = 164 # Number of lines expected in exported csv file
+    EXPECTED_NUM_LINES_DIVISIONS = 6 # Number of lines expected in exported csv file
     EXPECTED_MERGER_NUM = 0 # Number of mergers expected in exported csv file
-    EXPECTED_FALSE_DETECTIONS_NUM = 55 # Number of false detections expected in exported csv file
+    EXPECTED_FALSE_DETECTIONS_NUM = 1 # Number of false detections expected in exported csv file
 
     @classmethod
     def setupClass(cls):
@@ -70,9 +70,6 @@ class TestStructuredLearningTrackingHeadless(object):
     @classmethod
     def teardownClass(cls):
         removeFiles = []
-        # removeFiles = ['data/inputdata/mitocheck_2d+t/mitocheck_94570_2D+t_01-53_Tracking-Result.h5',
-        #                'data/inputdata/mitocheck_2d+t/mitocheck_94570_2D+t_01-53-tracking_exported_data_table.csv',
-        #                'data/inputdata/mitocheck_2d+t/mitocheck_94570_2D+t_01-53-tracking_exported_data_divisions.csv']
 
         # Clean up: Delete any test files we generated
         for f in removeFiles:
@@ -123,7 +120,7 @@ class TestStructuredLearningTrackingHeadless(object):
         # Check for expected number of lines
         logger.info("Number of rows in the csv file: {}    ({})".format(data.shape[0],self.EXPECTED_NUM_LINES_TRACKING))
         print "Number of rows in the csv file: {}    ({})".format(data.shape[0],self.EXPECTED_NUM_LINES_TRACKING)
-        assert abs(data.shape[0] - self.EXPECTED_NUM_LINES_TRACKING) ==0, 'Number of rows {} in the csv file differs from expected {}'.format(data.shape[0],self.EXPECTED_NUM_LINES_TRACKING)
+        assert abs(data.shape[0] - self.EXPECTED_NUM_LINES_TRACKING) <=2, 'Number of rows {} in the csv file differs from expected {}'.format(data.shape[0],self.EXPECTED_NUM_LINES_TRACKING)
 
         # Check that the csv file contains the default fields.
         assert 'object_id' in data.dtype.names, "'object_id' not found in the csv file!"
@@ -146,7 +143,7 @@ class TestStructuredLearningTrackingHeadless(object):
                 merger_count += 1
         logger.info("Number of mergers in the csv file: {}    ({})".format(merger_count,self.EXPECTED_MERGER_NUM))
         print "Number of mergers in the csv file: {}    ({})".format(merger_count,self.EXPECTED_MERGER_NUM)
-        assert abs(merger_count - self.EXPECTED_MERGER_NUM)==0, 'Number of mergers {} in the csv file differs from expected {}.'.format(merger_count,self.EXPECTED_MERGER_NUM)
+        assert abs(merger_count - self.EXPECTED_MERGER_NUM)<=2, 'Number of mergers {} in the csv file differs from expected {}.'.format(merger_count,self.EXPECTED_MERGER_NUM)
 
         # Check for expected number of false detections
         false_detection_count = 0
@@ -163,7 +160,7 @@ class TestStructuredLearningTrackingHeadless(object):
         # Check for expected number of lines
         logger.info("Number of rows in the divisions csv file: {}    ({})".format(data.shape[0],self.EXPECTED_NUM_LINES_DIVISIONS))
         print "Number of rows in the divisions csv file: {}    ({})".format(data.shape[0],self.EXPECTED_NUM_LINES_DIVISIONS)
-        assert abs(data.shape[0] - self.EXPECTED_NUM_LINES_DIVISIONS)==0, 'Number of rows {} in the divisions csv file differs from expected {}.'.format(data.shape[0],self.EXPECTED_NUM_LINES_DIVISIONS)
+        assert abs(data.shape[0] - self.EXPECTED_NUM_LINES_DIVISIONS)<=2, 'Number of rows {} in the divisions csv file differs from expected {}.'.format(data.shape[0],self.EXPECTED_NUM_LINES_DIVISIONS)
 
         # Check that the csv file contains the default fields.
         assert 'object_id' in data.dtype.names, "'object_id' not found in the csv file!"
