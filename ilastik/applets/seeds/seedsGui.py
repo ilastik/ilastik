@@ -179,10 +179,10 @@ class SeedsGui(LayerViewerGui):
         if self._drawer.unseededCheckBox.isChecked():
             self.setEnabledEverthingButUnseeded(False)
             
-            op.WSMethodIn.setValue("UnionFind") 
+            #op.WSMethodIn.setValue("UnionFind") 
         else:
             self.setEnabledEverthingButUnseeded(True)
-            self.setWatershedMethodToTurboOrRegionGrowing()
+            #self.setWatershedMethodToTurboOrRegionGrowing()
 
     def setEnabledEverthingButUnseeded(self, enable):
         """
@@ -203,18 +203,21 @@ class SeedsGui(LayerViewerGui):
         for widget in guiElements:
             widget.setEnabled(enable) 
 
-    def setWatershedMethodToTurboOrRegionGrowing(self):
+    def setWatershedMethodToTurboOrRegionGrowing_depricated(self):
         """
         Set the correct watershed method
         boundaries-input uint8: Turbo
         boundaries-input not uint8: RegionGrowing
         """
+        '''
         op = self.topLevelOperatorView 
         # if boundaries has type uint8, then use Turbo, otherwise RegionGrowing
         if (op.Boundaries.meta.dtype == numpy.uint8):
             op.WSMethodIn.setValue("Turbo") 
         else:
             op.WSMethodIn.setValue("RegionGrowing") 
+        '''
+        pass
 
     ############################################################
     # synchronisation of gui elements and operators and their functionality
@@ -257,7 +260,7 @@ class SeedsGui(LayerViewerGui):
 
         # set the right watershed method given the current settings 
         # (of checkbox (now correct in gui) and boundaries dtype)
-        self.onUnseededCheckBoxStateChanged()
+        #self.onUnseededCheckBoxStateChanged()
 
         '''
         def control_layout(*args):
@@ -478,7 +481,7 @@ class SeedsGui(LayerViewerGui):
 
 
         # TestMe
-        self._initLayer(op.TestMe,          "TestMe",     layers,
+        self._initLayer(op.TestMe,          "TestMe",     layers, visible=False,
                 layerFunction=self.createGrayscaleLayer) 
 
         '''

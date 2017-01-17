@@ -49,7 +49,7 @@ class SeedsSerializer(AppletSerializer):
 
                 SerialSlot(operator.SeedsExist), 
 
-                SerialSlot(operator.WSMethodIn), 
+                #SerialSlot(operator.WSMethodIn), 
                 #parameters
                 SerialSlot(operator.Unseeded),
                 SerialSlot(operator.SmoothingMethod),

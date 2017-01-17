@@ -41,5 +41,19 @@ Click Debug and
 * **Export Workflow Diagram - Unlimited** to get the operator diagram of the whole workflow
 
 
+Getting all input and/or output slots
+==================================================
+
+In the opXXXX.py, you can put this at the very end of your init to list all slots and work elsewhere with it
+
+.. code::
+
+        for slot in self.inputs.values() + self.outputs.values():
+            #if slot.level == 0 or slot.level == 1:
+            if slot._type == "output":
+                print slot.name
+            else:
+                print "input: " + slot.name
+
 
 

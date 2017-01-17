@@ -156,7 +156,7 @@ class WatershedSegmentationWorkflow(Workflow):
 
 
         # watershed parameter
-        opWatershedSegmentation.WSMethod.connect(    opSeeds.WSMethodOut )
+        opWatershedSegmentation.WSMethod.connect(    opSeeds.WSMethod )
 
         # DataExport inputs
         opDataExport.RawData.connect(       opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )

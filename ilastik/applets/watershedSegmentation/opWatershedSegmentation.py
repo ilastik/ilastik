@@ -167,6 +167,10 @@ class OpWatershedSegmentation(Operator):
         self._cache.Input.connect(self.WatershedCalc)
         self._cache.Input.setDirty(slice(None))
 
+
+        #for testing 
+        print self.WSMethod.value
+
     
     def execute(self, slot, subindex, roi, result):
         pass

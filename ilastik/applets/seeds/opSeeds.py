@@ -5,7 +5,7 @@ import vigra
 #from ilastik.applets.Seeds.seedsGui import SmoothingMethods, ComputeMethods
 from seedsGui import SmoothingMethods, ComputeMethods
 
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import Operator,Slot, InputSlot, OutputSlot
 #for caching the data of the generating seeds
 from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import _OpCacheWrapper
 
@@ -44,8 +44,8 @@ class OpSeeds(Operator):
     Compute             = InputSlot(optional=True)
     
     # transmit the WSMethod to the WatershedSegmentationApplet (see Workflow)
-    WSMethodIn          = InputSlot()
-    WSMethodOut         = OutputSlot()
+    #WSMethodIn          = InputSlot()
+    WSMethod            = OutputSlot()
 
     #Parameters and their default values
     Unseeded            = InputSlot(value=False)
@@ -86,7 +86,15 @@ class OpSeeds(Operator):
 
     def setupOutputs(self):
         # set the Watershed Method
-        self.WSMethodOut.setValue( self.WSMethodIn.value )
+        if self.Unseeded.value:
+            wsMethod = "UnionFind"
+        else:
+            if (self.Boundaries.meta.dtype == numpy.uint8):
+                wsMethod = "Turbo"
+            else:
+                wsMethod = "RegionGrowing" 
+        self.WSMethod.setValue( wsMethod )
+
 
         # set the correct value of SeedsExist Operator
         # True if: Seeds | Generated Seeds available
@@ -123,6 +131,7 @@ class OpSeeds(Operator):
             array       = np.zeros(shape, dtype=np.uint8)
             #print "\n\nzeros\n\n"
 
+        print "zeros"
 
         # output sets
         array           = array.astype(np.uint8)
@@ -146,10 +155,8 @@ class OpSeeds(Operator):
         self.TestMe.meta.assignFrom(self.Boundaries.meta)
     
     def execute(self, slot, subindex, roi, result):
-        if slot == self.WSMethodOut:
-            pass
 
-        elif slot == self.TestMe:
+        if slot == self.TestMe:
             #print "generate Seeds start"
             #print roi
             #print self.Boundaries.meta
@@ -169,10 +176,6 @@ class OpSeeds(Operator):
             if tUsed:
                 boundaries          = removeTimeAxis(boundaries)
 
-
-
-
-
             # Smoothing
             smoothedBoundaries= self.getAndUseSmoothingMethod(boundaries, smoothingMethodIndex, sigma)
             
@@ -182,18 +185,9 @@ class OpSeeds(Operator):
             # Compute 
             seeds               = self.getAndUseComputeMethod(smoothedBoundaries, computeMethodIndex, sigma)
 
-            
-
-
-
-
             # label the seeds 
             seeds  = seeds.astype(numpy.uint8)
             labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(seeds)
-
-
-
-            #self.assignSlotToLayer(op.GeneratedSeeds, op.Boundaries, labeled_seeds)
 
             #out = smoothedBoundaries
             out = seeds
@@ -212,7 +206,11 @@ class OpSeeds(Operator):
 
         
     def propagateDirty(self, slot, subindex, roi):
-        pass
+        # if something changes, the watershed Method must be evaluated newly
+        # and all other things too
+        for slot in self.outputs.values():
+            slot.setDirty()
+
 
     def setInSlot(self, slot, subindex, roi, value):
         pass

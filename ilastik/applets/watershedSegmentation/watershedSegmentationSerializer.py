@@ -47,6 +47,8 @@ class WatershedSegmentationSerializer(AppletSerializer):
                 #Seeds supplied is delivered from applet Seeds, therefore don't save it
                 #SerialSlot(operator.SeedsExist), 
 
+                # WSMethod will be delivered (also on restart) by Applet Seeds and needn't to be cached 
+
                 # neighbors
                 SerialSlot(operator.WSNeighbors), 
 

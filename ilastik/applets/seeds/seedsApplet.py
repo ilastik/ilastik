@@ -51,7 +51,7 @@ class SeedsApplet( StandardApplet ):
         :return: the name of the slots as list of string, e.g. ['ChannelSelection', 'BrushValue;]
         :rtype: list of str
         """
-        return ['WSMethodIn', 
+        return [
                 #parameter
                 'Unseeded',
                 'SmoothingMethod',
