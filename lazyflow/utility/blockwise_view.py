@@ -1,6 +1,5 @@
 from __future__ import division
 from builtins import map
-from past.utils import old_div
 import numpy
 
 try:
@@ -63,7 +62,7 @@ def blockwise_view( a, blockshape, aslist=False, require_aligned_blocks=True ):
     """
     assert a.flags['C_CONTIGUOUS'], "This function relies on the memory layout of the array."
     blockshape = tuple(blockshape)
-    outershape = tuple(old_div(numpy.array(a.shape), blockshape))
+    outershape = tuple(numpy.array(a.shape) // blockshape)
     view_shape = outershape + blockshape
 
     if require_aligned_blocks:

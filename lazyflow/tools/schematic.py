@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from builtins import hex
 from builtins import str
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -295,11 +294,11 @@ class SvgOperator( DrawableABC ):
 
                 for col_index, col_children in sorted( svgChildren.items() ):
                     for svgChild in col_children:
-                        child_y += old_div((self.PaddingBetweenInternalOps + old_div(columnExtraPadding[col_index],len(col_children))), 2)
+                        child_y += ((self.PaddingBetweenInternalOps + (columnExtraPadding[col_index] // len(col_children))) // 2)
                         svgChild.drawAt( canvas, (child_x, child_y) )
                         lowerRight = (svgChild.size()[0] + child_x, svgChild.size()[1] + child_y)
                         max_child_x = max(lowerRight[0], max_child_x)
-                        child_y = lowerRight[1] + self.PaddingBetweenInternalOps + old_div(columnExtraPadding[col_index],len(col_children))
+                        child_y = lowerRight[1] + self.PaddingBetweenInternalOps + (columnExtraPadding[col_index] // len(col_children))
 
                     max_child_x += self.PaddingBetweenInternalOps
                     max_child_y = max(max_child_y, child_y)
@@ -336,16 +335,16 @@ class SvgOperator( DrawableABC ):
         canvas += svg.path(d=path_d, stroke='black', stroke_width=1)
 
         block = partial(svg.tagblock, canvas)
-        with block(svg.text, x=rect_x+old_div(rect_width,2), y=rect_y+r, text_anchor='middle'):
+        with block(svg.text, x=rect_x+(rect_width // 2), y=rect_y+r, text_anchor='middle'):
             canvas += title_text + '\n'
 
         if self.op.debug_text:
             block = partial(svg.tagblock, canvas)
-            with block(svg.text, x=rect_x+old_div(rect_width,2), y=rect_y+2*r, text_anchor='middle'):
+            with block(svg.text, x=rect_x+(rect_width // 2), y=rect_y+2*r, text_anchor='middle'):
                 canvas += self.op.debug_text + '\n'
 
         # Add extra padding between input slots if there's room (i.e. spread out the inputs to cover the entire left side)
-        inputSlotPadding = old_div((rect_height - self.getInputSize()[1]), (len(self.inputs)+1))
+        inputSlotPadding = ((rect_height - self.getInputSize()[1]) // (len(self.inputs)+1))
         
         # Draw inputs
         y += 1.5*self.TitleHeight + inputSlotPadding
@@ -355,12 +354,12 @@ class SvgOperator( DrawableABC ):
             slot.drawAt( canvas, (slot_x, slot_y) )
             y += size[1] + inputSlotPadding
 
-            text_x, text_y = (slot_x + size[0] + 5, slot_y + old_div(size[1],2))
+            text_x, text_y = (slot_x + size[0] + 5, slot_y + (size[1] // 2))
             with block(svg.text, x=text_x, y=text_y, text_anchor='start'):
                 canvas += slot.name + '\n'
 
         # Add extra padding between output slots if there's room (i.e. spread out the inputs to cover the entire right side)
-        outputSlotPadding = old_div((rect_height - self.getOutputSize()[1]), (len(self.outputs)+1))
+        outputSlotPadding = ((rect_height - self.getOutputSize()[1]) // (len(self.outputs)+1))
 
         # Draw outputs
         x, y = upperLeft
@@ -368,7 +367,7 @@ class SvgOperator( DrawableABC ):
         y += 1.5*self.TitleHeight + outputSlotPadding
         for slot in list(self.outputs.values()):
             size = slot.size()
-            text_x, text_y = (x - 5, y + old_div(size[1],2))
+            text_x, text_y = (x - 5, y + (size[1] // 2))
             slot.drawAt( canvas, (x,y) )
             y += size[1] + outputSlotPadding
 

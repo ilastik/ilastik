@@ -3,7 +3,6 @@ from builtins import zip
 from builtins import str
 from builtins import next
 from builtins import map
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -308,7 +307,7 @@ class OpUnmanagedCompressedCache(Operator):
 
         dtypeBytes = self._getDtypeBytes(self.Output.meta.dtype)
 
-        desiredSpace = old_div(1024**2, float(dtypeBytes))
+        desiredSpace = 1024**2 / float(dtypeBytes)
 
         if numpy.prod(blockshape) <= desiredSpace:
             return blockshape
@@ -340,7 +339,7 @@ class OpUnmanagedCompressedCache(Operator):
         tot, unc = self._usedMemory()
         self._compression_factor = 1.0
         if tot > 0:
-            self._compression_factor = old_div(unc,float(tot))
+            self._compression_factor = unc / float(tot)
         return tot
 
     def _usedMemory(self):
@@ -639,7 +638,7 @@ class OpCompressedCache(OpUnmanagedCompressedCache, ManagedBlockedCache):
             if key in self._dirtyBlocks:
                 dirty += real
         if tot > 0:
-            return old_div(dirty, tot)
+            return dirty / tot
         else:
             return 0.0
     

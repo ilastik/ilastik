@@ -3,7 +3,6 @@ from __future__ import division
 from future import standard_library
 standard_library.install_aliases()
 from builtins import range
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -275,8 +274,8 @@ class OpInterpMissingData(Operator):
 
 def _cubic_mat(n=1):
     n = float(n)
-    x = old_div(-1,(n+1))
-    y = old_div((n+2),(n+1))
+    x = -1 / (n+1)
+    y = (n+2) / (n+1)
 
     A = [[1, x, x**2, x**3],
         [1, 0, 0, 0],

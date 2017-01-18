@@ -1,5 +1,4 @@
 from __future__ import division
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -93,7 +92,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
             tot += mem
             dirty += iOp.fractionOfUsedMemoryDirty()*mem
         if dirty > 0:
-            return old_div(tot,float(dirty))
+            return tot / float(dirty)
         else:
             return 0.0
 

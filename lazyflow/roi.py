@@ -3,7 +3,6 @@ from builtins import str
 from builtins import zip
 from builtins import map
 from builtins import range
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -87,15 +86,27 @@ class TinyVector(list):
 
     def __div__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(old_div(x,y) for x,y in zip(self,other))
+            return TinyVector(x/y for x,y in zip(self,other))
         else:
-            return TinyVector(old_div(x,other) for x in self)
+            return TinyVector(x/other for x in self)
 
     def __rdiv__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(old_div(y,x) for x,y in zip(self,other))
+            return TinyVector((y/x) for x,y in zip(self,other))
         else:
-            return TinyVector(old_div(other,x) for x in self)
+            return TinyVector((other/x) for x in self)
+
+    def __truediv__(self, other):
+        if isinstance(other, collections.Iterable):
+            return TinyVector(x.__truediv__(y) for x,y in zip(self,other))
+        else:
+            return TinyVector(x.__truediv__(other) for x in self)
+
+    def __rtruediv__(self, other):
+        if isinstance(other, collections.Iterable):
+            return TinyVector(y.__truediv__(x) for x,y in zip(self,other))
+        else:
+            return TinyVector(other.__truediv__(x) for x in self)
 
     def __mod__(self, other):
         if isinstance(other, collections.Iterable):
@@ -502,8 +513,8 @@ def getIntersectingBlocks( blockshape, roi, asarray=False ):
     roistop = TinyVector( roi[1] )
     blockshape = TinyVector( blockshape )
     
-    block_index_map_start = old_div(roistart, blockshape)
-    block_index_map_stop = old_div(( roistop + (blockshape - 1) ), blockshape) # Add (blockshape-1) first as a faster alternative to ceil() 
+    block_index_map_start = roistart // blockshape
+    block_index_map_stop = (( roistop + (blockshape - 1) ) // blockshape) # Add (blockshape-1) first as a faster alternative to ceil() 
     block_index_map_shape = block_index_map_stop - block_index_map_start
     
     num_axes = len(blockshape)
@@ -584,7 +595,7 @@ def determineBlockShape( max_shape, target_block_volume ):
     for (m, i), num_remaining_axes in zip(sorted_max, list(range(ndims, 0, -1))):
         # Make a block_shape that is isometric in the remaining dimensions
         remaining_factor = target_block_volume//volume_so_far
-        block_side = int( pow( remaining_factor, old_div(1.0,num_remaining_axes) ) + 0.5 )
+        block_side = int( pow( remaining_factor, (1.0/num_remaining_axes) ) + 0.5 )
         block_side = min( block_side, m )
         block_shape.append( block_side )
         volume_so_far *= block_side        
@@ -624,7 +635,7 @@ def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_
     ideal_blockshape = numpy.asarray( ideal_blockshape )
 
     target_block_volume_bytes = available_ram // num_threads
-    target_block_volume_pixels = old_div(target_block_volume_bytes, ram_usage_per_requested_pixel)
+    target_block_volume_pixels = (target_block_volume_bytes // ram_usage_per_requested_pixel)
     
     # Replace 0's in the ideal_blockshape with the corresponding piece of max_blockshape
     complete_ideal_blockshape = numpy.where( ideal_blockshape == 0, max_blockshape, ideal_blockshape )

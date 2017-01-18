@@ -26,7 +26,6 @@ from __future__ import division
 from builtins import zip
 from builtins import str
 from builtins import range
-from past.utils import old_div
 import os
 from collections import deque
 import itertools
@@ -993,8 +992,8 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             #adjust the readkey, as we read from the non-interpolated image
             newStartNI = copy.copy(newStart)
             newStopNI = copy.copy(newStop)
-            newStartNI[zaxis] = numpy.floor(old_div(float(newStart[zaxis]),scaleZ))
-            newStopNI[zaxis] = numpy.ceil(old_div(float(newStop[zaxis]),scaleZ))
+            newStartNI[zaxis] = numpy.floor(float(newStart[zaxis])/scaleZ)
+            newStopNI[zaxis] = numpy.ceil(float(newStop[zaxis])/scaleZ)
             readKey = roi.roiToSlice(newStartNI, newStopNI)
             
             #interpolation is applied on a region read with the above key. In x-y it should just read everything
@@ -1491,8 +1490,8 @@ def coherenceOrientationOfStructureTensor(image,sigma0, sigma1, window_size, out
     else:
         res=numpy.ndarray((image.shape[0],image.shape[1],2))
 
-    res[:,:,0]=old_div(numpy.sqrt( (i22-i11)**2+4*(i12**2)),(i11-i22))
-    res[:,:,1]=old_div(numpy.arctan(2*i12/(i22-i11)),numpy.pi) +0.5
+    res[:,:,0]=(numpy.sqrt( (i22-i11)**2+4*(i12**2)) / (i11-i22))
+    res[:,:,1]=(numpy.arctan(2*i12/(i22-i11)) / numpy.pi) +0.5
 
 
     return res

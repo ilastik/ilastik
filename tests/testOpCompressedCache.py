@@ -4,7 +4,6 @@ from builtins import str
 from builtins import zip
 from builtins import range
 from builtins import object
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -670,7 +669,7 @@ class TestOpCompressedCache( object ):
         assert op.usedMemory() == 0.0,\
             "cache must not be filled at this point"
         op.Output[...].wait()
-        assert op.usedMemory() <= old_div(sampleData.nbytes,expected_factor),\
+        assert op.usedMemory() <= (sampleData.nbytes /expected_factor),\
             "Compression of all-zeroes should be better than factor "\
             "{}".format(expected_factor)
 

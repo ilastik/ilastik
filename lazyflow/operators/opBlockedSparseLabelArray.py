@@ -1,5 +1,4 @@
 from __future__ import division
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -204,7 +203,7 @@ class OpBlockedSparseLabelArray(Operator, Cache):
 
             # allocate queryArray object
             self._flatBlockIndices =  _blockIndices[:]
-            self._flatBlockIndices = self._flatBlockIndices.reshape(old_div(self._flatBlockIndices.size,self._flatBlockIndices.shape[-1]),self._flatBlockIndices.shape[-1],)
+            self._flatBlockIndices = self._flatBlockIndices.reshape((self._flatBlockIndices.size // self._flatBlockIndices.shape[-1]),self._flatBlockIndices.shape[-1],)
 
 
         if self.inputs["deleteLabel"].ready():

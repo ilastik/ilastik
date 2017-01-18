@@ -1,7 +1,6 @@
 from __future__ import division
 from builtins import map
 from builtins import zip
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -175,7 +174,7 @@ class OpFormattedDataExport(Operator):
                 numerator = numpy.float64(outputMaxVal) - numpy.float64(outputMinVal)
                 denominator = numpy.float64(maxVal) - numpy.float64(minVal)
                 if denominator != 0.0:
-                    frac = numpy.float32(old_div(numerator, denominator))
+                    frac = numpy.float32(numerator / denominator)
                 else:
                     # Denominator was zero.  The user is probably just temporarily changing the values.
                     frac = numpy.float32(0.0)

@@ -3,7 +3,6 @@ from future import standard_library
 standard_library.install_aliases()
 from builtins import str
 from builtins import zip
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -108,7 +107,7 @@ class OpDvidVolume(Operator):
         
         # To avoid requesting extremely large blocks, limit each request to 500MB each.
         # Note that this isn't a hard max: halos, etc. may increase this somewhat.
-        max_pixels = old_div(2**29, self.Output.meta.dtype().nbytes)
+        max_pixels = 2**29 // self.Output.meta.dtype().nbytes
         max_blockshape = determineBlockShape( self.Output.meta.shape, max_pixels )
         self.Output.meta.max_blockshape = max_blockshape
         self.Output.meta.ideal_blockshape = max_blockshape

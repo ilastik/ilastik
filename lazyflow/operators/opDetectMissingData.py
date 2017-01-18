@@ -5,7 +5,6 @@ standard_library.install_aliases()
 from builtins import zip
 from builtins import str
 from builtins import range
-from past.utils import old_div
 from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -1156,10 +1155,10 @@ if __name__ == "__main__":
                 predNeg = pred[np.where(labels == 0)[0]]
                 predPos = pred[np.where(labels == 1)[0]]
 
-                fp = old_div((predNeg.sum()),float(predNeg.size))
-                fn = old_div((predPos.size - predPos.sum()),float(predPos.size))
+                fp = ((predNeg.sum()) / float(predNeg.size))
+                fn = ((predPos.size - predPos.sum()) / float(predPos.size))
 
-                prec = old_div(predPos.sum(),float(predPos.sum()+predNeg.sum()))
+                prec = (predPos.sum() / float(predPos.sum()+predNeg.sum()))
                 recall = 1-fn
 
                 logger.info(

@@ -2,7 +2,6 @@ from __future__ import print_function
 from __future__ import division
 from builtins import range
 from builtins import object
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -79,7 +78,7 @@ class Timer(object):
         timedelta = self._total_time
         if not self.paused:
             timedelta +=  datetime.datetime.now() - self._last_start
-        return timedelta.seconds + old_div(timedelta.microseconds, 1000000.0)
+        return timedelta.seconds + (timedelta.microseconds / 1000000.0)
 
     def sleep_until(self, seconds):
         assert not self.paused

@@ -1,5 +1,4 @@
 from __future__ import division
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -192,7 +191,7 @@ class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
                 cache_pct = total*100.0/cache_memory
             
             logger.debug( "Process memory usage is {:0.2f} GB out of {:0.2f} (caches are {}, {:.1f}% of allowed)"
-                          .format( old_div(Memory.getMemoryUsage(),2.**30), old_div(Memory.getAvailableRam(),2.**30) , Memory.format(total), cache_pct ) )
+                          .format( Memory.getMemoryUsage() / 2.**30, Memory.getAvailableRam() / 2.**30 , Memory.format(total), cache_pct ) )
 
             if total <= self._max_usage * cache_memory:
                 return

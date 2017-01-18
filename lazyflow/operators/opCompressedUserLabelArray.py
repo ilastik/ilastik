@@ -1,7 +1,6 @@
 from __future__ import division
 from builtins import map
 from builtins import zip
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -305,7 +304,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
                 #           relationship between color and slice index, do a max projection, 
                 #           and then re-invert the colors after everything is done.
                 #           Hence, this function starts with (1.0 - ...)
-                return (1.0 - (old_div(float(slice_index), projection_length))) * (1.0 - old_div(1.0,255)) + old_div(1.0,255.0)
+                return (1.0 - ((float(slice_index) / projection_length))) * (1.0 - (1.0 / 255)) + (1.0 / 255.0)
             min_color_value = calc_color_value(min_deep_slice_index)
             max_color_value = calc_color_value(max_deep_slice_index)
             

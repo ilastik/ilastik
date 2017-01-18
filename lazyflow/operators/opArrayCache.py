@@ -3,7 +3,6 @@ from builtins import next
 from builtins import map
 from builtins import str
 from builtins import range
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -126,7 +125,7 @@ class OpArrayCache(Operator, ManagedCache):
                 continue
             if v == self.DIRTY or v == self.FIXED_DIRTY:
                 totDirty += numpy.prod(sh)
-        return old_div(totDirty,float(totAll))
+        return totDirty / float(totAll)
     
     def lastAccessTime(self):
         return super(OpArrayCache, self).lastAccessTime()

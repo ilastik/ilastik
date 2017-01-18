@@ -3,7 +3,6 @@ from future import standard_library
 standard_library.install_aliases()
 from builtins import map
 from builtins import zip
-from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -142,7 +141,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
             x_tag = axistags['x']
             z_tag = axistags['z']
             if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
-                z_anisotropy_factor = old_div(z_tag.resolution, x_tag.resolution)
+                z_anisotropy_factor = z_tag.resolution / x_tag.resolution
 
         model.trainWithChannels( raw_images, 
                                  hev_images, 
@@ -229,7 +228,7 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             x_tag = axistags['x']
             z_tag = axistags['z']
             if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
-                z_anisotropy_factor = old_div(z_tag.resolution, x_tag.resolution)
+                z_anisotropy_factor = z_tag.resolution / x_tag.resolution
         
         subROI = iiboost.ROICoordinates()
         subROI.z1, subROI.y1, subROI.x1 = roi[0]
