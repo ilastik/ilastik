@@ -69,7 +69,9 @@ class TestStructuredLearningTrackingHeadless(object):
 
     @classmethod
     def teardownClass(cls):
-        removeFiles = []
+        removeFiles = ['data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_Tracking-Result.h5',
+                       'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17-tracking_exported_data_divisions.csv',
+                       'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17-tracking_exported_data_table.csv']
 
         # Clean up: Delete any test files we generated
         for f in removeFiles:
@@ -152,7 +154,7 @@ class TestStructuredLearningTrackingHeadless(object):
                 false_detection_count += 1
         logger.info("Number of false detections in the csv file: {}    ({})".format(false_detection_count,self.EXPECTED_FALSE_DETECTIONS_NUM))
         print "Number of false detections in the csv file: {}    ({})".format(false_detection_count,self.EXPECTED_FALSE_DETECTIONS_NUM)
-        assert abs(false_detection_count - self.EXPECTED_FALSE_DETECTIONS_NUM)<=1, 'Number of false detections {} in the csv file differs from expected {}.'.format(false_detection_count,self.EXPECTED_FALSE_DETECTIONS_NUM)
+        assert abs(false_detection_count - self.EXPECTED_FALSE_DETECTIONS_NUM)<=3, 'Number of false detections {} in the csv file differs from expected {}.'.format(false_detection_count,self.EXPECTED_FALSE_DETECTIONS_NUM)
 
         # Load divisions csv file
         data = np.genfromtxt(self.EXPECTED_DIVISIONS_CSV_FILE, dtype=float, delimiter=',', names=True)
