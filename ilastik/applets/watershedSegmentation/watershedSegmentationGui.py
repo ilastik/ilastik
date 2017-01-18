@@ -156,7 +156,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         ############################################################
 
 
-
         self._LabelPipeline         = op.opWSLP.opLabelPipeline
 
         #init the slots
@@ -177,6 +176,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         super(WatershedSegmentationGui, self).__init__( parentApplet, \
                 labelSlots, topLevelOperatorView, watershedLabelingDrawerUiPath )
+
 
 
         #if not (op.WSMethod.value == "UnionFind"):
@@ -205,6 +205,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         # resetSeedsPushButton functionality added by connecting signal with slot
         self._labelControlUi.resetSeedsPushButton.clicked.connect(self.importAndResetLabels.resetLabelsToSlot)
 
+
         # set the functionality of the pixelValue in the gui
         self.pixelValueDisplaying = PixelValueDisplaying (
                 op.CorrectedSeedsOut,  
@@ -224,11 +225,30 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         # responsable for the watershed algorithm
         self._labelControlUi.runWatershedPushButton.clicked.connect(self.onRunWatershedPushButtonClicked)
 
-            
-
+        # set the number of maximum labels
+        self.setMaximumLabelNumber()
 
         # handle the init values and the sync with the operator
         self._initNeighborsComboBox()
+
+        ##########################################################
+        # TODO BEGIN
+        ##########################################################
+
+        ##########################################################
+        # TODO END
+        ##########################################################
+
+
+        # notify any change to change settings in the gui
+        op.SeedsExist   .notifyMetaChanged(self.onSeedsExistOrWSMethodChanged)
+        op.WSMethod     .notifyMetaChanged(self.onSeedsExistOrWSMethodChanged)
+        # value changed seems to be for cached stuff? 
+        # well, it works on notifyMetaChanged. 
+        #op.SeedsExist   .notifyValueChanged(self.onSeedsExistOrWSMethodChanged)
+        #op.WSMethod     .notifyValueChanged(self.onSeedsExistOrWSMethodChanged)
+
+
 
 
     @pyqtSlot()
@@ -242,7 +262,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         op = self.topLevelOperatorView
 
         # if no seeds but not UnionFind => not possible => ErrorMessage
-        if not (op.WSMethod == "UnionFind") and not op.SeedsExist.value:
+        if not (op.WSMethod.value == "UnionFind") and not op.SeedsExist.value:
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
             msg.setText("No Seeds supplied and watershed not unseeded")
@@ -260,6 +280,11 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
             # execute the watershed algorithm
             self.topLevelOperatorView.opWSC.execWatershedAlgorithm()
+
+
+
+
+
 
 
 
@@ -296,6 +321,79 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         """
         op = self.topLevelOperatorView 
         op.WSNeighbors.setValue( str(self._labelControlUi.neighborsComboBox.itemText(index)) )
+
+
+
+
+
+
+    ############################################################
+    # grayout gui or not (if seeds for watershed should be used or not)
+    ############################################################
+
+    def onSeedsExistOrWSMethodChanged(self, x):
+        """
+        use setGuiEnabledExceptWatershedButton to disable all elements not necessary for 
+        following working steps
+        """
+
+        op = self.topLevelOperatorView
+
+        # if no seeds or unionfind, then only "run watershed" button shall be accessable
+        if (not op.SeedsExist.value) or (op.WSMethod.value == "UnionFind"):
+            self.setGuiEnabledExceptWatershedButton(False)
+        else:
+            self.setGuiEnabledExceptWatershedButton(True)
+
+
+    def setGuiEnabledExceptWatershedButton(self, enable):
+        """
+        enables or disables the watershed Gui 
+        :param enable: True: enable; False: disable
+        :type enable: bool
+        """
+
+        # disable all brush and erase elements except the navigation tool 
+        for tool, button in self.toolButtons.items():
+            toolId=0 #navigation
+            if tool != toolId:
+                button.setChecked(False)
+                button.setEnabled(enable)
+            else: 
+                button.setChecked(True)
+
+        #self._labelControlUi.runWatershedPushButton.setEnabled(enable)
+        self._labelControlUi.brushSizeComboBox.setEnabled(enable)
+        self._labelControlUi.neighborsComboBox.setEnabled(enable)
+        self._labelControlUi.resetSeedsPushButton.setEnabled(enable)
+        self._labelControlUi.pixelValueCheckBox.setEnabled(enable)
+
+        # if the maximum number of labels is reached, then you can't add a new label and 
+        # the AddLabelButton is disabled in the updateLabelList and in changeInterActionMode in LabelingGui
+        # if the number of max labels is 0, then you can't add any new labels and the button is disabled
+        if enable:
+            self.setMaximumLabelNumber()
+        else:
+            self.maxLabelNumber = 0
+
+
+
+    #def initAppletDrawerUi(self):
+        #super(WatershedSegmentationGui, self).initAppletDrawerUi()
+
+    def setMaximumLabelNumber(self):
+        """
+        set the value of the eraser to 255 and afterwards set the 
+        maximum number of labels to 254 (not with the setter, this gives an error, see code)
+        """
+        # set the eraser value to 255
+        self.editor.brushingModel.erasingNumber = 255
+        self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)
+
+        # set the number of maximum labels to 254, one below the eraser value
+        # caution: don't use the setter: self.maxLabelNumber, this leads to an error, where it wants to 
+        # use the removeRow of the labelListModel with position -1, and that isn't possible
+        self._maxLabelNumber         = 254
 
 
     ############################################################

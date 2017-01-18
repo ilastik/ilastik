@@ -32,7 +32,6 @@ from contextlib import contextmanager
 #from ilastik.applets.watershedLabeling.watershedLabelingGui import WatershedLabelingGui
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
-from ilastik.utility.VigraIlastikConversionFunctions import removeChannelAxis, addChannelAxis, getArray, evaluateSlicing
 
 import logging
 logger = logging.getLogger(__name__)
@@ -76,27 +75,18 @@ class SeedsGui(LayerViewerGui):
         self.initComboBoxes()
 
 
-        # copy Seeds to generated Seeds if Seeds is ready and GeneratedSeeds is None
-        #TODO just for debugging and testing
-        if op.Seeds.ready():
-            print "seeds supplied"
-        else: 
-            print "no seeds supplied"
 
-        if op.GeneratedSeeds.ready():
-            print "ready"
-            if op.GeneratedSeeds.value == None:
-                print "tst"
-        else:
-            print "not ready"
+
+
+    ############################################################
+    # generate button 
+    ############################################################
 
     def onGenerateButtonClicked(self):
-        #TODO
-        # for testing, commented
-        '''
         op = self.topLevelOperatorView 
-        if op.Seeds.ready(): 
-            print "ready"
+        # once overridden, don't ask again. 
+        # only if op.Seeds has changed op.GenerateSeeds (see opSeeds.py)
+        if op.Seeds.ready() and not op.GenerateSeeds.value: 
             msgBox = QMessageBox()
             msgBox.setText('Do you really want to override the given seeds?')
             msgBox.addButton(QMessageBox.Yes)
@@ -105,13 +95,12 @@ class SeedsGui(LayerViewerGui):
 
             if (ret == QMessageBox.No):
                 return
-        else:
-            print "not ready"
-        '''
+
+        op.GenerateSeeds.setValue(True)
 
         self.configure_operator_from_gui()
         for layer in self.layerstack:
-            if "Test" in layer.name:
+            if "Seeds" in layer.name:
                 layer.visible = True
 
         # refresh the layers
@@ -166,33 +155,20 @@ class SeedsGui(LayerViewerGui):
         """
         See if the Unseeded-CheckBox is checked or not.
 
-        Checked: Use UnionFind as watershed method
-            and disable all gui-elements except this checkbox
+        Checked: disable all gui-elements except this checkbox.
+        Unchecked: enable all gui-elements.
 
-        Unchecked: use setWatershedMethodToTurboOrRegionGrowing to decide whether Turbo or RegionGrowing
-            and enable all gui-elements 
-        """
-
-        op = self.topLevelOperatorView 
-        # change the enable state of the gui elements
-        #if (state == QtCore.Qt.Checked):
-        if self._drawer.unseededCheckBox.isChecked():
-            self.setEnabledEverthingButUnseeded(False)
-            
-            #op.WSMethodIn.setValue("UnionFind") 
-        else:
-            self.setEnabledEverthingButUnseeded(True)
-            #self.setWatershedMethodToTurboOrRegionGrowing()
-
-    def setEnabledEverthingButUnseeded(self, enable):
-        """
-        Enables or disables all gui elements except the unseeded checkbox. 
         Gui-Elements must be added manually.
-
-        :param enable: if True, enable all gui elements, else: disable
-        :type enable: bool
         """
         gui = self._drawer
+
+        # change the enable state of the gui elements
+        if gui.unseededCheckBox.isChecked():
+            enable = False
+        else:
+            enable = True
+
+        # list of gui elements
         guiElements = [
             gui.smoothingComboBox,
             gui.smoothingDoubleSpinBox,
@@ -200,24 +176,10 @@ class SeedsGui(LayerViewerGui):
             gui.generateButton
         ]
 
+        # enable/disable
         for widget in guiElements:
             widget.setEnabled(enable) 
 
-    def setWatershedMethodToTurboOrRegionGrowing_depricated(self):
-        """
-        Set the correct watershed method
-        boundaries-input uint8: Turbo
-        boundaries-input not uint8: RegionGrowing
-        """
-        '''
-        op = self.topLevelOperatorView 
-        # if boundaries has type uint8, then use Turbo, otherwise RegionGrowing
-        if (op.Boundaries.meta.dtype == numpy.uint8):
-            op.WSMethodIn.setValue("Turbo") 
-        else:
-            op.WSMethodIn.setValue("RegionGrowing") 
-        '''
-        pass
 
     ############################################################
     # synchronisation of gui elements and operators and their functionality
@@ -480,10 +442,6 @@ class SeedsGui(LayerViewerGui):
         op = self.topLevelOperatorView
 
 
-        # TestMe
-        self._initLayer(op.TestMe,          "TestMe",     layers, visible=False,
-                layerFunction=self.createGrayscaleLayer) 
-
         '''
         # only display Seeds if no Generated Seeds are supplied
         if not op.GeneratedSeeds.ready():
@@ -491,12 +449,15 @@ class SeedsGui(LayerViewerGui):
 
         self._initLayer(op.GeneratedSeeds,       "Generated Seeds",        layers,  opacity=0.5)
         '''
-        self._initLayer(op.SeedsOut,            "Seeds",        layers,  opacity=0.5)
 
-        self._initLayer(op.Smoothing,            "Smoothing",        layers, opacity=0.5,
-                layerFunction=self.createGrayscaleLayer) 
-        self._initLayer(op.Compute,            "Compute",        layers,
-                layerFunction=self.createGrayscaleLayer) 
+        # Seeds or generated Seeds
+        if op.Seeds.ready() or op.GenerateSeeds.value:
+            self._initLayer(op.SeedsOutCached,            "Seeds",        layers, opacity=0.5)
+
+        #self._initLayer(op.Smoothing,            "Smoothing",        layers, opacity=0.5,
+                #layerFunction=self.createGrayscaleLayer) 
+        #self._initLayer(op.Compute,            "Compute",        layers,
+                #layerFunction=self.createGrayscaleLayer) 
         
         # Boundaries
         self._initLayer(op.Boundaries,       "Boundaries",   layers, opacity=0.5, 

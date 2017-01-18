@@ -93,6 +93,12 @@ Our Workflow should inherit from:
         .. autoclass:: WatershedSegmentationWorkflow
                 :members: connectLane
 
+        .. note::
+
+                Use the OpReorderAxes Operator to have a consitant order in all applet. 
+                Therefore use the dataselection-output as input for the opreorderaxes operator and its
+                output as input for all other applets.
+
 
 
 *  

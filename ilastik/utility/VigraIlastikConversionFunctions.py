@@ -3,10 +3,9 @@
 
 import numpy as np
 
-def removeChannelAxis(array):
+def removeLastAxis(array):
     """
     Remove the last dimension of array 
-    the last dimension should be the channel, but this is tested in evaluateSlicing
 
     :param array: where last axis should be removed
     :return: array with removed last axis
@@ -14,23 +13,23 @@ def removeChannelAxis(array):
     #cut off the channel dimension
     array          = array.reshape(array.shape[0:-1])
     return array
-def removeTimeAxis(array):
+def removeFirstAxis(array):
     array          = array.reshape(array.shape[1:])
     return array
 
-def addTimeAxis(array):
+def addFirstAxis(array):
     arrayOut = array[np.newaxis,...]
     return arrayOut
 
-def addChannelAxis(array):
+def addLastAxis(array):
     """
     add a new dimension as last dimension to the array
-    this intends to restore the channel dimension
+    this intends to restore the channel dimension, or other dimensions
 
     :param array: array for operation
     :return: the new array with an addtional axis at the end
     """
-    # add axis for the channel 
+    # add axis at last place
     arrayOut = array[...,np.newaxis]
     return arrayOut
 

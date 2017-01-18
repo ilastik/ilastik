@@ -9,7 +9,7 @@ from lazyflow.graph import Operator,Slot, InputSlot, OutputSlot
 #for caching the data of the generating seeds
 from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import _OpCacheWrapper
 
-from ilastik.utility.VigraIlastikConversionFunctions import removeChannelAxis, addChannelAxis, getArray, evaluateSlicing, removeTimeAxis, addTimeAxis
+from ilastik.utility.VigraIlastikConversionFunctions import removeLastAxis, addLastAxis, getArray, evaluateSlicing, removeFirstAxis, addFirstAxis
 
 import logging
 logger = logging.getLogger(__name__)
@@ -20,6 +20,8 @@ class OpSeeds(Operator):
     Initialize the parameters for the calculations (and Gui)
 
     The names of slots are explained below
+
+    Pretending the axisorders are txyzc like in watershedSegmentationWorkflow
     """
 
     ############################################################
@@ -29,22 +31,18 @@ class OpSeeds(Operator):
     Boundaries          = InputSlot() # for displaying as layer and as input for the watershed algorithm 
     Seeds               = InputSlot(optional=True) #for displaying in layer only
 
-    GeneratedSeeds      = InputSlot(optional=True)
+    #GeneratedSeeds      = InputSlot(optional=True)
     SeedsOut            = OutputSlot()
     SeedsOutCached      = OutputSlot()
 
+    # indicator whether seeds are supplied in the Seeds applet or not
     SeedsExist          = OutputSlot()
 
+    # indicator whether you have clicked on the "Generate Seeds"-Button once
+    # if True, then the Output of SeedsOut will be computed by generateSeeds(...)
+    GenerateSeeds       = InputSlot(value=False)
 
-    # Tests
-    TestMe              = OutputSlot()
-
-    #Layer for displaying, not cached TODO maybe do caching
-    Smoothing           = InputSlot(optional=True)
-    Compute             = InputSlot(optional=True)
-    
     # transmit the WSMethod to the WatershedSegmentationApplet (see Workflow)
-    #WSMethodIn          = InputSlot()
     WSMethod            = OutputSlot()
 
     #Parameters and their default values
@@ -84,7 +82,140 @@ class OpSeeds(Operator):
         self._cache.Input.connect(self.SeedsOut)
 
 
+
+        self.Seeds.notifyMetaChanged(self.onSeedsChanged)
+
+    def onSeedsChanged(self, x):
+        """
+        reset the GenerateSeeds value to False if the Seeds have been changed
+        """
+        if not self.Seeds.ready():
+            self.GenerateSeeds.setValue(False)
+
+
+
     def setupOutputs(self):
+        # set the Watershed Method for the WS Applet
+        self._setWatershedMethod()
+
+        self._setSeedsExit()
+
+
+        #self.SeedsOut configuration
+        self.SeedsOut.meta.assignFrom(self.Boundaries.meta)
+        #only one channel as output
+        self.SeedsOut.meta.shape = self.Boundaries.meta.shape[:-1] + (1,)
+        self.SeedsOut.meta.drange = (0,255)
+        self.SeedsOut.meta.dtype = np.uint8
+
+        ############################################################
+        # For serialization 
+        ############################################################
+        # force the cache to emit a dirty signal 
+        # (just taken from applet thresholdTwoLevel)
+        self._cache.Input.connect(self.SeedsOut)
+        self._cache.Input.setDirty(slice(None))
+
+
+    
+    def execute(self, slot, subindex, roi, result):
+        if slot == self.SeedsOut:
+            # value:
+            # if Generated: then use Generated
+            # if not Generated and Seeds: use Seeds
+            # if not Generated and not Seeds: do nothing 
+            if (self.GenerateSeeds.value):
+                self.generateSeeds(slot, subindex, roi, result)
+            elif ( (not self.GenerateSeeds.value ) and self.Seeds.ready() ):
+                result[:] = self.Seeds(roi.start, roi.stop).wait()
+            else:
+                pass
+        else:
+            pass
+
+        
+    def propagateDirty(self, slot, subindex, roi):
+        # set all outputSlots dirty, e.g.
+        # if something changes, the watershed Method must be evaluated newly
+        for slot in self.outputs.values():
+            slot.setDirty()
+
+
+
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
+
+
+    def generateSeeds(self, slot, subindex, roi, result):
+        #TODO
+        """
+        used in the execute part of an operator
+        """
+
+        #print "generate Seeds start"
+        #print roi
+        #print self.Boundaries.meta
+
+        # get boundaries
+        boundaries              = self.Boundaries(roi.start, roi.stop).wait()
+        sigma                   = self.SmoothingSigma.value
+        smoothingMethodIndex    = self.SmoothingMethod.value
+        computeMethodIndex      = self.ComputeMethod.value
+
+        print boundaries.shape
+        # TODO cut off the time and channel dimension
+        boundaries              = removeLastAxis(boundaries)
+        boundaries              = removeLastAxis(boundaries)
+
+        #TODO
+        tUsed = True
+        if tUsed:
+            boundaries          = removeFirstAxis(boundaries)
+
+        # Smoothing
+        smoothedBoundaries= self.getAndUseSmoothingMethod(boundaries, smoothingMethodIndex, sigma)
+        
+        # for distance transform: seeds.dtype === uint32 or float? but not uint8
+        smoothedBoundaries  = smoothedBoundaries.astype(numpy.float32)
+
+        # Compute 
+        seeds               = self.getAndUseComputeMethod(smoothedBoundaries, computeMethodIndex, sigma)
+
+        # label the seeds 
+        seeds  = seeds.astype(numpy.uint8)
+
+        # label the seeds 
+        labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(seeds)
+
+        #out = smoothedBoundaries
+        out = labeled_seeds
+
+        #TODO
+        out = addLastAxis(out)
+        out = addLastAxis(out)
+        #TODO
+        if tUsed:
+            out = addFirstAxis(out)
+
+        # write the result into the result array. with result[...] you can write directly 
+        # into the region of interest (roi) of the given slot-values
+        result[...] = out
+
+
+
+    ############################################################
+    # setupOutputs helping functions
+    ############################################################
+    def _setWatershedMethod(self):
+        """
+        Helping function used in the setupOutputs
+
+        Set the correct watershed method
+        unseeded-value = True: UnionFind
+        else:
+        boundaries-input uint8: Turbo
+        boundaries-input not uint8: RegionGrowing
+        """
         # set the Watershed Method
         if self.Unseeded.value:
             wsMethod = "UnionFind"
@@ -96,124 +227,19 @@ class OpSeeds(Operator):
         self.WSMethod.setValue( wsMethod )
 
 
-        # set the correct value of SeedsExist Operator
-        # True if: Seeds | Generated Seeds available
+    def _setSeedsExit(self):
+        """
+        set the correct value of SeedsExist Operator
+        True if: Seeds available  | Generate Seeds clicked
+        """
         if self.Seeds.ready():
             self.SeedsExist.setValue( True )
         else:
-            if self.GeneratedSeeds.ready(): 
+            if self.GenerateSeeds.value: 
                 self.SeedsExist.setValue( True )
             else:
                 self.SeedsExist.setValue( False )
 
-
-        #self.SeedsOut configuration
-        self.SeedsOut.meta.assignFrom(self.Boundaries.meta)
-        #only one channel as output
-        self.SeedsOut.meta.shape = self.Boundaries.meta.shape[:-1] + (1,)
-        self.SeedsOut.meta.drange = (0,255)
-        self.SeedsOut.meta.dtype = np.uint8
-        # value:
-        # if Generated: then use Generated
-        # if not Generated and Seeds: use Seeds
-        # if not Generated and not Seeds: 
-        #       then use format of boundaries with zeros for Seeds to the next applet
-
-        if (self.GeneratedSeeds.ready() and not self.GeneratedSeeds.meta.shape == None):
-            array       = getArray(self.GeneratedSeeds)
-            #print "\n\nGenerateSeeds\n\n"
-        elif ( (not self.GeneratedSeeds.ready() and self.GeneratedSeeds.meta.shape == None ) 
-            and self.Seeds.ready() and not self.Seeds.meta.shape == None):
-            array       = getArray(self.Seeds)
-            #print "\n\nSeeds\n\n"
-        else:
-            shape       = self.Boundaries.meta.shape
-            array       = np.zeros(shape, dtype=np.uint8)
-            #print "\n\nzeros\n\n"
-
-        print "zeros"
-
-        # output sets
-        array           = array.astype(np.uint8)
-        self.SeedsOut.setValue(array)
-
-        ############################################################
-        # For serialization 
-        ############################################################
-        # force the cache to emit a dirty signal 
-        # (just taken from applet thresholdTwoLevel)
-        self._cache.Input.connect(self.SeedsOut)
-        self._cache.Input.setDirty(slice(None))
-
-        #print self.SeedsOut
-        #print self.SeedsOut.meta
-        #print self.SeedsOutCached
-        #print self.SeedsOutCached.meta
-        pass
-
-        # TestMe dimensions
-        self.TestMe.meta.assignFrom(self.Boundaries.meta)
-    
-    def execute(self, slot, subindex, roi, result):
-
-        if slot == self.TestMe:
-            #print "generate Seeds start"
-            #print roi
-            #print self.Boundaries.meta
-
-            # get boundaries
-            boundaries              = self.Boundaries(roi.start, roi.stop).wait()
-            sigma                   = self.SmoothingSigma.value
-            smoothingMethodIndex    = self.SmoothingMethod.value
-            computeMethodIndex      = self.ComputeMethod.value
-
-            print boundaries.shape
-            # TODO cut off the time and channel dimension
-            boundaries              = removeChannelAxis(boundaries)
-
-            #TODO
-            tUsed = True
-            if tUsed:
-                boundaries          = removeTimeAxis(boundaries)
-
-            # Smoothing
-            smoothedBoundaries= self.getAndUseSmoothingMethod(boundaries, smoothingMethodIndex, sigma)
-            
-            # for distance transform: seeds.dtype === uint32 or float? but not uint8
-            smoothedBoundaries  = smoothedBoundaries.astype(numpy.float32)
-
-            # Compute 
-            seeds               = self.getAndUseComputeMethod(smoothedBoundaries, computeMethodIndex, sigma)
-
-            # label the seeds 
-            seeds  = seeds.astype(numpy.uint8)
-            labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(seeds)
-
-            #out = smoothedBoundaries
-            out = seeds
-
-            #TODO
-            out = addChannelAxis(out)
-            #TODO
-            if tUsed:
-                out = addTimeAxis(out)
-
-            # write the result into the result array. with result[...] you can write directly 
-            # into the region of interest (roi) of the given slot-values
-            result[...] = out
-        else:
-            pass
-
-        
-    def propagateDirty(self, slot, subindex, roi):
-        # if something changes, the watershed Method must be evaluated newly
-        # and all other things too
-        for slot in self.outputs.values():
-            slot.setDirty()
-
-
-    def setInSlot(self, slot, subindex, roi, value):
-        pass
 
 
 

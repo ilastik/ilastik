@@ -19,7 +19,7 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPip
 #for caching the data of the watershed algorithm
 from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import _OpCacheWrapper
 
-from ilastik.utility.VigraIlastikConversionFunctions import removeChannelAxis, addChannelAxis, getArray, evaluateSlicing
+from ilastik.utility.VigraIlastikConversionFunctions import removeLastAxis, addLastAxis, getArray, evaluateSlicing, removeFirstAxis, addFirstAxis
 
 import logging
 logger = logging.getLogger(__name__)
@@ -31,6 +31,9 @@ class OpWatershedSegmentation(Operator):
     Provide execution function for the execution of the watershed algorithm
 
     The names of slots are explained below
+
+
+    Pretending the axisorders are txyzc like in watershedSegmentationWorkflow
     """
     #TODO in doku fuer nutzung aufnehmen
     #seeds muessen 1, 2, 3 sein, also kann man auch 120 180, etc verwenden, 
@@ -295,9 +298,9 @@ class OpWatershedSegmentationCalculation( Operator ):
         (tUsed, tAxis)      = evaluateSlicing(self.Seeds)
 
         # needed for vigra to remove the channel axis
-        seeds               = removeChannelAxis(seeds)
-        boundaries          = removeChannelAxis(boundaries)
-        #(boundaries, seeds) = self.removeChannelAxis(boundaries, seeds)
+        seeds               = removeLastAxis(seeds)
+        boundaries          = removeLastAxis(boundaries)
+        #(boundaries, seeds) = self.removeLastAxis(boundaries, seeds)
 
 
         # doesn't matter whether image is 2D or 3D, at least we do slicing over time
@@ -312,7 +315,7 @@ class OpWatershedSegmentationCalculation( Operator ):
                 self.watershedAlgorithm(boundaries, seeds)
 
         # needed for ilastik to have a channel axis
-        labelImageArray     = addChannelAxis(labelImageArray)
+        labelImageArray     = addLastAxis(labelImageArray)
 
         # set the value of the OutputSlot to the calculated array
         self.Output.setValue(labelImageArray)

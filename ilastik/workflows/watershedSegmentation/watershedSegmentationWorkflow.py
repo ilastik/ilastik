@@ -29,6 +29,7 @@ from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 class WatershedSegmentationWorkflow(Workflow):
     # name that will be displayed when opening a new project
@@ -129,26 +130,43 @@ class WatershedSegmentationWorkflow(Workflow):
         Connect the output and the input of each applet with each other
         """
 
+        # reorder all input images to have the right axis order
+        # prepare the reorderAxis operators here
+        order           = "txyzc"
+        op5rawdata      = OpReorderAxes(parent=self)
+        op5rawdata      .AxisOrder.setValue(order)
+        op5boundaries   = OpReorderAxes(parent=self)
+        op5boundaries   .AxisOrder.setValue(order)
+        op5seeds        = OpReorderAxes(parent=self)
+        op5seeds        .AxisOrder.setValue(order)
+
+
+        # access applet operators
         # get the correct image-lane
         opDataSelection         = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opSeeds                 = self.seedsApplet.topLevelOperator.getLane(laneIndex)
         opWatershedSegmentation = self.watershedSegmentationApplet.topLevelOperator.getLane(laneIndex)
         opDataExport            = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
+        # ReorderAxis the Inputs
+        op5rawdata.Input.connect(    opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
+        op5boundaries.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_BOUNDARIES] )
+        op5seeds.Input.connect(      opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
+
         # seeds inputs
-        opSeeds.RawData.connect(    opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        opSeeds.Boundaries.connect( opDataSelection.ImageGroup[self.DATA_ROLE_BOUNDARIES] )
-        opSeeds.Seeds.connect(      opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
+        opSeeds.RawData.connect(    op5rawdata.Output)
+        opSeeds.Boundaries.connect( op5boundaries.Output)
+        opSeeds.Seeds.connect(      op5seeds.Output)
 
         # watershed inputs
-        opWatershedSegmentation.RawData.connect(    opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        opWatershedSegmentation.Boundaries.connect( opDataSelection.ImageGroup[self.DATA_ROLE_BOUNDARIES] )
+        opWatershedSegmentation.RawData.connect(    op5rawdata.Output )
+        opWatershedSegmentation.Boundaries.connect( op5boundaries.Output )
 
         opWatershedSegmentation.SeedsExist.connect(         opSeeds.SeedsExist )
-        opWatershedSegmentation.Seeds.connect(              opSeeds.SeedsOut )
-        opWatershedSegmentation.CorrectedSeedsIn.connect(   opSeeds.SeedsOut )
-        #opWatershedSegmentation.Seeds.connect(              opSeeds.SeedsOutCached )
-        #opWatershedSegmentation.CorrectedSeedsIn.connect(   opSeeds.SeedsOutCached )
+        #opWatershedSegmentation.Seeds.connect(              opSeeds.SeedsOut )
+        #opWatershedSegmentation.CorrectedSeedsIn.connect(   opSeeds.SeedsOut )
+        opWatershedSegmentation.Seeds.connect(              opSeeds.SeedsOutCached )
+        opWatershedSegmentation.CorrectedSeedsIn.connect(   opSeeds.SeedsOutCached )
 
         # old
         #opWatershedSegmentation.Seeds.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
@@ -158,8 +176,8 @@ class WatershedSegmentationWorkflow(Workflow):
         # watershed parameter
         opWatershedSegmentation.WSMethod.connect(    opSeeds.WSMethod )
 
-        # DataExport inputs
-        opDataExport.RawData.connect(       opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
+        # DataExport inputs for RawData layer
+        opDataExport.RawData.connect(       op5rawdata.Output )
         opDataExport.RawDatasetInfo.connect(opDataSelection.DatasetGroup[self.DATA_ROLE_RAW] )        
 
 
