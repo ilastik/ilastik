@@ -171,15 +171,20 @@ class OpWatershedSegmentation(Operator):
         self._cache.Input.setDirty(slice(None))
 
 
-        #for testing 
+        #TODO for testing 
         print self.WSMethod.value
 
     
     def execute(self, slot, subindex, roi, result):
         pass
+        #print "Main" + str( slot.name)
+        #print "Main" + str(roi)
         
     def propagateDirty(self, slot, subindex, roi):
-        pass
+        # set all outputSlots dirty
+        for slot in self.outputs.values():
+            slot.setDirty()
+        print "propagteDirty in opWatershedSegmentation"
 
     def setInSlot(self, slot, subindex, roi, value):
         pass
@@ -267,22 +272,73 @@ class OpWatershedSegmentationCalculation( Operator ):
         self.Output.meta.dtype = np.uint8
         #only one channel as output
         self.Output.meta.shape = self.Boundaries.meta.shape[:-1] + (1,)
-        #TODO maybe bad with more than 255 labels
         self.Output.meta.drange = (0,255)
 
     def setInSlot(self, slot, subindex, roi, value):
         pass
 
     def execute(self, slot, subindex, roi, result):
-        #assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
-        pass
+        self.execWatershedAlgorithm(slot, subindex, roi, result)
 
     def propagateDirty(self, slot, subindex, roi):
+        # set all outputSlots dirty
+        for slot in self.outputs.values():
+            slot.setDirty()
+        print "propagteDirty in opWatershedSegmentationCalculation"
         pass    
 
 
 
-    def execWatershedAlgorithm(self):
+    def execWatershedAlgorithm(self, slot, subindex, roi, result):
+        """
+        handles the execution of the watershed algorithm 
+        """
+        
+        seeds                   = self.Seeds(roi.start, roi.stop).wait()
+        boundaries              = self.Boundaries(roi.start, roi.stop).wait()
+
+        # necessary for vigra.analysis.watershedsNew
+        boundaries, seeds       = self.arrayConversion(boundaries, seeds)
+
+        # look for the axes used
+        shape = self.Boundaries.meta.shape
+        zUsed = not(shape[3] == 1)
+
+        # remove time axis (it's always 1 in the roi)
+        boundaries              = removeFirstAxis(boundaries)
+        seeds                   = removeFirstAxis(seeds)
+
+        # channel dimension
+        boundaries              = removeLastAxis(boundaries)
+        seeds                   = removeLastAxis(seeds)
+
+
+        if not zUsed:
+            #remove z axis
+            boundaries         = removeLastAxis(boundaries)
+            seeds              = removeLastAxis(seeds)
+
+
+        
+        (labelImageArray, maxRegionLabel) =\
+                self.watershedAlgorithm(boundaries, seeds)
+
+        # needed for ilastik to have a channel axis
+        labelImageArray     = addLastAxis(labelImageArray)
+        # add time axis
+        labelImageArray     = addFirstAxis(labelImageArray)
+
+
+        if not zUsed:
+            # add z axis
+            labelImageArray     = addLastAxis(labelImageArray)
+
+        # set the value of the OutputSlot to the calculated array
+        result[...] = labelImageArray
+    
+
+    '''
+    def execWatershedAlgorithm_backup(self):
         """
         handles the execution of the watershed algorithm 
         """
@@ -319,6 +375,61 @@ class OpWatershedSegmentationCalculation( Operator ):
 
         # set the value of the OutputSlot to the calculated array
         self.Output.setValue(labelImageArray)
+
+
+    def slicedWatershedAlgorithm(self, boundaries, seeds=None, tAxis=0):
+        #TODO not used anymore
+        """
+        Uses watershedAlgorithm for the main algorithm execution
+        but slices the data for it, so that that algorithm can be used easily.
+
+        Handles the case where seeds can be None
+
+        :param boundaries: the array, that contains the boundaries data
+        :type boundaries: array
+        :param seeds: the array, that contains the seeds data
+        :type seeds: None or array
+        :param tAxis: the dimension number of the time axis
+        :type tAxis: int
+        :return: labelImageArray: the concatenated watershed result of all slices 
+        :rtype: array
+        """
+        labelImageArray = np.ndarray(shape=boundaries.shape, dtype=boundaries.dtype)
+        for i in range(boundaries.shape[tAxis]):
+            # iterate over the axis of the time
+            boundariesSlice  = boundaries.take( i, axis=tAxis)
+
+            # handle seeds = None or seeds = array
+            if not (seeds is None):
+                seedsSlice      = seeds.take(      i, axis=tAxis)
+            else:
+                seedsSlice      = None
+            (labelImage, maxRegionLabel) =\
+                    self.watershedAlgorithm(boundariesSlice, seedsSlice)
+
+            # write in the correct column of the output array, 
+            # because the dimensions must fit
+            if (tAxis == 0):
+                labelImageArray[i] = labelImage
+            elif (tAxis == 1):
+                labelImageArray[:,i] = labelImage
+            elif (tAxis == 2):
+                labelImageArray[:,:,i] = labelImage
+            elif (tAxis == 3):
+                labelImageArray[:,:,:,i] = labelImage
+        return labelImageArray
+
+
+
+
+    '''
+
+
+
+
+
+    def TODO(self):
+        pass
 
         ############################################################
         # BEGIN TODO
@@ -463,47 +574,6 @@ class OpWatershedSegmentationCalculation( Operator ):
 
 
 
-
-    def slicedWatershedAlgorithm(self, boundaries, seeds=None, tAxis=0):
-        """
-        Uses watershedAlgorithm for the main algorithm execution
-        but slices the data for it, so that that algorithm can be used easily.
-
-        Handles the case where seeds can be None
-
-        :param boundaries: the array, that contains the boundaries data
-        :type boundaries: array
-        :param seeds: the array, that contains the seeds data
-        :type seeds: None or array
-        :param tAxis: the dimension number of the time axis
-        :type tAxis: int
-        :return: labelImageArray: the concatenated watershed result of all slices 
-        :rtype: array
-        """
-        labelImageArray = np.ndarray(shape=boundaries.shape, dtype=boundaries.dtype)
-        for i in range(boundaries.shape[tAxis]):
-            # iterate over the axis of the time
-            boundariesSlice  = boundaries.take( i, axis=tAxis)
-
-            # handle seeds = None or seeds = array
-            if not (seeds is None):
-                seedsSlice      = seeds.take(      i, axis=tAxis)
-            else:
-                seedsSlice      = None
-            (labelImage, maxRegionLabel) =\
-                    self.watershedAlgorithm(boundariesSlice, seedsSlice)
-
-            # write in the correct column of the output array, 
-            # because the dimensions must fit
-            if (tAxis == 0):
-                labelImageArray[i] = labelImage
-            elif (tAxis == 1):
-                labelImageArray[:,i] = labelImage
-            elif (tAxis == 2):
-                labelImageArray[:,:,i] = labelImage
-            elif (tAxis == 3):
-                labelImageArray[:,:,:,i] = labelImage
-        return labelImageArray
 
 
 

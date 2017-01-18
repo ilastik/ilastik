@@ -261,8 +261,24 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         """
         op = self.topLevelOperatorView
 
-        # if no seeds but not UnionFind => not possible => ErrorMessage
+        # if no seeds but not UnionFind => not possible => ErrorMessage and return
         if not (op.WSMethod.value == "UnionFind") and not op.SeedsExist.value:
+            self.show_error_message()
+            return
+
+
+        # show the watershedLayer after the first time and update the layers afterwards
+        # updating concludes to calculation
+        if not op.ShowWatershedLayer.value: 
+            op.ShowWatershedLayer.setValue(True)
+            self.updateAllLayers()
+
+        # execute the watershed algorithm
+        #self.topLevelOperatorView.opWSC.execWatershedAlgorithm()
+
+
+
+    def show_error_message(self):
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
             msg.setText("No Seeds supplied and watershed not unseeded")
@@ -272,18 +288,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             #msg.buttonClicked.connect(msgbtn)
 	
             retval = msg.exec_()
-
-        else:
-            if not op.ShowWatershedLayer.value: 
-                op.ShowWatershedLayer.setValue(True)
-                self.updateAllLayers()
-
-            # execute the watershed algorithm
-            self.topLevelOperatorView.opWSC.execWatershedAlgorithm()
-
-
-
-
 
 
 
