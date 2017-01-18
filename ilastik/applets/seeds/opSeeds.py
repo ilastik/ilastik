@@ -31,9 +31,11 @@ class OpSeeds(Operator):
     Boundaries          = InputSlot() # for displaying as layer and as input for the watershed algorithm 
     Seeds               = InputSlot(optional=True) #for displaying in layer only
 
-    #GeneratedSeeds      = InputSlot(optional=True)
     SeedsOut            = OutputSlot()
     SeedsOutCached      = OutputSlot()
+
+    # save the generated Seeds here for caching 
+    GeneratedSeedsCached= OutputSlot()
 
     # indicator whether seeds are supplied in the Seeds applet or not
     SeedsExist          = OutputSlot()
@@ -88,9 +90,20 @@ class OpSeeds(Operator):
     def onSeedsChanged(self, x):
         """
         reset the GenerateSeeds value to False if the Seeds have been changed
+
+        This signalizes, that the new seeds will be displayed and used as output
         """
         if not self.Seeds.ready():
+            #TODO TODO throughs an AssertionError on closing this programm
+            #maybe disconnect the function onSeedsChanged
             self.GenerateSeeds.setValue(False)
+
+            #set everything to dirty, otherwise the new seeds would not be used in the watershed
+
+            for slot in self.outputs.values():
+                slot.setDirty()
+                #TODO remove after testing
+                print "set this slot dirty: " + slot.name
 
 
 
@@ -140,6 +153,8 @@ class OpSeeds(Operator):
         for slot in self.outputs.values():
             slot.setDirty()
 
+        print "propagteDirty in opSeeds"
+
 
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -147,6 +162,76 @@ class OpSeeds(Operator):
 
 
     def generateSeeds(self, slot, subindex, roi, result):
+        #TODO
+        """
+        used in the execute part of an operator
+        """
+
+
+
+        # get boundaries
+        boundaries              = self.Boundaries(roi.start, roi.stop).wait()
+        sigma                   = self.SmoothingSigma.value
+        smoothingMethodIndex    = self.SmoothingMethod.value
+        computeMethodIndex      = self.ComputeMethod.value
+
+
+        # decide which axes should be cut away, the roi makes everything else
+        #roi is 3D, e.g. Subregion: start '[0, 0, 0, 0, 0]' stop '[1, 225, 218, 181, 1]' 
+        shape = slot.meta.shape
+        zUsed = not(shape[3] == 1)
+        #tUsed = not(shape[0] == 1)
+
+
+        # remove time axis (it's always 1 in the roi)
+        boundaries              = removeFirstAxis(boundaries)
+
+        # channel dimension
+        boundaries              = removeLastAxis(boundaries)
+
+
+        if not zUsed:
+            #remove z axis
+            boundaries              = removeLastAxis(boundaries)
+            #elif not zUsed:
+            #elif zUsed and tUsed:
+
+        print boundaries.shape
+
+
+
+        # Smoothing
+        smoothedBoundaries= self.getAndUseSmoothingMethod(boundaries, smoothingMethodIndex, sigma)
+        
+        # for distance transform: seeds.dtype === uint32 or float? but not uint8
+        smoothedBoundaries  = smoothedBoundaries.astype(numpy.float32)
+
+        # Compute 
+        seeds               = self.getAndUseComputeMethod(smoothedBoundaries, computeMethodIndex, sigma)
+
+        # label the seeds 
+        seeds  = seeds.astype(numpy.uint8)
+
+        # label the seeds 
+        labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(seeds)
+
+        #out = smoothedBoundaries
+        out = labeled_seeds
+
+        # add time axis
+        out = addFirstAxis(out)
+        # add channel axis
+        out = addLastAxis(out)
+        if not zUsed:
+            out = addLastAxis(out)
+
+        # write the result into the result array. with result[...] you can write directly 
+        # into the region of interest (roi) of the given slot-values
+        result[...] = out
+
+    '''
+    #if tUsed and not zUsed
+    def generateSeeds_backup(self, slot, subindex, roi, result):
         #TODO
         """
         used in the execute part of an operator
@@ -200,8 +285,7 @@ class OpSeeds(Operator):
         # write the result into the result array. with result[...] you can write directly 
         # into the region of interest (roi) of the given slot-values
         result[...] = out
-
-
+    '''
 
     ############################################################
     # setupOutputs helping functions
