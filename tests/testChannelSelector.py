@@ -1,3 +1,5 @@
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,7 +25,7 @@ from lazyflow.operators.generic import OpSingleChannelSelector
 import numpy, vigra
 from lazyflow.graph import Graph
 
-class TestSingleChannelSelector():
+class TestSingleChannelSelector(object):
     def setUp(self):
         self.data2d = numpy.zeros((3, 3, 3))
         self.data2d[:, :, 0] = 1

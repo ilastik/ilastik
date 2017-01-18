@@ -1,3 +1,7 @@
+from builtins import zip
+from builtins import map
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -148,7 +152,7 @@ def generateRandomRoi(maxShape,minShape = 0,minWidth = 0):
 
 
 
-class newIterator:
+class newIterator(object):
     def __init__(self,roi,srcGrid,trgtGrid,timeIndex = None,channelIndex = None):
         #cast list due to TinyVector being strange
         self.roi = (list(roi.start),list(roi.stop))
@@ -166,7 +170,7 @@ class newIterator:
         gridStop = [(m+1)*l for m,l in zip(mult,grid)]
         roiStop = roi[1]
         nextStop = [min(a,b) for a,b in zip(gridStop,roiStop)] 
-        if reduce(lambda x,y: x or y, map(lambda x,y: True if x==y else False,roiStop,start),False):
+        if reduce(lambda x,y: x or y, list(map(lambda x,y: True if x==y else False,roiStop,start)),False):
             return None
         else:
             return nextStop
@@ -232,7 +236,7 @@ class newIterator:
         rTsl1 = lambda x,y:slice(x.__int__(),y.__int__())
         if self.hardBind and hardBind:
             res = []
-            zipL = zip(start,stop)
+            zipL = list(zip(start,stop))
             for i in range(len(zipL)):
                 if (zipL[i][1] == zipL[i][0] + 1 or zipL[i][1] == zipL[i][0]) and i in self.hardBind:
                     res.append(int(zipL[i][0]))
@@ -300,7 +304,7 @@ if __name__ == "__main__":
     assert ( nonzero_coord_array(v) == numpy.transpose(v.nonzero()) ).all()
     
     
-    class roi:
+    class roi(object):
         def __init__(self,start,stop):
             self.start = start
             self.stop = stop

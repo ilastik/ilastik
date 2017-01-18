@@ -1,7 +1,12 @@
 from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import zip
+from builtins import range
 import os
 import tempfile
-import cPickle as pickle
+import pickle as pickle
 import collections
 
 import numpy
@@ -45,7 +50,7 @@ class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
                 .format( X.shape[-1], len(feature_names) )
             
             oob, importances = classifier.learnRFWithFeatureSelection(X, y)
-            named_importances = collections.OrderedDict( zip( feature_names, importances ) )
+            named_importances = collections.OrderedDict( list(zip( feature_names, importances )) )
 
             importance_table = self.generate_importance_table( named_importances, sort=True )
             logger.info("Feature Importance measurements during training:\n" + importance_table)
@@ -60,13 +65,13 @@ class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
         but also with extra spaces for pretty-printing.
         """
         import csv
-        from StringIO import StringIO
+        from io import StringIO
         CSV_FORMAT = { 'delimiter' : '\t', 'lineterminator' : '\n' }
 
-        feature_name_length = max( map(len, named_importances_dict.keys()) )
+        feature_name_length = max( list(map(len, list(named_importances_dict.keys()))) )
 
         # See vigra/random_forest/rf_visitors.hxx, class VariableImportanceVisitor
-        n_classes = len(named_importances_dict.values()[0]) - 2
+        n_classes = len(list(named_importances_dict.values())[0]) - 2
         columns = [ "{: <{width}}".format("Feature Name", width=feature_name_length) ]
         columns += [ "  Class #{}".format(i) for i in range(n_classes)]
         columns += [ "   Overall" ]
@@ -78,14 +83,14 @@ class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
 
         if sort:
             # Sort by "overall" importance (column -2)
-            sorted_importances = sorted( named_importances_dict.items(),
+            sorted_importances = sorted( list(named_importances_dict.items()),
                                          key=lambda k_v: k_v[1][-2] )
             named_importances_dict = collections.OrderedDict( sorted_importances )
 
-        for feature_name, importances in named_importances_dict.items():
+        for feature_name, importances in list(named_importances_dict.items()):
             feature_name = "{: <{width}}".format(feature_name, width=feature_name_length)
-            importance_strings = map( lambda x: "{: .03f}".format(x), importances )
-            importance_strings = map( lambda s: "{: >10}".format(s), importance_strings )
+            importance_strings = ["{: .03f}".format(x) for x in importances]
+            importance_strings = ["{: >10}".format(s) for s in importance_strings]
             csv_writer.writerow( [feature_name] + importance_strings )
         return output.getvalue()
 

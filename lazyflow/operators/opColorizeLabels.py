@@ -1,3 +1,5 @@
+from builtins import zip
+from builtins import str
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -97,11 +99,11 @@ class OpColorizeLabels(Operator):
         newOverrideColors = self.OverrideColors.value
         if newOverrideColors != self.overrideColors:
             # Add new overrides
-            for label, color in newOverrideColors.items():
+            for label, color in list(newOverrideColors.items()):
                 if label not in self.overrideColors:
                     self.colortable[label] = color
             # Replace removed overrides with their original random values
-            for label, color in self.overrideColors.items():
+            for label, color in list(self.overrideColors.items()):
                 if label not in newOverrideColors:
                     self.colortable[label] = OpColorizeLabels.colortable[label]
 

@@ -1,3 +1,7 @@
+from builtins import next
+from builtins import str
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -838,7 +842,7 @@ class Slot(object):
         if slot.partner is not None:
             return Slot._findUpstreamProblemSlot( slot.partner )
         if slot.getRealOperator() is not None:
-            for inputSlot in slot.getRealOperator().inputs.values():
+            for inputSlot in list(slot.getRealOperator().inputs.values()):
                 if not inputSlot._optional and not inputSlot.ready():
                     return inputSlot
         return "Couldn't find an upstream problem slot."
@@ -1198,7 +1202,7 @@ class Slot(object):
                 self._value = value
                 self.stype.setupMetaForValue(value)
 
-                for k,v in extra_meta.items():
+                for k,v in list(extra_meta.items()):
                     setattr(self.meta, k, v)
                 
                 self.meta._dirty = True

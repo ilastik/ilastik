@@ -34,7 +34,7 @@ class OpSlic(Operator):
 
         tagged_shape = self.Input.meta.getTaggedShape()
         assert 'c' in tagged_shape, "We assume the image has an explicit channel axis."
-        assert tagged_shape.keys()[-1] == 'c', "This code assumes that channel is the LAST axis."
+        assert list(tagged_shape.keys())[-1] == 'c', "This code assumes that channel is the LAST axis."
         
         # Output will have exactly one channel, regardless of input channels
         tagged_shape['c'] = 1

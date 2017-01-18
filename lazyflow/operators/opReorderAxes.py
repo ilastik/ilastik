@@ -1,3 +1,5 @@
+from builtins import map
+from builtins import zip
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -43,12 +45,12 @@ class OpReorderAxes(Operator):
         tagged_ideal_blockshape = None
         if self.Input.meta.ideal_blockshape is not None:
             assert len( input_order) == len(self.Input.meta.ideal_blockshape)
-            tagged_ideal_blockshape = collections.OrderedDict( zip( input_order, self.Input.meta.ideal_blockshape ) )
+            tagged_ideal_blockshape = collections.OrderedDict( list(zip( input_order, self.Input.meta.ideal_blockshape )) )
 
         tagged_max_blockshape = None
         if self.Input.meta.max_blockshape is not None:
             assert len( input_order) == len(self.Input.meta.max_blockshape)
-            tagged_max_blockshape = collections.OrderedDict( zip( input_order, self.Input.meta.max_blockshape ) )
+            tagged_max_blockshape = collections.OrderedDict( list(zip( input_order, self.Input.meta.max_blockshape )) )
 
         # Check for errors
         self._invalid_axes = []
@@ -99,16 +101,16 @@ class OpReorderAxes(Operator):
 
         # These map between input axis indexes and output axis indexes
         # (Used to translate between input/output rois in execute() and propagateDirty())
-        self._in_out_map = map( partial(_index, output_order), input_order ) # For "abcd" and "bcde" in_out = [-1, 0, 1, 2]
-        self._out_in_map = map( partial(_index, input_order), output_order ) # For "abcd" and "bcde" out_in = [1, 2, 3, -1]
+        self._in_out_map = list(map( partial(_index, output_order), input_order )) # For "abcd" and "bcde" in_out = [-1, 0, 1, 2]
+        self._out_in_map = list(map( partial(_index, input_order), output_order )) # For "abcd" and "bcde" out_in = [1, 2, 3, -1]
 
         # Find the 'common' axes shared by both the input and output
-        input_common_axes = filter( lambda a: a in output_order, input_order)  # Ordered by appearance on the input
-        output_common_axes = filter( lambda a: a in input_order, output_order) # Ordered by appearance on the output
+        input_common_axes = [a for a in input_order if a in output_order]  # Ordered by appearance on the input
+        output_common_axes = [a for a in output_order if a in input_order] # Ordered by appearance on the output
 
         # These are used by execute() to create a view of the 'result' array for the input to write into
         self._out_squeeze_slicing = tuple( slice(None) if a in input_order else 0 for a in output_order )
-        self._common_axis_transpose_order = map( output_common_axes.index, input_common_axes )
+        self._common_axis_transpose_order = list(map( output_common_axes.index, input_common_axes ))
         self._in_unsqueeze_slicing = tuple( slice(None) if a in output_order else numpy.newaxis for a in input_order )
 
     def execute(self, slot, subindex, out_roi, result):
@@ -119,8 +121,8 @@ class OpReorderAxes(Operator):
         out_roi_dict = dict( enumerate( zip(out_roi.start, out_roi.stop) ) )
         out_roi_dict[-1] = (0,1) # Input axes that are missing on the output map to roi of 0:1
 
-        in_roi_pairs = map( out_roi_dict.__getitem__, self._in_out_map ) # e.g. [(0,1), (0,10), (0,20)]
-        in_roi = zip( *in_roi_pairs ) # e.g. [(0,0,0), (1,10,20)]
+        in_roi_pairs = list(map( out_roi_dict.__getitem__, self._in_out_map )) # e.g. [(0,1), (0,10), (0,20)]
+        in_roi = list(zip( *in_roi_pairs )) # e.g. [(0,0,0), (1,10,20)]
 
         # Create a view of the result that can be written to by the input slot.
         #   1) Drop (singleton) result axes that aren't used by the input
@@ -156,8 +158,8 @@ class OpReorderAxes(Operator):
             in_roi_dict = dict( enumerate( zip(in_roi.start, in_roi.stop) ) )
             in_roi_dict[-1] = (0,1) # Output axes that are missing on the input map to roi 0:1
 
-            out_roi_pairs = map( in_roi_dict.__getitem__, self._out_in_map ) # e.g. [(0,1), (0,10), (0,20)]
-            out_roi = zip( *out_roi_pairs ) # e.g. [(0,0,0), (1,10,20)]
+            out_roi_pairs = list(map( in_roi_dict.__getitem__, self._out_in_map )) # e.g. [(0,1), (0,10), (0,20)]
+            out_roi = list(zip( *out_roi_pairs )) # e.g. [(0,0,0), (1,10,20)]
             self.Output.setDirty( *out_roi )
         else:
             assert False, "Unknown input slot: {}".format( inputSlot.name )

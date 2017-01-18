@@ -1,3 +1,4 @@
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,7 +26,7 @@ import numpy
 from lazyflow.graph import Graph
 from numpy.testing import assert_array_almost_equal
 
-class TestAnisotropicVigraFeatures():
+class TestAnisotropicVigraFeatures(object):
 
     def setUp(self):
         self.delta = numpy.zeros((19, 19, 19, 1), dtype=numpy.float32)

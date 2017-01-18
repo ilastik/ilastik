@@ -82,6 +82,8 @@ of the authors and should not be interpreted as representing official policies,
 either expressed or implied, of the FreeBSD Project.
 """
 from __future__ import print_function
+from builtins import range
+from builtins import object
 
 import os
 import sys

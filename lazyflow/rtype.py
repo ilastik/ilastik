@@ -1,3 +1,10 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -20,7 +27,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import numpy, copy
-import cPickle as pickle
+import pickle as pickle
 import collections
 import sys
 
@@ -28,6 +35,7 @@ from lazyflow.roi import TinyVector, sliceToRoi, roiToSlice, roiFromShape
 from lazyflow.utility import slicingtools
 
 import logging
+from future.utils import with_metaclass
 logger = logging.getLogger(__name__)
 
 class RoiMeta(type):
@@ -42,9 +50,7 @@ class RoiMeta(type):
             Roi._registerSubclass(cls)
         return cls
 
-class Roi(object):
-    __metaclass__ = RoiMeta
-
+class Roi(with_metaclass(RoiMeta, object)):
     def __init__(self, slot):
         self.slot = slot
         pass
@@ -129,8 +135,8 @@ class SubRegion(Roi):
         self.dim = len(self.start)
 
         for start, stop in zip(self.start, self.stop):
-            assert isinstance(start, (int, long, numpy.integer)), "Roi contains non-integers: {}".format( self )
-            assert isinstance(start, (int, long, numpy.integer)), "Roi contains non-integers: {}".format( self )
+            assert isinstance(start, (int, int, numpy.integer)), "Roi contains non-integers: {}".format( self )
+            assert isinstance(start, (int, int, numpy.integer)), "Roi contains non-integers: {}".format( self )
 
 # FIXME: This assertion is good at finding bugs, but it is currently triggered by 
 #        the DataExport applet when the output axis order is changed. 
@@ -240,7 +246,7 @@ class SubRegion(Roi):
     def adjustRoi(self,halo,cIndex=None):
         if type(halo) != list:
             halo = [halo]*len(self.start)
-        notAtStartEgde = map(lambda x,y: True if x<y else False,halo,self.start)
+        notAtStartEgde = list(map(lambda x,y: True if x<y else False,halo,self.start))
         for i in range(len(notAtStartEgde)):
             if notAtStartEgde[i]:
                 self.stop[i] = int(self.stop[i]-self.start[i]+halo[i])

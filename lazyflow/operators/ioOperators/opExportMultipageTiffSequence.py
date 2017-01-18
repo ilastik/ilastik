@@ -20,6 +20,9 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+from builtins import zip
+from builtins import map
+from builtins import range
 import os
 import math
 
@@ -61,7 +64,7 @@ class OpExportMultipageTiffSequence(Operator):
         step_axis = self._volume_axes[0]
         tagged_blockshape = self.Input.meta.getTaggedShape()
         tagged_blockshape[step_axis] = 1
-        block_shape = (tagged_blockshape.values())
+        block_shape = (list(tagged_blockshape.values()))
         logger.debug("Starting Multipage Sequence Export with block shape: {}".format( block_shape ))
 
         # Block step is all zeros except step axis, e.g. (0, 1, 0, 0, 0)
@@ -78,10 +81,10 @@ class OpExportMultipageTiffSequence(Operator):
         self.progressSignal(0)
         # Nothing fancy here: Just loop over the blocks in order.
         tagged_shape = self.Input.meta.getTaggedShape()
-        for block_index in xrange( tagged_shape[step_axis] ):
+        for block_index in range( tagged_shape[step_axis] ):
             roi = numpy.array(roiFromShape(block_shape))
             roi += block_index*block_step
-            roi = map(tuple, roi)
+            roi = list(map(tuple, roi))
 
             try:
                 opSubregion = OpSubRegion( parent=self )
@@ -137,8 +140,8 @@ class OpExportMultipageTiffSequence(Operator):
         # Find the non-singleton axes.
         # The first non-singleton axis is the step axis.
         # The last 2 non-channel non-singleton axes will be the axes of the slices.
-        tagged_items = tagged_shape.items()
-        filtered_items = filter( lambda k_v: k_v[1] > 1, tagged_items )
+        tagged_items = list(tagged_shape.items())
+        filtered_items = [k_v for k_v in tagged_items if k_v[1] > 1]
         filtered_axes = zip( *filtered_items )[0]
         return filtered_axes
 

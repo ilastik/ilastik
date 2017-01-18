@@ -1,4 +1,5 @@
 from __future__ import print_function
+from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -337,7 +338,7 @@ class TestOpLazyCC(unittest.TestCase):
         op.ChunkShape.setValue((64, 64, 64))
         out1 = np.zeros(op.Output.meta.shape,
                         dtype=op.Output.meta.dtype)
-        for z in reversed(range(500)):
+        for z in reversed(list(range(500))):
             out1[..., z:z+1] = op.Output[..., z:z+1].wait()
         vigra.writeHDF5(out1, '/tmp/data.h5', 'data')
         out2 = vigra.analysis.labelVolumeWithBackground(vol)

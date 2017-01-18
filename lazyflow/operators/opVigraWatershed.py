@@ -1,3 +1,4 @@
+from builtins import zip
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -77,7 +78,7 @@ class OpVigraWatershed(Operator):
         Return the padded slicing and the slicing that returns the original roi within the padded data.
         """
         tags = self.InputImage.meta.axistags
-        pairs = zip([tag.key for tag in tags], zip(roi.start, roi.stop) )
+        pairs = list(zip([tag.key for tag in tags], list(zip(roi.start, roi.stop)) ))
         slices = [(k, slice(start, stop)) for (k,(start, stop)) in pairs]
 
         # Compute the watershed over a larger area than requested (padded area)

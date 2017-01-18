@@ -22,6 +22,11 @@
 ###############################################################################
 #Python
 from __future__ import absolute_import
+from __future__ import division
+from builtins import zip
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import os
 from collections import deque
 import itertools
@@ -177,7 +182,7 @@ class OpPixelFeaturesPresmoothed(Operator):
         for j, scale in enumerate(self.scales):
             if self.matrix[:,j].any():
                 tagged_shape = self.Input.meta.getTaggedShape()
-                spatial_axes_shape = filter( lambda k_v: k_v[0] in 'xyz', tagged_shape.items() )
+                spatial_axes_shape = [k_v for k_v in list(tagged_shape.items()) if k_v[0] in 'xyz']
                 spatial_shape = zip( *spatial_axes_shape )[1]
                 
                 if (scale * self.WINDOW_SIZE > numpy.array(spatial_shape)).any():
@@ -344,7 +349,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             # There is no natural blockshape for spatial dimensions.
             if k in tagged_blockshape:
                 tagged_blockshape[k] = 0
-        output_blockshape = tagged_blockshape.values()
+        output_blockshape = list(tagged_blockshape.values())
 
         ## NOTE:
         ##   Previously, we would pass along the input's ideal_blockshape
@@ -712,7 +717,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
         
         tagged_shape = self.Input.meta.getTaggedShape()
         tagged_shape['z'] = tagged_shape['z']*z_scale
-        spatial_axes_shape = filter( lambda k_v1: k_v1[0] in 'xyz', tagged_shape.items() )
+        spatial_axes_shape = [k_v1 for k_v1 in list(tagged_shape.items()) if k_v1[0] in 'xyz']
         spatial_shape = zip( *spatial_axes_shape )[1]
         
         for j, scale in enumerate(self.scales):
@@ -809,7 +814,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                         featureNameArray[i].append("Difference of Gaussians (σ=" + str(self.scales[j]) + ")")
 
             #disconnecting all Operators
-            for islot in self.multi.inputs.values():
+            for islot in list(self.multi.inputs.values()):
                 islot.disconnect()
 
             channelCount = 0
@@ -988,8 +993,8 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             #adjust the readkey, as we read from the non-interpolated image
             newStartNI = copy.copy(newStart)
             newStopNI = copy.copy(newStop)
-            newStartNI[zaxis] = numpy.floor(float(newStart[zaxis])/scaleZ)
-            newStopNI[zaxis] = numpy.ceil(float(newStop[zaxis])/scaleZ)
+            newStartNI[zaxis] = numpy.floor(old_div(float(newStart[zaxis]),scaleZ))
+            newStopNI[zaxis] = numpy.ceil(old_div(float(newStop[zaxis]),scaleZ))
             readKey = roi.roiToSlice(newStartNI, newStopNI)
             
             #interpolation is applied on a region read with the above key. In x-y it should just read everything
@@ -1128,7 +1133,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                                 #call feature computation per slice, only for the original data slices
                                 nz = scaleZ*(oldkey[zaxis].stop-oldkey[zaxis].start)
                                 roiSmootherList = list(roiSmoother)
-                                zrange = range(roiSmootherList[zaxis].start, roiSmootherList[zaxis].stop, scaleZ)
+                                zrange = list(range(roiSmootherList[zaxis].start, roiSmootherList[zaxis].stop, scaleZ))
                                 
                                 for iz, z in enumerate(zrange):
                                     
@@ -1221,7 +1226,7 @@ class OpBaseFilter(OpArrayPiper):
         key = roiToSlice(rroi.start, rroi.stop)
 
         kwparams = {}
-        for islot in self.inputs.values():
+        for islot in list(self.inputs.values()):
             if islot.name != "Input":
                 kwparams[islot.name] = islot.value
 
@@ -1486,8 +1491,8 @@ def coherenceOrientationOfStructureTensor(image,sigma0, sigma1, window_size, out
     else:
         res=numpy.ndarray((image.shape[0],image.shape[1],2))
 
-    res[:,:,0]=numpy.sqrt( (i22-i11)**2+4*(i12**2))/(i11-i22)
-    res[:,:,1]=numpy.arctan(2*i12/(i22-i11))/numpy.pi +0.5
+    res[:,:,0]=old_div(numpy.sqrt( (i22-i11)**2+4*(i12**2)),(i11-i22))
+    res[:,:,1]=old_div(numpy.arctan(2*i12/(i22-i11)),numpy.pi) +0.5
 
 
     return res
@@ -1702,8 +1707,8 @@ class OpImageReader(Operator):
         if 'z' in self.Image.meta.getAxisKeys():
             # Copy from each image slice into the corresponding slice of the result.
             roi_zyxc = numpy.array( [rroi.start, rroi.stop] )
-            for z_global, z_result in zip( range(*roi_zyxc[:,0]), 
-                                           range(result.shape[0]) ):
+            for z_global, z_result in zip( list(range(*roi_zyxc[:,0])), 
+                                           list(range(result.shape[0])) ):
                 full_slice = vigra.impex.readImage(filename, index=z_global)
                 full_slice = full_slice.transpose(1,0,2) # xyc -> yxc
                 assert full_slice.shape == self.Image.meta.shape[1:]

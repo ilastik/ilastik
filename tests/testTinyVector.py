@@ -1,4 +1,7 @@
 from __future__ import print_function
+from builtins import zip
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -28,8 +31,8 @@ from lazyflow.roi import TinyVector
 class TestTinyVector(object):
     
     def setUp(self):
-        self.v1 = TinyVector(range(1,11))
-        self.v2 = TinyVector(range(11,21))
+        self.v1 = TinyVector(list(range(1,11)))
+        self.v2 = TinyVector(list(range(11,21)))
         
         self.a1 = numpy.array(self.v1)
         self.a2 = numpy.array(self.v2)
@@ -111,7 +114,7 @@ class TestTinyVector(object):
             _a1 = assignmentOp(_a1, l2)
             _v1 = assignmentOp(_v1, _l2)
             assert all( _a1 == _v1 ), "Assignment operation failed."
-            assert all( map( lambda x_y: x_y[0] == x_y[1], zip(_l2, l2) ) ), "Assignment modified the wrong value."
+            assert all( [x_y[0] == x_y[1] for x_y in zip(_l2, l2)] ), "Assignment modified the wrong value."
     
             _a1 = copy.copy( a1 )
             _v1 = copy.copy( v1 )

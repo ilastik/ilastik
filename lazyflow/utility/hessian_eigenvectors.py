@@ -1,4 +1,6 @@
 from __future__ import print_function
+from builtins import map
+from builtins import range
 import numpy
 import vigra
 
@@ -19,7 +21,7 @@ def hessian_eigenvectors( a, sigma, sort=True ):
         sort: If True, sort the results in descending order by eigenvalue 
               (i.e. from largest to smallest eigenvalue)     
     """
-    assert map(int, numpy.__version__.split('.')) >= [1,8,0], \
+    assert list(map(int, numpy.__version__.split('.'))) >= [1,8,0], \
         "This function requires broadcasting support in `numpy.linalg.eigh()`, so you need at least numpy v1.8.0"
     assert a.shape[-1] != 1, \
         "This function is designed to work on single-channel images without a channel dimension.  "\
@@ -58,7 +60,7 @@ def hessian_eigenvectors( a, sigma, sort=True ):
         combined = numpy.concatenate((eig_vals[...,None], eig_vects), axis=-1)
         combined = numpy.ascontiguousarray(combined)
         combined_dtypes = [eig_vals.dtype.str]*(1+eig_vects.shape[-1])
-        combined_names = map(str, range(1+eig_vects.shape[-1]))
+        combined_names = list(map(str, list(range(1+eig_vects.shape[-1]))))
         
         combined_view = combined.view( dtype={'names':combined_names, 'formats':combined_dtypes } )
         combined_view.sort(axis=-1)

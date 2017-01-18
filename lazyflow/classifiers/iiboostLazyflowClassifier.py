@@ -1,3 +1,9 @@
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import zip
+from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -19,7 +25,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-import cPickle as pickle
+import pickle as pickle
 from itertools import starmap
 
 import numpy
@@ -33,7 +39,7 @@ import iiboost
 from lazyflow.classifiers import LazyflowPixelwiseClassifierFactoryABC, LazyflowPixelwiseClassifierABC
 
 def roi_to_slice(start, stop):
-    return tuple( starmap(slice, zip(start, stop)) )
+    return tuple( starmap(slice, list(zip(start, stop))) )
 
 class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """
@@ -85,7 +91,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
             converted_labels.append( converted )
 
         # Save for future reference
-        flattened_labels = map( numpy.ndarray.flatten, converted_labels )
+        flattened_labels = list(map( numpy.ndarray.flatten, converted_labels ))
         all_labels = numpy.concatenate(flattened_labels)
         known_labels = numpy.sort(vigra.analysis.unique(all_labels))
         if known_labels[0] == 0:
@@ -136,7 +142,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
             x_tag = axistags['x']
             z_tag = axistags['z']
             if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
-                z_anisotropy_factor = z_tag.resolution / x_tag.resolution
+                z_anisotropy_factor = old_div(z_tag.resolution, x_tag.resolution)
 
         model.trainWithChannels( raw_images, 
                                  hev_images, 
@@ -223,7 +229,7 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             x_tag = axistags['x']
             z_tag = axistags['z']
             if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
-                z_anisotropy_factor = z_tag.resolution / x_tag.resolution
+                z_anisotropy_factor = old_div(z_tag.resolution, x_tag.resolution)
         
         subROI = iiboost.ROICoordinates()
         subROI.z1, subROI.y1, subROI.x1 = roi[0]

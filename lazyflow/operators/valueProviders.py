@@ -1,3 +1,5 @@
+from builtins import str
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -112,7 +114,7 @@ class OpMetadataInjector(Operator):
 
         # Inject the additional metadata attributes
         extraMetadata = self.Metadata.value
-        for k,v in extraMetadata.items():
+        for k,v in list(extraMetadata.items()):
             setattr(self.Output.meta, k, v)
 
     def execute(self, slot, subindex, roi, result):
@@ -259,7 +261,7 @@ class OpValueCache(Operator, ObservableCache):
         
         # Optimization: We don't let more than one caller trigger the value to be computed at the same time
         # If some other caller has already requested the value, we'll just wait for the request he already made.
-        class State():
+        class State(object):
             Dirty = 0
             Waiting = 1
             Clean = 2

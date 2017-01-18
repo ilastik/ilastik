@@ -1,9 +1,14 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import zip
+from builtins import object
 import sys
 import os
 import numpy
 import vigra
 from functools import partial
-from StringIO import StringIO
+from io import StringIO
 
 ## Instead of importing requests and PIL here, 
 ## use late imports (below) so people who don't use TiledVolume don't have to have them
@@ -140,7 +145,7 @@ class TiledVolume(object):
         assert self.description.bounds_zyx.shape == (3,)
         assert self.description.view_shape_zyx.shape == (3,)
 
-        shape_dict = dict( zip('zyx', self.description.view_shape_zyx) )
+        shape_dict = dict( list(zip('zyx', self.description.view_shape_zyx)) )
         self.output_shape = tuple( shape_dict[k] for k in self.description.output_axes )
 
         self._slice_remapping = {}
@@ -158,9 +163,9 @@ class TiledVolume(object):
              roi should be relative to the view
         """
         output_axes = self.description.output_axes
-        roi_transposed = zip(*view_roi)
-        roi_dict = dict( zip(output_axes, roi_transposed) )
-        view_roi = zip( *(roi_dict['z'], roi_dict['y'], roi_dict['x']) )
+        roi_transposed = list(zip(*view_roi))
+        roi_dict = dict( list(zip(output_axes, roi_transposed)) )
+        view_roi = list(zip( *(roi_dict['z'], roi_dict['y'], roi_dict['x']) ))
 
         # First, normalize roi and result to zyx order
         result_out = vigra.taggedView(result_out, output_axes)

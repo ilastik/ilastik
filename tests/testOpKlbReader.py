@@ -1,3 +1,4 @@
+from builtins import object
 import tempfile
 import shutil
 import numpy as np

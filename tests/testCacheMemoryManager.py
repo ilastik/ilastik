@@ -1,3 +1,5 @@
+from builtins import str
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -117,13 +119,13 @@ class TestCacheMemoryManager(unittest.TestCase):
         gc.collect()
         cs = mgr.getCaches()
         assert c1 in cs
-        assert len(cs) == 3, str(map(lambda x: x.name, cs))
+        assert len(cs) == 3, str([x.name for x in cs])
         del cs
 
         del c2
         gc.collect()
         cs = mgr.getCaches()
-        assert len(cs) == 2, str(map(lambda x: x.name, cs))
+        assert len(cs) == 2, str([x.name for x in cs])
 
     def testCacheHandling(self):
         n, k = 10, 5

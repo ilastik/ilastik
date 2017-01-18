@@ -1,6 +1,10 @@
 # FlyMovieFormat.py
 # KMB 11/06/2008
 from __future__ import division
+from builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
 import sys
 import struct
 import warnings
@@ -36,7 +40,7 @@ class NoMoreFramesException( Exception ):
 class InvalidMovieFileException( Exception ):
     pass
     
-class FlyMovie:
+class FlyMovie(object):
     
     def __init__(self, filename,check_integrity=False):
         self.filename = filename
@@ -322,7 +326,7 @@ class FlyMovie:
         fno = nz[-1]
         return self.get_frame(fno)
         
-class FlyMovieSaver:
+class FlyMovieSaver(object):
     def __init__(self,
                  filename,
                  version=1,

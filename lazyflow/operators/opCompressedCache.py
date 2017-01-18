@@ -1,3 +1,9 @@
+from __future__ import division
+from builtins import zip
+from builtins import str
+from builtins import next
+from builtins import map
+from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -154,7 +160,7 @@ class OpUnmanagedCompressedCache(Operator):
             "".format( roi, self.Input.meta.shape )
         
         block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
-        block_starts = map( tuple, block_starts )
+        block_starts = list(map( tuple, block_starts ))
 
         # Ensure all block cache files are up-to-date
         self._waitForBlocks(block_starts)
@@ -209,9 +215,9 @@ class OpUnmanagedCompressedCache(Operator):
         clean_block_starts = set( self._cacheFiles.keys() ) - self._dirtyBlocks
         
         output_shape = self.Output.meta.shape
-        clean_block_rois = map( partial( getBlockBounds, output_shape, self._blockshape ),
-                                clean_block_starts )
-        destination[0] = map( partial(map, TinyVector), clean_block_rois )
+        clean_block_rois = list(map( partial( getBlockBounds, output_shape, self._blockshape ),
+                                clean_block_starts ))
+        destination[0] = list(map( partial(map, TinyVector), clean_block_rois ))
         return destination
 
     def _executeOutputHdf5(self, roi, destination):
@@ -235,7 +241,7 @@ class OpUnmanagedCompressedCache(Operator):
             if self._blockshape is not None:
                 with self._lock:
                     block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
-                    block_starts = map( tuple, block_starts )
+                    block_starts = list(map( tuple, block_starts ))
                     
                     for block_start in block_starts:
                         self._dirtyBlocks.add( block_start )
@@ -272,8 +278,8 @@ class OpUnmanagedCompressedCache(Operator):
                 return True
 
             fullshape = self.Input.meta.shape
-            z = zip(idealshape, blockshape, fullshape)
-            m = map(lambda i_b_f: i_b_f[1] == i_b_f[2] or i_b_f[1] % i_b_f[0] == 0, z)
+            z = list(zip(idealshape, blockshape, fullshape))
+            m = [i_b_f[1] == i_b_f[2] or i_b_f[1] % i_b_f[0] == 0 for i_b_f in z]
             return all(m)
 
         if not self._ignore_ideal_blockshape and self.Input.ready():
@@ -297,12 +303,12 @@ class OpUnmanagedCompressedCache(Operator):
         # we need to figure out an ideal chunk shape on our own
 
         # Start with a copy of blockshape
-        axes = self.Output.meta.getTaggedShape().keys()
-        taggedBlockShape = collections.OrderedDict(zip(axes, self._blockshape))
+        axes = list(self.Output.meta.getTaggedShape().keys())
+        taggedBlockShape = collections.OrderedDict(list(zip(axes, self._blockshape)))
 
         dtypeBytes = self._getDtypeBytes(self.Output.meta.dtype)
 
-        desiredSpace = 1024**2 / float(dtypeBytes)
+        desiredSpace = old_div(1024**2, float(dtypeBytes))
 
         if numpy.prod(blockshape) <= desiredSpace:
             return blockshape
@@ -314,7 +320,7 @@ class OpUnmanagedCompressedCache(Operator):
         logger.debug("desired space: {}".format(desiredSpace))
 
         # extract only the spatial shape
-        spatialKeys = [k for k in taggedBlockShape.keys() if k in 'xyz']
+        spatialKeys = [k for k in list(taggedBlockShape.keys()) if k in 'xyz']
         spatialShape = [taggedBlockShape[k] for k in spatialKeys]
         newSpatialShape = chooseChunkShape(spatialShape, desiredSpace)
         for k, v in zip(spatialKeys, newSpatialShape):
@@ -334,13 +340,13 @@ class OpUnmanagedCompressedCache(Operator):
         tot, unc = self._usedMemory()
         self._compression_factor = 1.0
         if tot > 0:
-            self._compression_factor = unc/float(tot)
+            self._compression_factor = old_div(unc,float(tot))
         return tot
 
     def _usedMemory(self):
         tot = 0.0
         unc = 0.0
-        for key in self._cacheFiles.keys():
+        for key in list(self._cacheFiles.keys()):
             real, virt = self._memoryForBlock(key)
             tot += real
             unc += virt
@@ -479,7 +485,7 @@ class OpUnmanagedCompressedCache(Operator):
             "".format( roi, self.Input.meta.shape )
         
         block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
-        block_starts = map( tuple, block_starts )
+        block_starts = list(map( tuple, block_starts ))
 
         # Copy data to each block
         logger.debug( "Copying data INTO {} blocks...".format( len(block_starts) ) )
@@ -610,7 +616,7 @@ class OpUnmanagedCompressedCache(Operator):
     def _closeAllCacheFiles(self):
         logger.debug( "Closing all caches" )
         cacheFiles = self._cacheFiles
-        for k,v in cacheFiles.items():
+        for k,v in list(cacheFiles.items()):
             with self._blockLocks[k]:
                 v.close()
         with self._lock:
@@ -627,13 +633,13 @@ class OpCompressedCache(OpUnmanagedCompressedCache, ManagedBlockedCache):
     def fractionOfUsedMemoryDirty(self):
         tot = 0.0
         dirty = 0.0
-        for key in self._cacheFiles.keys():
+        for key in list(self._cacheFiles.keys()):
             real, virt = self._memoryForBlock(key)
             tot += real
             if key in self._dirtyBlocks:
                 dirty += real
         if tot > 0:
-            return dirty / tot
+            return old_div(dirty, tot)
         else:
             return 0.0
     
@@ -653,7 +659,7 @@ class OpCompressedCache(OpUnmanagedCompressedCache, ManagedBlockedCache):
 
     def freeDirtyMemory(self):
         dirty = 0.0
-        for key in self._cacheFiles.keys():
+        for key in list(self._cacheFiles.keys()):
             if key in self._dirtyBlocks:
                 dirty += self.freeBlock(key)
                 with self._lock:

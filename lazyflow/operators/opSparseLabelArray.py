@@ -1,3 +1,4 @@
+from builtins import zip
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -133,9 +134,9 @@ class OpSparseLabelArray(Operator, Cache):
         if slot.name == "Output":
             result[:] = self._denseArray[key]
         elif slot.name == "nonzeroValues":
-            result[0] = numpy.array(self._sparseNZ.values())
+            result[0] = numpy.array(list(self._sparseNZ.values()))
         elif slot.name == "nonzeroCoordinates":
-            result[0] = numpy.array(self._sparseNZ.keys())
+            result[0] = numpy.array(list(self._sparseNZ.keys()))
         elif slot.name == "maxLabel":
             result[0] = self._maxLabel
         self.lock.release()
@@ -192,7 +193,7 @@ class OpSparseLabelArray(Operator, Cache):
 
         self._denseArray.ravel()[updateNZRavel] =  valuesNZ
 
-        td = blist.sorteddict(zip(updateNZRavel.tolist(),valuesNZ.tolist()))
+        td = blist.sorteddict(list(zip(updateNZRavel.tolist(),valuesNZ.tolist())))
 
         self._sparseNZ.update(td)
 

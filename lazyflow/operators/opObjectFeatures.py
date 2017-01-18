@@ -1,4 +1,5 @@
 from __future__ import print_function
+from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -86,13 +87,13 @@ class OpObjectFeatures(Operator):
                         if c_features_maxlen[name].shape[0] < regionFeatures[name].shape[0]:
                             c_features_maxlen[name] = regionFeatures[name]
             
-                for name,feat in c_features_maxlen.items():
+                for name,feat in list(c_features_maxlen.items()):
                     for cc in range(labels.shape[-1]):
                         labs = numpy.sort(vigra.analysis.unique(labels[...,cc]))
                         feat[labs,...] = c_features[name][cc][labs,...]
 
                 
-                for name,feat in c_features_maxlen.items():
+                for name,feat in list(c_features_maxlen.items()):
                     if name not in result:
                         result[name] = []
                     result[name].append(feat)
@@ -105,7 +106,7 @@ class OpObjectFeatures(Operator):
 
             flat_arr = []
 
-            for name,feat_arr in c_features.items():
+            for name,feat_arr in list(c_features.items()):
                 for i, arr in enumerate(feat_arr):
                     prod = 1
                     for ds in arr.shape[1:]:

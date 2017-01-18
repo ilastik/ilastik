@@ -92,7 +92,7 @@ class OperatorWrapper(Operator):
 
         self._customName = False
 
-        allInputSlotNames = set(map(lambda s: s.name, operatorClass.inputSlots))
+        allInputSlotNames = set([s.name for s in operatorClass.inputSlots])
 
         if promotedSlotNames is not None:
             assert broadcastingSlotNames is None, \
@@ -152,7 +152,7 @@ class OperatorWrapper(Operator):
             setattr(self, outerSlot.name, outerSlot)
 
         # register callbacks for inserted and removed input subslots
-        for s in self.inputs.values():
+        for s in list(self.inputs.values()):
             if s.name in self.promotedSlotNames:
                 s.notifyInserted(self._callbackInserted)
                 s.notifyRemove(self._callbackPreRemove)
@@ -160,14 +160,14 @@ class OperatorWrapper(Operator):
                 s._notifyConnect(self._callbackConnect)
 
         # register callbacks for inserted and removed output subslots
-        for s in self.outputs.values():
+        for s in list(self.outputs.values()):
             s.notifyInserted(self._callbackInserted)
             s.notifyRemove(self._callbackPreRemove)
             s.notifyRemoved(self._callbackPostRemoved)
 
-        for s in self.inputs.values():
+        for s in list(self.inputs.values()):
             assert len(s) == 0
-        for s in self.outputs.values():
+        for s in list(self.outputs.values()):
             assert len(s) == 0
 
     @property
@@ -194,7 +194,7 @@ class OperatorWrapper(Operator):
     def _callbackPreRemove(self, slot, index, length):
         # Prepare for disconnect which will occur in _removeInnerOperator
         # (Can't properly disconnect a slot if backpropagate_values is True)
-        for mslot in self.outputs.values():
+        for mslot in list(self.outputs.values()):
             if len(mslot) > length:
                 mslot[index].backpropagate_values = False
                 mslot[index].unregisterDisconnect(self.handleEarlyDisconnect)
@@ -225,7 +225,7 @@ class OperatorWrapper(Operator):
         # If anyone calls setValue() on one of these slots,
         # forward the setValue call to the slot's partner (the
         # outer slot on the operator wrapper)
-        for slot in op.inputs.values():
+        for slot in list(op.inputs.values()):
             slot.backpropagate_values = True
             slot.notifyDisconnect(self.handleEarlyDisconnect)
 
@@ -233,7 +233,7 @@ class OperatorWrapper(Operator):
 
         # Connect the inner operator's inputs to our outer input
         # slots
-        for key, outerSlot in self.inputs.items():
+        for key, outerSlot in list(self.inputs.items()):
             # Only connect to a subslot if it was promoted during
             # wrapping
             if outerSlot.name in self.promotedSlotNames:
@@ -250,7 +250,7 @@ class OperatorWrapper(Operator):
             op.inputs[key].connect(partner)
 
         # Connect our outer output slots to the inner operator's output slots.
-        for key, mslot in self.outputs.items():
+        for key, mslot in list(self.outputs.items()):
             mslot.insertSlot(index, length)
             mslot[index].backpropagate_values = True
             mslot[index].connect(op.outputs[key])
@@ -268,14 +268,14 @@ class OperatorWrapper(Operator):
         assert index < len(self.innerOperators)
 
         op = self.innerOperators.pop(index)
-        for slot in op.inputs.values():
+        for slot in list(op.inputs.values()):
             slot.backpropagate_values = False
             slot.unregisterDisconnect(self.handleEarlyDisconnect)
 
-        for oslot in self.outputs.values():
+        for oslot in list(self.outputs.values()):
             oslot.removeSlot(index, length)
 
-        for key, outerSlot in self.inputs.items():
+        for key, outerSlot in list(self.inputs.items()):
             if outerSlot.name in self.promotedSlotNames:
                 outerSlot.removeSlot(index, length)
 

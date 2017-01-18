@@ -1,3 +1,8 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import map
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -29,7 +34,7 @@ import h5py
 import logging
 logger = logging.getLogger(__name__)
 
-import cPickle as pickle
+import pickle as pickle
 
 # The natural thing to do here is to use numpy.vectorize,
 #  but that somehow interacts strangely with pickle.
@@ -257,7 +262,7 @@ class BlockwiseFileset(object):
         """
         with self._lock:
             assert not self._closed
-            paths = self._openBlockFiles.keys()
+            paths = list(self._openBlockFiles.keys())
             for path in paths:
                 blockFile = self._openBlockFiles[path]
                 blockFile.close()
@@ -535,12 +540,12 @@ class BlockwiseFileset(object):
         If we haven't opened the file yet, open it first.
         """
         # Try once without locking
-        if blockFilePath in self._openBlockFiles.keys():
+        if blockFilePath in list(self._openBlockFiles.keys()):
             return self._openBlockFiles[ blockFilePath ]
 
         # Obtain the lock and try again
         with self._lock:
-            if blockFilePath not in self._openBlockFiles.keys():
+            if blockFilePath not in list(self._openBlockFiles.keys()):
                 try:
                     writeLock = FileLock( blockFilePath, timeout=10 )
                     if self.mode == 'a':
@@ -597,7 +602,7 @@ class BlockwiseFileset(object):
         :param use_view_coordinates: If True, assume the roi was given relative to the view start.
                                      Otherwise, assume it was given relative to the on-disk coordinates.
         """
-        roi = map( TinyVector, roi )
+        roi = list(map( TinyVector, roi ))
         if not use_view_coordinates:
             abs_roi = roi
             assert (abs_roi[0] >= self.description.view_origin), \
@@ -630,7 +635,7 @@ class BlockwiseFileset(object):
         # For now, this implementation assumes it can simply copy EVERYTHING in the block directories,
         #  including lock files.  Therefore, we require that the fileset be opened in read-only mode.
         # If that's a problem, change this function to ignore lock files when copying (or purge them afterwards).
-        roi = map( TinyVector, roi )
+        roi = list(map( TinyVector, roi ))
         if not use_view_coordinates:
             abs_roi = roi
             assert (abs_roi[0] >= self.description.view_origin), \

@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from builtins import zip
 import sys
 import numpy
 from functools import partial

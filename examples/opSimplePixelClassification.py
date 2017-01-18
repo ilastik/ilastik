@@ -1,3 +1,5 @@
+from builtins import zip
+from builtins import range
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opCompressedUserLabelArray import OpCompressedUserLabelArray

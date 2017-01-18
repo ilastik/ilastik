@@ -1,4 +1,5 @@
 from __future__ import print_function
+from builtins import range
 import vigra
 import numpy as np
     
@@ -26,7 +27,7 @@ def chunked_bincount(labels):
     global_counts = np.array([]).astype(np.int64)
     
     CHUNK_SIZE = 100*(2**20)
-    for chunk_start in xrange(0, len(labels), CHUNK_SIZE):
+    for chunk_start in range(0, len(labels), CHUNK_SIZE):
         chunk_stop = min(chunk_start + CHUNK_SIZE, len(labels))
         chunk_counts = vigra_bincount(labels[chunk_start:chunk_stop])
         

@@ -55,7 +55,7 @@ class OpBlockwiseFilesetReader(Operator):
         # Check for errors in the description file
         descriptionFields = self._blockwiseFileset.description
         axes = descriptionFields.axes
-        assert False not in map(lambda a: a in 'txyzc', axes), "Unknown axis type.  Known axes: txyzc  Your axes:".format(axes)
+        assert False not in [a in 'txyzc' for a in axes], "Unknown axis type.  Known axes: txyzc  Your axes:".format(axes)
 
         self.Output.meta.shape = tuple(descriptionFields.view_shape)
         self.Output.meta.dtype = descriptionFields.dtype

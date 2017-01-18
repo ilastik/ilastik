@@ -1,4 +1,8 @@
 from __future__ import print_function
+from builtins import str
+from builtins import zip
+from builtins import map
+from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -74,7 +78,7 @@ def getSubKeyWithFlags(key,axistags,axisflags):
     assert len(axistags)==len(key)
     assert len(axisflags)<=len(key)
 
-    d=dict(zip(axisTagsToString(axistags),key))
+    d=dict(list(zip(axisTagsToString(axistags),key)))
 
     newKey=[]
     for flag in axisflags:
@@ -85,7 +89,7 @@ def getSubKeyWithFlags(key,axistags,axisflags):
 
 
 def popFlagsFromTheKey(key,axistags,flags):
-    d=dict(zip(axisTagsToString(axistags),key))
+    d=dict(list(zip(axisTagsToString(axistags),key)))
 
     newKey=[]
     for flag in axisTagsToString(axistags):
@@ -547,7 +551,7 @@ class OpSubRegion(Operator):
         self._roi = self.Roi.value
         assert isinstance(self._roi[0], tuple)
         assert isinstance(self._roi[1], tuple)
-        start, stop = map( TinyVector, self._roi )
+        start, stop = list(map( TinyVector, self._roi ))
         if not ( len(start) == len(stop) == len(self.Input.meta.shape) ):
             # Roi dimensionality must match shape dimensionality
             self.Output.meta.NOTREADY = True
@@ -561,7 +565,7 @@ class OpSubRegion(Operator):
     def execute(self, slot, subindex, output_roi, result):
         input_roi = numpy.array( (output_roi.start, output_roi.stop) )
         input_roi += self._roi[0]
-        input_roi = map( tuple, input_roi )
+        input_roi = list(map( tuple, input_roi ))
         self.Input(*input_roi).writeInto(result).wait()
         return result
 
@@ -575,7 +579,7 @@ class OpSubRegion(Operator):
         if intersection:
             output_dirty_roi = numpy.array(intersection)
             output_dirty_roi -= self._roi[0]
-            output_dirty_roi = map( tuple, output_dirty_roi )
+            output_dirty_roi = list(map( tuple, output_dirty_roi ))
             self.Output.setDirty( *output_dirty_roi )
 
 class OpMultiArrayMerger(Operator):
@@ -879,7 +883,7 @@ class OpTransposeSlots(Operator):
         #  then we'll resize the output.
         # Otherwise, the output is not resized, but its inner slots are 
         #  still connected if possible or marked 'not ready' otherwise.        
-        input_lens = map( lambda slot: len(slot), self.Inputs )
+        input_lens = [len(slot) for slot in self.Inputs]
         if len( set(input_lens) ) == 1:
             self.Outputs.resize( max(input_lens[0], self.OutputLength.value ) )
         for j, mslot in enumerate( self.Outputs ):

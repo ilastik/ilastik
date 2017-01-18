@@ -1,4 +1,7 @@
 from __future__ import absolute_import
+from builtins import zip
+from builtins import map
+from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -429,7 +432,7 @@ class OpPixelwiseClassifierPredict(Operator):
         if not skip_prediction and self.PredictionMask.ready():
             mask_roi = numpy.array((roi.start, roi.stop))
             mask_roi[:,-1:] = [[0],[1]]
-            start, stop = map(tuple, mask_roi)
+            start, stop = list(map(tuple, mask_roi))
             mask = self.PredictionMask( start, stop ).wait()
             skip_prediction = not numpy.any(mask)
 
@@ -553,7 +556,7 @@ class OpVectorwiseClassifierPredict(Operator):
         if not skip_prediction and self.PredictionMask.ready():
             mask_roi = numpy.array((roi.start, roi.stop))
             mask_roi[:,-1:] = [[0],[1]]
-            start, stop = map(tuple, mask_roi)
+            start, stop = list(map(tuple, mask_roi))
             mask = self.PredictionMask( start, stop ).wait()
             skip_prediction = not numpy.any(mask)
             del mask

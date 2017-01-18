@@ -1,3 +1,7 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -20,7 +24,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import sys
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import numpy
 
 from lazyflow.utility import PathComponents
@@ -118,7 +122,7 @@ class RESTfulVolume(object):
             self.description = RESTfulVolume.readDescription( descriptionFilePath )
 
         # Check for errors        
-        assert False not in map(lambda a: a in 'txyzc', self.description.axes), "Unknown axis type.  Known axes: txyzc  Your axes:".format(self.description.axes)
+        assert False not in [a in 'txyzc' for a in self.description.axes], "Unknown axis type.  Known axes: txyzc  Your axes:".format(self.description.axes)
         assert self.description.format == "hdf5", "Only hdf5 RESTful volumes are supported so far."
         assert self.description.hdf5_dataset is not None, "RESTful volume description file must specify the hdf5_dataset name"
 
@@ -157,7 +161,7 @@ class RESTfulVolume(object):
             raise RuntimeError("The RESTful volume format uses internal dataset name '{}', but you seem to be expecting '{}'.".format( self.description.hdf5_dataset, pathComponents.internalPath ) )
         logger.info( "Downloading RESTful subvolume to file: {}".format( pathComponents.externalPath ) )
 
-        urllib.urlretrieve(url, pathComponents.externalPath)
+        urllib.request.urlretrieve(url, pathComponents.externalPath)
         logger.info( "Finished downloading file: {}".format( pathComponents.externalPath ) )
 
 if __name__ == "__main__":

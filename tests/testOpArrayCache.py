@@ -1,3 +1,6 @@
+from builtins import zip
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -34,7 +37,7 @@ from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
-class KeyMaker():
+class KeyMaker(object):
     def __getitem__(self, *args):
         return list(*args)
 make_key = KeyMaker()

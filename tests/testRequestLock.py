@@ -1,3 +1,7 @@
+from __future__ import division
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import time
 import random
 import logging
@@ -102,7 +106,7 @@ def _impl_test_lock(lockA, lockB, task_class, num_tasks):
         """
         A.acquire(); B.release()
         """
-        time.sleep(random.random() / 1000.0)
+        time.sleep(old_div(random.random(), 1000.0))
         lockA.acquire()
         logger.debug('Acquired A. Progress: {}'.format(progressAB[0]))
         while paused: pass
@@ -116,7 +120,7 @@ def _impl_test_lock(lockA, lockB, task_class, num_tasks):
         """
         B.acquire(); A.release()
         """
-        time.sleep(random.random() / 1000.0)
+        time.sleep(old_div(random.random(), 1000.0))
         lockB.acquire()
         logger.debug('Acquired B. Progress: {}'.format(progressAB[1]))
         while paused: pass

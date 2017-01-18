@@ -20,6 +20,9 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+from builtins import str
+from builtins import zip
+from builtins import range
 import os
 import math
 import logging
@@ -209,7 +212,7 @@ class OpStackWriter(Operator):
         # Sliceshape is the same as the input shape, except for the sliced dimension
         tagged_sliceshape = self.Input.meta.getTaggedShape()
         tagged_sliceshape[self._volume_axes[0]] = 1
-        slice_shape = (tagged_sliceshape.values())
+        slice_shape = (list(tagged_sliceshape.values()))
 
         parallel_requests = 4
 
@@ -271,8 +274,8 @@ class OpStackWriter(Operator):
         # Find the non-singleton axes.
         # The first non-singleton axis is the step axis.
         # The last 2 non-channel non-singleton axes will be the axes of the slices.
-        tagged_items = tagged_shape.items()
-        filtered_items = filter( lambda k_v: k_v[1] > 1, tagged_items )
+        tagged_items = list(tagged_shape.items())
+        filtered_items = [k_v for k_v in tagged_items if k_v[1] > 1]
         filtered_axes = zip( *filtered_items )[0]
         return filtered_axes
 
@@ -282,7 +285,7 @@ class OpStackWriter(Operator):
         """
         step_axis = self._volume_axes[0]
         input_axes = self.Input.meta.getAxisKeys()
-        tagged_roi = OrderedDict( zip( input_axes, zip( *roi ) ) )
+        tagged_roi = OrderedDict( list(zip( input_axes, list(zip( *roi )) )) )
         # e.g. tagged_roi={ 'x':(0,1), 'y':(3,4), 'z':(10,20) }
         assert tagged_roi[step_axis][1] - tagged_roi[step_axis][0] == 1,\
             "Expected roi to be a single slice."
@@ -472,9 +475,9 @@ class OpH5WriterBigDataset(Operator):
         if 'c' in tagged_maxshape:
             tagged_maxshape['c'] = 1
         
-        self.chunkShape = determineBlockShape( tagged_maxshape.values(), 512000.0 / dtypeBytes )
+        self.chunkShape = determineBlockShape( list(tagged_maxshape.values()), 512000.0 / dtypeBytes )
 
-        if datasetName in g.keys():
+        if datasetName in list(g.keys()):
             del g[datasetName]
         kwargs = { 'shape' : dataShape, 'dtype' : dtype,
             'chunks' : self.chunkShape }

@@ -1,4 +1,6 @@
 from __future__ import print_function
+from builtins import str
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -41,7 +43,7 @@ from functools import reduce
 #from lazyflow.request import Request
 #Request.reset_thread_pool(0)
 
-class KeyMaker():
+class KeyMaker(object):
     def __getitem__(self, *args):
         return list(*args)
 make_key = KeyMaker()

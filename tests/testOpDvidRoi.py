@@ -1,3 +1,6 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -20,7 +23,7 @@
 #           http://ilastik.org/license/
 ###############################################################################
 import os
-import httplib
+import http.client
 import json
 import shutil
 import tempfile
@@ -43,11 +46,10 @@ try:
     def get_testrepo_root_uuid():
         connection = DVIDConnection(TEST_DVID_SERVER)
         status, body, error_message = connection.make_request( "/repos/info", ConnectionMethod.GET)
-        assert status == httplib.OK, "Request for /repos/info returned status {}".format( status )
+        assert status == http.client.OK, "Request for /repos/info returned status {}".format( status )
         assert error_message == ""
         repos_info = json.loads(body)
-        test_repos = filter( lambda uuid_repo_info: uuid_repo_info[1] and uuid_repo_info[1]['Alias'] == 'testrepo', 
-                             repos_info.items() )
+        test_repos = [uuid_repo_info for uuid_repo_info in list(repos_info.items()) if uuid_repo_info[1] and uuid_repo_info[1]['Alias'] == 'testrepo']
         if test_repos:
             uuid = test_repos[0][0]
             return str(uuid)

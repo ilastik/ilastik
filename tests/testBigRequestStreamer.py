@@ -127,7 +127,7 @@ def test_pool_results_discarded():
 
         # In this test, all results are discarded immediately after the 
         #  request exits.  Therefore, AT NO POINT IN TIME, should more than N requests be alive.
-        live_result_refs = filter(lambda w:w() is not None, result_refs)
+        live_result_refs = [w for w in result_refs if w() is not None]
         assert len(live_result_refs) <= Request.global_thread_pool.num_workers, \
             "There should not be more than {} result references alive at one time!"\
             .format( Request.global_thread_pool.num_workers )

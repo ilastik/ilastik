@@ -1,3 +1,6 @@
+from builtins import zip
+from builtins import range
+from builtins import object
 class TransposedView( object ):
     """
     A read-only transposed view of an array-like object.
@@ -20,10 +23,10 @@ class TransposedView( object ):
         """
         self.base = base
         self.dtype = base.dtype
-        self.ndim = base.ndim + len(filter(lambda p: p is None, permutation))
+        self.ndim = base.ndim + len([p for p in permutation if p is None])
         self._permutation = permutation or tuple(range(self.base.ndim))
         
-        if set(filter(lambda p: p is not None, self._permutation)) != set(range(self.base.ndim)):
+        if set([p for p in self._permutation if p is not None]) != set(range(self.base.ndim)):
             raise ValueError("axes don't match array")
 
         shape = ()
@@ -44,7 +47,7 @@ class TransposedView( object ):
             if p is not None:
                 baseargs[p] = arg
         baseargs = tuple(baseargs)
-        base_permutation = filter(lambda p: p is not None, self._permutation)
+        base_permutation = [p for p in self._permutation if p is not None]
 
         # Extract from base
         data_from_base = self.base[baseargs]

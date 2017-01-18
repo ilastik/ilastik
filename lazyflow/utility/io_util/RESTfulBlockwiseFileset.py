@@ -1,3 +1,6 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,7 +28,7 @@ import errno
 import functools
 import threading
 import numpy
-import Queue
+import queue
 from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset, BlockwiseFilesetFactory
 from lazyflow.utility.io_util.RESTfulVolume import RESTfulVolume
 from lazyflow.roi import getIntersectingBlocks
@@ -279,7 +282,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
             self._ensureDirectoriesExist( block_starts )
 
         # Only wait for those that are missing.
-        blockQueue = Queue.Queue()
+        blockQueue = queue.Queue()
         for block_start in block_starts:
             if self.getBlockStatus(block_start) == BlockwiseFileset.BLOCK_NOT_AVAILABLE:
                 blockQueue.put( block_start )
@@ -287,7 +290,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
         num_blocks = blockQueue.qsize()
         logger.debug( "Preparing to download {} blocks".format( num_blocks ) )
 
-        failedBlockQueue = Queue.Queue()
+        failedBlockQueue = queue.Queue()
 
         threads = []
         for _ in range(max_parallel):
@@ -332,7 +335,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
                             self.setBlockStatus(entire_block_roi[0], BlockwiseFileset.BLOCK_NOT_AVAILABLE)
                         failedBlockQueue.put( block_start )
                         raise
-        except Queue.Empty:
+        except queue.Empty:
             return
 
     def _ensureDirectoriesExist(self, block_starts):

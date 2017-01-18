@@ -1,4 +1,5 @@
 from __future__ import print_function
+from builtins import map
 import numpy
 
 # Note: tifffile can also be imported from skimage.external.tifffile.tifffile_local,
@@ -137,7 +138,7 @@ class OpTiffReader(Operator):
         page_index_roi = roi[:, :-num_page_axes]
         roi_within_page = roi[:, -num_page_axes:]
 
-        logger.debug("Roi: {}".format(map(tuple, roi)))
+        logger.debug("Roi: {}".format(list(map(tuple, roi))))
 
         # Read each page out individually
         page_index_roi_shape = page_index_roi[1] - page_index_roi[0]

@@ -1,3 +1,9 @@
+from __future__ import division
+from builtins import next
+from builtins import map
+from builtins import str
+from builtins import range
+from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -120,7 +126,7 @@ class OpArrayCache(Operator, ManagedCache):
                 continue
             if v == self.DIRTY or v == self.FIXED_DIRTY:
                 totDirty += numpy.prod(sh)
-        return totDirty/float(totAll)
+        return old_div(totDirty,float(totAll))
     
     def lastAccessTime(self):
         return super(OpArrayCache, self).lastAccessTime()
@@ -156,7 +162,7 @@ class OpArrayCache(Operator, ManagedCache):
             else:
                 s = item.nbytes
         elif isinstance(item, dict):
-            for key in item.keys():
+            for key in list(item.keys()):
                 try:
                     obj = item[key]
                 except KeyError:
@@ -250,7 +256,7 @@ class OpArrayCache(Operator, ManagedCache):
 
         if self.inputs["blockShape"].ready() and self.inputs["Input"].ready():
             newBShape = self.inputs["blockShape"].value
-            assert numpy.issubdtype(type(newBShape), numpy.integer) or all( map(lambda x: numpy.issubdtype(type(x), numpy.integer), newBShape) )
+            assert numpy.issubdtype(type(newBShape), numpy.integer) or all( [numpy.issubdtype(type(x), numpy.integer) for x in newBShape] )
             if self._origBlockShape != newBShape and self.inputs["Input"].ready():
                 reconfigure = True
             self._origBlockShape = newBShape
@@ -532,7 +538,7 @@ class OpArrayCache(Operator, ManagedCache):
         clean_block_starts *= self._blockShape
             
         inputShape = self.Input.meta.shape
-        clean_block_rois = map( partial( getBlockBounds, inputShape, self._blockShape ),
-                                clean_block_starts )
-        destination[0] = map( partial(map, TinyVector), clean_block_rois )
+        clean_block_rois = list(map( partial( getBlockBounds, inputShape, self._blockShape ),
+                                clean_block_starts ))
+        destination[0] = list(map( partial(map, TinyVector), clean_block_rois ))
         return destination

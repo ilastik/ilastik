@@ -1,3 +1,7 @@
+from __future__ import division
+from builtins import zip
+from builtins import object
+from past.utils import old_div
 import numpy
 import vigra
 
@@ -14,7 +18,7 @@ class TestOpResize(object):
         data[32, 96] = 0.5
         data[48, 48] = 1.0
         data = vigra.filters.gaussianSmoothing(data, sigma=5.0)
-        data *= 1.0/data.max()
+        data *= old_div(1.0,data.max())
         data = vigra.taggedView( data, 'xy' )
 
         op.Input.setValue( data )
@@ -22,14 +26,14 @@ class TestOpResize(object):
         resized_data = op.Output[:].wait()
 
         #print data.mean(), resized_data.mean()
-        assert abs( 1.0 - data.mean()/resized_data.mean() ) < 0.03
+        assert abs( 1.0 - old_div(data.mean(),resized_data.mean()) ) < 0.03
         
         # Suppress rounding noise
         resized_data = numpy.where( resized_data > 0.1, resized_data, 0.0 )        
 
         # Find the max points in the resized image
         local_max = vigra.analysis.extendedLocalMaxima(resized_data)
-        max_coords = zip ( *numpy.nonzero(local_max) )
+        max_coords = list(zip ( *numpy.nonzero(local_max) ))
 
         # Did our two high points remain?
         assert (16, 48) in max_coords
@@ -79,7 +83,7 @@ class TestOpResize(object):
         data[32, 96] = 0.5
         data[48, 48] = 1.0
         data = vigra.filters.gaussianSmoothing(data, sigma=5.0)
-        data *= 1.0/data.max()
+        data *= old_div(1.0,data.max())
         data *= 255
         data = vigra.taggedView( data, 'xy' ).astype( numpy.uint8 )
 
@@ -91,7 +95,7 @@ class TestOpResize(object):
 
         # Must tolerate a larger error due to dtype conversion...
         # The tolerance here is somewhat arbitrary.
-        assert abs( 1.0 - data.mean()/resized_data.mean() ) < 1.0
+        assert abs( 1.0 - old_div(data.mean(),resized_data.mean()) ) < 1.0
 
     def test5D(self):
         graph = Graph()
@@ -103,7 +107,7 @@ class TestOpResize(object):
         data = vigra.taggedView( data, 'tyzxc' ) # deliberately strange order...
         data[0] = vigra.filters.gaussianSmoothing(data[0], sigma=5.0)
         data[1] = vigra.filters.gaussianSmoothing(data[1], sigma=5.0)
-        data *= 1.0/data.max()
+        data *= old_div(1.0,data.max())
 
         op.Input.setValue( data )
         op.ResizedShape.setValue( (5, 32, 128, 64, 3) )

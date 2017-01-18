@@ -1,4 +1,6 @@
 from __future__ import print_function
+from builtins import str
+from builtins import range
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.stype import Opaque
@@ -143,7 +145,7 @@ class OpExportToKnime(Operator):
         times = roi._l
         if len(times) == 0:
             # we assume that 0-length requests are requesting everything
-            times = range(self.RawImage.meta.shape[0])
+            times = list(range(self.RawImage.meta.shape[0]))
         
         with h5py.File(self.OutputFileName.value, "w") as fout:
             print("Exporting to:", os.path.join(os.getcwd(), self.OutputFileName.value))

@@ -1,3 +1,7 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -27,6 +31,7 @@ import functools
 
 #lazyflow
 from lazyflow.slot import InputSlot, OutputSlot, Slot
+from future.utils import with_metaclass
 
 class InputDict(collections.OrderedDict):
 
@@ -48,7 +53,7 @@ class InputDict(collections.OrderedDict):
         else:
             raise Exception("Operator {} (class: {}) has no input slot named '{}'."
                             " Available input slots are: {}".format(
-                                self.operator.name, self.operator.__class__, key, self.keys()))
+                                self.operator.name, self.operator.__class__, key, list(self.keys())))
 
 
 class OutputDict(collections.OrderedDict):
@@ -71,7 +76,7 @@ class OutputDict(collections.OrderedDict):
         else:
             raise Exception("Operator {} (class: {}) has no output slot named '{}'."
                             " Available output slots are: {}".format(
-                                self.operator.name, self.operator.__class__, key, self.keys()))
+                                self.operator.name, self.operator.__class__, key, list(self.keys())))
 
 
 from abc import ABCMeta
@@ -91,7 +96,7 @@ class OperatorMetaClass(ABCMeta):
         # Make it equivalent to this:
         #    inputSlots = [ InputSlot("MySlot"), InputSlot("MySlot2") ]
 
-        for k, v in cls.__dict__.items():
+        for k, v in list(cls.__dict__.items()):
             if isinstance(v, InputSlot):
                 v.name = k
                 cls.inputSlots.append(v)
@@ -117,8 +122,8 @@ class OperatorMetaClass(ABCMeta):
             err += str(e)
             err += "\nTraceback:\n"
             import traceback
-            import StringIO
-            s = StringIO.StringIO()
+            import io
+            s = io.StringIO()
             traceback.print_exc(file=s)
             err += s.getvalue()
             raise RuntimeError(err)
@@ -126,7 +131,7 @@ class OperatorMetaClass(ABCMeta):
         return instance
 
 
-class Operator(object):
+class Operator(with_metaclass(OperatorMetaClass, object)):
     """The base class for all Operators.
 
     Operators consist of a class inheriting from this class
@@ -169,8 +174,6 @@ class Operator(object):
     name = "Operator (base class)"
     description = ""
     category = "lazyflow"
-
-    __metaclass__ = OperatorMetaClass
 
     def __new__(cls, *args, **kwargs):
         ##
@@ -267,7 +270,7 @@ class Operator(object):
 
         self._setDefaultInputValues()
 
-        for islot in self.inputs.values():
+        for islot in list(self.inputs.values()):
             islot.notifyUnready(self.handleInputBecameUnready)
 
 
@@ -284,7 +287,7 @@ class Operator(object):
                 ii.connect(i.partner)
                 self.inputs[i.name] = ii
 
-        for k, v in self.inputs.items():
+        for k, v in list(self.inputs.items()):
             self.__dict__[k] = v
 
         # relicate output slots
@@ -294,7 +297,7 @@ class Operator(object):
                 oo = o._getInstance(self)
                 self.outputs[o.name] = oo
 
-        for k, v in self.outputs.items():
+        for k, v in list(self.outputs.items()):
             self.__dict__[k] = v
 
     @property
@@ -319,12 +322,12 @@ class Operator(object):
 
         """
         allConfigured = self._initialized
-        for slot in self.inputs.values():
+        for slot in list(self.inputs.values()):
             allConfigured &= (slot.ready() or slot._optional)
         return allConfigured
 
     def _setDefaultInputValues(self):
-        for i in self.inputs.values():
+        for i in list(self.inputs.values()):
             if (i.partner is None and
                 i._value is None and
                 i._defaultValue is not None):
@@ -336,28 +339,28 @@ class Operator(object):
         child operators.
 
         """
-        for s in self.inputs.values() + self.outputs.values():
+        for s in list(self.inputs.values()) + list(self.outputs.values()):
             s.disconnect()
 
         # We must do this after the previous loop is complete.
         # Resizing multislots in depth-first order triggers the OperatorWrapper resize chain...
-        for s in self.inputs.values() + self.outputs.values():
+        for s in list(self.inputs.values()) + list(self.outputs.values()):
             if s.level > 1:
                 s.resize(0)
 
-        for child in self._children.keys():
+        for child in list(self._children.keys()):
             child._disconnect()
 
     #  FIXME: Unused function?
     def disconnectFromDownStreamPartners(self):
-        for slot in self.inputs.values() + self.outputs.values():
+        for slot in list(self.inputs.values()) + list(self.outputs.values()):
             partners = list(slot.partners)
             for p in partners:
                 p.disconnect()
 
     def _initCleanup(self):
         self._cleaningUp = True
-        for child in self._children.keys():
+        for child in list(self._children.keys()):
             child._initCleanup()
 
     def cleanUp(self):
@@ -369,7 +372,7 @@ class Operator(object):
         # Disconnect ourselves and all children
         self._disconnect()
 
-        for s in self.inputs.values() + self.outputs.values():
+        for s in list(self.inputs.values()) + list(self.outputs.values()):
             # See note about the externally_managed flag in Operator.__init__
             partners = list(p for p in s.partners
                             if p.getRealOperator() is not None and
@@ -444,7 +447,7 @@ class Operator(object):
 
             # Keep a copy of the old metadata for comparison. 
             #  We only trigger downstream changes if something really changed.
-            old_metadata = { s: s.meta.copy() for s in self.outputs.values() }
+            old_metadata = { s: s.meta.copy() for s in list(self.outputs.values()) }
 
             # Call the subclass
             self.setupOutputs()
@@ -455,7 +458,7 @@ class Operator(object):
 
         try:
             # Determine new "ready" flags
-            for k, oslot in self.outputs.items():
+            for k, oslot in list(self.outputs.items()):
                 if oslot.partner is None:
                     # Special case, operators can flag an output as not actually being ready yet,
                     #  in which case we do NOT notify downstream connections.
@@ -471,14 +474,14 @@ class Operator(object):
                         "slots that have no explicit upstream connection."
 
             #notify outputs of probably changed meta information
-            for oslot in self.outputs.values():
+            for oslot in list(self.outputs.values()):
                 if ( old_metadata[oslot] != oslot.meta and  # No need to call _changed() if nothing changed...
                     not (not old_metadata[oslot]._ready and oslot.meta._ready)): # No need to call _changed() if it was already called in _setReady() above.
                     oslot._changed()
         except:
             # Something went wrong
             # Make the operator-supplied outputs unready again
-            for k, oslot in self.outputs.items():
+            for k, oslot in list(self.outputs.items()):
                 if oslot.partner is None:
                     oslot.disconnect() # Forces unready state
             raise
@@ -500,7 +503,7 @@ class Operator(object):
                     newly_unready_slots.append(s)
 
         # All unconnected outputs are no longer ready
-        for oslot in self.outputs.values():
+        for oslot in list(self.outputs.values()):
             set_output_unready(oslot)
 
         # If the ready status changed, signal it.
@@ -520,7 +523,7 @@ class Operator(object):
         The default implementation emulates the old api behaviour.
 
         """
-        for slot in self.outputs.values():
+        for slot in list(self.outputs.values()):
             # This assert is here to force subclasses to override this method if the situation requires it.
             # If you have any output slots that aren't directly connected to an internal operator,
             #  you probably need to override this method.

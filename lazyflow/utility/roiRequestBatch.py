@@ -20,6 +20,9 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+from builtins import next
+from builtins import range
+from builtins import object
 import sys
 from functools import partial
 

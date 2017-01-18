@@ -2,6 +2,10 @@
 
 from __future__ import division
 from __future__ import absolute_import
+from builtins import chr
+from builtins import str
+from builtins import range
+from builtins import object
 import sys
 import struct, collections
 import warnings
@@ -146,8 +150,8 @@ def identify_ufmf_version(filename):
 
 def _write_dict(fd,save_dict):
     fd.write('d')
-    fd.write(chr(len(save_dict.keys())))
-    keys = save_dict.keys()
+    fd.write(chr(len(list(save_dict.keys()))))
+    keys = list(save_dict.keys())
     keys.sort() # keep ordering fixed to file remains same if re-indexed
     for key in keys:
         value = save_dict[key]
@@ -601,7 +605,7 @@ class _UFmfV3Indexer(object):
         result = {'frame':self._index['frame']}
         # remove defaultdict and convert to dict
         result['keyframe'] = {}
-        for keyframe_type,value in self._index['keyframe'].iteritems():
+        for keyframe_type,value in self._index['keyframe'].items():
             result['keyframe'][keyframe_type] = value
         return result
 
@@ -634,11 +638,11 @@ class _UFmfV3Indexer(object):
         if self._index_progress:
             pbar.finish()
         # convert to arrays
-        for keyframe_type in self._index['keyframe'].keys():
-            for key in self._index['keyframe'][keyframe_type].keys():
+        for keyframe_type in list(self._index['keyframe'].keys()):
+            for key in list(self._index['keyframe'][keyframe_type].keys()):
                 self._index['keyframe'][keyframe_type][key]=np.array(
                     self._index['keyframe'][keyframe_type][key])
-        for key in self._index['frame'].keys():
+        for key in list(self._index['frame'].keys()):
             self._index['frame'][key]=np.array(
                 self._index['frame'][key])
         if self._index_chunk_location is None:
@@ -1582,7 +1586,7 @@ class AutoShrinkUfmfSaverV3(UfmfSaverV3):
         super(AutoShrinkUfmfSaverV3,self).__init__(*args,**kwargs)
     def _add_frame_regions(self,timestamp,regions):
         if len(regions):
-            for kf_type in self._cached_keyframes.keys():
+            for kf_type in list(self._cached_keyframes.keys()):
                 kf_image_data, kf_timestamp = self._cached_keyframes[kf_type]
                 super(AutoShrinkUfmfSaverV3,self).add_keyframe( \
                                           kf_type, kf_image_data, kf_timestamp)

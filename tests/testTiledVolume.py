@@ -1,12 +1,15 @@
 from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 import os
 import sys
 import tempfile
 import numpy
 import h5py
 import copy
-import SimpleHTTPServer
-import SocketServer
+import http.server
+import socketserver
 import nose
 
 from lazyflow.utility.io_util.tiledVolume import TiledVolume
@@ -160,16 +163,16 @@ class DataSetup(object):
     def _start_server(self):
         original_cwd = os.getcwd()
         os.chdir(self.TILE_DIRECTORY)
-        class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+        class Handler(http.server.SimpleHTTPRequestHandler):
             def log_request(self, *args, **kwargs):
                 if ENABLE_SERVER_LOGGING:
-                    SimpleHTTPServer.SimpleHTTPRequestHandler.log_request( self, *args, **kwargs )
+                    http.server.SimpleHTTPRequestHandler.log_request( self, *args, **kwargs )
     
             def log_error(self, *args, **kwargs):
                 if ENABLE_SERVER_LOGGING:
-                    SimpleHTTPServer.SimpleHTTPRequestHandler.log_error( self, *args, **kwargs )
+                    http.server.SimpleHTTPRequestHandler.log_error( self, *args, **kwargs )
         
-        class Server(SocketServer.TCPServer):
+        class Server(socketserver.TCPServer):
             # http://stackoverflow.com/questions/10613977/a-simple-python-server-using-simplehttpserver-and-socketserver-how-do-i-close-t
             allow_reuse_address = True
         server = Server(("", 8888), Handler)

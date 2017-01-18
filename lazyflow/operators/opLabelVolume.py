@@ -1,4 +1,7 @@
 from __future__ import absolute_import
+from builtins import str
+from builtins import range
+from builtins import object
 
 from threading import Lock as ThreadLock
 from functools import partial
@@ -15,6 +18,7 @@ from lazyflow.metaDict import MetaDict
 from lazyflow.request import Request, RequestPool
 from lazyflow.operators import OpBlockedArrayCache, OpReorderAxes
 from .opLazyConnectedComponents import OpLazyConnectedComponents
+from future.utils import with_metaclass
 
 logger = logging.getLogger(__name__)
 
@@ -177,10 +181,7 @@ class OpLabelVolume(Operator):
 
 
 ## parent class for all connected component labeling implementations
-class OpLabelingABC(Operator):
-    __metaclass__ = ABCMeta
-
-    ## input with axes 'txyzc'
+class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
     Input = InputSlot()
 
     ## background with axes 'txyzc', spatial axes must be singletons

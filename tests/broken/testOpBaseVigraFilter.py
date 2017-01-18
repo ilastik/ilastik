@@ -1,3 +1,7 @@
+from __future__ import division
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -55,8 +59,8 @@ class TestOpBaseVigraFilter(unittest.TestCase):
     
     def adjustChannel(self,start,stop,cPerC,cIndex):
         if cPerC != 1:
-            start = [start[i]/cPerC if i == cIndex else start[i] for i in range(len(start))]
-            stop = [stop[i]/cPerC+1 if i==cIndex else stop[i] for i in range(len(stop))]
+            start = [old_div(start[i],cPerC) if i == cIndex else start[i] for i in range(len(start))]
+            stop = [old_div(stop[i],cPerC)+1 if i==cIndex else stop[i] for i in range(len(stop))]
             start = TinyVector(start)
             stop = TinyVector(stop)
         return start,stop
@@ -73,7 +77,7 @@ class TestOpBaseVigraFilter(unittest.TestCase):
             testArray = vigra.VigraArray((20,)*len(dim),axistags=vigra.VigraArray.defaultAxistags(dim))
             testArray[(slice(2,5,None),)*len(dim)] = 10
             operator.inputs["Input"].setValue(testArray)
-            for i,j in [(i,j) for i,j in itertools.permutations(range(0,10),2) if i<j]:
+            for i,j in [(i,j) for i,j in itertools.permutations(list(range(0,10)),2) if i<j]:
                 start = [i]*len(dim)
                 stop = [j]*len(dim)
                 operator.outputs["Output"](start,stop).wait()
@@ -125,9 +129,9 @@ class TestOpBaseVigraFilter(unittest.TestCase):
                             pass
                         cPerC = op.channelsPerChannel()
                         if cstop%cPerC == 0:
-                            reqCstart,reqCstop = cstart/cPerC,cstop/cPerC
+                            reqCstart,reqCstop = old_div(cstart,cPerC),old_div(cstop,cPerC)
                         else:
-                            reqCstart,reqCstop = cstart/cPerC,cstop/cPerC+1
+                            reqCstart,reqCstop = old_div(cstart,cPerC),old_div(cstop,cPerC)+1
                         resF = numpy.zeros(tuple(resOp.shape[:-1])+((reqCstop-reqCstart)*cPerC,))
                         for j in range(0,tstop-tstart):
                             for i in range(0,reqCstop-reqCstart):
@@ -160,9 +164,9 @@ class TestOpBaseVigraFilter(unittest.TestCase):
                         cPerC = op.channelsPerChannel()
                         
                         if cstop%cPerC == 0:
-                            reqCstart,reqCstop = cstart/cPerC,cstop/cPerC
+                            reqCstart,reqCstop = old_div(cstart,cPerC),old_div(cstop,cPerC)
                         else:
-                            reqCstart,reqCstop = cstart/cPerC,cstop/cPerC+1
+                            reqCstart,reqCstop = old_div(cstart,cPerC),old_div(cstop,cPerC)+1
                         resF = numpy.zeros(tuple(resOp.shape[:-1])+((reqCstop-reqCstart)*cPerC,))
                         for i in range(0,reqCstop-reqCstart):
                             resF[(slice(0,None),)*(len(dim)-1)+(slice(i*cPerC,(i+1)*cPerC),)] = Filter(testArray[(slice(0,None),)*(len(dim)-1)+(i+reqCstart,)],roi=(start,stop))

@@ -1,3 +1,5 @@
+from builtins import range
+from builtins import object
 import numpy as np
 import vigra
 
@@ -11,7 +13,7 @@ import logging
 logger = logging.getLogger( __name__ )
 cacheLogger = logging.getLogger( "lazyflow.operators.opUnblockedArrayCache" )
 
-class KeyMaker():
+class KeyMaker(object):
     def __getitem__(self, *args):
         return list(*args)
 make_key = KeyMaker()

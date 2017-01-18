@@ -1,7 +1,11 @@
 from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
 import os
 import tempfile
-import cPickle as pickle
+import pickle as pickle
 from itertools import starmap
 
 import numpy
@@ -14,7 +18,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 def roi_to_slice(start, stop):
-    return tuple( starmap(slice, zip(start, stop)) )
+    return tuple( starmap(slice, list(zip(start, stop))) )
 
 class VigraRfPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """

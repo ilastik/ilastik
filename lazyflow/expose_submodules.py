@@ -1,3 +1,4 @@
+from builtins import next
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #

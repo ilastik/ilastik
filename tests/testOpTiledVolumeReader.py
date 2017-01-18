@@ -1,3 +1,4 @@
+from builtins import object
 import numpy
 import h5py
 

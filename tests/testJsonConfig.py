@@ -1,3 +1,4 @@
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -50,8 +51,8 @@ class TestJsonConfigNamespace(object):
         n.e = "E"
 
         assert isinstance(n.__dict__, collections.OrderedDict)        
-        assert n.__dict__.keys() == ["a", "b", "c", "d", "e"]
-        assert n.__dict__.values() == ["A", "B", "C", "D", "E"]
+        assert list(n.__dict__.keys()) == ["a", "b", "c", "d", "e"]
+        assert list(n.__dict__.values()) == ["A", "B", "C", "D", "E"]
         assert n.a == "A"
         assert n.b == "B"
         assert n.c == "C"
@@ -168,7 +169,7 @@ class TestJsonConfig(object):
         # Read it back.
         newConfigFields = JsonConfigParser( TestJsonConfig.TestSchema ).parseConfigFile( newConfigFilePath )
         assert newConfigFields == configFields, "Config field content was not preserved after writing/reading"
-        assert configFields.__dict__.items() == configFields.__dict__.items(), "Config field ORDER was not preserved after writing/reading"
+        assert list(configFields.__dict__.items()) == list(configFields.__dict__.items()), "Config field ORDER was not preserved after writing/reading"
 
     @nose.tools.raises( JsonConfigParser.ParsingError )
     def testExceptionIfRepeatedFields(self):

@@ -1,3 +1,5 @@
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -251,7 +253,7 @@ class _Worker(threading.Thread):
         See docstring for _async_raise() for more details.
         """
         assert self.isAlive(), "thread must be started"
-        for tid, tobj in threading._active.items():
+        for tid, tobj in list(threading._active.items()):
             if tobj is self:
                 _Worker._async_raise(tid, excobj)
                 return

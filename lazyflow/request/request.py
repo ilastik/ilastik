@@ -1,4 +1,9 @@
 from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import next
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -29,7 +34,7 @@ import threading
 import multiprocessing
 import platform
 import traceback
-import StringIO
+import io
 from random import randrange
 
 import logging
@@ -79,7 +84,7 @@ def log_exception( logger, msg=None, exc_info=None, level=logging.ERROR ):
     It is better to log exceptions this way instead of merely printing them to the console, 
     so that other logger outputs (such as log files) show the exception, too.
     """
-    sio = StringIO.StringIO()
+    sio = io.StringIO()
     if exc_info:
         traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
     else:

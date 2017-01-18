@@ -1,3 +1,4 @@
+from builtins import zip
 import itertools
 from functools import partial
 import logging
