@@ -411,7 +411,7 @@ class AnnotationsGui(LayerViewerGui):
 
                     addAnnotation = False
                     if len(lowerParent) == 2:
-                        if (crop["time"][0] <= time and time <= crop["time"][1]) and \
+                        if (crop["time"][0] <= time <= crop["time"][1]) and \
                             ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
                             crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1]) and \
                             ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
@@ -420,7 +420,7 @@ class AnnotationsGui(LayerViewerGui):
                             crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1])):
                             addAnnotation = True
                     else:
-                        if (crop["time"][0] <= time and time <= crop["time"][1]) and \
+                        if (crop["time"][0] <= time <= crop["time"][1]) and \
                             ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
                             crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1] and \
                             crop["starts"][2] <= upperParent[2] and lowerParent[2] <= crop["stops"][2]) and \
@@ -453,12 +453,12 @@ class AnnotationsGui(LayerViewerGui):
 
                     addAnnotation = False
                     if len(lower) == 2:
-                        if  crop["time"][0] <= time and time <= crop["time"][1] and \
+                        if  crop["time"][0] <= time <= crop["time"][1] and \
                             crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
                             crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
                             addAnnotation = True
                     else:
-                        if  crop["time"][0] <= time and time <= crop["time"][1] and \
+                        if  crop["time"][0] <= time <= crop["time"][1] and \
                             crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
                             crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
                             crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
