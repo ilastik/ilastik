@@ -58,7 +58,7 @@ def extractVersion(s):
 try:
     from sklearn import __version__ as sklearnVersion
     svcTakesScaleC = extractVersion(sklearnVersion) < 11
-except ImportError, VersionError:
+except (ImportError, VersionError) as _e:
     logger.warning("Could not import dependency 'sklearn' for SVMs")
     havesklearn = False
 else:
