@@ -55,7 +55,7 @@ class Tracer(object):
     >>> traceLogger.setLevel(logging.INFO)
     """
     def __init__(self, logger, level=logging.DEBUG, msg='', determine_caller=True, caller_name=''):
-        if type(logger) == str:
+        if isinstance(logger, basestring):
             self._logger = logging.getLogger(logger)
         else:
             self._logger = logger

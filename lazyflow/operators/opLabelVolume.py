@@ -107,7 +107,7 @@ class OpLabelVolume(Operator):
 
     def setupOutputs(self):
         method = self.Method.value
-        if not isinstance(method, str):
+        if not isinstance(method, basestring):
             method = method[0]
 
         if self._opLabel is not None and type(self._opLabel) != self._labelOps[method]:

@@ -175,12 +175,12 @@ class Slot(object):
             % (self.operator.name, self.name)
         
         # Check for simple mistakes in parameter order...
-        assert isinstance(name, str)
+        assert isinstance(name, basestring)
         assert isinstance(optional, bool)
         
         if not hasattr(self, "_type"):
             self._type = None
-        if type(stype) is str:
+        if isinstance(stype, basestring):
             stype = ArrayLike
         self.partners = []
         self.name = name

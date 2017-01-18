@@ -153,7 +153,7 @@ class MetaDict(defaultdict):
         For numpy dtypes only, return the size of the dtype in bytes.
         """
         dtype = self.dtype
-        if type(dtype) is numpy.dtype:
+        if isinstance(dtype, numpy.dtype):
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype
             dtype = dtype.type        

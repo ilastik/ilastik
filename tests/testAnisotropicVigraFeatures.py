@@ -20,6 +20,7 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+import lazyflow
 from lazyflow.operators.imgFilterOperators import OpGaussianSmoothing
 import vigra
 import numpy

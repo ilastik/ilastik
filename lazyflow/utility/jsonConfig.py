@@ -108,7 +108,7 @@ class AutoEval(object):
 
         if type(x) is self._t:
             return x
-        if type(x) is str or type(x) is str and self._t is not str:
+        if isinstance(x, basestring) and (not isinstance(self._t, type) or not issubclass(self._t, basestring)):
             return self._t(eval(x))
         return self._t(x)
 

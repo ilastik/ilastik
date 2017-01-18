@@ -163,7 +163,7 @@ class OpMetadataMerge(Operator):
 
         # Merge in additional fields, selected from the source connection.
         for key in self.FieldsToClone.value:
-            assert isinstance(key, str), "Metadata field names are expected to be strings"
+            assert isinstance(key, basestring), "Metadata field names are expected to be strings"
             if key in self.MetadataSource.meta:
                 setattr( self.Output.meta, key, self.MetadataSource.meta[key] )
 

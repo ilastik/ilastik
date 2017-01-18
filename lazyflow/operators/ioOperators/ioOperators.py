@@ -343,7 +343,7 @@ class OpStackToH5Writer(Operator):
         numImages = self.opStackLoader.stack.meta.shape[zAxis]
         axistags = self.opStackLoader.stack.meta.axistags
         dtype = self.opStackLoader.stack.meta.dtype
-        if type(dtype) is numpy.dtype:
+        if isinstance(dtype, numpy.dtype):
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype
             dtype = dtype.type
@@ -459,7 +459,7 @@ class OpH5WriterBigDataset(Operator):
         self.logger.info( "Data shape: {}".format(dataShape))
 
         dtype = self.Image.meta.dtype
-        if type(dtype) is numpy.dtype:
+        if isinstance(dtype, numpy.dtype):
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype
             dtype = dtype.type

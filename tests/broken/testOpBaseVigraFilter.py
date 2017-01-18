@@ -46,7 +46,7 @@ class TestOpBaseVigraFilter(unittest.TestCase):
             
     def expandByShape(self,start,stop,shape,inputShape):
         dim = len(start)
-        if type(shape == int):
+        if isinstance(shape, int):
             tmp = shape
             shape = numpy.zeros(dim).astype(int)
             shape[:] = tmp
