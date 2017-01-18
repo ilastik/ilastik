@@ -76,7 +76,7 @@ class OpResize5D( Operator ):
 
         # Map output_roi to input_roi
         output_roi = numpy.array( (output_roi.start, output_roi.stop) )
-        input_roi = output_roi / self._input_to_output_scales
+        input_roi = output_roi // self._input_to_output_scales
 
         # Convert to int (round start down, round stop up)
         input_roi[1] += 0.5

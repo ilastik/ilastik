@@ -217,10 +217,10 @@ class OpHessianOfGaussian(OpBaseVigraFilter):
         return sigma
         
     def resultingChannels(self):
-        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
+        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) // 2
     
     def channelsPerChannel(self):
-        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
+        return self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.Input.meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) // 2
     
 class OpLaplacianOfGaussian(OpBaseVigraFilter):
     inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype = "float")]

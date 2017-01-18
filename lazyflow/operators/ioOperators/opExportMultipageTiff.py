@@ -113,7 +113,7 @@ class OpExportMultipageTiff(Operator):
         self.progressSignal(0)
         pages_written = 0
         while reqs:
-            self.progressSignal( 100*next_request_index / num_pages )
+            self.progressSignal( 100*next_request_index // num_pages )
             req = reqs.popleft()
             slice_data = req.wait()
             slice_data = vigra.taggedView(slice_data, self._export_axes)

@@ -229,7 +229,7 @@ class OpStackWriter(Operator):
             available_ram = psutil.virtual_memory().available
             available_ram *= 0.5
 
-            parallel_requests = int(available_ram / ram_usage_per_slice)
+            parallel_requests = int(available_ram // ram_usage_per_slice)
 
         streamer = BigRequestStreamer( self.Input,
                                        roiFromShape( self.Input.meta.shape ),
@@ -356,7 +356,7 @@ class OpStackToH5Writer(Operator):
         
         # Set up our chunk shape: Aim for a cube that's roughly 300k in size
         dtypeBytes = dtype().nbytes
-        cubeDim = math.pow( 300000 / (numChannels * dtypeBytes), (1/3.0) )
+        cubeDim = math.pow( 300000 // (numChannels * dtypeBytes), (1/3.0) )
         cubeDim = int(cubeDim)
 
         chunkDims = {}
@@ -396,7 +396,7 @@ class OpStackToH5Writer(Operator):
             slicing = [slice(None)] * len(stackTags)
             slicing[zAxis] = slice(z, z+1)
             data[tuple(slicing)] = self.opStackLoader.stack[slicing].wait()
-            self.progressSignal( z*100 / numImages )
+            self.progressSignal( z*100 // numImages )
 
         data.attrs['axistags'] = axistags.toJSON()
 
