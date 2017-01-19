@@ -83,9 +83,11 @@ class OpSeeds(Operator):
         # the crux, where to define the Cache-Data
         self._cache.Input.connect(self.SeedsOut)
 
+        print "Init opSeeds"
 
 
         self.Seeds.notifyMetaChanged(self.onSeedsChanged)
+        #self.Seeds.notifyDirty(self.onSeedsChanged)
 
     def onSeedsChanged(self, x):
         """
@@ -93,6 +95,8 @@ class OpSeeds(Operator):
 
         This signalizes, that the new seeds will be displayed and used as output
         """
+        print "onSeedsChanged"
+
         if not self.Seeds.ready():
             #TODO TODO throughs an AssertionError on closing this programm
             #maybe disconnect the function onSeedsChanged
@@ -143,6 +147,7 @@ class OpSeeds(Operator):
                 result[:] = self.Seeds(roi.start, roi.stop).wait()
             else:
                 pass
+            self.SeedsOut.setDirty()
         else:
             pass
 
@@ -229,63 +234,7 @@ class OpSeeds(Operator):
         # into the region of interest (roi) of the given slot-values
         result[...] = out
 
-    '''
-    #if tUsed and not zUsed
-    def generateSeeds_backup(self, slot, subindex, roi, result):
-        #TODO
-        """
-        used in the execute part of an operator
-        """
 
-        #print "generate Seeds start"
-        #print roi
-        #print self.Boundaries.meta
-
-        # get boundaries
-        boundaries              = self.Boundaries(roi.start, roi.stop).wait()
-        sigma                   = self.SmoothingSigma.value
-        smoothingMethodIndex    = self.SmoothingMethod.value
-        computeMethodIndex      = self.ComputeMethod.value
-
-        print boundaries.shape
-        # TODO cut off the time and channel dimension
-        boundaries              = removeLastAxis(boundaries)
-        boundaries              = removeLastAxis(boundaries)
-
-        #TODO
-        tUsed = True
-        if tUsed:
-            boundaries          = removeFirstAxis(boundaries)
-
-        # Smoothing
-        smoothedBoundaries= self.getAndUseSmoothingMethod(boundaries, smoothingMethodIndex, sigma)
-        
-        # for distance transform: seeds.dtype === uint32 or float? but not uint8
-        smoothedBoundaries  = smoothedBoundaries.astype(numpy.float32)
-
-        # Compute 
-        seeds               = self.getAndUseComputeMethod(smoothedBoundaries, computeMethodIndex, sigma)
-
-        # label the seeds 
-        seeds  = seeds.astype(numpy.uint8)
-
-        # label the seeds 
-        labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(seeds)
-
-        #out = smoothedBoundaries
-        out = labeled_seeds
-
-        #TODO
-        out = addLastAxis(out)
-        out = addLastAxis(out)
-        #TODO
-        if tUsed:
-            out = addFirstAxis(out)
-
-        # write the result into the result array. with result[...] you can write directly 
-        # into the region of interest (roi) of the given slot-values
-        result[...] = out
-    '''
 
     ############################################################
     # setupOutputs helping functions

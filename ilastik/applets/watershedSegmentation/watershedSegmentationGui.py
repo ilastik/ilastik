@@ -23,7 +23,7 @@
 from PyQt4.Qt import pyqtSlot, QMessageBox
 
 from pixelValueDisplaying import PixelValueDisplaying 
-from importAndResetLabels import ImportAndResetLabels 
+#from importAndResetLabels import ImportAndResetLabels 
 from ilastik.applets.watershedLabeling.watershedLabelingGui import WatershedLabelingGui
 
 import logging
@@ -84,65 +84,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.topLevelOperatorView = topLevelOperatorView
         op = self.topLevelOperatorView 
 
-
-
-        ############################################################
-        # BEGIN TODO
-        ############################################################
-        """
-        THIS IS ONLY NECESSARY IF THE SEEDS INPUT FROM DATA SELECTION IS EMPTY
-
-        #here try to propagate the dirty things:
-        so that other slots see, that I changed the the correctedSeedsIn and the labelcache works fine
-
-        Use some things of a workflow: multicut where you can decide whether to have an input or not
-        """
-
-
-        '''
-        #only for debugging
-        op = self.topLevelOperatorView 
-        # Check if all necessary InputSlots are available and ready
-        # and set CorrectedSeedsIn if not supplied
-        lst = [ op.RawData , op.Boundaries , op.Seeds , op.CorrectedSeedsIn ]
-        #show a debug information, so that the user knows that not all data is supplied, that is needed
-        for operator in lst:
-            if not operator.ready():
-                logger.info( "InputData: " + operator.name + " not ready")
-        '''
-
-
-        '''
-        lst_seeds = [ op.Seeds , op.CorrectedSeedsIn ]
-        #lst_seeds = [ op.Seeds , op.CorrectedSeedsIn, op.opLabelPipeline.LabelInput]
-        for operator in lst_seeds:
-            if not operator.ready():
-                self._existingSeedsSlot = False
-                #TODO setting the CorrectedSeedsIn here
-                #if (not op.CorrectedSeedsIn.ready() and op.CorrectedSeedsIn.meta.shape == None ):
-                if op.Boundaries.ready():
-                    # copy the meta-data from boandaries
-                    #default_seeds_volume = op.Boundaries[:].wait()
-                    operator.meta = op.Boundaries.meta
-                    operator._value =  np.zeros(op.Boundaries.meta.shape)
-                    #print op.operator._value
-                else:
-                    logger.info( "Boundaries are not ready," +
-                        "can't init seeds and CorrectedSeedsIn with default zeros" )
-
-        #for debug
-        for operator in lst:
-            if operator.ready():
-                logger.info( "InputData: " + operator.name + " is ready now")
-        '''
-
-        #TODO
-        #op.opLabelPipeline.LabelInput.notifyDirty(op.CorrectedSeedsIn)
-        #op.CorrectedSeedsIn.setDirty()
-
-        ############################################################
-        # END TODO
-        ############################################################
+        #operator._value =  np.zeros(op.Boundaries.meta.shape)
 
         ############################################################
         # BEGIN TODO
@@ -150,12 +92,13 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         ############################################################
         # END TODO
         ############################################################
+
+
+
 
         ############################################################
         # for the Labels
         ############################################################
-
-
         self._LabelPipeline         = op.opWSLP.opLabelPipeline
 
         #init the slots
@@ -179,31 +122,8 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
 
 
-        #if not (op.WSMethod.value == "UnionFind"):
-        #print "\nMethod: '" + op.WSMethod.value + "'\n\n"
-    
-        # init the class to import and reset Labels
-        self.importAndResetLabels = ImportAndResetLabels (
-                op.CorrectedSeedsIn,
-                op.SeedsExist.value,
-                op.UseCachedLabels.value,
-                self._labelControlUi.labelListModel, 
-                self._LabelPipeline.opLabelArray,
-                op.LabelNames, 
-                op.LabelColors, 
-                op.PmapColors
-                )
-        # 1. First import seeds, and connect slot
-        # 2. then look at their pixelValues (including looking at their channels) 
-        #   in pixelValueDisplaying
-        # import the Labels from CorrectedSeedsIn, if possible
-        self.importAndResetLabels.importLabelsFromSlot()
-
-        # use the Cache of the CorrectedSeedsOut for the next Time, the watershed applet will be reloaded
-        op.UseCachedLabels.setValue(True)
-
         # resetSeedsPushButton functionality added by connecting signal with slot
-        self._labelControlUi.resetSeedsPushButton.clicked.connect(self.importAndResetLabels.resetLabelsToSlot)
+        self._labelControlUi.resetSeedsPushButton.clicked.connect(self.onResetSeedsPushButton)
 
 
         # set the functionality of the pixelValue in the gui
@@ -231,23 +151,44 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         # handle the init values and the sync with the operator
         self._initNeighborsComboBox()
 
-        ##########################################################
-        # TODO BEGIN
-        ##########################################################
-
-        ##########################################################
-        # TODO END
-        ##########################################################
 
 
         # notify any change to change settings in the gui
         op.SeedsExist   .notifyMetaChanged(self.onSeedsExistOrWSMethodChanged)
         op.WSMethod     .notifyMetaChanged(self.onSeedsExistOrWSMethodChanged)
+
+
+        # TODO
         # value changed seems to be for cached stuff? 
         # well, it works on notifyMetaChanged. 
         #op.SeedsExist   .notifyValueChanged(self.onSeedsExistOrWSMethodChanged)
         #op.WSMethod     .notifyValueChanged(self.onSeedsExistOrWSMethodChanged)
 
+        # TODO as workaround: on startup here
+        print "init watershedSegmentationGui"
+        op.resetLabelsToSlot()
+
+
+    @pyqtSlot()
+    def onResetSeedsPushButton(self):
+        """
+        import Labels from Slot which overrides the cache
+        """
+        from PyQt4.QtGui import QMessageBox
+        #decision box with yes or no
+        msgBox = QMessageBox()
+        msgBox.setText('Are you sure to delete all progress in Corrected Seeds' 
+                + ' and reset to Seeds?')
+        msgBox.addButton(QMessageBox.Yes)
+        msgBox.addButton(QMessageBox.No)
+        #msgBox.addButton(QPushButton('Yes'), QMessageBox.YesRole)
+        #msgBox.addButton(QPushButton('No'), QMessageBox.NoRole)
+        #msgBox.addButton(QPushButton('Cancel'), QMessageBox.RejectRole)
+        ret = msgBox.exec_()
+
+        if (ret == QMessageBox.Yes):
+            op = self.topLevelOperatorView
+            op.resetLabelsToSlot()
 
 
 
@@ -271,8 +212,13 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         # updating concludes to calculation
         if not op.ShowWatershedLayer.value: 
             op.ShowWatershedLayer.setValue(True)
-            self.updateAllLayers()
 
+        #
+        for layer in self.layerstack:
+            if "Watershed" in layer.name:
+                layer.visible = True
+
+        self.updateAllLayers()
         # execute the watershed algorithm
         #self.topLevelOperatorView.opWSC.execWatershedAlgorithm()
 
@@ -368,7 +314,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         #self._labelControlUi.runWatershedPushButton.setEnabled(enable)
         self._labelControlUi.brushSizeComboBox.setEnabled(enable)
-        self._labelControlUi.neighborsComboBox.setEnabled(enable)
+        #self._labelControlUi.neighborsComboBox.setEnabled(enable)
         self._labelControlUi.resetSeedsPushButton.setEnabled(enable)
         self._labelControlUi.pixelValueCheckBox.setEnabled(enable)
 

@@ -99,6 +99,7 @@ class SeedsGui(LayerViewerGui):
         op.GenerateSeeds.setValue(True)
 
         self.configure_operator_from_gui()
+        # make the wanted layer visible to ask for this roi
         for layer in self.layerstack:
             if "Seeds" in layer.name:
                 layer.visible = True
@@ -288,125 +289,6 @@ class SeedsGui(LayerViewerGui):
             op.SmoothingMethod.setValue( self._drawer.smoothingComboBox.currentIndex() )
             op.SmoothingSigma.setValue( self._drawer.smoothingDoubleSpinBox.value() )
             op.ComputeMethod.setValue( self._drawer.computeComboBox.currentIndex() )
-
-
-
-
-
-
-
-    ############################################################
-    # depricated
-    ############################################################
-
-    def assignSlotToLayer_depricated(self, toSlot, fromSlotMeta, array): 
-        #TODO conversion to uint8 is ok?
-        # conversion
-        array           = array.astype(numpy.uint8)
-        array           = addChannelAxis(array)
-        # output sets
-        toSlot.meta.assignFrom(fromSlotMeta.meta)
-        #only one channel as output
-        toSlot.meta.shape = fromSlotMeta.meta.shape[:-1] + (1,)
-        toSlot.meta.drange = (0,255)
-        toSlot.setValue(array)
-
-
-
-
-    def generateSeeds_depricated(self):
-        print "generate Seeds start"
-        op = self.topLevelOperatorView 
-
-        # get boundaries
-        boundaries      = getArray(op.Boundaries)
-        #boundaries     = boundaries.astype(np.float32)
-        #sigma           = op.SmoothingSigma.value
-
-        #cut off the channel dimension
-        boundaries      = removeChannelAxis(boundaries)
-
-
-        # Smoothing
-        smoothedBoundaries  = self.getAndUseSmoothingMethod(boundaries)
-
-        # for distance transform: seeds.dtype === uint32 or float? but not uint8
-        smoothedBoundaries  = smoothedBoundaries.astype(numpy.float32)
-
-
-        # Compute here: distance transform
-        #seeds           = vigra.filters.distanceTransform(seeds)
-        seeds               = self.getAndUseComputeMethod(smoothedBoundaries)
-
-        # label the seeds 
-        # TODO TODO TODO label array depending on slicing or not Depends on Execute, etc, so don't do it here
-        seeds  = seeds.astype(numpy.uint8)
-        labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(seeds)
-
-
-        #self.assignSlotToLayer(op.GeneratedSeeds, op.Boundaries, labeled_seeds)
-        #self.assignSlotToLayer(op.GeneratedSeeds, op.Boundaries, seeds)
-
-        # refresh the layers
-        #self.updateAllLayers()
-
-
-        print "generate Seeds end"
-
-    def slicedMinOrMax(self, boundaries, tAxis, function, marker=1):
-        # not used anymore, because only one t or all, with execute
-        #TODO docu
-        """
-        uses Maxima for the main algorithm execution
-        but slices the data for it, so that that algorithm can be used easily
-
-        :param boundaries: the array, that contains the boundaries data
-        :param seeds: the array, that contains the seeds data
-        :param tAxis: the dimension number of the time axis
-        :return: labelImageArray: the concatenated watershed result of all slices 
-        """
-
-            
-        labelImageArray = np.ndarray(shape=boundaries.shape, dtype=boundaries.dtype)
-        for i in range(boundaries.shape[tAxis]):
-            # iterate over the axis of the time
-            boundariesSlice  = boundaries.take( i, axis=tAxis)
-
-            labelImage           = function(boundariesSlice, marker=marker)
-
-            # write in the correct column of the output array, 
-            # because the dimensions must fit
-            if (tAxis == 0):
-                labelImageArray[i] = labelImage
-            elif (tAxis == 1):
-                labelImageArray[:,i] = labelImage
-            elif (tAxis == 2):
-                labelImageArray[:,:,i] = labelImage
-            elif (tAxis == 3):
-                labelImageArray[:,:,:,i] = labelImage
-        return labelImageArray
-
-    def MinOrMax_depricated(self, boundaries, functionName="Minimum", tUsed=False, tAxis=0):
-        #TODO docu
-        diff = 0
-        if tUsed:
-            diff = 1
-        if functionName == "Minimum":
-            if (boundaries.ndim - diff == 2):
-                function = vigra.analysis.extendedLocalMinima
-            else:
-                function = vigra.analysis.extendedLocalMinima3D
-        else:
-            if (boundaries.ndim - diff == 2):
-                function = vigra.analysis.extendedLocalMaxima
-            else:
-                function = vigra.analysis.extendedLocalMaxima3D
-
-        marker = 1
-        if tUsed:
-            return self.slicedMinOrMax(boundaries, tAxis, function=function, marker=marker)
-        else:
-            return function(boundaries, marker=marker)
 
 
 

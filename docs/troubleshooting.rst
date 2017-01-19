@@ -73,3 +73,17 @@ Troubleshooting
             def setupOutputs(self):
                 self.Output.meta.dtype = np.uint8 # or uint32, or float32, just what fits to the cache
 
+* When you receive an error message on closing the project like this:
+
+        .. code::
+
+                    raise Slot.SlotNotReadyError(slotInfoMsg)
+                    SlotNotReadyError:
+
+        Then you should try to make a new project, 
+        because some functions could be corrupt and functions are used, that aren't existing any more. 
+
+
+
+
+

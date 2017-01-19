@@ -1,3 +1,37 @@
+#######################################################
+#######################################################
+#######################################################
+
+#               THIS FILE IS NOT USED ANYMORE
+
+#######################################################
+#######################################################
+#######################################################
+#######################################################
+
+'''
+# in watershedSegmentationGui
+# init the class to import and reset Labels
+self.importAndResetLabels = ImportAndResetLabels (
+        op.CorrectedSeedsIn,
+        op.SeedsExist.value,
+        op.UseCachedLabels.value,
+        self._labelControlUi.labelListModel, 
+        self._LabelPipeline.opLabelArray,
+        op.LabelNames, 
+        op.LabelColors, 
+        op.PmapColors
+        )
+# 1. First import seeds, and connect slot
+# 2. then look at their pixelValues (including looking at their channels) 
+#   in pixelValueDisplaying
+# import the Labels from CorrectedSeedsIn, if possible
+self.importAndResetLabels.importLabelsFromSlot()
+
+# use the Cache of the CorrectedSeedsOut for the next Time, the watershed applet will be reloaded
+op.UseCachedLabels.setValue(True)
+'''
+
 import numpy as np
 import volumina.colortables as colortables
 from PyQt4.Qt import pyqtSlot

@@ -47,6 +47,7 @@ def getArray(slot):
 
 
 def evaluateSlicing(slot):
+    #TODO not used anymore, depricated
     """
     check whether the channel is the last axis
     check whether the time axis is used or not

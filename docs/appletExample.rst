@@ -158,4 +158,9 @@ To supply the WatershedLabelingGui with a LabelListModel that displays the value
 
 .. TODO explain more about the classes of LabelModelList 
 
-
+..    #TODO in doku fuer nutzung aufnehmen
+        # in ws applet
+    #seeds muessen 1, 2, 3 sein, also kann man auch 120 180, etc verwenden, 
+    #rest aussen rum muss schwarz=0 sein
+    #bei den membranen: die membrane selbst muessen 255 sein und der rest 0=schwarz
+    #help(vigra.analysis.watershedsNew)

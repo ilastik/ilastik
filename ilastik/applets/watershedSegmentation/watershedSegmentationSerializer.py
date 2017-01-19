@@ -70,7 +70,7 @@ class WatershedSegmentationSerializer(AppletSerializer):
                     shrink_to_bb=True),
                 # used to remember to show the watershed result layer 
                 SerialSlot(operator.ShowWatershedLayer), 
-                SerialSlot(operator.UseCachedLabels), 
+                #SerialSlot(operator.UseCachedLabels), 
 
                 # serialize the output of the watershed algorithm, 
                 # so it won't be lost after restarting the project
