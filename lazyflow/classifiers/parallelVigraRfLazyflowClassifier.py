@@ -239,7 +239,6 @@ def generate_importance_table(named_importances_dict, sort=None, export_path=Non
     export_path: If provided, the table will also be (over)written to the given file path.
     """
     import csv
-    from io import StringIO
 
     CSV_FORMAT = { 'delimiter' : ',', 'lineterminator' : '\n' }
 
@@ -252,7 +251,13 @@ def generate_importance_table(named_importances_dict, sort=None, export_path=Non
     columns += [ "   Overall" ]
     columns += [ "      Gini" ]
     
-    output = StringIO()
+    import sys
+    import io
+    if sys.version_info.major == 2:
+        output = io.BytesIO()
+    else:
+        output = io.StringIO()
+        
     csv_writer = csv.writer(output, **CSV_FORMAT)
     csv_writer.writerow( columns )
 

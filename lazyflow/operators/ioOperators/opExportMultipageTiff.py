@@ -25,7 +25,7 @@ from future import standard_library
 standard_library.install_aliases()
 from builtins import zip
 from builtins import next
-from builtins import str
+#from builtins import str
 from builtins import range
 import os
 import collections
@@ -214,8 +214,13 @@ class OpExportMultipageTiff(Operator):
             uuid_tag.set('FileName', filename)
 
         from textwrap import dedent
-        from io import StringIO
-        xml_stream = StringIO()
+        import sys
+        import io
+        if sys.version_info.major == 2:
+            xml_stream = io.BytesIO()
+        else:
+            xml_stream = io.StringIO()
+
         comment = ET.Comment(
             ' Warning: this comment is an OME-XML metadata block, which contains crucial '
             'dimensional parameters and other important metadata. Please edit cautiously '

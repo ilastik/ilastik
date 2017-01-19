@@ -1,6 +1,5 @@
 from future import standard_library
 standard_library.install_aliases()
-from builtins import str
 from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -122,8 +121,12 @@ class OperatorMetaClass(ABCMeta):
             err += str(e)
             err += "\nTraceback:\n"
             import traceback
+            import sys
             import io
-            s = io.StringIO()
+            if sys.version_info.major == 2:
+                s = io.BytesIO()
+            else:
+                s = io.StringIO()
             traceback.print_exc(file=s)
             err += s.getvalue()
             raise RuntimeError(err)

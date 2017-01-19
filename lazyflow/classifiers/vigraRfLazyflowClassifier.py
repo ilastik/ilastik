@@ -65,7 +65,6 @@ class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
         but also with extra spaces for pretty-printing.
         """
         import csv
-        from io import StringIO
         CSV_FORMAT = { 'delimiter' : '\t', 'lineterminator' : '\n' }
 
         feature_name_length = max( list(map(len, list(named_importances_dict.keys()))) )
@@ -77,7 +76,12 @@ class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
         columns += [ "   Overall" ]
         columns += [ "      Gini" ]
         
-        output = StringIO()
+        import sys
+        import io
+        if sys.version_info.major == 2:
+            output = io.BytesIO()
+        else:
+            output = io.StringIO()
         csv_writer = csv.writer(output, **CSV_FORMAT)
         csv_writer.writerow( columns )
 
