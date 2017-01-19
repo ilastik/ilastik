@@ -27,10 +27,11 @@ except ImportError:
     pass
 
 from . import utility
+from . import request
+from . import classifiers
 from . import roi
 from . import rtype
 from . import stype
-from . import operators
-from . import request
 from . import graph
 from . import slot
+from . import operators
