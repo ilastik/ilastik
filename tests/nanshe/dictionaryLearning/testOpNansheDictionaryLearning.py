@@ -20,6 +20,7 @@ from __future__ import print_function
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+from builtins import range
 import numpy
 
 import vigra
@@ -81,10 +82,10 @@ class TestOpNansheDictionaryLearning(object):
 
         assert((g.astype(bool).max(axis = 0) == d.astype(bool).max(axis = 0)).all())
 
-        unmatched_g = range(len(g))
+        unmatched_g = list(range(len(g)))
         matched = dict()
 
-        for i in xrange(len(d)):
+        for i in range(len(d)):
             new_unmatched_g = []
             for j in unmatched_g:
                 if not (d[i] == g[j]).all():

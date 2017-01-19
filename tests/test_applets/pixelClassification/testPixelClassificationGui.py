@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import hex
+from builtins import range
 import os
 import sys
 import tempfile

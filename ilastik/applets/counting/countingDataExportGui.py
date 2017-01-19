@@ -19,6 +19,7 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import str
 import os
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox, QFileDialog

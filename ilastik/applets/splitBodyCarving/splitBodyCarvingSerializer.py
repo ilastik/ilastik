@@ -19,6 +19,7 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 from ilastik.applets.base.appletSerializer import getOrCreateGroup, deleteIfPresent
 from ilastik.workflows.carving.carvingSerializer import CarvingSerializer
 from .opSplitBodyCarving import OpSplitBodyCarving

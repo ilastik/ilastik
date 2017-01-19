@@ -1,3 +1,4 @@
+from builtins import zip
 import vigra
 from vigra import graphs as vgraph
 #from vigra import ilastiktools

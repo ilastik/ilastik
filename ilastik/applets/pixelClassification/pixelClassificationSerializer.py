@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import numpy
 import vigra
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot
@@ -68,7 +69,7 @@ class PixelClassificationSerializer(AppletSerializer):
             all_labels = set()
             for image_index, group in enumerate(topGroup['LabelSets'].values()):
                 # For each label block
-                for block in group.values():
+                for block in list(group.values()):
                     data = block[:]
                     all_labels.update( vigra.analysis.unique(data) )
 

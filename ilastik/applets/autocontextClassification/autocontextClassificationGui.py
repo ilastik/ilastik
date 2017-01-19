@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,6 +20,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
+from past.utils import old_div
 import os
 import logging
 import warnings
@@ -387,7 +389,7 @@ class AutocontextClassificationGui(LabelingGui):
 
     def onLabelNameChanged(self):
         super( AutocontextClassificationGui, self ).onLabelNameChanged()
-        labelNames = map( lambda l: l.name, self.labelListData )
+        labelNames = [l.name for l in self.labelListData]
         self.topLevelOperatorView.LabelNames.setValue( labelNames )
 
     def getNextLabelColor(self):
@@ -400,7 +402,7 @@ class AutocontextClassificationGui(LabelingGui):
 
     def onLabelColorChanged(self):
         super( AutocontextClassificationGui, self ).onLabelColorChanged()
-        labelColors = map( lambda l: (l.color.red(), l.color.green(), l.color.blue()), self.labelListData )
+        labelColors = [(l.color.red(), l.color.green(), l.color.blue()) for l in self.labelListData]
         self.topLevelOperatorView.LabelColors.setValue( labelColors )
 
     def _update_rendering(self):
@@ -412,7 +414,7 @@ class AutocontextClassificationGui(LabelingGui):
             self._renderMgr.setup(shape)
 
         layernames = set(layer.name for layer in self.layerstack)
-        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.iteritems()
+        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.items()
                                 if k in layernames)
 
         newvolume = numpy.zeros(shape, dtype=numpy.uint8)
@@ -437,5 +439,5 @@ class AutocontextClassificationGui(LabelingGui):
             except KeyError:
                 continue
             color = layer.tintColor
-            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+            color = (old_div(color.red(), 255.0), old_div(color.green(), 255.0), old_div(color.blue(), 255.0))
             self._renderMgr.setColor(label, color)

@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from builtins import range
 import sys
 import warnings
 import tempfile

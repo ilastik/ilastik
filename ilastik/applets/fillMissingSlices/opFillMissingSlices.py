@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import map
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpInterpMissingData, OpBlockedArrayCache
 from lazyflow.stype import Opaque
@@ -106,8 +107,8 @@ class OpFillMissingSlices(OpFillMissingSlicesNoCache):
 
     def setupOutputs(self):
         blockdims = {'t': 1, 'x': 256, 'y': 256, 'z': 100, 'c': 1}
-        blockshape = map(
-            blockdims.get, self.Input.meta.getTaggedShape().keys())
+        blockshape = list(map(
+            blockdims.get, list(self.Input.meta.getTaggedShape().keys())))
         self._opCache.innerBlockShape.setValue(tuple(blockshape))
         self._opCache.outerBlockShape.setValue(tuple(blockshape))
 

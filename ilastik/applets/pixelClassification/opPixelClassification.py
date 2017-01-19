@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
+from builtins import range
 import copy
 from functools import partial
 
@@ -227,7 +228,7 @@ class OpPixelClassification( Operator ):
 
         # All input multi-slots should be kept in sync
         # Output multi-slots will auto-sync via the graph
-        multiInputs = filter( lambda s: s.level >= 1, self.inputs.values() )
+        multiInputs = [s for s in list(self.inputs.values()) if s.level >= 1]
         for s1 in multiInputs:
             for s2 in multiInputs:
                 if s1 != s2:
@@ -333,8 +334,7 @@ class OpPixelClassification( Operator ):
         old_names = self.LabelNames.value
         old_max = len(old_names)
         if new_max > old_max:
-            new_names = old_names + map( lambda x: "Label {}".format(x), 
-                                         range(old_max+1, new_max+1) )
+            new_names = old_names + ["Label {}".format(x) for x in range(old_max+1, new_max+1)]
             self.LabelNames.setValue(new_names)
 
             # Make some default colors, too
@@ -392,7 +392,7 @@ class OpLabelPipeline( Operator ):
             tagged_shape['t'] = 1
         
         # Aim for blocks that are roughly 1MB
-        block_shape = determineBlockShape( tagged_shape.values(), 20**3 )
+        block_shape = determineBlockShape( list(tagged_shape.values()), 20**3 )
         self.opLabelArray.blockShape.setValue( block_shape )
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -638,7 +638,7 @@ class OpEnsembleMargin(Operator):
 
         # Subtract the highest channel from the second-highest channel.
         res = pmap.bindAxis('c', -1) - pmap.bindAxis('c', -2)
-        res = res.withAxes( *taggedShape.keys() ).view(numpy.ndarray)
+        res = res.withAxes( *list(taggedShape.keys()) ).view(numpy.ndarray)
         
         # Subtract from 1 to make this an "uncertainty" measure, not a "certainty" measure
         # e.g. predictions of .99 and .01 -> low uncertainty (0.98)

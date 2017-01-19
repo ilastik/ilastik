@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 from ilastik.config import cfg
 
 from yapsy.IPlugin import IPlugin
@@ -109,12 +110,12 @@ class ObjectFeaturesPlugin(IPlugin):
 
     @staticmethod
     def combine_dicts(ds):
-        return dict(sum((d.items() for d in ds), []))
+        return dict(sum((list(d.items()) for d in ds), []))
 
     @staticmethod
     def combine_dicts_with_numpy(ds):
         #stack arrays which correspond to the same keys
-        keys = ds[0].keys()
+        keys = list(ds[0].keys())
         result = {}
         for key in keys:
             arrays = [d[key] for d in ds]
@@ -129,7 +130,7 @@ class ObjectFeaturesPlugin(IPlugin):
             prefix = ''
         if suffix is None:
             suffix = ''
-        return dict((prefix + k + suffix, v) for k, v in d.items())
+        return dict((prefix + k + suffix, v) for k, v in list(d.items()))
 
     def do_channels(self, fn, image, axes, **kwargs):
         """Helper for features that only take one channel.

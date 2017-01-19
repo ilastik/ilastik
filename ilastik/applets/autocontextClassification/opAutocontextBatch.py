@@ -20,6 +20,7 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators import OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \

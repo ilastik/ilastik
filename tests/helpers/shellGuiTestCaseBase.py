@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,6 +20,8 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
+from past.utils import old_div
 import sys
 import nose
 import threading
@@ -211,13 +214,13 @@ class ShellGuiTestCaseBase(object):
 
         point = QPoint(*coordinates)
         if relativeToCenter:
-            centerPoint = imgView.rect().bottomRight() / 2
+            centerPoint = old_div(imgView.rect().bottomRight(), 2)
             point += centerPoint
 
         return img.pixel(point)
 
     def moveMouseFromCenter(self, imgView, coords ,modifier =Qt.NoModifier ):
-        centerPoint = imgView.rect().bottomRight() / 2
+        centerPoint = old_div(imgView.rect().bottomRight(), 2)
         point = QPoint(*coords) + centerPoint
         move = QMouseEvent( QEvent.MouseMove, point, Qt.NoButton, Qt.NoButton, modifier  )
         QApplication.sendEvent(imgView, move )
@@ -232,7 +235,7 @@ class ShellGuiTestCaseBase(object):
 
 
 
-        centerPoint = imgView.rect().bottomRight() / 2
+        centerPoint = old_div(imgView.rect().bottomRight(), 2)
 
         startPoint = QPoint(*start) + centerPoint
         endPoint = QPoint(*end) + centerPoint
@@ -251,7 +254,7 @@ class ShellGuiTestCaseBase(object):
         # Move to end in several steps
         #numSteps = numSteps
         for i in range(numSteps):
-            nextPoint = startPoint + (endPoint - startPoint) * ( float(i) / numSteps )
+            nextPoint = startPoint + (endPoint - startPoint) * ( old_div(float(i), numSteps) )
             move = QMouseEvent( QEvent.MouseMove, nextPoint, Qt.NoButton, Qt.NoButton, modifier )
             QApplication.sendEvent(imgView.viewport(), move )
 

@@ -14,5 +14,5 @@ if len(sys.argv) < 2 or sys.argv[1][-4:] != ".ilp":
 project_path = sys.argv[1]
 
 with h5py.File(project_path, 'r') as project_file:
-    for i, name in enumerate(project_file['carving/objects'].keys(), start=1):
+    for i, name in enumerate(list(project_file['carving/objects'].keys()), start=1):
         print(i, ":", name)

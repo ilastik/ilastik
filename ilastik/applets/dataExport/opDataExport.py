@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import zip
 import os
 import collections
 import numpy
@@ -196,14 +197,14 @@ class OpDataExport(Operator):
         try:
             rawInfo = self.RawDatasetInfo.value
         except:
-            for oslot in self.outputs.values():
+            for oslot in list(self.outputs.values()):
                 if oslot.partner is None:
                     oslot.meta.NOTREADY = True
             return
 
         selection_index = self.InputSelection.value
         if not self.Inputs[selection_index].ready():
-            for oslot in self.outputs.values():
+            for oslot in list(self.outputs.values()):
                 if oslot.partner is None:
                     oslot.meta.NOTREADY = True
             return
@@ -295,16 +296,16 @@ class OpRawSubRegionHelper(Operator):
     def setupOutputs(self):
         tagged_shape = self.RawImage.meta.getTaggedShape()
         if self.ExportStart.ready():
-            tagged_start = collections.OrderedDict( zip( self.RawImage.meta.getAxisKeys(), self.ExportStart.value ) )
+            tagged_start = collections.OrderedDict( list(zip( self.RawImage.meta.getAxisKeys(), self.ExportStart.value )) )
             tagged_start['c'] = 0
-            self.RawStart.setValue( tagged_start.values() )
+            self.RawStart.setValue( list(tagged_start.values()) )
         else:
             self.RawStart.meta.NOTREADY = True
             
         if self.ExportStop.ready():
-            tagged_stop = collections.OrderedDict( zip( self.RawImage.meta.getAxisKeys(), self.ExportStop.value ) )
+            tagged_stop = collections.OrderedDict( list(zip( self.RawImage.meta.getAxisKeys(), self.ExportStop.value )) )
             tagged_stop['c'] = tagged_shape['c']
-            self.RawStop.setValue( tagged_stop.values() )
+            self.RawStop.setValue( list(tagged_stop.values()) )
         else:
             self.RawStop.meta.NOTREADY = True
 

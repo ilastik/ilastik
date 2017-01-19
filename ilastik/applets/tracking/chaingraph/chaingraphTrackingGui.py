@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import str
+from builtins import range
 from PyQt5 import uic
 import os
 
@@ -44,21 +46,21 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
             raise Exception("Parameter slot is not ready")
         
         parameters = self.topLevelOperatorView.Parameters.value        
-        if 'appearance' in parameters.keys():
+        if 'appearance' in list(parameters.keys()):
             self._drawer.appSpinBox.setValue(parameters['appearance'])
-        if 'disappearance' in parameters.keys():
+        if 'disappearance' in list(parameters.keys()):
             self._drawer.disSpinBox.setValue(parameters['disappearance'])
-        if 'opportunity' in parameters.keys():
+        if 'opportunity' in list(parameters.keys()):
             self._drawer.oppSpinBox.setValue(parameters['opportunity'])
-        if 'noiserate' in parameters.keys():
+        if 'noiserate' in list(parameters.keys()):
             self._drawer.noiseRateSpinBox.setValue(parameters['noiserate'])
-        if 'noiseweight' in parameters.keys():
+        if 'noiseweight' in list(parameters.keys()):
             self._drawer.noiseWeightSpinBox.setValue(parameters['noiseweight'])
-        if 'epgap' in parameters.keys():
+        if 'epgap' in list(parameters.keys()):
             self._drawer.epGapSpinBox.setValue(parameters['epgap'])
-        if 'with_divisions' in parameters.keys():
+        if 'with_divisions' in list(parameters.keys()):
             self._drawer.withDivisionsBox.setChecked(parameters['with_divisions'])
-        if 'cplex_timeout' in parameters.keys():
+        if 'cplex_timeout' in list(parameters.keys()):
             self._drawer.timeoutBox.setText(str(parameters['cplex_timeout']))
         
         return self._drawer
@@ -110,7 +112,7 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
             
             try:
                 self.mainOperator.track(
-                            time_range = range(from_t, to_t + 1),
+                            time_range = list(range(from_t, to_t + 1)),
                             x_range = (from_x, to_x + 1),
                             y_range = (from_y, to_y + 1),
                             z_range = (from_z, to_z + 1),

@@ -103,8 +103,8 @@ class OpCachedWsdt(Operator):
 
     def __init__(self, *args, **kwargs):
         super( OpCachedWsdt, self ).__init__(*args, **kwargs)
-        my_slot_names = set(map(lambda slot: slot.name, self.inputSlots + self.outputSlots))
-        wsdt_slot_names = set(map(lambda slot: slot.name, OpWsdt.inputSlots + OpWsdt.outputSlots))
+        my_slot_names = set([slot.name for slot in self.inputSlots + self.outputSlots])
+        wsdt_slot_names = set([slot.name for slot in OpWsdt.inputSlots + OpWsdt.outputSlots])
         assert wsdt_slot_names.issubset(my_slot_names), \
             "OpCachedWsdt should have all of the slots that OpWsdt has (and maybe more). "\
             "Did you add a slot to OpWsdt and forget to add it to OpCachedWsdt?"

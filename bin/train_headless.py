@@ -30,6 +30,8 @@ Note: This script does not make any attempt to be efficient with RAM usage.
       train with must be significantly smaller than the available RAM on your machine.
 """
 from __future__ import print_function
+from builtins import map
+from builtins import range
 import os
 
 def main():
@@ -203,7 +205,7 @@ def generate_trained_project_file( new_project_path,
         opPixelClassification.LabelInputs[lane][entire_volume_slicing] = label_volume
 
     assert max_label_class > 1, "Not enough label classes were found in your label data."
-    label_names = map(str, range(max_label_class))
+    label_names = list(map(str, list(range(max_label_class))))
     opPixelClassification.LabelNames.setValue(label_names)
     
     ##

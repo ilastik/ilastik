@@ -20,14 +20,14 @@
 ###############################################################################
 from ilastik.utility.simpleSignal import SimpleSignal
 from abc import ABCMeta, abstractproperty, abstractmethod
+from future.utils import with_metaclass
 
-class Applet( object ):
+class Applet( with_metaclass(ABCMeta, object) ):
     """
     Base class for all applets.  The shell and workflow depend on this interface only.
     Applets can subclass from this class directly, but in most cases it is easier to 
     subclass :py:class:`StandardApplet<ilastik.applets.base.standardApplet.StandardApplet>`.
     """
-    __metaclass__ = ABCMeta # Force subclasses to override abstract methods and properties
 
     _base_initialized = False
 

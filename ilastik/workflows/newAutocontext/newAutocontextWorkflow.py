@@ -18,6 +18,10 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+from builtins import zip
+from builtins import map
+from builtins import str
+from builtins import range
 import sys
 import copy
 import argparse
@@ -120,8 +124,8 @@ class NewAutocontextWorkflowBase(Workflow):
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
 
         self.EXPORT_NAMES = []
-        for stage_index in reversed(range(n_stages)):
-            self.EXPORT_NAMES += map(lambda name: "{} Stage {}".format( name, stage_index+1 ), self.EXPORT_NAMES_PER_STAGE)
+        for stage_index in reversed(list(range(n_stages))):
+            self.EXPORT_NAMES += ["{} Stage {}".format( name, stage_index+1 ) for name in self.EXPORT_NAMES_PER_STAGE]
         
         # And finally, one last item for *all* probabilities from all stages.
         self.EXPORT_NAMES += ["Probabilities All Stages"]
@@ -129,7 +133,7 @@ class NewAutocontextWorkflowBase(Workflow):
 
         # Expose for shell
         self._applets.append(self.dataSelectionApplet)
-        self._applets += itertools.chain(*zip(self.featureSelectionApplets, self.pcApplets))
+        self._applets += itertools.chain(*list(zip(self.featureSelectionApplets, self.pcApplets)))
         self._applets.append(self.dataExportApplet)
         
         self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
@@ -546,7 +550,7 @@ class NewAutocontextWorkflowBase(Workflow):
                     opPcLane.opLabelPipeline.opLabelArray.clearLabel(label_value)
 
             # Now redistribute those labels across all lanes
-            for block_roi, block_labels in blockwise_labels.items():
+            for block_roi, block_labels in list(blockwise_labels.items()):
                 nonzero_coords = block_labels.nonzero()
 
                 if partition:

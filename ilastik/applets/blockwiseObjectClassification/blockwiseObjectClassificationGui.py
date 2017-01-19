@@ -66,7 +66,7 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
                                 'z' : self._drawer.haloSpinBox_Z }
 
         for spinBoxes in ( self._blockSpinBoxes, self._haloSpinBoxes ):
-            for spinBox in spinBoxes.values():
+            for spinBox in list(spinBoxes.values()):
                 # Any time a spinbox changes, enable the "Apply" button.
                 spinBox.valueChanged.connect( partial( self._drawer.applyButton.setEnabled, True ) )
                 
@@ -117,7 +117,7 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
         """
         If the user pressed 'enter' within a spinbox, auto-click the "apply" button.
         """
-        if watched in self._blockSpinBoxes.values() or self._haloSpinBoxes.values():
+        if watched in list(self._blockSpinBoxes.values()) or list(self._haloSpinBoxes.values()):
             if  event.type() == QEvent.KeyPress and\
               ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
                 self._drawer.applyButton.click()
@@ -147,11 +147,11 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
     @threadRouted
     def _updateGuiFromOperator(self, *args):
         blockShapeDict = self.topLevelOperatorView.BlockShape3dDict.value
-        for axiskey, spinBox in self._blockSpinBoxes.items():
+        for axiskey, spinBox in list(self._blockSpinBoxes.items()):
             spinBox.setValue( blockShapeDict[axiskey] )
 
         haloPaddingDict = self.topLevelOperatorView.HaloPadding3dDict.value
-        for axiskey, spinBox in self._haloSpinBoxes.items():
+        for axiskey, spinBox in list(self._haloSpinBoxes.items()):
             spinBox.setValue( haloPaddingDict[axiskey] )
 
     def _createDefault16ColorColorTable(self):

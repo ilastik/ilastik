@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+from builtins import zip
+from builtins import map
 import numpy as np
 import vigra
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, SerialClassifierSlot
@@ -75,8 +77,8 @@ class SerialEdgeLabelsDictSlot(SerialSlot):
         for lane_index, slot in enumerate(multislot):
             edge_labels_dict = slot.value
             if edge_labels_dict:
-                sp_ids = np.array(edge_labels_dict.keys())
-                labels = np.array(edge_labels_dict.values())
+                sp_ids = np.array(list(edge_labels_dict.keys()))
+                labels = np.array(list(edge_labels_dict.values()))
             else:
                 sp_ids = np.ndarray( (0,2), dtype=np.uint32 )
                 labels = np.ndarray( (0,), dtype=np.uint8 )
@@ -89,7 +91,7 @@ class SerialEdgeLabelsDictSlot(SerialSlot):
         for lane_index, (_dict_groupname, dict_group) in enumerate(sorted(multislot_group.items())):
             sp_ids = dict_group['sp_ids'][:,:]
             labels = dict_group['labels'][:]
-            edge_labels_dict = dict( zip(map(tuple, sp_ids), labels) )
+            edge_labels_dict = dict( list(zip(list(map(tuple, sp_ids)), labels)) )
             slot[lane_index].setValue( edge_labels_dict )
 
 class SerialCachedDataFrameSlot(SerialSlot):
@@ -140,10 +142,10 @@ class SerialCachedDataFrameSlot(SerialSlot):
             # Pair stored indexes with their keys,
             # e.g. [(0,'0'), (2, '2'), (3, '3')]
             # Note that in some cases an index might be intentionally skipped.
-            indexes_to_keys = { int(k) : k for k in subgroup.keys() }
+            indexes_to_keys = { int(k) : k for k in list(subgroup.keys()) }
             
             # Ensure the slot is at least big enough to deserialize into.
-            max_index = max( [0] + indexes_to_keys.keys() )
+            max_index = max( [0] + list(indexes_to_keys.keys()) )
             if len(slot) < max_index+1:
                 slot.resize(max_index+1)
 

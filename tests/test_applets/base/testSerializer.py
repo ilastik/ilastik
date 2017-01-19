@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import zip
+from builtins import filter
 import os
 import h5py
 import numpy
@@ -181,7 +183,7 @@ class TestSerializer(unittest.TestCase):
         # If the multi-slot started with MORE subslots than were stored in the project file,
         #  the extra subslots are NOT removed.  Instead, they are simply disconnected.
         # Verify that the the number of ready() slots matches the number we attempted to save.
-        ready_subslots = filter(Slot.ready, mss.slot)
+        ready_subslots = list(filter(Slot.ready, mss.slot))
         self.assertEquals(len(ready_subslots), len(values))
 
         self.assertFalse(mss.dirty)

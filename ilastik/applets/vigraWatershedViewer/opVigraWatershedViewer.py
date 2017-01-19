@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,6 +20,7 @@ from __future__ import print_function
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from past.utils import old_div
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpMultiArrayMerger, OpPixelOperator
@@ -95,7 +97,7 @@ class OpVigraWatershedViewer(Operator):
             if len(arrays) == 0:
                 return 0
             else:
-                return sum(arrays) / float(len(arrays))
+                return old_div(sum(arrays), float(len(arrays)))
         self.opAverage.MergingFunction.setValue( average )
         self.opAverage.Inputs.connect( self.opChannelSlicer.Slices )
 

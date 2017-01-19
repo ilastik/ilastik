@@ -20,6 +20,7 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 
+from builtins import str
 import logging
 logger = logging.getLogger(__name__)
 

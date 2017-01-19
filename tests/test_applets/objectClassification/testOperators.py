@@ -19,6 +19,7 @@ from __future__ import print_function
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 
@@ -270,7 +271,7 @@ class TestFeatureSelection(unittest.TestCase):
 
         assert len(feats)==rawimg.shape[0]
         for key in features["Standard Object Features"]:
-            assert key in feats[0]["Standard Object Features"].keys()
+            assert key in list(feats[0]["Standard Object Features"].keys())
 
         self.trainop = OpObjectTrain(graph=g)
         self.trainop.Features.resize(1)
@@ -336,8 +337,8 @@ class TestOpBadObjectsToWarningMessage(unittest.TestCase):
         self.op.BadObjects.setValue({'objects':{1: {0: [1,2]}}, 'feats': set()})
         messagedict = self.op.WarningMessage.value
         print(messagedict)
-        self.assertTrue('title' in messagedict.keys())
-        self.assertTrue('text' in messagedict.keys())
+        self.assertTrue('title' in list(messagedict.keys()))
+        self.assertTrue('text' in list(messagedict.keys()))
 
 
 class TestMaxLabel(object):
@@ -356,10 +357,10 @@ class TestMaxLabel(object):
         segmimg = vigra.taggedView(segmimg, 'txyzc')
         
         self.features = {"Bad Plugin": {"bad_feature_1": {}, "bad_feature_2":{}}}
-        self.featureArrays = {0: {"Bad Plugin":{"bad_feature_1": np.array(range(nobj)), \
-                                               "bad_feature_2": np.array(range(nobj))}},
-                              1: {"Bad Plugin":{"bad_feature_1": np.array(range(nobj)), \
-                                               "bad_feature_2": np.array(range(nobj))}}}
+        self.featureArrays = {0: {"Bad Plugin":{"bad_feature_1": np.array(list(range(nobj))), \
+                                               "bad_feature_2": np.array(list(range(nobj)))}},
+                              1: {"Bad Plugin":{"bad_feature_1": np.array(list(range(nobj))), \
+                                               "bad_feature_2": np.array(list(range(nobj)))}}}
         
         self.op = OpObjectClassification(graph = g)
         self.op.RawImages.setValues([rawimg])

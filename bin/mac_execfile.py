@@ -6,6 +6,7 @@ It is useful as a means to execute arbitrary scripts in the mac binary.
 This file is passed to py2app via the --extra-scripts option, and then arbitrary scripts can be launched with the same environment that the ilastik app uses.
 (Note that the interpreter located in ilastik.app/Contents/MacOS/python does NOT properly set up the environment.)
 """
+from past.builtins import execfile
 if __name__ == "__main__":
     import os
     import sys

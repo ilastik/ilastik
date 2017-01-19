@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from abc import ABCMeta, abstractmethod, abstractproperty
+from future.utils import with_metaclass
 
 def _has_attribute( cls, attr ):
     return True if any(attr in B.__dict__ for B in cls.__mro__) else False
@@ -26,12 +27,10 @@ def _has_attribute( cls, attr ):
 def _has_attributes( cls, attrs ):
     return True if all(_has_attribute(cls, a) for a in attrs) else False
 
-class ShellABC(object):
+class ShellABC(with_metaclass(ABCMeta, object)):
     """
     This ABC defines the minimum interface that both the IlastikShell and HeadlessShell must implement.
     """
-    
-    __metaclass__ = ABCMeta
 
     @abstractproperty
     def workflow(self):

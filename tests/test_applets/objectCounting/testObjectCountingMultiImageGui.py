@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -24,6 +25,10 @@
 # - interaction with boxes : move them around etc...
 
 
+from builtins import str
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 import os
 import numpy
 import vigra
@@ -240,7 +245,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
             assert numpy.sum(labelData[labelData==1]) == 4, "Number of foreground dots was {}".format(
                 numpy.sum(labelData[labelData==1]) )
 
-            center = (numpy.array(labelData.shape[:-1]))/2 + 1
+            center = old_div((numpy.array(labelData.shape[:-1])),2) + 1
 
             true_idx = numpy.array([center + dot for dot in dot_start_list])
             idx = numpy.where(labelData)
@@ -500,7 +505,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
             assert numpy.sum(labelData[labelData==1]) == 3, "Number of foreground dots was {}".format(
                 numpy.sum(labelData[labelData==1]) )
 
-            center = (numpy.array(labelData.shape[:-1]))/2 + 1
+            center = old_div((numpy.array(labelData.shape[:-1])),2) + 1
 
             true_idx = numpy.array([center + dot for dot in dot_start_list])
             idx = numpy.where(labelData)

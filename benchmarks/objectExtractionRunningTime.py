@@ -19,6 +19,7 @@ from __future__ import print_function
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import os
 import numpy as np
 import vigra
@@ -94,7 +95,7 @@ def cleanup_value(val, nObjects, isGlobal):
     return val
 
 def cleanup(d, nObjects, features):
-    result = dict((cleanup_key(k), cleanup_value(v, nObjects, "Global" in k)) for k, v in d.iteritems())
+    result = dict((cleanup_key(k), cleanup_value(v, nObjects, "Global" in k)) for k, v in d.items())
     newkeys = set(result.keys()) & set(features)
     return dict((k, result[k]) for k in newkeys)
 
@@ -146,7 +147,7 @@ class OpObjectFeaturesSimplified(Operator):
     def execute(self, slot, subindex, roi, result):
         t_ind = self.RawVol.meta.axistags.index('t')
         
-        for res_t_ind, t in enumerate(xrange(roi.start[t_ind], roi.stop[t_ind])):
+        for res_t_ind, t in enumerate(range(roi.start[t_ind], roi.stop[t_ind])):
             result[res_t_ind] = self._computeFeatures(t_ind, t)
     
     def propagateDirty(self, slot, subindex):
@@ -252,7 +253,7 @@ class ObjectExtractionTimeComparison(object):
     
         # Profile for basic multi-threaded feature computation 
         # just a multi-threaded loop that labels volumes and extract object features directly (No operators, no plugin system, no overhead, just a loop)
-        featsBasicFeatureComp = dict.fromkeys( range(self.op5Raw.Output.meta.shape[0]), None)
+        featsBasicFeatureComp = dict.fromkeys( list(range(self.op5Raw.Output.meta.shape[0])), None)
             
         print("\nStarting basic multi-threaded feature computation")
         pool = RequestPool()    

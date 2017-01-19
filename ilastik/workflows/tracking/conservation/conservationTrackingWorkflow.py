@@ -1,3 +1,5 @@
+from builtins import str
+from builtins import range
 import os
 from lazyflow.graph import Graph
 from lazyflow.utility import PathComponents, make_absolute, format_known_keys
@@ -76,7 +78,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             opObjectExtraction.FeatureNamesDivision.setValue(feature_dict_division)
                
             selected_features_div = {}
-            for plugin_name in config.selected_features_division.keys():
+            for plugin_name in list(config.selected_features_division.keys()):
                 selected_features_div[plugin_name] = { name: {} for name in config.selected_features_division[plugin_name] }
             # FIXME: do not hard code this
             for name in [ 'SquaredDistances_' + str(i) for i in range(config.n_best_successors) ]:
@@ -95,7 +97,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
                                                                      selectedFeatures=configConservation.selectedFeaturesObjectCount)
 
         selected_features_objectcount = {}
-        for plugin_name in config.selected_features_objectcount.keys():
+        for plugin_name in list(config.selected_features_objectcount.keys()):
             selected_features_objectcount[plugin_name] = { name: {} for name in config.selected_features_objectcount[plugin_name] }
 
         opCellClassification = self.cellClassificationApplet.topLevelOperator 
@@ -289,7 +291,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         maxx = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[1] 
         maxy = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[2] 
         maxz = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[3] 
-        time_enum = range(maxt)
+        time_enum = list(range(maxt))
         x_range = (0, maxx)
         y_range = (0, maxy)
         z_range = (0, maxz)

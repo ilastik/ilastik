@@ -22,7 +22,10 @@
 ###############################################################################
 
 # Standard libs
-import Queue
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+import queue
 import argparse
 import functools
 import logging
@@ -83,7 +86,7 @@ def getArgParser():
 
     return parser
 
-background_tasks = Queue.Queue()
+background_tasks = queue.Queue()
 stop_background_tasks = False
 def do_tasks():
     while not stop_background_tasks:

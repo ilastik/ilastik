@@ -19,6 +19,7 @@ from __future__ import print_function
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 from functools import partial
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 
@@ -295,7 +296,7 @@ class OpAutocontextClassification( Operator ):
 
         # All input multi-slots should be kept in sync
         # Output multi-slots will auto-sync via the graph
-        multiInputs = filter( lambda s: s.level >= 1, self.inputs.values() )
+        multiInputs = [s for s in list(self.inputs.values()) if s.level >= 1]
         for s1 in multiInputs:
             for s2 in multiInputs:
                 if s1 != s2:

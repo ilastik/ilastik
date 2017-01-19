@@ -29,6 +29,7 @@ from __future__ import absolute_import
 #===============================================================================
 
 
+from builtins import str
 from PyQt5.QtGui import QBrush, QColor, QMouseEvent, QPen, QBrush
 from PyQt5.QtCore import Qt, QObject, pyqtSignal, QEvent, QTimer, QPointF
 from PyQt5.QtWidgets import QApplication, QGraphicsEllipseItem
@@ -297,17 +298,17 @@ class DotController(QObject):
     def setDotsRadius(self,radius):
         self._radius=radius
         self.signalRadiusChanged.emit(self._radius)
-        for _,v in self._currentDotsHash.items():
+        for _,v in list(self._currentDotsHash.items()):
             v.radius=radius
     
     def setDotsColor(self,qcolor):
         self._color=qcolor
-        for _,v in self._currentDotsHash.items():
+        for _,v in list(self._currentDotsHash.items()):
             v.setColor(qcolor)
         self.signalColorChanged.emit(qcolor)
     
     def sedDotsVisibility(self,boolval):
-        for _,v in self._currentDotsHash.items():
+        for _,v in list(self._currentDotsHash.items()):
             v.setVisible(boolval)
     
     

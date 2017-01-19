@@ -50,7 +50,7 @@ class FillMissingSlicesSerializer(AppletSerializer):
 
     ### internal ###
     def _setDataset(self, group, dataName, dataValue):
-        if dataName not in group.keys():
+        if dataName not in list(group.keys()):
             # Create and assign
             group.create_dataset(dataName, data=dataValue)
         else:

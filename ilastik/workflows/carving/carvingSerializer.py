@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import map
+from builtins import range
 from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
 import numpy
 
@@ -132,12 +134,12 @@ class CarvingSerializer( AppletSerializer ):
             dtype = opCarving.opLabelArray.Output.meta.dtype
 
             fg_voxels = None
-            if "fg_voxels" in topGroup.keys():
+            if "fg_voxels" in list(topGroup.keys()):
                 fg_voxels = topGroup["fg_voxels"]
                 fg_voxels = [fg_voxels[:,k] for k in range(3)]
 
             bg_voxels = None
-            if "bg_voxels" in topGroup.keys():
+            if "bg_voxels" in list(topGroup.keys()):
                 bg_voxels = topGroup["bg_voxels"]
                 bg_voxels = [bg_voxels[:,k] for k in range(3)]
 
@@ -148,14 +150,14 @@ class CarvingSerializer( AppletSerializer ):
             total_roi = roiFromShape(opCarving.opLabelArray.Output.meta.shape)
             bounding_box_roi = numpy.array( [ total_roi[1][1:4], total_roi[0][1:4] ] )
             if fg_voxels is not None and len(fg_voxels[0]) > 0:
-                fg_bounding_box_start = numpy.array( map( numpy.min, fg_voxels ) )
-                fg_bounding_box_stop = 1 + numpy.array( map( numpy.max, fg_voxels ) )
+                fg_bounding_box_start = numpy.array( list(map( numpy.min, fg_voxels )) )
+                fg_bounding_box_stop = 1 + numpy.array( list(map( numpy.max, fg_voxels )) )
                 bounding_box_roi[0] = numpy.minimum( bounding_box_roi[0], fg_bounding_box_start )
                 bounding_box_roi[1] = numpy.maximum( bounding_box_roi[1], fg_bounding_box_stop )
 
             if bg_voxels is not None and len(bg_voxels[0]) > 0:
-                bg_bounding_box_start = numpy.array( map( numpy.min, bg_voxels ) )
-                bg_bounding_box_stop = 1 + numpy.array( map( numpy.max, bg_voxels ) )
+                bg_bounding_box_start = numpy.array( list(map( numpy.min, bg_voxels )) )
+                bg_bounding_box_stop = 1 + numpy.array( list(map( numpy.max, bg_voxels )) )
                 bounding_box_roi[0] = numpy.minimum( bounding_box_roi[0], bg_bounding_box_start )
                 bounding_box_roi[1] = numpy.maximum( bounding_box_roi[1], bg_bounding_box_stop )
             

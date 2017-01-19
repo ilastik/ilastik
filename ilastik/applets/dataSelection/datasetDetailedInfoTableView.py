@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,6 +20,8 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import map
+from past.utils import old_div
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QAction, QWidget, \
@@ -104,7 +107,7 @@ class ButtonOverlay(QPushButton):
         row_height = view.rowHeight(ind)
 
         self.setGeometry(self.xoffset + column_width - self.width,
-                row_y_offset + self.yoffset + (row_height - self.height)/2,
+                row_y_offset + self.yoffset + old_div((row_height - self.height),2),
                 self.width, self.height)
         self.setVisible(True)
         self.current_row = ind
@@ -399,8 +402,8 @@ class DatasetDetailedInfoTableView(QTableView):
 
     def dropEvent(self, dropEvent):
         urls = dropEvent.mimeData().urls()
-        filepaths = map( QUrl.toLocalFile, urls )
-        filepaths = map( str, filepaths )
+        filepaths = list(map( QUrl.toLocalFile, urls ))
+        filepaths = list(map( str, filepaths ))
         self.addFilesRequestedDrop.emit( filepaths )
     
     def scrollContentsBy(self, dx, dy):

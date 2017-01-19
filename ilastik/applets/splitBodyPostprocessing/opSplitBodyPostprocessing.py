@@ -327,7 +327,7 @@ class OpAccumulateFragmentSegmentations( Operator ):
                 max_label = result.max()
                 
                 # Update mapping
-                old_max = self._mapping.keys()[-1][1]
+                old_max = list(self._mapping.keys())[-1][1]
                 body_id = slot.meta.selected_label
                 self._mapping[(old_max,max_label+1)] = body_id
 

@@ -19,6 +19,7 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import str
 import os
 import copy
 import collections
@@ -162,11 +163,11 @@ class DatasetInfoEditorWidget(QDialog):
                                      self.rangeMinSpinBox : self._applyRangeToTempOps,
                                      self.rangeMaxSpinBox : self._applyRangeToTempOps }
 
-        for widget in self._autoAppliedWidgets.keys():
+        for widget in list(self._autoAppliedWidgets.keys()):
             widget.installEventFilter(self)
 
     def _tearDownEventFilters(self):
-        for widget in self._autoAppliedWidgets.keys():
+        for widget in list(self._autoAppliedWidgets.keys()):
             widget.removeEventFilter(self)
 
     def eventFilter(self, watched, event):
@@ -249,7 +250,7 @@ class DatasetInfoEditorWidget(QDialog):
                 originalInfos[laneIndex] = None
 
         try:
-            for laneIndex, op in self.tempOps.items():
+            for laneIndex, op in list(self.tempOps.items()):
                 info = copy.copy( op.Dataset.value )
                 realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
                 realSlot.setValue( info )
@@ -269,19 +270,19 @@ class DatasetInfoEditorWidget(QDialog):
                 return False
 
             # Revert everything back to the previous state
-            for laneIndex, info in originalInfos.items():
+            for laneIndex, info in list(originalInfos.items()):
                 realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
                 if realSlot is not None:
                     realSlot.setValue( info )
 
     def _cleanUpTempOperators(self):
-        for laneIndex, op in self.tempOps.items():
+        for laneIndex, op in list(self.tempOps.items()):
             op.cleanUp()
 
     def _updateNickname(self):
-        firstOp = self.tempOps.values()[0]
+        firstOp = list(self.tempOps.values())[0]
         nickname = firstOp.Dataset.value.nickname
-        for op in self.tempOps.values():
+        for op in list(self.tempOps.values()):
             info = op.Dataset.value
             if nickname != info.nickname:
                 nickname = None
@@ -303,11 +304,11 @@ class DatasetInfoEditorWidget(QDialog):
             
             # Save a copy of our settings
             oldInfos = {}
-            for laneIndex, op in self.tempOps.items():
+            for laneIndex, op in list(self.tempOps.items()):
                 oldInfos[laneIndex] = copy.copy( op.Dataset.value )
     
             try:
-                for laneIndex, op in self.tempOps.items():
+                for laneIndex, op in list(self.tempOps.items()):
                     info = copy.copy( op.Dataset.value )
                     info.nickname = newNickname
                     op.Dataset.setValue( info )
@@ -315,7 +316,7 @@ class DatasetInfoEditorWidget(QDialog):
                 return True
             except Exception as e:
                 # Revert everything back to the previous state
-                for laneIndex, op in self.tempOps.items():
+                for laneIndex, op in list(self.tempOps.items()):
                     op.Dataset.setValue( oldInfos[laneIndex] )
                 
                 msg = "Could not set new nickname due to an exception:\n"
@@ -333,20 +334,20 @@ class DatasetInfoEditorWidget(QDialog):
     def _getCommonMetadataValue(self, attr):
         # If this metadata attribute is common across all images,
         # return it.  Otherwise, return None.
-        firstOp = self.tempOps.values()[0]
+        firstOp = list(self.tempOps.values())[0]
         val = firstOp.Image.meta[attr]
-        for laneIndex, op in self.tempOps.items():
+        for laneIndex, op in list(self.tempOps.items()):
             if val != op.Image.meta[attr]:
                 val = None
                 break
         return val
     
     def _updateShape(self):
-        firstOp = self.tempOps.values()[0]
+        firstOp = list(self.tempOps.values())[0]
         shape = firstOp.Image.meta.original_shape
         if shape is None:
             shape = firstOp.Image.meta.shape
-        for laneIndex, op in self.tempOps.items():
+        for laneIndex, op in list(self.tempOps.items()):
             nextShape = op.Image.meta.original_shape
             if nextShape is None:
                 nextShape = op.Image.meta.shape
@@ -388,7 +389,7 @@ class DatasetInfoEditorWidget(QDialog):
         # If all images have the same axis keys,
         # then display it.  Otherwise, display default text.
         axiskeys = None
-        for laneIndex, op in self.tempOps.items():
+        for laneIndex, op in list(self.tempOps.items()):
             tags = op.Image.meta.original_axistags
             if tags is None:
                 tags = op.Image.meta.axistags
@@ -416,14 +417,14 @@ class DatasetInfoEditorWidget(QDialog):
 
     def _shouldEnableAxesEdit(self):
         # Enable IFF all datasets have the same number of axes.
-        firstOp = self.tempOps.values()[0]
+        firstOp = list(self.tempOps.values())[0]
         original_shape = firstOp.Image.meta.original_shape
         shape = firstOp.Image.meta.shape
         if original_shape is not None:
             numaxes = len(original_shape)
         else:
             numaxes = len(shape)
-        for op in self.tempOps.values():
+        for op in list(self.tempOps.values()):
             nextShape = op.Image.meta.original_shape
             if nextShape is None:
                 nextShape = op.Image.meta.shape
@@ -434,7 +435,7 @@ class DatasetInfoEditorWidget(QDialog):
     def _applyAxesToTempOps(self):
         newAxisOrder = str(self.axesEdit.text())
         # Check for errors
-        firstOp = self.tempOps.values()[0]
+        firstOp = list(self.tempOps.values())[0]
         shape = firstOp.Image.meta.shape
         original_shape = firstOp.Image.meta.original_shape
         if original_shape is not None:
@@ -464,11 +465,11 @@ class DatasetInfoEditorWidget(QDialog):
     
             # Save a copy of our settings
             oldInfos = {}
-            for laneIndex, op in self.tempOps.items():
+            for laneIndex, op in list(self.tempOps.items()):
                 oldInfos[laneIndex] = copy.copy( op.Dataset.value )
     
             try:
-                for laneIndex, op in self.tempOps.items():
+                for laneIndex, op in list(self.tempOps.items()):
                     info = copy.copy( op.Dataset.value )
                     # Use new order, but keep the data from the old axis tags
                     # (for all axes that were kept)
@@ -481,7 +482,7 @@ class DatasetInfoEditorWidget(QDialog):
                 return True
             except Exception as e:
                 # Revert everything back to the previous state
-                for laneIndex, op in self.tempOps.items():
+                for laneIndex, op in list(self.tempOps.items()):
                     op.Dataset.setValue( oldInfos[laneIndex] )
                 
                 msg = "Could not apply axis settings due to an exception:\n"
@@ -515,11 +516,11 @@ class DatasetInfoEditorWidget(QDialog):
             self.normalizeDisplayComboBox.setCurrentIndex(1)
             return 
         
-        for laneIndex, op in self.tempOps.items():
+        for laneIndex, op in list(self.tempOps.items()):
             oldInfos[laneIndex] = copy.copy( op.Dataset.value )
 
         try:
-            for laneIndex, op in self.tempOps.items():
+            for laneIndex, op in list(self.tempOps.items()):
                 info = copy.copy( op.Dataset.value )
                 info.normalizeDisplay = new_norm
                 op.Dataset.setValue( info )
@@ -527,7 +528,7 @@ class DatasetInfoEditorWidget(QDialog):
             return True
         except Exception as e:
             # Revert everything back to the previous state
-            for laneIndex, op in self.tempOps.items():
+            for laneIndex, op in list(self.tempOps.items()):
                 op.Dataset.setValue( oldInfos[laneIndex] )
             
             msg = "Could not apply normalization settings due to an exception:\n"
@@ -563,7 +564,7 @@ class DatasetInfoEditorWidget(QDialog):
                     return False
     
                 # Make sure the new bounds don't exceed the dtype range
-                for laneIndex, op in self.tempOps.items():
+                for laneIndex, op in list(self.tempOps.items()):
                     dtype_info = get_dtype_info(op.Image.meta.dtype)
                         
                     if new_drange[0] < dtype_info.min or new_drange[1] > dtype_info.max:
@@ -576,11 +577,11 @@ class DatasetInfoEditorWidget(QDialog):
             
             # Save a copy of our settings
             oldInfos = {}
-            for laneIndex, op in self.tempOps.items():
+            for laneIndex, op in list(self.tempOps.items()):
                 oldInfos[laneIndex] = copy.copy( op.Dataset.value )
     
             try:
-                for laneIndex, op in self.tempOps.items():
+                for laneIndex, op in list(self.tempOps.items()):
                     info = copy.copy( op.Dataset.value )
                     dtype_info = get_dtype_info(op.Image.meta.dtype)
                     dtype = dtype_info.dtype.type
@@ -592,7 +593,7 @@ class DatasetInfoEditorWidget(QDialog):
                 return True
             except Exception as e:
                 # Revert everything back to the previous state
-                for laneIndex, op in self.tempOps.items():
+                for laneIndex, op in list(self.tempOps.items()):
                     op.Dataset.setValue( oldInfos[laneIndex] )
                 
                 msg = "Could not apply data range settings due to an exception:\n"
@@ -704,12 +705,12 @@ class DatasetInfoEditorWidget(QDialog):
         
         # Save a copy of our settings
         oldInfos = {}
-        for laneIndex, op in self.tempOps.items():
+        for laneIndex, op in list(self.tempOps.items()):
             oldInfos[laneIndex] = copy.copy( op.Dataset.value )
         
         # Attempt to apply to all temp operators
         try:
-            for laneIndex, op in self.tempOps.items():
+            for laneIndex, op in list(self.tempOps.items()):
                 info = copy.copy( op.Dataset.value )
                 pathComponents = PathComponents(info.filePath)
                 if pathComponents.internalPath != newInternalPath:
@@ -720,7 +721,7 @@ class DatasetInfoEditorWidget(QDialog):
             return True
         except Exception as e:
             # Revert everything back to the previous state
-            for laneIndex, op in self.tempOps.items():
+            for laneIndex, op in list(self.tempOps.items()):
                 op.Dataset.setValue( oldInfos[laneIndex] )
             
             msg = "Could not set new internal path settings due to an exception:\n"
@@ -735,7 +736,7 @@ class DatasetInfoEditorWidget(QDialog):
         showpaths = False
         relPath = None
         if len( self._laneIndexes ) == 1:
-            op = self.tempOps.values()[0]
+            op = list(self.tempOps.values())[0]
             info = op.Dataset.value
             cwd = op.WorkingDirectory.value
             filePath = PathComponents(info.filePath).externalPath
@@ -814,12 +815,12 @@ class DatasetInfoEditorWidget(QDialog):
         
         # Save a copy of our settings
         oldInfos = {}
-        for laneIndex, op in self.tempOps.items():
+        for laneIndex, op in list(self.tempOps.items()):
             oldInfos[laneIndex] = copy.copy( op.Dataset.value )
         
         # Attempt to apply to all temp operators
         try:
-            for laneIndex, op in self.tempOps.items():
+            for laneIndex, op in list(self.tempOps.items()):
                 info = copy.copy( op.Dataset.value )
                 
                 if info.location == DatasetInfo.Location.ProjectInternal:
@@ -850,7 +851,7 @@ class DatasetInfoEditorWidget(QDialog):
         
         except Exception as e:
             # Revert everything back to the previous state
-            for laneIndex, op in self.tempOps.items():
+            for laneIndex, op in list(self.tempOps.items()):
                 op.Dataset.setValue( oldInfos[laneIndex] )
             
             msg = "Could not set new storage location settings due to an exception:\n"
@@ -881,7 +882,7 @@ class DatasetInfoEditorWidget(QDialog):
         # If all lanes have the same mode, then show it.
         # Otherwise, show nothing.
         mode = None
-        for laneIndex, op in self.tempOps.items():
+        for laneIndex, op in list(self.tempOps.items()):
             cmp_mode = op.Image.meta.display_mode or "default"
             mode = mode or cmp_mode
             if mode != cmp_mode:
@@ -904,12 +905,12 @@ class DatasetInfoEditorWidget(QDialog):
         
         # Save a copy of our settings
         oldInfos = {}
-        for laneIndex, op in self.tempOps.items():
+        for laneIndex, op in list(self.tempOps.items()):
             oldInfos[laneIndex] = copy.copy( op.Dataset.value )
         
         # Attempt to apply to all temp operators
         try:
-            for laneIndex, op in self.tempOps.items():
+            for laneIndex, op in list(self.tempOps.items()):
                 info = copy.copy( op.Dataset.value )
                 if info.display_mode != newDisplayMode:
                     info.display_mode = newDisplayMode
@@ -919,7 +920,7 @@ class DatasetInfoEditorWidget(QDialog):
         
         except Exception as e:
             # Revert everything back to the previous state
-            for laneIndex, op in self.tempOps.items():
+            for laneIndex, op in list(self.tempOps.items()):
                 op.Dataset.setValue( oldInfos[laneIndex] )
             
             msg = "Could not set new channel display settings due to an exception:\n"

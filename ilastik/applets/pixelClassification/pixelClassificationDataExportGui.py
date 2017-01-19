@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import zip
+from builtins import range
 import warnings
 
 from PyQt5.QtCore import Qt
@@ -161,7 +163,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         if predictionSlot.ready():        
             num_channels = predictionSlot.meta.getTaggedShape()['c']
             if num_channels != len(names) or num_channels != len(colors):
-                names = map(lambda n: "Label {}".format(n), range(1, num_channels+1))
+                names = ["Label {}".format(n) for n in range(1, num_channels+1)]
                 colors = self._createDefault16ColorColorTable()[:num_channels]
 
         # Use a slicer to provide a separate slot for each channel layer
@@ -207,5 +209,5 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         colors.append( QColor(240, 230, 140) ) #khaki
         colors.append( QColor(255, 255, 255) ) #white
         assert len(colors) == 16
-        colors = map(lambda c: (c.red(), c.green(), c.blue()), colors)
+        colors = [(c.red(), c.green(), c.blue()) for c in colors]
         return colors

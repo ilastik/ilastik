@@ -22,6 +22,9 @@ from __future__ import absolute_import
 
 
 # basic python modules
+from builtins import zip
+from builtins import str
+from builtins import range
 import functools
 import logging
 logger = logging.getLogger(__name__)

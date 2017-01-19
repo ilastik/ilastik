@@ -48,7 +48,7 @@ class ErrorMessageFilter(QObject):
         # Must copy now because the eventloop is allowed to run during QMessageBox.critical, below.
         # That is, self.messages might change while the loop is executing (not allowed).
         messages = copy.copy(self.messages)
-        for caption, text in messages.iteritems():
+        for caption, text in messages.items():
             QMessageBox.critical(self.parent(), caption, text)
         self.messages = {}
         

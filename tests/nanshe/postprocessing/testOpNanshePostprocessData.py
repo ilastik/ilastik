@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -19,6 +20,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+from past.utils import old_div
 __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
 __date__ = "$Oct 29, 2014 19:42:43 EDT$"
 
@@ -56,7 +58,7 @@ class TestOpNanshePostprocessData(object):
                               [45, 32]])
 
         masks = nanshe.syn.data.generate_hypersphere_masks(space, points, radii)
-        images = nanshe.syn.data.generate_gaussian_images(space, points, radii/3.0, magnitudes)
+        images = nanshe.syn.data.generate_gaussian_images(space, points, old_div(radii,3.0), magnitudes)
         images *= masks
 
         bases_indices = [[1,3,4], [0,2], [5]]
@@ -113,7 +115,7 @@ class TestOpNanshePostprocessData(object):
                               [45, 32]])
 
         masks = nanshe.syn.data.generate_hypersphere_masks(space, points, radii)
-        images = nanshe.syn.data.generate_gaussian_images(space, points, radii/3.0, magnitudes)
+        images = nanshe.syn.data.generate_gaussian_images(space, points, old_div(radii,3.0), magnitudes)
         images *= masks
 
         bases_indices = [[1,3,4], [0,2], [5]]

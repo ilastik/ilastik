@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
+from builtins import range
 __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
 __date__ = "$Oct 23, 2014 16:26:43 EDT$"
 
@@ -416,7 +417,7 @@ class NanshePostprocessingGui(LayerViewerGui):
 
         self._register_notify_dirty()
 
-        for i in xrange(len(self.layerstack)):
+        for i in range(len(self.layerstack)):
             if self.layerstack[i].name == "Output":
                 self.layerstack[i].visible = True
 

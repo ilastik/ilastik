@@ -19,6 +19,7 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import map
 import os
 import argparse
 from ilastik.applets.base.applet import Applet
@@ -185,7 +186,7 @@ class DataExportApplet( Applet ):
         
         if parsed_args.output_axis_order:
             output_axis_order = parsed_args.output_axis_order.lower()
-            if any( map(lambda a: a not in 'txyzc', output_axis_order) ):
+            if any( [a not in 'txyzc' for a in output_axis_order] ):
                 raise Exception( "Invalid axes specified output_axis_order: {}".format( parsed_args.output_axis_order ) )
             parsed_args.output_axis_order = output_axis_order
 
@@ -221,7 +222,7 @@ class DataExportApplet( Applet ):
 
         if parsed_args.export_source is not None:
             source_choices = opDataExport.SelectionNames.value
-            source_choices = map(str.lower, source_choices)
+            source_choices = list(map(str.lower, source_choices))
             export_source = parsed_args.export_source.lower()
             try:
                 source_index = source_choices.index(export_source)

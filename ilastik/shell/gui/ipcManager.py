@@ -1,4 +1,8 @@
-from SocketServer import BaseRequestHandler, TCPServer as BaseTCPServer
+from future import standard_library
+standard_library.install_aliases()
+from builtins import filter
+from builtins import str
+from socketserver import BaseRequestHandler, TCPServer as BaseTCPServer
 import logging
 import threading
 import atexit
@@ -8,6 +12,7 @@ from collections import OrderedDict
 from operator import itemgetter
 from PyQt5.QtCore import QObject, pyqtSignal
 from ilastik.utility.commandProcessor import CommandProcessor
+from future.utils import with_metaclass
 
 try:
     import zmq
@@ -27,12 +32,11 @@ from ilastik.config import cfg as ilastik_config
 logger = logging.getLogger(__name__)
 
 
-class IPCFacade(object):
+class IPCFacade(with_metaclass(Singleton, object)):
     """
     The Singleton that encapsulates all IPC functionality
     Use this to register new server modules or send broadcasts
     """
-    __metaclass__ = Singleton
 
     def __init__(self):
         self.info = IPCServerInfoWindow()
@@ -108,14 +112,14 @@ class IPCFacade(object):
         Check if the senders are running ( e.g. any(IPCFacade().running) or all(IPCFacade().running)
         :return: a list containing True or False for each sender
         """
-        return (sender.running for sender in self.senders.itervalues())
+        return (sender.running for sender in self.senders.values())
 
     @property
     def receiving(self):
         """
         The same as IPCFacade.sending for the receivers
         """
-        return (rec.running for rec in self.receivers.itervalues())
+        return (rec.running for rec in self.receivers.values())
 
     def start(self):
         """
@@ -132,7 +136,7 @@ class IPCFacade(object):
             module.stop()
 
     def _all_modules(self):
-        return chain(self.senders.itervalues(), self.receivers.itervalues())
+        return chain(iter(self.senders.values()), iter(self.receivers.values()))
 
     @lazy
     def broadcast(self, command):
@@ -147,7 +151,7 @@ class IPCFacade(object):
         #PrettyPrinter(indent=4).pprint(command)
         message = json.dumps(command, cls=NumpyJsonEncoder)
         log = Protocol.verbose(command)
-        for server in self.senders.itervalues():
+        for server in self.senders.values():
             server.broadcast(message, log)
 
     def show_info(self):
@@ -472,11 +476,11 @@ class TCPClient(Sending, HasPeers):
 
     def update_peer(self, key, **kvargs):
         enabled = kvargs["enabled"]
-        self.peers.values()[key]["enabled"] = enabled
+        list(self.peers.values())[key]["enabled"] = enabled
 
     def _broadcast(self, message):
         count = 0
-        for peer in filter(itemgetter("enabled"), self.peers.itervalues()):
+        for peer in filter(itemgetter("enabled"), iter(self.peers.values())):
             try:
                 with socket() as s:
                     # noinspection PyTypeChecker

@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,6 +20,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
+from builtins import range
+from past.utils import old_div
 __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
 __date__ = "$Oct 14, 2014 16:33:55 EDT$"
 
@@ -155,7 +158,7 @@ class OpNansheExtractF0(Operator):
         else:
             bias = 1 - raw.min()
 
-        df_f = (raw - f0) / (f0 + bias)
+        df_f = old_div((raw - f0), (f0 + bias))
 
         if slot.name == 'dF_F':
             result[...] = df_f

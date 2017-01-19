@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import str
 import sys
 import os
 import collections
@@ -219,7 +220,7 @@ class OpParseAnnotations(Operator):
         elif slot == self.AnnotationLocations:
             result[0] = sorted( self._annotations.keys() )
         elif slot == self.AnnotationBodyIds:
-            result[0] = sorted( set( map( lambda label_comment: label_comment[0], self._annotations.values() ) ) )
+            result[0] = sorted( set( [label_comment[0] for label_comment in list(self._annotations.values())] ) )
         else:
             assert False, "Unknown output slot: {}".format( slot.name )
 

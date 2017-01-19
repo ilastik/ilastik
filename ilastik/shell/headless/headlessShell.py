@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import str
+from builtins import map
 import os
 import re
 import logging
@@ -94,9 +96,9 @@ class HeadlessShell(object):
             #  load them so that the workflow can be instantiated with the same settings 
             #  that were used when the project was first created. 
             project_creation_args = []
-            if "workflow_cmdline_args" in hdf5File.keys():
+            if "workflow_cmdline_args" in list(hdf5File.keys()):
                 if len(hdf5File["workflow_cmdline_args"]) > 0:
-                    project_creation_args = map(str, hdf5File["workflow_cmdline_args"][...])
+                    project_creation_args = list(map(str, hdf5File["workflow_cmdline_args"][...]))
 
             if workflow_class is None:
                 # If the project file has no known workflow, we assume pixel classification

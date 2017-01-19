@@ -19,6 +19,8 @@ from __future__ import print_function
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
+from builtins import object
 import os
 import numpy
 import vigra
@@ -29,7 +31,7 @@ from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, Datas
 
 import tempfile
 
-class TestOpDataSelection_Basic():
+class TestOpDataSelection_Basic(object):
     
     @classmethod
     def setupClass(cls):

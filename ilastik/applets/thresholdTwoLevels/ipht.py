@@ -34,9 +34,9 @@ def identity_preserving_hysteresis_thresholding( img,
     logger.debug("First watershed")
     
     # Make sure arrays have matching axes
-    inverted_img = inverted_img.withAxes(seed_labels.axistags.keys())
+    inverted_img = inverted_img.withAxes(list(seed_labels.axistags.keys()))
     if out is not None:
-        out = out.withAxes(seed_labels.axistags.keys())
+        out = out.withAxes(list(seed_labels.axistags.keys()))
     
     watershed_labels, max_label = vigra.analysis.watershedsNew( inverted_img,
                                                                 seeds=seed_labels,

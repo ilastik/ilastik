@@ -20,6 +20,9 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import str
+from builtins import map
+from builtins import range
 from .opDataSelection import OpDataSelection, DatasetInfo
 from lazyflow.operators.ioOperators import OpStackLoader, OpH5WriterBigDataset
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
@@ -92,7 +95,7 @@ class DataSelectionSerializer( AppletSerializer ):
                 info = slot.value
                 # If this dataset should be stored in the project, but it isn't there yet
                 if  info.location == DatasetInfo.Location.ProjectInternal \
-                and info.datasetId not in localDataGroup.keys():
+                and info.datasetId not in list(localDataGroup.keys()):
                     # Obtain the data from the corresponding output and store it to the project.
                     dataSlot = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex]
 
@@ -128,7 +131,7 @@ class DataSelectionSerializer( AppletSerializer ):
                     localDatasetIds.add( slot.value.datasetId )
         
         # Delete any datasets in the project that aren't needed any more
-        for datasetName in localDataGroup.keys():
+        for datasetName in list(localDataGroup.keys()):
             if datasetName not in localDatasetIds:
                 del localDataGroup[datasetName]
 
@@ -147,7 +150,7 @@ class DataSelectionSerializer( AppletSerializer ):
         infoDir = getOrCreateGroup(topGroup, 'infos')
         
         # Delete all infos
-        for infoName in infoDir.keys():
+        for infoName in list(infoDir.keys()):
             del infoDir[infoName]
                 
         # Rebuild the list of infos
@@ -330,7 +333,7 @@ class DataSelectionSerializer( AppletSerializer ):
         datasetInfo = DatasetInfo()
 
         # Make a reverse-lookup of the location storage strings
-        LocationLookup = { v:k for k,v in self.LocationStrings.items() }
+        LocationLookup = { v:k for k,v in list(self.LocationStrings.items()) }
         datasetInfo.location = LocationLookup[ str(infoGroup['location'].value) ]
         
         # Write to the 'private' members to avoid resetting the dataset id
@@ -376,7 +379,7 @@ class DataSelectionSerializer( AppletSerializer ):
                 pass
         
         try:
-            start, stop = map( tuple, infoGroup['subvolume_roi'].value )
+            start, stop = list(map( tuple, infoGroup['subvolume_roi'].value ))
             datasetInfo.subvolume_roi = (start, stop)
         except KeyError:
             pass
@@ -384,7 +387,7 @@ class DataSelectionSerializer( AppletSerializer ):
         # If the data is supposed to be in the project,
         #  check for it now.
         if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
-            if not datasetInfo.datasetId in localDataGroup.keys():
+            if not datasetInfo.datasetId in list(localDataGroup.keys()):
                 raise RuntimeError("Corrupt project file.  Could not find data for " + infoGroup.name)
 
         dirty = False

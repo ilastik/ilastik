@@ -19,6 +19,7 @@ from __future__ import print_function
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import zip
 import numpy
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QKeyEvent

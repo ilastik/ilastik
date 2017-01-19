@@ -19,6 +19,7 @@ from __future__ import print_function
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import object
 import os
 import h5py
 import traceback
@@ -32,7 +33,7 @@ from lazyflow.utility.pathHelpers import PathComponents
 from lazyflow.rtype import SubRegion
 logger = logging.getLogger(__name__)
 
-class ExportFormat():
+class ExportFormat(object):
     H5 = 0
     Npy = 1
     Tiff = 2 # 3d only, up to 3 channels

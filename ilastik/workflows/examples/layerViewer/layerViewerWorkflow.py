@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 from ilastik.workflow import Workflow
 
 from lazyflow.graph import Graph

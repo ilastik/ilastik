@@ -20,6 +20,8 @@
 ###############################################################################
 from __future__ import division
 from __future__ import absolute_import
+from builtins import map
+from builtins import range
 import sys
 import os
 from functools import partial
@@ -272,7 +274,7 @@ class SplitBodyCarvingGui(CarvingGui):
 
         fragmentSegSlot = self.topLevelOperatorView.CurrentFragmentSegmentation
         if fragmentSegSlot.ready():
-            colortable = map(QColor.rgba, self._fragmentColors)
+            colortable = list(map(QColor.rgba, self._fragmentColors))
             fragSegLayer = ColortableLayer(LazyflowSource(fragmentSegSlot), colortable, direct=True)
             fragSegLayer.name = "Saved Fragments"
             fragSegLayer.visible = True

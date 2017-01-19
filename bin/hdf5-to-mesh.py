@@ -69,7 +69,7 @@ def onMeshesComplete(dlg, obj_filepath):
     if mesh_count > 0:
         assert mesh_count == 1, \
             "Found {} meshes. (Only expected 1)".format( mesh_count )
-        mesh = dlg.extractor.meshes.values()[0]
+        mesh = list(dlg.extractor.meshes.values())[0]
 
         # Use VTK to write to a temporary .vtk file
         tmpdir = tempfile.mkdtemp()

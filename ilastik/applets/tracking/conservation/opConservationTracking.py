@@ -1,4 +1,7 @@
 from __future__ import absolute_import
+from builtins import zip
+from builtins import str
+from builtins import range
 import numpy as np
 import os
 import itertools
@@ -150,7 +153,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             resolvedMergers = self.ResolvedMergers.value
             
             # Assume [t,x,y,z,c] order           
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
             offset = roi.start[1:-1]
        
             result[:] =  self.LabelImage.get(roi).wait()
@@ -169,7 +172,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             resolvedMergers = self.ResolvedMergers.value
             
             # Assume [t,x,y,z,c] order
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
             offset = roi.start[1:-1]
 
             result[:] =  self.LabelImage.get(roi).wait()
@@ -188,7 +191,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             resolvedMergers = self.ResolvedMergers.value
             
             # Assume [t,x,y,z,c] order
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
             offset = roi.start[1:-1] 
 
             result[:] =  self.LabelImage.get(roi).wait()
@@ -223,7 +226,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         Construct a hypotheses graph given the current settings in the parameters slot
         '''
         parameters = self.Parameters.value
-        time_range = range(parameters['time_range'][0],parameters['time_range'][1] + 1)
+        time_range = list(range(parameters['time_range'][0],parameters['time_range'][1] + 1))
         x_range = parameters['x_range']
         y_range = parameters['y_range']
         z_range = parameters['z_range']
@@ -292,7 +295,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             # Fit and refine merger nodes using a GMM 
             # It has to be done per time-step in order to aviod loading the whole video on RAM
             traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(model)
-            timesteps = [int(t) for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+            timesteps = [int(t) for t in list(traxelIdPerTimestepToUniqueIdMap.keys())]
             timesteps.sort()
             
             timeIndex = self.LabelImage.meta.axistags.index('t')
@@ -493,7 +496,7 @@ class OpConservationTracking(Operator, ExportingOperator):
 
     def _getEventsVector(self, result, model):        
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(model)
-        timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+        timesteps = [t for t in list(traxelIdPerTimestepToUniqueIdMap.keys())]
         
         mergers, detections, links, divisions = getMergersDetectionsLinksDivisions(result, uuidToTraxelMap)
         
@@ -507,7 +510,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         events = {}
         
         # Save mergers, links, detections, and divisions
-        for timestep in traxelIdPerTimestepToUniqueIdMap.keys():
+        for timestep in list(traxelIdPerTimestepToUniqueIdMap.keys()):
             # We need to add an extra column with zeros in order to be backward compatible with the older version
             def stackExtraColumnWithZeros(array):
                 return np.hstack((array, np.zeros((array.shape[0], 1), dtype=array.dtype)))
@@ -521,9 +524,9 @@ class OpConservationTracking(Operator, ExportingOperator):
     
             dis = np.asarray(dis)
             app = np.asarray(app)
-            div = np.asarray([[k, v[0], v[1]] for k,v in divisionsPerTimestep[timestep].iteritems()])
+            div = np.asarray([[k, v[0], v[1]] for k,v in divisionsPerTimestep[timestep].items()])
             mov = np.asarray(linksPerTimestep[timestep])
-            mer = np.asarray([[k,v] for k,v in mergersPerTimestep[timestep].iteritems()])
+            mer = np.asarray([[k,v] for k,v in mergersPerTimestep[timestep].items()])
             mul = np.asarray(mul)
             
             events[timestep] = {}
@@ -600,7 +603,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                 if time not in resolvedMergersDict:
                     idxs = []
                 else:
-                    newIds = [newId for _, nodeDict in resolvedMergersDict[time].items() for newId in nodeDict['newIds']]
+                    newIds = [newId for _, nodeDict in list(resolvedMergersDict[time].items()) for newId in nodeDict['newIds']]
                     idxs = [id for id in idxs if id in newIds]
             else:
                 idxs = [idx for idx in idxs if idx > 0 and hypothesesGraph.hasNode((time,idx)) and hypothesesGraph._graph.node[(time,idx)]['value'] > 1]
@@ -778,7 +781,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         export_file.ExportProgress.subscribe(progress_slot)
         export_file.InsertionProgress.subscribe(progress_slot)
 
-        export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
+        export_file.add_columns("table", list(range(sum(obj_count))), Mode.List, Default.KnimeId)
         export_file.add_columns("table", object_ids, Mode.List, Default.IlastikId)
         export_file.add_columns("table", lineage_ids, Mode.List, Default.Lineage)
         export_file.add_columns("table", track_ids, Mode.List, Default.TrackId)
@@ -788,7 +791,7 @@ class OpConservationTracking(Operator, ExportingOperator):
 
         # Write divisions tab;e
         if with_divisions:
-            divisions_data = zip(div_timesteps, div_object_ids, div_lineage_ids, div_track_ids, div_child1_oids, div_child1_track_ids, div_child2_oids, div_child2_track_ids)
+            divisions_data = list(zip(div_timesteps, div_object_ids, div_lineage_ids, div_track_ids, div_child1_oids, div_child1_track_ids, div_child2_oids, div_child2_track_ids))
             if divisions_data:
                 export_file.add_columns("divisions", divisions_data, Mode.List, Default.DivisionNames)
 
@@ -887,7 +890,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         total_count = 0
         empty_frame = False
 
-        for t in feats.keys():
+        for t in list(feats.keys()):
             rc = feats[t][default_features_key]['RegionCenter']
             lower = feats[t][default_features_key]['Coord<Minimum>']
             upper = feats[t][default_features_key]['Coord<Maximum>']

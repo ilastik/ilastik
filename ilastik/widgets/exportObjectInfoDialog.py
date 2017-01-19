@@ -19,6 +19,7 @@
 #                  http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from builtins import str
 from PyQt5 import uic
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -121,8 +122,8 @@ class ExportObjectInfoDialog(QDialog):
         :rtype: dict
         """
         s = {
-            "file type": unicode(FILE_TYPES[self.ui.fileFormat.currentIndex()]),
-            "file path": unicode(self.ui.exportPath.text()),
+            "file type": str(FILE_TYPES[self.ui.fileFormat.currentIndex()]),
+            "file path": str(self.ui.exportPath.text()),
             "compression": {}
         }
 
@@ -141,7 +142,7 @@ class ExportObjectInfoDialog(QDialog):
             pattern = r"([^/]+)\://(.*)"
             match = re.findall(pattern, data.text())
             if match:
-                text = unicode(match[0][1]).strip()
+                text = str(match[0][1]).strip()
             else:
                 text = data.text()
             self.ui.exportPath.setText(text)
@@ -157,7 +158,7 @@ class ExportObjectInfoDialog(QDialog):
             return
         if parent is None:
             parent = self.ui.featureView
-        for entry, child in features.iteritems():
+        for entry, child in features.items():
             item = QTreeWidgetItem(parent)
             try:
                 #if it's the feature name, show the human version of the text
@@ -205,7 +206,7 @@ class ExportObjectInfoDialog(QDialog):
             self.ui.toolBox.setCurrentIndex(0)
             return
         else:
-            path = unicode(self.ui.exportPath.text())
+            path = str(self.ui.exportPath.text())
             if not self.is_valid_path(path):
                 title = "Warning"
                 text = "No file extension or invalid file extension ( %s )\nAllowed: %s"
@@ -229,12 +230,12 @@ class ExportObjectInfoDialog(QDialog):
 
     # slot is called from button.click
     def choose_path(self):
-        filters = ";;".join(DIALOG_FILTERS.values())
+        filters = ";;".join(list(DIALOG_FILTERS.values()))
         current_extension = FILE_TYPES[self.ui.fileFormat.currentIndex()]
         current_filter = DIALOG_FILTERS[current_extension]
         path, _filter = QFileDialog.getSaveFileName(self.parent(), "Save File", self.ui.exportPath.text(), filters,
                                            current_filter)
-        path = unicode(path)
+        path = str(path)
         if path != "":
             match = path.rsplit(".", 1)
             if len(match) == 1:
@@ -261,7 +262,7 @@ class ExportObjectInfoDialog(QDialog):
 
     # slot is called from combobox.indexchanged
     def file_format_changed(self, index):
-        path = unicode(self.ui.exportPath.text())
+        path = str(self.ui.exportPath.text())
         match = path.rsplit(".", 1)
         path = "%s.%s" % (match[0], FILE_TYPES[index])
         self.ui.exportPath.setText(path)

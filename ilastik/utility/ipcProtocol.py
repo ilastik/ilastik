@@ -1,3 +1,4 @@
+from builtins import str
 class Protocol(object):
     ValidOps = ["and", "or"]
     ValidHiliteModes = ["hilite", "unhilite", "toggle", "clear"]
@@ -16,7 +17,7 @@ class Protocol(object):
             => WHERE ( ilastik_id == 42 AND time == 1337 )
         """
         operands = list(wheres)
-        for name, value in attributes.iteritems():
+        for name, value in attributes.items():
             operands.append({
                 "operator": "==",
                 "row": name,

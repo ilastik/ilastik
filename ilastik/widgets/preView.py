@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,6 +19,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from past.utils import old_div
 from PyQt5.QtGui import QPixmap, QPainter, QBrush, QPen, QPalette, QColor
 from PyQt5.QtWidgets import QGraphicsView, QVBoxLayout, QLabel, QGraphicsScene
 from PyQt5.QtCore import Qt, QRect, QSize, QEvent
@@ -80,7 +82,7 @@ class PreView(QGraphicsView):
         painter.setPen(pen)
         brush = QBrush(Qt.green)
         painter.setBrush(brush)
-        painter.drawEllipse(QRect(self.width()/2 - size/2, self.height()/2 - size/2, size, size))
+        painter.drawEllipse(QRect(old_div(self.width(),2) - old_div(size,2), old_div(self.height(),2) - old_div(size,2), size, size))
         painter.end()
         #painter ellipse 2
         painter2 = QPainter()
@@ -90,7 +92,7 @@ class PreView(QGraphicsView):
         pen2.setStyle(Qt.DotLine)
         pen2.setWidth(3)
         painter2.setPen(pen2)
-        painter2.drawEllipse(QRect(self.width()/2 - size/2, self.height()/2 - size/2, size, size))
+        painter2.drawEllipse(QRect(old_div(self.width(),2) - old_div(size,2), old_div(self.height(),2) - old_div(size,2), size, size))
         painter2.end()
         
         self.ellipseLabel.setPixmap(QPixmap(pixmap))
@@ -108,7 +110,7 @@ class PreView(QGraphicsView):
         brush = QBrush(p.link().color())
         painter.setBrush(brush)
         painter.setOpacity(0.4)
-        painter.drawEllipse(QRect(self.width()/2 - size/2, self.height()/2 - size/2, size, size))
+        painter.drawEllipse(QRect(old_div(self.width(),2) - old_div(size,2), old_div(self.height(),2) - old_div(size,2), size, size))
         painter.end()
         #painter ellipse 2
         painter2 = QPainter()
@@ -117,7 +119,7 @@ class PreView(QGraphicsView):
         pen2 = QPen(Qt.green)
         pen2.setWidth(1)
         painter2.setPen(pen2)
-        painter2.drawEllipse(QRect(self.width()/2 - size/2, self.height()/2 - size/2, size, size))
+        painter2.drawEllipse(QRect(old_div(self.width(),2) - old_div(size,2), old_div(self.height(),2) - old_div(size,2), size, size))
         painter2.end()
         
         self.ellipseLabel.setPixmap(QPixmap(pixmap))

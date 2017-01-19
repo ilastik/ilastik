@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import str
 import pgmlink
 import math
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase

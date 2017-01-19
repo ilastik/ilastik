@@ -22,6 +22,7 @@
 Define a function for each message ilastik should be able to process:
 def myAction(shell, data)
 """
+from past.builtins import basestring
 def setViewerPos(shell, data):
     # data is a dict which may contain one entry for each coordinate
     pos5d = []

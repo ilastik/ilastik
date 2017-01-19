@@ -1,3 +1,5 @@
+from builtins import zip
+from builtins import range
 import numpy as np
 import math
 import vigra
@@ -85,18 +87,18 @@ class OpZeroBasedConsecutiveIndexRelabeling(Operator):
         labels = list(np.sort(vigra.analysis.unique(labelImage)))
         # if 0 not in labels:
         #     labels = [0, ] + labels
-        newIndices = range(0, len(labels))
-        self._mapping[t] = dict(zip(labels, newIndices))
+        newIndices = list(range(0, len(labels)))
+        self._mapping[t] = dict(list(zip(labels, newIndices)))
         return labelImage
 
     def execute(self, slot, subindex, roi, result):
         if slot == self.Output:
             taggedShape = self.LabelImage.meta.getTaggedShape()
-            timeIndex = taggedShape.keys().index('t')
+            timeIndex = list(taggedShape.keys()).index('t')
             t = roi.start[timeIndex]
             labelImage = self._updateMapping(roi, t)
             result = np.zeros_like(result)
-            for k, v in self._mapping[t].iteritems():
+            for k, v in self._mapping[t].items():
                 result[labelImage == k] = v
 
             return result
@@ -174,7 +176,7 @@ class OpRelabeledMergerFeatureExtraction(Operator):
         features = np.zeros((max_label, featuresA.shape[1]), dtype=featuresA.dtype)
         features[:len(featuresA), ...] = featuresA
 
-        for k, v in mapping.iteritems():
+        for k, v in mapping.items():
             if k == 0:
                 continue
             features[k, ...] = featuresB[v, ...]
@@ -191,9 +193,9 @@ class OpRelabeledMergerFeatureExtraction(Operator):
             result = copy.deepcopy(orig_feat_all)
 
             # merge the features in each frame
-            for t, feature_groups in feat_vigra.iteritems():
-                for name, features in feature_groups.iteritems():
-                    for k, v in features.iteritems():
+            for t, feature_groups in feat_vigra.items():
+                for name, features in feature_groups.items():
+                    for k, v in features.items():
                         if k in result[t][name] and t in mapping:
                             result[t][name][k] = self._merge_features(result[t][name][k], v, mapping[t])
                         else:

@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,6 +22,9 @@ from __future__ import print_function
 ##############################################################################
 
 # Built-in
+from builtins import map
+from builtins import range
+from past.utils import old_div
 import gc
 import logging
 
@@ -46,7 +50,7 @@ def getMemoryUsageMb():
     # Collect garbage first
     gc.collect()
     vmem = psutil.virtual_memory()
-    mem_usage_mb = (vmem.total - vmem.available) / 1e6
+    mem_usage_mb = old_div((vmem.total - vmem.available), 1e6)
     return mem_usage_mb
 
 
@@ -101,8 +105,8 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
             result[...] = data
             return
 
-        for i, t in enumerate(xrange(roi.start[tIndex], roi.stop[tIndex])):
-            for j, c in enumerate(xrange(roi.start[cIndex], roi.stop[cIndex])):
+        for i, t in enumerate(range(roi.start[tIndex], roi.stop[tIndex])):
+            for j, c in enumerate(range(roi.start[cIndex], roi.stop[cIndex])):
                 # prepare the result as an argument
                 resview = vigra.taggedView(result[i, ..., j],
                                            axistags='xyz')
@@ -123,7 +127,7 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
         n = len(stop)
         spatStart = [roi.start[i] for i in range(n) if shape[i] > 1]
         spatStop = [roi.stop[i] for i in range(n) if shape[i] > 1]
-        sigma = [0] + map(self._sigmas.get, 'xyz') + [0]
+        sigma = [0] + list(map(self._sigmas.get, 'xyz')) + [0]
         spatialRoi = (spatStart, spatStop)
 
         inputSpatialRoi = enlargeRoiForHalo(roi.start, roi.stop, shape,
@@ -198,7 +202,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
             data = data.astype(numpy.float32)
         
         axiskeys = self.Input.meta.getAxisKeys()
-        spatialkeys = filter( lambda k: k in 'xyz', axiskeys )
+        spatialkeys = [k for k in axiskeys if k in 'xyz']
 
         # we need to remove a singleton z axis, otherwise we get 
         # 'kernel longer than line' errors
@@ -208,11 +212,11 @@ class OpAnisotropicGaussianSmoothing(Operator):
             removedZ = True
             data = data.reshape((data.shape[xIndex], data.shape[yIndex]))
             reskey[zIndex]=0
-            spatialkeys = filter( lambda k: k in 'xy', axiskeys )
+            spatialkeys = [k for k in axiskeys if k in 'xy']
         else:
             removedZ = False
 
-        sigma = map(self._sigmas.get, spatialkeys)
+        sigma = list(map(self._sigmas.get, spatialkeys))
         #Check if we need to smooth
         if any([x < 0.1 for x in sigma]):
             if removedZ:
@@ -232,8 +236,8 @@ class OpAnisotropicGaussianSmoothing(Operator):
     
     def _getInputComputeRois(self, roi):
         axiskeys = self.Input.meta.getAxisKeys()
-        spatialkeys = filter( lambda k: k in 'xyz', axiskeys )
-        sigma = map( self._sigmas.get, spatialkeys )
+        spatialkeys = [k for k in axiskeys if k in 'xyz']
+        sigma = list(map( self._sigmas.get, spatialkeys ))
         inputSpatialShape = self.Input.meta.getTaggedShape()
         spatialRoi = ( TinyVector(roi.start), TinyVector(roi.stop) )
         tIndex = None
@@ -242,11 +246,11 @@ class OpAnisotropicGaussianSmoothing(Operator):
         if 'c' in inputSpatialShape:
             del inputSpatialShape['c']
             cIndex = axiskeys.index('c')
-        if 't' in inputSpatialShape.keys():
+        if 't' in list(inputSpatialShape.keys()):
             assert inputSpatialShape['t'] == 1
             tIndex = axiskeys.index('t')
 
-        if 'z' in inputSpatialShape.keys() and inputSpatialShape['z']==1:
+        if 'z' in list(inputSpatialShape.keys()) and inputSpatialShape['z']==1:
             #2D image, avoid kernel longer than line exception
             del inputSpatialShape['z']
             zIndex = axiskeys.index('z')
@@ -258,7 +262,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
                 spatialRoi[0].pop(ind)
                 spatialRoi[1].pop(ind)
         
-        inputSpatialRoi = enlargeRoiForHalo(spatialRoi[0], spatialRoi[1], inputSpatialShape.values(), sigma, window=2.0)
+        inputSpatialRoi = enlargeRoiForHalo(spatialRoi[0], spatialRoi[1], list(inputSpatialShape.values()), sigma, window=2.0)
         
         # Determine the roi within the input data we're going to request
         inputRoiOffset = spatialRoi[0] - inputSpatialRoi[0]

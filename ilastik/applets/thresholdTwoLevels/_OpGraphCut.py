@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,6 +22,8 @@
 
 
 # basic python modules
+from builtins import str
+from past.utils import old_div
 import functools
 import logging
 logger = logging.getLogger(__name__)
@@ -178,7 +181,7 @@ def segmentGC(pred, beta):
     predflat = pred.reshape((numVar, 1))
     if (predflat.dtype == np.uint8):
         predflat = predflat.astype(np.float32)
-        predflat = predflat/256.
+        predflat = old_div(predflat,256.)
 
     functions[:, 0] = predflat[:, 0]
     functions[:, 1] = 1-predflat[:, 0]

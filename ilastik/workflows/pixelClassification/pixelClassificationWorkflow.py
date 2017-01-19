@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from builtins import range
 import sys
 import copy
 import argparse
@@ -382,7 +383,7 @@ class PixelClassificationWorkflow(Workflow):
                 blank_slices = []
                 image_label_count = 0
                 for z in range(tagged_shape['z']):
-                    slicing[tagged_shape.keys().index('z')] = slice(z, z+1)
+                    slicing[list(tagged_shape.keys()).index('z')] = slice(z, z+1)
                     label_slice = label_slot[slicing].wait()
                     if search_value:                        
                         count = (label_slice == search_value).sum()

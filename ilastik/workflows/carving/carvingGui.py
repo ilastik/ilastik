@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,6 +20,9 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import os
 import tempfile
 from functools import partial
@@ -449,7 +453,7 @@ class CarvingGui(LabelingGui):
         Export all objects in the project as separate .obj files, stored to a user-specified directory.
         """
         mst = self.topLevelOperatorView.MST.value
-        if not mst.object_lut.keys():
+        if not list(mst.object_lut.keys()):
             QMessageBox.critical(self, "Can't Export", "You have no saved objets, so there are no meshes to export.")
             return
         
@@ -469,7 +473,7 @@ class CarvingGui(LabelingGui):
         # Get the list of all object names
         object_names = []
         obj_filepaths = []
-        for object_name in mst.object_lut.keys():
+        for object_name in list(mst.object_lut.keys()):
             object_names.append( object_name )
             obj_filepaths.append( os.path.join( export_dir, "{}.obj".format( object_name ) ) )
         
@@ -516,7 +520,7 @@ class CarvingGui(LabelingGui):
                 assert mesh_count == 1, \
                     "Found {} meshes processing object '{}',"\
                     "(only expected 1)".format( mesh_count, object_name )
-                mesh = window.extractor.meshes.values()[0]
+                mesh = list(window.extractor.meshes.values())[0]
                 logger.info( "Saving meshes to {}".format( obj_filepath ) )
     
                 # Use VTK to write to a temporary .vtk file
@@ -574,11 +578,11 @@ class CarvingGui(LabelingGui):
             self._renderMgr.setup(op.InputData.meta.shape[1:4])
 
         # remove nonexistent objects
-        self._shownObjects3D = dict((k, v) for k, v in self._shownObjects3D.iteritems()
-                                    if k in op.MST.value.object_lut.keys())
+        self._shownObjects3D = dict((k, v) for k, v in self._shownObjects3D.items()
+                                    if k in list(op.MST.value.object_lut.keys()))
 
         lut = numpy.zeros(op.MST.value.nodeNum+1, dtype=numpy.int32)
-        for name, label in self._shownObjects3D.iteritems():
+        for name, label in self._shownObjects3D.items():
             objectSupervoxels = op.MST.value.objects[name]
             lut[objectSupervoxels] = label
 
@@ -595,9 +599,9 @@ class CarvingGui(LabelingGui):
         op = self.topLevelOperatorView
         ctable = self._doneSegmentationLayer.colorTable
 
-        for name, label in self._shownObjects3D.iteritems():
+        for name, label in self._shownObjects3D.items():
             color = QColor(ctable[op.MST.value.object_names[name]])
-            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+            color = (old_div(color.red(), 255.0), old_div(color.green(), 255.0), old_div(color.blue(), 255.0))
             self._renderMgr.setColor(label, color)
 
         if self._showSegmentationIn3D and self._segmentation_3d_label is not None:

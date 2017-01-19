@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,6 +19,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from past.utils import old_div
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -54,7 +56,7 @@ class StopWatch( QWidget ):
         self._num = QLCDNumber(self)
 	self._num.setNumDigits(8)
 	self._time = QTime()
-	self._time.setHMS(0,int(self._T/60),0,0)
+	self._time.setHMS(0,int(old_div(self._T,60)),0,0)
 	self._timer = QTimer(self)
         self._timer.timeout.connect(self.showTime)
 	self.i=0
@@ -85,7 +87,7 @@ class StopWatch( QWidget ):
 	self.resize(300,150)
 
     def resetTime( self ):
-	self._time.setHMS(0,int(self._T/60),0)
+	self._time.setHMS(0,int(old_div(self._T,60)),0)
 	text = self._time.toString("hh:mm:ss")
 	self._num.display(text)
 	self.i=0

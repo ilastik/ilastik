@@ -32,10 +32,10 @@ class VigraTest(unittest.TestCase):
     def _testFeatures(self, feats):
         self.assertTrue(len(feats) > 0)
         self.assertTrue(isinstance(feats, dict))
-        for k, v in feats.iteritems():
+        for k, v in feats.items():
             self.assertTrue(isinstance(k, str))
             self.assertTrue(isinstance(v, dict))
-            for k2, v2 in v.iteritems():
+            for k2, v2 in v.items():
                 self.assertTrue(isinstance(k2, str))
                 # TODO: check parameters
 

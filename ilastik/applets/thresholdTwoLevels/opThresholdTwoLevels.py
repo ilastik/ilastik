@@ -20,10 +20,13 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 import warnings
 import logging
 from functools import partial
-from ConfigParser import NoOptionError
+from configparser import NoOptionError
 
 # numerics
 import numpy
@@ -660,7 +663,7 @@ class _OpCacheWrapper(Operator):
         tagged_shape = self._op1.Output.meta.getTaggedShape()
         tagged_shape['t'] = 1
         tagged_shape['c'] = 1
-        cacheshape = map(lambda k: tagged_shape[k], 'xyzct')
+        cacheshape = [tagged_shape[k] for k in 'xyzct']
         if _labeling_impl == "lazy":
             #HACK hardcoded block shape
             blockshape = numpy.minimum(cacheshape, 256)

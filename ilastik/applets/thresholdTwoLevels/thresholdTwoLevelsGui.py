@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,6 +20,10 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import map
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import os
 import logging
 from functools import partial
@@ -78,7 +83,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                                  'y' : self._drawer.sigmaSpinBox_Y,
                                  'z' : self._drawer.sigmaSpinBox_Z }
 
-        self._allWatchedWidgets = self._sigmaSpinBoxes.values() + \
+        self._allWatchedWidgets = list(self._sigmaSpinBoxes.values()) + \
         [
             self._drawer.inputChannelComboBox,
             self._drawer.lowThresholdSpinBox,
@@ -131,11 +136,11 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             numChannels = op.InputImage.meta.shape[channelIndex]
 
         if op.InputChannelColors.ready():
-            input_channel_colors = map(lambda r_g_b: QColor(r_g_b[0],r_g_b[1],r_g_b[2]), op.InputChannelColors.value)
+            input_channel_colors = [QColor(r_g_b[0],r_g_b[1],r_g_b[2]) for r_g_b in op.InputChannelColors.value]
         else:
             if self._defaultInputChannelColors is None:
                 self._defaultInputChannelColors = self._createDefault16ColorColorTable()
-            input_channel_colors = map(QColor, self._defaultInputChannelColors)
+            input_channel_colors = list(map(QColor, self._defaultInputChannelColors))
         for ichannel in range(numChannels):
             # make an icon
             pm = QPixmap(16, 16)
@@ -146,7 +151,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         # Sigmas
         sigmaDict = self.topLevelOperatorView.SmootherSigma.value
-        for axiskey, spinBox in self._sigmaSpinBoxes.items():
+        for axiskey, spinBox in list(self._sigmaSpinBoxes.items()):
             spinBox.setValue( sigmaDict[axiskey] )
 
         # Thresholds
@@ -200,7 +205,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # avoid 'kernel longer than line' errors
         shape = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
         for ax in [item for item in 'xyz' if item in shape and shape[item] > 1]:
-            req_sigma = np.floor(shape[ax]/3)
+            req_sigma = np.floor(old_div(shape[ax],3))
             if block_shape_dict[ax] > req_sigma:
                 mexBox = QMessageBox()
                 mexBox.setText("The sigma value {} for dimension '{}'"
@@ -322,9 +327,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             layers.append(outputLayer)
 
         if op.InputChannelColors.ready():
-            input_channel_colors = map(lambda r_g_b1: QColor(r_g_b1[0],r_g_b1[1],r_g_b1[2]), op.InputChannelColors.value)
+            input_channel_colors = [QColor(r_g_b1[0],r_g_b1[1],r_g_b1[2]) for r_g_b1 in op.InputChannelColors.value]
         else:
-            input_channel_colors = map(QColor, self._defaultInputChannelColors)
+            input_channel_colors = list(map(QColor, self._defaultInputChannelColors))
         for channel, channelProvider in enumerate(self._channelProviders):
             slot_drange = channelProvider.Output.meta.drange
             if slot_drange is not None:

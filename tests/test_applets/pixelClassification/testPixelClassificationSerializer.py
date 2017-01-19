@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,6 +19,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
+from past.utils import old_div
 import os
 import numpy
 import h5py
@@ -80,7 +83,7 @@ class OpMockPixelClassifier(Operator):
         self.classifier_cache = OpValueCache(graph=self.graph, parent=self)
         self.classifier_cache.Input.connect( self.opClassifier.Classifier )
         
-        p1 = numpy.indices(self.dataShape).sum(0) / 207.0
+        p1 = old_div(numpy.indices(self.dataShape).sum(0), 207.0)
         p2 = 1 - p1
 
         self.predictionData = numpy.concatenate((p1,p2), axis=4)

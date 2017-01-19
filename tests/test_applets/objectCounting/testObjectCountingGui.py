@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -25,6 +26,9 @@
 #TODO: test load a referecence project
 
 
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 import os
 import sys
 import numpy
@@ -241,7 +245,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             labelData = opPix.LabelImages[0][:].wait()
             labelData = vigra.taggedView( labelData, opPix.LabelImages[0].meta.axistags )
             labelData = labelData.withAxes('xy')
-            center = (numpy.array(labelData.shape[:-1]))/2 + 1
+            center = old_div((numpy.array(labelData.shape[:-1])),2) + 1
             
             true_idx = numpy.array([center + dot for dot in dot_start_list])
             idx = numpy.where(labelData)

@@ -172,7 +172,7 @@ class OpLabelingSingleLane( Operator ):
 
     def setupCache(self, blockDims):
         # Set the blockshapes for each input image separately, depending on which axistags it has.
-        axisOrder = map(lambda tag: tag.key, self.InputImage.meta.axistags )
+        axisOrder = [tag.key for tag in self.InputImage.meta.axistags]
         
         ## Label Array blocks
         blockShape = tuple( blockDims[k] for k in axisOrder )

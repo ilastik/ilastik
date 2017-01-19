@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,6 +20,8 @@ from __future__ import print_function
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
+from past.utils import old_div
 import unittest
 import numpy as np
 import vigra
@@ -174,7 +177,7 @@ class testOpRegionFeaturesAgainstNumpy(object):
         feats = opAdapt.Output([0, 1]).wait()
         assert len(feats)==self.img.shape[0]
         for key in self.features[NAME]:
-            assert key in feats[0][NAME].keys()
+            assert key in list(feats[0][NAME].keys())
 
         labelimage = self.labelop.Output[:].wait()
         nt = labelimage.shape[0]
@@ -207,7 +210,7 @@ class testOpRegionFeaturesAgainstNumpy(object):
                 assert sum_incl[iobj] == sum[iobj]+sum_excl[iobj]
                 #check that regionCenter wasn't shifted
                 for icoord, coord in enumerate(centers[iobj]):
-                    center_good = mins[iobj][icoord] + (maxs[iobj][icoord]-mins[iobj][icoord])/2.
+                    center_good = mins[iobj][icoord] + old_div((maxs[iobj][icoord]-mins[iobj][icoord]),2.)
                     assert abs(coord-center_good)<0.01
 
 

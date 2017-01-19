@@ -1,4 +1,5 @@
 from __future__ import print_function
+from builtins import str
 from PyQt5 import uic
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QColor, QBrush
@@ -97,7 +98,7 @@ class TCPServerInfoWidget(QWidget):
         :type success: bool
         """
         text = "%s (" % cmd["command"]
-        for k, v in cmd.iteritems():
+        for k, v in cmd.items():
             if k == "command":
                 continue
             text += " %s:%s" % (k, v)
@@ -128,7 +129,7 @@ class TCPServerInfoWidget(QWidget):
         :type connections: dict
         """
         self.ui.connectionList.clear()
-        for c in connections.iterkeys():
+        for c in connections.keys():
             item = QListWidgetItem("%s (%s)" % (c[0], c[1]))
             enabled = connections[c]["enabled"]
             client = connections[c]["address"]

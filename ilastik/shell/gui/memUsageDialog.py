@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,6 +21,9 @@ from __future__ import print_function
 #		   http://ilastik.org/license.html
 ###############################################################################
 #SciPy
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import numpy
 
 #PyQt
@@ -74,7 +78,7 @@ class TreeNode(QTreeWidgetItem):
     def _makeTreeWidgetItemData(self, report):
         l = []
         l.append("%r" % report.name)
-        l.append("%1.1f MB" % (report.usedMemory/1024**2.0))
+        l.append("%1.1f MB" % (old_div(report.usedMemory,1024**2.0)))
         if report.roi is not None:
             l.append("%r\n%r" % (list(report.roi[0]), list(report.roi[1])))
         else:

@@ -21,6 +21,11 @@
 from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import str
+from builtins import range
 import numpy as np
 import vigra
 import itertools
@@ -29,7 +34,7 @@ try:
 except:
     pass
 
-import h5py, cPickle
+import h5py, pickle
 import sys
 
 import logging
@@ -296,7 +301,7 @@ class RegressorGurobi(object):
 
             model.update()
 
-            for i, b_i,fore_i, z_i, boxConstraint in zip(range(len(boxConstraints)), b_vars, isForegroundIndicators, z_vars, boxConstraints):
+            for i, b_i,fore_i, z_i, boxConstraint in zip(list(range(len(boxConstraints))), b_vars, isForegroundIndicators, z_vars, boxConstraints):
                 value, features = boxConstraint
                 for b, fore, z, feature in zip(b_i, fore_i, z_i, features):
 
@@ -405,7 +410,7 @@ class SVR(object):
     def load(self, cachePath, targetname):
         f = h5py.File(cachePath, 'r')
         dataset = f[targetname]
-        obj = cPickle.loads(dataset[0])
+        obj = pickle.loads(dataset[0])
         f.close()
         return obj
 
@@ -638,7 +643,7 @@ class SVR(object):
         f = h5py.File(cachePath)
         str_type = h5py.special_dtype(vlen = str)
         dataset = f.create_dataset(targetname, shape = (1,), dtype = str_type)
-        dataset[0] = cPickle.dumps(self)
+        dataset[0] = pickle.dumps(self)
         f.close()
 
     def get_params(self):

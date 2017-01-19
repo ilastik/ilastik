@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from builtins import range
 from ilastik.applets.base.appletSerializer import \
     AppletSerializer, deleteIfPresent, SerialSlot, SerialCountingSlot, \
     SerialBlockSlot, SerialListSlot
@@ -157,7 +158,7 @@ class SerialPredictionSlot(SerialSlot):
 
     def deserialize(self, group):
         # override because we need to set self._predictionsPresent
-        self._predictionsPresent = self.name in group.keys()
+        self._predictionsPresent = self.name in list(group.keys())
         super(SerialPredictionSlot, self).deserialize(group)
 
     def _deserialize(self, group, slot):
@@ -167,8 +168,8 @@ class SerialPredictionSlot(SerialSlot):
             self.operator.FreezePredictions.setValue(True)
 
         #self.operator.PredictionsFromDisk.resize(len(group))
-        if len(group.keys()) > 0:
-            assert len(group.keys()) == len(self.operator.PredictionsFromDisk), "Expected to find the same number of on-disk predications as there are images loaded."
+        if len(list(group.keys())) > 0:
+            assert len(list(group.keys())) == len(self.operator.PredictionsFromDisk), "Expected to find the same number of on-disk predications as there are images loaded."
         else:
             for slot in self.operator.PredictionsFromDisk:
                 slot.disconnect()

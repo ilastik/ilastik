@@ -1,4 +1,5 @@
 from __future__ import print_function
+from builtins import str
 import os
 import copy
 import h5py
@@ -60,8 +61,7 @@ def all_dataset_internal_paths(f):
     """
     allkeys = []
     f.visit(allkeys.append)
-    dataset_keys = filter(lambda key: isinstance(f[key], h5py.Dataset), 
-                          allkeys)
+    dataset_keys = [key for key in allkeys if isinstance(f[key], h5py.Dataset)]
     return dataset_keys
 
 if __name__ == "__main__":

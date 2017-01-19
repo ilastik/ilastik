@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import str
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, deleteIfPresent,\
     getOrCreateGroup, SerialHdf5BlockSlot, SerialPickleableSlot
 
@@ -31,7 +32,7 @@ class SerialDivisionsSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             dset = []
-            for trackid in op.divisions.keys():
+            for trackid in list(op.divisions.keys()):
                 (children, t_parent) = op.divisions[trackid]
                 dset.append([trackid, children[0], children[1], t_parent])
             if len(dset) > 0:
@@ -44,7 +45,7 @@ class SerialDivisionsSlot(SerialSlot):
         mainOperator = self.slot.getRealOperator()
         innerops = mainOperator.innerOperators
         opgroup = group[self.name]
-        for inner in opgroup.keys():
+        for inner in list(opgroup.keys()):
             dset = opgroup[inner]            
             op = innerops[int(inner)]
             divisions = {}
@@ -61,9 +62,9 @@ class SerialLabelsSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             gr = getOrCreateGroup(group, str(i))
-            for t in op.labels.keys():
+            for t in list(op.labels.keys()):
                 t_gr = getOrCreateGroup(gr, str(t))
-                for oid in op.labels[t].keys():
+                for oid in list(op.labels[t].keys()):
                     l = op.labels[t][oid]
                     dset = list(l)
                     if len(dset) > 0:
@@ -76,14 +77,14 @@ class SerialLabelsSlot(SerialSlot):
         mainOperator = self.slot.getRealOperator()
         innerops = mainOperator.innerOperators
         opgroup = group[self.name]
-        for inner in opgroup.keys():
+        for inner in list(opgroup.keys()):
             gr = opgroup[inner]
             op = innerops[int(inner)]
             labels = {}
-            for t in gr.keys():
+            for t in list(gr.keys()):
                 labels[int(t)] = {}
                 t_gr = gr[str(t)]
-                for oid in t_gr.keys():
+                for oid in list(t_gr.keys()):
                     labels[int(t)][int(oid)] = set(t_gr[oid])
             op.labels = labels
         self.dirty = False

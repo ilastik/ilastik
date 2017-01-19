@@ -19,6 +19,9 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import chr
+from builtins import range
+from builtins import object
 import sys
 import os
 from functools import partial
@@ -50,12 +53,12 @@ class BodyProgressBar(QProgressBar):
     def text(self):
         return self._text
 
-class BodyTreeColumns():
+class BodyTreeColumns(object):
     ID = 0
     Button1 = 1
     Button2 = 2
 
-class AnnotationTableColumns():
+class AnnotationTableColumns(object):
     Body = 0
     Coordinates = 1
     Comment = 2
@@ -182,12 +185,12 @@ class BodySplitInfoWidget( QWidget ):
         self.bodyTreeWidget.setCurrentItem( bodyItem )
 
     def _handleBodyTreeDoubleClick(self, item, column):
-        if item in self._bodyTreeParentItems.values():
+        if item in list(self._bodyTreeParentItems.values()):
             
             selectedLabel = item.data(0, Qt.UserRole)
             
             # Find the first split point for this body
-            for coord3d, annotation in self._annotations.items():
+            for coord3d, annotation in list(self._annotations.items()):
                 if selectedLabel == annotation.ravelerLabel:
                     # Find a row to auto-select in the annotation table
                     for row in range( self.annotationTableWidget.rowCount() ):
@@ -230,7 +233,7 @@ class BodySplitInfoWidget( QWidget ):
             # For this raveler label, how many fragments do we have and how many do we expect?
             # Count the number of annotations with this label.
             num_splits = reduce( lambda count, ann: count + (ann.ravelerLabel == ravelerLabel),
-                                 self._annotations.values(),
+                                 list(self._annotations.values()),
                                  0 )
             num_expected = num_splits + 1
             num_fragments = len(fragmentNames)
@@ -293,8 +296,8 @@ class BodySplitInfoWidget( QWidget ):
         self._initAnnotationTableHeader()
         
         # Flip the key/value of the annotation list so we can sort them by label
-        annotations = self._annotations.items()
-        annotations = map( lambda coord3d_label_comment: (coord3d_label_comment[1][0], coord3d_label_comment[0], coord3d_label_comment[1][1]), annotations )
+        annotations = list(self._annotations.items())
+        annotations = [(coord3d_label_comment[1][0], coord3d_label_comment[0], coord3d_label_comment[1][1]) for coord3d_label_comment in annotations]
         annotations = sorted( annotations )
         
         for row, (ravelerLabel, coord3d, comment) in enumerate( annotations ):

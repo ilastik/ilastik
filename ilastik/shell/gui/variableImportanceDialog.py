@@ -1,3 +1,8 @@
+from __future__ import division
+from builtins import map
+from builtins import str
+from builtins import zip
+from past.utils import old_div
 import collections
 
 from PyQt5.QtCore import Qt
@@ -28,14 +33,14 @@ class VariableImportanceDialog(QDialog):
                
         if named_importances:
             # Show variable importance table
-            rows = len(named_importances.items())
+            rows = len(list(named_importances.items()))
             columns = 5
             table = QTableWidget(rows, columns)   
             table.setHorizontalHeaderLabels(['Variable Name', 'Class #0', 'Class #1', 'Overall', 'Gini'])
             table.verticalHeader().setVisible(False)      
             
-            importances_mins = map(min, zip(*named_importances.values()))
-            importances_maxs = map(max, zip(*named_importances.values()))
+            importances_mins = list(map(min, list(zip(*list(named_importances.values())))))
+            importances_maxs = list(map(max, list(zip(*list(named_importances.values())))))
             
             for i, (variable, importances) in enumerate(named_importances.items()):     
                 # Remove non-ASCII characters to get rid of the sigma character in the variable names.
@@ -51,7 +56,7 @@ class VariableImportanceDialog(QDialog):
                     imin = importances_mins[j]
                     imax = importances_maxs[j]
                     range = importances_maxs[j] - importances_mins[j]
-                    color = int( 255 - ( (val-imin) * 200) / range )    
+                    color = int( 255 - old_div(( (val-imin) * 200), range) )    
 
                     # Load items as strings
                     item = QTableWidgetItemWithFloatSorting(str("{: .05f}".format(importance)))

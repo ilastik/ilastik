@@ -19,6 +19,8 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import str
+from builtins import object
 import os
 
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
@@ -30,7 +32,7 @@ from .opDataSelection import DatasetInfo
 
 from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
-class DatasetDetailedInfoColumn():
+class DatasetDetailedInfoColumn(object):
     Nickname = 0
     Location = 1
     InternalID = 2

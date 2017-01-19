@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
+from builtins import range
 __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
 __date__ = "$Oct 17, 2014 13:07:51 EDT$"
 
@@ -147,7 +148,7 @@ class OpNansheGenerateDictionary(Operator):
 
         output_key = list(output_key)
 
-        for i in xrange(1, len(output_key)):
+        for i in range(1, len(output_key)):
             output_key[i] = slice(0, output_key[i].stop - output_key[i].start, output_key[i].step)
 
         output_key = tuple(output_key)

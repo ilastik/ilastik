@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 from ilastik.plugins import ObjectFeaturesPlugin
 import ilastik.applets.objectExtraction.opObjectExtraction
 import vigra
@@ -68,7 +71,7 @@ class ExampleObjFeats(ObjectFeaturesPlugin):
                                                      features=["RegionAxes", "RegionRadii"])
         rr = feats["RegionRadii"][1]
         result = {}
-        result["radii_ratio"]=float(rr[0])/rr[-1]
+        result["radii_ratio"]=old_div(float(rr[0]),rr[-1])
         return result
 
     def _do_3d(self, image, label_bboxes, features, axes):
@@ -77,7 +80,7 @@ class ExampleObjFeats(ObjectFeaturesPlugin):
         del kwargs['features']
         kwargs['label_bboxes'] = kwargs.pop('label_bboxes')
         results = []
-        features = features.keys()
+        features = list(features.keys())
         if 'lbp' in features:
             results.append(self.lbp(**kwargs))
         if 'radii_ratio' in features:

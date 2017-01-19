@@ -1,3 +1,7 @@
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import numpy as np
 import math
 from lazyflow.graph import InputSlot, OutputSlot
@@ -102,7 +106,7 @@ class OpStructuredTracking(OpTrackingBase):
         self._relabeledOpCache.BlockShape.setValue( self._blockshape )
 
         for t in range(self.LabelImage.meta.shape[0]):
-            if t not in self.labels.keys():
+            if t not in list(self.labels.keys()):
                 self.labels[t]={}
 
     def execute(self, slot, subindex, roi, result):
@@ -115,7 +119,7 @@ class OpStructuredTracking(OpTrackingBase):
 
         if slot is self.Output:
             parameters = self.Parameters.value
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
             original = np.zeros(result.shape, dtype=slot.meta.dtype)
             super(OpStructuredTracking, self).execute(slot, subindex, roi, original)
 
@@ -134,13 +138,13 @@ class OpStructuredTracking(OpTrackingBase):
         elif slot is self.MergerOutput:
             result[:] = self.LabelImage.get(roi).wait()
             parameters = self.Parameters.value
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
             pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
                     and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
                     and len(self.mergers) > t and len(self.mergers[t])):
-                    if 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']:
+                    if 'withMergerResolution' in list(parameters.keys()) and parameters['withMergerResolution']:
                         result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, True)
                     else:
                         result[t-roi.start[0],...,0] = highlightMergers(result[t-roi.start[0],...,0], self.mergers[t])
@@ -148,14 +152,14 @@ class OpStructuredTracking(OpTrackingBase):
                     result[t-roi.start[0],...][:] = 0
         elif slot is self.RelabeledImage:
             parameters = self.Parameters.value
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
             result[:] = self.LabelImage.get(roi).wait()
             pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
                         and len(self.resolvedto) > t and len(self.resolvedto[t])
-                        and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
+                        and 'withMergerResolution' in list(parameters.keys()) and parameters['withMergerResolution']):
                         result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, False, True)
         else:  # default bahaviour
             super(OpStructuredTracking, self).execute(slot, subindex, roi, result)
@@ -312,7 +316,7 @@ class OpStructuredTracking(OpTrackingBase):
                 hypothesesGraph = self.consTracker.buildGraph(ts, new_max_nearest_neighbors)
 
 
-                self.features = self.ObjectFeatures(range(0,self.LabelImage.meta.shape[0])).wait()
+                self.features = self.ObjectFeatures(list(range(0,self.LabelImage.meta.shape[0]))).wait()
 
                 foundAllArcs = True;
                 if trainingToHardConstraints:
@@ -322,18 +326,18 @@ class OpStructuredTracking(OpTrackingBase):
                     # could be merged with code in structuredTrackingGui
                     self.consTracker.addLabels()
 
-                    for cropKey in self.Annotations.value.keys():
+                    for cropKey in list(self.Annotations.value.keys()):
                         if foundAllArcs:
                             crop = self.Annotations.value[cropKey]
 
-                            if "labels" in crop.keys():
+                            if "labels" in list(crop.keys()):
                                 labels = crop["labels"]
-                                for time in labels.keys():
+                                for time in list(labels.keys()):
 
                                     if not foundAllArcs:
                                         break
 
-                                    for label in labels[time].keys():
+                                    for label in list(labels[time].keys()):
                                         if not foundAllArcs:
                                             break
 
@@ -374,9 +378,9 @@ class OpStructuredTracking(OpTrackingBase):
                                         elif type[0] == "INTERMEDIATE":
                                             self.consTracker.addIntermediateLabels(time, int(label), float(trackCount))
 
-                            if "divisions" in crop.keys():
+                            if "divisions" in list(crop.keys()):
                                 divisions = crop["divisions"]
-                                for track in divisions.keys():
+                                for track in list(divisions.keys()):
                                     if not foundAllArcs:
                                         logger.info("[opStructuredTracking] Increasing max nearest neighbors!")
                                         break
@@ -500,7 +504,7 @@ class OpStructuredTracking(OpTrackingBase):
 
         merger_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Merger")
         tracking_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Tracking")
-        if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
+        if 'withMergerResolution' in list(parameters.keys()) and not parameters['withMergerResolution']:
             self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
                 self.parent.parent.trackingApplet._gui.currentGui().merger_colortable
         else:
@@ -515,9 +519,9 @@ class OpStructuredTracking(OpTrackingBase):
         alpha = self.transition_parameter
 
         if state == 0:
-            arg = 1.0 - math.exp(-distance/alpha)
+            arg = 1.0 - math.exp(old_div(-distance,alpha))
         else:
-            arg = math.exp(-distance/alpha)
+            arg = math.exp(old_div(-distance,alpha))
 
         if arg < 0.0000000001:
             arg = 0.0000000001
@@ -531,7 +535,7 @@ class OpStructuredTracking(OpTrackingBase):
 
     def getLabelInCrop(self, cropKey, time, track):
         labels = self.Annotations.value[cropKey]["labels"][time]
-        for label in labels.keys():
+        for label in list(labels.keys()):
             if self.Annotations.value[cropKey]["labels"][time][label] == set([track]):
                 return label
         return -1
@@ -593,7 +597,7 @@ class OpStructuredTracking(OpTrackingBase):
 
     def _get_merger_coordinates(self, coordinate_map, time_range, eventsVector):
         feats = self.ObjectFeatures(time_range).wait()
-        for t in feats.keys():
+        for t in list(feats.keys()):
             rc = feats[t][default_features_key]['RegionCenter']
             lower = feats[t][default_features_key]['Coord<Minimum>']
             upper = feats[t][default_features_key]['Coord<Maximum>']
@@ -640,7 +644,7 @@ class OpStructuredTracking(OpTrackingBase):
 
         coordinate_map = self.CoordinateMap.value
         valid_ids = []
-        for old_id, new_ids in self.resolvedto[time].iteritems():
+        for old_id, new_ids in self.resolvedto[time].items():
             for new_id in new_ids:
                 # TODO Reliable distinction between 2d and 3d?
                 if self._ndim == 2:

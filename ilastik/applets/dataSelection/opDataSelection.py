@@ -18,6 +18,9 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import str
+from builtins import range
+from builtins import object
 import os
 import glob
 import uuid
@@ -39,7 +42,7 @@ class DatasetInfo(object):
     """
     Struct-like class for describing dataset info.
     """
-    class Location():
+    class Location(object):
         FileSystem = 0
         ProjectInternal = 1
         PreloadedArray = 2
@@ -94,7 +97,7 @@ class DatasetInfo(object):
                 fromstack = True
     
                 # Convert all paths to absolute 
-                file_list = map(lambda f: make_absolute(f, cwd), file_list)
+                file_list = [make_absolute(f, cwd) for f in file_list]
                 if '*' in filepath:
                     filepath = make_absolute(filepath, cwd)
                 else:
@@ -349,14 +352,13 @@ class OpDataSelection(Operator):
                 provider_order = "".join(providerSlot.meta.getAxisKeys())
                 tagged_provider_shape = providerSlot.meta.getTaggedShape()
 
-                minimal_axes = filter( lambda k_v: k_v[1] > 1, tagged_provider_shape.items() )
+                minimal_axes = [k_v for k_v in list(tagged_provider_shape.items()) if k_v[1] > 1]
                 minimal_axes = set(k for k,v in minimal_axes)
 
                 # Pick the shortest of the possible 'forced' orders that
                 # still contains all the axes of the original dataset.
                 candidate_orders = list(self.forceAxisOrder)
-                candidate_orders = filter(lambda order: minimal_axes.issubset(set(order)),
-                                          candidate_orders)
+                candidate_orders = [order for order in candidate_orders if minimal_axes.issubset(set(order))]
 
                 if len(candidate_orders) == 0:
                     msg = "The axes of your dataset ({}) are not compatible with any of the allowed"\
@@ -377,7 +379,7 @@ class OpDataSelection(Operator):
             #  make sure the axes are re-ordered so that channel is last.
             if providerSlot.meta.axistags.index('c') != len( providerSlot.meta.axistags )-1:
                 op5 = OpReorderAxes( parent=self )
-                keys = providerSlot.meta.getTaggedShape().keys()
+                keys = list(providerSlot.meta.getTaggedShape().keys())
                 try:
                     # Remove if present.
                     keys.remove('c')

@@ -1,3 +1,5 @@
+from builtins import zip
+from builtins import range
 import numpy as np
 import math
 import vigra
@@ -54,7 +56,7 @@ class OpDivisionFeatures(Operator):
         assert len(roi.start) == len(roi.stop) == len(self.BlockwiseDivisionFeatures.meta.shape)
         assert slot == self.BlockwiseDivisionFeatures
         taggedShape = self.LabelVolume.meta.getTaggedShape()
-        timeIndex = taggedShape.keys().index('t')
+        timeIndex = list(taggedShape.keys()).index('t')
         
         import time
         start = time.time()
@@ -102,9 +104,9 @@ class OpDivisionFeatures(Operator):
         elif slot is self.RegionFeaturesVigra:
             self.BlockwiseDivisionFeatures.setDirty(roi)
         else:
-            axes = self.LabelVolume.meta.getTaggedShape().keys()
-            dirtyStart = collections.OrderedDict(zip(axes, roi.start))
-            dirtyStop = collections.OrderedDict(zip(axes, roi.stop))
+            axes = list(self.LabelVolume.meta.getTaggedShape().keys())
+            dirtyStart = collections.OrderedDict(list(zip(axes, roi.start)))
+            dirtyStop = collections.OrderedDict(list(zip(axes, roi.stop)))
 
             # Remove the spatial and channel dims (keep t, if present)
             del dirtyStart['x']
@@ -117,7 +119,7 @@ class OpDivisionFeatures(Operator):
             del dirtyStop['z']
             del dirtyStop['c']
 
-            self.BlockwiseDivisionFeatures.setDirty(dirtyStart.values(), dirtyStop.values())
+            self.BlockwiseDivisionFeatures.setDirty(list(dirtyStart.values()), list(dirtyStop.values()))
     
     
 class OpTrackingFeatureExtraction(Operator):
@@ -214,29 +216,29 @@ class OpTrackingFeatureExtraction(Operator):
         if slot == self.ComputedFeatureNamesAll:
             feat_names_vigra = self.FeatureNamesVigra([]).wait()
             feat_names_div = self.FeatureNamesDivision([]).wait()        
-            for plugin_name in feat_names_vigra.keys():
+            for plugin_name in list(feat_names_vigra.keys()):
                 assert plugin_name not in feat_names_div, "feature name dictionaries must be mutually exclusive"
-            for plugin_name in feat_names_div.keys():
+            for plugin_name in list(feat_names_div.keys()):
                 assert plugin_name not in feat_names_vigra, "feature name dictionaries must be mutually exclusive"
-            result = dict(feat_names_vigra.items() + feat_names_div.items())
+            result = dict(list(feat_names_vigra.items()) + list(feat_names_div.items()))
 
             return result
         elif slot == self.ComputedFeatureNamesNoDivisions:
             feat_names_vigra = self.FeatureNamesVigra([]).wait()
-            result = dict(feat_names_vigra.items())
+            result = dict(list(feat_names_vigra.items()))
 
             return result
         elif slot == self.RegionFeaturesAll:
             feat_vigra = self.RegionFeaturesVigra(roi).wait()
             feat_div = self.RegionFeaturesDivision(roi).wait()
-            assert np.all(feat_vigra.keys() == feat_div.keys())
+            assert np.all(list(feat_vigra.keys()) == list(feat_div.keys()))
             result = {}        
-            for t in feat_vigra.keys():
-                for plugin_name in feat_vigra[t].keys():
+            for t in list(feat_vigra.keys()):
+                for plugin_name in list(feat_vigra[t].keys()):
                     assert plugin_name not in feat_div[t], "feature dictionaries must be mutually exclusive"
-                for plugin_name in feat_div[t].keys():
+                for plugin_name in list(feat_div[t].keys()):
                     assert plugin_name not in feat_vigra[t], "feature dictionaries must be mutually exclusive"                    
-                result[t] = dict(feat_div[t].items() + feat_vigra[t].items())            
+                result[t] = dict(list(feat_div[t].items()) + list(feat_vigra[t].items()))            
             return result
         else:
             assert False, "Shouldn't get here."
@@ -290,7 +292,7 @@ class OpTrackingFeatureExtraction(Operator):
             if rawTaggedShape['z']>1:
                 # Filter out the 2D-only features, which helpfully have "2D" in their plugin name
                 current_dict = self.FeatureNamesVigra.value
-                for plugin in current_dict.keys():
+                for plugin in list(current_dict.keys()):
                     if not "2D" in plugin:
                         filtered_features_dict[plugin] = current_dict[plugin]
 
@@ -327,7 +329,7 @@ class OpCachedDivisionFeatures(Operator):
     def setupOutputs(self):        
         taggedOutputShape = self.LabelImage.meta.getTaggedShape()        
 
-        if 't' not in taggedOutputShape.keys() or taggedOutputShape['t'] < 2:
+        if 't' not in list(taggedOutputShape.keys()) or taggedOutputShape['t'] < 2:
             raise DatasetConstraintError( "Tracking Feature Extraction",
                                           "Label Image must have a time axis with more than 1 image.\n"\
                                           "Label Image shape: {}"\

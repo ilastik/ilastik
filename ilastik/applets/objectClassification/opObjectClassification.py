@@ -18,6 +18,11 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import str
+from builtins import map
+from builtins import zip
+from builtins import range
+from builtins import object
 import os
 import numpy
 import numpy.lib.recfunctions as rfn
@@ -342,7 +347,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
                 continue
 
             cur_labels = label_slot.value
-            for t in cur_labels.keys():
+            for t in list(cur_labels.keys()):
                 label_values_t = cur_labels[t]
                 label_values_t[label_values_t==label]=0
                 cur_labels[t] = label_values_t
@@ -465,7 +470,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
             return None
         if not self.SegmentationImages[imageIndex].ready():
             return None
-        if len(self._labelBBoxes[imageIndex].keys())==0:
+        if len(list(self._labelBBoxes[imageIndex].keys()))==0:
             #we either don't have any labels or we just read the project from file
             #nothing to transfer
             self._needLabelTransfer = False
@@ -515,7 +520,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         data2D = False
         if mins_old.shape[1]==2:
             data2D = True
-        class bbox():
+        class bbox(object):
             def __init__(self, minmaxs, axistags):
                 self.xmin = minmaxs[0][axistags.index('x')]
                 self.ymin = minmaxs[0][axistags.index('y')]
@@ -560,7 +565,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         bboxes_new = bboxes_new[1:]
 
         double_for_loop = itertools.product(bboxes_old, bboxes_new)
-        overlaps = map(bbox.overlap, double_for_loop)
+        overlaps = list(map(bbox.overlap, double_for_loop))
 
         overlaps = numpy.asarray(overlaps)
         overlaps = overlaps.reshape((len(bboxes_old), len(bboxes_new)))
@@ -630,11 +635,11 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
                 json_data_this_time = collections.OrderedDict()
                 bounding_boxes = collections.OrderedDict()
                 # Convert from numpy array to list (for json)
-                bounding_boxes["Coord<Minimum>"] = map( partial(map, int), min_coords )
-                bounding_boxes["Coord<Maximum>"] = map( partial(map, int), max_coords )
+                bounding_boxes["Coord<Minimum>"] = list(map( partial(map, int), min_coords ))
+                bounding_boxes["Coord<Maximum>"] = list(map( partial(map, int), max_coords ))
                 
                 json_data_this_time["bounding_boxes"] = bounding_boxes
-                json_data_this_time["labels"] = map(int, labels)
+                json_data_this_time["labels"] = list(map(int, labels))
                 
                 json_data_this_lane[int(t)] = json_data_this_time
             json_data_all_lanes[lane_index] = json_data_this_lane
@@ -658,14 +663,14 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         max_label = 0
         
         new_labels_all_lanes = {}
-        for lane_index_str in sorted(json_data_all_lanes.keys(), key=int):
+        for lane_index_str in sorted(list(json_data_all_lanes.keys()), key=int):
             lane_index = int(lane_index_str)
             logger.info("Processing image #{}".format( lane_index ))
 
             json_data_this_lane = json_data_all_lanes[lane_index_str]
             
             new_labels_this_lane = {}
-            for time_str in sorted(json_data_this_lane.keys(), key=int):
+            for time_str in sorted(list(json_data_this_lane.keys()), key=int):
                 time = int(time_str)
                 
                 old_features_timewise = self.ObjectFeatures[lane_index]([time]).wait()
@@ -724,14 +729,14 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
     def addLane(self, laneIndex):
         numLanes = len(self.SegmentationImages)
         assert numLanes == laneIndex, "Image lanes must be appended."
-        for slot in self.inputs.values():
+        for slot in list(self.inputs.values()):
             if slot.level > 0 and len(slot) == laneIndex:
                 slot.resize(numLanes + 1)
 
         
 
     def removeLane(self, laneIndex, finalLength):
-        for slot in self.inputs.values():
+        for slot in list(self.inputs.values()):
             if slot.level > 0 and len(slot) == finalLength + 1:
                 slot.removeSlot(laneIndex, finalLength)
 
@@ -778,7 +783,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         export_file.InsertionProgress.subscribe(progress_slot)
 
         # Object IDs
-        export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
+        export_file.add_columns("table", list(range(sum(obj_count))), Mode.List, Default.KnimeId)
         export_file.add_columns("table", ids, Mode.List, Default.IlastikId)
 
         # Object Prediction Labels
@@ -795,14 +800,14 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
 
         # Class probabilities
         probabilities = self.Probabilities[lane_index]([]).wait()
-        probability_columns = OrderedDict((name, []) for name in class_names.values())
+        probability_columns = OrderedDict((name, []) for name in list(class_names.values()))
         for t, object_id in ids:
-             for label_id, class_name in class_names.items():
+             for label_id, class_name in list(class_names.items()):
                  prob = probabilities[t][object_id][label_id-1]
                  probability_columns[class_name].append( prob )
 
-        probability_column_names = map(lambda class_name: "Probability of {}".format( class_name ), class_names.values())
-        export_file.add_columns("table", zip(*probability_columns.values()), Mode.List, {"names": probability_column_names})
+        probability_column_names = ["Probability of {}".format( class_name ) for class_name in list(class_names.values())]
+        export_file.add_columns("table", list(zip(*list(probability_columns.values()))), Mode.List, {"names": probability_column_names})
 
         # Object features
         computed_names = self.ComputedFeatureNames.value
@@ -966,7 +971,7 @@ class OpObjectTrain(Operator):
             labels_image = self.Labels[lane_index]([]).wait()
             labels_image_filtered = {}
             nztimes = []
-            for timestep, labels_time in labels_image.iteritems():
+            for timestep, labels_time in labels_image.items():
                 nz = numpy.nonzero(labels_time)
                 if len(nz[0])==0:
                     continue
@@ -1024,7 +1029,7 @@ class OpObjectTrain(Operator):
         if featMatrix.size == 0 or labelsMatrix.size == 0:
             result[:] = None
             return
-        allLabels=map(long, range(1,numLabels+1))
+        allLabels=list(map(int, list(range(1,numLabels+1))))
         classifier_factory = ParallelVigraRfLazyflowClassifierFactory( self._tree_count, self.ForestCount.value, labels=allLabels )
         classifier = classifier_factory.create_and_train( featMatrix.astype(numpy.float32), numpy.asarray(labelsMatrix, dtype=numpy.uint32) )
         avg_oob = numpy.mean(classifier.oobs)
@@ -1040,7 +1045,7 @@ class OpObjectTrain(Operator):
 
     def _warnBadObjects(self, bad_objects, bad_feats):
         if len(bad_feats) > 0 or\
-                any([len(bad_objects[i]) > 0 for i in bad_objects.keys()]):
+                any([len(bad_objects[i]) > 0 for i in list(bad_objects.keys())]):
             self.BadObjects.setValue({'objects': bad_objects,
                                       'feats': bad_feats})
 
@@ -1114,7 +1119,7 @@ class OpObjectPredict(Operator):
         times = roi._l
         if len(times) == 0:
             # we assume that 0-length requests are requesting everything
-            times = range(self.Predictions.meta.shape[0])
+            times = list(range(self.Predictions.meta.shape[0]))
 
         if slot is self.CachedProbabilities:
             return {t: self.prob_cache[t] for t in times if t in self.prob_cache}
@@ -1131,8 +1136,8 @@ class OpObjectPredict(Operator):
 
         def get_num_objects(extracted_features):
             n = 0
-            for group, feature_dict in extracted_features.items():
-                for feature_name, feature_matrix in feature_dict.items():
+            for group, feature_dict in list(extracted_features.items()):
+                for feature_name, feature_matrix in list(feature_dict.items()):
                     n = max(n, len(feature_matrix))
             return n
 
@@ -1233,7 +1238,7 @@ class OpObjectPredict(Operator):
         predictions = self.Predictions(roi).wait()
         probs = self.Probabilities(roi).wait()
         nobjs = []
-        for t, preds in predictions.iteritems():
+        for t, preds in predictions.items():
             nobjs.append(preds.shape[0])
         nobjs_total = sum(nobjs)
         if nobjs_total==0:
@@ -1245,7 +1250,7 @@ class OpObjectPredict(Operator):
             def fill_column(slot_value, column, name, channel=None):
                 start = 0
                 finish = start
-                for t, values in slot_value.iteritems():
+                for t, values in slot_value.items():
                     #FIXME: remove the first object, it's always background
                     finish = start + nobjs[t]
                     if channel is None:
@@ -1429,7 +1434,7 @@ class OpMaxLabel(Operator):
         for i, inputSubSlot in enumerate(self.Inputs):
             
             subSlotLabelDict = self.Inputs[i][:].wait()
-            for v in subSlotLabelDict.itervalues():
+            for v in subSlotLabelDict.values():
                 subSlotMax = numpy.max(v)
                 if maxValue is None:
                     maxValue = subSlotMax
@@ -1494,7 +1499,7 @@ class OpBadObjectsToWarningMessage(Operator):
     def _formatMessage(self, d):
         a = []
         try:
-            keys = d.keys()
+            keys = list(d.keys())
             # a) objects
             if 'objects' in keys:
                 keys.remove('objects')
@@ -1532,16 +1537,16 @@ class OpBadObjectsToWarningMessage(Operator):
         
         try:
             # loop image indices
-            for img in obj.keys():
+            for img in list(obj.keys()):
                 imtext = self._itemIndent*indent + "at image index {}".format(img)
                 indent += 1
                 
                 # just show time slice if more than 1 time slice exists (avoid confusion/obfuscation)
-                needTime = len(obj[img].keys())>1
+                needTime = len(list(obj[img].keys()))>1
                 b = []
 
                 # loop time values
-                for t in obj[img].keys():
+                for t in list(obj[img].keys()):
                     # object numbers
                     c = self._objectSep.join(map(str,obj[img][t]))
 

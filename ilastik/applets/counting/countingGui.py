@@ -20,6 +20,9 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
+from builtins import zip
+from builtins import map
+from builtins import object
 import os
 import logging
 import threading
@@ -76,7 +79,7 @@ def _listReplace(old, new):
 
 from .countingGuiBoxesInterface import BoxController,BoxInterpreter,Tool
 
-class CallToGui:
+class CallToGui(object):
     def __init__(self,opslot,setfun):
         '''
         Helper class which registers a simple callback between an operator and a gui
@@ -347,7 +350,7 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.MaxDepthBox.setKeyboardTracking(False)
 
         for option in self.op.options:
-            if "req" in option.keys():
+            if "req" in list(option.keys()):
                 try:
                     for req in option["req"]:
                         importlib.import_module(req)
@@ -655,7 +658,7 @@ class CountingGui(LabelingGui):
                  'LabelPreview': (self.op.LabelPreview, 1.0), 
                  'Uncertainty' : (self.op.UncertaintyEstimate, 1.0) }
 
-        for name, (slot, opacity) in slots.items():
+        for name, (slot, opacity) in list(slots.items()):
             if slot.ready():
                 from volumina import colortables
                 layer = ColortableLayer(LazyflowSource(slot), colorTable = countingColorTable, normalize =
@@ -911,7 +914,7 @@ class CountingGui(LabelingGui):
 
     def _onLabelChanged(self, parentFun, mapf, slot):
         parentFun()
-        new = map(mapf, self.labelListData)
+        new = list(map(mapf, self.labelListData))
         old = slot.value
         slot.setValue(_listReplace(old, new))
 
@@ -970,7 +973,7 @@ class CountingGui(LabelingGui):
             self._renderMgr.setup(shape)
 
         layernames = set(layer.name for layer in self.layerstack)
-        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.iteritems()
+        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.items()
                                 if k in layernames)
 
         newvolume = numpy.zeros(shape, dtype=numpy.uint8)
@@ -1026,7 +1029,7 @@ class CountingGui(LabelingGui):
     def _onBoxChanged(self,parentFun, mapf):
 
         parentFun()
-        new = map(mapf, self.labelListData)
+        new = list(map(mapf, self.labelListData))
 
 
     def _changeInteractionMode( self, toolId ):
@@ -1039,7 +1042,7 @@ class CountingGui(LabelingGui):
 
 
         # Uncheck all the other buttons
-        for tool, button in self.toolButtons.items():
+        for tool, button in list(self.toolButtons.items()):
             if tool != toolId:
                 button.setChecked(False)
 

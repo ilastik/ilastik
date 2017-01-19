@@ -19,6 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
+from builtins import map
+from builtins import range
 import time
 import numpy, h5py
 import copy
@@ -202,11 +204,11 @@ class OpCarving(Operator):
             self._done_lut = numpy.zeros(self._mst.numNodes+1, dtype=numpy.int32)
             self._done_seg_lut = numpy.zeros(self._mst.numNodes+1, dtype=numpy.int32)
             logger.info( "building 'done' luts" )
-            for name, objectSupervoxels in self._mst.object_lut.iteritems():
+            for name, objectSupervoxels in self._mst.object_lut.items():
                 if name == self._currObjectName:
                     continue
                 self._done_lut[objectSupervoxels] += 1
-                assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, self._mst.object_names.keys())
+                assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, list(self._mst.object_names.keys()))
                 self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
         logger.info( "building the 'done' luts took {} seconds".format( timer.seconds() ) )
     
@@ -239,7 +241,7 @@ class OpCarving(Operator):
         self.Trigger.meta.dtype = numpy.uint8
 
         if self._mst is not None:
-            objects = self._mst.object_names.keys()
+            objects = list(self._mst.object_names.keys())
             self.AllObjectNames.meta.shape = (len(objects),)
         else: 
             self.AllObjectNames.meta.shape = (0,)
@@ -289,7 +291,7 @@ class OpCarving(Operator):
         #find the supervoxel that was clicked
         sv = self._mst.supervoxelUint32[position3d]
         names = []
-        for name, objectSupervoxels in self._mst.object_lut.iteritems():
+        for name, objectSupervoxels in self._mst.object_lut.items():
             if numpy.sum(sv == objectSupervoxels) > 0:
                 names.append(name)
         logger.info( "click on %r, supervoxel=%d: %r" % (position3d, sv, names) )
@@ -376,11 +378,11 @@ class OpCarving(Operator):
         
         fgVoxels, bgVoxels = self.loadObject_impl(name)
 
-        fg_bounding_box_start = numpy.array( map( numpy.min, fgVoxels ) )
-        fg_bounding_box_stop = 1 + numpy.array( map( numpy.max, fgVoxels ) )
+        fg_bounding_box_start = numpy.array( list(map( numpy.min, fgVoxels )) )
+        fg_bounding_box_stop = 1 + numpy.array( list(map( numpy.max, fgVoxels )) )
 
-        bg_bounding_box_start = numpy.array( map( numpy.min, bgVoxels ) )
-        bg_bounding_box_stop = 1 + numpy.array( map( numpy.max, bgVoxels ) )
+        bg_bounding_box_start = numpy.array( list(map( numpy.min, bgVoxels )) )
+        bg_bounding_box_stop = 1 + numpy.array( list(map( numpy.max, bgVoxels )) )
 
         bounding_box_start = numpy.minimum( fg_bounding_box_start, bg_bounding_box_start )
         bounding_box_stop = numpy.maximum( fg_bounding_box_stop, bg_bounding_box_stop )
@@ -469,7 +471,7 @@ class OpCarving(Operator):
         self.Trigger.setDirty(slice(None))
         self._dirtyObjects.add(name)
         
-        objects = self._mst.object_names.keys()
+        objects = list(self._mst.object_names.keys())
         logger.info( "save: len = {}".format( len(objects) ) )
         self.AllObjectNames.meta.shape = (len(objects),)
         
@@ -501,8 +503,8 @@ class OpCarving(Operator):
             objNr = self._mst.object_names[name]
         else:
             # find free objNr
-            if len(self._mst.object_names.values())> 0:
-                objNr = numpy.max(numpy.array(self._mst.object_names.values())) + 1
+            if len(list(self._mst.object_names.values()))> 0:
+                objNr = numpy.max(numpy.array(list(self._mst.object_names.values()))) + 1
             else:
                 objNr = 1
 
@@ -524,7 +526,7 @@ class OpCarving(Operator):
         self._setCurrObjectName("<not saved yet>")
         self.HasSegmentation.setValue(False)
 
-        objects = self._mst.object_names.keys()
+        objects = list(self._mst.object_names.keys())
         self.AllObjectNames.meta.shape = (len(objects),)
         
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
@@ -612,7 +614,7 @@ class OpCarving(Operator):
         self._mst = self.MST.value
         
         if slot == self.AllObjectNames:
-            ret = self._mst.object_names.keys()
+            ret = list(self._mst.object_names.keys())
             return ret
         
         sl = roi.toSlice()

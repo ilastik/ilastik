@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
+from builtins import range
 __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
 __date__ = "$Oct 23, 2014 09:45:39 EDT$"
 

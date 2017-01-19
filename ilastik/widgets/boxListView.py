@@ -19,6 +19,8 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import str
+from builtins import zip
 import os
 import logging
 
@@ -176,7 +178,7 @@ class BoxListView(ListView):
                                                      self._colorDialog.getLineWidth(),
                                                      self._colorDialog.getFontColor())
         names=["color","fontsize","linewidth",'fontcolor']
-        d=dict(zip(names,prop))
+        d=dict(list(zip(names,prop)))
 
         modelIndex=self._colorDialog.getModelIndex()
         self._table.model().setData(modelIndex,d)

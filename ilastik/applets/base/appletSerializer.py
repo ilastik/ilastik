@@ -18,7 +18,13 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import map
+from builtins import range
 import logging
+from future.utils import with_metaclass
 logger = logging.getLogger(__name__)
 
 from abc import ABCMeta
@@ -33,7 +39,7 @@ import tempfile
 import h5py
 import numpy
 import warnings
-import cPickle as pickle
+import pickle as pickle
 
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.utility import timeLogged
@@ -171,7 +177,7 @@ class SerialSlot(object):
     def shouldSerialize(self, group):
         """Whether to serialize or not."""
         result = self.dirty
-        result |= self.name not in group.keys()
+        result |= self.name not in list(group.keys())
         for s in self.depends:
             result &= s.ready()
         return result
@@ -261,10 +267,10 @@ class SerialSlot(object):
             # Pair stored indexes with their keys,
             # e.g. [(0,'0'), (2, '2'), (3, '3')]
             # Note that in some cases an index might be intentionally skipped.
-            indexes_to_keys = { int(k) : k for k in subgroup.keys() }
+            indexes_to_keys = { int(k) : k for k in list(subgroup.keys()) }
             
             # Ensure the slot is at least big enough to deserialize into.
-            if indexes_to_keys.keys() == []:
+            if list(indexes_to_keys.keys()) == []:
                 max_index = 0
             else:
                 max_index = max( indexes_to_keys.keys() )
@@ -325,7 +331,7 @@ class SerialListSlot(SerialSlot):
         isempty = (len(value) == 0)
         if isempty:
             value = numpy.empty((1,))
-        sg = group.create_dataset(name, data=map(self._store_transform, value))
+        sg = group.create_dataset(name, data=list(map(self._store_transform, value)))
         sg.attrs['isEmpty'] = isempty
 
     @timeLogged(logger, logging.DEBUG)
@@ -345,7 +351,7 @@ class SerialListSlot(SerialSlot):
                 # How can this happen, anyway...?
                 return
             else:
-                self.inslot.setValue(self._iterable(map(self.transform, subgroup[()])))
+                self.inslot.setValue(self._iterable(list(map(self.transform, subgroup[()]))))
         self.dirty = False
 
 class SerialBlockSlot(SerialSlot):
@@ -406,7 +412,7 @@ class SerialBlockSlot(SerialSlot):
             subgroup = mygroup[subname]
 
             nonZeroBlocks = self.blockslot[index].value
-            for blockIndex in xrange(len(nonZeroBlocks)):
+            for blockIndex in range(len(nonZeroBlocks)):
                 blockName = 'block{:04d}'.format(blockIndex)
 
                 if blockName not in subgroup:
@@ -439,8 +445,8 @@ class SerialBlockSlot(SerialSlot):
                     nonzero_coords = numpy.nonzero(block)
                     if len(nonzero_coords[0]) > 0:
                         block_start = sliceToRoi( slicing, (0,)*len(slicing) )[0]
-                        block_bounding_box_start = numpy.array( map( numpy.min, nonzero_coords ) )
-                        block_bounding_box_stop = 1 + numpy.array( map( numpy.max, nonzero_coords ) )
+                        block_bounding_box_start = numpy.array( list(map( numpy.min, nonzero_coords )) )
+                        block_bounding_box_stop = 1 + numpy.array( list(map( numpy.max, nonzero_coords )) )
                         block_slicing = roiToSlice( block_bounding_box_start, block_bounding_box_stop )
                         bounding_box_roi = numpy.array([block_bounding_box_start, block_bounding_box_stop])
                         bounding_box_roi += block_start
@@ -488,9 +494,9 @@ class SerialBlockSlot(SerialSlot):
         index_capture = re.compile(r'[^0-9]*(\d*).*')
         def extract_index(s):
             return int(index_capture.match(s).groups()[0])
-        for index, t in enumerate(sorted(mygroup.items(), key=lambda k_v: extract_index(k_v[0]))):
+        for index, t in enumerate(sorted(list(mygroup.items()), key=lambda k_v: extract_index(k_v[0]))):
             groupName, labelGroup = t
-            for blockData in labelGroup.values():
+            for blockData in list(labelGroup.values()):
                 slicing = stringToSlicing(blockData.attrs['blockSlice'])
 
                 # If it is suppose to be a masked array,
@@ -542,10 +548,10 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
         index_capture = re.compile(r'[^0-9]*(\d*).*')
         def extract_index(s):
             return int(index_capture.match(s).groups()[0])
-        for index, t in enumerate(sorted(mygroup.items(), key=lambda k_v1: extract_index(k_v1[0]))):
+        for index, t in enumerate(sorted(list(mygroup.items()), key=lambda k_v1: extract_index(k_v1[0]))):
             groupName, labelGroup = t
             assert extract_index(groupName) == index, "subgroup extraction order should be numerical order!"
-            for blockRoiString, blockDataset in labelGroup.items():
+            for blockRoiString, blockDataset in list(labelGroup.items()):
                 blockRoi = eval(blockRoiString)
                 roiShape = TinyVector(blockRoi[1]) - TinyVector(blockRoi[0])
                 assert roiShape == blockDataset.shape
@@ -736,7 +742,7 @@ class SerialDictSlot(SerialSlot):
 
     def _saveValue(self, group, name, value):
         sg = group.create_group(name)
-        for key, v in value.iteritems():
+        for key, v in value.items():
             if isinstance(v, dict):
                 self._saveValue(sg, key, v)
             else:
@@ -745,7 +751,7 @@ class SerialDictSlot(SerialSlot):
 
     def _getValueHelper(self, subgroup):
         result = {}
-        for key in subgroup.keys():
+        for key in list(subgroup.keys()):
             if isinstance(subgroup[key], h5py.Group):
                 value = self._getValueHelper(subgroup[key])
             else:
@@ -836,12 +842,10 @@ class SerialPickleableSlot(SerialSlot):
 # the base applet serializer class #
 ####################################
 
-class AppletSerializer(object):
+class AppletSerializer(with_metaclass(ABCMeta, object)):
     """
     Base class for all AppletSerializers.
     """
-    # Force subclasses to override abstract methods and properties
-    __metaclass__ = ABCMeta
     base_initialized = False
 
     # override if necessary
