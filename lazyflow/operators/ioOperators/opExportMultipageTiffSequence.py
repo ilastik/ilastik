@@ -142,7 +142,7 @@ class OpExportMultipageTiffSequence(Operator):
         # The last 2 non-channel non-singleton axes will be the axes of the slices.
         tagged_items = list(tagged_shape.items())
         filtered_items = [k_v for k_v in tagged_items if k_v[1] > 1]
-        filtered_axes = zip( *filtered_items )[0]
+        filtered_axes = list(zip( *filtered_items ))[0]
         return filtered_axes
 
 

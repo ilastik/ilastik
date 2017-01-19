@@ -182,7 +182,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             if self.matrix[:,j].any():
                 tagged_shape = self.Input.meta.getTaggedShape()
                 spatial_axes_shape = [k_v for k_v in list(tagged_shape.items()) if k_v[0] in 'xyz']
-                spatial_shape = zip( *spatial_axes_shape )[1]
+                spatial_shape = list(zip( *spatial_axes_shape ))[1]
                 
                 if (scale * self.WINDOW_SIZE > numpy.array(spatial_shape)).any():
                     invalid_scales.append( scale )
@@ -717,7 +717,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
         tagged_shape = self.Input.meta.getTaggedShape()
         tagged_shape['z'] = tagged_shape['z']*z_scale
         spatial_axes_shape = [k_v1 for k_v1 in list(tagged_shape.items()) if k_v1[0] in 'xyz']
-        spatial_shape = zip( *spatial_axes_shape )[1]
+        spatial_shape = list(zip( *spatial_axes_shape ))[1]
         
         for j, scale in enumerate(self.scales):
             if self.matrix[:,j].any():

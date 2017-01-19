@@ -297,7 +297,7 @@ class OpMultiArraySlicer2(Operator):
         elif inputSlot == self.Input:
             # Mark each of the intersected slices as dirty
             sliced_axis = self.Input.meta.axistags.index(self.AxisFlag.value)
-            dirty_slice_indexes = zip(roi.start, roi.stop)[sliced_axis]
+            dirty_slice_indexes = list(zip(roi.start, roi.stop))[sliced_axis]
 
             all_output_slices_indexes = self.getSliceIndexes()
             for i in range(*dirty_slice_indexes):

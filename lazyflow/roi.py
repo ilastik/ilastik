@@ -601,9 +601,9 @@ def determineBlockShape( max_shape, target_block_volume ):
         volume_so_far *= block_side        
     
     # Sort block_shape dimensions back to the original axis order
-    index_order = zip( *sorted_max )[1]
+    index_order = list(zip( *sorted_max ))[1]
     indexed_block_shape = list(zip( index_order, block_shape ))
-    block_shape = zip( *sorted( indexed_block_shape ) )[1]    
+    block_shape = list(zip( *sorted( indexed_block_shape ) ))[1]
     return tuple(block_shape)
 
 def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_usage_per_requested_pixel, num_threads, available_ram ):
