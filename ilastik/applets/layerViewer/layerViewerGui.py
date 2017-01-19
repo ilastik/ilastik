@@ -465,7 +465,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             if oldLayer.name not in newNames:
                 needDelete = True
             else:
-                newLayer = filter(lambda l: l.name == oldLayer.name, newGuiLayers)[0]
+                newLayer = [l for l in newGuiLayers if l.name == oldLayer.name][0]
                 needDelete = newLayer.isDifferentEnough(oldLayer)
                 
             if needDelete:

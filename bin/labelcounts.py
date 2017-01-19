@@ -77,7 +77,7 @@ if __name__ == "__main__":
         try:
             label_names = f['PixelClassification/LabelNames'].value
         except KeyError:
-            label_names = map( lambda n: "Label {}".format(n), list(range(num_bins)) )[1:]
+            label_names = ["Label {}".format(n) for n in list(range(num_bins))][1:]
         
         for image_index, img_bins in enumerate(bins_by_image):
             print_bincounts( label_names, img_bins, "Image #{}".format( image_index+1 ) )
