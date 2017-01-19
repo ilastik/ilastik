@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -186,7 +187,7 @@ if __name__ == "__main__":
 
     dlg = MemUsageDialog(update=False)
 
-    print reports
+    print(reports)
 
     dlg._showReports(reports)
     dlg.show()

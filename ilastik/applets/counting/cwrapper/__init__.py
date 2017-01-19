@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,10 +20,10 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 try:
-    import cplex
+    from . import cplex
 except:
     pass
 try:
-    import gurobi
+    from . import gurobi
 except:
     pass

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,7 +20,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.featureSelection import FeatureSelectionApplet
-from opIIBoostFeatureSelection import OpIIBoostFeatureSelection
+from .opIIBoostFeatureSelection import OpIIBoostFeatureSelection
 
 class IIBoostFeatureSelectionApplet( FeatureSelectionApplet ):
     """

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -22,7 +23,7 @@ from PyQt5 import uic
 from PyQt5.QtGui import QColor, QPixmap, QIcon, QPainter, QPen, QImage
 from PyQt5.QtWidgets import QDialog, QColorDialog, QGraphicsTextItem
 from PyQt5.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal, QItemSelectionModel
-from listModel import ListModel, ListElement, _NPIXELS
+from .listModel import ListModel, ListElement, _NPIXELS
 #from labelListModel import LabelListModel
 import logging
 import os

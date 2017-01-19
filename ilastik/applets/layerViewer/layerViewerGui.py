@@ -541,7 +541,7 @@ class LayerViewerGui(QWidget):
                 for i in range(3):
                     self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
 
-        except Exception, e:
+        except Exception as e:
             logger.warn("Failed to navigate to position (%s): %s" % (pos, e))
         return
     

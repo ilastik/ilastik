@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,4 +19,4 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from layerViewerApplet import LayerViewerApplet
+from .layerViewerApplet import LayerViewerApplet

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -31,7 +32,7 @@ import vigra
 # ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
 import ilastik.config
-from ipht import identity_preserving_hysteresis_thresholding
+from .ipht import identity_preserving_hysteresis_thresholding
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -44,14 +45,14 @@ from lazyflow.rtype import SubRegion
 from lazyflow.request import Request, RequestPool
 
 # local
-from thresholdingTools import OpAnisotropicGaussianSmoothing5d
+from .thresholdingTools import OpAnisotropicGaussianSmoothing5d
 
-from thresholdingTools import OpSelectLabels
+from .thresholdingTools import OpSelectLabels
 
-from opGraphcutSegment import haveGraphCut
+from .opGraphcutSegment import haveGraphCut
 
 if haveGraphCut():
-    from opGraphcutSegment import OpObjectsSegment, OpGraphCut
+    from .opGraphcutSegment import OpObjectsSegment, OpGraphCut
 
 
 logger = logging.getLogger(__name__)

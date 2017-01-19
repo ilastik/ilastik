@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import copy
 import h5py
@@ -46,12 +47,12 @@ def convert_predictions_to_segmentation( input_paths, parsed_export_args ):
         output_pathcomp.filenameBase += "_Segmentation"
         opExport.OutputFilenameFormat.setValue(str(output_pathcomp.externalPath))
         
-        print "Exporting results to : {}".format( opExport.ExportPath.value )    
+        print("Exporting results to : {}".format( opExport.ExportPath.value ))    
         sys.stdout.write("Progress:")
         # Begin export
         opExport.run_export()
         sys.stdout.write("\n")
-    print "DONE."
+    print("DONE.")
     
 def all_dataset_internal_paths(f):
     """

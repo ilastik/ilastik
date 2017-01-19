@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -26,7 +27,7 @@ __date__ = "$Oct 15, 2014 15:27:45 EDT$"
 
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opNanshePreprocessing import OpNanshePreprocessing
+from .opNanshePreprocessing import OpNanshePreprocessing
 from ilastik.applets.nanshe.preprocessing.nanshePreprocessingSerializer import NanshePreprocessingSerializer
 
 class NanshePreprocessingApplet( StandardApplet ):

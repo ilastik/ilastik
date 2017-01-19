@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -24,7 +25,7 @@ from ilastik.plugins import pluginManager
 import logging
 logger = logging.getLogger(__name__)
 
-from objectClassificationWorkflow import \
+from .objectClassificationWorkflow import \
     ObjectClassificationWorkflowPixel, \
     ObjectClassificationWorkflowBinary, \
     ObjectClassificationWorkflowPrediction

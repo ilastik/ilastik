@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -73,7 +74,7 @@ def _listReplace(old, new):
 
 
 
-from countingGuiBoxesInterface import BoxController,BoxInterpreter,Tool
+from .countingGuiBoxesInterface import BoxController,BoxInterpreter,Tool
 
 class CallToGui:
     def __init__(self,opslot,setfun):
@@ -169,7 +170,7 @@ class CountingGui(LabelingGui):
             self.render = True
             self._renderedLayers = {} # (layer name, label number)
             self._renderMgr = RenderingManager( self.editor.view3d )
-        except Exception,e:
+        except Exception as e:
             self.render = False
 
 
@@ -177,7 +178,7 @@ class CountingGui(LabelingGui):
         #personal debugging code
         try:
             from sitecustomize import Shortcuts
-        except Exception,e:
+        except Exception as e:
             self.labelingDrawerUi.DebugButton.setVisible(False)
 
         self._initShortcuts()
@@ -350,7 +351,7 @@ class CountingGui(LabelingGui):
                 try:
                     for req in option["req"]:
                         importlib.import_module(req)
-                except Exception,e:
+                except Exception as e:
                     continue
             #values=[v for k,v in option.items() if k not in ["gui", "req"]]
             self.labelingDrawerUi.SVROptions.addItem(option["method"], (option,))

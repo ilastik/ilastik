@@ -43,8 +43,9 @@ from testOpGraphcutSegment import have_opengm
 ## for testing ThresholdOneLevel
 class Generator1(unittest.TestCase):
 
-    def generateData(self, (nx, ny, nz)):
+    def generateData(self, xxx_todo_changeme):
 
+        (nx, ny, nz) = xxx_todo_changeme
         clusters = []
 
         #cluster of 4 points

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,6 +19,6 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from opPredictionViewer import OpPredictionViewer
-from predictionViewerSerializer import PredictionViewerSerializer
-from predictionViewerApplet import PredictionViewerApplet
+from .opPredictionViewer import OpPredictionViewer
+from .predictionViewerSerializer import PredictionViewerSerializer
+from .predictionViewerApplet import PredictionViewerApplet

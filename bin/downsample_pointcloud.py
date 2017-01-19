@@ -227,7 +227,7 @@ def array_from_csv( pointcloud_csv_filepath,
     logger.debug("Loading data from csv file: {}".format( pointcloud_csv_filepath ))
     with open(pointcloud_csv_filepath, 'r') as f_in:
         csv_reader = csv.reader(f_in, **csv_format)
-        column_names = csv_reader.next()
+        column_names = next(csv_reader)
 
         # If user provided only a single dtype, it is the default type.
         if isinstance(column_dtypes, dict):

@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from __future__ import absolute_import
 import sys
 import os
 from functools import partial
@@ -37,9 +38,9 @@ from ilastik.workflows.carving.carvingGui import CarvingGui
 from lazyflow.request import Request
 from lazyflow.roi import roiToSlice
 
-from opSplitBodyCarving import OpSplitBodyCarving
+from .opSplitBodyCarving import OpSplitBodyCarving
 
-from bodySplitInfoWidget import BodySplitInfoWidget
+from .bodySplitInfoWidget import BodySplitInfoWidget
 
 from ilastik.applets.labeling.labelingGui import Tool
 

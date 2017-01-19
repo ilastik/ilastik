@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -27,7 +28,7 @@ from lazyflow.operators import OpCrosshairMarkers, OpSelectLabel
 from lazyflow.operators.operators import OpArrayCache
 
 from ilastik.workflows.carving.opCarving import OpCarving
-from opParseAnnotations import OpParseAnnotations
+from .opParseAnnotations import OpParseAnnotations
 
 from ilastik.utility import bind
 

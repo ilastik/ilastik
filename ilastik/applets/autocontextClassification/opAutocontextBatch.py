@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -23,7 +25,7 @@ from lazyflow.operators import OpValueCache, OpTrainRandomForestBlocked, \
                                OpPredictRandomForest, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
                                OpPrecomputedInput, Op50ToMulti, OpArrayPiper, OpMultiArrayStacker
                                
-from opAutocontextClassification import createAutocontextFeatureOperators
+from .opAutocontextClassification import createAutocontextFeatureOperators
 
 
 class OpAutocontextBatch( Operator ):
@@ -79,10 +81,10 @@ class OpAutocontextBatch( Operator ):
         for i in range(niter-1):
             for ifeat, feat in enumerate(self.autocontextFeatures[i]):
                 feat.inputs['Input'].connect( self.prediction_caches[i].Output)
-                print "Multi: Connecting an output", "Input%.2d"%(ifeat)
+                print("Multi: Connecting an output", "Input%.2d"%(ifeat))
                 self.autocontextFeaturesMulti[i].inputs["Input%.2d"%(ifeat)].connect(feat.outputs["Output"])
             # connect the pixel features to the same multislot
-            print "Multi: Connecting an output", "Input%.2d"%(len(self.autocontextFeatures[i]))
+            print("Multi: Connecting an output", "Input%.2d"%(len(self.autocontextFeatures[i])))
             self.autocontextFeaturesMulti[i].inputs["Input%.2d"%(len(self.autocontextFeatures[i]))].connect(self.FeatureImage)
             # stack the autocontext features with pixel features
             self.featureStackers[i].inputs["Images"].connect(self.autocontextFeaturesMulti[i].outputs["Outputs"])
@@ -106,7 +108,7 @@ class OpAutocontextBatch( Operator ):
         self.PredictionProbabilities.connect(self.predictors[0].PMaps)
         
     def setupOutputs(self):
-        print "calling setupOutputs"
+        print("calling setupOutputs")
         
         if self.AutocontextIterations.ready() and self.predictors is None:
             self.setupOperators()

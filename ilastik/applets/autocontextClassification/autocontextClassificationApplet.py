@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,8 +20,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from opAutocontextClassification import OpAutocontextClassification
-from autocontextClassificationSerializer import AutocontextClassificationSerializer
+from .opAutocontextClassification import OpAutocontextClassification
+from .autocontextClassificationSerializer import AutocontextClassificationSerializer
 
 class AutocontextClassificationApplet( StandardApplet ):
     """
@@ -51,6 +52,6 @@ class AutocontextClassificationApplet( StandardApplet ):
         return self._serializableItems
 
     def createSingleLaneGui(self, imageLaneIndex):
-        from autocontextClassificationGui import AutocontextClassificationGui
+        from .autocontextClassificationGui import AutocontextClassificationGui
         singleImageOperator = self.topLevelOperator.getLane(imageLaneIndex)
         return AutocontextClassificationGui( singleImageOperator, self.shellRequestSignal, self.predictionSerializer )        

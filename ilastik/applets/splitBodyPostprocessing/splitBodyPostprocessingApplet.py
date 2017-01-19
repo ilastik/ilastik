@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,8 +20,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from opSplitBodyPostprocessing import OpSplitBodyPostprocessing
-from splitBodyPostprocessingSerializer import SplitBodyPostprocessingSerializer
+from .opSplitBodyPostprocessing import OpSplitBodyPostprocessing
+from .splitBodyPostprocessingSerializer import SplitBodyPostprocessingSerializer
 
 class SplitBodyPostprocessingApplet( StandardApplet ):
     def __init__( self, workflow ):
@@ -34,7 +35,7 @@ class SplitBodyPostprocessingApplet( StandardApplet ):
     
     @property
     def singleLaneGuiClass(self):
-        from splitBodyPostprocessingGui import SplitBodyPostprocessingGui
+        from .splitBodyPostprocessingGui import SplitBodyPostprocessingGui
         return SplitBodyPostprocessingGui
 
     @property

@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -43,12 +45,12 @@ from volumina.pixelpipeline.datasources import ArraySource, LazyflowSinkSource
 
 
 
-from labelListView import LabelListView, Label
-from labelListModel import LabelListModel
+from .labelListView import LabelListView, Label
+from .labelListModel import LabelListModel
 
 from PyQt5 import QtCore, QtWidgets, uic
 
-from featureDlg import *
+from .featureDlg import *
 
 import  numpy
 
@@ -85,7 +87,7 @@ class Main(QMainWindow):
         self.layerstack.append(layer1)
         
         shape=readerNew.outputs["Output"].meta.shape
-        print shape
+        print(shape)
         self.editor = VolumeEditor(shape, self.layerstack)  
         #self.editor.setDrawingEnabled(False)
         

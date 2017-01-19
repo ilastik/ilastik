@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -33,7 +34,7 @@ from PyQt5.QtWidgets import QDialog, QMessageBox, QDoubleSpinBox, QApplication
 from ilastik.utility import log_exception
 from ilastik.applets.base.applet import DatasetConstraintError
 from lazyflow.utility import getPathVariants, PathComponents, isUrl
-from opDataSelection import OpDataSelection, DatasetInfo
+from .opDataSelection import OpDataSelection, DatasetInfo
 
 import logging
 logger = logging.getLogger(__name__)

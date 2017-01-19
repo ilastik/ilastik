@@ -369,8 +369,8 @@ class OpBlockwiseObjectClassification( Operator ):
 
             # Discard spatial axes to get (t,c) index for region slot roi
             tagged_block_start = zip( axiskeys, block_start )
-            tagged_block_start_tc = filter( lambda (k,v): k in 'tc', tagged_block_start )
-            block_start_tc = map( lambda (k,v): v, tagged_block_start_tc )
+            tagged_block_start_tc = filter( lambda k_v: k_v[0] in 'tc', tagged_block_start )
+            block_start_tc = map( lambda k_v1: k_v1[1], tagged_block_start_tc )
             block_roi_tc = ( block_start_tc, block_start_tc + numpy.array([1,1]) )
             block_roi_t = (block_roi_tc[0][:-1], block_roi_tc[1][:-1])
 

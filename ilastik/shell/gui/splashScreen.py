@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -35,6 +36,6 @@ def showSplashScreen():
     splashScreen.show()
 
 def hideSplashScreen():
-    import startShellGui
+    from . import startShellGui
     global splashScreen
     splashScreen.finish(startShellGui.shell)

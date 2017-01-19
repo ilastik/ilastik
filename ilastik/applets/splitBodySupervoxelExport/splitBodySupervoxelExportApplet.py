@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,7 +20,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from opSplitBodySupervoxelExport import OpSplitBodySupervoxelExport
+from .opSplitBodySupervoxelExport import OpSplitBodySupervoxelExport
 
 class SplitBodySupervoxelExportApplet( StandardApplet ):
     def __init__( self, workflow ):
@@ -31,7 +32,7 @@ class SplitBodySupervoxelExportApplet( StandardApplet ):
     
     @property
     def singleLaneGuiClass(self):
-        from splitBodySupervoxelExportGui import SplitBodySupervoxelExportGui
+        from .splitBodySupervoxelExportGui import SplitBodySupervoxelExportGui
         return SplitBodySupervoxelExportGui
 
     @property

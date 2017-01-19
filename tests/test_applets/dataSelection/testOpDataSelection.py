@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -104,7 +105,7 @@ class TestOpDataSelection_Basic():
         pngData = reader.Image[1][...].wait()
 
         # Check the file name output
-        print reader.ImageName[0].value
+        print(reader.ImageName[0].value)
         assert reader.ImageName[0].value == self.testNpyFileName
         assert reader.ImageName[1].value == self.testPngFileName
 

@@ -349,7 +349,7 @@ class OpDataSelection(Operator):
                 provider_order = "".join(providerSlot.meta.getAxisKeys())
                 tagged_provider_shape = providerSlot.meta.getTaggedShape()
 
-                minimal_axes = filter( lambda (k,v): v > 1, tagged_provider_shape.items() )
+                minimal_axes = filter( lambda k_v: k_v[1] > 1, tagged_provider_shape.items() )
                 minimal_axes = set(k for k,v in minimal_axes)
 
                 # Pick the shortest of the possible 'forced' orders that

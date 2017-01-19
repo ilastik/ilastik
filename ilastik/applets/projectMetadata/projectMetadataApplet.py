@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,8 +20,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.applet import Applet
-from projectMetadataSerializer import ProjectMetadataSerializer, Ilastik05ProjectMetadataDeserializer
-from projectMetadata import ProjectMetadata
+from .projectMetadataSerializer import ProjectMetadataSerializer, Ilastik05ProjectMetadataDeserializer
+from .projectMetadata import ProjectMetadata
 
 class ProjectMetadataApplet( Applet ):
     """
@@ -40,7 +41,7 @@ class ProjectMetadataApplet( Applet ):
 
     def getMultiLaneGui(self):
         if self._gui is None:
-            from projectMetadataGui import ProjectMetadataGui
+            from .projectMetadataGui import ProjectMetadataGui
             self._gui = ProjectMetadataGui(self._projectMetadata)
         return self._gui
 

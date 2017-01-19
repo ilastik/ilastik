@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -31,9 +32,10 @@ from PyQt5.QtGui import QIcon
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import log_exception
 
-from opParseAnnotations import OpParseAnnotations
+from .opParseAnnotations import OpParseAnnotations
 
 import logging
+from functools import reduce
 logger = logging.getLogger(__name__)
 
 class BodyProgressBar(QProgressBar):
@@ -292,7 +294,7 @@ class BodySplitInfoWidget( QWidget ):
         
         # Flip the key/value of the annotation list so we can sort them by label
         annotations = self._annotations.items()
-        annotations = map( lambda (coord3d, (label,comment)): (label, coord3d, comment), annotations )
+        annotations = map( lambda coord3d_label_comment: (coord3d_label_comment[1][0], coord3d_label_comment[0], coord3d_label_comment[1][1]), annotations )
         annotations = sorted( annotations )
         
         for row, (ravelerLabel, coord3d, comment) in enumerate( annotations ):

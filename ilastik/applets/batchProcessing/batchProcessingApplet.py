@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import absolute_import
 import copy
 import weakref
 import argparse
@@ -30,7 +31,7 @@ class BatchProcessingApplet( Applet ):
 
     def getMultiLaneGui(self):
         if self._gui is None:
-            from batchProcessingGui import BatchProcessingGui
+            from .batchProcessingGui import BatchProcessingGui
             self._gui = BatchProcessingGui(self)
         return self._gui
 

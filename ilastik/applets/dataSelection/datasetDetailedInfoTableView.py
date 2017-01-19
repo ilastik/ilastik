@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -23,8 +24,8 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QAction, QWidget, \
                             QHBoxLayout, QPushButton, QItemDelegate
 
-from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
-from addFileButton import AddFileButton, FILEPATH
+from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
+from .addFileButton import AddFileButton, FILEPATH
 
 from functools import partial
 

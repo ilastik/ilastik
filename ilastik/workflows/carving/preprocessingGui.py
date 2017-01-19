@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -32,7 +33,7 @@ from PyQt5.QtGui import QIcon
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from preprocessingViewerGui import PreprocessingViewerGui
+from .preprocessingViewerGui import PreprocessingViewerGui
 
 class PreprocessingGui(QMainWindow):
     def __init__(self, parentApplet, topLevelOperatorView):

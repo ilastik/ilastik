@@ -1,3 +1,4 @@
+from __future__ import print_function
 from itertools import izip, imap
 from functools import partial
 
@@ -120,7 +121,7 @@ class OpEdgeTraining(Operator):
         def subscribe_to_dirty_sp(slot, position, finalsize):
             # A new lane was added.  Subscribe to it's dirty signal.
             assert slot is self.Superpixels
-            print "Setting up listeners for {}".format(position)
+            print("Setting up listeners for {}".format(position))
             self.Superpixels[position].notifyDirty(self.handle_dirty_superpixels)
             self.Superpixels[position].notifyReady(self.handle_dirty_superpixels)
             self.Superpixels[position].notifyUnready(self.handle_dirty_superpixels)

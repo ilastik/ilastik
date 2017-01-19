@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -29,7 +30,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt, QTimer
 
-import splashScreen
+from . import splashScreen
 import ilastik.config
 shell = None
 

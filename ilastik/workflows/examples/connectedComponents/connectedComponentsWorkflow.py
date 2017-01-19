@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -28,7 +29,7 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 
 from lazyflow.graph import Graph, OperatorWrapper
 
-from connectedComponentsApplet import ConnectedComponentsApplet
+from .connectedComponentsApplet import ConnectedComponentsApplet
 
 import logging
 logger = logging.getLogger(__name__)

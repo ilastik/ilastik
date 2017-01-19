@@ -130,7 +130,7 @@ class OverlayTreeWidget(QTreeWidget):
             if self.singleOverlaySelection == True and currentItem.checkState(column) == Qt.Checked:
                 if it.value() != currentItem:
                     it.value().setCheckState(0, Qt.Unchecked)
-            it.next()
+            next(it)
 
                                 
     def createSelectedItemList(self):
@@ -138,7 +138,7 @@ class OverlayTreeWidget(QTreeWidget):
         it = OverlayTreeWidgetIter(self, QTreeWidgetItemIterator.Checked)
         while (it.value()):
             selectedItemList.append(it.value().item)
-            it.next()
+            next(it)
         return selectedItemList
 
 

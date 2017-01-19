@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -26,8 +27,8 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QColorDialog, QVBoxLayout, QPushButton, QDialog, QWidget, QMenu
 
-from labelListModel import LabelListModel, Label
-from listView import ListView
+from .labelListModel import LabelListModel, Label
+from .listView import ListView
 
 
 class ColorDialog(QDialog):

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -22,7 +23,7 @@ from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 
 from lazyflow.utility import PathComponents
 from ilastik.utility import bind
-from opDataSelection import DatasetInfo
+from .opDataSelection import DatasetInfo
 
 class LaneColumn():
     NumColumns = 0

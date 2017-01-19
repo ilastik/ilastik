@@ -497,7 +497,7 @@ class OpCarving(Operator):
         """
         seed = 2
         logger.info( "   --> Saving object %r from seed %r" % (name, seed) )
-        if self._mst.object_names.has_key(name):
+        if name in self._mst.object_names:
             objNr = self._mst.object_names[name]
         else:
             # find free objNr

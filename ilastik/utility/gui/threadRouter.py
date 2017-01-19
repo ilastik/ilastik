@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -101,16 +102,16 @@ if __name__ == "__main__":
         @threadRouted
         def printThreadId(self):
             time.sleep(0.5)
-            print "thread id = ", threading.current_thread().ident
+            print("thread id = ", threading.current_thread().ident)
 
     app = QApplication([])
     
     o = TestObject()
     
     def test():
-        print "thread id = ", threading.current_thread().ident
+        print("thread id = ", threading.current_thread().ident)
         o.printThreadId()
-        print "Finished."
+        print("Finished.")
     
     th = threading.Thread(target=test)
     th.start()

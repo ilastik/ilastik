@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,7 +22,7 @@
 import os
 import logging.config
 import warnings
-import loggingHelpers
+from . import loggingHelpers
 from ilastik.config import cfg as ilastik_config
 
 DEFAULT_LOGFILE_PATH = os.path.expanduser("~/ilastik_log.txt")

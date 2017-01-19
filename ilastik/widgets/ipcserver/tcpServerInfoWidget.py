@@ -1,3 +1,4 @@
+from __future__ import print_function
 from PyQt5 import uic
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QColor, QBrush
@@ -155,5 +156,5 @@ class TCPServerInfoWidget(QWidget):
             value = convert_to_type(value)
             kvargs[key] = value
         kvargs["command"] = command
-        print kvargs
+        print(kvargs)
         self.broadcast.emit(kvargs)

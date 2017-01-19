@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -109,7 +110,7 @@ class TestOpRegionFeatures(object):
         opAdapt.Input.connect(self.op.Output)
 
         feats = opAdapt.Output([0, 1]).wait()
-        print "feature length:", len(feats)
+        print("feature length:", len(feats))
         OpObjectExtraction.createExportTable(feats)
 
 class TestPlugins(object):

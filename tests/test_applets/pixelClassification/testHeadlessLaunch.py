@@ -7,6 +7,7 @@ In headless mode, such import statements will fail, and so will this test.
 
 NOTE: This test only works properly 
 """
+from __future__ import print_function
 import sys
 import os
 import imp
@@ -20,7 +21,7 @@ def test_headless_launch():
         warnings.warn("Skipping: This test must be run independently: python {}".format(__file__))
         raise nose.SkipTest()
     
-    print 'looking for ilastik.py...'
+    print('looking for ilastik.py...')
     # Load the ilastik startup script as a module.
     # Do it here in setupClass to ensure that it isn't loaded more than once.
     ilastik_entry_file_path = os.path.join( os.path.split( os.path.realpath(ilastik.__file__) )[0], "../ilastik.py" )

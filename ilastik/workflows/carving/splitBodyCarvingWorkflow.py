@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from __future__ import absolute_import
 import argparse
 from lazyflow.graph import Graph
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -35,7 +36,7 @@ from ilastik.applets.splitBodySupervoxelExport.splitBodySupervoxelExportApplet i
 
 from lazyflow.operators.generic import OpSingleChannelSelector
 
-from preprocessingApplet import PreprocessingApplet
+from .preprocessingApplet import PreprocessingApplet
 
 from lazyflow.utility.jsonConfig import JsonConfigParser
 

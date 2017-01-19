@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,7 +21,7 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
-from opIIBoostPixelClassification import OpIIBoostPixelClassification
+from .opIIBoostPixelClassification import OpIIBoostPixelClassification
 
 class IIBoostPixelClassificationApplet( StandardApplet ):
     """
@@ -64,5 +65,5 @@ class IIBoostPixelClassificationApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        from iiboostPixelClassificationGui import IIBoostPixelClassificationGui
+        from .iiboostPixelClassificationGui import IIBoostPixelClassificationGui
         return IIBoostPixelClassificationGui

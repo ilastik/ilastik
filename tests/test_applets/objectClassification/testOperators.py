@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -159,7 +160,7 @@ class TestOpObjectTrain(unittest.TestCase):
         try:
             results = self.op.Classifier[:].wait()
         except RuntimeError:
-            print "Tried to compute features for time step w/o labels!"
+            print("Tried to compute features for time step w/o labels!")
             raise
         
         

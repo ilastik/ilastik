@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -43,7 +44,7 @@ def _init_threading_h5py_monkeypatch():
 
 _init_threading_h5py_monkeypatch()
 
-from helpers import mainThreadHelpers
+from .helpers import mainThreadHelpers
 
 # For some mysterious reason, we need to make sure that volumina.api gets imported 
 #  from the main thread before nose imports it from a separate thread.

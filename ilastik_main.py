@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 import os
 
@@ -76,11 +77,11 @@ def main( parsed_args, workflow_cmdline_args=[] ):
     if ilastik_config.getboolean("ilastik", "debug"):
         message = 'Starting ilastik in debug mode from "%s".' % ilastik_dir
         logger.info(message)
-        print message     # always print the startup message
+        print(message)     # always print the startup message
     else:
         message = 'Starting ilastik from "%s".' % ilastik_dir
         logger.info(message)
-        print message     # always print the startup message
+        print(message)     # always print the startup message
     
     # Headless launch
     if parsed_args.headless:

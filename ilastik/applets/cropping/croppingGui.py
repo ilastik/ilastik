@@ -537,7 +537,7 @@ class CroppingGui(LayerViewerGui):
     def getLayer(self, name):
         """find a layer by name"""
         try:
-            croplayer = itertools.ifilter(lambda l: l.name == name, self.layerstack).next()
+            croplayer = next(itertools.ifilter(lambda l: l.name == name, self.layerstack))
         except StopIteration:
             return None
         else:

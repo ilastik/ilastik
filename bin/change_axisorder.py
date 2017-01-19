@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 import h5py
 
@@ -31,5 +32,5 @@ if __name__ == "__main__":
         except KeyError:
             pass
 
-    print "Done."
+    print("Done.")
         

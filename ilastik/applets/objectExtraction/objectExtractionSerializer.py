@@ -74,7 +74,7 @@ class SerialObjectFeaturesSlot(SerialSlot):
             return
         opgroup = group[self.name]
         # Note: We sort by NUMERICAL VALUE here.
-        for i, (group_name, subgroup) in enumerate( sorted(opgroup.items(), key=lambda (k,v): int(k) ) ):
+        for i, (group_name, subgroup) in enumerate( sorted(opgroup.items(), key=lambda k_v: int(k_v[0]) ) ):
             assert int(group_name) == i, "subgroup extraction order should be numerical order!"
             for roiString, roi_grp in subgroup.iteritems():
                 logger.debug('Loading region features from dataset: "{}"'.format( roi_grp.name ))

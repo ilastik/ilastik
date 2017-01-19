@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import numpy as np
 import os
 import itertools
@@ -11,7 +12,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import OpZeroDefault
 from lazyflow.roi import sliceToRoi
-from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
+from .opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
 from functools import partial
 from lazyflow.request import Request, RequestPool

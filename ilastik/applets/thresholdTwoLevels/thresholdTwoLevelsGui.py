@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -34,7 +35,7 @@ from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted 
 from lazyflow.operators.generic import OpSingleChannelSelector
 
-from opGraphcutSegment import haveGraphCut
+from .opGraphcutSegment import haveGraphCut
 
 # always available
 import numpy as np
@@ -130,7 +131,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             numChannels = op.InputImage.meta.shape[channelIndex]
 
         if op.InputChannelColors.ready():
-            input_channel_colors = map(lambda (r,g,b): QColor(r,g,b), op.InputChannelColors.value)
+            input_channel_colors = map(lambda r_g_b: QColor(r_g_b[0],r_g_b[1],r_g_b[2]), op.InputChannelColors.value)
         else:
             if self._defaultInputChannelColors is None:
                 self._defaultInputChannelColors = self._createDefault16ColorColorTable()
@@ -321,7 +322,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             layers.append(outputLayer)
 
         if op.InputChannelColors.ready():
-            input_channel_colors = map(lambda (r,g,b): QColor(r,g,b), op.InputChannelColors.value)
+            input_channel_colors = map(lambda r_g_b1: QColor(r_g_b1[0],r_g_b1[1],r_g_b1[2]), op.InputChannelColors.value)
         else:
             input_channel_colors = map(QColor, self._defaultInputChannelColors)
         for channel, channelProvider in enumerate(self._channelProviders):

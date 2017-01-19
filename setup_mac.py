@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -178,7 +179,7 @@ class custom_py2app(py2app.build_app.py2app):
             dylib_path = self.__dist_dir + '/ilastik.app/Contents/Frameworks/' + dylib
             try:
                 os.remove(dylib_path)
-                print "Excluded {} from distribution.".format( dylib )
+                print("Excluded {} from distribution.".format( dylib ))
             except OSError as ex:
                 if ex.errno != 2:
                     raise
@@ -188,7 +189,7 @@ class custom_py2app(py2app.build_app.py2app):
         self.remove_repos()
         src = ilastik_meta_repo
         dst = self.__destination_libpython_dir + '/ilastik-meta'
-        print "Copying {} to {}".format(src, dst )
+        print("Copying {} to {}".format(src, dst ))
 
         # Don't copy copy the .app itself!
         # (which would lead to infinite recursion)

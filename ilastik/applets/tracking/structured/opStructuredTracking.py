@@ -485,13 +485,13 @@ class OpStructuredTracking(OpTrackingBase):
 
         except Exception as e:
             if trainingToHardConstraints:
-                raise Exception, 'Tracking: Your training can not be extended to a feasible solution! ' + \
-                                 'Turn training to hard constraints off or correct your tracking training. '
+                raise Exception('Tracking: Your training can not be extended to a feasible solution! ' + \
+                                 'Turn training to hard constraints off or correct your tracking training. ')
             else:
-                raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
+                raise Exception('Tracking terminated unsuccessfully: ' + str(e))
 
         if len(eventsVector) == 0:
-            raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
+            raise Exception('Tracking terminated unsuccessfully: Events vector has zero length.')
         
         events = get_events(eventsVector)
         self.Parameters.setValue(parameters, check_changed=False)
@@ -616,7 +616,7 @@ class OpStructuredTracking(OpTrackingBase):
                     elif n_dim ==3:
                         image_excerpt = image_excerpt[0, ..., 0]
                     else:
-                        raise Exception, "n_dim = %s instead of 2 or 3"
+                        raise Exception("n_dim = %s instead of 2 or 3")
 
                     pgmlink.extract_coord_by_timestep_id(coordinate_map,
                                                          image_excerpt,

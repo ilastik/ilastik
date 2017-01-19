@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -601,7 +602,7 @@ class CoupledRectangleElement(object):
 
             if self.boxLabel!=None:
                 self.boxLabel.density = "%.1f" % value
-        except Exception,e:
+        except Exception as e:
             import warnings
             warnings.warn("Warning: invalid subregion", RuntimeWarning)
 
@@ -1059,12 +1060,12 @@ class BoxController(QObject):
         seed=42
         self._RandomColorGenerator=RandomColorGenerator(seed)
 
-        self._RandomColorGenerator.next() #discard black red and green
-        self._RandomColorGenerator.next()
-        self._RandomColorGenerator.next()
+        next(self._RandomColorGenerator) #discard black red and green
+        next(self._RandomColorGenerator)
+        next(self._RandomColorGenerator)
 
     def _getNextBoxColor(self):
-        color=self._RandomColorGenerator.next()
+        color=next(self._RandomColorGenerator)
         return color
 
 
@@ -1098,7 +1099,7 @@ class BoxController(QObject):
 
 
 
-        except IOError,e:
+        except IOError as e:
             logger.error( e )
             raise IOError
 
@@ -1286,7 +1287,7 @@ if __name__=="__main__":
 
     mainwin.layerstack.append(layer)
     mainwin.dataShape=(1,h,w,1,1)
-    print mainwin.centralWidget()
+    print(mainwin.centralWidget())
 
 
     BoxContr=BoxController(mainwin.editor,op.Output,boxListModel)

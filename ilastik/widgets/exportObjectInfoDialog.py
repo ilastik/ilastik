@@ -27,6 +27,7 @@ from PyQt5.QtWidgets import *
 import os.path
 import re
 from operator import mul
+from functools import reduce
 
 FILE_TYPES = ["h5", "csv"]
 REQ_MSG = " (REQUIRED)"

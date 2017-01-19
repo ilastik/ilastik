@@ -74,7 +74,7 @@ class OpChaingraphTracking(OpTrackingBase):
         _, ts, empty_frame, _ = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
         
         if empty_frame:
-            raise Exception, 'Cannot track frames with 0 objects, abort.'
+            raise Exception('Cannot track frames with 0 objects, abort.')
         
         tracker = pgmlink.ChaingraphTracking(rf_fn,
                                 app,
@@ -99,10 +99,10 @@ class OpChaingraphTracking(OpTrackingBase):
         try:
             eventsVector = tracker(ts)
         except Exception as e:
-            raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
+            raise Exception('Tracking terminated unsuccessfully: ' + str(e))
         
         if len(eventsVector) == 0:
-            raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
+            raise Exception('Tracking terminated unsuccessfully: Events vector has zero length.')
         
         events = get_events(eventsVector)
         

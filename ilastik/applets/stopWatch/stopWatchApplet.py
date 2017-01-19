@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -42,7 +43,7 @@ class StopWatchApplet( StandardApplet ):
     
     @property
     def singleLaneGuiClass(self):
-        from stopWatchGui import StopWatchGui
+        from .stopWatchGui import StopWatchGui
         return StopWatchGui
 
     @property

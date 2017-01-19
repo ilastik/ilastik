@@ -778,7 +778,7 @@ class LabelingGui(LayerViewerGui):
     def getLayer(self, name):
         """find a layer by name"""
         try:
-            labellayer = itertools.ifilter(lambda l: l.name == name, self.layerstack).next()
+            labellayer = next(itertools.ifilter(lambda l: l.name == name, self.layerstack))
         except StopIteration:
             return None
         else:

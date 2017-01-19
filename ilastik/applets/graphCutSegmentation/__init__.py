@@ -1,2 +1,3 @@
+from __future__ import absolute_import
 from graphCutSegmentationApplet import GraphCutSegmentationApplet
-from opGraphCutSegmentation import OpGraphCutSegmentation
+from .opGraphCutSegmentation import OpGraphCutSegmentation

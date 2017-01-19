@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -172,10 +173,10 @@ class OpAutocontextClassification( Operator ):
         for i in range(niter-1):
             for ifeat, feat in enumerate(self.autocontextFeatures[i]):
                 feat.inputs['Input'].connect( self.prediction_caches[i].Output)
-                print "Multi: Connecting an output", "Input%.2d"%(ifeat)
+                print("Multi: Connecting an output", "Input%.2d"%(ifeat))
                 self.autocontextFeaturesMulti[i].inputs["Input%.2d"%(ifeat)].connect(feat.outputs["Output"])
             # connect the pixel features to the same multislot
-            print "Multi: Connecting an output", "Input%.2d"%(len(self.autocontextFeatures[i]))
+            print("Multi: Connecting an output", "Input%.2d"%(len(self.autocontextFeatures[i])))
             self.autocontextFeaturesMulti[i].inputs["Input%.2d"%(len(self.autocontextFeatures[i]))].connect(self.CachedFeatureImages)
             # stack the autocontext features with pixel features
             self.featureStackers[i].inputs["Images"].connect(self.autocontextFeaturesMulti[i].outputs["Outputs"])

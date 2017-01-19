@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,7 +21,7 @@
 ###############################################################################
 from ilastik.applets.base.appletSerializer import getOrCreateGroup, deleteIfPresent
 from ilastik.workflows.carving.carvingSerializer import CarvingSerializer
-from opSplitBodyCarving import OpSplitBodyCarving
+from .opSplitBodyCarving import OpSplitBodyCarving
 
 class SplitBodyCarvingSerializer(CarvingSerializer):
     

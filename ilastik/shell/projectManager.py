@@ -232,7 +232,7 @@ class ProjectManager(object):
         """
         try:
             self._closeCurrentProject()
-        except Exception,e:
+        except Exception as e:
             log_exception( logger )
             raise e
 
@@ -282,7 +282,7 @@ class ProjectManager(object):
                 del self.currentProjectFile["workflowName"]
             self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName)
 
-        except Exception, err:
+        except Exception as err:
             log_exception( logger, "Project Save Action failed due to the exception shown above." )
             raise ProjectManager.SaveError( str(err) )
         finally:
@@ -324,7 +324,7 @@ class ProjectManager(object):
                             # Use a COPY of the serializer, so the original serializer doesn't forget it's dirty state
                             serializerCopy = copy.copy(serializer)
                             serializerCopy.serializeToHdf5(snapshotFile, snapshotPath)
-            except Exception, err:
+            except Exception as err:
                 log_exception( logger, "Project Save Snapshot Action failed due to the exception printed above." )
                 raise ProjectManager.SaveError(str(err))
             finally:
@@ -362,7 +362,7 @@ class ProjectManager(object):
         oldPath = self.currentProjectPath
         try:
             os.rename( oldPath, newPath )
-        except OSError, err:
+        except OSError as err:
             msg = 'Could not rename your project file to:\n'
             msg += newPath + '\n'
             msg += 'One common cause for this is that the new location is on a different disk.\n'

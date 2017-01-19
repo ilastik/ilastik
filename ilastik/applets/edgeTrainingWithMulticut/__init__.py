@@ -1,1 +1,2 @@
-from edgeTrainingWithMulticutApplet import EdgeTrainingWithMulticutApplet
+from __future__ import absolute_import
+from .edgeTrainingWithMulticutApplet import EdgeTrainingWithMulticutApplet

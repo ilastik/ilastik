@@ -219,7 +219,7 @@ class OpParseAnnotations(Operator):
         elif slot == self.AnnotationLocations:
             result[0] = sorted( self._annotations.keys() )
         elif slot == self.AnnotationBodyIds:
-            result[0] = sorted( set( map( lambda (label, comment): label, self._annotations.values() ) ) )
+            result[0] = sorted( set( map( lambda label_comment: label_comment[0], self._annotations.values() ) ) )
         else:
             assert False, "Unknown output slot: {}".format( slot.name )
 

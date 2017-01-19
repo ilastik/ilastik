@@ -1,3 +1,4 @@
+from __future__ import print_function
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QToolBox
 
@@ -66,7 +67,7 @@ class AppletDrawerToolBox(QToolBox):
                 if item in self._visible_widgets:
                     visible_index +=1
             self._visible_widgets.insert( visible_index, (widget, text) )
-            print "Showing {} at {}".format( text, visible_index )
+            print("Showing {} at {}".format( text, visible_index ))
             super( AppletDrawerToolBox, self ).insertItem( visible_index, widget, text )
 
     ####
@@ -190,7 +191,7 @@ if __name__ == "__main__":
     t.addItem( QLabel("Four"),  "4" )
     
     def printNewIndex(index):
-        print "Index changed to {}".format( index )
+        print("Index changed to {}".format( index ))
     t.currentChanged.connect( printNewIndex )
 
     t.hideIndexItem(1)

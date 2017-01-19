@@ -1,3 +1,4 @@
+from __future__ import print_function
 import copy
 import collections
 
@@ -116,7 +117,7 @@ if __name__ == "__main__":
     axistags_editor.raise_()
 
     def handle_update():
-        print "Axistags were updated: {}".format( axistags_editor.axistags )
+        print("Axistags were updated: {}".format( axistags_editor.axistags ))
     axistags_editor.axistagsUpdated.connect( handle_update )
 
     # Change the order after 2 seconds
@@ -125,6 +126,6 @@ if __name__ == "__main__":
     app.exec_()
 
     # Print the final edited values
-    print "FINAL AXISTAGS:"
-    print axistags_editor.axistags.toJSON()
+    print("FINAL AXISTAGS:")
+    print(axistags_editor.axistags.toJSON())
     

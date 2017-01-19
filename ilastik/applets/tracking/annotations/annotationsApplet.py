@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,8 +21,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opAnnotations import OpAnnotations
-from annotationsSerializer import AnnotationsSerializer
+from .opAnnotations import OpAnnotations
+from .annotationsSerializer import AnnotationsSerializer
 
 class AnnotationsApplet(StandardApplet):
     def __init__( self, name="Annotations", workflow=None, projectFileGroupName="TrackingAnnotations" ):
@@ -39,7 +40,7 @@ class AnnotationsApplet(StandardApplet):
 
     @property
     def singleLaneGuiClass( self ):
-        from annotationsGui import AnnotationsGui
+        from .annotationsGui import AnnotationsGui
         return AnnotationsGui
 
     @property

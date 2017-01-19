@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -52,7 +53,7 @@ class TestPixelClassificationHeadless(object):
 
     @classmethod
     def setupClass(cls):
-        print 'starting setup...'
+        print('starting setup...')
         cls.original_cwd = os.getcwd()
         os.chdir(cls.data_dir)
 
@@ -64,7 +65,7 @@ class TestPixelClassificationHeadless(object):
 
         cls.create_new_tst_project()
 
-        print 'looking for ilastik.py...'
+        print('looking for ilastik.py...')
         # Load the ilastik startup script as a module.
         # Do it here in setupClass to ensure that it isn't loaded more than once.
         ilastik_entry_file_path = os.path.join( os.path.split( os.path.realpath(ilastik.__file__) )[0], "../ilastik.py" )

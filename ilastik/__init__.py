@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -32,7 +33,7 @@ ilastik_repo_dir = os.path.dirname(ilastik_package_dir)
 submodule_dir = os.path.join( ilastik_repo_dir, 'submodules' )
 
 # Add all submodules to the PYTHONPATH
-import expose_submodules
+from . import expose_submodules
 expose_submodules.expose_submodules(submodule_dir)
 
 ##################

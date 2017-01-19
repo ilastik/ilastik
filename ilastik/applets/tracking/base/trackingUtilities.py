@@ -284,7 +284,7 @@ class LineageTrees():
                     del branchSize[str(self.getNodeName(t-1,str(labelOld)))]
                 
                 else:
-                    raise Exception, "lineage tree generation not implemented for event type " + str(event.type)
+                    raise Exception("lineage tree generation not implemented for event type " + str(event.type))
 
         for label in nodeMap.keys():            
             newNode = nodeMap[label].add_child(name = label,dist = branchSize[label])
