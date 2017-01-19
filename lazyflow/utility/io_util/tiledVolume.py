@@ -8,7 +8,7 @@ import os
 import numpy
 import vigra
 from functools import partial
-from io import StringIO
+from io import BytesIO
 
 ## Instead of importing requests and PIL here, 
 ## use late imports (below) so people who don't use TiledVolume don't have to have them
@@ -367,7 +367,7 @@ class TiledVolume(object):
                 TiledVolume.PIL = PIL
             PIL = TiledVolume.PIL
 
-            img = numpy.asarray( PIL.Image.open(StringIO(r.content)) )
+            img = numpy.asarray( PIL.Image.open(BytesIO(r.content)) )
             if self.description.is_rgb:
                 # "Convert" to grayscale -- just take first channel.
                 assert img.ndim == 3
