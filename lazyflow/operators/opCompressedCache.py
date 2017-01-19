@@ -216,7 +216,10 @@ class OpUnmanagedCompressedCache(Operator):
         output_shape = self.Output.meta.shape
         clean_block_rois = list(map( partial( getBlockBounds, output_shape, self._blockshape ),
                                 clean_block_starts ))
-        destination[0] = list(map( partial(map, TinyVector), clean_block_rois ))
+        results = []
+        for cbr in clean_block_rois:
+            results.append( [TinyVector(cbr[0]), TinyVector(cbr[1])] )
+        destination[0] = results
         return destination
 
     def _executeOutputHdf5(self, roi, destination):

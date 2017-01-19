@@ -539,5 +539,8 @@ class OpArrayCache(Operator, ManagedCache):
         inputShape = self.Input.meta.shape
         clean_block_rois = list(map( partial( getBlockBounds, inputShape, self._blockShape ),
                                 clean_block_starts ))
-        destination[0] = list(map( partial(map, TinyVector), clean_block_rois ))
+        results = []
+        for cbr in clean_block_rois:
+            results.append( [TinyVector(cbr[0]), TinyVector(cbr[1])] )
+        destination[0] = results
         return destination
