@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, division
 from builtins import zip
 from builtins import range
 from builtins import object
@@ -42,7 +42,9 @@ class TestTinyVector(object):
         
         self.scalar = 3
 
-    def _checkBinaryOperation(self, op):
+    def _checkBinaryOperation(self, op, numpyOp=None):
+        if numpyOp is None:
+            numpyOp = op
         v1 = self.v1
         v2 = self.v2
         a1 = self.a1
@@ -55,17 +57,17 @@ class TestTinyVector(object):
             # Try all combinations of TinyVector with TinyVector, numpy.array, and plain list
             # as both LEFT AND RIGHT operands
             # Check each against the the expected results (numpy.array is the reference)
-            assert all( op(v1, v2) == op(a1, a2) )
-            assert all( op(v2, v1) == op(a2, a1) )
+            assert all( op(v1, v2) == numpyOp(a1, a2) )
+            assert all( op(v2, v1) == numpyOp(a2, a1) )
 
-            assert all( op(v1, l2) == op(a1, l2) )
-            assert all( op(l2, v1) == op(l2, a1) )
+            assert all( op(v1, l2) == numpyOp(a1, l2) )
+            assert all( op(l2, v1) == numpyOp(l2, a1) )
 
-            assert all( op(v1, a2) == op(a1, a2) )
-            assert all( op(v2, a1) == op(a2, a1) )
+            assert all( op(v1, a2) == numpyOp(a1, a2) )
+            assert all( op(v2, a1) == numpyOp(a2, a1) )
             
-            assert all( op(v1, scalar) == op(a1, scalar) )
-            assert all( op(scalar, v1) == op(scalar, a1) )
+            assert all( op(v1, scalar) == numpyOp(a1, scalar) )
+            assert all( op(scalar, v1) == numpyOp(scalar, a1) )
         
         except AssertionError:
             print("Failed for op: {}".format( op ))
@@ -75,7 +77,7 @@ class TestTinyVector(object):
         self._checkBinaryOperation(operator.add)
         self._checkBinaryOperation(operator.sub)
         self._checkBinaryOperation(operator.mul)
-        self._checkBinaryOperation(operator.div)
+        self._checkBinaryOperation(operator.div, lambda a,b: a / b)
         self._checkBinaryOperation(operator.mod)
         self._checkBinaryOperation(operator.floordiv)
 
@@ -90,7 +92,9 @@ class TestTinyVector(object):
         self._checkBinaryOperation(operator.ge)
         self._checkBinaryOperation(operator.gt)
     
-    def _checkAssignment(self, assignmentOp):
+    def _checkAssignment(self, assignmentOp, numpyOp=None):
+        if numpyOp is None:
+            numpyOp = assignmentOp
         v1 = self.v1
         v2 = self.v2
         a1 = self.a1
@@ -103,7 +107,7 @@ class TestTinyVector(object):
             _a1 = copy.copy( a1 )
             _v1 = copy.copy( v1 )
             _v2 = copy.copy( v2 )
-            _a1 = assignmentOp(_a1, a2)
+            _a1 = numpyOp(_a1, a2)
             _v1 = assignmentOp(_v1, _v2)
             assert all( _a1 == _v1 ), "Assignment operation failed."
             assert all( _v2 == v2 ), "Assignment modified the wrong value."
@@ -111,14 +115,14 @@ class TestTinyVector(object):
             _a1 = copy.copy( a1 )
             _v1 = copy.copy( v1 )
             _l2 = copy.copy( l2 )
-            _a1 = assignmentOp(_a1, l2)
+            _a1 = numpyOp(_a1, l2)
             _v1 = assignmentOp(_v1, _l2)
             assert all( _a1 == _v1 ), "Assignment operation failed."
             assert all( [x_y[0] == x_y[1] for x_y in zip(_l2, l2)] ), "Assignment modified the wrong value."
     
             _a1 = copy.copy( a1 )
             _v1 = copy.copy( v1 )
-            _a1 = assignmentOp(_a1, scalar)    
+            _a1 = numpyOp(_a1, scalar)    
             _v1 = assignmentOp(_v1, scalar)
             assert all( _a1 == _v1 ), "Assignment operation failed."
 
@@ -131,7 +135,7 @@ class TestTinyVector(object):
         self._checkAssignment(operator.iadd)
         self._checkAssignment(operator.isub)
         self._checkAssignment(operator.imul)
-        self._checkAssignment(operator.idiv)
+        self._checkAssignment(operator.idiv, lambda a,b: a / b)
         self._checkAssignment(operator.imod)
         self._checkAssignment(operator.ifloordiv)
         self._checkAssignment(operator.iand)
