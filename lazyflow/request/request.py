@@ -37,6 +37,7 @@ import traceback
 import io
 from random import randrange
 
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,11 @@ def log_exception( logger, msg=None, exc_info=None, level=logging.ERROR ):
     It is better to log exceptions this way instead of merely printing them to the console, 
     so that other logger outputs (such as log files) show the exception, too.
     """
-    sio = io.StringIO()
+    if sys.version_info.major == 2:
+        sio = io.BytesIO()
+    else:
+        sio = io.StringIO()
+        
     if exc_info:
         traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
     else:
