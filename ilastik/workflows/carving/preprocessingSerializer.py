@@ -54,8 +54,8 @@ class PreprocessingSerializer( AppletSerializer ):
                 preproc.create_dataset("filter",data= opPre.initialFilter)
                 ws_source = str(opPre.WatershedSource.value)
                 assert isinstance( ws_source, str ), "WatershedSource was {}, but it should be a string.".format( ws_source )
-                preproc.create_dataset("watershed_source", data=ws_source)                 
-                preproc.create_dataset("invert_watershed_source", data=opPre.InvertWatershedSource.value)
+                preproc.create_dataset("watershed_source", data=ws_source.encode('utf-8'))                 
+                preproc.create_dataset("invert_watershed_source", data=opPre.InvertWatershedSource.value.encode('utf-8'))
                 
                 preprocgraph = getOrCreateGroup(preproc, "graph")
                 mst.saveH5G(preprocgraph)
@@ -70,8 +70,8 @@ class PreprocessingSerializer( AppletSerializer ):
         sigma = topGroup["sigma"].value
         sfilter = topGroup["filter"].value
         try:
-            watershed_source = str(topGroup["watershed_source"].value)
-            invert_watershed_source = bool(topGroup["invert_watershed_source"].value)
+            watershed_source = str(topGroup["watershed_source"].value.decode('utf-8'))
+            invert_watershed_source = bool(topGroup["invert_watershed_source"].value.decode('utf-8'))
         except KeyError:
             watershed_source = None
             invert_watershed_source = False

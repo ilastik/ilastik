@@ -1522,7 +1522,7 @@ class IlastikShell(QMainWindow):
 
                 #be friendly to user: if this file has not specified a default workflow, do it now
                 if not "workflowName" in list(hdf5File.keys()) and not readOnly:
-                    hdf5File.create_dataset("workflowName", data=workflowName)
+                    hdf5File.create_dataset("workflowName", data=workflowName.encode('utf-8'))
 
                 #switch away from the startup screen to show the loaded project
                 self.mainStackedWidget.setCurrentIndex(1)
