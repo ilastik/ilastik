@@ -20,7 +20,6 @@
 ###############################################################################
 # Built-in
 from builtins import range
-from builtins import object
 import os
 import re
 import logging

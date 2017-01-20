@@ -19,7 +19,6 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import object
 import os
 
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex

@@ -19,7 +19,6 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from builtins import object
 from PyQt5.QtWidgets import QTreeWidgetItem, QTreeWidget, QTreeWidgetItemIterator
 from PyQt5.QtCore import pyqtSignal, Qt, QEvent
 

@@ -19,7 +19,6 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from builtins import object
 import os
 import numpy
 import numpy.lib.recfunctions as rfn

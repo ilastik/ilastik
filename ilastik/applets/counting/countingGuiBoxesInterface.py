@@ -29,7 +29,6 @@ from __future__ import division
 
 from builtins import range
 from past.utils import old_div
-from builtins import object
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QTimer, QPointF, QRectF, QObject, QRect, QSize, pyqtSignal, QEvent, QPoint, pyqtSlot
 from PyQt5.QtGui import QPen, QFont, QBrush, QColor, QMouseEvent

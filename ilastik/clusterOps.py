@@ -20,7 +20,6 @@ from __future__ import division
 #		   http://ilastik.org/license.html
 ###############################################################################
 from past.utils import old_div
-from builtins import object
 import os
 import copy
 import subprocess

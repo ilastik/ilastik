@@ -19,7 +19,6 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from builtins import object
 import h5py
 import numpy as np
 import os.path as path

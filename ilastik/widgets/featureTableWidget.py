@@ -22,7 +22,6 @@
 from __future__ import division
 from builtins import range
 from past.utils import old_div
-from builtins import object
 from PyQt5.QtGui import QPixmap, QPainter, QIcon, QBrush, QColor, \
                         QPalette, QFont, QPen, QPolygon, QImage
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QTableWidgetItem, QItemDelegate, QStyle, \

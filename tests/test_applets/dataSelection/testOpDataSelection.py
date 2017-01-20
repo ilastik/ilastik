@@ -19,7 +19,6 @@ from __future__ import print_function
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import object
 import os
 import shutil
 from collections import defaultdict

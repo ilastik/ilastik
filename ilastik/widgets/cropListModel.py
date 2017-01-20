@@ -20,7 +20,6 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from builtins import object
 from PyQt5.QtGui import QColor, QPixmap, QIcon, QImage
 from PyQt5.QtCore import Qt, pyqtSignal, QModelIndex, QItemSelectionModel
 from .listModel import ListModel, ListElement, _NPIXELS
