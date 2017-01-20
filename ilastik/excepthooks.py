@@ -92,7 +92,11 @@ def init_developer_mode_excepthook():
 def _log_exception(*exc_info):
     thread_name = threading.current_thread().name
     logger.error( "Unhandled exception in thread: '{}'".format(thread_name) )
-    sio = io.StringIO()
+    if sys.version_info.major == 2:
+        sio = io.BytesIO()
+    else:
+        sio = io.StringIO()
+
     traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
     logger.error( sio.getvalue() )
 
