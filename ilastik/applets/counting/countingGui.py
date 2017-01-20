@@ -22,7 +22,6 @@ from __future__ import absolute_import
 # Built-in
 from builtins import zip
 from builtins import map
-from builtins import object
 import os
 import logging
 import threading

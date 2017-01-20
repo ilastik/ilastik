@@ -23,7 +23,6 @@ from builtins import str
 from builtins import map
 from builtins import zip
 from past.utils import old_div
-from builtins import object
 import os
 import copy
 import subprocess

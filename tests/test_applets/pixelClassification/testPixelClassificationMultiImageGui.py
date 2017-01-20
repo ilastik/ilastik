@@ -205,7 +205,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
             # Verify the actual rendering of each view
             for i in range(3):
                 imgView = gui.currentGui().editor.imageViews[i]
-                observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
+                observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE, '/tmp/imgview.png')
                 expectedColor = gui.currentGui()._colorTable16[i+1]
                 assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
 

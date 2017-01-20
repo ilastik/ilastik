@@ -29,6 +29,7 @@ from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
 
 import os
+import h5py
 import vigra
 from lazyflow.utility import PathComponents
 from lazyflow.utility.timer import timeLogged
@@ -166,7 +167,11 @@ class DataSelectionSerializer( AppletSerializer ):
                     locationString = self.LocationStrings[datasetInfo.location]
                     infoGroup.create_dataset('location', data=locationString)
                     infoGroup.create_dataset('filePath', data=datasetInfo.filePath)
-                    infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
+                    try:
+                        infoGroup.create_dataset('datasetId', data=unicode(datasetInfo.datasetId),
+                                                 dtype=h5py.special_dtype(vlen=unicode))
+                    except:
+                        raise
                     infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
                     infoGroup.create_dataset('nickname', data=datasetInfo.nickname)
                     infoGroup.create_dataset('fromstack', data=datasetInfo.fromstack)

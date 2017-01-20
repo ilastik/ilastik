@@ -22,7 +22,7 @@
 from builtins import next
 from builtins import str
 from builtins import range
-from builtins import object
+from builtins import filter
 import os
 import re
 import logging

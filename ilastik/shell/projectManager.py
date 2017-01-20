@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import str
+
 import os
 import gc
 import copy
@@ -284,6 +285,7 @@ class ProjectManager(object):
             self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName)
 
         except Exception as err:
+            raise
             log_exception( logger, "Project Save Action failed due to the exception shown above." )
             raise ProjectManager.SaveError( str(err) )
         finally:

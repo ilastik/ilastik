@@ -81,7 +81,7 @@ developers = [ "Niels Buwen",
                "Chong Zhang" ]
 
 def convertVersion(vstring):
-    if not isinstance(vstring, str):
+    if not isinstance(vstring, basestring):
         raise Exception('tried to convert non-string version: {}'.format(vstring))
     
     # We permit versions like '1.0.5b', in which case '5b' 
