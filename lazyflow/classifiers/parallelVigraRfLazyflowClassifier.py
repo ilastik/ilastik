@@ -382,7 +382,8 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         h5py_group = parent_group[name]
         h5py_group['known_labels'] = self._known_labels
         if self._feature_names is not None:
-            h5py_group['feature_names'] = list(self._feature_names)
+            feature_names = [name.encode('utf-8') for name in self._feature_names]
+            h5py_group.create_dataset('feature_names', data=feature_names)
         
         # This field is required for all classifiers
         h5py_group['pickled_type'] = pickle.dumps( type(self) )
@@ -419,6 +420,7 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
 
         try:
             feature_names = list(h5py_group['feature_names'][:])
+            feature_names = list(map(unicode, feature_names))
         except KeyError:
             # Older projects don't store feature names.
             feature_names = None

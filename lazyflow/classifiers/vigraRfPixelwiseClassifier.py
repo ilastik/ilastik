@@ -158,7 +158,7 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
             h5py_group.copy(cacheFile['forest'], 'forest')
 
         h5py_group['known_labels'] = self._known_labels
-        h5py_group['feature_names'] = self._feature_names
+        h5py_group['feature_names'] = [name.encode('utf-8') for name in self._feature_names]
         
         # This field is required for all classifiers
         h5py_group['pickled_type'] = pickle.dumps( type(self) )
@@ -176,6 +176,7 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
         forest = vigra.learning.RandomForest(cachePath, 'forest')
         known_labels = list(h5py_group['known_labels'][:])
         feature_names = list(h5py_group['feature_names'][:])
+        feature_names = list(map(unicode, feature_names))
 
         os.remove(cachePath)
         os.rmdir(tmpDir)
