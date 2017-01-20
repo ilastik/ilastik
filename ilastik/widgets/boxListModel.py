@@ -19,7 +19,6 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import object
 from PyQt5 import uic
 from PyQt5.QtGui import QColor, QPixmap, QIcon, QPainter, QPen, QImage
 from PyQt5.QtWidgets import QDialog, QColorDialog, QGraphicsTextItem

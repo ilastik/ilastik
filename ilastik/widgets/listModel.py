@@ -19,7 +19,6 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import str
-from builtins import object
 from PyQt5.QtGui import QColor, QPixmap, QIcon, QPainter, QPen, QImage
 from PyQt5.QtCore import QObject, QAbstractTableModel, QItemSelectionModel, Qt, QModelIndex, pyqtSignal
 

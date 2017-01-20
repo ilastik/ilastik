@@ -20,7 +20,6 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import str
-from builtins import object
 import os
 import logging.config
 import warnings

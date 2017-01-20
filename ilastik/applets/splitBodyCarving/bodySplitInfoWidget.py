@@ -21,7 +21,6 @@ from __future__ import absolute_import
 ###############################################################################
 from builtins import chr
 from builtins import range
-from builtins import object
 import sys
 import os
 from functools import partial

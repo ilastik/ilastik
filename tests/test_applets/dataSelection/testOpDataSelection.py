@@ -20,7 +20,6 @@ from __future__ import print_function
 #		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-from builtins import object
 import os
 import numpy
 import vigra
