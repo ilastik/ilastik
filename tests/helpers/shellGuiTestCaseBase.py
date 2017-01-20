@@ -214,7 +214,7 @@ class ShellGuiTestCaseBase(object):
 
         point = QPoint(*coordinates)
         if relativeToCenter:
-            centerPoint = old_div(imgView.rect().bottomRight(), 2)
+            centerPoint = QPoint(img.size().width(), img.size().height()) / 2
             point += centerPoint
 
         return img.pixel(point)
