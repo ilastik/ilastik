@@ -227,7 +227,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
                     oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                     oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
-                    featureNameArray[i].append("Gaussian Smoothing (σ=" + str(self.scales[j]) + ")")
+                    featureNameArray[i].append(u"Gaussian Smoothing (σ=" + str(self.scales[j]) + ")")
 
             elif featureId == 'LaplacianOfGaussian':
                 for j in range(dimCol):
@@ -235,7 +235,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                         
                     oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                     oparray[i][j].inputs["scale"].setValue(self.newScales[j])
-                    featureNameArray[i].append("Laplacian of Gaussian (σ=" + str(self.scales[j]) + ")")
+                    featureNameArray[i].append(u"Laplacian of Gaussian (σ=" + str(self.scales[j]) + ")")
 
             elif featureId == 'StructureTensorEigenvalues':
                 for j in range(dimCol):
@@ -250,7 +250,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     #sigma1 = [x*0.5 for x in self.newScales[j]]
                     #oparray[i][j].inputs["outerScale"].setValue(sigma1)
                     oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
-                    featureNameArray[i].append("Structure Tensor Eigenvalues (σ=" + str(self.scales[j]) + ")")
+                    featureNameArray[i].append(u"Structure Tensor Eigenvalues (σ=" + str(self.scales[j]) + ")")
 
             elif featureId == 'HessianOfGaussianEigenvalues':
                 for j in range(dimCol):
@@ -258,7 +258,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     
                     oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                     oparray[i][j].inputs["scale"].setValue(self.newScales[j])
-                    featureNameArray[i].append("Hessian of Gaussian Eigenvalues (σ=" + str(self.scales[j]) + ")")
+                    featureNameArray[i].append(u"Hessian of Gaussian Eigenvalues (σ=" + str(self.scales[j]) + ")")
 
             elif featureId == 'GaussianGradientMagnitude':
                 for j in range(dimCol):
@@ -266,7 +266,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                         
                     oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                     oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
-                    featureNameArray[i].append("Gaussian Gradient Magnitude (σ=" + str(self.scales[j]) + ")")
+                    featureNameArray[i].append(u"Gaussian Gradient Magnitude (σ=" + str(self.scales[j]) + ")")
 
             elif featureId == 'DifferenceOfGaussians':
                 for j in range(dimCol):
@@ -281,7 +281,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     #sigma1 = [x*0.66 for x in self.newScales[j]]
                     #oparray[i][j].inputs["sigma1"].setValue(sigma1)
                     oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
-                    featureNameArray[i].append("Difference of Gaussians (σ=" + str(self.scales[j]) + ")")
+                    featureNameArray[i].append(u"Difference of Gaussians (σ=" + str(self.scales[j]) + ")")
 
         channelCount = 0
         featureCount = 0
@@ -767,14 +767,14 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                         oparray[i].append(OpGaussianSmoothing(self))
                         oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                         oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
-                        featureNameArray[i].append("Gaussian Smoothing (σ=" + str(self.scales[j]) + ")")
+                        featureNameArray[i].append(u"Gaussian Smoothing (σ=" + str(self.scales[j]) + ")")
 
                 elif featureId == 'LaplacianOfGaussian':
                     for j in range(dimCol):
                         oparray[i].append(OpLaplacianOfGaussian(self))
                         oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                         oparray[i][j].inputs["scale"].setValue(self.newScales[j])
-                        featureNameArray[i].append("Laplacian of Gaussian (σ=" + str(self.scales[j]) + ")")
+                        featureNameArray[i].append(u"Laplacian of Gaussian (σ=" + str(self.scales[j]) + ")")
 
                 elif featureId == 'StructureTensorEigenvalues':
                     for j in range(dimCol):
@@ -785,21 +785,21 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                         #  leave this feature here to preserve backwards compatibility
                         oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
                         oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
-                        featureNameArray[i].append("Structure Tensor Eigenvalues (σ=" + str(self.scales[j]) + ")")
+                        featureNameArray[i].append(u"Structure Tensor Eigenvalues (σ=" + str(self.scales[j]) + ")")
 
                 elif featureId == 'HessianOfGaussianEigenvalues':
                     for j in range(dimCol):
                         oparray[i].append(OpHessianOfGaussianEigenvalues(self))
                         oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                         oparray[i][j].inputs["scale"].setValue(self.newScales[j])
-                        featureNameArray[i].append("Hessian of Gaussian Eigenvalues (σ=" + str(self.scales[j]) + ")")
+                        featureNameArray[i].append(u"Hessian of Gaussian Eigenvalues (σ=" + str(self.scales[j]) + ")")
 
                 elif featureId == 'GaussianGradientMagnitude':
                     for j in range(dimCol):
                         oparray[i].append(OpGaussianGradientMagnitude(self))
                         oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                         oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
-                        featureNameArray[i].append("Gaussian Gradient Magnitude (σ=" + str(self.scales[j]) + ")")
+                        featureNameArray[i].append(u"Gaussian Gradient Magnitude (σ=" + str(self.scales[j]) + ")")
 
                 elif featureId == 'DifferenceOfGaussians':
                     for j in range(dimCol):
@@ -810,7 +810,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                         #  to preserve backwards compatibility
                         oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])
                         oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
-                        featureNameArray[i].append("Difference of Gaussians (σ=" + str(self.scales[j]) + ")")
+                        featureNameArray[i].append(u"Difference of Gaussians (σ=" + str(self.scales[j]) + ")")
 
             #disconnecting all Operators
             for islot in list(self.multi.inputs.values()):
