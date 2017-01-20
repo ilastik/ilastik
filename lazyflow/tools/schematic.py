@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from builtins import hex
-from builtins import str
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #

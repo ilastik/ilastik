@@ -22,7 +22,7 @@
 from __future__ import division
 from builtins import next
 from builtins import map
-from builtins import str
+
 from builtins import zip
 from builtins import range
 from builtins import object

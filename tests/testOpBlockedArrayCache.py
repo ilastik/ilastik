@@ -1,5 +1,5 @@
 from __future__ import print_function
-from builtins import str
+
 from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework

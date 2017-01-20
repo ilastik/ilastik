@@ -1,6 +1,6 @@
 from __future__ import division
 from builtins import zip
-from builtins import str
+
 from builtins import next
 from builtins import map
 ###############################################################################

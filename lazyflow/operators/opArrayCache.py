@@ -1,7 +1,7 @@
 from __future__ import division
 from builtins import next
 from builtins import map
-from builtins import str
+
 from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework

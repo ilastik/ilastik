@@ -24,7 +24,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from builtins import zip
-from builtins import str
+
 from builtins import range
 import os
 from collections import deque

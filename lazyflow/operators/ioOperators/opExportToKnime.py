@@ -1,5 +1,5 @@
 from __future__ import print_function
-from builtins import str
+
 from builtins import range
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper

@@ -7,7 +7,7 @@ from builtins import object
 
 # TODO: Convert this file to use bytes instead of str
 #from builtins import chr
-#from builtins import str
+#
 
 import sys
 import struct, collections

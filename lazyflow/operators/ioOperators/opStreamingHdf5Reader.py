@@ -1,4 +1,4 @@
-from builtins import str
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
