@@ -176,6 +176,7 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
                          "Your project file might be using obsolete features.\n"
                          "Please select new features, and re-train your classifier.\n"
                          "(Exception was: {})".format(e))
+            raise # FIXME: Consider using Python 3 raise ... from ... syntax here.
         
         #NOTE: this removes the background object!!!
         #The background object is always present (even if there is no 0 label) and is always removed here
