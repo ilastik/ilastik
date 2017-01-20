@@ -29,7 +29,7 @@ from __future__ import absolute_import
 #===============================================================================
 
 
-from builtins import str
+
 from PyQt5.QtGui import QBrush, QColor, QMouseEvent, QPen, QBrush
 from PyQt5.QtCore import Qt, QObject, pyqtSignal, QEvent, QTimer, QPointF
 from PyQt5.QtWidgets import QApplication, QGraphicsEllipseItem

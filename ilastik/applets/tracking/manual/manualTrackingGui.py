@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from builtins import str
+
 from builtins import range
 from PyQt5 import uic, QtWidgets, QtCore
 from PyQt5.QtGui import QColor, QTextCursor

@@ -24,7 +24,7 @@ Give the histogram of labels in a project file.
 from __future__ import print_function
 from builtins import zip
 from builtins import map
-from builtins import str
+
 from builtins import range
 import sys
 import os

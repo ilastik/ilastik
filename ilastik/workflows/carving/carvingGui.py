@@ -20,7 +20,7 @@ from __future__ import division
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
-from builtins import str
+
 from builtins import range
 from past.utils import old_div
 import os

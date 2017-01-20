@@ -1,7 +1,7 @@
 from future import standard_library
 standard_library.install_aliases()
 from builtins import filter
-from builtins import str
+
 from socketserver import BaseRequestHandler, TCPServer as BaseTCPServer
 import logging
 import threading

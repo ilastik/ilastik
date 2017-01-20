@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import str
+
 from builtins import range
 from functools import partial
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QMenu, QWidgetAction, QLabel

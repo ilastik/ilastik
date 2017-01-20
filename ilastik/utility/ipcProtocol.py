@@ -1,4 +1,4 @@
-from builtins import str
+
 class Protocol(object):
     ValidOps = ["and", "or"]
     ValidHiliteModes = ["hilite", "unhilite", "toggle", "clear"]

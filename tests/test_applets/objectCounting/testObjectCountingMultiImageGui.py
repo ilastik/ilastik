@@ -25,7 +25,7 @@ from __future__ import division
 # - interaction with boxes : move them around etc...
 
 
-from builtins import str
+
 from builtins import zip
 from builtins import range
 from past.utils import old_div

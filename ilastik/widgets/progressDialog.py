@@ -1,4 +1,4 @@
-from builtins import str
+
 from builtins import range
 from PyQt5 import uic
 from PyQt5.QtCore import pyqtSignal

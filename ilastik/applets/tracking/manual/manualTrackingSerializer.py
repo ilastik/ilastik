@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import str
+
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
     SerialSlot, deleteIfPresent, getOrCreateGroup, SerialPickledValueSlot
 

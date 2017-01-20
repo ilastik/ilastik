@@ -21,7 +21,7 @@
 #Python
 from builtins import zip
 from builtins import filter
-from builtins import str
+
 from builtins import range
 import os
 from functools import partial

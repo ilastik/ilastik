@@ -20,7 +20,7 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 # to ensure that plugin system is available
-from builtins import str
+
 import logging
 logger = logging.getLogger(__name__)
 from ilastik.plugins import pluginManager

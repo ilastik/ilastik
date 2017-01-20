@@ -20,7 +20,7 @@ from __future__ import print_function
 #		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import map
-from builtins import str
+
 from builtins import range
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *

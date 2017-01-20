@@ -19,7 +19,7 @@ from __future__ import division
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import str
+
 from builtins import map
 from builtins import zip
 from past.utils import old_div

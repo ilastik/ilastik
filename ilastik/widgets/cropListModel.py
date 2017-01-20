@@ -19,7 +19,7 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import str
+
 from builtins import range
 from PyQt5.QtGui import QColor, QPixmap, QIcon, QImage
 from PyQt5.QtCore import Qt, pyqtSignal, QModelIndex, QItemSelectionModel

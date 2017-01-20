@@ -22,7 +22,7 @@
 
 from future import standard_library
 standard_library.install_aliases()
-from builtins import str
+
 def handshake(_, protocol, name, **address):
     from ilastik.shell.gui.ipcManager import IPCFacade
     if "host" in address and "port" in address:

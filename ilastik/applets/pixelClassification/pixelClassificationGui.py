@@ -22,7 +22,7 @@ from __future__ import division
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
-from builtins import str
+
 from builtins import map
 from past.utils import old_div
 import os

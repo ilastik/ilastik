@@ -20,7 +20,7 @@
 ###############################################################################
 from builtins import zip
 from builtins import map
-from builtins import str
+
 from builtins import range
 import sys
 import copy

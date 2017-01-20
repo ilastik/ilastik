@@ -1,6 +1,6 @@
 from __future__ import division
 from builtins import map
-from builtins import str
+
 from builtins import zip
 from past.utils import old_div
 import collections

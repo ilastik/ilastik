@@ -1,5 +1,5 @@
 from __future__ import print_function
-from builtins import str
+
 import os
 import copy
 import h5py

@@ -20,7 +20,7 @@
 ###############################################################################
 # Built-in
 from builtins import next
-from builtins import str
+
 from builtins import range
 from builtins import filter
 import os

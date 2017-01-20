@@ -19,7 +19,7 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import str
+
 from .opCountingDataExport import OpCountingDataExport
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer

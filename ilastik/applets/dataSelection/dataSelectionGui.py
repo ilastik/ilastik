@@ -23,7 +23,7 @@ from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()
 from builtins import zip
-from builtins import str
+
 from builtins import range
 import os
 import sys

@@ -20,7 +20,7 @@
 ###############################################################################
 
 #Python
-from builtins import str
+
 from builtins import zip
 from builtins import filter
 from builtins import map

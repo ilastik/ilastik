@@ -19,7 +19,7 @@
 # http://ilastik.org/license.html
 # ##############################################################################
 from builtins import zip
-from builtins import str
+
 from builtins import range
 import os
 from functools import partial

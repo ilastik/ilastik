@@ -20,7 +20,7 @@
 ###############################################################################
 from future import standard_library
 standard_library.install_aliases()
-from builtins import str
+
 from builtins import range
 from PyQt5.QtWidgets import QTreeWidgetItem, QMessageBox, QHeaderView
 from PyQt5.QtGui import QColor, QResizeEvent, QMouseEvent

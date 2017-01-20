@@ -1,5 +1,5 @@
 from __future__ import division
-from builtins import str
+
 from builtins import zip
 from past.builtins import basestring
 from past.utils import old_div

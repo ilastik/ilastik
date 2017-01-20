@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
-from builtins import str
+
 from builtins import range
 import sys
 import logging

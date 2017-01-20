@@ -21,7 +21,7 @@ from __future__ import division
 #		   http://ilastik.org/license.html
 ###############################################################################
 #SciPy
-from builtins import str
+
 from builtins import range
 from past.utils import old_div
 import numpy
