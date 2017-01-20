@@ -57,7 +57,7 @@ class OpRESTfulBlockwiseFilesetReader(Operator):
 
         self.Output.meta.shape = tuple(localDescription.view_shape)
         self.Output.meta.dtype = localDescription.dtype
-        self.Output.meta.axistags = vigra.defaultAxistags(localDescription.axes)
+        self.Output.meta.axistags = vigra.defaultAxistags(str(localDescription.axes))
         drange = localDescription.drange
         if drange is not None:
             self.Output.meta.drange = drange

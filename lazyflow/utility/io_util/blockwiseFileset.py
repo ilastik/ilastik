@@ -532,7 +532,7 @@ class BlockwiseFileset(object):
         if self._description.drange is not None:
             dataset.attrs['drange'] = self._description.drange
         if _use_vigra:
-            dataset.attrs['axistags'] = vigra.defaultAxistags( self._description.axes ).toJSON()
+            dataset.attrs['axistags'] = vigra.defaultAxistags( str(self._description.axes) ).toJSON()
 
     def _getOpenHdf5Blockfile(self, blockFilePath):
         """

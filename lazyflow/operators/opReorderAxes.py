@@ -67,7 +67,7 @@ class OpReorderAxes(Operator):
 
         # Determine output shape/axistags
         output_shape = []
-        output_tags = vigra.defaultAxistags(output_order)
+        output_tags = vigra.defaultAxistags(str(output_order))
         ideal_blockshape = []
         max_blockshape = []
         for a in output_order:

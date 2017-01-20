@@ -58,7 +58,7 @@ class OpRESTfulVolumeReader(Operator):
 
         self.Output.meta.shape = outputShape
         self.Output.meta.dtype = self._volumeObject.description.dtype
-        self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
+        self.Output.meta.axistags = vigra.defaultAxistags(str(self._axes))
 
     def execute(self, slot, subindex, roi, result):
         roi = copy.copy(roi)

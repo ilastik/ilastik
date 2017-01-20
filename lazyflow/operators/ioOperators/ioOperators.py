@@ -20,7 +20,6 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
-from builtins import str
 from builtins import zip
 from builtins import range
 import os
@@ -98,7 +97,7 @@ class OpStackLoader(Operator):
         X, Y, C = slice_shape
         if self.slices_per_file == 1:
             if self.SequenceAxis.ready():
-                sequence_axis = self.SequenceAxis.value
+                sequence_axis = str(self.SequenceAxis.value)
                 assert sequence_axis in 'tz'
             else:
                 sequence_axis = 'z'
