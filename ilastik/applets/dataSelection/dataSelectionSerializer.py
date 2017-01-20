@@ -166,7 +166,7 @@ class DataSelectionSerializer( AppletSerializer ):
                     locationString = self.LocationStrings[datasetInfo.location]
                     infoGroup.create_dataset('location', data=locationString)
                     infoGroup.create_dataset('filePath', data=datasetInfo.filePath)
-                    infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
+                    infoGroup.create_dataset('datasetId', data=bytes(datasetInfo.datasetId))
                     infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
                     infoGroup.create_dataset('nickname', data=datasetInfo.nickname)
                     infoGroup.create_dataset('fromstack', data=datasetInfo.fromstack)
