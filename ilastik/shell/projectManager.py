@@ -103,18 +103,18 @@ class ProjectManager(object):
         if 'mode' in h5_file_kwargs:
             raise ValueError("ProjectManager.createBlankProjectFile(): 'mode' is not allowed as a h5py.File kwarg")
         h5File = h5py.File(projectFilePath, mode="w", **h5_file_kwargs)
-        h5File.create_dataset("ilastikVersion", data=ilastik.__version__)
-        h5File.create_dataset("time", data = time.ctime())
+        h5File.create_dataset("ilastikVersion", data=ilastik.__version__.encode('utf-8'))
+        h5File.create_dataset("time", data = time.ctime().encode('utf-8'))
         if workflow_class is not None:
-            h5File.create_dataset("workflowName", data=workflow_class.__name__)
+            h5File.create_dataset("workflowName", data=workflow_class.__name__.encode('utf-8'))
         if workflow_cmdline_args is not None and len(workflow_cmdline_args) > 0:
-            h5File.create_dataset("workflow_cmdline_args", data=workflow_cmdline_args)
+            h5File.create_dataset("workflow_cmdline_args", data=workflow_cmdline_args.encode('utf-8'))
         
         return h5File
 
     @classmethod
     def getWorkflowName(self, projectFile):
-        return str( projectFile['workflowName'][()] )
+        return str( projectFile['workflowName'][()].decode('utf-8') )
 
     @classmethod
     def openProjectFile(cls, projectFilePath, forceReadOnly=False):
@@ -154,7 +154,7 @@ class ProjectManager(object):
         workflow_class = None
         if "workflowName" in list(hdf5File.keys()):
             #if workflow is found in file, take it
-            workflowName = hdf5File["workflowName"].value
+            workflowName = hdf5File["workflowName"].value.decode('utf-8')
             workflow_class = getWorkflowFromName(workflowName)
         
         return (hdf5File, workflow_class, readOnly)
@@ -281,7 +281,7 @@ class ProjectManager(object):
             #save the current workflow as standard workflow
             if "workflowName" in self.currentProjectFile:
                 del self.currentProjectFile["workflowName"]
-            self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName)
+            self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName.encode('utf-8'))
 
         except Exception as err:
             log_exception( logger, "Project Save Action failed due to the exception shown above." )
@@ -290,7 +290,7 @@ class ProjectManager(object):
             # save current time
             if "time" in self.currentProjectFile:
                 del self.currentProjectFile["time"]
-            self.currentProjectFile.create_dataset("time", data = time.ctime())
+            self.currentProjectFile.create_dataset("time", data = time.ctime().encode('utf-8'))
             # Flush any changes we made to disk, but don't close the file.
             self.currentProjectFile.flush()
             
@@ -332,7 +332,7 @@ class ProjectManager(object):
                 # save current time
                 if "time" in snapshotFile:
                     del snapshotFile["time"]
-                snapshotFile.create_dataset("time", data = time.ctime())
+                snapshotFile.create_dataset("time", data = time.ctime().encode('utf-8'))
 
                 # Flush any changes we made to disk, but don't close the file.
                 snapshotFile.flush()
