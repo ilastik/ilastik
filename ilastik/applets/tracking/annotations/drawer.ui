@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1458</height>
+    <height>1579</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -31,7 +31,7 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout_3">
+  <layout class="QGridLayout" name="gridLayout_6">
    <item row="0" column="0">
     <widget class="QLabel" name="cropLabel">
      <property name="text">
@@ -42,9 +42,6 @@
    <item row="0" column="1">
     <widget class="QComboBox" name="cropBoxView"/>
    </item>
-   <item row="1" column="0" colspan="2">
-    <widget class="CropListView" name="cropListView"/>
-   </item>
    <item row="2" column="0" colspan="2">
     <widget class="QLabel" name="cropObjects">
      <property name="text">
@@ -53,40 +50,8 @@
     </widget>
    </item>
    <item row="3" column="0" colspan="2">
-    <layout class="QGridLayout" name="gridLayout">
-     <property name="leftMargin">
-      <number>30</number>
-     </property>
-     <property name="horizontalSpacing">
-      <number>40</number>
-     </property>
-     <item row="2" column="0" colspan="2">
-      <widget class="QLabel" name="unlabeledObjects">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>Unlabeled</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="allObjects">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>Total</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0" rowspan="2" colspan="2">
+    <layout class="QGridLayout" name="gridLayout_5">
+     <item row="0" column="0">
       <widget class="QLabel" name="labeledObjects">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -99,7 +64,7 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="2">
+     <item row="0" column="1">
       <widget class="QLabel" name="labeledObjectsCount">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -118,26 +83,20 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="2">
-      <widget class="QLabel" name="allObjectsCount">
+     <item row="1" column="0">
+      <widget class="QLabel" name="unlabeledObjects">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
-       <property name="layoutDirection">
-        <enum>Qt::RightToLeft</enum>
-       </property>
        <property name="text">
-        <string>T</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        <string>Unlabeled</string>
        </property>
       </widget>
      </item>
-     <item row="2" column="2">
+     <item row="1" column="1">
       <widget class="QLabel" name="unlabeledObjectsCount">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -156,16 +115,155 @@
        </property>
       </widget>
      </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="allObjects">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Total</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLabel" name="allObjectsCount">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string>T</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item row="4" column="0" colspan="2">
+    <widget class="QLabel" name="cropObjectsFrame">
+     <property name="text">
+      <string>Per Time Frame:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0" colspan="2">
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="0">
+      <widget class="QLabel" name="labeledObjectsFrame">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Labeled</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="labeledObjectsCountFrame">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string>L</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="unlabeledObjectsFrame">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Unlabeled</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLabel" name="unlabeledObjectsCountFrame">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string>U</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="allObjects_3">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Total</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLabel" name="allObjectsCountFrame">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string>T</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="6" column="0" colspan="2">
     <widget class="QPushButton" name="initializeAnnotations">
      <property name="text">
       <string>Delete All Training</string>
      </property>
     </widget>
    </item>
-   <item row="5" column="0" colspan="2">
+   <item row="7" column="0" colspan="2">
     <widget class="QPushButton" name="saveAnnotations">
      <property name="enabled">
       <bool>true</bool>
@@ -175,7 +273,7 @@
      </property>
     </widget>
    </item>
-   <item row="6" column="0" colspan="2">
+   <item row="8" column="0" colspan="2">
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
@@ -239,7 +337,7 @@
      </item>
     </layout>
    </item>
-   <item row="7" column="0" colspan="2">
+   <item row="9" column="0" colspan="2">
     <widget class="QTextBrowser" name="logOutput">
      <property name="enabled">
       <bool>false</bool>
@@ -254,7 +352,7 @@
      </property>
     </widget>
    </item>
-   <item row="8" column="0" colspan="2">
+   <item row="10" column="0">
     <widget class="QLabel" name="labelDivisions">
      <property name="enabled">
       <bool>false</bool>
@@ -270,14 +368,14 @@
      </property>
     </widget>
    </item>
-   <item row="9" column="0" colspan="2">
+   <item row="11" column="0" colspan="2">
     <widget class="QListWidget" name="divisionsList">
      <property name="enabled">
       <bool>false</bool>
      </property>
     </widget>
    </item>
-   <item row="10" column="0" colspan="2">
+   <item row="12" column="0" colspan="2">
     <layout class="QGridLayout" name="gridLayout_4">
      <item row="0" column="0">
       <widget class="QLabel" name="timeStepLabel">
@@ -331,7 +429,7 @@
      </item>
     </layout>
    </item>
-   <item row="11" column="0" colspan="2">
+   <item row="13" column="0" colspan="2">
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
       <widget class="QLabel" name="automaticTrackingLabel">
@@ -437,7 +535,7 @@
      </item>
     </layout>
    </item>
-   <item row="12" column="0" colspan="2">
+   <item row="14" column="0" colspan="2">
     <layout class="QVBoxLayout" name="verticalLayout_7">
      <item>
       <widget class="QLabel" name="exportLabel">
@@ -487,6 +585,9 @@
       </widget>
      </item>
     </layout>
+   </item>
+   <item row="1" column="0" colspan="2">
+    <widget class="CropListView" name="cropListView"/>
    </item>
   </layout>
  </widget>

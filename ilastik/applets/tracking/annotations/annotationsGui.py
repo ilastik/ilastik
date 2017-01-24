@@ -131,6 +131,20 @@ class AnnotationsGui(LayerViewerGui):
 
         return num
 
+    def getNumberOfAllObjectsFrame(self, crop, t):
+        num = 0
+        roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                            start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                            stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+        li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+        uniqueLabels = numpy.unique(li)
+        if uniqueLabels[0] == 0:
+            num += len (uniqueLabels) - 1
+        else:
+            num += len (uniqueLabels)
+
+        return num
+
     def getNumberOfLabeledObjects(self, crop):
         num = 0
         self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
@@ -155,6 +169,31 @@ class AnnotationsGui(LayerViewerGui):
 
                     if addAnnotation:
                         num += 1
+        return num
+
+    def getNumberOfLabeledObjectsFrame(self, crop, time):
+        num = 0
+        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+
+        if time in self.topLevelOperatorView.labels.keys():
+            for label in self.topLevelOperatorView.labels[time].keys():
+                lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
+                upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
+
+                addAnnotation = False
+                if len(self.topLevelOperatorView.labels[time][label]) > 0:
+                    if len(lower) == 2:
+                        if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
+                            addAnnotation = True
+                    else:
+                        if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
+                            crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
+                            addAnnotation = True
+
+                if addAnnotation:
+                    num += 1
         return num
 
     def updateTime(self):
@@ -559,14 +598,33 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.unlabeledObjectsCount.setText(str(unlabeledObjects))
         self._drawer.allObjectsCount.setText(str(allObjects))
 
+        time = self.editor.posModel.time
+        labeledObjectsFrame = self.getNumberOfLabeledObjectsFrame(crop,time)
+        allObjectsFrame = self.getNumberOfAllObjectsFrame(crop,time)
+        self._drawer.labeledObjectsCountFrame.setText(str(labeledObjectsFrame))
+        unlabeledObjectsFrame = allObjectsFrame - labeledObjectsFrame
+        if unlabeledObjectsFrame > 0:
+            unlabeledColorFrame = 'red'
+            labeledColorFrame = 'black'
+        else:
+            unlabeledColorFrame = 'black'
+            labeledColorFrame = 'green'
+        self._drawer.unlabeledObjectsFrame.setText("<font color="+unlabeledColorFrame+">Unlabeled</font>" )
+        self._drawer.labeledObjectsFrame.setText("<font color="+labeledColorFrame+">Labeled</font>" )
+        self._drawer.unlabeledObjectsCountFrame.setText(str(unlabeledObjectsFrame))
+        self._drawer.allObjectsCountFrame.setText(str(allObjectsFrame))
+
     def updateTime(self):
-        delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][0] - self.editor.posModel.time
+        crop = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]
+        delta = crop["time"][0] - self.editor.posModel.time
         if delta > 0:
             self.editor.navCtrl.changeTimeRelative(delta)
         else:
             delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][1] - self.editor.posModel.time
             if delta < 0:
                 self.editor.navCtrl.changeTimeRelative(delta)
+
+        self.updateLabeledUnlabeledCount(crop)
 
     def setupLayers( self ):
         layers = []
