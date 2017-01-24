@@ -743,48 +743,49 @@ class AnnotationsGui(LayerViewerGui):
 
         if self.divLock:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
-            item = (position5d[0], oid)
-            if len(self.divs) == 0:                
-                self.divs.append(item)
-                self._setPosModel(time=self.editor.posModel.time + 1)                
-            elif len(self.divs) > 0:
-                if position5d[0] != self.divs[0][0] + 1:
-                    self._criticalMessage("Error: The daughter cells are expected to be in time step " + str(self.divs[0][0] + 1))
-                    return
-                if item not in self.divs:
+            if not oid == 0:
+                item = (position5d[0], oid)
+                if len(self.divs) == 0:
                     self.divs.append(item)
-                
-            if len(self.divs) == 3:                
-                activeTrack = self._getActiveTrack()
-                if (self.divs[0][1] not in self.mainOperator.labels[self.divs[0][0]]) or (activeTrack not in self.mainOperator.labels[self.divs[0][0]][self.divs[0][1]]):                    
-                    self._criticalMessage("Error: The label of the parent cell must match the active track label.")
+                    self._setPosModel(time=self.editor.posModel.time + 1)
+                elif len(self.divs) > 0:
+                    if position5d[0] != self.divs[0][0] + 1:
+                        self._criticalMessage("Error: The daughter cells are expected to be in time step " + str(self.divs[0][0] + 1))
+                        return
+                    if item not in self.divs:
+                        self.divs.append(item)
+
+                if len(self.divs) == 3:
+                    activeTrack = self._getActiveTrack()
+                    if (self.divs[0][1] not in self.mainOperator.labels[self.divs[0][0]]) or (activeTrack not in self.mainOperator.labels[self.divs[0][0]][self.divs[0][1]]):
+                        self._criticalMessage("Error: The label of the parent cell must match the active track label.")
+                        self.divLock = False
+                        self.divs = []
+                        self._drawer.divEvent.setChecked(False)
+                        return
+
+                    div = [activeTrack,]
+
+                    for i in range(1,3):
+                        activeTrack = self._addNewTrack()
+                        self._addObjectToTrack(activeTrack, self.divs[i][1], self.divs[i][0])
+                        div += [activeTrack,]
+
+                    self._addDivisionToListWidget(div[0], div[1], div[2], self.editor.posModel.time-1)
+
+                    self.mainOperator.divisions[div[0]] = (div[1:], self.divs[0][0])
+                    self._log('division (t,parent,child1,child2) = ' + str((self.editor.posModel.time-1, div[0], div[1], div[2])) + ' added.')
+
+                    self._setDirty(self.mainOperator.Divisions, [])
+                    self._setDirty(self.mainOperator.Labels, [self.divs[0][0],self.divs[0][0]+1])
+                    self._setDirty(self.mainOperator.TrackImage, [self.divs[0][0]])
+                    self._setDirty(self.mainOperator.UntrackedImage, [self.divs[0][0]])
+
+                    # release the division lock
                     self.divLock = False
                     self.divs = []
                     self._drawer.divEvent.setChecked(False)
-                    return
-
-                div = [activeTrack,]
-                
-                for i in range(1,3):
-                    activeTrack = self._addNewTrack()
-                    self._addObjectToTrack(activeTrack, self.divs[i][1], self.divs[i][0])
-                    div += [activeTrack,]
-                
-                self._addDivisionToListWidget(div[0], div[1], div[2], self.editor.posModel.time-1)                
-                
-                self.mainOperator.divisions[div[0]] = (div[1:], self.divs[0][0])
-                self._log('division (t,parent,child1,child2) = ' + str((self.editor.posModel.time-1, div[0], div[1], div[2])) + ' added.')
-                
-                self._setDirty(self.mainOperator.Divisions, [])
-                self._setDirty(self.mainOperator.Labels, [self.divs[0][0],self.divs[0][0]+1])
-                self._setDirty(self.mainOperator.TrackImage, [self.divs[0][0]])            
-                self._setDirty(self.mainOperator.UntrackedImage, [self.divs[0][0]])
-                
-                # release the division lock
-                self.divLock = False
-                self.divs = []
-                self._drawer.divEvent.setChecked(False)
-                self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=True)                
+                    self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=True)
         else:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
             if oid == 0:
@@ -966,10 +967,17 @@ class AnnotationsGui(LayerViewerGui):
             for l in self.mainOperator.labels[t][oid]:
                 trackids.append(l)
 
-        if oid == 0:
+        if self.divLock:
+            if len(self.divs)==0:
+                self.setToolTip("Left click on a parent, then left click on each of the children to annotate a division.")
+            elif len(self.divs)==1:
+                self.setToolTip("Left click on a child.")
+            if len(self.divs)==2:
+                self.setToolTip("Left click on the second child.")
+        elif oid == 0:
             self.setToolTip("Move your mouse to an object you would like to label!")
         elif trackids == []:
-            self.setToolTip("Left click to add the active track to this unlabelled object. Right click for more option.")
+            self.setToolTip("Left click to add the active track to this unlabelled object. Right click for more options.")
         else:
             self.setToolTip("Left click to add the active track to this object. Right click for more options.")
         return
