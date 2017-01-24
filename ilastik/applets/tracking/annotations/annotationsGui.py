@@ -80,8 +80,6 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
         self.editor.cropModel.mouseRelease.connect(bind(self._onSaveAnnotations))
-        self._drawer.saveAnnotations.setVisible(False)
-        self._drawer.initializeAnnotations.pressed.connect(self._onInitializeAnnotations)
         self._drawer.activeTrackBox.setToolTip("Active track label and colour.")
 
         self.editor.showCropLines(True)
@@ -113,8 +111,20 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.windowYBox.setVisible(False)
         self._drawer.windowZBox.setVisible(False)
         self._drawer.exportLabel.setVisible(False)
-        self._drawer.initializeAnnotations.setVisible(False)
         self._drawer.cropListView.setVisible(False)
+        self._drawer.nextUnlabeledObject.pressed.connect(self.goToNextUnlabeledObject)
+        self._drawer.nextUnlabeledObjectFrame.pressed.connect(self.goToNextUnlabeledObjectFrame)
+
+    def goToNextUnlabeledObject(self):
+        crop = self.getCurrentCrop()
+        obj,objTime = None, None
+        print "ALL: obj,objTime",obj,objTime
+
+    def goToNextUnlabeledObjectFrame(self):
+        crop = self.getCurrentCrop()
+        time = self.editor.posModel.time
+        obj,objTime = None, None
+        print "FRAME: obj,objTime",obj,objTime
 
     def getNumberOfAllObjects(self, crop):
         num = 0
@@ -173,7 +183,7 @@ class AnnotationsGui(LayerViewerGui):
 
     def getNumberOfLabeledObjectsFrame(self, crop, time):
         num = 0
-        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        self.features = self.topLevelOperatorView.ObjectFeatures([time]).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
 
         if time in self.topLevelOperatorView.labels.keys():
             for label in self.topLevelOperatorView.labels[time].keys():
