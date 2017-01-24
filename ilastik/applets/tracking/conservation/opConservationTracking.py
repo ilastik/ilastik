@@ -249,7 +249,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             return fov
 
         fieldOfView = constructFov((x_range[1], y_range[1], z_range[1]),
-                                   0,
+                                   time_range[0],
                                    time_range[-1]+1,
                                    scales)
 
