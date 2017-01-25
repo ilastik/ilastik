@@ -113,7 +113,16 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.exportLabel.setVisible(False)
         self._drawer.cropListView.setVisible(False)
         self._drawer.nextUnlabeledObject.pressed.connect(self.goToNextUnlabeledObject)
+        self._drawer.nextUnlabeledDivision.pressed.connect(self.goToNextUnlabeledDivision)
+        self._drawer.nextUnlabeledMerger.pressed.connect(self.goToNextUnlabeledMerger)
         self._drawer.nextUnlabeledObjectFrame.pressed.connect(self.goToNextUnlabeledObjectFrame)
+
+    def goToNextUnlabeledDivision(self):
+        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        print "goToNextUnlabeledDivision"
+
+    def goToNextUnlabeledMerger(self):
+        print "goToNextUnlabeledMerger"
 
     def goToNextUnlabeledObject(self):
         labels = self.mainOperator.labels
@@ -121,13 +130,12 @@ class AnnotationsGui(LayerViewerGui):
 
         time_start = crop["time"][0]
         time_stop = crop["time"][1]
-        key_start = [time_start,crop["starts"][0],crop["starts"][1],crop["starts"][2]]
-        key_stop = [time_stop,crop["stops"][0],crop["stops"][1],crop["stops"][2]]
 
         for t in range(time_start, time_stop):
-            key_start[0] = t
-            key_stop[0] = t+1
-            li = self.mainOperator.LabelImage.value[key_start[0]:key_stop[0],key_start[1]:key_stop[1],key_start[2]:key_stop[2],key_start[3]:key_stop[3]]
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
             uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
 
             for ul in uniqueLabels:
@@ -142,10 +150,10 @@ class AnnotationsGui(LayerViewerGui):
         crop = self.getCurrentCrop()
         t = self.editor.posModel.time
 
-        key_start = [t,crop["starts"][0],crop["starts"][1],crop["starts"][2]]
-        key_stop = [t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2]]
-
-        li = self.mainOperator.LabelImage.value[key_start[0]:key_stop[0],key_start[1]:key_stop[1],key_start[2]:key_stop[2],key_start[3]:key_stop[3]]
+        roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                            start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                            stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+        li = self.topLevelOperatorView.LabelImage.get(roi).wait()
         uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
 
         for ul in uniqueLabels:
