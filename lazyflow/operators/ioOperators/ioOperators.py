@@ -411,7 +411,7 @@ class OpH5WriterBigDataset(Operator):
     inputSlots = [InputSlot("hdf5File"), # Must be an already-open hdf5File (or group) for writing to
                   InputSlot("hdf5Path", stype = "string"),
                   InputSlot("Image"),
-                  InputSlot("CompressionEnabled", value=True),
+                  InputSlot("CompressionEnabled", value=False), # h5py uses single-threaded gzip comression, which really slows down export.
                   InputSlot("BatchSize", optional=True)]
 
     outputSlots = [OutputSlot("WriteImage")]
