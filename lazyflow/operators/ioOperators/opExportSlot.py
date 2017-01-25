@@ -81,7 +81,7 @@ class OpExportSlot(Operator):
         # Set up the impl function lookup dict
         export_impls = {}
         export_impls['hdf5'] = ('h5', self._export_hdf5)
-        export_impls['npy'] = ('npy', self._export_npy)
+        export_impls['numpy'] = ('npy', self._export_npy)
         export_impls['dvid'] = ('', self._export_dvid)
         export_impls['blockwise hdf5'] = ('json', self._export_blockwise_hdf5)
         
