@@ -132,7 +132,7 @@ class AnnotationsGui(LayerViewerGui):
 
             for ul in uniqueLabels:
                 if ul > 0 and not ul in labels[t].keys():
-                    self._gotoObject(ul, t, keepXYZ=True)
+                    self._gotoObject(ul, t, keepXYZ=False)
                     return ul, t
 
         return None, None
@@ -150,7 +150,7 @@ class AnnotationsGui(LayerViewerGui):
 
         for ul in uniqueLabels:
             if ul > 0 and not ul in labels[t].keys():
-                self._gotoObject(ul, t, keepXYZ=True)
+                self._gotoObject(ul, t, keepXYZ=False)
                 return ul, t
 
         return None, None
