@@ -116,15 +116,44 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.nextUnlabeledObjectFrame.pressed.connect(self.goToNextUnlabeledObjectFrame)
 
     def goToNextUnlabeledObject(self):
+        labels = self.mainOperator.labels
         crop = self.getCurrentCrop()
-        obj,objTime = None, None
-        print "ALL: obj,objTime",obj,objTime
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+        key_start = [time_start,crop["starts"][0],crop["starts"][1],crop["starts"][2]]
+        key_stop = [time_stop,crop["stops"][0],crop["stops"][1],crop["stops"][2]]
+
+        for t in range(time_start, time_stop):
+            key_start[0] = t
+            key_stop[0] = t+1
+            li = self.mainOperator.LabelImage.value[key_start[0]:key_stop[0],key_start[1]:key_stop[1],key_start[2]:key_stop[2],key_start[3]:key_stop[3]]
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                if ul > 0 and not ul in labels[t].keys():
+                    self._gotoObject(ul, t, keepXYZ=True)
+                    return ul, t
+
+        return None, None
 
     def goToNextUnlabeledObjectFrame(self):
+        labels = self.mainOperator.labels
         crop = self.getCurrentCrop()
-        time = self.editor.posModel.time
-        obj,objTime = None, None
-        print "FRAME: obj,objTime",obj,objTime
+        t = self.editor.posModel.time
+
+        key_start = [t,crop["starts"][0],crop["starts"][1],crop["starts"][2]]
+        key_stop = [t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2]]
+
+        li = self.mainOperator.LabelImage.value[key_start[0]:key_stop[0],key_start[1]:key_stop[1],key_start[2]:key_stop[2],key_start[3]:key_stop[3]]
+        uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+        for ul in uniqueLabels:
+            if ul > 0 and not ul in labels[t].keys():
+                self._gotoObject(ul, t, keepXYZ=True)
+                return ul, t
+
+        return None, None
 
     def getNumberOfAllObjects(self, crop):
         num = 0
@@ -429,6 +458,7 @@ class AnnotationsGui(LayerViewerGui):
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
 
     def _onSaveAnnotations(self):
+        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         for name in self.topLevelOperatorView.Crops.value.keys():
             crop = self.topLevelOperatorView.Crops.value[name]
 
@@ -540,9 +570,8 @@ class AnnotationsGui(LayerViewerGui):
             for label in self.topLevelOperatorView.labels[time].keys():
                 labelFound = False
                 for name in self.topLevelOperatorView.Annotations.value.keys():
-                    for t in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
-                        if label in self.topLevelOperatorView.Annotations.value[name]["labels"][t].keys():
-                            labelFound = True
+                    if label in self.topLevelOperatorView.Annotations.value[name]["labels"][time].keys():
+                        labelFound = True
                 if not labelFound:
                     del self.topLevelOperatorView.labels[time][label]
 
