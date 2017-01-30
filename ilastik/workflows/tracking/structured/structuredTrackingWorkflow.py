@@ -237,6 +237,9 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opAnnotations.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
         opAnnotations.ComputedFeatureNames.connect(opObjExtraction.Features)
         opAnnotations.Crops.connect( opCropSelection.Crops)
+        opAnnotations.DivisionProbabilities.connect( opDivDetection.Probabilities )
+        opAnnotations.DetectionProbabilities.connect( opCellClassification.Probabilities )
+        opAnnotations.MaxNumObj.connect (opCellClassification.MaxNumObj)
 
         # opDataAnnotationsExport.Inputs.resize(2)
         # opDataAnnotationsExport.Inputs[0].connect( opAnnotations.TrackImage )

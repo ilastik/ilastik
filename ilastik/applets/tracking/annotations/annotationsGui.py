@@ -118,11 +118,65 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.nextUnlabeledObjectFrame.pressed.connect(self.goToNextUnlabeledObjectFrame)
 
     def goToNextUnlabeledDivision(self):
-        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
-        print "goToNextUnlabeledDivision"
+        self.divFeatures = self.topLevelOperatorView.DivisionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        labels = self.mainOperator.labels
+        divisions = self.mainOperator.divisions
+        crop = self.getCurrentCrop()
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+
+        for t in range(time_start, time_stop):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                divFlag = False
+                if ul in labels[t].keys():
+                    trackIDs = list(labels[t][ul])
+                    for trackID in trackIDs:
+                        if trackID in divisions.keys():
+                            divFlag = True
+                if not divFlag and ul > 0 and self.divFeatures[t][ul][1]>0.5 :
+                    print t,ul,self.divFeatures[t][ul][1]
+                    self._gotoObject(ul, t, keepXYZ=False)
+                    return ul, t
+
+        return None, None
 
     def goToNextUnlabeledMerger(self):
-        print "goToNextUnlabeledMerger"
+        numMaxObj =self.topLevelOperatorView.MaxNumObj.value
+        cutOff = 1/numMaxObj
+        self.mergerFeatures = self.topLevelOperatorView.DetectionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        labels = self.mainOperator.labels
+        crop = self.getCurrentCrop()
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+
+        for t in range(time_start, time_stop+1):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                if ul > 0:
+                    mergerIndex = 0
+                    maxValue = max(self.mergerFeatures[t][ul])
+                    index = list(self.mergerFeatures[t][ul]).index(maxValue)
+                    if maxValue > cutOff:
+                        mergerIndex = index
+                    if mergerIndex >0:
+                        if (not ul in labels[t].keys()) or( ul in labels[t].keys() and mergerIndex > len(labels[t][ul])):
+                            self._gotoObject(ul, t, keepXYZ=False)
+                            return ul, t
+
+        return None, None
 
     def goToNextUnlabeledObject(self):
         labels = self.mainOperator.labels

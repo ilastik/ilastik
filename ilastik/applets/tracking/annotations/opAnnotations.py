@@ -39,6 +39,9 @@ class OpAnnotations(Operator):
     RawImage = InputSlot()
     ActiveTrack = InputSlot(stype='int', value=0)
     ObjectFeatures = InputSlot(stype=Opaque, rtype=List)
+    DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)
+    DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
+    MaxNumObj = InputSlot()
     ComputedFeatureNames = InputSlot(rtype=List, stype=Opaque)
     Crops = InputSlot()
     
