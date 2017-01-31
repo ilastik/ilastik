@@ -58,7 +58,7 @@ class AnnotationsGui(LayerViewerGui):
 
     def _loadUiFile(self):
         localDir = os.path.split(__file__)[0]
-        self._drawer = uic.loadUi(localDir+"/drawer.ui")        
+        self._drawer = uic.loadUi(localDir+"/drawerObjects.ui")
         return self._drawer
     
     def initAppletDrawerUi(self):        
@@ -118,6 +118,8 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.nextUnlabeledObjectFrame.pressed.connect(self.goToNextUnlabeledObjectFrame)
 
     def goToNextUnlabeledDivision(self):
+        self.divisionProbabilityCutOff = 0.5
+        print "DIVISION probability cut-off",self.divisionProbabilityCutOff
         self.divFeatures = self.topLevelOperatorView.DivisionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         labels = self.mainOperator.labels
         divisions = self.mainOperator.divisions
@@ -126,6 +128,7 @@ class AnnotationsGui(LayerViewerGui):
         time_start = crop["time"][0]
         time_stop = crop["time"][1]
 
+        divisionCandidates = []
         for t in range(time_start, time_stop):
             roi = SubRegion(self.topLevelOperatorView.LabelImage,
                                 start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
@@ -140,16 +143,35 @@ class AnnotationsGui(LayerViewerGui):
                     for trackID in trackIDs:
                         if trackID in divisions.keys():
                             divFlag = True
-                if not divFlag and ul > 0 and self.divFeatures[t][ul][1]>0.5 :
+                if not divFlag and ul > 0 and self.divFeatures[t][ul][1]>self.divisionProbabilityCutOff:
                     print t,ul,self.divFeatures[t][ul][1]
-                    self._gotoObject(ul, t, keepXYZ=False)
-                    return ul, t
+                    divisionCandidates.append([t,ul,self.divFeatures[t][ul][1]])
+        # sort divisionCandidates according to the prob and return the smallest one ABOVE the cut-off!
+        if divisionCandidates == []:
+            print "No more DIVISIONS found for the given division probability cut-off {}!".format(self.divisionProbabilityCutOff)
+        else:
+            sorted(divisionCandidates,key=lambda x:x[2])
+            print " SORTED divisionCandidates", divisionCandidates
+            minIndex = 0
+            t = divisionCandidates[minIndex][0]
+            ul = divisionCandidates[minIndex][1]
+            self._gotoObject(ul,t, keepXYZ=False)
+
+            if ul in labels[t].keys() and len(labels[t][ul]) > 0:
+                for track in labels[t][ul]:
+                    for i in range(self._drawer.activeTrackBox.count()):
+                        if int(self._drawer.activeTrackBox.itemText(i)) == track:
+                            self._drawer.activeTrackBox.setCurrentIndex(i)
+                            break
+            print "suggested DIVISION: t, ul --->",t,ul
+            return ul, t
 
         return None, None
 
     def goToNextUnlabeledMerger(self):
         numMaxObj =self.topLevelOperatorView.MaxNumObj.value
-        cutOff = 1/numMaxObj
+        self.mergerProbabilityCutOff = 1/numMaxObj
+        print "MERGER probability cut-off",self.mergerProbabilityCutOff
         self.mergerFeatures = self.topLevelOperatorView.DetectionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         labels = self.mainOperator.labels
         crop = self.getCurrentCrop()
@@ -157,6 +179,7 @@ class AnnotationsGui(LayerViewerGui):
         time_start = crop["time"][0]
         time_stop = crop["time"][1]
 
+        mergerCandidates = []
         for t in range(time_start, time_stop+1):
             roi = SubRegion(self.topLevelOperatorView.LabelImage,
                                 start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
@@ -169,12 +192,23 @@ class AnnotationsGui(LayerViewerGui):
                     mergerIndex = 0
                     maxValue = max(self.mergerFeatures[t][ul])
                     index = list(self.mergerFeatures[t][ul]).index(maxValue)
-                    if maxValue > cutOff:
+                    if maxValue > self.mergerProbabilityCutOff:
                         mergerIndex = index
                     if mergerIndex >0:
                         if (not ul in labels[t].keys()) or( ul in labels[t].keys() and mergerIndex > len(labels[t][ul])):
-                            self._gotoObject(ul, t, keepXYZ=False)
-                            return ul, t
+                            mergerCandidates.append([t,ul,maxValue])
+        # sort mergerCandidates according to the prob and return the smallest one ABOVE the cut-off!
+        if mergerCandidates == []:
+            print "No more MERGERS found for the given merger probability cut-off {}!".format(self.mergerProbabilityCutOff)
+        else:
+            mergerCandidates = sorted(mergerCandidates,key=lambda x:x[2])
+            print " SORTED mergerCandidates", mergerCandidates
+            minIndex = 0
+            t = mergerCandidates[minIndex][0]
+            ul = mergerCandidates[minIndex][1]
+            self._gotoObject(ul,t, keepXYZ=False)
+            print "suggested merger: t,ul --->",t,ul
+            return ul, t
 
         return None, None
 
@@ -686,34 +720,25 @@ class AnnotationsGui(LayerViewerGui):
     def updateLabeledUnlabeledCount(self, crop):
         labeledObjects = self.getNumberOfLabeledObjects(crop)
         allObjects = self.getNumberOfAllObjects(crop)
-        self._drawer.labeledObjectsCount.setText(str(labeledObjects))
         unlabeledObjects = allObjects - labeledObjects
         if unlabeledObjects > 0:
             unlabeledColor = 'red'
-            labeledColor = 'black'
         else:
-            unlabeledColor = 'black'
-            labeledColor = 'green'
-        self._drawer.unlabeledObjects.setText("<font color="+unlabeledColor+">Unlabeled</font>" )
-        self._drawer.labeledObjects.setText("<font color="+labeledColor+">Labeled</font>" )
-        self._drawer.unlabeledObjectsCount.setText(str(unlabeledObjects))
-        self._drawer.allObjectsCount.setText(str(allObjects))
+            unlabeledColor = 'green'
+        allObjectsColor = 'black'
+        self._drawer.unlabeledObjectsCount.setText("<font color="+unlabeledColor+">"+str(int(unlabeledObjects))+"</font>")
+        self._drawer.allObjectsCount.setText("<font color="+allObjectsColor+">"+str(int(allObjects))+"</font>")
 
         time = self.editor.posModel.time
         labeledObjectsFrame = self.getNumberOfLabeledObjectsFrame(crop,time)
         allObjectsFrame = self.getNumberOfAllObjectsFrame(crop,time)
-        self._drawer.labeledObjectsCountFrame.setText(str(labeledObjectsFrame))
         unlabeledObjectsFrame = allObjectsFrame - labeledObjectsFrame
         if unlabeledObjectsFrame > 0:
             unlabeledColorFrame = 'red'
-            labeledColorFrame = 'black'
         else:
-            unlabeledColorFrame = 'black'
-            labeledColorFrame = 'green'
-        self._drawer.unlabeledObjectsFrame.setText("<font color="+unlabeledColorFrame+">Unlabeled</font>" )
-        self._drawer.labeledObjectsFrame.setText("<font color="+labeledColorFrame+">Labeled</font>" )
-        self._drawer.unlabeledObjectsCountFrame.setText(str(unlabeledObjectsFrame))
-        self._drawer.allObjectsCountFrame.setText(str(allObjectsFrame))
+            unlabeledColorFrame = 'green'
+        self._drawer.unlabeledObjectsCountFrame.setText("<font color="+unlabeledColorFrame+">"+str(int(unlabeledObjectsFrame))+"</font>")
+        self._drawer.allObjectsCountFrame.setText("<font color="+allObjectsColor+">"+str(int(allObjectsFrame))+"</font>")
 
     def updateTime(self):
         crop = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]
@@ -898,7 +923,7 @@ class AnnotationsGui(LayerViewerGui):
     def handleEditorLeftClick(self, position5d, globalWindowCoordiante):
 
         crop = self.getCurrentCrop()
-        unlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+        unlabeledObjectsCount = self.getNumberOfAllObjects(crop)-self.getNumberOfLabeledObjects(crop)
 
         if self.divLock:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
@@ -976,7 +1001,8 @@ class AnnotationsGui(LayerViewerGui):
             self._setPosModel(time=self.editor.posModel.time + 1)
 
         self.updateLabeledUnlabeledCount(crop)
-        newUnlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+        #newUnlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+        newUnlabeledObjectsCount = self.getNumberOfAllObjects(crop)-self.getNumberOfLabeledObjects(crop)
 
         if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
             self._informationMessage("Info: All objects in the current crop have been assigned a track label.")
@@ -985,7 +1011,7 @@ class AnnotationsGui(LayerViewerGui):
 
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
         crop = self.getCurrentCrop()
-        unlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+        unlabeledObjectsCount = self.getNumberOfAllObjects(crop)-self.getNumberOfLabeledObjects(crop)
 
         if self.divLock:
             return
@@ -1111,7 +1137,7 @@ class AnnotationsGui(LayerViewerGui):
             assert False, "cannot reach this"
 
         self.updateLabeledUnlabeledCount(crop)
-        newUnlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+        newUnlabeledObjectsCount = self.getNumberOfAllObjects(crop)-self.getNumberOfLabeledObjects(crop)
 
         if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
             self._informationMessage("Info: All objects in the current crop have been assigned a track label.")
