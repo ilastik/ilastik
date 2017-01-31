@@ -117,22 +117,45 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.nextUnlabeledMerger.pressed.connect(self.goToNextUnlabeledMerger)
         self._drawer.nextUnlabeledObjectFrame.pressed.connect(self.goToNextUnlabeledObjectFrame)
 
-        self._drawer.nextUnlabeledObject.setToolTip("Centers the view on the next unlabeled object ordered by time frames.")
-        self._drawer.nextUnlabeledObjectFrame.setToolTip("Centers the view on the next unlabeled object in the current time frame.")
-        self.divisionProbabilityCutOff = 0.5
-        self._drawer.nextUnlabeledDivision.setToolTip("Centers the view on the next unlabeled division with a probability cut-off "+str(self.divisionProbabilityCutOff)+".")
-        self.mergerProbabilityCutOff = 1/self.topLevelOperatorView.MaxNumObj.value
-        self._drawer.nextUnlabeledMerger.setToolTip("Centers the view on the next unlabeled merger with a probability cut-off "+str(self.mergerProbabilityCutOff)+".")
+        self._drawer.nextUnlabeledObject.setToolTip(
+            "Centers the view on the next unlabeled object ordered by time frames.")
+        self._drawer.nextUnlabeledObjectFrame.setToolTip(
+            "Centers the view on the next unlabeled object in the current time frame.")
 
-        self._drawer.unlabeledObjectsCount.setToolTip("Number of unlabeled objects in the current crop.")
-        self._drawer.allObjectsCount.setToolTip("Number of all objects in the current crop.")
-        self._drawer.unlabeledObjectsCountFrame.setToolTip("Number of unlabeled objects in the current time frame of the current crop.")
-        self._drawer.allObjectsCountFrame.setToolTip("Number of all objects in the current time frame of the current crop.")
+        self._drawer.nextUnlabeledDivision.setToolTip(
+            "Centers the view on the next unlabeled division with a probability cut-off "+ \
+            str(self.divisionProbabilityCutOff)+". " + \
+            "Divisions are suggested in the order of increasing probabilities.")
+        self._drawer.nextUnlabeledMerger.setToolTip(
+            "Centers the view on the next unlabeled merger with a probability cut-off "+ \
+            str(self.mergerProbabilityCutOff)+". " + \
+            "Mergers are suggested in the order of increasing probabilities.")
 
-    def goToNextUnlabeledDivision(self):
+        self._drawer.unlabeledObjectsCount.setToolTip(
+            "Number of unlabeled objects in the current crop.")
+        self._drawer.allObjectsCount.setToolTip(
+            "Number of all objects in the current crop.")
+        self._drawer.unlabeledObjectsCountFrame.setToolTip(
+            "Number of unlabeled objects in the current time frame of the current crop.")
+        self._drawer.allObjectsCountFrame.setToolTip(
+            "Number of all objects in the current time frame of the current crop.")
+
+        self._drawer.unlabeledDivisionsCount.setToolTip(
+            "Number of unlabeled divisions in the current crop.")
+        self._drawer.allDivisionsCount.setToolTip(
+            "Number of all suggested divisions in the current crop for a cut-off probability "+ \
+            str(self.divisionProbabilityCutOff)+".")
+
+        self._drawer.unlabeledMergersCount.setToolTip(
+            "Number of unlabeled mergers in the current crop.")
+        self._drawer.allMergersCount.setToolTip(
+            "Number of all suggested mergers in the current crop for a cut-off probability "+ \
+            str(self.mergerProbabilityCutOff)+".")
+
+    def getNumberOfUnlabeledDivisions(self):
         self.divFeatures = self.topLevelOperatorView.DivisionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
-        labels = self.mainOperator.labels
-        divisions = self.mainOperator.divisions
+        labels = self.topLevelOperatorView.labels
+        divisions = self.topLevelOperatorView.divisions
         crop = self.getCurrentCrop()
 
         time_start = crop["time"][0]
@@ -154,7 +177,56 @@ class AnnotationsGui(LayerViewerGui):
                         if trackID in divisions.keys():
                             divFlag = True
                 if not divFlag and ul > 0 and self.divFeatures[t][ul][1]>self.divisionProbabilityCutOff:
-                    print t,ul,self.divFeatures[t][ul][1]
+                    divisionCandidates.append([t,ul,self.divFeatures[t][ul][1]])
+
+        return len(divisionCandidates)
+
+    def getNumberOfDivisions(self):
+        self.divFeatures = self.topLevelOperatorView.DivisionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        crop = self.getCurrentCrop()
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+
+        divisionCandidates = []
+        for t in range(time_start, time_stop):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                if ul > 0 and self.divFeatures[t][ul][1]>self.divisionProbabilityCutOff:
+                    divisionCandidates.append([t,ul,self.divFeatures[t][ul][1]])
+
+        return len(divisionCandidates)
+
+    def goToNextUnlabeledDivision(self):
+        self.divFeatures = self.topLevelOperatorView.DivisionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        labels = self.topLevelOperatorView.labels
+        divisions = self.topLevelOperatorView.divisions
+        crop = self.getCurrentCrop()
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+
+        divisionCandidates = []
+        for t in range(time_start, time_stop):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                divFlag = False
+                if ul in labels[t].keys():
+                    trackIDs = list(labels[t][ul])
+                    for trackID in trackIDs:
+                        if trackID in divisions.keys():
+                            divFlag = True
+                if not divFlag and ul > 0 and self.divFeatures[t][ul][1]>self.divisionProbabilityCutOff:
                     divisionCandidates.append([t,ul,self.divFeatures[t][ul][1]])
 
         if divisionCandidates == []:
@@ -175,6 +247,60 @@ class AnnotationsGui(LayerViewerGui):
             return ul, t
 
         return None, None
+
+    def getNumberOfMergers(self):
+        self.mergerFeatures = self.topLevelOperatorView.DetectionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        crop = self.getCurrentCrop()
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+
+        mergerCandidates = []
+        for t in range(time_start, time_stop+1):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                if ul > 0:
+                    mergerIndex = 0
+                    maxValue = max(self.mergerFeatures[t][ul])
+                    index = list(self.mergerFeatures[t][ul]).index(maxValue)
+                    if maxValue > self.mergerProbabilityCutOff:
+                        mergerIndex = index
+                    if mergerIndex >1:
+                        mergerCandidates.append([t,ul,maxValue])
+        return len(mergerCandidates)
+
+    def getNumberOfUnlabeledMergers(self):
+        self.mergerFeatures = self.topLevelOperatorView.DetectionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        labels = self.topLevelOperatorView.labels
+        crop = self.getCurrentCrop()
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+
+        mergerCandidates = []
+        for t in range(time_start, time_stop+1):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                if ul > 0:
+                    mergerIndex = 0
+                    maxValue = max(self.mergerFeatures[t][ul])
+                    index = list(self.mergerFeatures[t][ul]).index(maxValue)
+                    if maxValue > self.mergerProbabilityCutOff:
+                        mergerIndex = index
+                    if mergerIndex >1:
+                        if (not ul in labels[t].keys()) or( ul in labels[t].keys() and mergerIndex > len(labels[t][ul])):
+                            mergerCandidates.append([t,ul,maxValue])
+        return len(mergerCandidates)
 
     def goToNextUnlabeledMerger(self):
         self.mergerFeatures = self.topLevelOperatorView.DetectionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
@@ -388,6 +514,8 @@ class AnnotationsGui(LayerViewerGui):
         self._previousCrop = -1
         self._currentCrop = -1
         self._currentCropName = ""
+        self.divisionProbabilityCutOff = 0.5
+        self.mergerProbabilityCutOff = 1/self.topLevelOperatorView.MaxNumObj.value
 
         super(AnnotationsGui, self).__init__(parentApplet, topLevelOperatorView)
         
@@ -743,6 +871,24 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.unlabeledObjectsCountFrame.setText("<font color="+unlabeledColorFrame+">"+str(int(unlabeledObjectsFrame))+"</font>")
         self._drawer.allObjectsCountFrame.setText("<font color="+allObjectsColor+">"+str(int(allObjectsFrame))+"</font>")
 
+        unlabeledDivisions = self.getNumberOfUnlabeledDivisions()
+        if unlabeledDivisions > 0:
+            unlabeledDivisionsColor = 'red'
+        else:
+            unlabeledDivisionsColor = 'green'
+        allDivisions = self.getNumberOfDivisions()
+        self._drawer.unlabeledDivisionsCount.setText("<font color="+unlabeledDivisionsColor+">"+str(int(unlabeledDivisions))+"</font>")
+        self._drawer.allDivisionsCount.setText("<font color="+allObjectsColor+">"+str(int(allDivisions))+"</font>")
+
+        unlabeledMergers = self.getNumberOfUnlabeledMergers()
+        if unlabeledMergers > 0:
+            unlabeledMergersColor = 'red'
+        else:
+            unlabeledMergersColor = 'green'
+        allMergers = self.getNumberOfMergers()
+        self._drawer.unlabeledMergersCount.setText("<font color="+unlabeledMergersColor+">"+str(int(unlabeledMergers))+"</font>")
+        self._drawer.allMergersCount.setText("<font color="+allObjectsColor+">"+str(int(allMergers))+"</font>")
+
     def updateTime(self):
         crop = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]
         delta = crop["time"][0] - self.editor.posModel.time
@@ -1004,7 +1150,7 @@ class AnnotationsGui(LayerViewerGui):
             self._setPosModel(time=self.editor.posModel.time + 1)
 
         self.updateLabeledUnlabeledCount(crop)
-        #newUnlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+
         newUnlabeledObjectsCount = self.getNumberOfAllObjects(crop)-self.getNumberOfLabeledObjects(crop)
 
         if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
