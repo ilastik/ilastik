@@ -117,9 +117,19 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.nextUnlabeledMerger.pressed.connect(self.goToNextUnlabeledMerger)
         self._drawer.nextUnlabeledObjectFrame.pressed.connect(self.goToNextUnlabeledObjectFrame)
 
-    def goToNextUnlabeledDivision(self):
+        self._drawer.nextUnlabeledObject.setToolTip("Centers the view on the next unlabeled object ordered by time frames.")
+        self._drawer.nextUnlabeledObjectFrame.setToolTip("Centers the view on the next unlabeled object in the current time frame.")
         self.divisionProbabilityCutOff = 0.5
-        print "DIVISION probability cut-off",self.divisionProbabilityCutOff
+        self._drawer.nextUnlabeledDivision.setToolTip("Centers the view on the next unlabeled division with a probability cut-off "+str(self.divisionProbabilityCutOff)+".")
+        self.mergerProbabilityCutOff = 1/self.topLevelOperatorView.MaxNumObj.value
+        self._drawer.nextUnlabeledMerger.setToolTip("Centers the view on the next unlabeled merger with a probability cut-off "+str(self.mergerProbabilityCutOff)+".")
+
+        self._drawer.unlabeledObjectsCount.setToolTip("Number of unlabeled objects in the current crop.")
+        self._drawer.allObjectsCount.setToolTip("Number of all objects in the current crop.")
+        self._drawer.unlabeledObjectsCountFrame.setToolTip("Number of unlabeled objects in the current time frame of the current crop.")
+        self._drawer.allObjectsCountFrame.setToolTip("Number of all objects in the current time frame of the current crop.")
+
+    def goToNextUnlabeledDivision(self):
         self.divFeatures = self.topLevelOperatorView.DivisionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         labels = self.mainOperator.labels
         divisions = self.mainOperator.divisions
@@ -146,12 +156,11 @@ class AnnotationsGui(LayerViewerGui):
                 if not divFlag and ul > 0 and self.divFeatures[t][ul][1]>self.divisionProbabilityCutOff:
                     print t,ul,self.divFeatures[t][ul][1]
                     divisionCandidates.append([t,ul,self.divFeatures[t][ul][1]])
-        # sort divisionCandidates according to the prob and return the smallest one ABOVE the cut-off!
+
         if divisionCandidates == []:
-            print "No more DIVISIONS found for the given division probability cut-off {}!".format(self.divisionProbabilityCutOff)
+            self._informationMessage("No more DIVISIONS found for the division probability cut-off {}!".format(self.divisionProbabilityCutOff))
         else:
             sorted(divisionCandidates,key=lambda x:x[2])
-            print " SORTED divisionCandidates", divisionCandidates
             minIndex = 0
             t = divisionCandidates[minIndex][0]
             ul = divisionCandidates[minIndex][1]
@@ -163,15 +172,11 @@ class AnnotationsGui(LayerViewerGui):
                         if int(self._drawer.activeTrackBox.itemText(i)) == track:
                             self._drawer.activeTrackBox.setCurrentIndex(i)
                             break
-            print "suggested DIVISION: t, ul --->",t,ul
             return ul, t
 
         return None, None
 
     def goToNextUnlabeledMerger(self):
-        numMaxObj =self.topLevelOperatorView.MaxNumObj.value
-        self.mergerProbabilityCutOff = 1/numMaxObj
-        print "MERGER probability cut-off",self.mergerProbabilityCutOff
         self.mergerFeatures = self.topLevelOperatorView.DetectionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         labels = self.mainOperator.labels
         crop = self.getCurrentCrop()
@@ -197,17 +202,15 @@ class AnnotationsGui(LayerViewerGui):
                     if mergerIndex >0:
                         if (not ul in labels[t].keys()) or( ul in labels[t].keys() and mergerIndex > len(labels[t][ul])):
                             mergerCandidates.append([t,ul,maxValue])
-        # sort mergerCandidates according to the prob and return the smallest one ABOVE the cut-off!
+
         if mergerCandidates == []:
-            print "No more MERGERS found for the given merger probability cut-off {}!".format(self.mergerProbabilityCutOff)
+            self._informationMessage("No more MERGERS found for the merger probability cut-off {}!".format(self.mergerProbabilityCutOff))
         else:
             mergerCandidates = sorted(mergerCandidates,key=lambda x:x[2])
-            print " SORTED mergerCandidates", mergerCandidates
             minIndex = 0
             t = mergerCandidates[minIndex][0]
             ul = mergerCandidates[minIndex][1]
             self._gotoObject(ul,t, keepXYZ=False)
-            print "suggested merger: t,ul --->",t,ul
             return ul, t
 
         return None, None
