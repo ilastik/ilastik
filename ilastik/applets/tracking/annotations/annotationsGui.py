@@ -1579,7 +1579,7 @@ class AnnotationsGui(LayerViewerGui):
                 self._drawer.activeTrackBox.setCurrentIndex(i)
 
         crop = self.getCurrentCrop()
-        unlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+        unlabeledObjectsCount = self.getNumberOfAllObjects(crop)-self.getNumberOfLabeledObjects(crop)
 
         self.applet.busy = True
         self.applet.appletStateUpdateRequested.emit()
@@ -1590,7 +1590,7 @@ class AnnotationsGui(LayerViewerGui):
         req.submit()
 
         self.updateLabeledUnlabeledCount(crop)
-        newUnlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+        newUnlabeledObjectsCount = self.getNumberOfAllObjects(crop)-self.getNumberOfLabeledObjects(crop)
 
         if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
             self._informationMessage("Info: All objects in the current crop have been assigned a track label.")
