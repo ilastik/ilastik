@@ -861,7 +861,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         
         logger.info("fetching region features and division probabilities")
         feats = self.ObjectFeatures(time_range).wait()
-        
+
         if with_div:
             if not self.DivisionProbabilities.ready() or len(self.DivisionProbabilities([0]).wait()[0]) == 0:
                 msgStr = "\nDivision classifier has not been trained! " + \
