@@ -117,7 +117,7 @@ class OpSeeds(Operator):
         # set the Watershed Method for the WS Applet
         self._setWatershedMethod()
 
-        self._setSeedsExit()
+        self._setSeedsExist()
 
 
         #self.SeedsOut configuration
@@ -127,18 +127,9 @@ class OpSeeds(Operator):
         self.SeedsOut.meta.drange = (0,255)
         self.SeedsOut.meta.dtype = np.uint8
 
-        ############################################################
-        # For serialization 
-        ############################################################
-        # force the cache to emit a dirty signal 
-        # (just taken from applet thresholdTwoLevel)
-        self._cache.Input.connect(self.SeedsOut)
-        self._cache.Input.setDirty(slice(None))
-
-
     
     def execute(self, slot, subindex, roi, result):
-        if slot == self.SeedsOut:
+        if slot is self.SeedsOut:
             # value:
             # if Generated: then use Generated
             # if not Generated and Seeds: use Seeds
@@ -147,21 +138,12 @@ class OpSeeds(Operator):
                 self.generateSeeds(slot, subindex, roi, result)
             elif ( (not self.GenerateSeeds.value ) and self.Seeds.ready() ):
                 result[:] = self.Seeds(roi.start, roi.stop).wait()
-            else:
-                pass
-            self.SeedsOut.setDirty()
-        else:
-            pass
 
         
     def propagateDirty(self, slot, subindex, roi):
-        # set all outputSlots dirty, e.g.
-        # if something changes, the watershed Method must be evaluated newly
-        for slot in self.outputs.values():
-            slot.setDirty()
-
         print "propagteDirty in opSeeds"
-
+        if slot in (self.Boundaries, self.Seeds, self.SmoothingMethod, self.SmoothingSigma, self.ComputeMethod):
+            self.SeedsOut.setDirty()
 
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -262,7 +244,7 @@ class OpSeeds(Operator):
         self.WSMethod.setValue( wsMethod )
 
 
-    def _setSeedsExit(self):
+    def _setSeedsExist(self):
         """
         set the correct value of SeedsExist Operator
         True if: Seeds available  | Generate Seeds clicked
