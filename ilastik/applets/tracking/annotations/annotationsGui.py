@@ -152,6 +152,16 @@ class AnnotationsGui(LayerViewerGui):
             "Number of all suggested mergers in the current crop for a cut-off probability "+ \
             str(self.mergerProbabilityCutOff)+".")
 
+        self.topLevelOperatorView.MaxNumObj.notifyDirty(bind(self.updateMergerButtons))
+        self.updateMergerButtons()
+
+    def updateMergerButtons(self):
+        flag = self.topLevelOperatorView.MaxNumObj.value > 1
+        self._drawer.nextUnlabeledMerger.setVisible(flag)
+        self._drawer.unlabeledMergersCount.setVisible(flag)
+        self._drawer.allMergersCount.setVisible(flag)
+        self._drawer.mergersSlash.setVisible(flag)
+
     def getNumberOfUnlabeledDivisions(self):
         self.divFeatures = self.topLevelOperatorView.DivisionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         labels = self.topLevelOperatorView.labels
