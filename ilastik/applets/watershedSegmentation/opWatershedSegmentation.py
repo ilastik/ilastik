@@ -239,16 +239,6 @@ class OpWatershedSegmentation(Operator):
         self.PmapColors.meta.dtype  = object
         self.PmapColors.meta.shape  = (1,)
 
-
-        ############################################################
-        # For serialization 
-        ############################################################
-        # force the cache to emit a dirty signal 
-        # (just taken from applet thresholdTwoLevel)
-        self._cache.Input.connect(self.WatershedCalc)
-        self._cache.Input.setDirty(slice(None))
-
-
         #TODO for testing 
         print self.WSMethod.value
 
