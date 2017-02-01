@@ -34,9 +34,6 @@ class OpSeeds(Operator):
     SeedsOut            = OutputSlot()
     SeedsOutCached      = OutputSlot()
 
-    # save the generated Seeds here for caching 
-    GeneratedSeedsCached= OutputSlot()
-
     # indicator whether seeds are supplied in the Seeds applet or not
     SeedsExist          = OutputSlot()
 
