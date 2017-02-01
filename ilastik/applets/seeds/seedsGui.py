@@ -71,10 +71,6 @@ class SeedsGui(LayerViewerGui):
         self._currently_updating = False
         super( SeedsGui, self ).__init__(parentApplet, topLevelOperatorView)
 
-        # init the Comboboxes with values
-        self.initComboBoxes()
-
-
 
 
 
@@ -200,6 +196,8 @@ class SeedsGui(LayerViewerGui):
         self._drawer.unseededCheckBox.stateChanged.connect(self.onUnseededCheckBoxStateChanged)
         self._drawer.generateButton.clicked.connect(self.onGenerateButtonClicked)
 
+        # init the Comboboxes with values
+        self.initComboBoxes()
 
         # to connect gui with operators
         def configure_update_handlers( qt_signal, op_slot ):
