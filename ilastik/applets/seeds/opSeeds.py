@@ -128,15 +128,18 @@ class OpSeeds(Operator):
 
     
     def execute(self, slot, subindex, roi, result):
-        if slot is self.SeedsOut:
-            # value:
-            # if Generated: then use Generated
-            # if not Generated and Seeds: use Seeds
-            # if not Generated and not Seeds: do nothing 
-            if (self.GenerateSeeds.value):
-                self.generateSeeds(slot, subindex, roi, result)
-            elif ( (not self.GenerateSeeds.value ) and self.Seeds.ready() ):
-                result[:] = self.Seeds(roi.start, roi.stop).wait()
+        assert slot is self.SeedsOut
+        # value:
+        # if Generated: then use Generated
+        # if not Generated and Seeds: use Seeds
+        # if not Generated and not Seeds: do nothing
+
+        if self.GenerateSeeds.value:
+            self.generateSeeds(slot, subindex, roi, result)
+        elif self.Seeds.ready():
+            result[:] = self.Seeds(roi.start, roi.stop).wait()
+        else:
+            result[:] = 0
 
         
     def propagateDirty(self, slot, subindex, roi):
