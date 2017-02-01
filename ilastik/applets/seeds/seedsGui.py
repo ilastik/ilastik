@@ -92,7 +92,9 @@ class SeedsGui(LayerViewerGui):
             if (ret == QMessageBox.No):
                 return
 
-        op.GenerateSeeds.setValue(True)
+        if not op.GenerateSeeds.value:
+            op.GenerateSeeds.setValue(True)
+            op.SmoothingMethod.setDirty()
 
         self.configure_operator_from_gui()
         # make the wanted layer visible to ask for this roi
