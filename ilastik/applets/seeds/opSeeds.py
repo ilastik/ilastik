@@ -82,9 +82,14 @@ class OpSeeds(Operator):
 
         print "Init opSeeds"
 
-
-        self.Seeds.notifyMetaChanged(self.onSeedsChanged)
+        self.Seeds.notifyReady(self.onSeedsChanged)
+        self.Seeds.notifyUnready(self.onSeedsChanged)
         #self.Seeds.notifyDirty(self.onSeedsChanged)
+
+    def cleanUp(self):
+        self.Seeds.unregisterReady(self.onSeedsChanged)
+        self.Seeds.unregisterUnready(self.onSeedsChanged)
+        super(OpSeeds, self).cleanUp()
 
     def onSeedsChanged(self, x):
         """
