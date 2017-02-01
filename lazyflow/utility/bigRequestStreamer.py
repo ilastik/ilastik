@@ -155,9 +155,10 @@ class BigRequestStreamer(object):
         ram_usage_per_requested_pixel = outputSlot.meta.ram_usage_per_requested_pixel
         max_blockshape = outputSlot.meta.max_blockshape or input_shape
 
-
         num_channels = 1
         tagged_shape = outputSlot.meta.getTaggedShape()
+
+        available_ram = Memory.getAvailableRamComputation()
         
         # Generally, we don't want to split requests across channels.
         if 'c' in tagged_shape.keys():
@@ -169,9 +170,21 @@ class BigRequestStreamer(object):
                 # Never enlarge 'ideal' in the channel dimension.
                 num_channels = ideal_blockshape[channel_index]
                 ideal_blockshape = ideal_blockshape[:channel_index] + ideal_blockshape[channel_index+1:]
-        
-        available_ram = Memory.getAvailableRamComputation()
-        
+            del tagged_shape['c']
+
+        # Generally, we don't want to join time slices
+        if 't' in tagged_shape.keys():
+            blockshape_time_steps = 1
+            time_index = tagged_shape.keys().index('t')
+            input_shape = input_shape[:time_index] + input_shape[time_index+1:]
+            max_blockshape = max_blockshape[:time_index] + max_blockshape[time_index+1:]
+            if ideal_blockshape:
+                # Never enlarge 'ideal' in the time dimension.
+                blockshape_time_steps = ideal_blockshape[time_index]
+                ideal_blockshape = ideal_blockshape[:time_index] + ideal_blockshape[time_index+1:]
+                available_ram /= blockshape_time_steps
+            del tagged_shape ['t']
+
         if ram_usage_per_requested_pixel is None:
             # Make a conservative guess: 2*(bytes for dtype) * (num channels) + (fudge factor=4)
             ram_usage_per_requested_pixel = 2*outputSlot.meta.dtype().nbytes*num_channels + 4
@@ -186,10 +199,7 @@ class BigRequestStreamer(object):
         if ideal_blockshape is None:
             blockshape = determineBlockShape( input_shape, available_ram/(self._num_threads*ram_usage_per_requested_pixel) )
             blockshape = tuple(numpy.minimum(max_blockshape, blockshape))
-            if 'c' in outputSlot.meta.getAxisKeys():
-                blockshape = blockshape[:channel_index] + (num_channels,) + blockshape[channel_index:]
-                
-            warnings.warn( "Chose an arbitrary request blockshape {}".format( blockshape ) )
+            warnings.warn( "Chose an arbitrary request blockshape" )
         else:
             logger.info("determining blockshape assuming available_ram is {}"
                         ", split between {} threads"
@@ -197,17 +207,25 @@ class BigRequestStreamer(object):
             
             # By convention, ram_usage_per_requested_pixel refers to the ram used when requesting ALL channels of a 'pixel'
             # Therefore, we do not include the channel dimension in the blockshapes here.
+            #
+            # Also, it rarely makes sense to request more than one time slice, so we omit that, too. (See above.)
             blockshape = determine_optimal_request_blockshape( max_blockshape,
                                                                ideal_blockshape,
                                                                ram_usage_per_requested_pixel, 
                                                                self._num_threads, 
                                                                available_ram )
-            if 'c' in outputSlot.meta.getAxisKeys():
-                blockshape = blockshape[:channel_index] + (num_channels,) + blockshape[channel_index:]
-            logger.info( "Chose blockshape: {}".format( blockshape ) )
-            fmt = Memory.format(ram_usage_per_requested_pixel *
-                                numpy.prod(blockshape[:-1]))
-            logger.info("Estimated RAM usage per block is {}".format(fmt))
+
+        # If we removed time and channel from consideration, add them back now before returning
+        if 't' in outputSlot.meta.getAxisKeys():
+            blockshape = blockshape[:time_index] + (blockshape_time_steps,) + blockshape[time_index:]
+
+        if 'c' in outputSlot.meta.getAxisKeys():
+            blockshape = blockshape[:channel_index] + (num_channels,) + blockshape[channel_index:]
+
+        logger.info( "Chose blockshape: {}".format( blockshape ) )
+        fmt = Memory.format(ram_usage_per_requested_pixel *
+                            numpy.prod(blockshape[:-1]))
+        logger.info("Estimated RAM usage per block is {}".format(fmt))
 
         return blockshape
         
