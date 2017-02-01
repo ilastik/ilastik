@@ -19,6 +19,7 @@
 #           http://ilastik.org/license.html
 ##############################################################################
 
+from functools import partial
 #import numpy as np
 from PyQt4.Qt import pyqtSlot, QMessageBox
 
@@ -66,7 +67,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         return self
     
 
-    '''
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
@@ -74,7 +74,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         # Base class
         super( WatershedSegmentationGui, self ).stopAndCleanUp()
-    '''
     
     ###########################################
     ###########################################
@@ -83,6 +82,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         self.topLevelOperatorView = topLevelOperatorView
         op = self.topLevelOperatorView 
+        self.__cleanup_fns = []
 
         #operator._value =  np.zeros(op.Boundaries.meta.shape)
 
@@ -155,7 +155,10 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         # notify any change to change settings in the gui
         op.SeedsExist   .notifyMetaChanged(self.onSeedsExistOrWSMethodChanged)
+        self.__cleanup_fns.append( partial( op.SeedsExist.unregisterMetaChanged, self.onSeedsExistOrWSMethodChanged ) )
+
         op.WSMethod     .notifyMetaChanged(self.onSeedsExistOrWSMethodChanged)
+        self.__cleanup_fns.append( partial( op.WSMethod.unregisterMetaChanged, self.onSeedsExistOrWSMethodChanged ) )
 
 
         # TODO
