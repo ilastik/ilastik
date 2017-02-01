@@ -17,7 +17,7 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
 #for caching the data of the watershed algorithm
-from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import _OpCacheWrapper
+from lazyflow.operators import OpCompressedCache
 
 from ilastik.utility.VigraIlastikConversionFunctions import removeLastAxis, addLastAxis, getArray, evaluateSlicing, removeFirstAxis, addFirstAxis
 
@@ -192,8 +192,8 @@ class OpWatershedSegmentation(Operator):
         # watershed calculations cached output = WSCCO
         ############################################################
         #cache our own output, don't propagate from internal operator
-        self._cache = _OpCacheWrapper(parent=self)
-        self._cache.name = "OpWatershedSegmentation.OpCacheWrapper"
+        self._cache = OpCompressedCache(parent=self)
+        self._cache.name = "OpWatershedSegmentation.OpCompressedCache"
         # use this output of the cache for displaying in a layer only
         self.WSCCOCachedOutput.connect(self._cache.Output)
 

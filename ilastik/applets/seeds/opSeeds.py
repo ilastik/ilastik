@@ -7,7 +7,7 @@ from seedsGui import SmoothingMethods, ComputeMethods
 
 from lazyflow.graph import Operator,Slot, InputSlot, OutputSlot
 #for caching the data of the generating seeds
-from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import _OpCacheWrapper
+from lazyflow.operators import OpCompressedCache
 
 from ilastik.utility.VigraIlastikConversionFunctions import removeLastAxis, addLastAxis, getArray, evaluateSlicing, removeFirstAxis, addFirstAxis
 
@@ -67,9 +67,10 @@ class OpSeeds(Operator):
         # SeedsOut cached
         ############################################################
         #cache our own output, don't propagate from internal operator
-        self._cache = _OpCacheWrapper(parent=self)
-        self._cache.name = "OpSeeds.OpCacheWrapper"
+        self._cache = OpCompressedCache(parent=self)
+        self._cache.name = "OpSeeds.OpCompressedCache"
         # use this output of the cache for displaying in a layer only
+        self._cache.Input.connect(self.SeedsOut)
         self.SeedsOutCached.connect(self._cache.Output)
 
         # Serialization slots
@@ -77,8 +78,6 @@ class OpSeeds(Operator):
         self.SeedsCleanBlocks.connect(self._cache.CleanBlocks)
         self.SeedsOutputHdf5.connect(self._cache.OutputHdf5)
 
-        # the crux, where to define the Cache-Data
-        self._cache.Input.connect(self.SeedsOut)
 
         print "Init opSeeds"
 
