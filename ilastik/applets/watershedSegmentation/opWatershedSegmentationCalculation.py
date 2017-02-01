@@ -54,13 +54,7 @@ class OpWatershedSegmentationCalculation( Operator ):
         self.execWatershedAlgorithm(slot, subindex, roi, result)
 
     def propagateDirty(self, slot, subindex, roi):
-        # set all outputSlots dirty
-        for slot in self.outputs.values():
-            slot.setDirty()
-        #print "propagteDirty in opWatershedSegmentationCalculation"
-        pass    
-
-
+        self.Output.setDirty()
 
     def execWatershedAlgorithm(self, slot, subindex, roi, result):
         """
