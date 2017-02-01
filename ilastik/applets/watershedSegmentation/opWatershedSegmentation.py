@@ -208,28 +208,7 @@ class OpWatershedSegmentation(Operator):
 
         #TODO 
         print "Init opWatershedSegmentation"
-
-
-        #TODO this is tooo slow, because it is dirty more than once
-        #self.CorrectedSeedsIn.notifyDirty(self.onSeedsDirty)
-
-    def onSeedsDirty(self, x, y):
-        """
-        """
-        print "onSeedsDirty WS"
-
-        self.resetLabelsToSlot()
-        '''
-        print self.CorrectedSeedsIn.ready()
-        if not self.Seeds.ready():
-
-            for slot in self.outputs.values():
-                slot.setDirty()
-                #TODO remove after testing
-                print "set this slot dirty: " + slot.name
-        '''
-
-
+        
     def setupOutputs(self):
         self.LabelNames.meta.dtype  = object
         #self.LabelNames.meta.shape = (1,)
@@ -244,16 +223,11 @@ class OpWatershedSegmentation(Operator):
 
     
     def execute(self, slot, subindex, roi, result):
-        pass
-        print "Main" + str( slot.name)
-        #print "Main" + str(roi)
+        assert False, "Should never be called!"
         
     def propagateDirty(self, slot, subindex, roi):
-        # set all outputSlots dirty
-        for slot in self.outputs.values():
-            slot.setDirty()
-        #print "propagteDirty in opWatershedSegmentation"
-        #print "Main: "+ slot.name
+        if slot is self.CorrectedSeedsIn:
+            self.resetLabelsToSlot()
 
     def setInSlot(self, slot, subindex, roi, value):
         pass
@@ -272,15 +246,12 @@ class OpWatershedSegmentation(Operator):
     def resetLabelsToSlot(self):
         """
         """
+        self.removeLabelsFromCache()
         if self.SeedsExist.value:
-            self.removeLabelsFromCache()
             #remove LabelListModel not necessary. Resetting the LabelNames is enough
 
             # Finally, import the labels from the original slot
             self.importLabels()
-
-        else:
-            self.removeLabelsFromCache()
 
 
 
