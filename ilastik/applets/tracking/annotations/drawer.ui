@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1458</height>
+    <height>1691</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -31,63 +31,14 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout_3">
-   <item row="0" column="0">
-    <widget class="QLabel" name="cropLabel">
-     <property name="text">
-      <string>Crop:</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="1">
-    <widget class="QComboBox" name="cropBoxView"/>
-   </item>
-   <item row="1" column="0" colspan="2">
+  <layout class="QGridLayout" name="gridLayout_6">
+   <item row="1" column="0" rowspan="2" colspan="2">
     <widget class="CropListView" name="cropListView"/>
    </item>
-   <item row="2" column="0" colspan="2">
-    <widget class="QLabel" name="cropObjects">
-     <property name="text">
-      <string>Crop Objects:</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="0" colspan="2">
+   <item row="5" column="1" colspan="2">
     <layout class="QGridLayout" name="gridLayout">
-     <property name="leftMargin">
-      <number>30</number>
-     </property>
-     <property name="horizontalSpacing">
-      <number>40</number>
-     </property>
-     <item row="2" column="0" colspan="2">
-      <widget class="QLabel" name="unlabeledObjects">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>Unlabeled</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="allObjects">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>Total</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0" rowspan="2" colspan="2">
-      <widget class="QLabel" name="labeledObjects">
+     <item row="0" column="0">
+      <widget class="QLabel" name="labeledObjectsFrame">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
          <horstretch>0</horstretch>
@@ -99,8 +50,8 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="2">
-      <widget class="QLabel" name="labeledObjectsCount">
+     <item row="0" column="1">
+      <widget class="QLabel" name="labeledObjectsCountFrame">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
          <horstretch>0</horstretch>
@@ -118,27 +69,21 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="2">
-      <widget class="QLabel" name="allObjectsCount">
+     <item row="1" column="0">
+      <widget class="QLabel" name="unlabeledObjectsFrame">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
-       <property name="layoutDirection">
-        <enum>Qt::RightToLeft</enum>
-       </property>
        <property name="text">
-        <string>T</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        <string>Unlabeled</string>
        </property>
       </widget>
      </item>
-     <item row="2" column="2">
-      <widget class="QLabel" name="unlabeledObjectsCount">
+     <item row="1" column="1">
+      <widget class="QLabel" name="unlabeledObjectsCountFrame">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
          <horstretch>0</horstretch>
@@ -156,26 +101,92 @@
        </property>
       </widget>
      </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="allObjects_3">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Total</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLabel" name="allObjectsCountFrame">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string>T</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
-   <item row="4" column="0" colspan="2">
-    <widget class="QPushButton" name="initializeAnnotations">
-     <property name="text">
-      <string>Delete All Training</string>
-     </property>
-    </widget>
+   <item row="17" column="1" colspan="2">
+    <layout class="QVBoxLayout" name="verticalLayout_7">
+     <item>
+      <widget class="QLabel" name="exportLabel">
+       <property name="font">
+        <font>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Export</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exportDivisions">
+       <property name="text">
+        <string>Export Divisions as csv ...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exportMergers">
+       <property name="text">
+        <string>Export Mergers as csv ...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exportButton">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="text">
+        <string>Export Training as h5 ...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exportTifButton">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="text">
+        <string>Export Results as tif ...</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
-   <item row="5" column="0" colspan="2">
-    <widget class="QPushButton" name="saveAnnotations">
-     <property name="enabled">
-      <bool>true</bool>
-     </property>
-     <property name="text">
-      <string>Save Crop Training</string>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="0" colspan="2">
+   <item row="11" column="1" colspan="2">
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
@@ -239,22 +250,14 @@
      </item>
     </layout>
    </item>
-   <item row="7" column="0" colspan="2">
-    <widget class="QTextBrowser" name="logOutput">
+   <item row="14" column="1" colspan="2">
+    <widget class="QListWidget" name="divisionsList">
      <property name="enabled">
       <bool>false</bool>
      </property>
-     <property name="font">
-      <font>
-       <pointsize>8</pointsize>
-       <weight>50</weight>
-       <italic>true</italic>
-       <bold>false</bold>
-      </font>
-     </property>
     </widget>
    </item>
-   <item row="8" column="0" colspan="2">
+   <item row="13" column="1">
     <widget class="QLabel" name="labelDivisions">
      <property name="enabled">
       <bool>false</bool>
@@ -270,14 +273,124 @@
      </property>
     </widget>
    </item>
-   <item row="9" column="0" colspan="2">
-    <widget class="QListWidget" name="divisionsList">
-     <property name="enabled">
-      <bool>false</bool>
+   <item row="0" column="2">
+    <widget class="QComboBox" name="cropBoxView"/>
+   </item>
+   <item row="0" column="1">
+    <widget class="QLabel" name="cropLabel">
+     <property name="text">
+      <string>Crop:</string>
      </property>
     </widget>
    </item>
-   <item row="10" column="0" colspan="2">
+   <item row="3" column="1" colspan="2">
+    <layout class="QGridLayout" name="gridLayout_5">
+     <item row="0" column="0">
+      <widget class="QLabel" name="labeledObjects">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Labeled</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="labeledObjectsCount">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string>L</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="unlabeledObjects">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Unlabeled</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLabel" name="unlabeledObjectsCount">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string>U</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="allObjects">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Total</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLabel" name="allObjectsCount">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string>T</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="4" column="1" colspan="2">
+    <widget class="QLabel" name="cropObjectsFrame">
+     <property name="text">
+      <string>Per Time Frame:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="15" column="1" colspan="2">
     <layout class="QGridLayout" name="gridLayout_4">
      <item row="0" column="0">
       <widget class="QLabel" name="timeStepLabel">
@@ -331,7 +444,39 @@
      </item>
     </layout>
    </item>
-   <item row="11" column="0" colspan="2">
+   <item row="8" column="1" colspan="2">
+    <widget class="QPushButton" name="nextUnlabeledDivision">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="text">
+      <string>Go To Unlabeled Division</string>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="1" colspan="2">
+    <widget class="QPushButton" name="nextUnlabeledObject">
+     <property name="text">
+      <string>Go To Unlabeled Object</string>
+     </property>
+    </widget>
+   </item>
+   <item row="12" column="1" colspan="2">
+    <widget class="QTextBrowser" name="logOutput">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>8</pointsize>
+       <weight>50</weight>
+       <italic>true</italic>
+       <bold>false</bold>
+      </font>
+     </property>
+    </widget>
+   </item>
+   <item row="16" column="1" colspan="2">
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
       <widget class="QLabel" name="automaticTrackingLabel">
@@ -437,56 +582,32 @@
      </item>
     </layout>
    </item>
-   <item row="12" column="0" colspan="2">
-    <layout class="QVBoxLayout" name="verticalLayout_7">
-     <item>
-      <widget class="QLabel" name="exportLabel">
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="text">
-        <string>Export</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="exportDivisions">
-       <property name="text">
-        <string>Export Divisions as csv ...</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="exportMergers">
-       <property name="text">
-        <string>Export Mergers as csv ...</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="exportButton">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <property name="text">
-        <string>Export Training as h5 ...</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="exportTifButton">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <property name="text">
-        <string>Export Results as tif ...</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+   <item row="2" column="1" colspan="2">
+    <widget class="QLabel" name="cropObjects">
+     <property name="text">
+      <string>Crop Objects:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="9" column="1" colspan="2">
+    <widget class="QPushButton" name="nextUnlabeledMerger">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="text">
+      <string>Go To Unlabeled Merger</string>
+     </property>
+    </widget>
+   </item>
+   <item row="10" column="1" colspan="2">
+    <widget class="QPushButton" name="nextUnlabeledObjectFrame">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="text">
+      <string>Go To Unlabeled Object in This Frame</string>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

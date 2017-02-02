@@ -289,6 +289,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     avgSize=avgSize,                
                     withTracklets=withTracklets,
                     sizeDependent=sizeDependent,
+                    detWeight=10.0,
                     divWeight=divWeight,
                     transWeight=transWeight,
                     withDivisions=withDivisions,

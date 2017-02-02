@@ -249,7 +249,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             return fov
 
         fieldOfView = constructFov((x_range[1], y_range[1], z_range[1]),
-                                   0,
+                                   time_range[0],
                                    time_range[-1]+1,
                                    scales)
 
@@ -339,6 +339,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             avgSize=[0],                        
             withTracklets=False,
             sizeDependent=True,
+            detWeight=10.0,
             divWeight=10.0,
             transWeight=10.0,
             withDivisions=True,
@@ -378,6 +379,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         parameters['avgSize'] = avgSize
         parameters['withTracklets'] = withTracklets
         parameters['sizeDependent'] = sizeDependent
+        parameters['detWeight'] = detWeight
         parameters['divWeight'] = divWeight
         parameters['transWeight'] = transWeight
         parameters['withDivisions'] = withDivisions
@@ -439,7 +441,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             result = mht.track(model, weights)
         else:
             raise ValueError("Invalid tracking solver selected")
-        
+
         # Insert the solution into the hypotheses graph and from that deduce the lineages
         if hypothesesGraph:
             hypothesesGraph.insertSolution(result)
@@ -861,7 +863,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         
         logger.info("fetching region features and division probabilities")
         feats = self.ObjectFeatures(time_range).wait()
-        
+
         if with_div:
             if not self.DivisionProbabilities.ready() or len(self.DivisionProbabilities([0]).wait()[0]) == 0:
                 msgStr = "\nDivision classifier has not been trained! " + \
