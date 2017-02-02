@@ -85,7 +85,13 @@ class OpSeeds(Operator):
         self.Seeds.notifyUnready(self.onSeedsChanged)
         #self.Seeds.notifyDirty(self.onSeedsChanged)
 
+    
     def cleanUp(self):
+        """
+        signals need to be unregistered
+        otherwise on closeup, these signals will be emitted and the 
+        project can't be closed properly
+        """
         self.Seeds.unregisterReady(self.onSeedsChanged)
         self.Seeds.unregisterUnready(self.onSeedsChanged)
         super(OpSeeds, self).cleanUp()
@@ -98,17 +104,24 @@ class OpSeeds(Operator):
         """
         print "onSeedsChanged"
 
-        if not self.Seeds.ready():
+
+        #if not self.Seeds.ready():
             #TODO TODO throughs an AssertionError on closing this programm
             #maybe disconnect the function onSeedsChanged
-            self.GenerateSeeds.setValue(False)
+        self.GenerateSeeds.setValue(False)
+
+
+        self._setSeedsExist()
 
             #set everything to dirty, otherwise the new seeds would not be used in the watershed
 
+        '''
+            #TODO don't set everthing to dirty
             for slot in self.outputs.values():
                 slot.setDirty()
                 #TODO remove after testing
                 print "set this slot dirty: " + slot.name
+        '''
 
 
 
@@ -194,7 +207,7 @@ class OpSeeds(Operator):
         # Smoothing
         smoothedBoundaries= self.getAndUseSmoothingMethod(boundaries, smoothingMethodIndex, sigma)
         
-        # for distance transform: seeds.dtype === uint32 or float? but not uint8
+        # for distance transform: seeds.dtype === float but not uint8
         smoothedBoundaries  = smoothedBoundaries.astype(numpy.float32)
 
         # Compute 
@@ -285,7 +298,8 @@ class OpSeeds(Operator):
 
         if ( method == "DistanceTransform"):
             #TODO threshold for dt
-            threshold = 0.91
+            #threshold = 0.91
+            threshold = 0.09
 
             # compute distance transform
             distance_to_membrane = self.signed_distance_transform(smoothedBoundaries, threshold)
@@ -350,12 +364,26 @@ class OpSeeds(Operator):
     #copied from wsDT, but with a some changes 
     def signed_distance_transform(self, pmap, pmax):
         """
-        Performs a threshold on the given image 'pmap' < pmax, and performs
-        a distance transform to the threshold region border for all pixels outside the
-        threshold boundaries (positive distances) and also all pixels *inside*
-        the boundary (negative distances).
+        Performs a threshold on the given image 'pmap' < pmax,
+        so that all black parts, that are above the threshold are cut away (=0).
 
-        The result is a signed float32 image.
+        The distance transform is executed. 
+        The non-zero elements are the 'seeds' for the dt and the zero elements 
+        get new values assigned, depending on their distance to the seeds.
+        The old seeds get value of 0.
+        The result image is called distance_to_membrane. 
+
+        Then the dt is done the other way around (w.r.t. background and foreground),
+        and called distance_to_nonmembrane.
+
+        Combine both distance_to_* to one image and return it.
+
+
+
+        :param pmap: array that shall be used for distance transform
+        :type pmap: float32, array
+        :returns:  a signed float32 image with distance transform information
+        :rtype: float32 array
         """
         # get the thresholded pmap
         # black parts = 255 are not interesting
@@ -378,6 +406,7 @@ class OpSeeds(Operator):
         del labeled # Delete this name, not the array
 
         # Combine the inner/outer distance transforms
+        # -1 is the inverse in float32
         distance_to_nonmembrane[distance_to_nonmembrane>0] -= 1
         distance_to_membrane[:] -= distance_to_nonmembrane
 
