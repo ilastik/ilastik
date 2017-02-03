@@ -17,6 +17,13 @@
    <item row="0" column="0">
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
+      <widget class="QCheckBox" name="colorCodesEnabled">
+       <property name="text">
+        <string>Show color codes based on feature-computation times (blue for fast, red for slow).</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="FeatureTableWidget" name="featureTableWidget"/>
      </item>
      <item>

@@ -29,6 +29,84 @@ from PyQt4.QtCore import Qt, QRect, QSize, QEvent, QPoint, pyqtSignal
 import numpy
 from volumina.utility import decode_to_qstring
 
+FEATURE_TIMES = { 'STE(10.0)' : 0.0899804176082, \
+                  'HGE(10.0)' : 0.0759122723939, \
+                  'STE(5.0)' :  0.0585870499102, \
+                  'STE(3.5)' :  0.0502897465603, \
+                  'HGE(5.0)' :  0.048321234926, \
+                  'HGE(3.5)' :  0.0459901556657, \
+                  'GGM(10.0)' :  0.0405358385673, \
+                  'STE(1.6)' :  0.0389894226391, \
+                  'LG(10.0)' :  0.0388900119505, \
+                  'DG(10.0)' :  0.0384490596577, \
+                  'STE(1.0)' :  0.037961476452, \
+                  'HGE(1.6)' :  0.0353871715588, \
+                  'STE(0.7)' :  0.0352923477951, \
+                  'HGE(1.0)' :  0.0333979064015, \
+                  'HGE(0.7)' :  0.0318309108386, \
+                  'GGM(5.0)' :  0.0247910113118, \
+                  'GS(10.0)' :  0.0236307434648, \
+                  'GGM(3.5)' :  0.0233999997232, \
+                  'LG(5.0)' :  0.0232858693749, \
+                  'DG(5.0)' :  0.0207768114265, \
+                  'LG(3.5)' :  0.019847674264, \
+                  'DG(3.5)' :  0.01678671005, \
+                  'GS(5.0)' :  0.0133909389256, \
+                  'GGM(1.6)' :  0.0124198591635, \
+                  'LG(1.6)' :  0.0115737119261, \
+                  'DG(1.6)' :  0.0112218511991, \
+                  'GGM(1.0)' :  0.0111430601451, \
+                  'GS(3.5)' :  0.0110322203384, \
+                  'GGM(0.7)' :  0.0101948369526, \
+                  'LG(1.0)' :  0.00983127405315, \
+                  'DG(1.0)' :  0.0096541934168, \
+                  'GS(0.3)' :  0.00905669762266, \
+                  'LG(0.7)' :  0.00897762018094, \
+                  'DG(0.7)' :  0.00853874649048, \
+                  'GS(1.6)' :  0.0077524726097, \
+                  'GS(1.0)' :  0.00666786277455, \
+                  'GS(0.7)' :  0.00621081166133 }
+
+FEATURE_COORDINATES = { "GS(0.3)" : (0,0), \
+                  "GS(0.7)" : (0,1), \
+                  "GS(1.0)" : (0,2), \
+                  "GS(1.6)" : (0,3), \
+                  "GS(3.5)" : (0,4), \
+                  "GS(5.0)" : (0,5), \
+                  "GS(10.0)" : (0,6), \
+                  "LG(0.7)" : (1,1), \
+                  "LG(1.0)" : (1,2), \
+                  "LG(1.6)" : (1,3), \
+                  "LG(3.5)" : (1,4), \
+                  "LG(5.0)" : (1,5), \
+                  "LG(10.0)" : (1,6), \
+                  "GGM(0.7)" : (2,1), \
+                  "GGM(1.0)": (2,2), \
+                  "GGM(1.6)" : (2,3), \
+                  "GGM(3.5)" : (2,4), \
+                  "GGM(5.0)" : (2,5), \
+                  "GGM(10.0)" : (2,6), \
+                  "DG(0.7)" : (3,1), \
+                  "DG(1.0)": (3,2), \
+                  "DG(1.6)" : (3,3), \
+                  "DG(3.5)" : (3,4), \
+                  "DG(5.0)" : (3,5), \
+                  "DG(10.0)" : (3,6), \
+                  "STE(0.7)" : (4,1), \
+                  "STE(1.0)" : (4,2), \
+                  "STE(1.6)" : (4,3), \
+                  "STE(3.5)" : (4,4), \
+                  "STE(5.0)" : (4,5), \
+                  "STE(10.0)" : (4,6), \
+                  "HGE(0.7)" : (5,1), \
+                  "HGE(1.0)" : (5,2), \
+                  "HGE(1.6)" : (5,3), \
+                  "HGE(3.5)" : (5,4), \
+                  "HGE(5.0)" : (5,5), \
+                  "HGE(10.0)" : (5,6) } 
+
+
+
 class FeatureEntry:
     def __init__(self, name):
         self.name = name
@@ -156,6 +234,8 @@ class ItemDelegate(QItemDelegate):
     """"
      TODO: DOKU
     """
+    colorCodesEnabled = False
+    
     def __init__(self, parent, width, height):
         QItemDelegate.__init__(self, parent)
         
@@ -171,6 +251,9 @@ class ItemDelegate(QItemDelegate):
         self.pixmapPartiallyChecked = QPixmap(self.itemWidth, self.itemHeight)
         self.drawPixmapForPartiallyChecked()
         self.drawPixmapForDisabled()
+
+    def toggleColorCodeState(self, state):  
+        self.colorCodesEnabled = state
 
     def drawPixmapForDisabled(self):
         self.pixmapDisabled = QPixmap(self.itemWidth, self.itemHeight)
@@ -220,15 +303,49 @@ class ItemDelegate(QItemDelegate):
         painter.drawLine(self.itemWidth/2-5, self.itemHeight/2, self.itemWidth/2, self.itemHeight-9)
         painter.drawLine(self.itemWidth/2, self.itemHeight-9, self.itemWidth/2+10, 2)
         painter.end()
-    
-    def paint(self, painter, option, index):
+
+    def _getColorCode(self, coordinate):
+        if coordinate[0] == 0 or coordinate[0] == 2 or coordinate[0] == 6 :
+            return QColor(255,255,255)
+        elif coordinate[0] > 0 and coordinate[0] < 2:
+             coordinate = (coordinate[0]-1, coordinate[1])
+        elif coordinate[0] > 2 and coordinate[0] < 6:
+            coordinate = (coordinate[0]-2, coordinate[1])
+        elif coordinate[0] > 6:
+            coordinate = (coordinate[0]-3, coordinate[1])
+ 
+        featureTarget = None
+        for feature, value in FEATURE_COORDINATES.iteritems():
+            if coordinate == value:
+                featureTarget = feature
         
+        minTime = min(FEATURE_TIMES.itervalues())       
+        rangeTime = max(FEATURE_TIMES.itervalues())-min(FEATURE_TIMES.itervalues())
+        for feature in FEATURE_TIMES:
+            FEATURE_TIMES[feature] = (FEATURE_TIMES[feature]-minTime)/rangeTime
+        
+        if featureTarget:
+            red = int(FEATURE_TIMES[featureTarget]*255.0)
+            green = int((1.0-FEATURE_TIMES[featureTarget])*155.0)
+            blue = int((1.0-FEATURE_TIMES[featureTarget])*255.0)
+        else:
+            red = 0
+            green = 0
+            blue = 255         
+        
+        return QColor(red, green, blue)
+    
+    def paint(self, painter, option, index):        
         tableWidgetCell = self.parent().item(index.row(), index.column())
         
         flags = tableWidgetCell.flags()
         if not (flags & Qt.ItemIsEnabled):
             painter.drawPixmap(option.rect, self.pixmapDisabled)
         elif tableWidgetCell.featureState == Qt.Unchecked:
+            if self.colorCodesEnabled:
+                coordinate = (index.row(), index.column())
+                qcolor = self._getColorCode(coordinate)
+                painter.fillRect(option.rect.adjusted(3,3,-3,-3), qcolor)
             if not self.uncheckedIcon == None: 
                 painter.drawImage(self.adjustRectForImage(option), self.uncheckedIcon)
             else:
@@ -331,9 +448,12 @@ class FeatureTableWidget(QTableWidget):
                         
     # methods
     # ------------------------------------------------
+    
+    def toggleColorCodeState(self, state):
+        self.itemDelegate.toggleColorCodeState(state)
+        self.viewport().update()
         
-        
-    def setSelectedFeatureBoolMatrix(self, featureMatrix):
+    def setSelectedFeatureBoolMatrix(self, featureMatrix): 
         r = 0
         for row in range(self.rowCount()):
             if self.verticalHeaderItem(row).isRootNode:

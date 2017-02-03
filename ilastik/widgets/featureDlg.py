@@ -22,6 +22,7 @@ from PyQt4.QtGui import QDialog
 import sys        
 import os
 from PyQt4 import uic
+from PyQt4.QtCore import Qt
 import qimage2ndarray
 import numpy
 import preView
@@ -43,6 +44,8 @@ class FeatureDlg(QDialog):
         
         self.featureTableWidget.brushSizeChanged.connect(self.preView.setFilledBrsuh)
         self.featureTableWidget.itemSelectionChanged.connect( self.updateOKButton )
+        
+        self.colorCodesEnabled.stateChanged.connect(self.toggleColorCodeState)
                 
     # methods
     # ------------------------------------------------
@@ -56,6 +59,12 @@ class FeatureDlg(QDialog):
     def selectedFeatureBoolMatrix(self, newMatrix):
         """Populate the table of selected features with the provided matrix."""
         self.featureTableWidget.setSelectedFeatureBoolMatrix(newMatrix)
+    
+    def toggleColorCodeState(self, state):
+        if state == Qt.Checked:
+            self.featureTableWidget.toggleColorCodeState(True)
+        else:
+            self.featureTableWidget.toggleColorCodeState(False)
     
     def createFeatureTable(self, features, sigmas, window_size, brushNames=None):
         self.featureTableWidget.createTableForFeatureDlg(features, sigmas, window_size, brushNames)
@@ -97,7 +106,7 @@ if __name__ == "__main__":
     #app.setStyle("cleanlooks")
     
     ex = FeatureDlg()
-    ex.createFeatureTable([("Color", [FeatureEntry("Banananananaana")]), ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])], [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
+    ex.createFeatureTable([("Color", [FeatureEntry("Banananananaana")]), ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])], [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0], 3.5)
     ex.setWindowTitle("FeatureTest")
     ex.setImageToPreView(None)
     ex.exec_()
