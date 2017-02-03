@@ -21,6 +21,9 @@ class OpWatershedSegmentationCalculation( Operator ):
     Seeds       = InputSlot()
 
 
+    # controlling slot
+    SeedsExist  = InputSlot(optional=True, value=False)
+
     #optional parameter input slots
     Neighbors   = InputSlot(optional=True)
     Method      = InputSlot(optional=True)
@@ -51,10 +54,30 @@ class OpWatershedSegmentationCalculation( Operator ):
         pass
 
     def execute(self, slot, subindex, roi, result):
-        self.execWatershedAlgorithm(slot, subindex, roi, result)
+        # execute watershed, if WSMethod and SeedsExist fit together
+        if self.check_SeedsExist_plus_WSMethod_fit_together():
+            self.execWatershedAlgorithm(slot, subindex, roi, result)
+        else:
+            logger.info("if watersheds unseeded, then seeds need to be supplied")
 
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty()
+
+
+    def check_SeedsExist_plus_WSMethod_fit_together(self):
+        """
+        :returns: True if seeds exist or method is UnionFind
+        :rtype: bool
+        """
+        if self.SeedsExist.value:
+            return True
+        if self.Method.ready():
+            method      = self.Method       [:].wait()[0]
+            if method == "UnionFind":
+                return True
+
+        return False
+
 
     def execWatershedAlgorithm(self, slot, subindex, roi, result):
         """
@@ -202,7 +225,6 @@ class OpWatershedSegmentationCalculation( Operator ):
         # BEGIN TODO
         ############################################################
 
-        #TODO integrate process bar
         
 
         '''

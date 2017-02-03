@@ -53,7 +53,7 @@ class OpWatershedSegmentation(Operator):
     Seeds               = InputSlot(optional=True) #for displaying in layer only
     CorrectedSeedsIn    = InputSlot(optional=True) #deals as input for the LabelChange stuff 
 
-    SeedsExist          = InputSlot(optional=True, value=True) #default that seeds exist
+    SeedsExist          = InputSlot(optional=True, value=False) #default that seeds don't exist
 
     ############################################################
     # Inputslots for Internal Parameter Usage (don't change anything here)
@@ -132,6 +132,7 @@ class OpWatershedSegmentation(Operator):
         self.opWSC.Boundaries   .connect( self.Boundaries )
         self.opWSC.Seeds        .connect( self.CorrectedSeedsOut )
         #Input Parameters (optional)
+        self.opWSC.SeedsExist   .connect( self.SeedsExist )
         self.opWSC.Neighbors    .connect( self.WSNeighbors )
         self.opWSC.Method       .connect( self.WSMethod )
         self.opWSC.MaxCost      .connect( self.WSMaxCost )
