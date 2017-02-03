@@ -89,6 +89,8 @@ class OpSeeds(Operator):
         self.Seeds.notifyUnready(self.onSeedsChanged)
         #self.Seeds.notifyDirty(self.onSeedsChanged)
 
+
+
     
     def cleanUp(self):
         """
@@ -109,23 +111,17 @@ class OpSeeds(Operator):
         print "onSeedsChanged"
 
 
-        #if not self.Seeds.ready():
-            #TODO TODO throughs an AssertionError on closing this programm
-            #maybe disconnect the function onSeedsChanged
-        self.GenerateSeeds.setValue(False)
+        # if new seeds are added
+        if self.Seeds.ready():
+            self.GenerateSeeds.setValue(False)
 
+        # set SeedsOut to dirty, because the Seeds have changed, 
+        # execute handles which output is set, maybe SeedsOut=0 is the valid answer
+        self.SeedsOut.setDirty()
 
         self._setSeedsExist()
 
-            #set everything to dirty, otherwise the new seeds would not be used in the watershed
-
-        '''
-            #TODO don't set everthing to dirty
-            for slot in self.outputs.values():
-                slot.setDirty()
-                #TODO remove after testing
-                print "set this slot dirty: " + slot.name
-        '''
+        
 
 
 
@@ -185,9 +181,6 @@ class OpSeeds(Operator):
         """
         used in the execute part of an operator
         """
-
-
-
         # get boundaries
         boundaries              = self.Boundaries(roi.start, roi.stop).wait()
         sigma                   = self.SmoothingSigma.value

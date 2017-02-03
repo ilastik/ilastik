@@ -57,6 +57,8 @@ logger = logging.getLogger(__name__)
 
 
 
+
+
 #LayerViewerGui->LabelingGui->WatershedLabelingGui
 class WatershedSegmentationGui(WatershedLabelingGui):
 
@@ -65,6 +67,27 @@ class WatershedSegmentationGui(WatershedLabelingGui):
     ###########################################
     def centralWidget( self ):
         return self
+
+
+    def showEvent(self, event):
+        """
+        function that is executed each time, the applet widget is visible/in foreground
+        """
+        super(WatershedSegmentationGui, self).showEvent(event)
+
+        #reset the Labels, if the flag is marked to do that
+        op = self.topLevelOperatorView 
+        if op.ResetLabelsToSlot.value:
+            # at first, remove the LabelListModel so if the 
+            # loaded list is smaller or empty, there aren't any shown
+            self.removeLabelsFromList()
+            print "before resetLabelsToSlot()"
+            op.resetLabelsToSlot()
+
+            # reset is done, so set this variable to false
+            op.ResetLabelsToSlot.setValue(False)
+        
+
     
 
     def stopAndCleanUp(self):
@@ -161,15 +184,17 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.__cleanup_fns.append( partial( op.WSMethod.unregisterMetaChanged, self.onSeedsExistOrWSMethodChanged ) )
 
 
-        # TODO
-        # value changed seems to be for cached stuff? 
-        # well, it works on notifyMetaChanged. 
-        #op.SeedsExist   .notifyValueChanged(self.onSeedsExistOrWSMethodChanged)
-        #op.WSMethod     .notifyValueChanged(self.onSeedsExistOrWSMethodChanged)
-
-        # TODO as workaround: on startup here
         print "init watershedSegmentationGui"
-        op.resetLabelsToSlot()
+
+
+    def removeLabelsFromList(self):
+        """
+        remove all entries from the LabelListModel
+        """
+        op = self.topLevelOperatorView 
+        rows = self._labelControlUi.labelListModel.rowCount()
+        for i in range( rows ):
+            self._labelControlUi.labelListModel.removeRowWithoutEmittingSignal(0)
 
 
     @pyqtSlot()

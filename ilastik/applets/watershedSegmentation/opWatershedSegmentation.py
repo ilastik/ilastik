@@ -15,71 +15,22 @@ import numpy as np
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
 #for caching the data of the watershed algorithm
 from lazyflow.operators import OpCompressedCache
+from lazyflow.utility import OrderedSignal
 
 from ilastik.utility.VigraIlastikConversionFunctions import removeLastAxis, addLastAxis, getArray, evaluateSlicing, removeFirstAxis, addFirstAxis
 
 import volumina.colortables as colortables
 
 from opWatershedSegmentationCalculation import OpWatershedSegmentationCalculation
+from opWatershedSegmentationLabelPipeline import OpWatershedSegmentationLabelPipeline
 
 
 
 import logging
 logger = logging.getLogger(__name__)
 
-
-
-class OpWatershedSegmentationLabelPipeline( Operator ):
-    """
-    operator class, that handles the Label Pipeline and the connections to it.
-    the opLabelPipeline handles the connections to the opCompressedUserLabelArray, 
-    which is responsable for everything of the caching and so on
-    """
-    RawData     = InputSlot()
-    SeedInput   = InputSlot()
-    SeedOutput  = OutputSlot()
-    NonZeroBlocks = OutputSlot()
-    
-    
-    def __init__(self, *args, **kwargs):
-        super( OpWatershedSegmentationLabelPipeline, self ).__init__( *args, **kwargs )
-        
-        self.opLabelPipeline = OpLabelPipeline(parent=self)
-        self.opLabelPipeline.RawImage.connect( self.RawData )
-        self.opLabelPipeline.LabelInput.connect( self.SeedInput )
-        self.opLabelPipeline.DeleteLabel.setValue( -1 )
-
-        #Output
-        self.SeedOutput.connect( self.opLabelPipeline.Output )
-        self.NonZeroBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
-
-    def setupOutputs(self):
-        '''
-        self.SeedOutput.meta.assignFrom(self.SeedInput.meta)
-        # output of the vigra.analysis.watershedNew is uint32, therefore it should be uint 32 as
-        # well, otherwise it will break with the cached image 
-        self.SeedOutput.meta.dtype = np.uint8
-        #only one channel as output
-        #self.SeedOutput.meta.shape = self.Boundaries.meta.shape[:-1] + (1,)
-        #TODO maybe bad with more than 255 labels
-        #self.SeedOutput.meta.drange = (0,255)
-        '''
-        pass
-
-    def setInSlot(self, slot, subindex, roi, value):
-        pass
-
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
-
-
-    def propagateDirty(self, slot, subindex, roi):
-        print "LabelPipeline dirty: " + slot.name
-        self.SeedOutput.setDirty()
-        pass    
 
 
 class OpWatershedSegmentation(Operator):
@@ -107,9 +58,9 @@ class OpWatershedSegmentation(Operator):
     ############################################################
     # Inputslots for Internal Parameter Usage (don't change anything here)
     ############################################################
-    ShowWatershedLayer  = InputSlot(value=False)
-    # not used anymore
-    #UseCachedLabels     = InputSlot(value=False)
+    ShowWatershedLayer  = InputSlot(value=False) # flag for WatershedCalc Layer
+    ResetLabelsToSlot   = InputSlot(value=False) # flag for reset, when applet gets foreground
+
 
     ############################################################
     # watershed algorithm parameters (optional)
@@ -208,6 +159,23 @@ class OpWatershedSegmentation(Operator):
 
         #TODO 
         print "Init opWatershedSegmentation"
+
+
+        self._sig_labels_to_delete = OrderedSignal(hide_cancellation_exceptions=True)
+
+    def notifyLabelsToDelete(self, function, **kwargs):
+        """calls the corresponding function when this signal is emitted
+        first argument of the function is the slot
+        the keyword arguments follow
+        """
+        self._sig_labels_to_delete.subscribe(function, **kwargs)
+    def unregisterLabelsToDelete(self, function):
+        """
+        unregister a labels to delete callback
+        """
+        self._sig_labels_to_delete.unsubscribe(function)
+
+
         
     def setupOutputs(self):
         self.LabelNames.meta.dtype  = object
@@ -237,10 +205,10 @@ class OpWatershedSegmentation(Operator):
         assert False, "Should never be called!"
         
     def propagateDirty(self, slot, subindex, roi):
+        print "in opWS propagate Dirty"
         if slot is self.CorrectedSeedsIn:
-            #TODO set flag
-            #self.resetLabelsToSlot()
-            pass
+            # set flag to True; means remember to reset the labels when the applet gets to foreground
+            self.ResetLabelsToSlot.setValue(True)
 
     def setInSlot(self, slot, subindex, roi, value):
         pass
@@ -266,6 +234,11 @@ class OpWatershedSegmentation(Operator):
             # Finally, import the labels from the original slot
             self.importLabels()
 
+        else:
+            # remove the labels from list
+            # this happens in the gui, in showEvent()
+            pass
+
 
 
     def removeLabelsFromCache(self):
@@ -284,12 +257,7 @@ class OpWatershedSegmentation(Operator):
         # this function could be improved drastically
         self.opWSLP.opLabelPipeline.opLabelArray.clearAllLabels( )
 
-    '''
-    def removeLabelsFromList(self):
-        rows = self._labelListModel.rowCount()
-        for i in range( rows ):
-            self._labelListModel.removeRowWithoutEmittingSignal(0)
-    '''
+
 
 
     def importLabels(self):
