@@ -227,7 +227,9 @@ class OpWatershedSegmentation(Operator):
         
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.CorrectedSeedsIn:
-            self.resetLabelsToSlot()
+            #TODO set flag
+            #self.resetLabelsToSlot()
+            pass
 
     def setInSlot(self, slot, subindex, roi, value):
         pass

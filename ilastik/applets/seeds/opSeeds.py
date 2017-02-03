@@ -62,6 +62,7 @@ class OpSeeds(Operator):
     def __init__(self, *args, **kwargs):
         super( OpSeeds, self ).__init__(*args, **kwargs)
 
+        print "Init opSeeds"
 
         ############################################################
         # SeedsOut cached
@@ -73,13 +74,16 @@ class OpSeeds(Operator):
         self._cache.Input.connect(self.SeedsOut)
         self.SeedsOutCached.connect(self._cache.Output)
 
+
+
+
+
         # Serialization slots
         self._cache.InputHdf5.connect(self.SeedsInputHdf5)
         self.SeedsCleanBlocks.connect(self._cache.CleanBlocks)
         self.SeedsOutputHdf5.connect(self._cache.OutputHdf5)
 
 
-        print "Init opSeeds"
 
         self.Seeds.notifyReady(self.onSeedsChanged)
         self.Seeds.notifyUnready(self.onSeedsChanged)
@@ -138,6 +142,17 @@ class OpSeeds(Operator):
         self.SeedsOut.meta.shape = self.Boundaries.meta.shape[:-1] + (1,)
         self.SeedsOut.meta.drange = (0,255)
         self.SeedsOut.meta.dtype = np.uint8
+
+
+
+        # FOR PROPER CACHING, SET THE BLOCKSIZE OF THE CACHE FOR SEEDSOUT 
+        # set the cache blocks to have the time as (1,) and 
+        # not to be the whole image size
+        # otherwise computing something and cutting away the time axis, 
+        # will conclude in an error, because the region asked for is e.g. t=1-200, but not t=1 
+        shape = self.Boundaries.meta.shape
+        blockshape = (1,) + shape[1:]
+        self._cache.BlockShape.setValue(blockshape)
 
     
     def execute(self, slot, subindex, roi, result):
