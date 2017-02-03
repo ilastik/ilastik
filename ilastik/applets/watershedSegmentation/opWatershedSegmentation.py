@@ -221,6 +221,17 @@ class OpWatershedSegmentation(Operator):
         #TODO for testing 
         print self.WSMethod.value
 
+
+        # FOR PROPER CACHING, SET THE BLOCKSIZE OF THE CACHE FOR WSCALCULATIONS
+        # set the cache blocks to have the time as (1,) and 
+        # not to be the whole image size
+        # otherwise computing something and cutting away the time axis, 
+        # will conclude in an error, because the region asked for is e.g. t=1-200, but not t=1 
+        shape = self.Boundaries.meta.shape
+        blockshape = (1,) + shape[1:]
+        self._cache.BlockShape.setValue(blockshape)
+
+
     
     def execute(self, slot, subindex, roi, result):
         assert False, "Should never be called!"
