@@ -59,7 +59,7 @@ class OpWatershedSegmentation(Operator):
     # Inputslots for Internal Parameter Usage (don't change anything here)
     ############################################################
     ShowWatershedLayer  = InputSlot(value=False) # flag for WatershedCalc Layer
-    ResetLabelsToSlot   = InputSlot(value=False) # flag for reset, when applet gets foreground
+    InputSeedsChanged   = InputSlot(value=False) # flag for reset, when applet gets foreground
 
 
     ############################################################
@@ -209,7 +209,7 @@ class OpWatershedSegmentation(Operator):
         print "in opWS propagate Dirty"
         if slot is self.CorrectedSeedsIn:
             # set flag to True; means remember to reset the labels when the applet gets to foreground
-            self.ResetLabelsToSlot.setValue(True)
+            self.InputSeedsChanged.setValue(True)
 
     def setInSlot(self, slot, subindex, roi, value):
         pass

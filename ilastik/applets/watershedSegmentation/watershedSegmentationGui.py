@@ -77,7 +77,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         #reset the Labels, if the flag is marked to do that
         op = self.topLevelOperatorView 
-        if op.ResetLabelsToSlot.value:
+        if op.InputSeedsChanged.value:
             # at first, remove the LabelListModel so if the 
             # loaded list is smaller or empty, there aren't any shown
             self.removeLabelsFromList()
@@ -85,7 +85,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             op.resetLabelsToSlot()
 
             # reset is done, so set this variable to false
-            op.ResetLabelsToSlot.setValue(False)
+            op.InputSeedsChanged.setValue(False)
         
 
     

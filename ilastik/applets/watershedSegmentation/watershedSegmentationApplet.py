@@ -52,7 +52,9 @@ class WatershedSegmentationApplet( StandardApplet ):
         :return: the name of the slots as list of string, e.g. ['ChannelSelection', 'BrushValue;]
         :rtype: list of str
         """
-        return ['WSNeighbors' ]
+
+        # neighbors, do not broadcast; should be possibly different for different lanes
+        return [ ]
 
     @property
     def singleLaneGuiClass(self):

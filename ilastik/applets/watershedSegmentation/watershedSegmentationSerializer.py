@@ -71,7 +71,7 @@ class WatershedSegmentationSerializer(AppletSerializer):
                 # used to remember to show the watershed result layer 
                 SerialSlot(operator.ShowWatershedLayer), 
                 # mark that a reset of the labels should be done
-                SerialSlot(operator.ResetLabelsToSlot), 
+                SerialSlot(operator.InputSeedsChanged), 
                 #SerialSlot(operator.UseCachedLabels), 
 
                 # serialize the output of the watershed algorithm, 
