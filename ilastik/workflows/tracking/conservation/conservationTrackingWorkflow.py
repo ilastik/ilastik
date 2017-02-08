@@ -354,8 +354,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
         )
 
     def post_process_lane_export(self, lane_index):
-        # FIXME: This probably only works for the non-blockwise export slot.
-        #        We should assert that the user isn't using the blockwise slot.
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
             self.dataExportApplet.progressSignal.emit(0)
