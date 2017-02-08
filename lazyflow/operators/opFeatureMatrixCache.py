@@ -124,7 +124,7 @@ class OpFeatureMatrixCache(Operator):
                 # A block should never span multiple time slices.
                 # For txy volumes, that could lead to lots of extra features being computed.
                 tagged_shape['t'] = 1
-            blockshape = determineBlockShape( tagged_shape.values(), 1e6 )
+            blockshape = determineBlockShape( tagged_shape.values(), 40**3 )
         
         # Don't span more than 256 px along any axis
         blockshape = tuple(min(x, 256) for x in blockshape)
