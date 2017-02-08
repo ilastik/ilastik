@@ -211,19 +211,23 @@ class OpFeatureMatrixCache(Operator):
         roi.start[-1] = 0
         roi.stop[-1] = 1
         # Bookkeeping: Track the dirty blocks
-        block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
-        block_starts = map( tuple, block_starts )
-        
-        # 
+
         # If the features were dirty (not labels), we only really care about
         #  the blocks that are actually stored already
         # For big dirty rois (e.g. the entire image), 
         #  we avoid a lot of unnecessary entries in self._dirty_blocks
         if slot == self.FeatureImage:
-            block_starts = set( block_starts ).intersection( self._blockwise_feature_matrices.keys() )
-
+            # We ignore the ROI and assume all blocks are dirty.
+            # Technically, this would be inefficient if it's possible for the features
+            # to become only partially dirty in a small ROI.
+            # But currently, there is no known use-case for that.
+            block_starts = self._blockwise_feature_matrices.keys()
+        else:
+            block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
+            block_starts = map( tuple, block_starts )
+        
         with self._lock:
-            self._dirty_blocks.update( block_starts )
+            self._dirty_blocks.update( set(block_starts) )
 
         # Output has no notion of roi. It's all dirty.
         self.LabelAndFeatureMatrix.setDirty()
