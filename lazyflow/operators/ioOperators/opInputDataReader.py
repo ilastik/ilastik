@@ -161,10 +161,10 @@ class OpInputDataReader(Operator):
                       self._attemptOpenAsHdf5,
                       self._attemptOpenAsNpy,
                       self._attemptOpenAsRawBinary,
+                      self._attemptOpenAsTiledVolume,
                       self._attemptOpenAsH5BlockStore,
                       self._attemptOpenAsBlockwiseFileset,
                       self._attemptOpenAsRESTfulBlockwiseFileset,
-                      self._attemptOpenAsTiledVolume,
                       self._attemptOpenAsBigTiff,
                       self._attemptOpenAsTiff,
                       self._attemptOpenWithVigraImpex ]
