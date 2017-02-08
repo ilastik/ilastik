@@ -87,6 +87,7 @@ class OpFeatureMatrixCache(Operator):
         # In these set/dict members, the block id (dict key) 
         #  is simply the block's start coordinate (as a tuple)
         self._blockshape = new_blockshape
+        assert all(self._blockshape)
         logger.debug("Initialized with blockshape: {}".format(new_blockshape))
     
     def setupOutputs(self):
@@ -114,7 +115,7 @@ class OpFeatureMatrixCache(Operator):
         self.ProgressSignal.meta.dtype = object
         self.ProgressSignal.setValue( self.progressSignal )
 
-        if self.LabelImage.meta.ideal_blockshape is not None:
+        if self.LabelImage.meta.ideal_blockshape is not None and all(self.LabelImage.meta.ideal_blockshape):
             blockshape = self.LabelImage.meta.ideal_blockshape
         else:
             # Auto-choose a blockshape
