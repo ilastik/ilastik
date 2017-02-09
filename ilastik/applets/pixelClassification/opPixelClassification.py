@@ -91,9 +91,10 @@ class OpPixelClassification( Operator ):
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
+    Bookmarks = OutputSlot(level=1)
 
     NumClasses = OutputSlot()
-    
+
     def setupOutputs(self):
         self.LabelNames.meta.dtype = object
         self.LabelNames.meta.shape = (1,)
@@ -184,6 +185,7 @@ class OpPixelClassification( Operator ):
 
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):
+                self.Bookmarks.resize(0)
                 self.LabelImages.resize(0)
                 self.NonzeroLabelBlocks.resize(0)
                 self.PredictionProbabilities.resize(0)
@@ -318,9 +320,12 @@ class OpPixelClassification( Operator ):
         numLanes = len(self.InputImages)
         assert numLanes == laneIndex, "Image lanes must be appended."        
         self.InputImages.resize(numLanes+1)
+        self.Bookmarks.resize(numLanes+1)
+        self.Bookmarks[numLanes].setValue([]) # Default value
         
     def removeLane(self, laneIndex, finalLength):
         self.InputImages.removeSlot(laneIndex, finalLength)
+        self.Bookmarks.removeSlot(laneIndex, finalLength)
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)

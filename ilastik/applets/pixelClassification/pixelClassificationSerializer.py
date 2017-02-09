@@ -20,7 +20,7 @@
 ###############################################################################
 import numpy
 import vigra
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot, SerialPickledValueSlot
 
 import logging
 logger = logging.getLogger(__name__) 
@@ -38,6 +38,7 @@ class PixelClassificationSerializer(AppletSerializer):
                                 transform=str),
                  SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
                  SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
+                 SerialPickledValueSlot(operator.Bookmarks),
                  SerialBlockSlot(operator.LabelImages,
                                  operator.LabelInputs,
                                  operator.NonzeroLabelBlocks,
