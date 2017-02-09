@@ -244,7 +244,8 @@ class BookmarksWindow(QDialog):
     
     def _load_bookmarks(self):
         self.bookmark_tree.clear()
-        lane_nickname = self.topLevelOperatorView.InputImages.meta.nickname
+        lane_index = self.topLevelOperatorView.current_view_index()
+        lane_nickname = self.topLevelOperatorView.InputImages.meta.nickname or "Lane {}".format(lane_index)
         bookmarks = self.topLevelOperatorView.Bookmarks.value
         group_item = QTreeWidgetItem( self.bookmark_tree, QStringList(lane_nickname) )
 
