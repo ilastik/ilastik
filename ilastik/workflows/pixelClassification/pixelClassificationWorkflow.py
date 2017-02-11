@@ -38,6 +38,8 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 from lazyflow.graph import Graph
 from lazyflow.roi import TinyVector, fullSlicing
 
+import voxel_server
+
 class PixelClassificationWorkflow(Workflow):
     
     workflowName = "Pixel Classification"
@@ -62,6 +64,7 @@ class PixelClassificationWorkflow(Workflow):
         graph = Graph()
         super( PixelClassificationWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
         self.stored_classifier = None
+        self.voxel_server_thread = None
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
         # Parse workflow-specific command-line args
@@ -76,6 +79,7 @@ class PixelClassificationWorkflow(Workflow):
         parser.add_argument('--tree-count', help='Number of trees for Vigra RF classifier.', type=int)
         parser.add_argument('--variable-importance-path', help='Location of variable-importance table.', type=str)
         parser.add_argument('--label-proportion', help='Proportion of feature-pixels used to train the classifier.', type=float)
+        parser.add_argument('--start-voxel-server', help='Automatically start the voxel server', action="store_true")
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
@@ -92,6 +96,7 @@ class PixelClassificationWorkflow(Workflow):
         self.tree_count = parsed_args.tree_count
         self.variable_importance_path = parsed_args.variable_importance_path
         self.label_proportion = parsed_args.label_proportion
+        self.autostart_voxel_server = parsed_args.start_voxel_server
 
         if parsed_args.filter and parsed_args.filter != parsed_creation_args.filter:
             logger.error("Ignoring new --filter setting.  Filter implementation cannot be changed after initial project creation.")
@@ -287,6 +292,30 @@ class PixelClassificationWorkflow(Workflow):
         busy |= self.batchProcessingApplet.busy
         self._shell.enableProjectChanges( not busy )
 
+    def menus(self):
+        """
+        Overridden from Workflow base class
+        """
+        from PyQt4.QtGui import QMenu
+        workflow_menu = QMenu("Special")
+        start_server_action = workflow_menu.addAction("Start Voxel Server")
+        start_server_action.triggered.connect( self.start_voxel_server )
+
+        self._workflow_menu = workflow_menu # Must retain here as a member or else reference disappears and the menu is deleted.
+        return [self._workflow_menu]
+
+    def start_voxel_server(self):
+        if self.voxel_server_thread is not None:
+            logger.error("Voxel server is already started.")
+            return
+        op = self.pcApplet.topLevelOperator
+        multislots = [op.InputImages,
+                      op.LabelImages,
+                      op.CachedPredictionProbabilities]
+        
+        self.voxel_server_thread = voxel_server.start_server(self.dataSelectionApplet.topLevelOperator.ImageName,
+                                                             multislots, debug_mode=False, use_thread=True)
+
     def onProjectLoaded(self, projectManager):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
@@ -294,7 +323,7 @@ class PixelClassificationWorkflow(Workflow):
         If the user provided command-line arguments, use them to configure 
         the workflow for batch mode and export all results.
         (This workflow's headless mode supports only batch mode for now.)
-        """
+        """        
         if self.generate_random_labels:
             self._generate_random_labels(self.random_label_count, self.random_label_value)
             logger.info("Saving project...")
@@ -325,6 +354,9 @@ class PixelClassificationWorkflow(Workflow):
             
         if self.retrain:
             self._force_retrain_classifier(projectManager)
+
+        if self.autostart_voxel_server:
+            self.start_voxel_server()
 
         # Configure the data export operator.
         if self._batch_export_args:
