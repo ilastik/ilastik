@@ -77,7 +77,7 @@
          <item>
           <widget class="QLabel" name="smoothingSigmaLabel">
            <property name="text">
-            <string>sigma:</string>
+            <string>Sigma:</string>
            </property>
           </widget>
          </item>

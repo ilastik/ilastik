@@ -94,6 +94,7 @@ class SeedsGui(LayerViewerGui):
 
         if not op.GenerateSeeds.value:
             op.GenerateSeeds.setValue(True)
+            # to invalidate the SeedsOut-Cache
             op.SmoothingMethod.setDirty()
 
         self.configure_operator_from_gui()
