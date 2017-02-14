@@ -45,7 +45,6 @@ def main( parsed_args, workflow_cmdline_args=[] ):
     _init_configfile( parsed_args )
     
     _init_threading_logging_monkeypatch()
-    _init_threading_h5py_monkeypatch()
     _validate_arg_compatibility( parsed_args )
 
     # Extra initialization functions.
@@ -169,25 +168,6 @@ def _init_threading_logging_monkeypatch():
             ordinary_start(self)
             thread_start_logger.debug( "Started thread: id={:x}, name={}".format( self.ident, self.name ) )
         threading.Thread.start = logged_start
-
-def _init_threading_h5py_monkeypatch():
-    """
-    Due to an h5py bug [1], spurious error messages aren't properly 
-    hidden if they occur in any thread other than the main thread.
-    As a workaround, here we monkeypatch threading.Thread.run() to 
-    make sure all threads silence errors from h5py.
-    
-    [1]: https://github.com/h5py/h5py/issues/580
-    See also: https://github.com/ilastik/ilastik/issues/1120
-    """
-    import h5py
-    if map(int, h5py.__version__.split('.')) <= [2,5,0]:
-        import threading
-        run_old = threading.Thread.run
-        def run(*args, **kwargs):
-            h5py._errors.silence_errors()
-            run_old(*args, **kwargs)
-        threading.Thread.run = run
 
 def _validate_arg_compatibility( parsed_args ):
     # Check for bad input options
