@@ -240,15 +240,12 @@ class OpStructuredTracking(OpConservationTracking):
                                         if type == None:
                                             raise DatasetConstraintError('Structured Learning', mergeMsgStr)
 
-                                        elif type[0] in ["LAST", "INTERMEDIATE", "SINGLETON(FIRST_LAST)"]:
-                                            if type[0] == "SINGLETON(FIRST_LAST)":
-                                                trackCountIntersection = len(trackSet)
-                                            else:
-                                                previous_label = int(type[1])
-                                                previousTrackSet = labels[time-1][previous_label]
-                                                intersectionSet = trackSet.intersection(previousTrackSet)
-                                                trackCountIntersection = len(intersectionSet)
-                                            # print "trackCountIntersection",trackCountIntersection
+                                        elif type[0] in ["LAST", "INTERMEDIATE"]:
+
+                                            previous_label = int(type[1])
+                                            previousTrackSet = labels[time-1][previous_label]
+                                            intersectionSet = trackSet.intersection(previousTrackSet)
+                                            trackCountIntersection = len(intersectionSet)
 
                                             if trackCountIntersection > maxObj:
                                                 logger.info("Your track count for transition ( {},{} ) ---> ( {},{} ) is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(previous_label,time-1,label,time,trackCountIntersection,intersectionSet,maxObj))
@@ -268,10 +265,8 @@ class OpStructuredTracking(OpConservationTracking):
                                                     hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = int(trackCountIntersection)
                                                     # print "[structuredTrackingGui] EDGE: ({},{})--->({},{})".format(time-1, int(previous_label), time,int(label))
                                                     break
-
                                             if not foundAllArcs:
                                                 logger.info("[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS {} {}".format(time-1, int(previous_label)))
-                                                logger.info("[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS {} {}".format(time, int(label)))
                                                 break
 
                                     if type == None:
