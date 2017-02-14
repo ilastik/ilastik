@@ -889,6 +889,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         empty_frame = False
 
         for t in feats.keys():
+            # print "..................___________________...............t ",t,time_range,x_range,y_range
             rc = feats[t][default_features_key]['RegionCenter']
             lower = feats[t][default_features_key]['Coord<Minimum>']
             upper = feats[t][default_features_key]['Coord<Maximum>']
@@ -897,6 +898,8 @@ class OpConservationTracking(Operator, ExportingOperator):
                 lower = lower[1:, ...]
                 upper = upper[1:, ...]
 
+            # print "lower",lower
+            # print "upper",upper
             ct = feats[t][default_features_key]['Count']
             if ct.size:
                 ct = ct[1:, ...]
@@ -908,17 +911,39 @@ class OpConservationTracking(Operator, ExportingOperator):
                 traxel = Traxel()
                 
                 # for 2d data, set z-coordinate to 0:
+
+                # FILTERS anything that has CENTER out of the box
+                # if len(rc[idx]) == 2:
+                #     x, y = rc[idx]
+                #     z = 0
+                # elif len(rc[idx]) == 3:
+                #     x, y, z = rc[idx]
+                # filters anything with NO pixels in the box
                 if len(rc[idx]) == 2:
                     x, y = rc[idx]
                     z = 0
+                    x_lower, y_lower = lower[idx]
+                    x_upper, y_upper = upper[idx]
+                    z_lower = 0
+                    z_upper = 0
                 elif len(rc[idx]) == 3:
                     x, y, z = rc[idx]
+                    x_lower, y_lower, z_lower = lower[idx]
+                    x_upper, y_upper, z_upper = upper[idx]
                 else:
                     raise DatasetConstraintError ("Tracking", "The RegionCenter feature must have dimensionality 2 or 3.")
+
                 size = ct[idx]
-                if (x < x_range[0] or x >= x_range[1] or
-                            y < y_range[0] or y >= y_range[1] or
-                            z < z_range[0] or z >= z_range[1] or
+
+                # if (x < x_range[0] or x >= x_range[1] or
+                #             y < y_range[0] or y >= y_range[1] or
+                #             z < z_range[0] or z >= z_range[1] or
+                #             size < size_range[0] or size >= size_range[1]):
+                #     filtered_labels_at.append(int(idx + 1))
+                # filters anything that has NO pixels in the box and size...
+                if (x_upper < x_range[0]  or x_lower >= x_range[1] or
+                            y_upper < y_range[0] or y_lower >= y_range[1] or
+                            z_upper < z_range[0] or z_lower >= z_range[1] or
                             size < size_range[0] or size >= size_range[1]):
                     filtered_labels_at.append(int(idx + 1))
                     continue
@@ -979,27 +1004,35 @@ class OpConservationTracking(Operator, ExportingOperator):
                 traxel.add_feature_array("count", 1)
                 traxel.set_feature_value("count", 0, float(size))
 
-                # Add traxel to traxelstore after checking position, time, and size ranges
-                if (x < x_range[0] or x >= x_range[1] or
-                            y < y_range[0] or y > y_range[1] or
-                            z < z_range[0] or z > z_range[1] or
-                            size < size_range[0] or size > size_range[1]):
-                    logger.info("Omitting traxel with ID: {}".format(traxel.Id))
+                # if (x < x_range[0] or x >= x_range[1] or
+                #             y < y_range[0] or y > y_range[1] or
+                #             z < z_range[0] or z > z_range[1] or
+                #             size < size_range[0] or size > size_range[1]):
+                # filters anything that has NO pixels in the box and size...
+                if (x_upper < x_range[0]  or x_lower >= x_range[1] or
+                            y_upper < y_range[0] or y_lower >= y_range[1] or
+                            z_upper < z_range[0] or z_lower >= z_range[1] or
+                            size < size_range[0] or size >= size_range[1]):
+                    logger.info("Omitting traxel with ID: {} {}".format(traxel.Id,t))
                 else:
+                    logger.info("Adding traxel with ID: {}  {}".format(traxel.Id,t))
                     traxelstore.TraxelsPerFrame.setdefault(int(t), {})[int(idx + 1)] = traxel
 
             if len(filtered_labels_at) > 0:
+                # print "filtered_labels_at",t, "...", filtered_labels_at
                 filtered_labels[str(int(t) - time_range[0])] = filtered_labels_at
                 
             logger.debug("at timestep {}, {} traxels passed filter".format(t, count))
 
             if count == 0:
                 empty_frame = True
-                logger.info('Found empty frames')
+                logger.info('Found empty frames for time {}'.format(t))
 
             total_count += count
 
         self.FilteredLabels.setValue(filtered_labels, check_changed=True)
+        print "FilteredLabels",self.FilteredLabels.value
+
 
         return traxelstore
 
