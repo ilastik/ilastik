@@ -1,6 +1,8 @@
 import sys
 import time
 import httplib
+import logging
+
 import requests
 import numpy as np
 
@@ -10,7 +12,11 @@ from volumina.pixelpipeline.asyncabcs import RequestABC, SourceABC
 from volumina.layer import GrayscaleLayer
 from volumina.viewer import Viewer
 
+from lazyflow.utility import Timer
+
 from voxels_nddata_codec import VoxelsNddataCodec
+
+logger = logging.getLogger(__name__)
 
 class VoxelClientRequest(object):
 
@@ -25,9 +31,13 @@ class VoxelClientRequest(object):
     def wait( self ):
         start_str = '_'.join(map(str, self.start))
         stop_str = '_'.join(map(str, self.stop))
-        r = requests.get("http://{hostname}/api/voxels/{dataset_name}/{source_name}".format(**self.__dict__),
-                         params={'extents_min': start_str, 'extents_max': stop_str, 'format': 'raw'},
-                         stream=True)
+        
+        with Timer() as timer:
+            logger.info("{}: Requesting...".format(self.source_name))
+            r = requests.get("http://{hostname}/api/voxels/{dataset_name}/{source_name}".format(**self.__dict__),
+                             params={'extents_min': start_str, 'extents_max': stop_str, 'format': 'raw'},
+                             stream=True)
+        logger.info("{}: ...received in {} seconds".format(self.source_name, timer.seconds()))
 
         r.raise_for_status()
         
@@ -94,6 +104,9 @@ class VoxelClientSource(QObject):
 if __name__ == "__main__":
     from PyQt4.QtGui import QApplication
     
+    logger.setLevel(logging.INFO)
+    logger.addHandler(logging.StreamHandler(sys.stdout))
+    
     DEBUG = False
     if DEBUG:
         print "DEBUGGING with localhost:8000"
@@ -107,7 +120,7 @@ if __name__ == "__main__":
     hostname = args.hostname
 
     app = QApplication([])
-        
+    
     r = requests.get("http://{hostname}/api/list-datasets".format(hostname=hostname))
     if r.status_code != httplib.OK:
         raise RuntimeError("Could not fetch dataset list: {}".format(r.status_code))
