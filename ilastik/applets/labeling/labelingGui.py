@@ -199,6 +199,14 @@ class LabelingGui(LayerViewerGui):
         model = LabelListModel()
         return model
 
+    def _clearLabelFunction(self, row):
+        """
+        excluded from _initLabelUic to enable other clearLabel-Functions in subclasses
+        Subclasses may override this
+        """
+        # This only works if the top-level operator has a 'clearLabel' function.
+        self.topLevelOperatorView.clearLabel( row+1 )
+
     def _initLabelUic(self, drawerUiPath):
         """
         1. define the labelListModel (how the labels shall be displayed in the labelListView)
@@ -232,7 +240,8 @@ class LabelingGui(LayerViewerGui):
                 return
 
             # This only works if the top-level operator has a 'clearLabel' function.
-            self.topLevelOperatorView.clearLabel( row+1 )
+            #self.topLevelOperatorView.clearLabel( row+1 )
+            self._clearLabelFunction(row)
 
         _labelControlUi.labelListView.clearRequested.connect( handleClearRequested )
 

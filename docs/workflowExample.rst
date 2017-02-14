@@ -95,9 +95,13 @@ Our Workflow should inherit from:
 
         .. note::
 
-                Use the OpReorderAxes Operator to have a consitant order in all applet. 
-                Therefore use the dataselection-output as input for the opreorderaxes operator and its
-                output as input for all other applets.
+                Use the OpReorderAxes Operator to have a consistant order in all applets. 
+                A hack can be used in the __init__ therefore, see code below.
+
+
+        .. code::
+
+                self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", "Input Data", forceAxisOrder=['txyzc'])
 
 
 

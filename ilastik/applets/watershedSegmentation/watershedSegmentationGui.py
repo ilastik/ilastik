@@ -22,6 +22,8 @@
 from functools import partial
 #import numpy as np
 from PyQt4.Qt import pyqtSlot, QMessageBox
+from PyQt4.QtGui import QPushButton, QLabel
+
 
 from pixelValueDisplaying import PixelValueDisplaying 
 #from importAndResetLabels import ImportAndResetLabels 
@@ -81,14 +83,38 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             # at first, remove the LabelListModel so if the 
             # loaded list is smaller or empty, there aren't any shown
             self.removeLabelsFromList()
+
+            # message needs to be OK clicked after app continues. 
+            # python thread and qthread failed here, and NonModal didn't help
+            self.showInfoMessage()
+
             print "before resetLabelsToSlot()"
             op.resetLabelsToSlot()
 
             # reset is done, so set this variable to false
             op.InputSeedsChanged.setValue(False)
-        
 
-    
+
+    def showInfoMessage(self):
+        """
+        blocking message, FIXME: do this unblocking
+        BUT: python thread and qthread failed here, and NonModal didn't help
+        """
+        #print Waiting information box
+        msgBox = QMessageBox()
+        msgBox.setText('This may take some time to read in the new seeds\n'\
+                + 'Caution: Read in will continue AFTER clicking on OK')
+                
+        msgBox.addButton(QMessageBox.Ok)
+        #msgBox.setWindowModality(NonModal)
+        #msgBox.addButton(QMessageBox.No)
+        #msgBox.addButton(QPushButton('Yes'), QMessageBox.YesRole)
+        #msgBox.addButton(QPushButton('No'), QMessageBox.NoRole)
+        #msgBox.addButton(QPushButton('Cancel'), QMessageBox.RejectRole)
+
+
+        #msgBox.setModal(False)
+        ret = msgBox.exec_() 
 
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
@@ -202,7 +228,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         """
         import Labels from Slot which overrides the cache
         """
-        from PyQt4.QtGui import QMessageBox
         #decision box with yes or no
         msgBox = QMessageBox()
         msgBox.setText('Are you sure to delete all progress in Corrected Seeds' 

@@ -219,6 +219,22 @@ class WatershedLabelingGui(LabelingGui):
 
         return model
 
+
+    def _clearLabelFunction(self, row):
+        """
+        excluded from _initLabelUic to enable other clearLabel-Functions in subclasses
+        Subclasses may override this
+        """
+        # get the value of the removed label, not just the row
+        listElement =  self._labelControlUi.labelListModel[row]
+        number = listElement.number
+        # remove the value from the cache, but let it remain in the labelList
+        self.topLevelOperatorView.opWSLP.opLabelPipeline.opLabelArray.clearLabel( number )
+
+        #print listElement
+        #print number
+
+
     '''
     def _initLabelUic(self, drawerUiPath):
         _labelControlUi = uic.loadUi(drawerUiPath)

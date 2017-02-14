@@ -40,6 +40,10 @@ Add any new file to the index.rst file into the table of contents.
 
 Troubleshooting:
 =================
+* segmentation fault while compiling
+
+  This may result in conflicting python versions on your pc and the 
+  ilastik miniconda python version
 
 * folder _static does not exist 
   .. code::
@@ -128,6 +132,16 @@ Troubleshooting:
 
 
 * No module vigra found
+
+  OR
+
+  .. code::
+
+        File "/usr/lib/python2.7/site-packages/vigra/__init__.py", line 113, in <module>
+            import vigra.vigranumpycore as vigranumpycore
+        ImportError: libboost_python.so.1.62.0: cannot open shared object file: No such file or directory
+
+
 
   Then vigranumpy is compiled for python3.x which can be found in 
   /usr/lib/vigranumpy/VigranumpyConfig.cmake
