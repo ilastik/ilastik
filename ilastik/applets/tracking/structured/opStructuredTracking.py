@@ -248,7 +248,7 @@ class OpStructuredTracking(OpConservationTracking):
                                                 previousTrackSet = labels[time-1][previous_label]
                                                 intersectionSet = trackSet.intersection(previousTrackSet)
                                                 trackCountIntersection = len(intersectionSet)
-                                            print "trackCountIntersection",trackCountIntersection
+                                            # print "trackCountIntersection",trackCountIntersection
 
                                             if trackCountIntersection > maxObj:
                                                 logger.info("Your track count for transition ( {},{} ) ---> ( {},{} ) is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(previous_label,time-1,label,time,trackCountIntersection,intersectionSet,maxObj))
@@ -266,7 +266,7 @@ class OpStructuredTracking(OpConservationTracking):
                                                 if edge[0][0] == time-1 and edge[0][1] == int(previous_label): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
                                                     foundAllArcs = True
                                                     hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = int(trackCountIntersection)
-                                                    print "[structuredTrackingGui] EDGE: ({},{})--->({},{})".format(time-1, int(previous_label), time,int(label))
+                                                    # print "[structuredTrackingGui] EDGE: ({},{})--->({},{})".format(time-1, int(previous_label), time,int(label))
                                                     break
 
                                             if not foundAllArcs:
@@ -281,7 +281,7 @@ class OpStructuredTracking(OpConservationTracking):
                                         if (time, int(label)) in hypothesesGraph._graph.node.keys():
                                             hypothesesGraph._graph.node[(time, int(label))]['value'] = trackCount
                                             logger.info("[structuredTrackingGui] NODE: {} {}".format(time, int(label)))
-                                            print "[structuredTrackingGui] NODE: {} {} {}".format(time, int(label), int(trackCount))
+                                            # print "[structuredTrackingGui] NODE: {} {} {}".format(time, int(label), int(trackCount))
                                         else:
                                             logger.info("[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label)))
 
