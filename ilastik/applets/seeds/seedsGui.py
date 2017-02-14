@@ -65,6 +65,7 @@ class SeedsGui(LayerViewerGui):
     ###########################################
 
     def __init__(self, parentApplet, topLevelOperatorView, DrawerUiPath=None ):
+        self.parentApplet = parentApplet
         self.topLevelOperatorView = topLevelOperatorView
         op = self.topLevelOperatorView 
         self.__cleanup_fns = []

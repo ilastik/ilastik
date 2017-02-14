@@ -126,6 +126,7 @@ class OpSeeds(Operator):
 
 
     def setupOutputs(self):
+        print "setupOutputs in OpSeeds"
         # set the Watershed Method for the WS Applet
         self._setWatershedMethod()
 
@@ -155,13 +156,14 @@ class OpSeeds(Operator):
         assert slot is self.SeedsOut
         # value:
         # if Generated: then use Generated
-        # if not Generated and Seeds: use Seeds
+        # if not Generated and Seeds: use Seeds (label them if necessary)
         # if not Generated and not Seeds: do nothing
 
         if self.GenerateSeeds.value:
             self.generateSeeds(slot, subindex, roi, result)
         elif self.Seeds.ready():
-            result[:] = self.Seeds(roi.start, roi.stop).wait()
+            self.labelSeedsIfNecessary(slot, subindex, roi, result)
+            #result[:] = self.Seeds(roi.start, roi.stop).wait()
         else:
             result[:] = 0
 
@@ -175,11 +177,76 @@ class OpSeeds(Operator):
     def setInSlot(self, slot, subindex, roi, value):
         pass
 
+    def labelSeedsIfNecessary(self, slot, subindex, roi, result):
+        """
+        Get the roi of the seeds.
+        Convert the seeds to uint8.
+        If a labeling is necessary, 
+        then prepare the seeds (more info in generateSeeds(...))
+        and label the seeds.
+        It takes the zAxis into account. 
+
+        :param slot: a reference to the slot for which data shall be produced
+        :param subindex: I guess, only needed for level 1 or higher slots
+        :param roi: region of interest of the slot, which shall be looked at
+        :param result: reference to the preallocated roi-part of the output slot, 
+            in which the computations shall be written. This result is smart, so that other parts, 
+            that are not needed, needn't to be allocated. 
+        """
+        seeds              = self.Seeds(roi.start, roi.stop).wait()
+        seeds              = seeds.astype(numpy.uint8)
+        
+        labeling = True
+        # if the number of unique values is bigger than 2 (0 and another value), 
+        # then the seeds mustn't be labeled
+        if (2 < len(np.unique(seeds))):
+            labeling = False
+
+
+        # if labeling is not necessary
+        if not labeling:
+            result[...] = seeds
+        else:
+            shape = slot.meta.shape
+            zUsed = not(shape[3] == 1)
+            # remove time axis 
+            seeds              = removeFirstAxis(seeds)
+            # remove channel dimension
+            seeds              = removeLastAxis(seeds)
+
+            # remove z axis
+            if not zUsed:
+                seeds              = removeLastAxis(seeds)
+
+            labeled_seeds = vigra.analysis.labelMultiArrayWithBackground(seeds)
+
+            out = labeled_seeds
+
+            # add time axis
+            out = addFirstAxis(out)
+            # add channel axis
+            out = addLastAxis(out)
+            if not zUsed:
+                out = addLastAxis(out)
+
+            result[...] = out
 
     def generateSeeds(self, slot, subindex, roi, result):
-        #TODO
         """
         used in the execute part of an operator
+        return uint8 seeds, that are computed out of the 
+        Boundaries with the given smoothing method and computing method. 
+        Therefore some axis have to be removed and added,
+        that vigra and ilastik work together.
+        It takes the zAxis into account. 
+
+        :param slot: a reference to the slot for which data shall be produced
+        :param subindex: I guess, only needed for level 1 or higher slots
+        :param roi: region of interest of the slot, which shall be looked at
+        :param result: reference to the preallocated roi-part of the output slot, 
+            in which the computations shall be written. This result is smart, so that other parts, 
+            that are not needed, needn't to be allocated. 
+
         """
         # get boundaries
         boundaries              = self.Boundaries(roi.start, roi.stop).wait()

@@ -108,6 +108,20 @@ Our Workflow should inherit from:
 *  
         .. automethod:: WatershedSegmentationWorkflow.handleAppletStateUpdateRequested
 
+     this handles, whether the applets will be clickable and whether they propagte dirty signals. 
+
+     To make this function executed in an applet, this function call should be done, 
+     so that an ineditable applet becomes usable:
+
+     .. code::
+
+             self.parentApplet.appletStateUpdateRequested.emit()
+
+     In the watershedSegmentationWorkflow, this behaviour is not welcomed for the 
+     seeds and the watershed applet. If it was so, the propagate dirty signal of 
+     any changes wouldn't come further to the watershed applet, and the 
+     reset of the Labels wouldn't happen either. 
+
 
 
 * In conclusion, look for "ataSelection" to get all the important parts, where you have to add something

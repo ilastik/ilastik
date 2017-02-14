@@ -244,20 +244,23 @@ class WatershedSegmentationWorkflow(Workflow):
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
 
+        # Note: do not disable the seeds and the watershedapplet here, 
+        # because otherwise propagate dirty of the seeds won't work
+        # and the resetLabelsToSlot() won't be executed when seeds changed in the watershedSegmentationGui 
 
         # import
         self._shell.setAppletEnabled( self.dataSelectionApplet,\
                 not batch_processing_busy )
         # seeds
         self._shell.setAppletEnabled( self.seedsApplet,\
-                not batch_processing_busy and input_ready )
+                not batch_processing_busy and input_ready)# and opSeeds.Boundaries.ready())
         # watershed
-        #TODO only editable when seedsapplet is finished
         self._shell.setAppletEnabled( self.watershedSegmentationApplet,\
-                not batch_processing_busy and input_ready )#and opSeeds.WSMethodOut.ready())
+                not batch_processing_busy and input_ready)# and opSeeds.WSMethod.ready()
+                #and opSeeds.SeedsOutCached.ready() and opSeeds.SeedsOut.ready())
         # export
         self._shell.setAppletEnabled( self.dataExportApplet,\
-                not batch_processing_busy and input_ready )#and opSeeds.WSMethodOut.ready()) #TODO (add the watershedSegementation here)
+                not batch_processing_busy and input_ready )#and opSeeds.WSMethod.ready()) #TODO (add the watershedSegementation here)
                 #and opWatershedSegmentation.Superpixels.ready())
         # batch processing
         self._shell.setAppletEnabled( self.batchProcessingApplet,\
