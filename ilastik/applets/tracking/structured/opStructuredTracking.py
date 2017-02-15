@@ -486,3 +486,71 @@ class OpStructuredTracking(OpConservationTracking):
             elif type != None:
                 return [type]
 
+    def getLabel(self, time, track, labels):
+        for label in labels[time].keys():
+            if labels[time][label] == set([track]):
+                return label
+        return False
+
+    def getLabelT(self, track, labelsT):
+        for label in labelsT.keys():
+            if labelsT[label] == set([track]):
+                return label
+        return False
+
+    def insertAnnotationsToHypothesesGraph(self, traxelgraph, annotations):#, traxelToUidIndexMap):
+        '''
+        Add solution values to nodes and arcs from annotations.
+        The resulting graph (=model) gets an additional property "value" that represents the number of objects inside a detection/arc
+        Additionally a division indicator is saved in the node property "divisionValue".
+        The link also gets a new attribute: the gap that is covered.
+        E.g. 1, if consecutive timeframes, 2 if link skipping one timeframe.
+        '''
+        traxelToUuidMap, uuidToTraxelMap = traxelgraph.getMappingsBetweenUUIDsAndTraxels()
+
+        # reset all values
+        for n in traxelgraph._graph.nodes_iter():
+            traxelgraph._graph.node[n]['value'] = 0
+            traxelgraph._graph.node[n]['divisionValue'] = False
+
+        for e in traxelgraph._graph.edges_iter():
+            traxelgraph._graph.edge[e[0]][e[1]]['value'] = 0
+            traxelgraph._graph.edge[e[0]][e[1]]['gap'] = 0
+
+        labels = annotations['labels']
+        divisions = annotations['divisions']
+
+        for t in labels.keys():
+            for obj in labels[t]:
+                trackSet = labels[t][obj]
+                if (not -1 in trackSet) and str(obj) in traxelToUuidMap[str(t)].keys():
+                    traxelgraph._graph.node[(t,obj)]['value'] = len(trackSet)
+
+        for t in labels.keys():
+            if t < max(labels.keys()):
+                for source in labels[t].keys():
+                    if (1 not in labels[t][source]) and t+1 in labels.keys():
+                        for dest in labels[t+1].keys():
+                            if (1 not in labels[t+1][dest]):
+                                intersectSet = labels[t][source].intersection(labels[t+1][dest])
+                                if len(intersectSet) > 0:
+                                    assert ((t,source) in traxelgraph._graph.edge.keys() and (t+1,dest) in traxelgraph._graph.edge[(t,source)].keys(),
+                                            "Annotated arc that you are setting 'value' of is NOT in the hypotheses graph. " + \
+                                            "Your two objects have either very dissimilar features or they are spatially distant. " + \
+                                            "Increase maxNearestNeighbors in your project or force the addition of this arc by changing the code here :)" + \
+                                            "source ---- dest "+str(source)+"--->"+str(dest)+"       : "+str(len(intersectSet))+" , "+str(intersectSet))
+
+                                    traxelgraph._graph.edge[(t,source)][(t+1,dest)]['value'] = len(intersectSet)
+                                    traxelgraph._graph.edge[(t,source)][(t+1,dest)]['gap'] = 1 # only single step transitions supported; t+1   -  t   # dest[0] - source[0]#
+
+        for parentTrack in divisions.keys():
+            t = divisions[parentTrack][1]
+            childrenTracks = divisions[parentTrack][0]
+            parent = self.getLabelT(parentTrack,labels[t])
+            for childTrack in childrenTracks:
+                child = self.getLabelT(childTrack,labels[t+1])
+                traxelgraph._graph.edge[(t,parent)][(t+1,child)]['value'] = 1
+                traxelgraph._graph.edge[(t,parent)][(t+1,child)]['gap'] = 1
+            traxelgraph._graph.node[(t,parent)]['divisionValue'] = True
+
+        return traxelgraph
