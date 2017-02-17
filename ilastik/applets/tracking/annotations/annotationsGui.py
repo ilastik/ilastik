@@ -1029,7 +1029,7 @@ class AnnotationsGui(LayerViewerGui):
         else:
             assert False, "cannot reach this"
 
-        self._onSaveAnnotations
+        self._onSaveAnnotations()
 
     def handleEditorToolTip(self, position5d, globalWindowCoordiante):
         oid = self._getObject(self.mainOperator.LabelImage, position5d)
@@ -1070,7 +1070,7 @@ class AnnotationsGui(LayerViewerGui):
         
         self._setDirty(self.mainOperator.Divisions, [])
 
-        self._onSaveAnnotations
+        self._onSaveAnnotations()
 
     def _currentActiveTrackChanged(self):
         self.mainOperator.ActiveTrack.setValue(self._getActiveTrack())
@@ -1130,7 +1130,7 @@ class AnnotationsGui(LayerViewerGui):
         self._setDirty(self.mainOperator.TrackImage, [t])
         self._setDirty(self.mainOperator.UntrackedImage, [t])
 
-        self._onSaveAnnotations
+        self._onSaveAnnotations()
         return True
         
     def _onDelTrackPressed(self):        
@@ -1159,7 +1159,7 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.UntrackedImage, affectedT)
             self._setDirty(self.mainOperator.Labels, affectedT)
 
-        self._onSaveAnnotations
+        self._onSaveAnnotations()
 
     def _addObjectToTrack(self, activeTrack, oid, t):
 
@@ -1343,7 +1343,7 @@ class AnnotationsGui(LayerViewerGui):
         
         self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=(not self.divLock))                      
 
-        self._onSaveAnnotations
+        self._onSaveAnnotations()
 
     def _setStyleSheet(self, widget, qcolor, qType="QComboBox"):
         values = "{r}, {g}, {b}, {a}".format(r = qcolor.red(),
@@ -1402,7 +1402,7 @@ class AnnotationsGui(LayerViewerGui):
             self._drawer.markMisdetection.setText("Mark as False Detection")
             self._enableButtons(exceptButtons=[self._drawer.markMisdetection], enable=True)
         
-        self._onSaveAnnotations
+        self._onSaveAnnotations()
 
     @staticmethod
     def _appendUnique(lst, obj):
