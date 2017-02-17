@@ -901,7 +901,7 @@ class AnnotationsGui(LayerViewerGui):
     
             self._setPosModel(time=self.editor.posModel.time + 1)
 
-        self._onSaveAnnotations
+        self._onSaveAnnotations()
 
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
         crop = self.getCurrentCrop()
