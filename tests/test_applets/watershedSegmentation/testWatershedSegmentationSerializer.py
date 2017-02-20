@@ -47,6 +47,7 @@ class TestWatershedSegmentationSerializer(object):
             # Create an operator to work with and give it some input
             graph = Graph()
             operatorToSave = OpWatershedSegmentation(graph=graph)
+            dataShape = (1,10,100,100,1)
         
             # set some values for the inputs
             operatorToSave.ShowWatershedLayer.setValue( True )
