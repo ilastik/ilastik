@@ -38,7 +38,7 @@ class WsdtApplet( StandardApplet ):
     @property
     def broadcastingSlots(self):
         return [ 'FreezeCache',
-                 'ChannelSelection',
+                 'ChannelSelections',
                  'Pmin',
                  'MinMembraneSize',
                  'MinSegmentSize',
