@@ -1,4 +1,5 @@
 import warnings
+from itertools import imap, izip
 import numpy as np
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -6,7 +7,8 @@ from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.utility import Timer
 
-from ilastik.applets.edgeTraining.opEdgeTraining import OpNaiveSegmentation
+from ilastik.applets.edgeTraining.opEdgeTraining import OpNaiveSegmentation,\
+    OpEdgeProbabilitiesDict
 
 import logging
 logger = logging.getLogger(__name__)
@@ -81,6 +83,7 @@ class OpMulticut(Operator):
     RawData = InputSlot(optional=True) # Used by the GUI for display only
 
     Output = OutputSlot() # Pixelwise output (not RAG, etc.)
+    EdgeLabelDisagreementDict = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpMulticut, self ).__init__(*args, **kwargs)
@@ -91,9 +94,19 @@ class OpMulticut(Operator):
         self.opMulticutAgglomerator.Rag.connect( self.Rag )
         self.opMulticutAgglomerator.EdgeProbabilities.connect( self.EdgeProbabilities )
 
+        self.opNodeLabelsCache = OpValueCache(parent=self)
+        self.opNodeLabelsCache.Input.connect( self.opMulticutAgglomerator.NodeLabels )
+        self.opNodeLabelsCache.name = 'opNodeLabelCache'
+
         self.opRelabel = OpProjectNodeLabeling(parent=self)
         self.opRelabel.Superpixels.connect( self.Superpixels )
-        self.opRelabel.NodeLabels.connect( self.opMulticutAgglomerator.NodeLabels )
+        self.opRelabel.NodeLabels.connect( self.opNodeLabelsCache.Output )
+
+        self.opDisagreement = OpEdgeLabelDisagreementDict(parent=self)
+        self.opDisagreement.Rag.connect( self.Rag )
+        self.opDisagreement.NodeLabels.connect( self.opNodeLabelsCache.Output )
+        self.opDisagreement.EdgeProbabilities.connect( self.EdgeProbabilities )
+        self.EdgeLabelDisagreementDict.connect( self.opDisagreement.EdgeLabelDisagreementDict )
 
         self.opSegmentationCache = OpBlockedArrayCache(parent=self)
         self.opSegmentationCache.fixAtCurrent.connect( self.FreezeCache )
@@ -131,6 +144,59 @@ class OpProjectNodeLabeling(Operator):
         else:
             self.Output.setDirty()
 
+# class OpNodeLabelingToEdgeDecisionsDict(Operator):
+#     Rag = InputSlot()
+#     NodeLabels = InputSlot()
+#     
+#     EdgeDecisionsDict = OutputSlot()
+#     
+#     def setupOutputs(self):
+#         self.EdgeLabelsDict.meta.shape = (1,)
+#         self.EdgeLabelsDict.meta.dtype = object
+# 
+#     def execute(self, slot, subindex, roi, result):
+#         node_labels = self.NodeLabels.value
+#         rag = self.Rag.value
+#         
+#         # 0: edge is "inactive", nodes belong to the same segment
+#         # 1: edge is "active", nodes belong to separate segments
+#         edge_labels = (node_labels[rag.edge_ids[:,0]] != node_labels[rag.edge_ids[:,1]]).view(np.uint8)
+# 
+#         edge_labels_dict = dict(izip(imap(tuple, rag.edge_ids), edge_labels))
+#         result[0] = edge_labels_dict
+# 
+#     def propagateDirty(self, slot, subindex, roi):
+#         self.EdgeLabelsDict.setDirty()
+
+class OpEdgeLabelDisagreementDict(Operator):
+    Rag = InputSlot()
+    NodeLabels = InputSlot()
+    EdgeProbabilities = InputSlot()
+    
+    EdgeLabelDisagreementDict = OutputSlot()
+    
+    def setupOutputs(self):
+        self.EdgeLabelDisagreementDict.meta.shape = (1,)
+        self.EdgeLabelDisagreementDict.meta.dtype = object
+        
+    def execute(self, slot, subindex, roi, result):
+        rag = self.Rag.value
+        edge_ids = rag.edge_ids
+        node_labels = self.NodeLabels.value
+        edge_probabilities = self.EdgeProbabilities.value
+
+        # 0: edge is "inactive", nodes belong to the same segment
+        # 1: edge is "active", nodes belong to separate segments
+        edge_labels_from_nodes = (node_labels[rag.edge_ids[:,0]] != node_labels[rag.edge_ids[:,1]]).view(np.uint8)
+        edge_labels_from_probabilities = edge_probabilities > 0.5
+
+        conflicts = np.where(edge_labels_from_nodes != edge_labels_from_probabilities)
+        conflict_edge_ids = edge_ids[conflicts]
+        conflict_labels = edge_labels_from_nodes[conflicts]
+        result[0] = dict(izip(imap(tuple, conflict_edge_ids), conflict_labels))
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.EdgeLabelDisagreementDict.setDirty()
 
 class OpMulticutAgglomerator(Operator):
     SolverName = InputSlot()

@@ -66,6 +66,7 @@ class MulticutGuiMixin(object):
         self.superpixel_edge_layer = None
         super( MulticutGuiMixin, self ).__init__( parentApplet, topLevelOperatorView )
         self.__init_probability_colortable()
+        self.__init_disagreement_label_colortable()
     
     def _after_init(self):
         pass
@@ -173,6 +174,49 @@ class MulticutGuiMixin(object):
         # touch the layer colortable outside the main thread.
         self.superpixel_edge_layer.pen_table.update(new_pens)
 
+    
+    def __init_disagreement_label_colortable(self):
+        self.disagreement_colortable = [ QColor(0, 255, 255, 255),  # cyan
+                                         QColor(255, 0, 255, 255) ] # magenta
+         
+        self.disagreement_pen_table = []
+        for color in self.disagreement_colortable:
+            pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
+            pen.setColor(color)
+            pen.setWidth(3)
+            self.disagreement_pen_table.append(pen)
+ 
+        op = self.topLevelOperatorView
+        op.EdgeLabelDisagreementDict.notifyDirty( self.__update_disagreement_edges )
+        self.__cleanup_fns.append( partial( op.EdgeLabelDisagreementDict.unregisterDirty, self.__update_disagreement_edges ) )
+
+
+    def __update_disagreement_edges(self, *args):
+        self.__init_disagreement_label_colortable()
+        def _impl():
+            op = self.__topLevelOperatorView
+            disagreement_layer = self.getLayerByName("Multicut Disagreements")
+            if not disagreement_layer:
+                return
+            edge_disagreements = op.EdgeLabelDisagreementDict.value
+            
+            new_pens = {}
+            for id_pair, disagreement_label in edge_disagreements.items():
+                new_pens[id_pair] = self.disagreement_pen_table[disagreement_label]
+            self.__apply_disagreement_edges(new_pens)
+
+        # submit the worklaod in a request and return immediately
+        Request(_impl).submit()
+
+
+    @threadRouted
+    def __apply_disagreement_edges(self, new_pens):
+        # This function is threadRouted because you can't 
+        # touch the layer colortable outside the main thread.
+        disagreement_layer = self.getLayerByName("Multicut Disagreements")
+        if disagreement_layer:
+            disagreement_layer.pen_table.overwrite(new_pens)
+
     @contextmanager
     def set_updating(self):
         assert not self._currently_updating
@@ -232,6 +276,31 @@ class MulticutGuiMixin(object):
         th = threading.Thread(target=updateThread)
         th.start()
 
+
+    def create_multicut_disagreement_layer(self):
+        ActionInfo = ShortcutManager.ActionInfo
+        op = self.__topLevelOperatorView
+        if not op.Output.ready():
+            return None
+
+        # Final segmentation -- Edges
+        default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
+        default_pen.setColor(Qt.transparent)
+        layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels), default_pen )
+        layer.name = "Multicut Disagreements"
+        layer.visible = False # Off by default...
+        layer.opacity = 1.0
+
+        layer.shortcutRegistration = ( "d",
+                                       ActionInfo( "Multicut",
+                                                   "MulticutDisagrementVisibility",
+                                                   "Show/Hide Multicut Disagreement Edges",
+                                                   layer.toggleVisible,
+                                                   self.viewerControlWidget(),
+                                                   layer ) )
+        
+        return layer
+
     def create_multicut_edge_layer(self):
         ActionInfo = ShortcutManager.ActionInfo
         op = self.__topLevelOperatorView
@@ -273,6 +342,10 @@ class MulticutGuiMixin(object):
     def setupLayers(self):
         layers = []
         op = self.__topLevelOperatorView
+
+        mc_disagreement_layer = self.create_multicut_disagreement_layer()
+        if mc_disagreement_layer:
+            layers.append(mc_disagreement_layer)
 
         mc_edge_layer = self.create_multicut_edge_layer()
         if mc_edge_layer:
@@ -322,6 +395,23 @@ class MulticutGuiMixin(object):
             layer.visible = True
             layer.opacity = 1.0
             layers.append(layer)
+
+            raw_layer = layer
+            def toggleTopToBottom():
+                index = self.layerstack.layerIndex( raw_layer )
+                self.layerstack.selectRow( index )
+                if index == 0:
+                    self.layerstack.moveSelectedToBottom()
+                else:
+                    self.layerstack.moveSelectedToTop()
+
+            layer.shortcutRegistration = ( "i", ActionInfo( "Multicut"
+                                                            "Bring Input To Top/Bottom",
+                                                            "Bring Input To Top/Bottom",
+                                                            toggleTopToBottom,
+                                                            self.viewerControlWidget(),
+                                                            raw_layer ) )
+
             del layer
 
         return layers

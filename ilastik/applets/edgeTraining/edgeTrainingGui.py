@@ -411,6 +411,22 @@ class EdgeTrainingGui(LayerViewerGui):
             layer.visible = True
             layer.opacity = 1.0
             layers.append(layer)
+
+            raw_layer = layer
+            def toggleTopToBottom():
+                index = self.layerstack.layerIndex( raw_layer )
+                self.layerstack.selectRow( index )
+                if index == 0:
+                    self.layerstack.moveSelectedToBottom()
+                else:
+                    self.layerstack.moveSelectedToTop()
+
+            layer.shortcutRegistration = ( "i", ActionInfo( "Edge Training Layers",
+                                                            "Bring Input To Top/Bottom",
+                                                            "Bring Input To Top/Bottom",
+                                                            toggleTopToBottom,
+                                                            self.viewerControlWidget(),
+                                                            raw_layer ) )
             del layer
 
         return layers
