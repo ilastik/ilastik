@@ -392,7 +392,7 @@ class FormatValidity(object):
               'ppm': (np.uint8, np.uint16,),
               'pgm': (np.uint8, np.uint16,),
               'pbm': (np.uint8, np.uint16,),  # vigra outputs p[gn]m
-              'npy': (np.uint8, np.uint16, np.uint32, np.uint64,
+              'numpy': (np.uint8, np.uint16, np.uint32, np.uint64,
                       np.int8, np.int16, np.int32, np.int64,
                       np.float32, np.float64,),
               'hdf5': (np.uint8, np.uint16, np.uint32, np.uint64,
@@ -415,7 +415,7 @@ class FormatValidity(object):
             'ppm': (2, 2),
             'pgm': (2, 2),
             'pbm': (2, 2),
-            'npy': (0, 5),
+            'numpy': (0, 5),
             'hdf5': (0, 5),
             'compressed hdf5': (0, 5),
             }
@@ -432,7 +432,7 @@ class FormatValidity(object):
               'ppm': (1, 3,),
               'pgm': (1,),
               'pbm': (1,),  # vigra outputs p[gn]m
-              'npy': (),  # empty means "no restriction on number of channels"
+              'numpy': (),  # empty means "no restriction on number of channels"
               'hdf5': (), # ditto
               'compressed hdf5': (), # ditto
               }

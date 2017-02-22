@@ -86,7 +86,7 @@ class TestOpExportSlot(object):
 
         opExport = OpExportSlot(graph=graph)
         opExport.Input.connect( opPiper.Output )
-        opExport.OutputFormat.setValue( 'npy' )
+        opExport.OutputFormat.setValue( 'numpy' )
         opExport.OutputFilenameFormat.setValue( self._tmpdir + '/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}' )
         opExport.CoordinateOffset.setValue( (10, 20) )
         
