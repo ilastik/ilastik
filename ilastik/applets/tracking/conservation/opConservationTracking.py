@@ -114,7 +114,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Merger resolver plugin manager (contains GMM fit routine)
         self.pluginPaths = [os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')]
         pluginManager = TrackingPluginManager(verbose=False, pluginPaths=self.pluginPaths)
-        self.mergerResolverPlugin = pluginManager.getMergerResolver()       
+        self.mergerResolverPlugin = pluginManager.getMergerResolver()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta)
@@ -546,17 +546,14 @@ class OpConservationTracking(Operator, ExportingOperator):
 
             # Write merger results dictionary
             resolvedMergersDict = self.ResolvedMergers.value
-            
             if resolvedMergersDict:
                 mergerRes = {}
-                
                 for idx in mergersPerTimestep[timestep]:
                     mergerRes[idx] = resolvedMergersDict[int(timestep)][idx]['newIds']
-                    
                 events[timestep]['res'] = mergerRes
-                
-        else:
-            logger.info("Resolved Merger Dictionary not available. Please click on the Track button.")
+
+            else:
+                logger.info("Resolved Merger Dictionary not available. Please click on the Track button.")
                 
         return events
 
