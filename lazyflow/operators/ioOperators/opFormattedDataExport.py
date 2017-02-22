@@ -194,7 +194,13 @@ class OpFormattedDataExport(Operator):
 
         # Use user-provided axis order if specified
         if self.OutputAxisOrder.ready():
-            self._opReorderAxes.AxisOrder.setValue( self.OutputAxisOrder.value )
+            try:
+                self._opReorderAxes.AxisOrder.setValue( self.OutputAxisOrder.value )
+            except KeyError:
+                # FIXME: Why does the above line fail sometimes?
+                warnings.warn("Ignoring invalid axis order setting")
+                axistags = self.Input.meta.axistags
+                self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in axistags ) )
         else:
             axistags = self.Input.meta.axistags
             self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in axistags ) )
