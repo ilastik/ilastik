@@ -116,6 +116,8 @@ class OpConservationTracking(Operator, ExportingOperator):
         pluginManager = TrackingPluginManager(verbose=False, pluginPaths=self.pluginPaths)
         self.mergerResolverPlugin = pluginManager.getMergerResolver()
 
+        self.result = None
+
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta)
 
@@ -477,6 +479,9 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Get events vector (only used when saving old h5 events file)
         events = self._getEventsVector(result, model)
         self.EventsVector.setValue(events, check_changed=False)
+
+        self.result = result
+        return result
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot is self.LabelImage:
