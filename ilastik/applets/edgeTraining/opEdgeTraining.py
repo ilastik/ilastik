@@ -327,7 +327,7 @@ class OpTrainEdgeClassifier(Operator):
 class OpPredictEdgeProbabilities(Operator):
     EdgeClassifier = InputSlot()
     EdgeFeaturesDataFrame = InputSlot()
-    EdgeProbabilities = OutputSlot()
+    EdgeProbabilities = OutputSlot() # A 1D array of probabilities, in same order as EdgeFeaturesDataFrame
     
     def setupOutputs(self):
         self.EdgeProbabilities.meta.shape = (1,)

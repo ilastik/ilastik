@@ -6,6 +6,8 @@ from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.utility import Timer
 
+from ilastik.applets.edgeTraining.opEdgeTraining import OpNaiveSegmentation
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -84,15 +86,18 @@ class OpMulticut(Operator):
         super( OpMulticut, self ).__init__(*args, **kwargs)
 
         self.opMulticutAgglomerator = OpMulticutAgglomerator(parent=self)
-        self.opMulticutAgglomerator.Superpixels.connect( self.Superpixels )
         self.opMulticutAgglomerator.Beta.connect( self.Beta )
         self.opMulticutAgglomerator.SolverName.connect( self.SolverName )
         self.opMulticutAgglomerator.Rag.connect( self.Rag )
         self.opMulticutAgglomerator.EdgeProbabilities.connect( self.EdgeProbabilities )
 
+        self.opRelabel = OpProjectNodeLabeling(parent=self)
+        self.opRelabel.Superpixels.connect( self.Superpixels )
+        self.opRelabel.NodeLabels.connect( self.opMulticutAgglomerator.NodeLabels )
+
         self.opSegmentationCache = OpBlockedArrayCache(parent=self)
         self.opSegmentationCache.fixAtCurrent.connect( self.FreezeCache )
-        self.opSegmentationCache.Input.connect( self.opMulticutAgglomerator.Output )
+        self.opSegmentationCache.Input.connect( self.opRelabel.Output )
         self.Output.connect( self.opSegmentationCache.Output )
 
     def setupOutputs(self):
@@ -104,18 +109,40 @@ class OpMulticut(Operator):
     def propagateDirty(self, slot, subindex, roi):
         pass
 
-class OpMulticutAgglomerator(Operator):
-    SolverName = InputSlot()
-    Beta = InputSlot()
 
-    Rag = InputSlot()
-    Superpixels = InputSlot() # Just needed for slot metadata
-    EdgeProbabilities = InputSlot()
+class OpProjectNodeLabeling(Operator):
+    Superpixels = InputSlot()
+    NodeLabels = InputSlot() # 1D array, mapping superpixels to segment labels
+    
     Output = OutputSlot()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Superpixels.meta)
         self.Output.meta.display_mode = 'random-colortable'
+    
+    def execute(self, slot, subindex, roi, result):
+        mapping_index_array = self.NodeLabels.value
+        self.Superpixels(roi.start, roi.stop).writeInto(result).wait()
+        result[:] = mapping_index_array[result]
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot is self.Superpixels:
+            self.Output.setDirty(roi.start, roi.stop)
+        else:
+            self.Output.setDirty()
+
+
+class OpMulticutAgglomerator(Operator):
+    SolverName = InputSlot()
+    Beta = InputSlot()
+
+    Rag = InputSlot()
+    EdgeProbabilities = InputSlot()
+    NodeLabels = OutputSlot() # 1D array, mapping superpixels to segment labels
+
+    def setupOutputs(self):
+        self.NodeLabels.meta.shape = (1,)
+        self.NodeLabels.meta.dtype = object
 
     def execute(self, slot, subindex, roi, result):
         edge_probabilities = self.EdgeProbabilities.value
@@ -124,16 +151,16 @@ class OpMulticutAgglomerator(Operator):
         solver_name = self.SolverName.value
 
         with Timer() as timer:
-            agglomerated_labels = self.agglomerate_with_multicut(rag, edge_probabilities, beta, solver_name)
+            node_labeling = self.agglomerate_with_multicut(rag, edge_probabilities, beta, solver_name)
         logger.info("'{}' Multicut took {} seconds".format( solver_name, timer.seconds() ))
 
-        result[:] = agglomerated_labels[...,None]
-
         # FIXME: Is it okay to produce 0-based supervoxels?
-        #result[:] += 1 # RAG labels are 0-based, but we want 1-based
+        #node_labeling[:] += 1 # RAG labels are 0-based, but we want 1-based
+
+        result[0] = node_labeling
 
     def propagateDirty(self, slot, subindex, roi):
-        self.Output.setDirty()
+        self.NodeLabels.setDirty()
 
     @classmethod
     def agglomerate_with_multicut(cls, rag, edge_probabilities, beta, solver_name):
@@ -147,7 +174,7 @@ class OpMulticutAgglomerator(Operator):
 
         solver_name: The multicut solver used. Format: library_solver (e.g. opengm_Exact, nifty_Exact)
 
-        Returns: A label image of the same shape as rag.label_img, type uint32
+        Returns: An index array [0,1,...,N] indicating the new labels for the N nodes of the RAG.
         """
         #
         # Check parameters
@@ -177,12 +204,7 @@ class OpMulticutAgglomerator(Operator):
         else:
             raise RuntimeError("Unknown solver library: '{}'".format(solver_library))
 
-        #
-        # Project solution onto supervoxels, return segmentation image
-        #
-        agglomerated_labels = mapping_index_array[rag.label_img]
-        assert agglomerated_labels.shape == rag.label_img.shape
-        return agglomerated_labels
+        return mapping_index_array
 
 def compute_edge_weights( edge_ids, edge_probabilities, beta ):
     """
