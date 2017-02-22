@@ -20,7 +20,7 @@
 #                 http://ilastik.org/license/
 ###############################################################################
 import os
-
+import errno
 
 class PathComponents(object):
     """
@@ -302,3 +302,15 @@ def getPathVariants(originalPath, workingDirectory):
         absPath = os.path.normpath(os.path.join(workingDirectory, relPath))
 
     return (absPath.replace("\\","/"), relPath and relPath.replace("\\","/"))
+
+def mkdir_p(path):
+    """
+    Like the bash command 'mkdir -p'
+    """
+    try:
+        os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
