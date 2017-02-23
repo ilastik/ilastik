@@ -112,6 +112,7 @@ class WsdtGui(LayerViewerGui):
                 configure_update_handlers( action.toggled, op.ChannelSelections )
         populate_channel_menu()
         op.Input.notifyMetaChanged( populate_channel_menu )
+        self.__cleanup_fns.append( partial( op.Input.unregisterMetaChanged, populate_channel_menu ) )
         drawer_layout.addLayout( control_layout( "Input Channel", channel_button ) )
         self.channel_button = channel_button
 
