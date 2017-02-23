@@ -111,11 +111,24 @@ class MulticutGuiMixin(object):
         drawer_layout.addLayout( control_layout( "Solver", solver_name_combo ) )
         self.solver_name_combo = solver_name_combo
 
+        button_layout = QHBoxLayout()
+        
+        # Live Multicut Button
+        live_multicut_button = QPushButton(text="Live Multicut",
+                                           checkable=True,
+                                           icon=QIcon(ilastikIcons.Play),
+                                           clicked=self._handle_live_multicut_clicked)
+        button_layout.addWidget(live_multicut_button)
+        self.live_multicut_button = live_multicut_button
+        
         # Update Button
-        update_button = QPushButton(text="Update Multicut",
+        update_button = QPushButton(text="Update Now",
                                     icon=QIcon(ilastikIcons.Play),
-                                    clicked=self.onUpdateMulticutButton)
-        drawer_layout.addWidget(update_button)
+                                    clicked=self._handle_mulicut_update_clicked)
+        button_layout.addWidget(update_button)
+        self.update_button = update_button
+        
+        drawer_layout.addLayout(button_layout)
 
         # Layout
         drawer_layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
@@ -230,6 +243,8 @@ class MulticutGuiMixin(object):
             return False
         with self.set_updating():
             op = self.__topLevelOperatorView
+            self.live_multicut_button.setChecked( not op.FreezeCache.value )
+            self.update_button.setEnabled( op.FreezeCache.value )
             self.beta_box.setValue( op.Beta.value )
             
             solver_name = op.SolverName.value
@@ -252,12 +267,14 @@ class MulticutGuiMixin(object):
             op.Beta.setValue( self.beta_box.value() )
             op.SolverName.setValue( str(self.solver_name_combo.currentText()) )
 
-    def onUpdateMulticutButton(self):
+    def _handle_mulicut_update_clicked(self):
         def updateThread():
             """
             Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
             """
             self.topLevelOperatorView.FreezeCache.setValue(False)
+            self.update_button.setEnabled(False)
+            self.live_multicut_button.setEnabled(False)
             
             # This is hacky, but for now it's the only way to do it.
             # We need to make sure the rendering thread has actually seen that the cache
@@ -271,12 +288,18 @@ class MulticutGuiMixin(object):
                 if imgView.isVisible():
                     imgView.scene().joinRenderingAllTiles()
             self.topLevelOperatorView.FreezeCache.setValue(True)
+            self.update_button.setEnabled(True)
+            self.live_multicut_button.setEnabled(True)
 
         self.getLayerByName("Multicut Edges").visible = True
         #self.getLayerByName("Multicut Segmentation").visible = True
         th = threading.Thread(target=updateThread)
         th.start()
 
+    def _handle_live_multicut_clicked(self, checked):
+        self.update_button.setEnabled(not checked)
+        self.topLevelOperatorView.FreezeCache.setValue(not checked)
+        self.getLayerByName("Multicut Edges").visible = True
 
     def create_multicut_disagreement_layer(self):
         ActionInfo = ShortcutManager.ActionInfo
