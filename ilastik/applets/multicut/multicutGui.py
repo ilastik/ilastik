@@ -64,6 +64,7 @@ class MulticutGuiMixin(object):
         self.__cleanup_fns = []
         self.__topLevelOperatorView = topLevelOperatorView
         self.superpixel_edge_layer = None
+        self.disagreement_layer = None
         super( MulticutGuiMixin, self ).__init__( parentApplet, topLevelOperatorView )
         self.__init_probability_colortable()
         self.__init_disagreement_label_colortable()
@@ -176,8 +177,8 @@ class MulticutGuiMixin(object):
 
     
     def __init_disagreement_label_colortable(self):
-        self.disagreement_colortable = [ QColor(0, 255, 255, 255),  # cyan
-                                         QColor(255, 0, 255, 255) ] # magenta
+        self.disagreement_colortable = [ QColor(255, 0, 255, 255),  # magenta
+                                         QColor(0, 255, 255, 255) ] # cyan
          
         self.disagreement_pen_table = []
         for color in self.disagreement_colortable:
@@ -187,6 +188,8 @@ class MulticutGuiMixin(object):
             self.disagreement_pen_table.append(pen)
  
         op = self.topLevelOperatorView
+        op.EdgeLabelDisagreementDict.notifyReady( self.__update_disagreement_edges )
+        self.__cleanup_fns.append( partial( op.EdgeLabelDisagreementDict.unregisterReady, self.__update_disagreement_edges ) )
         op.EdgeLabelDisagreementDict.notifyDirty( self.__update_disagreement_edges )
         self.__cleanup_fns.append( partial( op.EdgeLabelDisagreementDict.unregisterDirty, self.__update_disagreement_edges ) )
 
@@ -195,11 +198,10 @@ class MulticutGuiMixin(object):
         self.__init_disagreement_label_colortable()
         def _impl():
             op = self.__topLevelOperatorView
-            disagreement_layer = self.getLayerByName("Multicut Disagreements")
-            if not disagreement_layer:
+            if not self.disagreement_layer:
                 return
-            edge_disagreements = op.EdgeLabelDisagreementDict.value
             
+            edge_disagreements = op.EdgeLabelDisagreementDict.value            
             new_pens = {}
             for id_pair, disagreement_label in edge_disagreements.items():
                 new_pens[id_pair] = self.disagreement_pen_table[disagreement_label]
@@ -213,9 +215,8 @@ class MulticutGuiMixin(object):
     def __apply_disagreement_edges(self, new_pens):
         # This function is threadRouted because you can't 
         # touch the layer colortable outside the main thread.
-        disagreement_layer = self.getLayerByName("Multicut Disagreements")
-        if disagreement_layer:
-            disagreement_layer.pen_table.overwrite(new_pens)
+        if self.disagreement_layer:
+            self.disagreement_layer.pen_table.overwrite(new_pens)
 
     @contextmanager
     def set_updating(self):
@@ -290,6 +291,8 @@ class MulticutGuiMixin(object):
         layer.name = "Multicut Disagreements"
         layer.visible = False # Off by default...
         layer.opacity = 1.0
+        self.disagreement_layer = layer
+        self.__update_disagreement_edges() # Initialize
 
         layer.shortcutRegistration = ( "d",
                                        ActionInfo( "Multicut",

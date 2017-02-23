@@ -95,6 +95,7 @@ class OpMulticut(Operator):
         self.opMulticutAgglomerator.EdgeProbabilities.connect( self.EdgeProbabilities )
 
         self.opNodeLabelsCache = OpValueCache(parent=self)
+        self.opNodeLabelsCache.fixAtCurrent.connect( self.FreezeCache )
         self.opNodeLabelsCache.Input.connect( self.opMulticutAgglomerator.NodeLabels )
         self.opNodeLabelsCache.name = 'opNodeLabelCache'
 
@@ -180,9 +181,14 @@ class OpEdgeLabelDisagreementDict(Operator):
         self.EdgeLabelDisagreementDict.meta.dtype = object
         
     def execute(self, slot, subindex, roi, result):
+        node_labels = self.NodeLabels.value
+        if node_labels is None:
+            # This can happen when the cache doesn't have data yet.
+            result[0] = {}
+            return
+        
         rag = self.Rag.value
         edge_ids = rag.edge_ids
-        node_labels = self.NodeLabels.value
         edge_probabilities = self.EdgeProbabilities.value
 
         # 0: edge is "inactive", nodes belong to the same segment
