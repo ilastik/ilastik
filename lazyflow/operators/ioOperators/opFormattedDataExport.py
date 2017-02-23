@@ -214,6 +214,10 @@ class OpFormattedDataExport(Operator):
 
         # Obtain values for possible name fields
         known_keys = { 'roi' : list(self._opSubRegion.Roi.value) }
+        roi = numpy.array(self._opSubRegion.Roi.value)
+        for key, (start, stop) in zip( self.Input.meta.getAxisKeys(), roi.transpose() ):
+            known_keys[key + '_start'] = start
+            known_keys[key + '_stop'] = stop
 
         # Blank the internal path while we update the external path
         #  to avoid invalid intermediate states of ExportPath
