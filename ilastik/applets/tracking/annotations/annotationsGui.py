@@ -484,6 +484,7 @@ class AnnotationsGui(LayerViewerGui):
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
 
     def _onSaveAnnotations(self):
+        print "in on SAVE ANNOTATIONS"
         self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         for name in self.topLevelOperatorView.Crops.value.keys():
             crop = self.topLevelOperatorView.Crops.value[name]
@@ -552,36 +553,37 @@ class AnnotationsGui(LayerViewerGui):
                 self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
 
             for time in self.topLevelOperatorView.labels.keys():
-                for label in self.topLevelOperatorView.labels[time].keys():
-                    lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
-                    upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
+                if crop["time"][0] <= time <= crop["time"][1]:
+                    for label in self.topLevelOperatorView.labels[time].keys():
+                        lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
+                        upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
 
-                    addAnnotation = False
-                    if len(lower) == 2:
-                        if  crop["time"][0] <= time <= crop["time"][1] and \
-                            crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
-                            addAnnotation = True
-                    else:
-                        if  crop["time"][0] <= time <= crop["time"][1] and \
-                            crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
-                            crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
-                            addAnnotation = True
+                        addAnnotation = False
+                        if len(lower) == 2:
+                            if  crop["time"][0] <= time <= crop["time"][1] and \
+                                crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
+                                addAnnotation = True
+                        else:
+                            if  crop["time"][0] <= time <= crop["time"][1] and \
+                                crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
+                                crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
+                                addAnnotation = True
 
-                    if addAnnotation:
-                        if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
-                            self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
-                        self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
-                    else:
-                        annotations = self.topLevelOperatorView.Annotations.value
-                        if time in annotations[name]["labels"].keys() and \
-                                label in annotations[name]["labels"][time].keys():
-                            del annotations[name]["labels"][time][label]
-                        if time in annotations[name]["labels"].keys() and \
-                                annotations[name]["labels"][time] == {}:
-                            del annotations[name]["labels"][time]
-                        self.topLevelOperatorView.Annotations.setValue(annotations)
+                        if addAnnotation:
+                            if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
+                                self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
+                            self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
+                        else:
+                            annotations = self.topLevelOperatorView.Annotations.value
+                            if time in annotations[name]["labels"].keys() and \
+                                    label in annotations[name]["labels"][time].keys():
+                                del annotations[name]["labels"][time][label]
+                            if time in annotations[name]["labels"].keys() and \
+                                    annotations[name]["labels"][time] == {}:
+                                del annotations[name]["labels"][time]
+                            self.topLevelOperatorView.Annotations.setValue(annotations)
 
         for name in self.topLevelOperatorView.Annotations.value.keys():
             if self.topLevelOperatorView.Annotations.value[name]["divisions"] == {} and \
