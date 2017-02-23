@@ -343,12 +343,23 @@ class OpPixelFeaturesPresmoothed(Operator):
             # There is no natural blockshape for spatial dimensions.
             if k in tagged_blockshape:
                 tagged_blockshape[k] = 0
-        input_blockshape = self.Input.meta.ideal_blockshape
-        if input_blockshape is None:
-            input_blockshape = (0,) * len( self.Input.meta.shape )
         output_blockshape = tagged_blockshape.values()
-        final_blockshape = numpy.maximum( input_blockshape, output_blockshape )
-        return tuple( final_blockshape )
+
+        ## NOTE:
+        ##   Previously, we would pass along the input's ideal_blockshape
+        ##   untouched for spatial dimensions, via the commented-out lines below.
+        ##   But that causes major trouble for cases where the input blockshape
+        ##   might be large in some dimensions, like TIFF (where the blockshape is a full slice),
+        ##   or for blockwise caches with large blocks.
+        ##   The cost of feature computation (and the cost of halos in the feature computation)
+        ##   is much larger than file I/O overhead, so we prefer to aim for isotropic blocks instead. 
+        ## 
+        #input_blockshape = self.Input.meta.ideal_blockshape
+        #if input_blockshape is None:
+        #    input_blockshape = (0,) * len( self.Input.meta.shape )
+        #output_blockshape = numpy.maximum( input_blockshape, output_blockshape )
+        
+        return tuple( output_blockshape )
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.Input:
