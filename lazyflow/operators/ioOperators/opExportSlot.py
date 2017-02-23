@@ -29,7 +29,7 @@ import h5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape
-from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents
+from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents, mkdir_p
 from lazyflow.operators.ioOperators import OpH5WriterBigDataset, OpNpyWriter, OpExport2DImage, OpStackWriter, \
                                            OpExportMultipageTiff, OpExportMultipageTiffSequence, OpExportToArray
 
@@ -230,6 +230,7 @@ class OpExportSlot(Operator):
         except KeyError:
             raise Exception( "Unknown export format: {}".format( output_format ) )
         else:
+            mkdir_p( PathComponents(self.ExportPath.value).externalDirectory )
             export_func()
     
     def _export_hdf5(self, compress=False):
