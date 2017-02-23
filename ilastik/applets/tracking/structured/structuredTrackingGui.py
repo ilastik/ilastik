@@ -146,8 +146,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             checkboxAssertHandler(self._drawer.opticalBox, False)
             checkboxAssertHandler(self._drawer.mergerResolutionBox, True)
 
-            self._drawer.maxDistBox.hide()
-            self._drawer.label_2.hide()
             self._drawer.label_5.hide()
             self._drawer.divThreshBox.hide()
             self._drawer.label_25.hide()

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>256</width>
-    <height>1309</height>
+    <width>615</width>
+    <height>1963</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -552,15 +552,8 @@
      </property>
     </widget>
    </item>
-   <item row="12" column="2">
-    <widget class="QSpinBox" name="maxNearestNeighborsSpinBox">
-     <property name="minimum">
-      <number>1</number>
-     </property>
-    </widget>
-   </item>
    <item row="13" column="0" colspan="2">
-    <widget class="QLabel" name="label_2">
+    <widget class="QLabel" name="maxDistLabel">
      <property name="text">
       <string>Max. Distance</string>
      </property>
@@ -580,45 +573,6 @@
     <widget class="QLabel" name="label_5">
      <property name="text">
       <string>Division Threshold</string>
-     </property>
-    </widget>
-   </item>
-   <item row="14" column="2">
-    <widget class="QDoubleSpinBox" name="divThreshBox">
-     <property name="maximum">
-      <double>1.000000000000000</double>
-     </property>
-     <property name="singleStep">
-      <double>0.050000000000000</double>
-     </property>
-     <property name="value">
-      <double>0.100000000000000</double>
-     </property>
-    </widget>
-   </item>
-   <item row="15" column="0" colspan="3">
-    <widget class="QLabel" name="label_3">
-     <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify how many objects are maximally contained in one connected component. For instance, if all objects are segmented without any occlusions (or merging), choose 1. If maximally 2 objects are touching in the segmentation, choose 2... This number has to be consistent with the number of classes chosen in the object count classification.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="text">
-      <string>Max. Object per Merger</string>
-     </property>
-    </widget>
-   </item>
-   <item row="15" column="3">
-    <widget class="QSpinBox" name="maxObjectsBox">
-     <property name="readOnly">
-      <bool>false</bool>
-     </property>
-     <property name="minimum">
-      <number>0</number>
-     </property>
-     <property name="maximum">
-      <number>7</number>
-     </property>
-     <property name="value">
-      <number>0</number>
      </property>
     </widget>
    </item>
@@ -999,6 +953,52 @@
       </widget>
      </item>
     </layout>
+   </item>
+   <item row="12" column="2" colspan="2">
+    <widget class="QSpinBox" name="maxNearestNeighborsSpinBox">
+     <property name="minimum">
+      <number>1</number>
+     </property>
+    </widget>
+   </item>
+   <item row="14" column="2" colspan="2">
+    <widget class="QDoubleSpinBox" name="divThreshBox">
+     <property name="maximum">
+      <double>1.000000000000000</double>
+     </property>
+     <property name="singleStep">
+      <double>0.050000000000000</double>
+     </property>
+     <property name="value">
+      <double>0.100000000000000</double>
+     </property>
+    </widget>
+   </item>
+   <item row="15" column="0" colspan="2">
+    <widget class="QLabel" name="label_3">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify how many objects are maximally contained in one connected component. For instance, if all objects are segmented without any occlusions (or merging), choose 1. If maximally 2 objects are touching in the segmentation, choose 2... This number has to be consistent with the number of classes chosen in the object count classification.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="text">
+      <string>Max. Object per Merger</string>
+     </property>
+    </widget>
+   </item>
+   <item row="15" column="2" colspan="2">
+    <widget class="QSpinBox" name="maxObjectsBox">
+     <property name="readOnly">
+      <bool>false</bool>
+     </property>
+     <property name="minimum">
+      <number>0</number>
+     </property>
+     <property name="maximum">
+      <number>7</number>
+     </property>
+     <property name="value">
+      <number>0</number>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>
