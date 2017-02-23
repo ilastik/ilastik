@@ -174,13 +174,6 @@ class OpStructuredTracking(OpConservationTracking):
                 raise DatasetConstraintError('Structured Learning', 'Can not track frames with 0 objects, abort.')
 
             hypothesesGraph.insertEnergies()
-            # trackingGraph = hypothesesGraph.toTrackingGraph()
-            # import pprint
-            # pprint.pprint(trackingGraph.model)
-
-            maxDist = 200
-            sizeDependent = False
-            divThreshold = float(0.5)
 
             logger.info("Structured Learning: Adding Training Annotations to Hypotheses Graph")
 
@@ -263,7 +256,6 @@ class OpStructuredTracking(OpConservationTracking):
                                                 if edge[0][0] == time-1 and edge[0][1] == int(previous_label): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
                                                     foundAllArcs = True
                                                     hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = int(trackCountIntersection)
-                                                    # print "[structuredTrackingGui] EDGE: ({},{})--->({},{})".format(time-1, int(previous_label), time,int(label))
                                                     break
                                             if not foundAllArcs:
                                                 logger.info("[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS {} {}".format(time-1, int(previous_label)))
@@ -498,7 +490,7 @@ class OpStructuredTracking(OpConservationTracking):
                 return label
         return False
 
-    def insertAnnotationsToHypothesesGraph(self, traxelgraph, annotations):#, traxelToUidIndexMap):
+    def insertAnnotationsToHypothesesGraph(self, traxelgraph, annotations,misdetectionLabel=-1):
         '''
         Add solution values to nodes and arcs from annotations.
         The resulting graph (=model) gets an additional property "value" that represents the number of objects inside a detection/arc
@@ -515,7 +507,7 @@ class OpStructuredTracking(OpConservationTracking):
 
         for e in traxelgraph._graph.edges_iter():
             traxelgraph._graph.edge[e[0]][e[1]]['value'] = 0
-            traxelgraph._graph.edge[e[0]][e[1]]['gap'] = 0
+            traxelgraph._graph.edge[e[0]][e[1]]['gap'] = 1 # only single step transitions supported in annotations
 
         labels = annotations['labels']
         divisions = annotations['divisions']
@@ -529,19 +521,18 @@ class OpStructuredTracking(OpConservationTracking):
         for t in labels.keys():
             if t < max(labels.keys()):
                 for source in labels[t].keys():
-                    if (1 not in labels[t][source]) and t+1 in labels.keys():
+                    if (misdetectionLabel not in labels[t][source]) and t+1 in labels.keys():
                         for dest in labels[t+1].keys():
-                            if (1 not in labels[t+1][dest]):
+                            if (misdetectionLabel not in labels[t+1][dest]):
                                 intersectSet = labels[t][source].intersection(labels[t+1][dest])
-                                if len(intersectSet) > 0:
-                                    assert ((t,source) in traxelgraph._graph.edge.keys() and (t+1,dest) in traxelgraph._graph.edge[(t,source)].keys(),
-                                            "Annotated arc that you are setting 'value' of is NOT in the hypotheses graph. " + \
-                                            "Your two objects have either very dissimilar features or they are spatially distant. " + \
-                                            "Increase maxNearestNeighbors in your project or force the addition of this arc by changing the code here :)" + \
-                                            "source ---- dest "+str(source)+"--->"+str(dest)+"       : "+str(len(intersectSet))+" , "+str(intersectSet))
-
-                                    traxelgraph._graph.edge[(t,source)][(t+1,dest)]['value'] = len(intersectSet)
-                                    traxelgraph._graph.edge[(t,source)][(t+1,dest)]['gap'] = 1 # only single step transitions supported; t+1   -  t   # dest[0] - source[0]#
+                                lenIntersectSet = len(intersectSet)
+                                assert ((t,source) in traxelgraph._graph.edge.keys() and (t+1,dest) in traxelgraph._graph.edge[(t,source)].keys(),
+                                        "Annotated arc that you are setting 'value' of is NOT in the hypotheses graph. " + \
+                                        "Your two objects have either very dissimilar features or they are spatially distant. " + \
+                                        "Increase maxNearestNeighbors in your project or force the addition of this arc by changing the code here :)" + \
+                                        "source ---- dest "+str(source)+"--->"+str(dest)+"       : "+str(lenIntersectSet)+" , "+str(intersectSet))
+                                if lenIntersectSet > 0:
+                                    traxelgraph._graph.edge[(t,source)][(t+1,dest)]['value'] = lenIntersectSet
 
         for parentTrack in divisions.keys():
             t = divisions[parentTrack][1]
