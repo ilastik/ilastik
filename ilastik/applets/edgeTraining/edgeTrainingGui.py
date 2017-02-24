@@ -81,6 +81,13 @@ class EdgeTrainingGui(LayerViewerGui):
         self.configure_gui_from_operator()
 
     def createDrawerControls(self):
+        op = self.topLevelOperatorView
+
+        def configure_update_handlers( qt_signal, op_slot ):
+            qt_signal.connect( self.configure_operator_from_gui )
+            op_slot.notifyDirty( self.configure_gui_from_operator )
+            self.__cleanup_fns.append( partial( op_slot.unregisterDirty, self.configure_gui_from_operator ) )
+
         # Controls
         feature_selection_button = QPushButton(text="Select Features",
                                                icon=QIcon(ilastikIcons.AddSel),
@@ -96,8 +103,9 @@ class EdgeTrainingGui(LayerViewerGui):
                                                clicked=self._handle_clear_labels_clicked)
         self.live_update_button = QPushButton(text="Live Predict",
                                               checkable=True,
-                                              icon=QIcon(ilastikIcons.Play),
-                                              toggled=self._handle_live_update_clicked)
+                                              icon=QIcon(ilastikIcons.Play))
+        configure_update_handlers( self.live_update_button.toggled, op.FreezeCache )
+        
         # Layout
         label_layout = QHBoxLayout()
         label_layout.addWidget(self.clear_labels_button)
@@ -277,8 +285,8 @@ class EdgeTrainingGui(LayerViewerGui):
         if self._currently_updating:
             return False
         with self.set_updating():
-            # Currently, there's nothing to do here, but that will change.
             op = self.topLevelOperatorView
+            op.FreezeClassifier.setValue(not self.live_update_button.isChecked())
 
     def create_prefetch_menu(self, layer_name):
         def prefetch_layer(axis='z'):

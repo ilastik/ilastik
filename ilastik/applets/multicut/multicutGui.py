@@ -116,8 +116,15 @@ class MulticutGuiMixin(object):
         # Live Multicut Button
         live_multicut_button = QPushButton(text="Live Multicut",
                                            checkable=True,
-                                           icon=QIcon(ilastikIcons.Play),
-                                           clicked=self._handle_live_multicut_clicked)
+                                           icon=QIcon(ilastikIcons.Play))
+        configure_update_handlers( live_multicut_button.toggled, op.FreezeCache )
+        
+        # Extra: Auto-show the multicut edges if necessary.
+        def auto_show_multicut_layer(checked):
+            if checked:
+                self.getLayerByName("Multicut Edges").visible = True            
+        live_multicut_button.toggled.connect( auto_show_multicut_layer )
+        
         button_layout.addWidget(live_multicut_button)
         self.live_multicut_button = live_multicut_button
         
@@ -243,10 +250,10 @@ class MulticutGuiMixin(object):
             return False
         with self.set_updating():
             op = self.__topLevelOperatorView
-            self.live_multicut_button.setChecked( not op.FreezeCache.value )
             self.update_button.setEnabled( op.FreezeCache.value )
+            self.live_multicut_button.setChecked( not op.FreezeCache.value )
             self.beta_box.setValue( op.Beta.value )
-            
+
             solver_name = op.SolverName.value
             try:
                 solver_index = AVAILABLE_SOLVER_NAMES.index( solver_name )
@@ -266,40 +273,41 @@ class MulticutGuiMixin(object):
             op = self.__topLevelOperatorView
             op.Beta.setValue( self.beta_box.value() )
             op.SolverName.setValue( str(self.solver_name_combo.currentText()) )
+            op.FreezeCache.setValue(not self.live_multicut_button.isChecked())
+
+        # The GUI may need to respond to some changes in the operator outputs
+        # (e.g. the FreezeCache setting).
+        self.configure_gui_from_operator()
 
     def _handle_mulicut_update_clicked(self):
         def updateThread():
             """
             Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
             """
-            self.topLevelOperatorView.FreezeCache.setValue(False)
-            self.update_button.setEnabled(False)
-            self.live_multicut_button.setEnabled(False)
-            
-            # This is hacky, but for now it's the only way to do it.
-            # We need to make sure the rendering thread has actually seen that the cache
-            # has been updated before we ask it to wait for all views to be 100% rendered.
-            # If we don't wait, it might complete too soon (with the old data).
-            ndim = len(self.topLevelOperatorView.Output.meta.shape)
-            self.topLevelOperatorView.Output((0,)*ndim, (1,)*ndim).wait()
-
-            # Wait for the image to be rendered into all three image views
-            for imgView in self.editor.imageViews:
-                if imgView.isVisible():
-                    imgView.scene().joinRenderingAllTiles()
-            self.topLevelOperatorView.FreezeCache.setValue(True)
-            self.update_button.setEnabled(True)
-            self.live_multicut_button.setEnabled(True)
+            with self.set_updating():
+                self.topLevelOperatorView.FreezeCache.setValue(False)
+                self.update_button.setEnabled(False)
+                self.live_multicut_button.setEnabled(False)
+                
+                # This is hacky, but for now it's the only way to do it.
+                # We need to make sure the rendering thread has actually seen that the cache
+                # has been updated before we ask it to wait for all views to be 100% rendered.
+                # If we don't wait, it might complete too soon (with the old data).
+                ndim = len(self.topLevelOperatorView.Output.meta.shape)
+                self.topLevelOperatorView.Output((0,)*ndim, (1,)*ndim).wait()
+    
+                # Wait for the image to be rendered into all three image views
+                for imgView in self.editor.imageViews:
+                    if imgView.isVisible():
+                        imgView.scene().joinRenderingAllTiles()
+                self.topLevelOperatorView.FreezeCache.setValue(True)
+                self.update_button.setEnabled(True)
+                self.live_multicut_button.setEnabled(True)
 
         self.getLayerByName("Multicut Edges").visible = True
         #self.getLayerByName("Multicut Segmentation").visible = True
         th = threading.Thread(target=updateThread)
         th.start()
-
-    def _handle_live_multicut_clicked(self, checked):
-        self.update_button.setEnabled(not checked)
-        self.topLevelOperatorView.FreezeCache.setValue(not checked)
-        self.getLayerByName("Multicut Edges").visible = True
 
     def create_multicut_disagreement_layer(self):
         ActionInfo = ShortcutManager.ActionInfo
