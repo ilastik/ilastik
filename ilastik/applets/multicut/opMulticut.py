@@ -217,10 +217,14 @@ class OpMulticutAgglomerator(Operator):
         self.NodeLabels.meta.dtype = object
 
     def execute(self, slot, subindex, roi, result):
-        edge_probabilities = self.EdgeProbabilities.value
         rag = self.Rag.value
         beta = self.Beta.value
         solver_name = self.SolverName.value
+        edge_probabilities = self.EdgeProbabilities.value
+        if edge_probabilities is None:
+            # No probabilities cached yet. Merge everything
+            result[0] = np.zeros((rag.max_sp+1,), dtype=np.uint32)
+            return
 
         with Timer() as timer:
             node_labeling = self.agglomerate_with_multicut(rag, edge_probabilities, beta, solver_name)
