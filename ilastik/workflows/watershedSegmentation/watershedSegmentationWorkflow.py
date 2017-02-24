@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2017, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -68,7 +68,6 @@ class WatershedSegmentationWorkflow(Workflow):
         # -- DataSelection applet
         #
 
-        #TODO add comment to docu for quick-fix of reorder axes
         #self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", "Input Data")
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", "Input Data", forceAxisOrder=['txyzc'])
 

@@ -116,11 +116,6 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
 #         logger.warn( "Failed to import nanshe workflow. Check dependencies: " + str(e) )
 
 
-try:
-    import workflowExample
-    WORKFLOW_CLASSES += [workflowExample.workflowExampleWorkflow.WorkflowExampleWorkflow]
-except ImportError as e:
-    logger.warn("Failed to import 'workflowExample' workflow; check dependencies: " + str(e))
 
 
 try:
@@ -128,6 +123,13 @@ try:
     WORKFLOW_CLASSES += [watershedSegmentation.watershedSegmentationWorkflow.WatershedSegmentationWorkflow]
 except ImportError as e:
     logger.warn("Failed to import 'watershedSegmentation' workflow; check dependencies: " + str(e))
+
+try:
+    import pixelObjectWatershed
+    WORKFLOW_CLASSES += [pixelObjectWatershed.pixelObjectWatershedWorkflow.PixelObjectWatershedWorkflow]
+except ImportError as e:
+    logger.warn("Failed to import 'pixelObjectWatershed' workflow; check dependencies: " + str(e))
+
 
 
 #channel selection
@@ -138,3 +140,9 @@ except ImportError as e:
     logger.warn("Failed to import 'test' workflow; check dependencies: " + str(e))
 
 
+# workflow example
+try:
+    import workflowExample
+    WORKFLOW_CLASSES += [workflowExample.workflowExampleWorkflow.WorkflowExampleWorkflow]
+except ImportError as e:
+    logger.warn("Failed to import 'workflowExample' workflow; check dependencies: " + str(e))
