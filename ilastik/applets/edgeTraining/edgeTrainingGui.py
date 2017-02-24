@@ -85,8 +85,8 @@ class EdgeTrainingGui(LayerViewerGui):
 
         def configure_update_handlers( qt_signal, op_slot ):
             qt_signal.connect( self.configure_operator_from_gui )
-            op_slot.notifyDirty( self.configure_gui_from_operator )
-            self.__cleanup_fns.append( partial( op_slot.unregisterDirty, self.configure_gui_from_operator ) )
+            cleanup_fn = op_slot.notifyDirty( self.configure_gui_from_operator, defer=True )
+            self.__cleanup_fns.append( cleanup_fn )
 
         # Controls
         feature_selection_button = QPushButton(text="Select Features",
@@ -146,7 +146,8 @@ class EdgeTrainingGui(LayerViewerGui):
         self._drawer = self.createDrawerControls()
 
         op = self.topLevelOperatorView
-        op.GroundtruthSegmentation.notifyReady( self.configure_gui_from_operator )
+        cleanup_fn = op.GroundtruthSegmentation.notifyReady( self.configure_gui_from_operator, defer=True )
+        self.__cleanup_fns.append( cleanup_fn )
 
     def _open_feature_selection_dlg(self):
         rag = self.topLevelOperatorView.Rag.value
@@ -177,8 +178,8 @@ class EdgeTrainingGui(LayerViewerGui):
 
         # When the edge labels are dirty, update the edge label layer pens
         op = self.topLevelOperatorView
-        op.EdgeLabelsDict.notifyDirty( self.update_labeled_edges )
-        self.__cleanup_fns.append( partial( op.EdgeLabelsDict.unregisterDirty, self.update_labeled_edges ) )        
+        cleanup_fn = op.EdgeLabelsDict.notifyDirty( self.update_labeled_edges, defer=True )
+        self.__cleanup_fns.append( cleanup_fn )        
 
     @threadRouted
     def update_labeled_edges(self, *args):
@@ -237,8 +238,8 @@ class EdgeTrainingGui(LayerViewerGui):
 
         # When the edge probabilities are dirty, update the probability edge layer pens
         op = self.topLevelOperatorView
-        op.EdgeProbabilitiesDict.notifyDirty( self.update_probability_edges )
-        self.__cleanup_fns.append( partial( op.EdgeProbabilitiesDict.unregisterDirty, self.update_probability_edges ) )
+        cleanup_fn = op.EdgeProbabilitiesDict.notifyDirty( self.update_probability_edges, defer=True )
+        self.__cleanup_fns.append( cleanup_fn )
 
     def update_probability_edges(self, *args):
         def _impl():
