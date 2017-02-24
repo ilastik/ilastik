@@ -25,7 +25,7 @@ import logging
 import collections
 import itertools
 import threading
-import functools
+from functools import partial, wraps
 import warnings
 
 #SciPy
@@ -102,7 +102,7 @@ def is_setup_fn(func):
     making graph setup changes by incrementing a counter for 
     each nested setup function call. See graph.py for details.
     """
-    @functools.wraps(func)
+    @wraps(func)
     def call_in_setup_context(self, *args, **kwargs):
         if not self.graph:
             return func(self, *args, **kwargs)
@@ -238,17 +238,44 @@ class Slot(object):
         # debug output and diagramming purposes.
         self._global_slot_id = Slot._global_counter.next()
 
+
     ###########################
     #  A p i    M e t h o d s #
     ###########################
+    def _notifyGeneric(self, sig, function, **kwargs):
+        """
+        Subscribe the given callback function (with optional kwargs) to the given signal.
+        
+        Special feature:
+            If kwargs['defer'] is True, then we'll defer executing the
+            callback until after the graph is completed setup.
+            
+            In other words, when the signal is fired, the callback isn't executed immediately.
+            Instead, it's queued to the Graph's call_when_setup_finished signal.
+            This is useful when you have a GUI callback that you want to execute after the
+            graph setup operation is totally finished.
+        
+        Returns:
+            A callable that will unsubscribe your function from the signal.
+        """
+        if 'defer' in kwargs and kwargs['defer']:
+            del kwargs['defer']
+
+            def queue_callback(*args):
+                self.graph.call_when_setup_finished( partial(function, *args, **kwargs) )
+            sig.subscribe( queue_callback )
+            return partial(sig.unsubscribe, queue_callback)
+        else:
+            sig.subscribe(function, **kwargs)
+            return partial(sig.unsubscribe, function)
+    
     def notifyDirty(self, function, **kwargs):
         """
         calls the corresponding function when the slot gets dirty
         first argument of the function is the slot, second argument the roi
         the keyword arguments follow
         """
-        self._sig_dirty.subscribe(function, **kwargs)
-
+        return self._notifyGeneric(self._sig_dirty, function, **kwargs)
 
     def notifyMetaChanged(self, function, **kwargs):
         """calls the corresponding function when the slot meta
@@ -258,15 +285,14 @@ class Slot(object):
         the keyword arguments follow
 
         """
-
-        self._sig_changed.subscribe(function, **kwargs)
+        return self._notifyGeneric(self._sig_changed, function, **kwargs)
 
     def notifyValueChanged(self, function, **kwargs):
         """Used by slots with cached values to notify when the cache
         has changed, even if the output is not dirty.
 
         """
-        self._sig_value_changed.subscribe(function, **kwargs)
+        return self._notifyGeneric(self._sig_value_changed, function, **kwargs)
 
     def notifyReady(self, function, **kwargs):
         """Calls the corresponding function when the slot is "ready",
@@ -278,13 +304,13 @@ class Slot(object):
         the keyword arguments follow
 
         """
-        self._sig_ready.subscribe(function, **kwargs)
+        return self._notifyGeneric(self._sig_ready, function, **kwargs)
 
     def notifyUnready(self, function, **kwargs):
         """
         Subscribe to "unready" callbacks.  See notifyReady for details.
         """
-        self._sig_unready.subscribe(function, **kwargs)
+        return self._notifyGeneric(self._sig_unready, function, **kwargs)
 
     def _notifyConnect(self, function, **kwargs):
         """
@@ -292,7 +318,7 @@ class Slot(object):
         first argument of the function is the slot
         the keyword arguments follow
         """
-        self._sig_connect.subscribe(function, **kwargs)
+        return self._notifyGeneric(self._sig_connect, function, **kwargs)
 
     def notifyDisconnect(self, function, **kwargs):
         """
@@ -300,7 +326,7 @@ class Slot(object):
         first argument of the function is the slot
         the keyword arguments follow
         """
-        self._sig_disconnect.subscribe(function, **kwargs)
+        return self._notifyGeneric(self._sig_disconnect, function, **kwargs)
 
     def notifyResize(self, function, **kwargs):
         """
@@ -310,7 +336,7 @@ class Slot(object):
         argument is the new size
         the keyword arguments follow
         """
-        self._sig_resize.subscribe(function, **kwargs)
+        return self._notifyGeneric(self._sig_resize, function, **kwargs)
 
     def notifyResized(self, function, **kwargs):
         """
@@ -320,7 +346,7 @@ class Slot(object):
         argument is the new size
         the keyword arguments follow
         """
-        self._sig_resized.subscribe(function, **kwargs)
+        return self._notifyGeneric(self._sig_resized, function, **kwargs)
 
     def notifyRemove(self, function, **kwargs):
         """
@@ -330,7 +356,7 @@ class Slot(object):
         argument is the new size
         the keyword arguments follow
         """
-        self._sig_remove.subscribe(function, **kwargs)
+        return self._notifyGeneric(self._sig_remove, function, **kwargs)
 
     def notifyRemoved(self, function, **kwargs):
         """
@@ -340,7 +366,7 @@ class Slot(object):
         argument is the new size
         the keyword arguments follow
         """
-        self._sig_removed.subscribe(function, **kwargs)
+        return self._notifyGeneric(self._sig_removed, function, **kwargs)
 
     def notifyInsert(self, function, **kwargs):
         """
@@ -350,7 +376,7 @@ class Slot(object):
         argument is the new size
         the keyword arguments follow
         """
-        self._sig_insert.subscribe(function, **kwargs)
+        return self._notifyGeneric(self._sig_insert, function, **kwargs)
 
     def notifyInserted(self, function, **kwargs):
         """
@@ -360,7 +386,7 @@ class Slot(object):
         argument is the new size
         the keyword arguments follow
         """
-        self._sig_inserted.subscribe(function, **kwargs)
+        return self._notifyGeneric(self._sig_inserted, function, **kwargs)
 
     def unregisterDirty(self, function):
         """
