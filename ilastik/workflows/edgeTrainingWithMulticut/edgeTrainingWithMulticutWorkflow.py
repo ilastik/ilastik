@@ -302,22 +302,29 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         Assigned to DataExportApplet.prepare_for_entire_export
         (See above.)
         """
-        # While exporting results, the segmentation cache should not be "frozen"
-        op = self.edgeTrainingWithMulticutApplet.topLevelOperator
-        self.freeze_classifier_status = op.FreezeClassifier.value
-        self.freeze_cache_status = op.FreezeCache.value
-        op.FreezeClassifier.setValue(False)
-        op.FreezeCache.setValue(False)
+        # While exporting results, the caches should not be "frozen"
+        opWsdt = self.wsdtApplet.topLevelOperator
+        self.wsdt_frozen = opWsdt.FreezeCache.value
+        opWsdt.FreezeCache.setValue(False)
+
+        opTraining = self.edgeTrainingWithMulticutApplet.topLevelOperator
+        self.freeze_classifier_status = opTraining.FreezeClassifier.value
+        self.freeze_cache_status = opTraining.FreezeCache.value
+        opTraining.FreezeClassifier.setValue(False)
+        opTraining.FreezeCache.setValue(False)
 
     def post_process_entire_export(self):
         """
         Assigned to DataExportApplet.post_process_entire_export
         (See above.)
         """
-        # After export is finished, re-freeze the segmentation cache.
-        op = self.edgeTrainingWithMulticutApplet.topLevelOperator
-        op.FreezeClassifier.setValue(self.freeze_classifier_status)
-        op.FreezeCache.setValue(self.freeze_cache_status)
+        # After export is finished, re-freeze the segmentation caches.
+        opWsdt = self.wsdtApplet.topLevelOperator
+        opWsdt.FreezeCache.setValue(self.wsdt_frozen)
+        
+        opTraining = self.edgeTrainingWithMulticutApplet.topLevelOperator
+        opTraining.FreezeClassifier.setValue(self.freeze_classifier_status)
+        opTraining.FreezeCache.setValue(self.freeze_cache_status)
 
 
     def handleAppletStateUpdateRequested(self):
