@@ -69,11 +69,11 @@ class ImageDepthError(Exception):
     pass
 
 class MmfParser(object):
-    # Initialize information to seek frames
-    _frameSeekInfo = []
-    
     # Constructor
     def __init__(self, fileName) :
+        # Initialize information to seek frames
+        self._frameSeekInfo = []
+        
         self._frameCount = None
         self._bkgImgSeekPos = None
         
