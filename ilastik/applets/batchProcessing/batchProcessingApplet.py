@@ -86,10 +86,15 @@ class BatchProcessingApplet( Applet ):
                          If False, return a list of the filenames we produced to.
         """
         results = []
+
         
         self.progressSignal.emit(0)
         try:
             assert isinstance(role_data_dict, OrderedDict)
+            allowed_role_names = self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
+            for role in role_data_dict.keys():
+                assert role in allowed_role_names, "'{}' is not a valid data role name for this workflow."
+
             template_infos = self._get_template_dataset_infos(input_axes)
             # Invert dict from [role][batch_index] -> path to a list-of-tuples, indexed by batch_index: 
             # [ (role-1-path, role-2-path, ...),
