@@ -33,14 +33,20 @@ parser.add_argument('--playback_speed', help='Speed to play the playback script.
 parser.add_argument('--exit_on_failure', help='Immediately call exit(1) if an unhandled exception occurs.', action='store_true', default=False)
 parser.add_argument('--exit_on_success', help='Quit the app when the playback is complete.', action='store_true', default=False)
 
-def main( parsed_args, workflow_cmdline_args=[] ):
+def main( parsed_args, workflow_cmdline_args=[], init_logging=True ):
+    """
+    init_logging: Skip logging config initialization by setting this to False.
+                  (Useful when opening multiple projects in a Python script.)
+    """
     this_path = os.path.dirname(__file__)
     ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
     _update_debug_mode( parsed_args )
     
     # If necessary, redirect stdout BEFORE logging is initialized
     _redirect_output( parsed_args )
-    _init_logging( parsed_args ) # Initialize logging before anything else
+
+    if init_logging:
+        _init_logging( parsed_args ) # Initialize logging before anything else
 
     _init_configfile( parsed_args )
     
