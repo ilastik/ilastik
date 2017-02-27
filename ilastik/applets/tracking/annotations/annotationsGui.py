@@ -159,7 +159,8 @@ class AnnotationsGui(LayerViewerGui):
                     for trackID in trackIDs:
                         if trackID in divisions.keys():
                             divFlag = True
-                if not divFlag and ul > 0 and self.divFeatures[t][ul][1]>self.divisionProbabilityCutOff:
+                if not divFlag and ul > 0 and t in range(len(self.divFeatures)) and ul in range(len(self.divFeatures[t])) and \
+                                self.divFeatures[t][ul][1]>self.divisionProbabilityCutOff:
                     divisionCandidates.append([t,ul,self.divFeatures[t][ul][1]])
 
         if divisionCandidates == []:
@@ -239,6 +240,8 @@ class AnnotationsGui(LayerViewerGui):
                     self._gotoObject(ul, t, keepXYZ=False)
                     return ul, t
 
+        self._informationMessage("No more UNLABELED objects found!")
+
         return None, None
 
     def goToNextUnlabeledObjectFrame(self):
@@ -256,6 +259,8 @@ class AnnotationsGui(LayerViewerGui):
             if ul > 0 and not ul in labels[t].keys():
                 self._gotoObject(ul, t, keepXYZ=False)
                 return ul, t
+
+        self._informationMessage("No more UNLABELED objects found in the current time frame!")
 
         return None, None
 
@@ -484,7 +489,6 @@ class AnnotationsGui(LayerViewerGui):
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
 
     def _onSaveAnnotations(self):
-        print "in on SAVE ANNOTATIONS"
         self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         for name in self.topLevelOperatorView.Crops.value.keys():
             crop = self.topLevelOperatorView.Crops.value[name]
@@ -598,7 +602,7 @@ class AnnotationsGui(LayerViewerGui):
             for label in self.topLevelOperatorView.labels[time].keys():
                 labelFound = False
                 for name in self.topLevelOperatorView.Annotations.value.keys():
-                    if label in self.topLevelOperatorView.Annotations.value[name]["labels"][time].keys():
+                    if time in self.topLevelOperatorView.Annotations.value[name]["labels"].keys() and label in self.topLevelOperatorView.Annotations.value[name]["labels"][time].keys():
                         labelFound = True
                 if not labelFound:
                     del self.topLevelOperatorView.labels[time][label]
