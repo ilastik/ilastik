@@ -435,6 +435,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         trackingGraph = hypothesesGraph.toTrackingGraph()
         trackingGraph.convexifyCosts()
         model = trackingGraph.model
+        model['settings']['allowLengthOneTracks'] = False
 
         detWeight = 10.0 # FIXME: Should we store this weight in the parameters slot?
         weights = trackingGraph.weightsListToDict([transWeight, detWeight, divWeight, appearance_cost, disappearance_cost])
