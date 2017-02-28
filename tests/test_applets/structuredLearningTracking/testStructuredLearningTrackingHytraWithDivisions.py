@@ -97,6 +97,7 @@ class TestStructuredLearningTrackingHeadless(object):
         
         args = ' --project='+self.PROJECT_FILE
         args += ' --headless'
+        args += ' --testFullAnnotations'
         args += ' --export_source=Tracking-Result'
         args += ' --raw_data '+self.RAW_DATA_FILE
         args += ' --prediction_maps '+self.PREDICTION_FILE
@@ -106,6 +107,8 @@ class TestStructuredLearningTrackingHeadless(object):
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
         self.ilastik_startup.main()
+
+        print self
 
         # Examine the HDF5 output for basic attributes
         with h5py.File(self.EXPECTED_TRACKING_RESULT_FILE, 'r') as f:
