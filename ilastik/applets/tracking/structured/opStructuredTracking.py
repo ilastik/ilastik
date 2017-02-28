@@ -333,6 +333,7 @@ class OpStructuredTracking(OpConservationTracking):
         # trackingGraph.convexifyCosts()
         model = trackingGraph.model
         model['settings']['optimizerEpGap'] = 0.005
+        model['settings']['allowLengthOneTracks'] = False
         gt = prunedGraph.getSolutionDictionary()
 
         initialWeights = trackingGraph.weightsListToDict([transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight])
