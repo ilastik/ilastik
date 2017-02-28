@@ -445,7 +445,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                         #graph_building_parameter_changed = True,
                         #trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
                         max_nearest_neighbors = self._maxNearestNeighbors,
-                        solverName="ILP"
+                        solverName="ILP" # "Flow-based"
                         )
             except Exception:
                 ex_type, ex, tb = sys.exc_info()
