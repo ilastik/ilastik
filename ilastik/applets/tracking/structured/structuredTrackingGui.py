@@ -9,8 +9,6 @@ import math
 import random
 import h5py
 
-import pgmlink
-
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility.exportingOperator import ExportingGui
@@ -107,7 +105,14 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.appearanceBox.setValue(parameters['appearanceCost'])
         if 'disappearanceCost' in parameters.keys():
             self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
-        
+
+        solverName = self.topLevelOperatorView._solver
+        if solverName == "Flow-based":
+            self._drawer.StructuredLearningButton.setEnabled(False)
+            self._drawer.RandomButton.setEnabled(False)
+            self._drawer.OnesButton.setEnabled(False)
+            self._drawer.ZerosButton.setEnabled(False)
+
         return self._drawer
 
     def initAppletDrawerUi(self):
@@ -407,7 +412,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             withArmaCoordinates = True
             appearanceCost = self._drawer.appearanceBox.value()
             disappearanceCost = self._drawer.disappearanceBox.value()
-    
+
+            solverName = self.topLevelOperatorView._solver
+
             ndim=3
             if (to_z - from_z == 0):
                 ndim=2
@@ -445,7 +452,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                         #graph_building_parameter_changed = True,
                         #trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
                         max_nearest_neighbors = self._maxNearestNeighbors,
-                        solverName="ILP" # "Flow-based"
+                        solverName=solverName
                         )
             except Exception:
                 ex_type, ex, tb = sys.exc_info()

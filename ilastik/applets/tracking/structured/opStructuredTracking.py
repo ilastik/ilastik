@@ -10,16 +10,25 @@ from ilastik.applets.tracking.conservation.opConservationTracking import OpConse
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
+import logging
+logger = logging.getLogger(__name__)
+
+SOLVER = None
 try:
     import multiHypoTracking_with_cplex as mht
+    SOLVER = "CPLEX"
 except ImportError:
     try:
         import multiHypoTracking_with_gurobi as mht
+        SOLVER = "GUROBI"
     except ImportError:
-        raise ImportError("Could not find any ILP solver")
-
-import logging
-logger = logging.getLogger(__name__)
+        try:
+            import dpct
+            SOLVER = "DPCT"
+            logger.warning("Could not find any ILP solver (CPLEX or GUROBI). Tracking will use flow-based solver (DPCT). " + \
+                           "Learning for tracking including crop selection and training for tracking will be disabled!")
+        except ImportError:
+            raise ImportError("Could not find any solver.")
 
 class OpStructuredTracking(OpConservationTracking):
     Crops = InputSlot()
@@ -63,6 +72,13 @@ class OpStructuredTracking(OpConservationTracking):
         self.Crops.notifyReady(bind(self._updateCropsFromOperator) )
         self.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
         self.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
+
+        if SOLVER=="CPLEX" or SOLVER=="GUROBI":
+            self._solver="ILP"
+        elif SOLVER=="DPCT":
+            self._solver="Flow-based"
+        else:
+            self._solver=None
 
     def _updateLabelsFromOperator(self):
         self.labels = self.Labels.value
