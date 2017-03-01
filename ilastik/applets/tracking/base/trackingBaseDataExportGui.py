@@ -19,13 +19,21 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QColor, QPushButton, QVBoxLayout
+from PyQt4.QtGui import QColor, QPushButton, QVBoxLayout, QFrame, QComboBox, QLabel, QFileDialog, QMessageBox
 from ilastik.utility.exportingOperator import ExportingGui
-import volumina.colortables as colortables
-
-from volumina.api import LazyflowSource, ColortableLayer
+from ilastik.plugins import pluginManager
+from ilastik.config import cfg as ilastik_config
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 
+import volumina.colortables as colortables
+from volumina.api import LazyflowSource, ColortableLayer
+from volumina.utility import encode_from_qstring
+
+import os
+import logging
+
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger('TRACE.' + __name__)
 
 class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
     """
@@ -70,6 +78,73 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         super(TrackingBaseDataExportGui, self)._initAppletDrawerUic()
         btn = QPushButton("Configure Table Export for Tracking+Features", clicked=self.configure_table_export)
         self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
+
+        try:
+            import hytra
+            # export plugins only available with hytra backend
+            exportPlugins = pluginManager.getPluginsOfCategory('TrackingExportFormats')
+            availableExportPlugins = [pluginInfo.name for pluginInfo in exportPlugins]
+            
+            if len(availableExportPlugins) > 0:
+                self._selectedPlugin = availableExportPlugins[0]
+                
+                # Add line above:
+                line = QFrame()
+                line.setFrameShape(QFrame.HLine)
+                line.setFrameShadow(QFrame.Sunken)
+
+                label = QLabel("Alternatively, export to ...")
+                
+                pluginDropdown = QComboBox()
+                pluginDropdown.addItems(availableExportPlugins)
+                pluginDropdown.currentIndexChanged[str].connect(self._onSelectedExportPluginChanged)
+                
+                exportBtn = QPushButton("Export with selected Plugin", clicked=self._onExportPluginButtonPressed)
+                
+                # add new widgets to drawer
+                self.drawer.exportSettingsGroupBox.layout().addWidget(line)
+                self.drawer.exportSettingsGroupBox.layout().addWidget(label)
+                self.drawer.exportSettingsGroupBox.layout().addWidget(pluginDropdown)
+                self.drawer.exportSettingsGroupBox.layout().addWidget(exportBtn)
+            else:
+                self._selectedPlugin = None
+        except ImportError:
+            pass
+
+    def _onSelectedExportPluginChanged(self, pluginText):
+        logger.error("Selected plugin changed to " + pluginText)
+        self._selectedPlugin = pluginText
+
+    def _onExportPluginButtonPressed(self):
+        '''
+        Export the tracking solution in the format selected in exportTypeComboBox.
+        '''
+        logger.error(self._selectedPlugin)
+        selectedExportType = self._selectedPlugin
+        exportPluginInfo = pluginManager.getPluginByName(selectedExportType, category="TrackingExportFormats")
+        if exportPluginInfo is None:
+            logger.error("Could not find selected plugin %s" % exportPluginInfo)
+        else:
+            exportPlugin = exportPluginInfo.plugin_object
+            logger.info("Exporting tracking result using %s" % selectedExportType)
+
+            options = QFileDialog.Options()
+            if ilastik_config.getboolean("ilastik", "debug"):
+                options |= QFileDialog.DontUseNativeDialog
+
+            if exportPlugin.exportsToFile:
+                filename = encode_from_qstring(QFileDialog.getSaveFileName(self, 'Select export location', os.path.expanduser("~"), options=options))
+            else:
+                filename = encode_from_qstring(QFileDialog.getExistingDirectory(self, 'Select Directory', os.path.expanduser("~"), options=options))
+
+            if filename is None or len(str(filename)) == 0:
+                logger.info( "cancelled." )
+                return
+            
+            self.get_exporting_operator().exportPlugin(filename, exportPlugin)
+
+            QMessageBox.information(self, "Export done", "The files have been successfully exported in the requested format." )
+
 
     def set_default_export_filename(self, filename):
         self._default_export_filename = filename
