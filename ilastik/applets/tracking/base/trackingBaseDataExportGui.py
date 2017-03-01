@@ -112,7 +112,6 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             pass
 
     def _onSelectedExportPluginChanged(self, pluginText):
-        logger.error("Selected plugin changed to " + pluginText)
         self._selectedPlugin = pluginText
 
     def _onExportPluginButtonPressed(self):
