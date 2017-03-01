@@ -35,9 +35,7 @@ includes = [\
                 'h5py', 'h5py.defs', 'h5py.utils', 'h5py._proxy', 'h5py._errors', 'h5py.h5ac', 'h5py._objects',
                 'PyQt4.pyqtconfig', 'PyQt4.uic','PyQt4.QtCore','PyQt4.QtGui',
                 'site', 'os',
-                'vtk',
                 'rank_filter', 'nanshe',
-                'vtk.vtkCommonPythonSIP',
                 'sklearn', 'sklearn.utils',
                 'skimage'
              ]
@@ -85,7 +83,7 @@ class exclude_from_zipped_packages(object):
 # Exclude various packages from the site-packages.zip file,
 #  since they don't import correctly if they're zipped.
 import py2app.recipes
-for module in ['ilastik', 'volumina', 'lazyflow', 'iiboost', 'vtk', 'sklearn', 'skimage', 'jsonschema']:
+for module in ['ilastik', 'volumina', 'lazyflow', 'iiboost', 'sklearn', 'skimage', 'jsonschema']:
     setattr( py2app.recipes, module, exclude_from_zipped_packages(module) )
 
 # Include nanshe if it's available.
