@@ -168,6 +168,7 @@ class LayerViewerGui(QWidget):
                 self._handleLayerInsertion(slot, i)
  
         self.layerstack = LayerStackModel()
+        self.saved_layer_visibilities = None
 
         self._initCentralUic()
         self._initEditor(crosshair=crosshair)
@@ -516,6 +517,21 @@ class LayerViewerGui(QWidget):
             return matches[0]
         assert False, "Found more than one matching layer with name {}".format( name )
 
+    def toggle_show_raw(self, raw_layer_name="Raw Data"):
+        """
+        Convenience function.
+        Hide all layers except for the raw data layer specified by the given layer name.
+        The next time this function is called, restore previous layer visibility states.
+        """
+        if self.saved_layer_visibilities:
+            for layer in self.layerstack:
+                layer.visible = self.saved_layer_visibilities[layer.name]
+            self.saved_layer_visibilities = None
+        else:
+            self.saved_layer_visibilities = {layer.name : layer.visible for layer in self.layerstack}
+            for layer in self.layerstack:
+                layer.visible = False
+            self.getLayerByName(raw_layer_name).visible = True
 
     @threadRouted
     def setViewerPos(self, pos, setTime=False, setChannel=False):

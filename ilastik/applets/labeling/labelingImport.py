@@ -299,17 +299,14 @@ class LabelImportOptionsDlg(QDialog):
 
     @staticmethod
     def _defaultLabelMapping(labelInfo):
-        # Note: Default mapping prefers mapping
-        label_mapping = collections.defaultdict(int)
-
         max_labels, read_labels_info = labelInfo
         labels, _label_counts = read_labels_info
-        label_idx = max_labels;
+        label_idx = max_labels
 
-        for i in reversed(labels):
-            label_mapping[i] = label_idx if i > 0 else 0
-            label_idx = max(0, label_idx - 1)
+        if 0 not in labels:
+            labels = [0] + list(labels)
 
+        label_mapping = collections.defaultdict(int, zip(labels, range(max_labels)))
         return label_mapping
 
 
