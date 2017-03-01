@@ -47,7 +47,6 @@ class OpConservationTracking(Operator, ExportingOperator):
     ObjectFeaturesWithDivFeatures = InputSlot(optional=True, stype=Opaque, rtype=List)
     ComputedFeatureNames = InputSlot(rtype=List, stype=Opaque)
     ComputedFeatureNamesWithDivFeatures = InputSlot(optional=True, rtype=List, stype=Opaque)
-    EventsVector = InputSlot(value={})
     FilteredLabels = InputSlot(value={})
     RawImage = InputSlot()
     Parameters = InputSlot(value={})
@@ -470,15 +469,9 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.MergerOutput.setDirty()
         self.RelabeledImage.setDirty()
 
-        # Get events vector (only used when saving old h5 events file)
-        events = self._getEventsVector(result, model)
-        self.EventsVector.setValue(events, check_changed=False)
-
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
-        elif inputSlot is self.EventsVector:
-            pass
         elif inputSlot is self.HypothesesGraph:
             pass
         elif inputSlot is self.ResolvedMergers:
@@ -489,72 +482,6 @@ class OpConservationTracking(Operator, ExportingOperator):
                     and self.NumLabels.ready() \
                     and self.NumLabels.value > 1:
                 self.parent.parent.trackingApplet._gui.currentGui()._drawer.maxObjectsBox.setValue(self.NumLabels.value-1)
-
-    def _getEventsVector(self, result, model):        
-        traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(model)
-        timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
-        
-        mergers, detections, links, divisions = getMergersDetectionsLinksDivisions(result, uuidToTraxelMap)
-        
-        # Group by timestep for event creation
-        mergersPerTimestep = getMergersPerTimestep(mergers, timesteps)
-        linksPerTimestep = getLinksPerTimestep(links, timesteps)
-        detectionsPerTimestep = getDetectionsPerTimestep(detections, timesteps)
-        divisionsPerTimestep = getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps)
-
-        # Populate events dictionary
-        events = {}
-        
-        # Save mergers, links, detections, and divisions
-        for timestep in traxelIdPerTimestepToUniqueIdMap.keys():
-            # We need to add an extra column with zeros in order to be backward compatible with the older version
-            def stackExtraColumnWithZeros(array):
-                return np.hstack((array, np.zeros((array.shape[0], 1), dtype=array.dtype)))
-            
-            dis = []
-            app = []
-            div = []
-            mov = []
-            mer = []
-            mul = []
-    
-            dis = np.asarray(dis)
-            app = np.asarray(app)
-            div = np.asarray([[k, v[0], v[1]] for k,v in divisionsPerTimestep[timestep].iteritems()])
-            mov = np.asarray(linksPerTimestep[timestep])
-            mer = np.asarray([[k,v] for k,v in mergersPerTimestep[timestep].iteritems()])
-            mul = np.asarray(mul)
-            
-            events[timestep] = {}
-         
-            if len(dis) > 0:
-                events[timestep]['dis'] = dis
-            if len(app) > 0:
-                events[timestep]['app'] = app
-            if len(div) > 0:
-                events[timestep]['div'] = div
-            if len(mov) > 0:
-                events[timestep]['mov'] = mov
-            if len(mer) > 0:
-                events[timestep]['mer'] = mer
-            if len(mul) > 0:
-                events[timestep]['mul'] = mul
-
-            # Write merger results dictionary
-            resolvedMergersDict = self.ResolvedMergers.value
-            
-            if resolvedMergersDict:
-                mergerRes = {}
-                
-                for idx in mergersPerTimestep[timestep]:
-                    mergerRes[idx] = resolvedMergersDict[int(timestep)][idx]['newIds']
-                    
-                events[timestep]['res'] = mergerRes
-                
-        else:
-            logger.info("Resolved Merger Dictionary not available. Please click on the Track button.")
-                
-        return events
 
     def _labelMergers(self, volume, time, offset):
         """
