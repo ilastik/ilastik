@@ -331,7 +331,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self.cropSelectionApplet.topLevelOperator[lane_index].Crops.setValue(
             self.trackingApplet.topLevelOperator[loaded_project_lane_index].Crops.value)
 
-        def runLearningAndTracking():
+        def runLearningAndTracking(withMergerResolution=True):
             logger.info("Test: Structured Learning")
             weights = self.trackingApplet.topLevelOperator[lane_index]._runStructuredLearning(
                 z_range,
@@ -370,7 +370,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
                 withOpticalCorrection=parameters['withOpticalCorrection'],
                 withClassifierPrior=parameters['withClassifierPrior'],
                 ndim=ndim,
-                withMergerResolution=False,#parameters['withMergerResolution'],
+                withMergerResolution=withMergerResolution,
                 borderAwareWidth = parameters['borderAwareWidth'],
                 withArmaCoordinates = parameters['withArmaCoordinates'],
                 cplex_timeout = parameters['cplex_timeout'],
@@ -382,9 +382,9 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
             return result
 
-        self.result = runLearningAndTracking()
-
         if self.testFullAnnotations:
+
+            self.result = runLearningAndTracking(withMergerResolution=False)
 
             hypothesesGraph = self.trackingApplet.topLevelOperator[lane_index].HypothesesGraph.value
             #hypothesesGraph.insertEnergies()
@@ -441,7 +441,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
             assert linkingFlag, "Transition results are NOT correct. They differ from your annotated transitions."
             logger.info("Transition results are correct.")
 
-            self.result = runLearningAndTracking()
+        self.result = runLearningAndTracking(withMergerResolution=parameters['withMergerResolution'])
 
     def post_process_lane_export(self, lane_index):
         # FIXME: This probably only works for the non-blockwise export slot.
