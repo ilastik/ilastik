@@ -552,9 +552,8 @@ class OpConservationTracking(Operator, ExportingOperator):
                     mergerRes[idx] = resolvedMergersDict[int(timestep)][idx]['newIds']
                     
                 events[timestep]['res'] = mergerRes
-                
-        else:
-            logger.info("Resolved Merger Dictionary not available. Please click on the Track button.")
+            else:
+                logger.info("Resolved Merger Dictionary not available for generating events vector. Please click on the Track button.")
                 
         return events
 
