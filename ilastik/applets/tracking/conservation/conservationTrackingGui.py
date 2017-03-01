@@ -204,48 +204,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
         self._drawer.mergerResolutionBox.stateChanged.connect(self._onMaxObjectsBoxChanged)
 
-        if not WITH_HYTRA:
-            self._drawer.exportTypeComboBox.hide()
-            self._drawer.exportTypeLabel.hide()
-            self._drawer.exportTypeButton.hide()
-        else:
-            exportPlugins = pluginManager.getPluginsOfCategory('TrackingExportFormats')
-            availableExportPlugins = [pluginInfo.name for pluginInfo in exportPlugins]
-            self._drawer.exportTypeComboBox.addItems(availableExportPlugins)
-            self._drawer.exportTypeButton.pressed.connect(self._onExportTypeButtonPressed)
-            self._updateExportButtonsEnabledState()
+        if WITH_HYTRA:
             self._drawer.exportButton.hide()
-
-    @threadRouted
-    def _onExportTypeButtonPressed(self):
-        '''
-        Export the tracking solution in the format selected in exportTypeComboBox.
-        '''
-        selectedExportType = self._drawer.exportTypeComboBox.currentText()
-        exportPluginInfo = pluginManager.getPluginByName(selectedExportType, category="TrackingExportFormats")
-        if exportPluginInfo is None:
-            logger.error("Could not find selected plugin %s" % exportPluginInfo)
-        else:
-            exportPlugin = exportPluginInfo.plugin_object
-            logger.info("Exporting tracking result using %s" %selectedExportType)
-
-            options = QFileDialog.Options()
-            if ilastik_config.getboolean("ilastik", "debug"):
-                options |= QFileDialog.DontUseNativeDialog
-
-            if exportPlugin.exportsToFile:
-                filename = encode_from_qstring(QFileDialog.getSaveFileName(self, 'Select export location', os.path.expanduser("~"), options=options))
-            else:
-                filename = encode_from_qstring(QFileDialog.getExistingDirectory(self, 'Select Directory', os.path.expanduser("~"), options=options))
-
-            if filename is None or len(str(filename)) == 0:
-                logger.info( "cancelled." )
-                return
-            
-            self.mainOperator.exportPlugin(filename, exportPlugin)
-
-            QMessageBox.information(self, "Export done", "The files have been successfully exported in the requested format." )
-
 
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
@@ -390,17 +350,6 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
         req.submit()
-
-    def _updateExportButtonsEnabledState(self):
-        if self.topLevelOperatorView.isTrackingSolutionAvailable():
-            state = True
-        else:
-            state = False
-        
-        self._drawer.exportTypeButton.setEnabled(state)
-        self._drawer.exportTypeComboBox.setEnabled(state)
-        self._drawer.exportTypeLabel.setEnabled(state)
-
 
     def menus(self):
         m = QtGui.QMenu("&Export", self.volumeEditorWidget)

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1248</height>
+    <height>1322</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -925,25 +925,7 @@
       </widget>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout">
-       <item>
-        <widget class="QLabel" name="exportTypeLabel">
-         <property name="text">
-          <string>Format:</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QComboBox" name="exportTypeComboBox"/>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <widget class="QPushButton" name="exportTypeButton">
-       <property name="text">
-        <string>Export</string>
-       </property>
-      </widget>
+      <layout class="QHBoxLayout" name="horizontalLayout"/>
      </item>
     </layout>
    </item>
