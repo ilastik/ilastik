@@ -36,7 +36,7 @@ includes = [\
                 'PyQt4.pyqtconfig', 'PyQt4.uic','PyQt4.QtCore','PyQt4.QtGui',
                 'site', 'os',
                 'vtk',
-                'rank_filter', 'nanshe',
+                'rank_filter',
                 'vtk.vtkCommonPythonSIP',
                 'sklearn', 'sklearn.utils',
                 'skimage'
@@ -87,13 +87,6 @@ class exclude_from_zipped_packages(object):
 import py2app.recipes
 for module in ['ilastik', 'volumina', 'lazyflow', 'iiboost', 'vtk', 'sklearn', 'skimage', 'jsonschema']:
     setattr( py2app.recipes, module, exclude_from_zipped_packages(module) )
-
-# Include nanshe if it's available.
-try:
-    import nanshe
-    py2app.recipes.nanshe = exclude_from_zipped_packages('nanshe')
-except ImportError:
-    pass
 
 ##
 ## The --include-meta-repo option is a special option added by this script.
