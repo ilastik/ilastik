@@ -28,7 +28,6 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 #ilastik
 from ilastik.workflow import Workflow
-from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 
 #this workflow: carving
@@ -70,7 +69,6 @@ class CarvingWorkflow(Workflow):
                             "Additionally, you may optionally add an 'Overlay' data volume if it helps you annotate. (It won't be used for any computation.)"
         
         ## Create applets 
-        self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet( self,
                                                         "Input Data",
                                                         "Input Data",
@@ -94,7 +92,6 @@ class CarvingWorkflow(Workflow):
         
         # Expose to shell
         self._applets = []
-        self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.preprocessingApplet)
         self._applets.append(self.carvingApplet)

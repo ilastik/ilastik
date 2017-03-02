@@ -29,7 +29,6 @@ import numpy
 import h5py
 
 from ilastik.workflow import Workflow
-from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet
@@ -106,8 +105,6 @@ class ObjectClassificationWorkflow(Workflow):
         self._applets = []
 
         self.pcApplet = None
-        self.projectMetadataApplet = ProjectMetadataApplet()
-        self._applets.append(self.projectMetadataApplet)
 
         self.setupInputs()
         
