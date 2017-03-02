@@ -576,7 +576,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             label_image = self.LabelImage
         
         hypothesesGraph = self.HypothesesGraph.value
-        if not plugin.export(filename, hypothesesGraph, object_feature_slot, label_image):
+        if not plugin.export(filename, hypothesesGraph, object_feature_slot, label_image, self.RawImage):
             raise RuntimeError('Exporting tracking solution with plugin failed')
 
     def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):

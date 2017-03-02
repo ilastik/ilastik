@@ -34,7 +34,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
 
     exportsToFile = True
 
-    def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot):
+    def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
         """Export the tracking solution stored in the hypotheses graph to two XML files so that 
         a) the raw data can be displayed in Fiji's BigDataViewer, and b) that the tracks can be visualized in MaMuT. 
 
