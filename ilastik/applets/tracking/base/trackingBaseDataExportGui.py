@@ -19,15 +19,13 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QColor, QPushButton, QVBoxLayout, QFrame, QComboBox, QLabel, QFileDialog, QMessageBox
+from PyQt4.QtGui import QFrame, QPushButton, QHBoxLayout, QComboBox, QLabel
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.plugins import pluginManager
-from ilastik.config import cfg as ilastik_config
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, ColortableLayer
-from volumina.utility import encode_from_qstring
 
 import os
 import logging
@@ -74,76 +72,79 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
     def createLayerViewer(self, opLane):
         return TrackingBaseResultsViewer(self.parentApplet, opLane)
 
-    def _initAppletDrawerUic(self):
-        super(TrackingBaseDataExportGui, self)._initAppletDrawerUic()
-        btn = QPushButton("Configure Table Export for Tracking+Features", clicked=self.configure_table_export)
-        self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
+    def _includePluginOnlyOption(self):
+        """
+        Append Plugin-Only option to export tracking result using a plugin (without exporting volumes)
+        """
+        opDataExport = self.topLevelOperator
+        names = opDataExport.SelectionNames.value
+        names.append(opDataExport.PluginOnlyName.value)
+        logger.info("New available names are: {}".format(names))
+        opDataExport.SelectionNames.setValue(names)
 
+    def _getAvailablePlugins(self):
+        '''
+        Checks whether any plugins are found and whether we use the hytra backend.
+        Returns the list of available plugins
+        '''
         try:
             import hytra
             # export plugins only available with hytra backend
             exportPlugins = pluginManager.getPluginsOfCategory('TrackingExportFormats')
             availableExportPlugins = [pluginInfo.name for pluginInfo in exportPlugins]
-            
-            if len(availableExportPlugins) > 0:
-                self._selectedPlugin = availableExportPlugins[0]
-                
-                # Add line above:
-                line = QFrame()
-                line.setFrameShape(QFrame.HLine)
-                line.setFrameShadow(QFrame.Sunken)
 
-                label = QLabel("Alternatively, export to ...")
-                
-                pluginDropdown = QComboBox()
-                pluginDropdown.addItems(availableExportPlugins)
-                pluginDropdown.currentIndexChanged[str].connect(self._onSelectedExportPluginChanged)
-                
-                exportBtn = QPushButton("Export with selected Plugin", clicked=self._onExportPluginButtonPressed)
-                
-                # add new widgets to drawer
-                self.drawer.exportSettingsGroupBox.layout().addWidget(line)
-                self.drawer.exportSettingsGroupBox.layout().addWidget(label)
-                self.drawer.exportSettingsGroupBox.layout().addWidget(pluginDropdown)
-                self.drawer.exportSettingsGroupBox.layout().addWidget(exportBtn)
-            else:
-                self._selectedPlugin = None
+            return availableExportPlugins
         except ImportError:
-            pass
+            return []
+
+    def _initAppletDrawerUic(self):
+        # first check whether "Plugins" should be made available
+        availableExportPlugins = self._getAvailablePlugins()
+        if len(availableExportPlugins) > 0:
+            self._includePluginOnlyOption()
+
+        super(TrackingBaseDataExportGui, self)._initAppletDrawerUic()
+        btn = QPushButton("Configure Table Export for Tracking+Features", clicked=self.configure_table_export)
+        self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
+
+        if len(availableExportPlugins) > 0:
+            self.selectedPlugin = availableExportPlugins[0]
+
+            # register the "plugins" option in the parent
+            self._includePluginOnlyOption()
+
+            # listen to export-source selection changes to only make the plugin stuff enabled when "Plugin" is selected
+            self.drawer.inputSelectionCombo.currentIndexChanged[str].connect(self._onSelectedExportSourceChanged)
+
+            frame = QFrame(parent=self)
+            horizontalBoxLayout = QHBoxLayout()
+            frame.setLayout(horizontalBoxLayout)
+
+            self.label = QLabel("Plugin:")
+
+            self.pluginDropdown = QComboBox()
+            self.pluginDropdown.addItems(availableExportPlugins)
+            self.pluginDropdown.currentIndexChanged[str].connect(self._onSelectedExportPluginChanged)
+            horizontalBoxLayout.addWidget(self.label)
+            horizontalBoxLayout.addWidget(self.pluginDropdown)
+
+            # add new widgets to drawer
+            self.drawer.exportSettingsGroupBox.layout().addWidget(frame)
+            self._onSelectedExportSourceChanged(self.drawer.inputSelectionCombo.currentText())
+        else:
+            self.selectedPlugin = None
+
+    def _onSelectedExportSourceChanged(self, sourceName):
+        self.selectedExportSource = sourceName
+        if sourceName == 'Plugin':
+            self.label.setEnabled(True)
+            self.pluginDropdown.setEnabled(True)
+        else:
+            self.label.setEnabled(False)
+            self.pluginDropdown.setEnabled(False)
 
     def _onSelectedExportPluginChanged(self, pluginText):
-        self._selectedPlugin = pluginText
-
-    def _onExportPluginButtonPressed(self):
-        '''
-        Export the tracking solution in the format selected in exportTypeComboBox.
-        '''
-        logger.error(self._selectedPlugin)
-        selectedExportType = self._selectedPlugin
-        exportPluginInfo = pluginManager.getPluginByName(selectedExportType, category="TrackingExportFormats")
-        if exportPluginInfo is None:
-            logger.error("Could not find selected plugin %s" % exportPluginInfo)
-        else:
-            exportPlugin = exportPluginInfo.plugin_object
-            logger.info("Exporting tracking result using %s" % selectedExportType)
-
-            options = QFileDialog.Options()
-            if ilastik_config.getboolean("ilastik", "debug"):
-                options |= QFileDialog.DontUseNativeDialog
-
-            if exportPlugin.exportsToFile:
-                filename = encode_from_qstring(QFileDialog.getSaveFileName(self, 'Select export location', os.path.expanduser("~"), options=options))
-            else:
-                filename = encode_from_qstring(QFileDialog.getExistingDirectory(self, 'Select Directory', os.path.expanduser("~"), options=options))
-
-            if filename is None or len(str(filename)) == 0:
-                logger.info( "cancelled." )
-                return
-            
-            self.get_exporting_operator().exportPlugin(filename, exportPlugin)
-
-            QMessageBox.information(self, "Export done", "The files have been successfully exported in the requested format." )
-
+        self.selectedPlugin = pluginText
 
     def set_default_export_filename(self, filename):
         self._default_export_filename = filename
@@ -155,7 +156,6 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         """
         # Late imports here, so we don't accidentally import PyQt during headless mode.
         from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
-        from ilastik.widgets.progressDialog import ProgressDialog
         
         dimensions = self.get_raw_shape()
         feature_names = self.get_feature_names()        
@@ -178,7 +178,6 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
 class TrackingBaseResultsViewer(DataExportLayerViewerGui):
     
     ct = colortables.create_random_16bit()
-    #ct[0] = QColor(0,0,0,255)
     ct[0] = 0
 
     def setupLayers(self):

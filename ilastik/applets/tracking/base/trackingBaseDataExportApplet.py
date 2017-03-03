@@ -50,6 +50,17 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
             self._gui.set_default_export_filename(self._default_export_filename)
         return self._gui
 
+    def getSelectedExportSourceName(self):
+        # TODO: read this parameter from the command line by implementing make_cmdline_parser and parse_known_cmdline_args!
+        if self._gui is not None:
+            return self._gui.selectedExportSource
+
+    def getSelectedExportPluginName(self):
+        # TODO: read this parameter from the command line by implementing make_cmdline_parser and parse_known_cmdline_args!
+
+        if self._gui is not None:
+            return self._gui.selectedPlugin
+
 
 
 
