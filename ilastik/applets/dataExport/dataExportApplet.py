@@ -228,7 +228,10 @@ class DataExportApplet( Applet ):
                 raise Exception("Invalid option for --export_source: '{}'\n"
                                 "Valid options are: {}".format( parsed_args.export_source, source_choices ))
             else:
-                opDataExport.InputSelection.setValue( source_index )
+                if export_source == opDataExport.PluginOnlyName.value.lower():
+                    opDataExport.PluginOnly.setValue(True)
+                else:
+                    opDataExport.InputSelection.setValue( source_index )
 
         if parsed_args.cutout_subregion:
             opDataExport.RegionStart.setValue( parsed_args.cutout_subregion[0] )

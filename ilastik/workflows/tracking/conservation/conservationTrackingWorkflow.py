@@ -17,8 +17,6 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 from ilastik.plugins import pluginManager
 from ilastik.config import cfg as ilastik_config
 
-from volumina.utility import encode_from_qstring
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -125,6 +123,17 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
         self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
         self.dataExportApplet.includeTableOnlyOption() # Export table only, without volumes
+
+        try:
+            import hytra
+            # export plugins only available with hytra backend
+            exportPlugins = pluginManager.getPluginsOfCategory('TrackingExportFormats')
+            availableExportPlugins = [pluginInfo.name for pluginInfo in exportPlugins]
+
+            if len(availableExportPlugins) > 0:
+                self.dataExportApplet.includePluginOnlyOption()
+        except ImportError:
+            pass
         
         # configure export settings
         settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}
@@ -392,7 +401,9 @@ class ConservationTrackingWorkflowBase( Workflow ):
                 logger.info("Export done")
                 # QMessageBox.information(self, "Export done",
                 #                         "The files have been successfully exported in the requested format.")
+
             return
+
         # CSV Table export (only if plugin was not selected)
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
