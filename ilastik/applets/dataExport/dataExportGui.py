@@ -171,8 +171,13 @@ class DataExportGui(QWidget):
             assert index < len(self.topLevelOperator.SelectionNames.value)
             if self.drawer.inputSelectionCombo.currentText() == self.topLevelOperator.TableOnlyName.value:
                 self.topLevelOperator.TableOnly.setValue(True)
+                self.topLevelOperator.PluginOnly.setValue(False)
+            elif self.drawer.inputSelectionCombo.currentText() == self.topLevelOperator.PluginOnlyName.value:
+                self.topLevelOperator.TableOnly.setValue(False)
+                self.topLevelOperator.PluginOnly.setValue(True)
             else:
                 self.topLevelOperator.TableOnly.setValue(False)
+                self.topLevelOperator.PluginOnly.setValue(False)
                 self.topLevelOperator.InputSelection.setValue( index )
         self.drawer.inputSelectionCombo.currentIndexChanged.connect( _handleInputComboSelectionChanged )
 
@@ -312,6 +317,7 @@ class DataExportGui(QWidget):
     def setEnabledIfAlive(self, widget, enable):
         if not sip.isdeleted(widget):
             widget.setEnabled(enable)
+
     def _updateExportButtons(self, *args):
         """Called when at least one dataset became 'unready', so we have to disable the export button."""
         all_ready = True

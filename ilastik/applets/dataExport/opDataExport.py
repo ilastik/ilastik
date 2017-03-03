@@ -68,6 +68,10 @@ class OpDataExport(Operator):
     # Only export csv/HDF5 table (don't export volume)
     TableOnlyName = InputSlot(value='Table-Only')
     TableOnly = InputSlot(value=False)
+
+    # Only export via a specified plugin
+    PluginOnlyName = InputSlot(value='Plugin')
+    PluginOnly = InputSlot(value=False)
     
     ExportPath = OutputSlot() # Location of the saved file after export is complete.
     
@@ -264,7 +268,7 @@ class OpDataExport(Operator):
 
     def run_export(self):
         # If Table-Only is disabled or we're not dirty, we don't have to do anything.
-        if not self.TableOnly.value and self.Dirty.value:
+        if not self.TableOnly.value and not self.PluginOnly.value and self.Dirty.value:
             self.cleanupOnDiskView()
             self._opFormattedExport.run_export()
             self.Dirty.setValue( False )
