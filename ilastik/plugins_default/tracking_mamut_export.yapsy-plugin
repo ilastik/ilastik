@@ -1,5 +1,5 @@
 [Core]
-Name = Fiji's MaMuT
+Name = Fiji-MaMuT
 Module = tracking_mamut_export
 
 [Documentation]

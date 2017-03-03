@@ -1,5 +1,5 @@
 [Core]
-Name = H5 Event Sequence
+Name = H5-Event-Sequence
 Module = tracking_h5_event_export
 
 [Documentation]
