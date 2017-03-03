@@ -44,7 +44,7 @@ DATA_ROLE_OVERLAY = 1
 class CarvingWorkflow(Workflow):
     
     workflowName = "Carving"
-    defaultAppletIndex = 1 # show DataSelection by default
+    defaultAppletIndex = 0 # show DataSelection by default
     
     @property
     def applets(self):

@@ -37,7 +37,7 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     class CarvingFromPixelPredictionsWorkflow(Workflow):
         
         workflowName = "Carving From Pixel Predictions"
-        defaultAppletIndex = 1 # show DataSelection by default
+        defaultAppletIndex = 0 # show DataSelection by default
         
         @property
         def applets(self):

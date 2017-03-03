@@ -69,7 +69,7 @@ OUTPUT_COLUMNS = ["x_px", "y_px", "z_px",
 
 class ObjectClassificationWorkflow(Workflow):
     workflowName = "Object Classification Workflow Base"
-    defaultAppletIndex = 1 # show DataSelection by default
+    defaultAppletIndex = 0 # show DataSelection by default
 
     def __init__(self, shell, headless,
                  workflow_cmdline_args,

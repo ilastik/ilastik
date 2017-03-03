@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 class CountingWorkflow(Workflow):
     workflowName = "Cell Density Counting"
     workflowDescription = "This is obviously self-explanatory."
-    defaultAppletIndex = 1 # show DataSelection by default
+    defaultAppletIndex = 0 # show DataSelection by default
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()

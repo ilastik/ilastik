@@ -41,7 +41,7 @@ class PixelClassificationWorkflow(Workflow):
     
     workflowName = "Pixel Classification"
     workflowDescription = "This is obviously self-explanatory."
-    defaultAppletIndex = 1 # show DataSelection by default
+    defaultAppletIndex = 0 # show DataSelection by default
     
     DATA_ROLE_RAW = 0
     DATA_ROLE_PREDICTION_MASK = 1
