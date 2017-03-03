@@ -14,6 +14,10 @@ from ilastik.applets.tracking.conservation import config as configConservation
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ilastik.plugins import pluginManager
+from ilastik.config import cfg as ilastik_config
+
+from volumina.utility import encode_from_qstring
 
 import logging
 logger = logging.getLogger(__name__)
@@ -134,8 +138,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         if self.withOptTrans:
             self._applets.append(self.opticalTranslationApplet)
         self._applets.append(self.objectExtractionApplet)
-        
-        
+
         if self.divisionDetectionApplet:
             self._applets.append(self.divisionDetectionApplet)
         
@@ -356,26 +359,46 @@ class ConservationTrackingWorkflowBase( Workflow ):
     def post_process_lane_export(self, lane_index):
         # FIXME: This probably only works for the non-blockwise export slot.
         #        We should assert that the user isn't using the blockwise slot.
+
+        # Plugin export if selected
+        logger.warn("Export source is: " + self.dataExportApplet.getSelectedExportSourceName())
+
+        if self.dataExportApplet.getSelectedExportSourceName() == self.dataExportApplet.topLevelOperator.PluginOnlyName.value:
+            logger.info("Export source plugin selected!")
+            selectedPlugin = self.dataExportApplet.getSelectedExportPluginName()
+
+            exportPluginInfo = pluginManager.getPluginByName(selectedPlugin, category="TrackingExportFormats")
+            if exportPluginInfo is None:
+                logger.error("Could not find selected plugin %s" % exportPluginInfo)
+            else:
+                exportPlugin = exportPluginInfo.plugin_object
+                logger.info("Exporting tracking result using %s" % selectedPlugin)
+                name_format = self.dataExportApplet.topLevelOperator.getLane(lane_index).OutputFilenameFormat.value
+                partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
+
+                if exportPlugin.exportsToFile:
+                    filename = partially_formatted_name
+                    if os.path.basename(filename) == '':
+                        filename = os.path.join(filename, 'pluginExport.txt')
+                else:
+                    filename = os.path.dirname(partially_formatted_name)
+
+                if filename is None or len(str(filename)) == 0:
+                    logger.error("Cannot export from plugin with empty output filename")
+                    return
+
+                self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin)
+
+                logger.info("Export done")
+                # QMessageBox.information(self, "Export done",
+                #                         "The files have been successfully exported in the requested format.")
+            return
+        # CSV Table export (only if plugin was not selected)
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
             self.dataExportApplet.progressSignal.emit(0)
-            raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
-            
-            project_path = self.shell.projectManager.currentProjectPath
-            project_dir = os.path.dirname(project_path)
-            dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
-            abs_dataset_dir = make_absolute(dataset_dir, cwd=project_dir)
-
-            known_keys = {}        
-            known_keys['dataset_dir'] = abs_dataset_dir
-            nickname = raw_dataset_info.nickname.replace('*', '')
-            if os.path.pathsep in nickname:
-                nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
-            known_keys['nickname'] = nickname
-            
-            # use partial formatting to fill in non-coordinate name fields
             name_format = settings['file path']
-            partially_formatted_name = format_known_keys( name_format, known_keys )
+            partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
             settings['file path'] = partially_formatted_name
 
             req = self.trackingApplet.topLevelOperator.getLane(lane_index).export_object_data(
@@ -392,8 +415,26 @@ class ConservationTrackingWorkflowBase( Workflow ):
             parameters['time_range'] = self.prev_time_range
             parameters['x_range'] = self.prev_x_range
             parameters['y_range'] = self.prev_y_range
-            parameters['z_range'] = self.prev_z_range          
-    
+            parameters['z_range'] = self.prev_z_range
+
+    def getPartiallyFormattedName(self, lane_index, path_format_string):
+        ''' Takes the format string for the output file, fills in the most important placeholders, and returns it '''
+        raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
+        project_path = self.shell.projectManager.currentProjectPath
+        project_dir = os.path.dirname(project_path)
+        dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
+        abs_dataset_dir = make_absolute(dataset_dir, cwd=project_dir)
+        known_keys = {}
+        known_keys['dataset_dir'] = abs_dataset_dir
+        nickname = raw_dataset_info.nickname.replace('*', '')
+        if os.path.pathsep in nickname:
+            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
+        known_keys['nickname'] = nickname
+        # use partial formatting to fill in non-coordinate name fields
+        partially_formatted_name = format_known_keys(path_format_string, known_keys)
+        return partially_formatted_name
+
+
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
         if len(slot) > 0:
