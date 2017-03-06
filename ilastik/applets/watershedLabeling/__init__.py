@@ -19,5 +19,5 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from watershedLabelingApplet import WatershedLabelingApplet
-from watershedLabelingSingleLaneApplet import WatershedLabelingSingleLaneApplet
+#from watershedLabelingSingleLaneApplet import WatershedLabelingSingleLaneApplet
 from opWatershedLabeling import OpWatershedLabelingTopLevel, OpWatershedLabelingSingleLane

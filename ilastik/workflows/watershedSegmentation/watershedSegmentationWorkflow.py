@@ -259,7 +259,7 @@ class WatershedSegmentationWorkflow(Workflow):
                 #and opSeeds.SeedsOutCached.ready() and opSeeds.SeedsOut.ready())
         # export
         self._shell.setAppletEnabled( self.dataExportApplet,\
-                not batch_processing_busy and input_ready )#and opSeeds.WSMethod.ready()) #TODO (add the watershedSegementation here)
+                not batch_processing_busy and input_ready )#and opSeeds.WSMethod.ready()) 
                 #and opWatershedSegmentation.Superpixels.ready())
         # batch processing
         self._shell.setAppletEnabled( self.batchProcessingApplet,\

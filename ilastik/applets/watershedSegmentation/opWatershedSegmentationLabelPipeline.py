@@ -29,16 +29,6 @@ class OpWatershedSegmentationLabelPipeline( Operator ):
         self.NonZeroBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
 
     def setupOutputs(self):
-        '''
-        self.SeedOutput.meta.assignFrom(self.SeedInput.meta)
-        # output of the vigra.analysis.watershedNew is uint32, therefore it should be uint 32 as
-        # well, otherwise it will break with the cached image 
-        self.SeedOutput.meta.dtype = np.uint8
-        #only one channel as output
-        #self.SeedOutput.meta.shape = self.Boundaries.meta.shape[:-1] + (1,)
-        #TODO maybe bad with more than 255 labels
-        #self.SeedOutput.meta.drange = (0,255)
-        '''
         pass
 
     def setInSlot(self, slot, subindex, roi, value):

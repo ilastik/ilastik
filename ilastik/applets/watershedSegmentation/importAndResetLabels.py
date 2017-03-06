@@ -162,7 +162,7 @@ class ImportAndResetLabels(object):
             #value = self._labelControlUi.labelListModel.__getitem__(0)._number
             value = self._labelListModel[0].number
 
-            # TODO make this faster
+            # make this faster
             #delete the label with the value x from cache, means reset value x to zero 
             self._opLabelArray.clearLabel( value )
             #alternatively use:

@@ -38,12 +38,31 @@ Add any new file to the index.rst file into the table of contents.
 
 .. _docu_troubleshooting:
 
-Troubleshooting:
+Troubleshooting
 =================
 * segmentation fault while compiling
 
   This may result in conflicting python versions on your pc and the 
   ilastik miniconda python version
+
+  Possible answers:
+
+  * .. code::
+
+        conda update --all
+
+    Maybe with code snippet the correct python version is available
+
+  * The last failure message is something like this:
+
+        .. code::
+
+
+                  File "~/miniconda2/envs/ilastik-devel/lib/python2.7/site-packages/vtk/qvtk.py", line 8 in <module>
+
+        In this case, only commenting out the line 8 of this file, 
+        which includes all files of a library for compiling, resolved the problem. 
+        Don't forget to uncomment it after the compilation was successful.
 
 * folder _static does not exist 
   .. code::
@@ -206,4 +225,22 @@ Troubleshooting:
   
   
   
+
+User Documentation
+==============================
+
+The user documentation can be found in the `ilastik.github.io <https://github.com/ilastik/ilastik.github.io>`_ repository. 
+
+If an error with the json installation occurs during the *bundle install*, 
+then it can help to update the packages. 
+Sometimes the ruby version and the version that are in the install script are incompatible. 
+Then do 
+
+.. code:: 
+        
+        bundle update
+        bundle install
+
+
+but don't same these script changes to the repository.
 

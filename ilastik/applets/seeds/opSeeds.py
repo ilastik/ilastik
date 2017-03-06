@@ -465,7 +465,7 @@ class OpSeeds(Operator):
         binary_membranes = (pmap <= pmax).view(numpy.uint8)
 
 
-        #TODO why labeling before?
+        #TODO why labeling before? Maybe Anna Kreshuk can tell it
         # delete small CCs
         labeled = vigra.analysis.labelMultiArrayWithBackground(binary_membranes)
         del binary_membranes

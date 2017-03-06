@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2017, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -28,8 +28,7 @@ import logging
 from PyQt4.QtGui import QColor 
 
 # HCI
-#TODO could be deleted, if no addtional shortcuts are used
-from volumina.utility import ShortcutManager
+#from volumina.utility import ShortcutManager
 import volumina.colortables as colortables
 
 
@@ -365,7 +364,7 @@ class WatershedLabelingGui(LabelingGui):
                 labellayer.colorTable = self._colorTable16
     '''
 
-    #TODO additional shortcuts
+    #additional shortcuts
     '''
     def __initShortcuts(self):
         mgr = ShortcutManager()

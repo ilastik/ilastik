@@ -124,25 +124,12 @@ try:
 except ImportError as e:
     logger.warn("Failed to import 'watershedSegmentation' workflow; check dependencies: " + str(e))
 
+
+''' under development
 try:
     import pixelObjectWatershed
     WORKFLOW_CLASSES += [pixelObjectWatershed.pixelObjectWatershedWorkflow.PixelObjectWatershedWorkflow]
 except ImportError as e:
     logger.warn("Failed to import 'pixelObjectWatershed' workflow; check dependencies: " + str(e))
+'''
 
-
-
-#channel selection
-try:
-    import test
-    WORKFLOW_CLASSES += [test.testWorkflow.TestWorkflow]
-except ImportError as e:
-    logger.warn("Failed to import 'test' workflow; check dependencies: " + str(e))
-
-
-# workflow example
-try:
-    import workflowExample
-    WORKFLOW_CLASSES += [workflowExample.workflowExampleWorkflow.WorkflowExampleWorkflow]
-except ImportError as e:
-    logger.warn("Failed to import 'workflowExample' workflow; check dependencies: " + str(e))

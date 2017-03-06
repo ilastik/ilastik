@@ -110,14 +110,16 @@ Basic Structure in watershedSegmentationGui
 
 .. _applet_labeling_gui:
 
-Basic Structure in watershedLabelingGui
-====================================================
+Basic Structure in watershedLabelingGui (gui base class)
+==============================================================
 
 The whole functionality of everything that depends on labeling 
 is handled within this class. 
 
 The labeling gui is an applet itself, so it has a serializer, an operator and so on. 
 But most of the things can be used from the superclass. 
+
+For other applets, another base class like LayerViewerGui can be sufficient, e.g. see the seeds applet.
 
 
 WatershedLabelingGui inherits from LabelingGui. First of all it is sufficient to understand what happens in the LabelingGui. 
@@ -137,10 +139,9 @@ LabelingGui
                 :noindex:
        .. automethod:: LabelingGui._initLabelUic
 
-#. the rest is more or less the structure and methods that make this class work well, but it is not 
-   so essential for the main understanding of this class.
+#. The rest is more or less the structure and methods that make this class work well. 
+   It is not essential for the main understanding of this class but for detailed information.
 
-   .. TODO maybe comment more functions and explain more about this here, 
 
 
 Changes in WatershedLabelingGui compared to the LabelingGui
@@ -154,13 +155,5 @@ All changes in the WatershedLabelingGui compared to the LabelingGui:
 
 
 
-To supply the WatershedLabelingGui with a LabelListModel that displays the value of the labels, a new class was necessary. 
+To supply the WatershedLabelingGui with a LabelListModel that displays the value of the labels, a new class was necessary, the LabelListModelWithNumber. 
 
-.. TODO explain more about the classes of LabelModelList 
-
-..    #TODO in doku fuer nutzung aufnehmen
-        # in ws applet
-    #seeds muessen 1, 2, 3 sein, also kann man auch 120 180, etc verwenden, 
-    #rest aussen rum muss schwarz=0 sein
-    #bei den membranen: die membrane selbst muessen 255 sein und der rest 0=schwarz
-    #help(vigra.analysis.watershedsNew)
