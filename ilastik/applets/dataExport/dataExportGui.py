@@ -171,13 +171,10 @@ class DataExportGui(QWidget):
             assert index < len(self.topLevelOperator.SelectionNames.value)
             if self.drawer.inputSelectionCombo.currentText() == self.topLevelOperator.TableOnlyName.value:
                 self.topLevelOperator.TableOnly.setValue(True)
-                self.topLevelOperator.PluginOnly.setValue(False)
             elif self.drawer.inputSelectionCombo.currentText() == self.topLevelOperator.PluginOnlyName.value:
                 self.topLevelOperator.TableOnly.setValue(False)
-                self.topLevelOperator.PluginOnly.setValue(True)
             else:
                 self.topLevelOperator.TableOnly.setValue(False)
-                self.topLevelOperator.PluginOnly.setValue(False)
                 self.topLevelOperator.InputSelection.setValue( index )
         self.drawer.inputSelectionCombo.currentIndexChanged.connect( _handleInputComboSelectionChanged )
 

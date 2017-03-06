@@ -332,9 +332,6 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             # as it might be (no longer) needed if merger resolving
             # is disabled(enabled)
             self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
-
-            if WITH_HYTRA:
-                self._updateExportButtonsEnabledState() 
             
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False

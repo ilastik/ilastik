@@ -78,9 +78,10 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         """
         opDataExport = self.topLevelOperator
         names = opDataExport.SelectionNames.value
-        names.append(opDataExport.PluginOnlyName.value)
+        if opDataExport.PluginOnlyName.value not in names:
+            names.append(opDataExport.PluginOnlyName.value)
+            opDataExport.SelectionNames.setValue(names)
         logger.info("New available names are: {}".format(names))
-        opDataExport.SelectionNames.setValue(names)
 
     def _getAvailablePlugins(self):
         '''
@@ -108,7 +109,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
 
         if len(availableExportPlugins) > 0:
-            self.selectedPlugin = availableExportPlugins[0]
+            self.topLevelOperator.SelectedPlugin.setValue(availableExportPlugins[0])
 
             # register the "plugins" option in the parent
             self._includePluginOnlyOption()
@@ -132,7 +133,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             self.drawer.exportSettingsGroupBox.layout().addWidget(frame)
             self._onSelectedExportSourceChanged(self.drawer.inputSelectionCombo.currentText())
         else:
-            self.selectedPlugin = None
+            self.topLevelOperator.SelectedPlugin.setValue(None)
 
     def _onSelectedExportSourceChanged(self, sourceName):
         self.selectedExportSource = sourceName
@@ -144,7 +145,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             self.pluginDropdown.setEnabled(False)
 
     def _onSelectedExportPluginChanged(self, pluginText):
-        self.selectedPlugin = pluginText
+        self.topLevelOperator.SelectedPlugin.setValue(pluginText)
 
     def set_default_export_filename(self, filename):
         self._default_export_filename = filename
