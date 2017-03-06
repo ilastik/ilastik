@@ -30,6 +30,8 @@ class OpNpyFileReader(Operator):
     category = "Input"
 
     FileName = InputSlot(stype='filestring')
+    InternalPath = InputSlot(stype='string', value="")
+
     Output = OutputSlot()
 
     class DatasetReadError(Exception):
@@ -50,10 +52,17 @@ class OpNpyFileReader(Operator):
 
         try:
             # Load the file in read-only "memmap" mode to avoid reading it from disk all at once.
-            rawNumpyArray = numpy.load(str(fileName), 'r')
-            self._memmapFile = rawNumpyArray._mmap
-        except:
+            rawLoadedNumpyObject = numpy.load(str(fileName), mmap_mode='r', allow_pickle=False)
+        except (ValueError, IOError):
             raise OpNpyFileReader.DatasetReadError( "Unable to open numpy dataset: {}".format( fileName ) )
+
+        if isinstance(rawLoadedNumpyObject, numpy.ndarray):
+            rawNumpyArray = rawLoadedNumpyObject
+            # self.InternalPath.value = None
+        elif isinstance(rawLoadedNumpyObject, numpy.lib.npyio.NpzFile):
+            pass
+
+        self._memmapFile = rawNumpyArray._mmap
 
         axisorders = { 2 : 'yx',
                        3 : 'zyx',

@@ -73,7 +73,7 @@ class OpInputDataReader(Operator):
     videoExts = ['ufmf', 'mmf', 'avi']
     h5Exts = ['h5', 'hdf5', 'ilp']
     klbExts = ['klb']
-    npyExts = ['npy']
+    npyExts = ['npy', 'npz']
     rawExts = ['dat', 'bin', 'raw']
     blockwiseExts = ['json']
     tiledExts = ['json']
