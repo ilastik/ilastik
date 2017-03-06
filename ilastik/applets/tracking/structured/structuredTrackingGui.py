@@ -155,7 +155,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.divThreshBox.hide()
             self._drawer.label_25.hide()
             self._drawer.avgSizeBox.hide()
-          
+
+            self._drawer.InitialWeightsLabel.hide()
+            self._drawer.ZerosButton.hide()
+            self._drawer.OnesButton.hide()
+            self._drawer.RandomButton.hide()
+
         self.mergerLabels = [
             self._drawer.merg1,
             self._drawer.merg2,
