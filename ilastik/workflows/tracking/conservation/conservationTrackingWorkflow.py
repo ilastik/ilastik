@@ -370,11 +370,11 @@ class ConservationTrackingWorkflowBase( Workflow ):
         #        We should assert that the user isn't using the blockwise slot.
 
         # Plugin export if selected
-        logger.warn("Export source is: " + self.dataExportApplet.getSelectedExportSourceName())
+        logger.info("Export source is: " + self.dataExportApplet.topLevelOperator.SelectedExportSource.value)
 
-        if self.dataExportApplet.getSelectedExportSourceName() == self.dataExportApplet.topLevelOperator.PluginOnlyName.value:
+        if self.dataExportApplet.topLevelOperator.SelectedExportSource.value == self.dataExportApplet.topLevelOperator.PluginOnlyName.value:
             logger.info("Export source plugin selected!")
-            selectedPlugin = self.dataExportApplet.getSelectedExportPluginName()
+            selectedPlugin = self.dataExportApplet.topLevelOperator.SelectedPlugin.value
 
             exportPluginInfo = pluginManager.getPluginByName(selectedPlugin, category="TrackingExportFormats")
             if exportPluginInfo is None:
