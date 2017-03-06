@@ -31,6 +31,9 @@ class TestOpNpyFileReader(object):
         self.graph = lazyflow.graph.Graph()
         tmpDir = tempfile.gettempdir()
         self.testDataFilePath = os.path.join(tmpDir, 'NpyTestData.npy')
+        # per default the arrays are named arr_0, arr_1... (see numpy.savez documentation)
+        self.testDataFilePathNPZdefault = os.path.join(tmpDir, 'NpzTestDataDefault.npz')
+        self.testDataFilePathNPZnamed = os.path.join(tmpDir, 'NpzTestDataNamed.npz')
 
         # Start by writing some test data to disk.
         self.testData = numpy.zeros((10, 11))
@@ -38,6 +41,8 @@ class TestOpNpyFileReader(object):
             for y in range(0,11):
                 self.testData[x,y] = x+y
         numpy.save(self.testDataFilePath, self.testData)
+        numpy.savez(self.testDataFilePathNPZdefault, self.testData)
+        numpy.savez(self.testDataFilePathNPZnamed, data_0=self.testData)
 
     def tearDown(self):
         # Clean up: Delete the test file.
@@ -64,6 +69,38 @@ class TestOpNpyFileReader(object):
                     assert a[i,j] == self.testData[i,j]
         finally:
             npyReader.cleanUp()
+
+    def test_OpNpyFileReaderNPZdefault(self):
+        # Now read back our test data using an OpNpyFileReader operator
+        npyReader = OpNpyFileReader(graph=self.graph)
+        try:
+            npyReader.FileName.setValue(self.testDataFilePathNPZdefault)
+
+            # Read the entire file and verify the contents
+            a = npyReader.Output[:].wait()
+            assert a.shape == (10, 11)  # OpNpyReader automatically added a channel axis
+            assert npyReader.Output.meta.dtype == self.testData.dtype
+
+            numpy.testing.assert_almost_equal(a, self.testData)
+        finally:
+            npyReader.cleanUp()
+
+    def test_OpNpyFileReaderNPZnamed(self):
+        # Now read back our test data using an OpNpyFileReader operator
+        npyReader = OpNpyFileReader(graph=self.graph)
+        try:
+            npyReader.FileName.setValue(self.testDataFilePathNPZnamed)
+            npyReader.InternalPath.setValue("data_0")
+
+            # Read the entire file and verify the contents
+            a = npyReader.Output[:].wait()
+            assert a.shape == (10, 11)  # OpNpyReader automatically added a channel axis
+            assert npyReader.Output.meta.dtype == self.testData.dtype
+
+            numpy.testing.assert_almost_equal(a, self.testData)
+        finally:
+            npyReader.cleanUp()
+
 
 if __name__ == "__main__":
     import sys

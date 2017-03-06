@@ -25,6 +25,10 @@ import vigra
 import numpy
 import copy
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 class OpNpyFileReader(Operator):
     name = "OpNpyFileReader"
     category = "Input"
@@ -58,11 +62,20 @@ class OpNpyFileReader(Operator):
 
         if isinstance(rawLoadedNumpyObject, numpy.ndarray):
             rawNumpyArray = rawLoadedNumpyObject
-            # self.InternalPath.value = None
+            self._memmapFile = rawNumpyArray._mmap
         elif isinstance(rawLoadedNumpyObject, numpy.lib.npyio.NpzFile):
-            pass
+            npzContents = rawLoadedNumpyObject.files
+            if self.InternalPath.value == "":
+                logger.warning("Falling back to first entry in NPZ file %s", fileName)
+                self.InternalPath.setValue(npzContents[0])
 
-        self._memmapFile = rawNumpyArray._mmap
+            if self.InternalPath.value not in npzContents:
+                raise OpNpyFileReader.DatasetReadError(
+                    "Unable to open numpy npz dataset: {fileName}: {internalPath}".format(
+                        fileName=fileName,
+                        internalPath=self.InternalPath.value))
+
+            rawNumpyArray = rawLoadedNumpyObject[self.InternalPath.value]
 
         axisorders = { 2 : 'yx',
                        3 : 'zyx',
