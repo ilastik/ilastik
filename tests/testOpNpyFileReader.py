@@ -40,9 +40,11 @@ class TestOpNpyFileReader(object):
         for x in range(0,10):
             for y in range(0,11):
                 self.testData[x,y] = x+y
+        self.testDataB = numpy.arange(256, dtype=numpy.uint8).reshape((32, 8))
+
         numpy.save(self.testDataFilePath, self.testData)
-        numpy.savez(self.testDataFilePathNPZdefault, self.testData)
-        numpy.savez(self.testDataFilePathNPZnamed, data_0=self.testData)
+        numpy.savez(self.testDataFilePathNPZdefault, self.testData, self.testDataB)
+        numpy.savez(self.testDataFilePathNPZnamed, data_A=self.testData, data_B=self.testDataB)
 
     def tearDown(self):
         # Clean up: Delete the test file.
@@ -70,34 +72,21 @@ class TestOpNpyFileReader(object):
         finally:
             npyReader.cleanUp()
 
-    def test_OpNpyFileReaderNPZdefault(self):
-        # Now read back our test data using an OpNpyFileReader operator
-        npyReader = OpNpyFileReader(graph=self.graph)
-        try:
-            npyReader.FileName.setValue(self.testDataFilePathNPZdefault)
-
-            # Read the entire file and verify the contents
-            a = npyReader.Output[:].wait()
-            assert a.shape == (10, 11)  # OpNpyReader automatically added a channel axis
-            assert npyReader.Output.meta.dtype == self.testData.dtype
-
-            numpy.testing.assert_almost_equal(a, self.testData)
-        finally:
-            npyReader.cleanUp()
-
     def test_OpNpyFileReaderNPZnamed(self):
         # Now read back our test data using an OpNpyFileReader operator
         npyReader = OpNpyFileReader(graph=self.graph)
         try:
-            npyReader.FileName.setValue(self.testDataFilePathNPZnamed)
-            npyReader.InternalPath.setValue("data_0")
+            for internalPath, referenceData in \
+                    zip(["data_A", "data_B"], [self.testData, self.testDataB]):
+                npyReader.InternalPath.setValue("data_B")
+                npyReader.FileName.setValue(self.testDataFilePathNPZnamed)
 
-            # Read the entire file and verify the contents
-            a = npyReader.Output[:].wait()
-            assert a.shape == (10, 11)  # OpNpyReader automatically added a channel axis
-            assert npyReader.Output.meta.dtype == self.testData.dtype
+                # Read the entire file and verify the contents
+                b = npyReader.Output[:].wait()
+                assert b.shape == self.testDataB.shape
+                assert npyReader.Output.meta.dtype == self.testDataB.dtype
 
-            numpy.testing.assert_almost_equal(a, self.testData)
+                numpy.testing.assert_almost_equal(b, self.testDataB)
         finally:
             npyReader.cleanUp()
 
