@@ -455,8 +455,8 @@ class OpConservationTracking(Operator, ExportingOperator):
         resolvedMergersDict = {}
         if withMergerResolution:
             resolvedMergersDict = self._resolveMergers(hypothesesGraph, model)
-        
-        # Set value of resolved mergers slot (Should be empty if mergers are disabled)         
+
+        # Set value of resolved mergers slot (Should be empty if mergers are disabled)
         self.ResolvedMergers.setValue(resolvedMergersDict, check_changed=False)
                 
         # Computing tracking lineage IDs from within Hytra
@@ -555,7 +555,8 @@ class OpConservationTracking(Operator, ExportingOperator):
             if resolvedMergersDict:
                 mergerRes = {}
                 for idx in mergersPerTimestep[timestep]:
-                    mergerRes[idx] = resolvedMergersDict[int(timestep)][idx]['newIds']
+                    if int(timestep) in resolvedMergersDict.keys() and idx in resolvedMergersDict[int(timestep)].keys():
+                        mergerRes[idx] = resolvedMergersDict[int(timestep)][idx]['newIds']
                 events[timestep]['res'] = mergerRes
 
             else:
