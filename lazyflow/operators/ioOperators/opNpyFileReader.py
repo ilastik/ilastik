@@ -34,7 +34,7 @@ class OpNpyFileReader(Operator):
     category = "Input"
 
     FileName = InputSlot(stype='filestring')
-    InternalPath = InputSlot(stype='string', value="")
+    InternalPath = InputSlot(optional=True)
 
     Output = OutputSlot()
 
@@ -60,22 +60,26 @@ class OpNpyFileReader(Operator):
         except (ValueError, IOError):
             raise OpNpyFileReader.DatasetReadError( "Unable to open numpy dataset: {}".format( fileName ) )
 
+        # .npy files:
         if isinstance(rawLoadedNumpyObject, numpy.ndarray):
             rawNumpyArray = rawLoadedNumpyObject
             self._memmapFile = rawNumpyArray._mmap
+        # .npz files:
         elif isinstance(rawLoadedNumpyObject, numpy.lib.npyio.NpzFile):
-            npzContents = rawLoadedNumpyObject.files
-            if self.InternalPath.value == "":
-                logger.warning("Falling back to first entry in NPZ file %s", fileName)
-                self.InternalPath.setValue(npzContents[0])
-
-            if self.InternalPath.value not in npzContents:
+            if self.InternalPath.ready():
+                try:
+                    rawNumpyArray = rawLoadedNumpyObject[self.InternalPath.value]
+                except KeyError:
+                    raise OpNpyFileReader.DatasetReadError(
+                        "InternalPath not found in file. Unable to open numpy npz dataset: "
+                        "{fileName}: {internalPath}".format(
+                            fileName=fileName,
+                            internalPath=self.InternalPath.value))
+            else:
                 raise OpNpyFileReader.DatasetReadError(
-                    "Unable to open numpy npz dataset: {fileName}: {internalPath}".format(
-                        fileName=fileName,
-                        internalPath=self.InternalPath.value))
-
-            rawNumpyArray = rawLoadedNumpyObject[self.InternalPath.value]
+                    "InternalPath not given. Unable to open numpy npz dataset: "
+                    "{fileName}".format(
+                        fileName=fileName))
 
         axisorders = { 2 : 'yx',
                        3 : 'zyx',
