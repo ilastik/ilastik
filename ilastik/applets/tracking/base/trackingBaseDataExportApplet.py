@@ -63,15 +63,6 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
     def topLevelOperator(self):
         return self.__topLevelOperator
 
-    def includePluginOnlyOption(self):
-        """
-        Append Plugin-Only option to export tracking result using a plugin (without exporting volumes)
-        """
-        opTrackingDataExport = self.topLevelOperator
-        names = opTrackingDataExport.SelectionNames.value
-        names.append(opTrackingDataExport.PluginOnlyName.value)
-        opTrackingDataExport.SelectionNames.setValue(names)
-
     @classmethod
     def make_cmdline_parser(cls, starting_parser=None):
         arg_parser = DataExportApplet.make_cmdline_parser(starting_parser)

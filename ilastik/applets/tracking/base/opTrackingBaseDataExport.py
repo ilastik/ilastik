@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.dataExport.opDataExport import OpDataExport
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot
 
 class OpTrackingBaseDataExport(OpDataExport):
 
@@ -34,11 +34,3 @@ class OpTrackingBaseDataExport(OpDataExport):
     def run_export(self):
         if self.SelectedPlugin.value is not None:
             super(OpTrackingBaseDataExport, self).run_export()
-
-
-
-
-
-
-
-

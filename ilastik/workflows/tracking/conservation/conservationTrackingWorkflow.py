@@ -124,17 +124,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
         self.dataExportApplet.includeTableOnlyOption() # Export table only, without volumes
 
-        try:
-            import hytra
-            # export plugins only available with hytra backend
-            exportPlugins = pluginManager.getPluginsOfCategory('TrackingExportFormats')
-            availableExportPlugins = [pluginInfo.name for pluginInfo in exportPlugins]
-
-            if len(availableExportPlugins) > 0:
-                self.dataExportApplet.includePluginOnlyOption()
-        except ImportError:
-            pass
-        
         # configure export settings
         settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}
         selected_features = ['Count', 'RegionCenter', 'RegionRadii', 'RegionAxes']                  
