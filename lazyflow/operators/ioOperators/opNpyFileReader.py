@@ -25,11 +25,17 @@ import vigra
 import numpy
 import copy
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 class OpNpyFileReader(Operator):
     name = "OpNpyFileReader"
     category = "Input"
 
     FileName = InputSlot(stype='filestring')
+    InternalPath = InputSlot(optional=True)
+
     Output = OutputSlot()
 
     class DatasetReadError(Exception):
@@ -50,10 +56,30 @@ class OpNpyFileReader(Operator):
 
         try:
             # Load the file in read-only "memmap" mode to avoid reading it from disk all at once.
-            rawNumpyArray = numpy.load(str(fileName), 'r')
-            self._memmapFile = rawNumpyArray._mmap
-        except:
+            rawLoadedNumpyObject = numpy.load(str(fileName), mmap_mode='r', allow_pickle=False)
+        except (ValueError, IOError):
             raise OpNpyFileReader.DatasetReadError( "Unable to open numpy dataset: {}".format( fileName ) )
+
+        # .npy files:
+        if isinstance(rawLoadedNumpyObject, numpy.ndarray):
+            rawNumpyArray = rawLoadedNumpyObject
+            self._memmapFile = rawNumpyArray._mmap
+        # .npz files:
+        elif isinstance(rawLoadedNumpyObject, numpy.lib.npyio.NpzFile):
+            if self.InternalPath.ready():
+                try:
+                    rawNumpyArray = rawLoadedNumpyObject[self.InternalPath.value]
+                except KeyError:
+                    raise OpNpyFileReader.DatasetReadError(
+                        "InternalPath not found in file. Unable to open numpy npz dataset: "
+                        "{fileName}: {internalPath}".format(
+                            fileName=fileName,
+                            internalPath=self.InternalPath.value))
+            else:
+                raise OpNpyFileReader.DatasetReadError(
+                    "InternalPath not given. Unable to open numpy npz dataset: "
+                    "{fileName}".format(
+                        fileName=fileName))
 
         axisorders = { 2 : 'yx',
                        3 : 'zyx',

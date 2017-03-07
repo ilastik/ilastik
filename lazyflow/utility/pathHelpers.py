@@ -30,6 +30,7 @@ class PathComponents(object):
 
     # Only files with these extensions are allowed to have an 'internal' path
     HDF5_EXTS = ['.ilp', '.h5', '.hdf5']
+    NPZ_EXTS = ['.npz']
 
     def __init__(self, totalPath, cwd=None):
         """
@@ -65,7 +66,7 @@ class PathComponents(object):
         totalPath = totalPath.replace("\\","/")
 
         # For hdf5 paths, split into external, extension, and internal paths
-        for x in self.HDF5_EXTS:
+        for x in (self.HDF5_EXTS + self.NPZ_EXTS):
             if totalPath.find(x) > extIndex:
                 extIndex = totalPath.find(x)
                 ext = x

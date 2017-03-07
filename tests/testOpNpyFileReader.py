@@ -31,13 +31,20 @@ class TestOpNpyFileReader(object):
         self.graph = lazyflow.graph.Graph()
         tmpDir = tempfile.gettempdir()
         self.testDataFilePath = os.path.join(tmpDir, 'NpyTestData.npy')
+        # per default the arrays are named arr_0, arr_1... (see numpy.savez documentation)
+        self.testDataFilePathNPZdefault = os.path.join(tmpDir, 'NpzTestDataDefault.npz')
+        self.testDataFilePathNPZnamed = os.path.join(tmpDir, 'NpzTestDataNamed.npz')
 
         # Start by writing some test data to disk.
         self.testData = numpy.zeros((10, 11))
         for x in range(0,10):
             for y in range(0,11):
                 self.testData[x,y] = x+y
+        self.testDataB = numpy.arange(256, dtype=numpy.uint8).reshape((32, 8))
+
         numpy.save(self.testDataFilePath, self.testData)
+        numpy.savez(self.testDataFilePathNPZdefault, self.testData, self.testDataB)
+        numpy.savez(self.testDataFilePathNPZnamed, data_A=self.testData, data_B=self.testDataB)
 
     def tearDown(self):
         # Clean up: Delete the test file.
@@ -64,6 +71,25 @@ class TestOpNpyFileReader(object):
                     assert a[i,j] == self.testData[i,j]
         finally:
             npyReader.cleanUp()
+
+    def test_OpNpyFileReaderNPZnamed(self):
+        # Now read back our test data using an OpNpyFileReader operator
+        npyReader = OpNpyFileReader(graph=self.graph)
+        try:
+            for internalPath, referenceData in \
+                    zip(["data_A", "data_B"], [self.testData, self.testDataB]):
+                npyReader.InternalPath.setValue("data_B")
+                npyReader.FileName.setValue(self.testDataFilePathNPZnamed)
+
+                # Read the entire file and verify the contents
+                b = npyReader.Output[:].wait()
+                assert b.shape == self.testDataB.shape
+                assert npyReader.Output.meta.dtype == self.testDataB.dtype
+
+                numpy.testing.assert_almost_equal(b, self.testDataB)
+        finally:
+            npyReader.cleanUp()
+
 
 if __name__ == "__main__":
     import sys

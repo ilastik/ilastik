@@ -29,7 +29,7 @@ from opTiffSequenceReader import OpTiffSequenceReader
 from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader, \
     OpCachedTiledVolumeReader, OpKlbReader
 from lazyflow.utility.jsonConfig import JsonConfigParser
-from lazyflow.utility.pathHelpers import isUrl
+from lazyflow.utility.pathHelpers import isUrl, PathComponents
 
 from opStreamingUfmfReader import OpStreamingUfmfReader
 from opStreamingMmfReader import OpStreamingMmfReader
@@ -73,7 +73,7 @@ class OpInputDataReader(Operator):
     videoExts = ['ufmf', 'mmf', 'avi']
     h5Exts = ['h5', 'hdf5', 'ilp']
     klbExts = ['klb']
-    npyExts = ['npy']
+    npyExts = ['npy', 'npz']
     rawExts = ['dat', 'bin', 'raw']
     blockwiseExts = ['json']
     tiledExts = ['json']
@@ -361,20 +361,28 @@ class OpInputDataReader(Operator):
         return dataset_names
 
     def _attemptOpenAsNpy(self, filePath):
-        fileExtension = os.path.splitext(filePath)[1].lower()
-        fileExtension = fileExtension.lstrip('.') # Remove leading dot
-
-        # Check for numpy extension
-        if fileExtension not in OpInputDataReader.npyExts:
+        pathComponents = PathComponents(filePath)
+        ext = pathComponents.extension
+        if ext not in (".%s" % x for x in OpInputDataReader.npyExts):
             return ([], None)
-        else:
-            try:
-                # Create an internal operator
-                npyReader = OpNpyFileReader(parent=self)
-                npyReader.FileName.setValue(filePath)
-                return ([npyReader], npyReader.Output)
-            except OpNpyFileReader.DatasetReadError as e:
-                raise OpInputDataReader.DatasetReadError( *e.args )
+
+        externalPath = pathComponents.externalPath
+        internalPath = pathComponents.internalPath
+        # FIXME: check whether path is valid?!
+
+        if not os.path.exists(externalPath):
+            raise OpInputDataReader.DatasetReadError("Input file does not exist: " + externalPath)
+
+        try:
+            # Create an internal operator
+            npyReader = OpNpyFileReader(parent=self)
+            if internalPath is not None:
+                internalPath = internalPath.replace('/', '')
+            npyReader.InternalPath.setValue(internalPath)
+            npyReader.FileName.setValue(externalPath)
+            return ([npyReader], npyReader.Output)
+        except OpNpyFileReader.DatasetReadError as e:
+            raise OpInputDataReader.DatasetReadError( *e.args )
 
     def _attemptOpenAsRawBinary(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()

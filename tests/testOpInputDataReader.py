@@ -33,6 +33,7 @@ class TestOpInputDataReader(object):
         cls.graph = lazyflow.graph.Graph()
         tmpDir = tempfile.gettempdir()
         cls.testNpyDataFileName = tmpDir + '/test.npy'
+        cls.testNpzDataFileName = tmpDir + '/test.npz'
         cls.testImageFileName = tmpDir + '/test.png'
         cls.testH5FileName = tmpDir + '/test.h5'
 
@@ -72,6 +73,32 @@ class TestOpInputDataReader(object):
             for x in range(0,10):
                 for y in range(0,11):
                     assert npyData[x,y] == x+y
+        finally:
+            npyReader.cleanUp()
+
+    def test_npz(self):
+        # Create two Numpy test arrays
+        a = numpy.zeros((10, 11))
+        for x in range(0, 10):
+            for y in range(0, 11):
+                a[x, y] = x + y
+
+        b = numpy.arange((3 * 9)).reshape((3, 9))
+        numpy.savez(self.testNpzDataFileName, a=a, b=b)
+
+        # Now read back our test data using an OpInputDataReader operator
+        npyReader = OpInputDataReader(graph=self.graph)
+
+        try:
+            for internalPath, referenceArray in zip(['a', 'b'], [a, b]):
+                npyReader.FilePath.setValue(
+                    "{}/{}".format(self.testNpzDataFileName, internalPath))
+                cwd = os.path.split(__file__)[0]
+                npyReader.WorkingDirectory.setValue(cwd)
+
+                npzData = npyReader.Output[:].wait()
+                assert npzData.shape == referenceArray.shape
+                numpy.testing.assert_almost_equal(npzData, referenceArray)
         finally:
             npyReader.cleanUp()
 
