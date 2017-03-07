@@ -44,6 +44,11 @@ class TestPathHelpers(object):
         assert components.extension == '.h5'
         assert components.internalPath == '/with/internal/path/to/data'
 
+        components = PathComponents('/some/external/path/to/file.npz_crazy_ext.npz/withInternalPathToData')
+        assert components.externalPath == '/some/external/path/to/file.npz_crazy_ext.npz'
+        assert components.extension == '.npz'
+        assert components.internalPath == '/withInternalPathToData'
+
         # Everything should work for URLs, too.
         components = PathComponents('http://somehost:8000/path/to/data/with.ext')
         assert components.externalPath == 'http://somehost:8000/path/to/data/with.ext'
