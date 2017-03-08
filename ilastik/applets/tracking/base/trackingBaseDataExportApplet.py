@@ -18,7 +18,6 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-import argparse
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 from ilastik.utility import OpMultiLaneWrapper
@@ -64,6 +63,9 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
 
     @classmethod
     def make_cmdline_parser(cls, starting_parser=None):
+        """
+        Returns a command line parser that includes all parameters from the parent applet and adds export_plugin.
+        """
         arg_parser = DataExportApplet.make_cmdline_parser(starting_parser)
         arg_parser.add_argument('--export_plugin',
                                 help='Plugin name for exporting tracking results',
@@ -76,6 +78,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
         """
         Helper function for headless workflows.
         Parses commandline args that can be used to configure the ``TrackingBaseDataExportApplet`` top-level operator
+        as well as its parent, the ``DataExportApplet``,
         and returns ``(parsed_args, unused_args)``, similar to ``argparse.ArgumentParser.parse_known_args()``
         See also: :py:meth:`configure_operator_with_parsed_args()`.
 
@@ -116,10 +119,8 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
     def _configure_operator_with_parsed_args(cls, parsed_args, opTrackingDataExport):
         """
         Helper function for headless workflows.
-        Configures the given export operator according to the settings provided in ``parsed_args``.
-
-        Unlike the function above, this function can be called from external scripts.
-        The operator can be OpDataExport, OR OpFormattedDataExport
+        Configures the given export operator according to the settings provided in ``parsed_args``,
+        and depending on the chosen export source it also configures the parent operator opDataExport
 
         :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
         """
@@ -145,8 +146,5 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
 
         # configure super operator
         DataExportApplet._configure_operator_with_parsed_args(parsed_args, opTrackingDataExport)
-
-
-
 
 

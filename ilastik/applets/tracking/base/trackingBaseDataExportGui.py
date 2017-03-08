@@ -18,7 +18,6 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QFrame, QPushButton, QHBoxLayout, QComboBox, QLabel
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.plugins import pluginManager
@@ -27,7 +26,6 @@ from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBas
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, ColortableLayer
 
-import os
 import logging
 
 logger = logging.getLogger(__name__)
@@ -133,6 +131,11 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             self.topLevelOperator.SelectedPlugin.setValue(None)
 
     def _handleInputComboSelectionChanged( self, index ):
+        '''
+        Overrides the inherited method that gets called whenever the export source has changed.
+        Only forwards this to the parent GUI class if the user didn't select 'Plugin' because
+        then the superclass needs to configure more things.
+        '''
         sourceName = self.drawer.inputSelectionCombo.currentText()
         self._onSelectedExportSourceChanged(sourceName)
         if sourceName != OpTrackingBaseDataExport.PluginOnlyName:
