@@ -23,7 +23,7 @@ from PyQt4.QtGui import QFrame, QPushButton, QHBoxLayout, QComboBox, QLabel
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.plugins import pluginManager
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
-
+from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, ColortableLayer
 
@@ -78,8 +78,8 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         """
         opDataExport = self.topLevelOperator
         names = opDataExport.SelectionNames.value
-        if opDataExport.PluginOnlyName.value not in names:
-            names.append(opDataExport.PluginOnlyName.value)
+        if OpTrackingBaseDataExport.PluginOnlyName not in names:
+            names.append(OpTrackingBaseDataExport.PluginOnlyName)
             opDataExport.SelectionNames.setValue(names)
         logger.info("New available names are: {}".format(names))
 
@@ -139,8 +139,8 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             super(TrackingBaseDataExportGui, self)._handleInputComboSelectionChanged(index)
 
     def _onSelectedExportSourceChanged(self, sourceName):
-        self.selectedExportSource = sourceName
-        if sourceName == 'Plugin':
+        self.topLevelOperator.SelectedExportSource.setValue(sourceName)
+        if sourceName == OpTrackingBaseDataExport.PluginOnlyName:
             self.label.setEnabled(True)
             self.pluginDropdown.setEnabled(True)
         else:

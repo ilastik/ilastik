@@ -13,6 +13,7 @@ from ilastik.applets.trackingFeatureExtraction import config
 from ilastik.applets.tracking.conservation import config as configConservation
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
+from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 from ilastik.plugins import pluginManager
 from ilastik.config import cfg as ilastik_config
@@ -361,7 +362,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         # Plugin export if selected
         logger.info("Export source is: " + self.dataExportApplet.topLevelOperator.SelectedExportSource.value)
 
-        if self.dataExportApplet.topLevelOperator.SelectedExportSource.value == self.dataExportApplet.topLevelOperator.PluginOnlyName.value:
+        if self.dataExportApplet.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName:
             logger.info("Export source plugin selected!")
             selectedPlugin = self.dataExportApplet.topLevelOperator.SelectedPlugin.value
 

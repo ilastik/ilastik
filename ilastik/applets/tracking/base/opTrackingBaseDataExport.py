@@ -22,9 +22,10 @@ from ilastik.applets.dataExport.opDataExport import OpDataExport
 from lazyflow.graph import InputSlot
 
 class OpTrackingBaseDataExport(OpDataExport):
+    # class variable containing the default value
+    PluginOnlyName = 'Plugin'
 
     # Only export via a specified plugin
-    PluginOnlyName = InputSlot(value='Plugin')
     SelectedPlugin = InputSlot(value=None)
     SelectedExportSource = InputSlot(value=None)
 
@@ -32,5 +33,5 @@ class OpTrackingBaseDataExport(OpDataExport):
         super(OpTrackingBaseDataExport, self).__init__(*args, **kwargs)
 
     def run_export(self):
-        if self.SelectedPlugin.value is not None:
+        if self.SelectedExportSource.value is not self.PluginOnlyName:
             super(OpTrackingBaseDataExport, self).run_export()

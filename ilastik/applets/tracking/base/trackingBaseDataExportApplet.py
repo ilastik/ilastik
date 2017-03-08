@@ -22,7 +22,6 @@ import argparse
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 from ilastik.utility import OpMultiLaneWrapper
-from ilastik.plugins import pluginManager
 import os
 
 class TrackingBaseDataExportApplet( DataExportApplet ):
@@ -127,7 +126,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
         if parsed_args.export_source is not None:
             opTrackingDataExport.SelectedExportSource.setValue(parsed_args.export_source)
 
-            if parsed_args.export_source == opTrackingDataExport.PluginOnlyName.value:
+            if parsed_args.export_source == OpTrackingBaseDataExport.PluginOnlyName:
                 opTrackingDataExport.SelectedPlugin.setValue(parsed_args.export_plugin)
 
                 # if a plugin was selected, the only thing we need is the export name
