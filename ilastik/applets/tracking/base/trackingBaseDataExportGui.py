@@ -114,9 +114,6 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             # register the "plugins" option in the parent
             self._includePluginOnlyOption()
 
-            # listen to export-source selection changes to only make the plugin stuff enabled when "Plugin" is selected
-            self.drawer.inputSelectionCombo.currentIndexChanged[str].connect(self._onSelectedExportSourceChanged)
-
             frame = QFrame(parent=self)
             horizontalBoxLayout = QHBoxLayout()
             frame.setLayout(horizontalBoxLayout)
@@ -134,6 +131,12 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             self._onSelectedExportSourceChanged(self.drawer.inputSelectionCombo.currentText())
         else:
             self.topLevelOperator.SelectedPlugin.setValue(None)
+
+    def _handleInputComboSelectionChanged( self, index ):
+        sourceName = self.drawer.inputSelectionCombo.currentText()
+        self._onSelectedExportSourceChanged(sourceName)
+        if sourceName != OpTrackingBaseDataExport.PluginOnlyName:
+            super(TrackingBaseDataExportGui, self)._handleInputComboSelectionChanged(index)
 
     def _onSelectedExportSourceChanged(self, sourceName):
         self.selectedExportSource = sourceName

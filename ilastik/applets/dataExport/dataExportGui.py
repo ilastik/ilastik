@@ -167,16 +167,15 @@ class DataExportGui(QWidget):
         self.topLevelOperator.SelectionNames.notifyDirty( _handleNewSelectionNames )
         _handleNewSelectionNames()
 
-        def _handleInputComboSelectionChanged( index ):
-            assert index < len(self.topLevelOperator.SelectionNames.value)
-            if self.drawer.inputSelectionCombo.currentText() == self.topLevelOperator.TableOnlyName.value:
-                self.topLevelOperator.TableOnly.setValue(True)
-            elif self.drawer.inputSelectionCombo.currentText() == self.topLevelOperator.PluginOnlyName.value:
-                self.topLevelOperator.TableOnly.setValue(False)
-            else:
-                self.topLevelOperator.TableOnly.setValue(False)
-                self.topLevelOperator.InputSelection.setValue( index )
-        self.drawer.inputSelectionCombo.currentIndexChanged.connect( _handleInputComboSelectionChanged )
+        self.drawer.inputSelectionCombo.currentIndexChanged.connect(self._handleInputComboSelectionChanged)
+
+    def _handleInputComboSelectionChanged( self, index ):
+        assert index < len(self.topLevelOperator.SelectionNames.value)
+        if self.drawer.inputSelectionCombo.currentText() == self.topLevelOperator.TableOnlyName.value:
+            self.topLevelOperator.TableOnly.setValue(True)
+        else:
+            self.topLevelOperator.TableOnly.setValue(False)
+            self.topLevelOperator.InputSelection.setValue( index )
 
     def initCentralUic(self):
         """
