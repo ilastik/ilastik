@@ -173,6 +173,7 @@ class OpSeeds(Operator):
 
     
     def execute(self, slot, subindex, roi, result):
+        print "execute OpSeeds"
         assert slot is self.SeedsOut
         # value:
         # if Generated: then use Generated
