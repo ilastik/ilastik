@@ -58,7 +58,6 @@
         "ilastik.applets.thresholdTwoLevels.ipht":                  { "level":"INFO" },
         "ilastik.applets.objectExtraction":                         { "level":"INFO" },
         "ilastik.applets.blockwiseObjectClassification":            { "level":"INFO" },
-        "ilastik.applets.splitBodyCarving":                         { "level":"INFO" },
         "ilastik.shell":                                            { "level":"INFO" },
         "ilastik.shell.projectManager":                             { "level":"INFO" },
         "ilastik.shell.gui.ipcManager":                             { "level":"INFO" },

@@ -107,10 +107,3 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     import examples.deviationFromMean
     import examples.labeling
     import examples.connectedComponents
-
-# try:
-#     import nanshe.nansheWorkflow
-# except ImportError as e:
-#     if ilastik.config.cfg.getboolean('ilastik', 'debug'):
-#         logger.warn( "Failed to import nanshe workflow. Check dependencies: " + str(e) )
-
