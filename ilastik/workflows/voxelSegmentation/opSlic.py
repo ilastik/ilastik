@@ -6,7 +6,10 @@ a cache can be used to force every request to be taken from a global result.
 See the __main__ section, below.
 It also includes a brief demonstration of lazyflow's OperatorWrapper mechanism.
 """
+import numpy
+
 import skimage.segmentation
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache
 
@@ -22,7 +25,7 @@ class OpSlic(Operator):
     # These are the slic parameters.
     # Here we give default values, but they can be changed.
     NumSegments = InputSlot(value=100)
-    Compactness = InputSlot(value=10.0)
+    Compactness = InputSlot(value=0.1)
     MaxIter = InputSlot(value=10)
     
     Output = OutputSlot()
@@ -40,6 +43,8 @@ class OpSlic(Operator):
     
     def execute(self, slot, subindex, roi, result):
         input_data = self.Input(roi.start, roi.stop).wait()
+        print input_data.shape
+        numpy.save("/tmp/image", input_data)
         slic_sp = skimage.segmentation.slic(input_data,
                                             n_segments=self.NumSegments.value,
                                             compactness=self.Compactness.value,
@@ -53,6 +58,8 @@ class OpSlic(Operator):
         
         # slic_sp has no channel axis, so insert that axis before copying to 'result'
         result[:] = slic_sp[...,None]
+        # result = slic_sp
+        return result
     
     def propagateDirty(self, slot, subindex, roi):
         # For some operators, a dirty in one part of the image only causes changes in nearby regions.
@@ -66,8 +73,8 @@ class OpSlicCached(Operator):
     """
     # Same slots as OpSlic
     Input = InputSlot()
-    NumSegments = InputSlot(value=100)
-    Compactness = InputSlot(value=10.0)
+    NumSegments = InputSlot(value=200)
+    Compactness = InputSlot(value=0.4)
     MaxIter = InputSlot(value=10)
     
     Output = OutputSlot()

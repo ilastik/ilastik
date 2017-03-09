@@ -24,15 +24,17 @@ from slicGui import SlicGui
 from opSlic import OpSlicCached
 
 class SlicApplet(StandardApplet):
-    def __init__(self, workflow, projectFileGroupName):
-        self._topLevelOperator = OpSlicCached(parent=workflow)
-        super(SlicApplet, self).__init__(workflow, projectFileGroupName)
-        self._gui = None
+    def __init__(self, workflow):
+        super(SlicApplet, self).__init__("SLIC Applet", workflow)
 
     @property
     def singleLaneGuiClass(self):
         return SlicGui
 
     @property
-    def topLevelOperator(self):
-        return self._topLevelOperator
+    def singleLaneOperatorClass(self):
+        return OpSlicCached
+
+    @property
+    def broadcastingSlots(self):
+        return ['NumSegments', 'Compactness', 'MaxIter']

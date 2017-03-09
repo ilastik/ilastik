@@ -105,8 +105,8 @@ class VoxelSegmentationWorkflow(PixelClassificationWorkflow):
         opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )        
 
         # Expose for shell
-        self._applets.append(self.slicApplet)
         self._applets.append(self.dataSelectionApplet)
+        self._applets.append(self.slicApplet)
         self._applets.append(self.featureSelectionApplet)
         self._applets.append(self.pcApplet)
         self._applets.append(self.dataExportApplet)
@@ -142,4 +142,4 @@ class VoxelSegmentationWorkflow(PixelClassificationWorkflow):
         return VoxelSegmentationApplet(self, "VoxelSegmentation")
 
     def createSlicApplet(self):
-        return SlicApplet(self, "Slic Applet")
+        return SlicApplet(self)
