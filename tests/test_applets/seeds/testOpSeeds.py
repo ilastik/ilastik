@@ -17,8 +17,5 @@
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
-##############################################################################
-
-from seedsApplet import SeedsApplet
-from opSeeds import OpSeeds
+###############################################################################
 
