@@ -13,22 +13,13 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 import logging
 logger = logging.getLogger(__name__)
 
-SOLVER = None
 try:
     import multiHypoTracking_with_cplex as mht
-    SOLVER = "CPLEX"
 except ImportError:
     try:
         import multiHypoTracking_with_gurobi as mht
-        SOLVER = "GUROBI"
     except ImportError:
-        try:
-            import dpct
-            SOLVER = "DPCT"
-            logger.warning("Could not find any ILP solver (CPLEX or GUROBI). Tracking will use flow-based solver (DPCT). " + \
-                           "Learning for tracking including crop selection and training for tracking will be disabled!")
-        except ImportError:
-            raise ImportError("Could not find any solver.")
+        logger.warning("Could not find any ILP solver")
 
 class OpStructuredTracking(OpConservationTracking):
     Crops = InputSlot()
@@ -45,6 +36,7 @@ class OpStructuredTracking(OpConservationTracking):
     MaxNumObjOut = OutputSlot()
 
     def __init__(self, parent=None, graph=None):
+        self._solver = "ILP"
         super(OpStructuredTracking, self).__init__(parent=parent, graph=graph)
 
         self.labels = {}
@@ -73,12 +65,7 @@ class OpStructuredTracking(OpConservationTracking):
         self.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
         self.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
 
-        if SOLVER=="CPLEX" or SOLVER=="GUROBI":
-            self._solver="ILP"
-        elif SOLVER=="DPCT":
-            self._solver="Flow-based"
-        else:
-            self._solver=None
+        self._solver = self.parent.parent._solver
 
     def _updateLabelsFromOperator(self):
         self.labels = self.Labels.value
@@ -165,6 +152,7 @@ class OpStructuredTracking(OpConservationTracking):
         parameters['y_range'] = y_range
         parameters['z_range'] = z_range
         parameters['max_nearest_neighbors'] = maxNearestNeighbors
+        parameters['withTracklets'] = False
 
         # Set a size range with a minimum area equal to the max number of objects (since the GMM throws an error if we try to fit more gaussians than the number of pixels in the object)
         size_range = (max(maxObj, size_range[0]), size_range[1])
