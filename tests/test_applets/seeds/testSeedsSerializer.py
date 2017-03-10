@@ -68,9 +68,11 @@ class TestSeedsSerializer(object):
             assert testProject['Seeds/SmoothingSigma'][()] == 7.9
             assert testProject['Seeds/ComputeMethod'][()] == "Gaussian"
             #not needed: serialhdf5blockslot
+            '''
             for i in testProject['Seeds']:
                 print "X:" + i
             print testProject['Seeds/StorageVersion'][()] 
+            '''
         
             # Deserialize into a fresh operator
             operatorToLoad = OpSeeds(graph=graph)

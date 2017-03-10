@@ -88,7 +88,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             # python thread and qthread failed here, and NonModal didn't help
             self.showInfoMessage()
 
-            print "before resetLabelsToSlot()"
+            #print "before resetLabelsToSlot()"
             op.resetLabelsToSlot()
 
             # reset is done, so set this variable to false
@@ -201,7 +201,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.__cleanup_fns.append( partial( op.WSMethod.unregisterMetaChanged, self.onSeedsExistOrWSMethodChanged ) )
 
 
-        print "init watershedSegmentationGui"
+        #print "init watershedSegmentationGui"
 
 
     def removeLabelsFromList(self):

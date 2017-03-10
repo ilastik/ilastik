@@ -382,7 +382,6 @@ class TestOpWatershedSegmentationCalculation(object):
                     assert (op.Output[:].wait() == watershed).all()
 
                     # Turbo
-                    print self.boundariesWS.dtype
                     op.Method.setValue("Turbo")
                     op.Neighbors.setValue("direct") 
                     watershed = function()

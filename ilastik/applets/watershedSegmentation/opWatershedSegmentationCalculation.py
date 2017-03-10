@@ -168,19 +168,13 @@ class OpWatershedSegmentationCalculation( Operator ):
         # if sliced, then the input is only a part of the series, 
         # and therefore the dimension is still correct
         method, neighbors, terminate, maxCost = self.prepareInputParameter(boundaries.ndim)
-        '''
-        print neighbors
-        print method
-        print terminate
-        print maxCost
-        '''
 
         #UnionFind doesn't support seeds and max_cost
         if (method == "UnionFind"):
             seeds = None
             maxCost = 0
 
-        print "neighbors: '" + str(neighbors) + "'\nmethod: '" + str(method) + "'\nterminate: '" + str(terminate) + "'\nmaxCost: '" + str(maxCost) + "'\n"
+        #print "neighbors: '" + str(neighbors) + "'\nmethod: '" + str(method) + "'\nterminate: '" + str(terminate) + "'\nmaxCost: '" + str(maxCost) + "'\n"
         # watershedAlgoirthm itself
         (labelImage, maxRegionLabel) = vigra.analysis.watershedsNew(\
                 image           = boundaries,

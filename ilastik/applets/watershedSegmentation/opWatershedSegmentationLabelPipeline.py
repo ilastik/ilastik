@@ -60,7 +60,7 @@ class OpWatershedSegmentationLabelPipeline( Operator ):
 
 
     def propagateDirty(self, slot, subindex, roi):
-        print "LabelPipeline dirty: " + slot.name
+        #print "LabelPipeline dirty: " + slot.name
         self.SeedOutput.setDirty()
         pass    
 

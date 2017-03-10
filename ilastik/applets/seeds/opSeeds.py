@@ -82,7 +82,7 @@ class OpSeeds(Operator):
     def __init__(self, *args, **kwargs):
         super( OpSeeds, self ).__init__(*args, **kwargs)
 
-        print "Init opSeeds"
+        #print "Init opSeeds"
 
         ############################################################
         # SeedsOut cached
@@ -128,7 +128,7 @@ class OpSeeds(Operator):
 
         This signalizes, that the new seeds will be displayed and used as output
         """
-        print "onSeedsChanged"
+        #print "onSeedsChanged"
 
 
         # if new seeds are added
@@ -146,7 +146,7 @@ class OpSeeds(Operator):
 
 
     def setupOutputs(self):
-        print "setupOutputs in OpSeeds"
+        #print "setupOutputs in OpSeeds"
         # set the Watershed Method for the WS Applet
         self._setWatershedMethod()
 
@@ -173,7 +173,7 @@ class OpSeeds(Operator):
 
     
     def execute(self, slot, subindex, roi, result):
-        print "execute OpSeeds"
+        #print "execute OpSeeds"
         assert slot is self.SeedsOut
         # value:
         # if Generated: then use Generated
@@ -190,7 +190,7 @@ class OpSeeds(Operator):
 
         
     def propagateDirty(self, slot, subindex, roi):
-        print "propagteDirty in opSeeds"
+        #print "propagteDirty in opSeeds"
         if slot in (self.Boundaries, self.Seeds, self.SmoothingMethod, self.SmoothingSigma, self.ComputeMethod):
             self.SeedsOut.setDirty()
 
@@ -293,10 +293,8 @@ class OpSeeds(Operator):
         if not zUsed:
             #remove z axis
             boundaries              = removeLastAxis(boundaries)
-            #elif not zUsed:
-            #elif zUsed and tUsed:
 
-        print boundaries.shape
+        #print boundaries.shape
 
 
 

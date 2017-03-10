@@ -179,8 +179,7 @@ class OpWatershedSegmentation(Operator):
         self._cache.Input.connect(self.WatershedCalc)
 
 
-        #TODO 
-        print "Init opWatershedSegmentation"
+        #print "Init opWatershedSegmentation"
 
 
         self._sig_labels_to_delete = OrderedSignal(hide_cancellation_exceptions=True)
@@ -208,8 +207,7 @@ class OpWatershedSegmentation(Operator):
         self.PmapColors.meta.dtype  = object
         self.PmapColors.meta.shape  = (1,)
 
-        #TODO for testing 
-        print self.WSMethod.value
+        #print self.WSMethod.value
 
 
         # FOR PROPER CACHING, SET THE BLOCKSIZE OF THE CACHE FOR WSCALCULATIONS
@@ -227,7 +225,7 @@ class OpWatershedSegmentation(Operator):
         assert False, "Should never be called!"
         
     def propagateDirty(self, slot, subindex, roi):
-        print "in opWS propagate Dirty"
+        #print "in opWS propagate Dirty"
         if slot is self.CorrectedSeedsIn:
             # set flag to True; means remember to reset the labels when the applet gets to foreground
             self.InputSeedsChanged.setValue(True)
