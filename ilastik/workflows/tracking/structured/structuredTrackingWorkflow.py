@@ -589,9 +589,9 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self._shell.setAppletEnabled(self.trackingFeatureExtractionApplet, thresholding_ready and not busy)
         self._shell.setAppletEnabled(self.cellClassificationApplet, tracking_features_ready and not busy)
         self._shell.setAppletEnabled(self.divisionDetectionApplet, tracking_features_ready and not busy)
-        self._shell.setAppletEnabled(self.cropSelectionApplet, thresholding_ready and not busy and withIlpSolver)
+        self._shell.setAppletEnabled(self.cropSelectionApplet, thresholding_ready and not busy) # and withIlpSolver)
         self._shell.setAppletEnabled(self.objectExtractionApplet, not busy)
-        self._shell.setAppletEnabled(self.annotationsApplet, features_ready and not busy and withIlpSolver)
+        self._shell.setAppletEnabled(self.annotationsApplet, features_ready and not busy) # and withIlpSolver)
         # self._shell.setAppletEnabled(self.dataExportAnnotationsApplet, annotations_ready and not busy and \
         #                                 self.dataExportAnnotationsApplet.topLevelOperator.Inputs[0][0].ready() )
         self._shell.setAppletEnabled(self.trackingApplet, objectCountClassifier_ready and not busy)
