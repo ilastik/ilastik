@@ -41,7 +41,7 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
     fixAtCurrent = InputSlot(value=False)
     Input = InputSlot(allow_mask=True)
     #BlockShape = InputSlot()
-    outerBlockShape = InputSlot(optional=True) # If not provided, will be set to Input.meta.shape
+    BlockShape = InputSlot(optional=True) # If not provided, will be set to Input.meta.shape
     BypassModeEnabled = InputSlot(value=False)
     CompressionEnabled = InputSlot(value=False)
     
@@ -73,7 +73,7 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self._opSimpleBlockedArrayCache.Input.connect( self._opCacheFixer.Output )
         self._opSimpleBlockedArrayCache.CompressionEnabled.connect( self.CompressionEnabled )
         self._opSimpleBlockedArrayCache.Input.connect( self._opCacheFixer.Output )
-        self._opSimpleBlockedArrayCache.BlockShape.connect( self.outerBlockShape )
+        self._opSimpleBlockedArrayCache.BlockShape.connect( self.BlockShape )
         self._opSimpleBlockedArrayCache.BypassModeEnabled.connect( self.BypassModeEnabled )
         self.CleanBlocks.connect( self._opSimpleBlockedArrayCache.CleanBlocks )
         self.Output.connect( self._opSimpleBlockedArrayCache.Output )
@@ -91,8 +91,8 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self.registerWithMemoryManager()
         
     def setupOutputs(self):
-        if not self.outerBlockShape.ready():
-            self.outerBlockShape.setValue( self.Input.meta.shape )
+        if not self.BlockShape.ready():
+            self.BlockShape.setValue( self.Input.meta.shape )
         # Copy metadata from the internal pipeline to the output
         self.Output.meta.assignFrom( self._opSimpleBlockedArrayCache.Output.meta )
 

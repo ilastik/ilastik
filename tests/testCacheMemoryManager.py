@@ -179,7 +179,7 @@ class TestCacheMemoryManager(unittest.TestCase):
         mgr.setRefreshInterval(.01)
         mgr.enable()
 
-        cache.outerBlockShape.setValue((k,)*5)
+        cache.BlockShape.setValue((k,)*5)
         cache.Input.connect(pipe.Output)
         pipe.Input.setValue(vol)
 
@@ -244,7 +244,7 @@ class TestCacheMemoryManager(unittest.TestCase):
 
         cache = OpBlockedArrayCache(graph=g)
         cache.Input.connect(pipe.Output)
-        cache.outerBlockShape.setValue(blockshape)
+        cache.BlockShape.setValue(blockshape)
 
         op = OpEnlarge(graph=g)
         op.Input.connect(cache.Output)

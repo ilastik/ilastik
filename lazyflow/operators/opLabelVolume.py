@@ -227,7 +227,7 @@ class OpLabelingABC(Operator):
         shape = np.asarray(self.Input.meta.shape, dtype=np.int)
         shape[0] = 1
         shape[4] = 1
-        self._cache.outerBlockShape.setValue(tuple(shape))
+        self._cache.BlockShape.setValue(tuple(shape))
 
         # setup meta for Output
         self.Output.meta.assignFrom(self.Input.meta)

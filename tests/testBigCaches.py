@@ -32,7 +32,7 @@ class TestOpBlockedArrayCache_BIG_INPUT(object):
         opCache = OpBlockedArrayCache(graph=graph)
         opCache.Input.connect( opOnes.Output )
         opCache.innerBlockShape.setValue( (1,128,128,999) )
-        opCache.outerBlockShape.setValue( (1,256,256,999) )
+        opCache.BlockShape.setValue( (1,256,256,999) )
         opCache.fixAtCurrent.setValue(False)
         
         assert opCache.setup_ram_context.ram_increase_mb < 10, \

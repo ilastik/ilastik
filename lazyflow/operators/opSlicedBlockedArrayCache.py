@@ -42,7 +42,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
     fixAtCurrent = InputSlot(value = False)
     Input = InputSlot(allow_mask=True)
     innerBlockShape = InputSlot()
-    outerBlockShape = InputSlot()
+    BlockShape = InputSlot()
     BypassModeEnabled = InputSlot(value=False)
     CompressionEnabled = InputSlot(value=False)
    
@@ -97,7 +97,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
 
     def setupOutputs(self):
         self.shape = self.inputs["Input"].meta.shape
-        self._outerShapes = self.inputs["outerBlockShape"].value
+        self._outerShapes = self.inputs["BlockShape"].value
         self._innerShapes = self.inputs["innerBlockShape"].value
 
         for blockshape in self._innerShapes + self._outerShapes:
@@ -130,7 +130,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
         for i,innershape in enumerate(self._innerShapes):
             op = self._innerOps[i]
             op.inputs["innerBlockShape"].setValue(innershape)
-            op.inputs["outerBlockShape"].setValue(self._outerShapes[i])
+            op.inputs["BlockShape"].setValue(self._outerShapes[i])
 
         self.Output.meta.assignFrom(self.Input.meta)
         
@@ -191,7 +191,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
         if not fixed:
             if slot == self.Input:
                 self.Output.setDirty( key )        
-            elif slot == self.outerBlockShape or slot == self.innerBlockShape:
+            elif slot == self.BlockShape or slot == self.innerBlockShape:
                 #self.Output.setDirty( slice(None) )
                 pass # Blockshape changes don't trigger dirty notifications
                      # It is considered an error to change the blockshape after the initial configuration.
