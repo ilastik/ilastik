@@ -195,13 +195,13 @@ def segmentGC(pred, beta):
     indices = np.arange(numVar,
                         dtype=np.uint32).reshape((nx, ny, nz))
     arg1 = np.concatenate([indices[:nx - 1, :, :], indices[1:, :, :]]
-                            ).reshape((2, numVar - nyz)).transpose()
+                            ).reshape((2, (nx-1)*ny*nz)).transpose()
 
     arg2 = np.concatenate([indices[:, :ny - 1, :], indices[:, 1:, :]]
-                            ).reshape((2, numVar - nx*nz)).transpose()
+                            ).reshape((2, nx*(ny-1)*nz)).transpose()
 
     arg3 = np.concatenate([indices[:, :, :nz - 1], indices[:, :, 1:]]
-                            ).reshape((2, numVar - nx*ny)).transpose()
+                            ).reshape((2, nx*ny*(nz-1))).transpose()
 
     gm.addFactors(fid, arg1)
     gm.addFactors(fid, arg2)
