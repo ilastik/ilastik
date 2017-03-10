@@ -40,6 +40,23 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 import logging
 logger = logging.getLogger(__name__)
 
+SOLVER = None
+try:
+    import multiHypoTracking_with_cplex as mht
+    SOLVER = "CPLEX"
+except ImportError:
+    try:
+        import multiHypoTracking_with_gurobi as mht
+        SOLVER = "GUROBI"
+    except ImportError:
+        try:
+            import dpct
+            SOLVER = "DPCT"
+            logger.warning("Could not find any ILP solver (CPLEX or GUROBI). Tracking will use flow-based solver (DPCT). " + \
+                           "Learning for tracking including crop selection and training for tracking will be disabled!")
+        except ImportError:
+            raise ImportError("Could not find any solver.")
+
 class StructuredTrackingWorkflowBase( Workflow ):
     workflowName = "Structured Learning Tracking Workflow BASE"
 
@@ -109,6 +126,14 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
         self.trackingApplet = StructuredTrackingApplet( name="Tracking - Structured Learning", workflow=self )
         opStructuredTracking = self.trackingApplet.topLevelOperator
+
+        if SOLVER=="CPLEX" or SOLVER=="GUROBI":
+            self._solver="ILP"
+        elif SOLVER=="DPCT":
+            self._solver="Flow-based"
+        else:
+            self._solver=None
+        opStructuredTracking._solver = self._solver
 
         self.default_tracking_export_filename = '{dataset_dir}/{nickname}-tracking_exported_data.csv'
         self.dataExportTrackingApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export",default_export_filename=self.default_tracking_export_filename)
@@ -440,7 +465,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
             logger.info("Division results are correct.")
             assert linkingFlag, "Transition results are NOT correct. They differ from your annotated transitions."
             logger.info("Transition results are correct.")
-
         self.result = runLearningAndTracking(withMergerResolution=parameters['withMergerResolution'])
 
     def post_process_lane_export(self, lane_index):
@@ -547,6 +571,9 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opStructuredTracking = self.trackingApplet.topLevelOperator
         structured_tracking_ready = objectCountClassifier_ready and \
                            len(opStructuredTracking.EventsVector) > 0
+
+        withIlpSolver = (self._solver=="ILP")
+
         busy = False
         busy |= self.dataSelectionApplet.busy
         busy |= self.annotationsApplet.busy
@@ -562,9 +589,9 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self._shell.setAppletEnabled(self.trackingFeatureExtractionApplet, thresholding_ready and not busy)
         self._shell.setAppletEnabled(self.cellClassificationApplet, tracking_features_ready and not busy)
         self._shell.setAppletEnabled(self.divisionDetectionApplet, tracking_features_ready and not busy)
-        self._shell.setAppletEnabled(self.cropSelectionApplet, thresholding_ready and not busy)
+        self._shell.setAppletEnabled(self.cropSelectionApplet, thresholding_ready and not busy and withIlpSolver)
         self._shell.setAppletEnabled(self.objectExtractionApplet, not busy)
-        self._shell.setAppletEnabled(self.annotationsApplet, features_ready and not busy)
+        self._shell.setAppletEnabled(self.annotationsApplet, features_ready and not busy and withIlpSolver)
         # self._shell.setAppletEnabled(self.dataExportAnnotationsApplet, annotations_ready and not busy and \
         #                                 self.dataExportAnnotationsApplet.topLevelOperator.Inputs[0][0].ready() )
         self._shell.setAppletEnabled(self.trackingApplet, objectCountClassifier_ready and not busy)
