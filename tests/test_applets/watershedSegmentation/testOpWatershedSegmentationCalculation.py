@@ -58,8 +58,9 @@ class TestOpWatershedSegmentationCalculation(object):
 
     def createBoundariesAndSeedsForWatershed(self):
         """
+        boundaries: a square in the middle
+        seeds: background seeds on each top left; on other seeds in the total middle
         """
-        #TODO beschreibung
         shape = (1,11,11,11,1)
         data = [ 3,4,5,6,7]
         dataB = [ 0]
@@ -73,7 +74,7 @@ class TestOpWatershedSegmentationCalculation(object):
                         if x in data and y in data and z in data:
                             arrayBoundaries[t,x,y,z] =  255
                         # background seed
-                        if x in dataB and y in dataB and z in dataB:
+                        if x in dataB and y in dataB: # and z in dataB: # on all slides
                             arraySeeds[t,x,y,z] =  1
                         if x in dataS1 and y in dataS1 and z in dataS1:
                             arraySeeds[t,x,y,z] =  2
@@ -81,11 +82,23 @@ class TestOpWatershedSegmentationCalculation(object):
         arrayBoundaries = vigra.taggedView(arrayBoundaries, axistags='txyzc')
         arraySeeds      = vigra.taggedView(arraySeeds, axistags='txyzc')
 
-        # to view the images
-        export_image_to_hdf5(arrayBoundaries, "boundariesForWatershed.h5")
-        export_image_to_hdf5(arraySeeds, "seedsForWatershed.h5")
 
-        return arrayBoundaries, arraySeeds
+
+        # 2D, with frame 5
+        arrayBoundaries2D = numpy.zeros(arrayBoundaries.shape[:3] + (1,1,), dtype=numpy.uint8)
+        arrayBoundaries2D[:,:,:,0,:] = arrayBoundaries[:,:,:,5,:]
+        arrayBoundaries2D   = vigra.taggedView(arrayBoundaries2D, axistags='txyzc')
+        arraySeeds2D = numpy.zeros(arraySeeds.shape[:3] + (1,1,), dtype=numpy.uint8)
+        arraySeeds2D[:,:,:,0,:] = arraySeeds[:,:,:,5,:]
+        arraySeeds2D   = vigra.taggedView(arraySeeds2D, axistags='txyzc')
+
+        # to view the images
+        #export_image_to_hdf5(arrayBoundaries, "boundariesForWatershed.h5")
+        #export_image_to_hdf5(arraySeeds, "seedsForWatershed.h5")
+        #export_image_to_hdf5(arrayBoundaries2D, "boundaries2DForWatershed.h5")
+        #export_image_to_hdf5(arraySeeds2D, "seeds2DForWatershed.h5")
+
+        return arrayBoundaries, arraySeeds, arrayBoundaries2D, arraySeeds2D
 
 
 
@@ -112,7 +125,9 @@ class TestOpWatershedSegmentationCalculation(object):
             boundariesFloat32, boundariesUint8     = self.createTestSet()
             self.taggedArray = boundariesFloat32
 
-            self.boundariesWS, self.seedsWS = self.createBoundariesAndSeedsForWatershed()
+            # get boundaries, also for 2D
+            self.boundariesWS, self.seedsWS, self.boundariesWS2D, self.seedsWS2D = \
+                    self.createBoundariesAndSeedsForWatershed()
 
             # predefined random values
             op.Boundaries.setValue( boundariesFloat32 )
@@ -139,6 +154,12 @@ class TestOpWatershedSegmentationCalculation(object):
 
 
             def test_prepareInputParameter():
+                """
+                methods need to remain and have its correct default value
+                neighbors need to be converted correctly with given dimension
+                terminate is tested, also for cases: e.g. unionfind + keepContours -> unionfind + completeGrow
+                max_cost is tested
+                """
 
                 # default values
                 op.Method.setValue("RegionGrowing")
@@ -261,7 +282,52 @@ class TestOpWatershedSegmentationCalculation(object):
                 assert maxCost      == 0
 
 
+
+
+            def WS3D():
+                """
+                prepare watershed for 3D case
+                """
+                shape = self.boundariesWS.shape
+                watershed = numpy.zeros(shape, dtype=numpy.uint8)
+                t=0
+                if op.Neighbors.value == "direct":
+                    neighbors = 6
+                else:
+                    neighbors = 26
+                if op.Method.value == "UnionFind":
+                        watershed    = executeWSAlgorithm(self.boundariesWS[t],\
+                                None, neighbors)
+                else:
+                        watershed    = executeWSAlgorithm(self.boundariesWS[t],\
+                                self.seedsWS[t].astype(numpy.uint32), neighbors)
+                return watershed
+
+            def WS2D():
+                """
+                prepare watershed for 2D case
+                """
+                shape = self.boundariesWS2D.shape
+                watershed = numpy.zeros(shape, dtype=numpy.uint8)
+                t=0
+                if op.Neighbors.value == "direct":
+                    neighbors = 4
+                else:
+                    neighbors = 8
+                if op.Method.value == "UnionFind":
+                    watershed[0,:,:,0,:]    = executeWSAlgorithm(self.boundariesWS2D[t,:,:,0,:],\
+                            None, neighbors)
+                else:
+                    watershed[0,:,:,0,:]    = executeWSAlgorithm(self.boundariesWS2D[t,:,:,0,:],\
+                            self.seedsWS2D[t,:,:,0,:].astype(numpy.uint32), neighbors)
+                return watershed
+
+
+
             def executeWSAlgorithm(boundaries, seeds, neighbors):
+                """
+                take the parameters from the operators (except neighbors) and execute the algorithm
+                """
                 method      = op.Method.value
                 terminate   = op.Terminate.value
                 maxCost     = op.MaxCost.value
@@ -277,33 +343,6 @@ class TestOpWatershedSegmentationCalculation(object):
                 return labelImage
 
 
-            def WS3D():
-                shape = self.boundariesWS.shape
-                watershed = numpy.zeros(shape, dtype=numpy.uint8)
-                t=0
-                if op.Neighbors.value == "direct":
-                    neighbors = 6
-                else:
-                    neighbors = 26
-                if op.Method.value == "UnionFind":
-                        watershed    = executeWSAlgorithm(self.boundariesWS[t], None, neighbors)
-                else:
-                        watershed    = executeWSAlgorithm(self.boundariesWS[t], self.seedsWS[t].astype(numpy.uint32), neighbors)
-                return watershed
-
-            def WS3D():
-                shape = self.boundariesWS.shape
-                watershed = numpy.zeros(shape, dtype=numpy.uint8)
-                t=0
-                if op.Neighbors.value == "direct":
-                    neighbors = 6
-                else:
-                    neighbors = 26
-                if op.Method.value == "UnionFind":
-                        watershed    = executeWSAlgorithm(self.boundariesWS[t], None, neighbors)
-                else:
-                        watershed    = executeWSAlgorithm(self.boundariesWS[t], self.seedsWS[t].astype(numpy.uint32), neighbors)
-                return watershed
 
 
             def testWatershedCalculations():
@@ -312,30 +351,35 @@ class TestOpWatershedSegmentationCalculation(object):
                 Turbo and UnionFind for direct & indirect
 
                 0. t,x,y,z: in ilastik, the roi will be always without t, so don't test this here
-                1. x,y,z
+                1. WS2D for x,y
+                2. WS3D for x,y,z
                 """
-                op.Boundaries.setValue(None)
-                op.Seeds.setValue(None)
-                op.Boundaries.setValue(self.boundariesWS)
-                op.Seeds.setValue(self.seedsWS)
-                op.SeedsExist.setValue(True)
-                shape = self.boundariesWS.shape
 
-                op.MaxCost.setValue(0)
-                op.Terminate.setValue(       vigra.analysis.SRGType.CompleteGrow)
+                for function in [WS2D, WS3D]:
+                    # default seetings
+                    op.SeedsExist.setValue(True)
+                    op.Boundaries.setValue(None)
+                    op.Seeds.setValue(None)
+                    op.MaxCost.setValue(0)
+                    op.Terminate.setValue(       vigra.analysis.SRGType.CompleteGrow)
+                    # different boundaries/seeds for 2D and 3D
+                    if function == WS3D:
+                        op.Boundaries.setValue(self.boundariesWS)
+                        op.Seeds.setValue(self.seedsWS)
+                    if function == WS2D:
+                        op.Boundaries.setValue(self.boundariesWS2D)
+                        op.Seeds.setValue(self.seedsWS2D)
 
-                # 1. x,y,z
-                #for function in [WS3D, WS2D]:
-                for function in [WS3D]:
+
                     # UnionFind
                     op.Method.setValue("UnionFind")
                     op.Neighbors.setValue("direct") 
                     watershed = function()
                     assert (op.Output[:].wait() == watershed).all()
+
                     op.Neighbors.setValue("indirect") 
                     watershed = function()
                     assert (op.Output[:].wait() == watershed).all()
-
 
                     # Turbo
                     print self.boundariesWS.dtype
@@ -376,17 +420,11 @@ class TestOpWatershedSegmentationCalculation(object):
                     assert (op.Output[:].wait() == watershed).all()
 
 
-
-
+            # execute the tests
             testWatershedCalculations()
+            test_check_SeedsExist_plus_WSMethod_fit_together()
+            test_prepareInputParameter()
 
-            #TODO uncomment
-            #test_check_SeedsExist_plus_WSMethod_fit_together()
-            #test_prepareInputParameter()
-
-
-    
-            
 
         os.remove(testProjectName)
 
