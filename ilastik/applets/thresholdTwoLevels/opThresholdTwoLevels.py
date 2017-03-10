@@ -26,17 +26,18 @@ from ConfigParser import NoOptionError
 
 # numerics
 import numpy
+import numpy as np
 import vigra
 
 # ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
 import ilastik.config
-from ipht import identity_preserving_hysteresis_thresholding
+from ipht import identity_preserving_hysteresis_thresholding, threshold_from_cores
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpPixelOperator, OpLabelVolume,\
-    OpCompressedCache, OpColorizeLabels,\
+    OpBlockedArrayCache, OpColorizeLabels,\
     OpSingleChannelSelector, OperatorWrapper,\
     OpMultiArrayStacker, OpMultiArraySlicer,\
     OpReorderAxes, OpFilterLabels
@@ -44,14 +45,13 @@ from lazyflow.rtype import SubRegion
 from lazyflow.request import Request, RequestPool
 
 # local
-from thresholdingTools import OpAnisotropicGaussianSmoothing5d
-
-from thresholdingTools import OpSelectLabels
+from thresholdingTools import OpAnisotropicGaussianSmoothing5d, OpSelectLabels, select_labels
 
 from opGraphcutSegment import haveGraphCut
+from scipy.stats.mstats_basic import threshold
 
 if haveGraphCut():
-    from opGraphcutSegment import OpObjectsSegment, OpGraphCut
+    from opGraphcutSegment import OpObjectsSegment, OpGraphCut, segmentGC
 
 
 logger = logging.getLogger(__name__)
@@ -65,8 +65,234 @@ except NoOptionError:
 logger.info("Using '{}' labeling implemetation".format(_labeling_impl))
 
 
-## High level operator for one/two level threshold
+class ThresholdMethod(object):
+    SIMPLE = 0      # single-threshold
+    HYSTERESIS = 1  # hysteresis, a.k.a "two-level"
+    GRAPHCUT = 2    # single, but tuned by graphcut
+    IPHT = 3        # identity-preserving hysteresis thresholding
+    
+class OpLabeledThreshold(Operator):
+    Input = InputSlot() # Must have exactly 1 channel
+    CoreLabels = InputSlot(optional=True) # Not used for 'Simple' method.
+
+    Method = InputSlot(value=ThresholdMethod.SIMPLE)
+    FinalThreshold = InputSlot(value=0.2)
+    #UseSparseMode = InputSlot(value=False)
+    #MarginAroundCores = InputSlot(value=(20,20,20)) # xyz
+
+    GraphcutBeta = InputSlot(value=0.2) # Graphcut only
+
+    Output = OutputSlot()
+    
+    def setupOutputs(self):
+        assert self.Input.meta.getAxisKeys() == list("txyzc")
+        assert self.Input.meta.shape[-1] == 1
+        if self.CoreLabels.ready():
+            assert self.CoreLabels.meta.getAxisKeys() == list("txyzc")
+        
+        self.Output.meta.assignFrom( self.Input.meta )
+        self.Output.meta.dtype = np.uint32
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty()
+
+    def execute(self, slot, subindex, roi, result):
+        execute_funcs = {}
+        execute_funcs[ThresholdMethod.SIMPLE]     = self._execute_SIMPLE
+        execute_funcs[ThresholdMethod.HYSTERESIS] = self._execute_HYSTERESIS
+        execute_funcs[ThresholdMethod.GRAPHCUT]   = self._execute_GRAPHCUT
+        execute_funcs[ThresholdMethod.IPHT]       = self._execute_IPHT
+
+        # Iterate over time slices to avoid connected component problems.
+        for t_index, t in enumerate(range(roi.start[0], roi.stop[0])):
+            t_slice_roi = roi.copy()
+            t_slice_roi.start[0] = t
+            t_slice_roi.stop[0] = t+1
+
+            result_slice = result[t_index:t_index+1]
+
+            # Execute            
+            execute_funcs[self.Method.value](t_slice_roi, result_slice)
+        
+    def _execute_SIMPLE(self, roi, result):
+        assert result.shape[0] == 1
+        assert tuple(roi.stop - roi.start) == result.shape
+
+        final_threshold = self.FinalThreshold.value
+
+        data = self.Input(roi.start, roi.stop).wait()
+        data = vigra.taggedView(data, self.Input.meta.axistags)
+        
+        result = vigra.taggedView(result, self.Output.meta.axistags)
+        
+        binary = (data >= final_threshold).view(np.uint8)
+        vigra.analysis.labelMultiArrayWithBackground(binary[0,...,0], out=result[0,...,0])
+
+    def _execute_HYSTERESIS(self, roi, result):
+        self._execute_SIMPLE(roi, result)
+        final_labels = vigra.taggedView( result, self.Output.meta.axistags )
+
+        core_labels = self.CoreLabels(roi.start, roi.stop).wait()
+        core_labels = vigra.taggedView( core_labels, self.CoreLabels.meta.axistags )
+        
+        select_labels(core_labels, final_labels) # Edits final_labels in-place
+
+    def _execute_IPHT(self, roi, result):
+        core_labels = self.CoreLabels(roi.start, roi.stop).wait()
+        core_labels = vigra.taggedView( core_labels, self.CoreLabels.meta.axistags )
+        
+        data = self.Input(roi.start, roi.stop).wait()
+        data = vigra.taggedView(data, self.Input.meta.axistags)
+
+        final_threshold = self.FinalThreshold.value
+        result = vigra.taggedView( result, self.Output.meta.axistags )
+        threshold_from_cores(data[0,...,0], core_labels[0,...,0], final_threshold, out=result[0,...,0])
+
+    def _execute_GRAPHCUT(self, roi, result):
+        data = self.Input(roi.start, roi.stop).wait()
+        data = vigra.taggedView(data, self.Input.meta.axistags)
+        data_xyz = data[0,...,0]
+
+        beta = self.GraphcutBeta.value
+
+        # FIXME: segmentGC() should also use FinalThreshold...
+        binary_seg_xyz = segmentGC( data_xyz, beta ).astype(np.uint8)
+        vigra.analysis.labelMultiArrayWithBackground(binary_seg_xyz, out=result[0,...,0])
+
+
 class OpThresholdTwoLevels(Operator):
+    RawInput = InputSlot(optional=True)  # Display only
+    InputChannelColors = InputSlot(optional=True) # Display only
+
+    InputImage = InputSlot()
+    MinSize = InputSlot(stype='int', value=10)
+    MaxSize = InputSlot(stype='int', value=1000000)
+    HighThreshold = InputSlot(stype='float', value=0.5)
+    LowThreshold = InputSlot(stype='float', value=0.2)
+    SingleThreshold = InputSlot(stype='float', value=0.5)
+    SmootherSigma = InputSlot(value={'x': 1.0, 'y': 1.0, 'z': 1.0})
+    Channel = InputSlot(value=0)
+    CurOperator = InputSlot(stype='int', value=ThresholdMethod.SIMPLE) # This slot would be better named 'method',
+                                                                       # but we're keeping this slot name for backwards
+                                                                       # compatibility with old project files
+
+    ## Graph-Cut options ##
+    Beta = InputSlot(value=.2)
+
+    # apply thresholding before graph-cut
+    UsePreThreshold = InputSlot(stype='bool', value=True)
+    SingleThresholdGC = InputSlot(stype='float', value=0.5)
+    Margin = InputSlot(value=numpy.asarray((20,20,20))) # margin around single object (only graph-cut)
+
+    ## Output slots ##
+    Output = OutputSlot()
+    CachedOutput = OutputSlot()  # For the GUI (blockwise-access)
+
+    # For serialization
+    CacheInput = InputSlot(optional=True)
+    CleanBlocks = OutputSlot()
+
+    ## Debug outputs
+
+    InputChannel = OutputSlot()
+    Smoothed = OutputSlot()
+    BigRegions = OutputSlot()
+    SmallRegions = OutputSlot()
+    FilteredSmallLabels = OutputSlot()
+    BeforeSizeFilter = OutputSlot()
+    
+    ## Basic schematic (debug outputs not shown)
+    ## 
+    ## InputImage -> opSmoother -> opSmootherCache -> opChannelSelector -------------------------------------> opFinalThreshold -> opFinalFilter -> Output
+    ##                                                                 \                                      /                                 \
+    ##                                                                  --> opCoreThreshold -> opCoreFilter --                                   opCache -> CachedOutput
+    ##                                                                                                                                                  `-> CleanBlocks
+    def __init__(self, *args, **kwargs):
+        super(OpThresholdTwoLevels, self).__init__(*args, **kwargs)
+
+        self.opReorderInput = OpReorderAxes(parent=self)
+        self.opReorderInput.AxisOrder.setValue('txyzc')
+        self.opReorderInput.Input.connect(self.InputImage)
+        
+        self.opSmoother = OpAnisotropicGaussianSmoothing5d(parent=self)
+        self.opSmoother.Sigmas.connect( self.SmootherSigma )
+        self.opSmoother.Input.connect( self.opReorderInput.Output )
+        
+        self.opSmootherCache = OpBlockedArrayCache(parent=self)
+        self.opSmootherCache.BlockShape.setValue((1, None, None, None, 1))
+        self.opSmootherCache.Input.connect( self.opSmoother.Output )
+        
+        self.opChannelSelector = OpSingleChannelSelector(parent=self)
+        self.opChannelSelector.Index.connect( self.Channel )
+        self.opChannelSelector.Input.connect( self.opSmootherCache.Output )
+        
+        self.opCoreThreshold = OpLabeledThreshold(parent=self)
+        self.opCoreThreshold.Method.setValue( ThresholdMethod.SIMPLE )
+        self.opCoreThreshold.FinalThreshold.connect( self.HighThreshold )
+        self.opCoreThreshold.Input.connect( self.opChannelSelector.Output )
+
+        self.opCoreFilter = OpFilterLabels(parent=self)
+        self.opCoreFilter.BinaryOut.setValue(False)
+        self.opCoreFilter.MinLabelSize.connect( self.MinSize )
+        self.opCoreFilter.MaxLabelSize.connect( self.MaxSize )
+        self.opCoreFilter.Input.connect( self.opCoreThreshold.Output )
+        
+        self.opFinalThreshold = OpLabeledThreshold(parent=self)
+        self.opFinalThreshold.Method.connect( self.CurOperator )
+        self.opFinalThreshold.FinalThreshold.connect( self.LowThreshold )
+        self.opFinalThreshold.GraphcutBeta.connect( self.Beta )
+        self.opFinalThreshold.CoreLabels.connect( self.opCoreFilter.Output )
+        self.opFinalThreshold.Input.connect( self.opChannelSelector.Output )
+        
+        self.opFinalFilter = OpFilterLabels(parent=self)
+        self.opFinalFilter.BinaryOut.setValue(False)
+        self.opFinalFilter.MinLabelSize.connect( self.MinSize )
+        self.opFinalFilter.MaxLabelSize.connect( self.MaxSize )
+        self.opFinalFilter.Input.connect( self.opFinalThreshold.Output )
+
+        self.opReorderOutput = OpReorderAxes(parent=self)
+        #self.opReorderOutput.AxisOrder.setValue('txyzc') # See setupOutputs()
+        self.opReorderOutput.Input.connect(self.InputImage)
+
+        self.Output.connect( self.opReorderOutput.Output )
+
+        self.opCache = OpBlockedArrayCache(parent=self)
+        self.opCache.CompressionEnabled.setValue(True)
+        self.opCache.BlockShape.setValue((1, None, None, None, 1))
+        self.opCache.Input.connect( self.opReorderOutput.Output )
+        
+        self.CachedOutput.connect( self.opCache.Output )
+        self.CleanBlocks.connect( self.opCache.CleanBlocks )
+        
+        ## Debug outputs
+        self.Smoothed.connect( self.opSmootherCache.Output )
+        self.InputChannel.connect( self.opChannelSelector.Output )
+        self.SmallRegions.connect( self.opCoreThreshold.Output )
+        self.FilteredSmallLabels.connect( self.opCoreFilter.Output )
+        self.BeforeSizeFilter.connect( self.opFinalThreshold.Output )
+
+        # Since hysteresis thresholding creates the big regions and immediately discards the bad ones,
+        # we have to recreate it here if the user wants to view it as a debug layer 
+        self.opBigRegionsThreshold = OpLabeledThreshold(parent=self)
+        self.opBigRegionsThreshold.Method.setValue( ThresholdMethod.SIMPLE )
+        self.opBigRegionsThreshold.FinalThreshold.connect( self.LowThreshold )
+        self.opBigRegionsThreshold.Input.connect( self.opChannelSelector.Output )
+        self.BigRegions.connect( self.opBigRegionsThreshold.Output )
+
+    def setupOutputs(self):
+        self.opReorderOutput.AxisOrder.setValue(self.InputImage.meta.getAxisKeys())
+
+    def setInSlot(self, slot, subindex, roi, value):
+        self.opCache.setInSlot(self.opCache.Input, subindex, key, value)
+
+    def execute(self, slot, subindex, roi, destination):
+        assert False, "Shouldn't get here."
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass # dirtiness propagation is handled in the sub-operators
+
+## High level operator for one/two level threshold
+class _OpThresholdTwoLevels(Operator):
     name = "OpThresholdTwoLevels"
 
     RawInput = InputSlot(optional=True)  # Display only
@@ -83,9 +309,6 @@ class OpThresholdTwoLevels(Operator):
     CurOperator = InputSlot(stype='int', value=0)
 
     ## Graph-Cut options ##
-
-    SingleThresholdGC = InputSlot(stype='float', value=0.5)
-
     Beta = InputSlot(value=.2)
 
     # apply thresholding before graph-cut
@@ -101,11 +324,8 @@ class OpThresholdTwoLevels(Operator):
     CachedOutput = OutputSlot()  # For the GUI (blockwise-access)
 
     # For serialization
-    InputHdf5 = InputSlot(optional=True)
-
+    CacheInput = InputSlot(optional=True)
     CleanBlocks = OutputSlot()
-
-    OutputHdf5 = OutputSlot()
 
     ## Debug outputs
 
@@ -180,14 +400,11 @@ class OpThresholdTwoLevels(Operator):
         self.Output.connect(self._opReorder2.Output)
 
         #cache our own output, don't propagate from internal operator
-        self._cache = _OpCacheWrapper(parent=self)
+        self._cache = OpBlockedArrayCache(parent=self)
         self._cache.name = "OpThresholdTwoLevels.OpCacheWrapper"
         self.CachedOutput.connect(self._cache.Output)
 
-        # Serialization slots
-        self._cache.InputHdf5.connect(self.InputHdf5)
         self.CleanBlocks.connect(self._cache.CleanBlocks)
-        self.OutputHdf5.connect(self._cache.OutputHdf5)
 
         #Debug outputs
         self.InputChannel.connect(self._opChannelSelector.Output)
@@ -217,6 +434,16 @@ class OpThresholdTwoLevels(Operator):
         else:
             raise ValueError(
                 "Unknown index {} for current tab.".format(curIndex))
+
+        # set the cache block shape
+        tagged_shape = self._opReorder1.Output.meta.getTaggedShape()
+        tagged_shape['t'] = 1
+        tagged_shape['c'] = 1
+        blockshape = tagged_shape.values()
+        if _labeling_impl == "lazy":
+            #HACK hardcoded block shape
+            blockshape = numpy.minimum(blockshape, 256)
+        self._cache.BlockShape.setValue(tuple(blockshape))
 
         self._opReorder2.Input.connect(outputSlot)
         # force the cache to emit a dirty signal
@@ -440,35 +667,36 @@ class _OpThresholdTwoLevels(Operator):
         self._opFinalLabelSizeFilter.MaxLabelSize.connect( self.MaxSize )
         self._opFinalLabelSizeFilter.BinaryOut.setValue(False)
 
-        self._opCache = OpCompressedCache( parent=self )
+        self._opCache = OpBlockedArrayCache( parent=self )
         self._opCache.name = "_OpThresholdTwoLevels._opCache"
-        self._opCache.InputHdf5.connect( self.InputHdf5 )
+        self._opCache.CompressionEnabled.setValue(True)
         self._opCache.Input.connect( self._opFinalLabelSizeFilter.Output )
 
         # Connect our own outputs
         self.Output.connect( self._opFinalLabelSizeFilter.Output )
         self.CachedOutput.connect( self._opCache.Output )
 
-        # Serialization outputs
+        # Serialization (See also: setInSlot(), below)
         self.CleanBlocks.connect( self._opCache.CleanBlocks )
-        self.OutputHdf5.connect( self._opCache.OutputHdf5 )
-
-        #self.InputChannel.connect( self._opChannelSelector.Output )
 
         # More debug outputs.  These all go through their own caches
-        self._opBigRegionCache = OpCompressedCache( parent=self )
+        self._opBigRegionCache = OpBlockedArrayCache( parent=self )
         self._opBigRegionCache.name = "_OpThresholdTwoLevels._opBigRegionCache"
+        self._opBigRegionCache.CompressionEnabled.setValue(True)
         self._opBigRegionCache.Input.connect( self._opLowThresholder.Output )
         self.BigRegions.connect( self._opBigRegionCache.Output )
 
-        self._opSmallRegionCache = OpCompressedCache( parent=self )
+        self._opSmallRegionCache = OpBlockedArrayCache( parent=self )
         self._opSmallRegionCache.name = "_OpThresholdTwoLevels._opSmallRegionCache"
+        self._opSmallRegionCache.CompressionEnabled.setValue(True)
         self._opSmallRegionCache.Input.connect( self._opHighThresholder.Output )
         self.SmallRegions.connect( self._opSmallRegionCache.Output )
 
-        self._opFilteredSmallLabelsCache = OpCompressedCache( parent=self )
+        self._opFilteredSmallLabelsCache = OpBlockedArrayCache( parent=self )
         self._opFilteredSmallLabelsCache.name = "_OpThresholdTwoLevels._opFilteredSmallLabelsCache"
+        self._opFilteredSmallLabelsCache.CompressionEnabled.setValue(True)
         self._opFilteredSmallLabelsCache.Input.connect( self._opHighLabelSizeFilter.Output )
+
         self._opColorizeSmallLabels = OpColorizeLabels( parent=self )
         self._opColorizeSmallLabels.Input.connect( self._opFilteredSmallLabelsCache.Output )
         self.FilteredSmallLabels.connect( self._opColorizeSmallLabels.Output )
@@ -500,14 +728,11 @@ class _OpThresholdTwoLevels(Operator):
         tagged_shape = self.Output.meta.getTaggedShape()
         tagged_shape['c'] = 1
         tagged_shape['t'] = 1
-        self._opCache.BlockShape.setValue(
-            tuple(tagged_shape.values()))
-        self._opBigRegionCache.BlockShape.setValue(
-            tuple(tagged_shape.values()))
-        self._opSmallRegionCache.BlockShape.setValue(
-            tuple(tagged_shape.values()))
-        self._opFilteredSmallLabelsCache.BlockShape.setValue(
-            tuple(tagged_shape.values()))
+        blockshape = tuple(tagged_shape.values())
+        self._opCache.BlockShape.setValue( blockshape )
+        self._opBigRegionCache.BlockShape.setValue( blockshape )
+        self._opSmallRegionCache.BlockShape.setValue( blockshape )
+        self._opFilteredSmallLabelsCache.BlockShape.setValue( blockshape )
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here..."
@@ -516,11 +741,13 @@ class _OpThresholdTwoLevels(Operator):
         pass  # Nothing to do here
 
     def setInSlot(self, slot, subindex, roi, value):
-        assert slot == self.InputHdf5,\
-            "Invalid slot for setInSlot(): {}".format(slot.name)
-        # Nothing to do here.
-        # Our Input slots are directly fed into the cache,
-        #  so all calls to __setitem__ are forwarded automatically
+        """
+        Overridden from Operator
+        Called during deserialization, to load the cache with saved data.
+        """
+        # Forward the data to our cache
+        assert slot is self.CacheInput
+        self._opCache.Input.setInSlot(slot, subindex, roi, value)
 
 
 class OpIpht(Operator):
@@ -557,7 +784,8 @@ class OpIpht(Operator):
         self._opIpht.LowThreshold.connect( self.LowThreshold )
         self.Output.connect( self._opIpht.Output )
         
-        self._opCache = OpCompressedCache(parent=self)
+        self._opCache = OpBlockedArrayCache(parent=self)
+        self._opCache.CompressionEnabled.setValue(True)
         self._opCache.Input.connect( self._opIpht.Output )
         self.CachedOutput.connect( self._opCache.Output )
     
