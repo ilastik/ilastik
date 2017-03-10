@@ -73,7 +73,7 @@ def empty_t_z_c(arrayIn, shape):
 
 class TestOpSeeds(object):
     """
-    for a more detailed explanation on which data should be when, 
+    for a more detailed explanation on which data should be outcome at which time, 
     use the Master Thesis: Interactive Watershed Based Segmentation on Biological Images
     by Andreas Haller
     """

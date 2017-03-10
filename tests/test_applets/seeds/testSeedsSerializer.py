@@ -54,7 +54,7 @@ class TestSeedsSerializer(object):
             operatorToSave.SmoothingMethod.setValue( "RegionGrowing" )
             operatorToSave.SmoothingSigma.setValue( 7.9 )
             operatorToSave.ComputeMethod.setValue( "Gaussian" )
-            #TODO serialhdf5blockslot
+            #not needed: serialhdf5blockslot
             array = numpy.random.random((100,100,100,11,1))
             operatorToSave.Seeds.setValue( array )
     
@@ -67,7 +67,7 @@ class TestSeedsSerializer(object):
             assert testProject['Seeds/SmoothingMethod'][()] == "RegionGrowing"
             assert testProject['Seeds/SmoothingSigma'][()] == 7.9
             assert testProject['Seeds/ComputeMethod'][()] == "Gaussian"
-            #TODO serialhdf5blockslot
+            #not needed: serialhdf5blockslot
             for i in testProject['Seeds']:
                 print "X:" + i
             print testProject['Seeds/StorageVersion'][()] 
@@ -82,7 +82,7 @@ class TestSeedsSerializer(object):
             assert operatorToLoad.SmoothingMethod.value == "RegionGrowing"
             assert operatorToLoad.SmoothingSigma.value == 7.9
             assert operatorToLoad.ComputeMethod.value == "Gaussian"
-            #TODO serialhdf5blockslot
+            #not needed: serialhdf5blockslot
 
 
         os.remove(testProjectName)

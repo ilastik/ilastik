@@ -57,8 +57,8 @@ class TestWatershedSegmentationSerializer(object):
             operatorToSave.LabelNames.setValue( ["Label1", "Label2"] )
             operatorToSave.LabelColors.setValue( [(255,30,30), (30,255,30)] )
             operatorToSave.PmapColors.setValue( [(255,30,30), (30,255,30)] )
-            #TODO serialblockslot
-            #TODO serialhdf5blockslot
+            #not needed: serialblockslot
+            #not needed: serialhdf5blockslot
  
             # Serialize!
             serializer = WatershedSegmentationSerializer(operatorToSave, 'WatershedSegmentation')
@@ -73,8 +73,8 @@ class TestWatershedSegmentationSerializer(object):
                     numpy.array([(255,30,30), (30,255,30)])).all()
             assert (numpy.array(testProject['WatershedSegmentation/PmapColors'][()]) ==\
                     numpy.array([(255,30,30), (30,255,30)])).all()
-            #TODO serialblockslot
-            #TODO serialhdf5blockslot
+            #not needed: serialblockslot
+            #not needed: serialhdf5blockslot
         
             # Deserialize into a fresh operator
             operatorToLoad = OpWatershedSegmentation(graph=graph)
@@ -88,8 +88,8 @@ class TestWatershedSegmentationSerializer(object):
             assert (numpy.array(operatorToSave.LabelColors.value) == numpy.array(operatorToLoad.LabelColors.value)).all()
             assert (numpy.array(operatorToSave.PmapColors.value) == numpy.array(operatorToLoad.PmapColors.value)).all()
 
-            #TODO serialblockslot
-            #TODO serialhdf5blockslot
+            #not needed: serialblockslot
+            #not needed: serialhdf5blockslot
 
 
         os.remove(testProjectName)

@@ -300,7 +300,15 @@ class OpWatershedSegmentationCalculation( Operator ):
         for (parameter, array, name) in  data:
             if not (parameter in array):
                 logger.info("Input " + name +" is wrong; use default configuration")
-                parameter = None
+                if name == neighborsName:
+                    neighbors = None
+                elif name == terminateName:
+                    terminate = None
+                elif name == methodName:
+                    method = None
+                # this does not work
+                #parameter = None
+
 
         #maxCost must be a number (int, long, float)
         if (not isinstance(maxCost, (int, long, float))):
