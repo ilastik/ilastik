@@ -122,7 +122,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                 except IndexError:
                     zpos = 0.0
 
-                builder.addSpot(frame, graph.node[node]['id'], xpos, ypos, zpos, radius, featureDict)
+                builder.addSpot(frame, 'track-{}'.format(graph.node[node]['trackId']), graph.node[node]['id'], xpos, ypos, zpos, radius, featureDict)
 
         for edge in graph.edges_iter():
             if graph.edge[edge[0]][edge[1]]['value'] > 0:
