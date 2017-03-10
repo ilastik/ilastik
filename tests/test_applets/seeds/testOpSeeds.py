@@ -339,7 +339,7 @@ class TestOpSeeds(object):
                 op.ComputeMethod.setValue( 0 ) # index 0 = Local Minima
                 
 
-                # 2.2.1 t,x,y,z
+                # 2.1 t,x,y,z
                 #export_image_to_hdf5(boundariesXYZ, "boundaries3dt.h5")
                 SeedsBoundariesRawData_ToNone()
                 SeedsBoundariesRawData_To(self.boundariesForGeneration)
@@ -356,7 +356,7 @@ class TestOpSeeds(object):
                 assert (op.SeedsOutCached[:].wait() == minima).all()
                 #export_image_to_hdf5(minima, "minima3dt.h5")
 
-                # 2.2.2 x,y,z
+                # 2.2 x,y,z
                 # add empty t-axis
                 boundariesXYZ = empty_t(self.boundariesForGeneration[0], shape).astype(numpy.uint8)
                 #export_image_to_hdf5(boundariesXYZ, "boundaries3d.h5")
@@ -379,7 +379,7 @@ class TestOpSeeds(object):
                 #export_image_to_hdf5(minima, "minima3d.h5")
 
 
-                # 2.2.3 x,y
+                # 2.3 x,y
                 # add empty t and z-axis
                 boundariesXY = empty_t_z_c(self.boundariesForGeneration[0,:,:,0,0], shape).astype(numpy.uint8)
                 #export_image_to_hdf5(boundariesXY, "boundaries2d.h5")

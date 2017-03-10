@@ -54,63 +54,39 @@ class TestOpWatershedSegmentationCalculation(object):
         taggedArrayUint8     = vigra.taggedView(arrayUint8, axistags='txyzc')
 
         return taggedArrayFloat32, taggedArrayUint8
-    '''
 
-    def createLabeledAndUnlabeledSeeds(self):
+
+    def createBoundariesAndSeedsForWatershed(self):
         """
-        make strides with different colors or binary (for unlabeled)
         """
-        shape = (10,10,10,10,1)
-        array       = numpy.zeros(shape, dtype=numpy.uint8)
-        arrayBinary = numpy.zeros(shape, dtype=numpy.uint8)
-
-        # create some 3x3x3x3 squares in the 4D room with different values
-        size = 2
-        for t in range(0,7,3):
-            for x in range(0,7,3):
-                for y in range(0,7,3):
-                    for z in range(0,7,3):
-                        array[t:t+size, x:x+size, y:y+size, z:z+size] = t + x + y + z + 1
-                        arrayBinary[t:t+size, x:x+size, y:y+size, z:z+size] = 1
-
-        # to view the images
-        #export_image_to_hdf5(array, "labeledArray.h5")
-        #export_image_to_hdf5(arrayBinary, "labeledArrayBinary.h5")
-
-        return array, arrayBinary
-
-    def createBoundariesForGenerateSeeds(self):
-        """
-        a centered box with values that become smaller to the middle
-        """
-        shape = (11,11,11,11,1)
-        array       = numpy.zeros(shape, dtype=numpy.uint8)
+        #TODO beschreibung
+        shape = (1,11,11,11,1)
+        data = [ 3,4,5,6,7]
+        dataB = [ 0]
+        dataS1 = [ 5]
+        arrayBoundaries = numpy.zeros(shape, dtype=numpy.uint8)
+        arraySeeds      = numpy.zeros(shape, dtype=numpy.uint8)
         for t in range(shape[0]):
             for x in range(shape[1]):
                 for y in range(shape[2]):
                     for z in range(shape[3]):
-                        #array[t, x, y, z] = numpy.amax([x,y,z])
-                        if x < 5 and y < 5 :
-                            xyValue = 10 - numpy.amin([x,y])
-                        if x > 4 and y > 4 :
-                            xyValue = numpy.amax([x,y])
-                        if x > 4 and y < 5 :
-                            xyValue = 10 - numpy.amin([10-x,y])
-                        if x < 5 and y > 4 :
-                            xyValue = 10 - numpy.amin([x,10-y])
+                        if x in data and y in data and z in data:
+                            arrayBoundaries[t,x,y,z] =  255
+                        # background seed
+                        if x in dataB and y in dataB and z in dataB:
+                            arraySeeds[t,x,y,z] =  1
+                        if x in dataS1 and y in dataS1 and z in dataS1:
+                            arraySeeds[t,x,y,z] =  2
 
-                        if z == 1 or z == 3 or z == 5 or z == 7 or z == 9:
-                            xyValue = 255 # important to receive minima for 3d and 3d with time
-                        array[t,x,y,z] =  xyValue 
-
-        array     = vigra.taggedView(array, axistags='txyzc')
+        arrayBoundaries = vigra.taggedView(arrayBoundaries, axistags='txyzc')
+        arraySeeds      = vigra.taggedView(arraySeeds, axistags='txyzc')
 
         # to view the images
-        #export_image_to_hdf5(array, "boundariesForGeneration.h5")
+        export_image_to_hdf5(arrayBoundaries, "boundariesForWatershed.h5")
+        export_image_to_hdf5(arraySeeds, "seedsForWatershed.h5")
 
-        return array
+        return arrayBoundaries, arraySeeds
 
-    '''
 
 
 
@@ -136,25 +112,13 @@ class TestOpWatershedSegmentationCalculation(object):
             boundariesFloat32, boundariesUint8     = self.createTestSet()
             self.taggedArray = boundariesFloat32
 
-            '''
-            self.labeledArray, self.labeledArrayBinary = self.createLabeledAndUnlabeledSeeds()
-            self.boundariesForGeneration = self.createBoundariesForGenerateSeeds()
-            '''
+            self.boundariesWS, self.seedsWS = self.createBoundariesAndSeedsForWatershed()
 
             # predefined random values
             op.Boundaries.setValue( boundariesFloat32 )
             op.Seeds.setValue( self.taggedArray )
             
 
-            '''
-            # predefined settings, just that they are set, but not needed in particular
-            op.GenerateSeeds.setValue( False )
-            op.Unseeded.setValue( False )
-            op.SmoothingMethod.setValue( "RegionGrowing" )
-            op.SmoothingSigma.setValue( 7.9 )
-            op.ComputeMethod.setValue( "Gaussian" )
-            op.SeedsExist.setValue( True )
-            '''
 
             def test_check_SeedsExist_plus_WSMethod_fit_together():
                 """
@@ -297,10 +261,128 @@ class TestOpWatershedSegmentationCalculation(object):
                 assert maxCost      == 0
 
 
+            def executeWSAlgorithm(boundaries, seeds, neighbors):
+                method      = op.Method.value
+                terminate   = op.Terminate.value
+                maxCost     = op.MaxCost.value
+
+                (labelImage, maxRegionLabel) = vigra.analysis.watershedsNew(\
+                image           = boundaries,
+                seeds           = seeds,
+                neighborhood    = neighbors,
+                method          = method,
+                terminate       = terminate,
+                max_cost        = maxCost)
+
+                return labelImage
 
 
-            test_check_SeedsExist_plus_WSMethod_fit_together()
-            test_prepareInputParameter()
+            def WS3D():
+                shape = self.boundariesWS.shape
+                watershed = numpy.zeros(shape, dtype=numpy.uint8)
+                t=0
+                if op.Neighbors.value == "direct":
+                    neighbors = 6
+                else:
+                    neighbors = 26
+                if op.Method.value == "UnionFind":
+                        watershed    = executeWSAlgorithm(self.boundariesWS[t], None, neighbors)
+                else:
+                        watershed    = executeWSAlgorithm(self.boundariesWS[t], self.seedsWS[t].astype(numpy.uint32), neighbors)
+                return watershed
+
+            def WS3D():
+                shape = self.boundariesWS.shape
+                watershed = numpy.zeros(shape, dtype=numpy.uint8)
+                t=0
+                if op.Neighbors.value == "direct":
+                    neighbors = 6
+                else:
+                    neighbors = 26
+                if op.Method.value == "UnionFind":
+                        watershed    = executeWSAlgorithm(self.boundariesWS[t], None, neighbors)
+                else:
+                        watershed    = executeWSAlgorithm(self.boundariesWS[t], self.seedsWS[t].astype(numpy.uint32), neighbors)
+                return watershed
+
+
+            def testWatershedCalculations():
+                """
+                test the Watershed with RegionGrowing (with all parameters),
+                Turbo and UnionFind for direct & indirect
+
+                0. t,x,y,z: in ilastik, the roi will be always without t, so don't test this here
+                1. x,y,z
+                """
+                op.Boundaries.setValue(None)
+                op.Seeds.setValue(None)
+                op.Boundaries.setValue(self.boundariesWS)
+                op.Seeds.setValue(self.seedsWS)
+                op.SeedsExist.setValue(True)
+                shape = self.boundariesWS.shape
+
+                op.MaxCost.setValue(0)
+                op.Terminate.setValue(       vigra.analysis.SRGType.CompleteGrow)
+
+                # 1. x,y,z
+                #for function in [WS3D, WS2D]:
+                for function in [WS3D]:
+                    # UnionFind
+                    op.Method.setValue("UnionFind")
+                    op.Neighbors.setValue("direct") 
+                    watershed = function()
+                    assert (op.Output[:].wait() == watershed).all()
+                    op.Neighbors.setValue("indirect") 
+                    watershed = function()
+                    assert (op.Output[:].wait() == watershed).all()
+
+
+                    # Turbo
+                    print self.boundariesWS.dtype
+                    op.Method.setValue("Turbo")
+                    op.Neighbors.setValue("direct") 
+                    watershed = function()
+                    assert (op.Output[:].wait() == watershed).all()
+                    op.Neighbors.setValue("indirect") 
+                    watershed = function()
+                    assert (op.Output[:].wait() == watershed).all()
+
+                    # RegionGrowing: CompleteGrow
+                    op.Method.setValue("RegionGrowing")
+                    op.Neighbors.setValue("direct") 
+                    watershed = function()
+                    assert (op.Output[:].wait() == watershed).all()
+                    op.Neighbors.setValue("indirect") 
+                    watershed = function()
+                    assert (op.Output[:].wait() == watershed).all()
+
+                    # Region Growing: KeepContours
+                    op.Terminate.setValue(       vigra.analysis.SRGType.KeepContours)
+                    op.Neighbors.setValue("direct") 
+                    watershed = function()
+                    assert (op.Output[:].wait() == watershed).all()
+                    op.Neighbors.setValue("indirect") 
+                    watershed = function()
+                    assert (op.Output[:].wait() == watershed).all()
+
+                    # Region Growing: KeepContours
+                    op.Terminate.setValue(       vigra.analysis.SRGType.StopAtThreshold)
+                    op.MaxCost.setValue(5)
+                    op.Neighbors.setValue("direct") 
+                    watershed = function()
+                    assert (op.Output[:].wait() == watershed).all()
+                    op.Neighbors.setValue("indirect") 
+                    watershed = function()
+                    assert (op.Output[:].wait() == watershed).all()
+
+
+
+
+            testWatershedCalculations()
+
+            #TODO uncomment
+            #test_check_SeedsExist_plus_WSMethod_fit_together()
+            #test_prepareInputParameter()
 
 
     
