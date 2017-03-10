@@ -46,23 +46,26 @@ class TestOpStreamingHdf5SequenceReader(object):
             h5File = h5py.File(testDataFileName)
             h5File.create_group('volumes')
 
-            internal_path_string = "subvolume-{slice_index:02d}"
-            for slice_index, z_slice in enumerate(data):
-                subpath = internal_path_string.format(slice_index=slice_index)
-                h5File['volumes'].create_dataset(subpath, data=data)
+            internalPathString = "subvolume-{sliceIndex:02d}"
+            for sliceIndex, zSlice in enumerate(data):
+                subpath = internalPathString.format(sliceIndex=sliceIndex)
+                h5File['volumes'].create_dataset(subpath, data=zSlice)
                 # Write the axistags attribute
                 current_path = 'volumes/{}'.format(subpath)
                 h5File[current_path].attrs['axistags'] = axistags.toJSON()
 
-            # Read the data with an operator
-            hdf5_glob_string = "volumes/subvolume-*"
-            op.SequenceAxis.setValue('z')
-            op.GlobString.setValue(hdf5_glob_string)
-            op = OpStreamingHdf5SequenceReader(graph=Graph())
+            h5File.close()
 
-            assert op.Output.ready()
-            assert op.Output.meta.axistags == expected_axistags
-            assert (op.Output[5:10, 50:100, 100:150].wait() == data[5:10, 50:100, 100:150]).all()
+            h5File = h5py.File(testDataFileName, mode='r')
+            # Read the data with an operator
+            hdf5GlobString = "{}/volumes/subvolume-*".format(testDataFileName)
+            op.SequenceAxis.setValue('z')
+            op.GlobString.setValue(hdf5GlobString)
+            op.Hdf5File.setValue(h5File)
+
+            assert op.OutputImage.ready()
+            assert op.OutputImage.meta.axistags == expected_axistags
+            assert (op.OutputImage[5:10, 50:100, 100:150].wait() == data[5:10, 50:100, 100:150]).all()
 
     def test_2d_vigra_along_t(self):
         """Test if 2d files generated through vigra are recognized correctly"""
@@ -74,7 +77,7 @@ class TestOpStreamingHdf5SequenceReader(object):
             vigra.AxisInfo("c", typeFlags=vigra.AxisType.Channels)])
 
         expected_axistags = vigra.AxisTags([
-            vigra.AxisInfo("z", typeFlags=vigra.AxisType.Space),
+            vigra.AxisInfo("t", typeFlags=vigra.AxisType.Time),
             vigra.AxisInfo("y", typeFlags=vigra.AxisType.Space),
             vigra.AxisInfo("x", typeFlags=vigra.AxisType.Space),
             vigra.AxisInfo("c", typeFlags=vigra.AxisType.Channels)])
@@ -88,23 +91,23 @@ class TestOpStreamingHdf5SequenceReader(object):
             h5File = h5py.File(testDataFileName)
             h5File.create_group('volumes')
 
-            internal_path_string = "subvolume-{slice_index:02d}"
-            for slice_index, z_slice in enumerate(data):
-                subpath = internal_path_string.format(slice_index=slice_index)
-                h5File['volumes'].create_dataset(subpath, data=data)
+            internalPathString = "subvolume-{sliceIndex:02d}"
+            for sliceIndex, zSlice in enumerate(data):
+                subpath = internalPathString.format(sliceIndex=sliceIndex)
+                h5File['volumes'].create_dataset(subpath, data=zSlice)
                 # Write the axistags attribute
                 current_path = 'volumes/{}'.format(subpath)
                 h5File[current_path].attrs['axistags'] = axistags.toJSON()
 
             # Read the data with an operator
-            hdf5_glob_string = "volumes/subvolume-*"
+            hdf5GlobString = "{}/volumes/subvolume-*".format(testDataFileName)
             op.SequenceAxis.setValue('t')
-            op.GlobString.setValue(hdf5_glob_string)
-            op = OpStreamingHdf5SequenceReader(graph=Graph())
+            op.GlobString.setValue(hdf5GlobString)
+            op.Hdf5File.setValue(h5File)
 
-            assert op.Output.ready()
-            assert op.Output.meta.axistags == expected_axistags
-            assert (op.Output[5:10, 50:100, 100:150].wait() == data[5:10, 50:100, 100:150]).all()
+            assert op.OutputImage.ready()
+            assert op.OutputImage.meta.axistags == expected_axistags
+            assert (op.OutputImage[5:10, 50:100, 100:150].wait() == data[5:10, 50:100, 100:150]).all()
 
     def test_3d_vigra_along_t(self):
         """Test if 3d volumes generated through vigra are recognized correctly"""
@@ -133,23 +136,24 @@ class TestOpStreamingHdf5SequenceReader(object):
             h5File = h5py.File(testDataFileName)
             h5File.create_group('volumes')
 
-            internal_path_string = "subvolume-{slice_index:02d}"
-            for slice_index, z_slice in enumerate(data):
-                subpath = internal_path_string.format(slice_index=slice_index)
-                h5File['volumes'].create_dataset(subpath, data=data)
+            internalPathString = "subvolume-{sliceIndex:02d}"
+            for sliceIndex, tSlice in enumerate(data):
+                subpath = internalPathString.format(sliceIndex=sliceIndex)
+                h5File['volumes'].create_dataset(subpath, data=tSlice)
                 # Write the axistags attribute
                 current_path = 'volumes/{}'.format(subpath)
                 h5File[current_path].attrs['axistags'] = axistags.toJSON()
 
             # Read the data with an operator
-            hdf5_glob_string = "volumes/subvolume-*"
+            hdf5GlobString = "{}/volumes/subvolume-*".format(testDataFileName)
             op.SequenceAxis.setValue('t')
-            op.GlobString.setValue(hdf5_glob_string)
-            op = OpStreamingHdf5SequenceReader(graph=Graph())
+            op.GlobString.setValue(hdf5GlobString)
+            op.Hdf5File.setValue(h5File)
 
-            assert op.Output.ready()
-            assert op.Output.meta.axistags == expected_axistags
-            assert (op.Output[5:10, 50:100, 100:150].wait() == data[5:10, 50:100, 100:150]).all()
+            assert op.OutputImage.ready()
+            assert op.OutputImage.meta.axistags == expected_axistags
+            assert (op.OutputImage[0:2, 5:10, 20:50, 40:70].wait() == 
+                    data[0:2, 5:10, 20:50, 40:70]).all()
 
 
 if __name__ == "__main__":
