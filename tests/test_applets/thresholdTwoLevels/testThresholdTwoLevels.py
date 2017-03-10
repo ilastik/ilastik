@@ -394,11 +394,14 @@ class TestThresholdTwoLevels(Generator2):
         small = numpy.asarray(
             [[0, 0, 0],
              [0, 1, 0],
-             [0, 0, 0]])
+             [0, 0, 0]]).astype(np.uint32)
         big = numpy.asarray(
             [[0, 1, 0],
              [1, 1, 1],
-             [0, 1, 0]])
+             [0, 1, 0]]).astype(np.uint32)
+
+        small = vigra.taggedView(small[:,:,None], 'yxc')
+        big = vigra.taggedView(big[:,:,None], 'yxc')
 
         op.BigLabels.setValue(big)
         op.SmallLabels.setValue(small)
