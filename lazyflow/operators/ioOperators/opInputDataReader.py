@@ -279,18 +279,13 @@ class OpInputDataReader(Operator):
 
     def _attemptOpenAsHdf5(self, filePath):
         # Check for an hdf5 extension
-        h5Exts = OpInputDataReader.h5Exts + ['ilp']
-        h5Exts = ['.' + ex for ex in h5Exts]
-        ext = None
-        for x in h5Exts:
-            if x in filePath:
-                ext = x
-
-        if ext is None:
+        pathComponents = PathComponents(filePath)
+        ext = pathComponents.extension
+        if ext not in (".%s" % x for x in OpInputDataReader.h5Exts):
             return ([], None)
 
-        externalPath = filePath.split(ext)[0] + ext
-        internalPath = filePath.split(ext)[1]
+        externalPath = pathComponents.externalPath
+        internalPath = pathComponents.internalPath
 
         if not os.path.exists(externalPath):
             raise OpInputDataReader.DatasetReadError("Input file does not exist: " + externalPath)
