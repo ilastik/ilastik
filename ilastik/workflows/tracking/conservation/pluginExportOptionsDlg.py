@@ -28,6 +28,7 @@ import numpy
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QObject, QEvent
 from PyQt4.QtGui import QDialog, QValidator, QDialogButtonBox
+from ilastik.plugins import pluginManager
 
 try:
     from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -108,6 +109,7 @@ class PluginExportOptionsDlg(QDialog):
         uic.loadUi( os.path.splitext(__file__)[0] + '.ui', self )
 
         self._opDataExport = opDataExport
+        self.pluginName = parent.topLevelOperator.SelectedPlugin._value
         assert isinstance( opDataExport, ExportOperatorABC ), \
             "Cannot use {} as an export operator.  "\
             "It doesn't match the required interface".format( type(opDataExport) )
@@ -119,7 +121,7 @@ class PluginExportOptionsDlg(QDialog):
         opDataExport.TransactionSlot.setValue(True)
 
         # Init child widgets
-        self._initMetaInfoWidgets()
+        self._initMetaInfoText()
         self._initFileOptionsWidget()
 
         # See self.eventFilter()
@@ -140,33 +142,20 @@ class PluginExportOptionsDlg(QDialog):
         self.buttonBox.button(QDialogButtonBox.Ok).setEnabled( all_okay )
 
     #**************************************************************************
-    # Input/Output Meta-info (display only)
+    # Meta-info (display only)
     #**************************************************************************
-    def _initMetaInfoWidgets(self):
-        ## Input/output meta-info display widgets
+    def _initMetaInfoText(self):
+        ## meta-info display widgets
         opDataExport = self._opDataExport
-        self.outputMetaInfoWidget.initSlot( opDataExport.ImageToExport )
+        plugin = pluginManager.getPluginByName(self.pluginName, category="TrackingExportFormats")
+        self.metaInfoTextEdit.setHtml(plugin.description)
 
     #**************************************************************************
     # File format and options
     #**************************************************************************
     def _initFileOptionsWidget(self):
         opDataExport = self._opDataExport
-        # blockwiseHdf5OptionsWidget = SingleFileExportOptionsWidget( self, "json", "Blockwise Volume description (*.json)" )
-        # blockwiseHdf5OptionsWidget.initSlot( opDataExport.OutputFilenameFormat )
-        # self._format_option_editors['blockwise hdf5'] = blockwiseHdf5OptionsWidget
         self.exportFileOptionsWidget.initSlot( opDataExport.OutputFilenameFormat, '' )
-
-        # def set_okay_from_format_error(error_msg):
-        #     self._set_okay_condition('file format', error_msg == "")
-        # self.exportFileOptionsWidget.formatValidityChange.connect( set_okay_from_format_error )
-        # self.exportFileOptionsWidget.pathValidityChange.connect( partial(self._set_okay_condition, 'file path') )
-
-        # self.exportFileOptionsWidget.initExportOp( opDataExport )
-        # def set_okay_from_format_error(error_msg):
-        #     self._set_okay_condition('file format', error_msg == "")
-        # self.exportFileOptionsWidget.formatValidityChange.connect( set_okay_from_format_error )
-        # self.exportFileOptionsWidget.pathValidityChange.connect( partial(self._set_okay_condition, 'file path') )
         
 #**************************************************************************
 # Helper functions
