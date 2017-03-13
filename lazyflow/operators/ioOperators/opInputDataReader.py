@@ -156,6 +156,7 @@ class OpInputDataReader(Operator):
                       self._attemptOpenAsUfmf,
                       self._attemptOpenAsMmf,
                       self._attemptOpenAsDvidVolume,
+                      self._attemptOpenAsHdf5Stack,
                       self._attemptOpenAsTiffStack,
                       self._attemptOpenAsStack,
                       self._attemptOpenAsHdf5,
@@ -256,7 +257,30 @@ class OpInputDataReader(Operator):
             '''
         else :
             return ([], None)
-    
+
+    def _attemptOpenAsHdf5Stack(self, filePath):
+        if not ('*' in filePath or os.path.pathsep in filePath):
+            return ([], None)
+
+        try:
+            opReader = OpStreamingHdf5SequenceReader(parent=self)
+            pathComponents = [PathComponents(fp)
+                              for fp in filePath.split(os.path.pathsep)]
+            externalPaths = [pc.externalPath for pc in pathComponents]
+            # Check if all internalPaths reference the same hdf5 file:
+            if not all(p == externalPaths[0] for p in externalPaths[1::]):
+                raise OpStreamingHdf5SequenceReader.NotTheSameFileError(
+                    filePath)
+            # globStrings = os.path.pathsep.join(
+            #     pc.internalPath.lstrip('/')
+            #     for pc in pathComponents)
+            opReader.GlobString.setValue(filePath)
+            h5file = h5py.File(externalPaths[0], 'r')
+            opReader.Hdf5File.setValue(h5file)
+            return ([opReader], opReader.OutputImage)
+        except OpStreamingHdf5SequenceReader.WrongFileTypeError:
+            return ([], None)
+
     def _attemptOpenAsTiffStack(self, filePath):
         if not ('*' in filePath or os.path.pathsep in filePath):
             return ([], None)
@@ -264,7 +288,7 @@ class OpInputDataReader(Operator):
         try:
             opReader = OpTiffSequenceReader(parent=self)
             opReader.GlobString.setValue(filePath)
-            return (opReader, opReader.Output)
+            return ([opReader], opReader.Output)
         except OpTiffSequenceReader.WrongFileTypeError as ex:
             return ([], None)
         

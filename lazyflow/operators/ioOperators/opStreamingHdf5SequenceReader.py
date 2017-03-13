@@ -62,6 +62,12 @@ class OpStreamingHdf5SequenceReader(Operator):
             self.msg = "File is not a HDF5: {}".format(filename)
             super(OpStreamingHdf5SequenceReader.WrongFileTypeError, self).__init__(self.msg)
 
+    class NotTheSameFileError(Exception):
+        def __init__(self, globString):
+            self.globString = globString
+            self.message = "Glob string encompasses more than one HDF5 file: {}".format(globString)
+            super(OpStreamingHdf5SequenceReader.NotTheSameFileError, self).__init__(self.msg)
+
     def __init__(self, *args, **kwargs):
         super(OpStreamingHdf5SequenceReader, self).__init__(*args, **kwargs)
         self._hdf5File = None
