@@ -26,6 +26,11 @@ from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBas
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, ColortableLayer
 
+
+from ilastik.workflows.tracking.conservation.pluginExportOptionsDlg import PluginExportOptionsDlg
+from ilastik.applets.dataExport.opDataExport import get_model_op
+
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -95,6 +100,53 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             return availableExportPlugins
         except ImportError:
             return []
+
+    def _chooseSettings(self):
+        opExportModelOp, opSubRegion = get_model_op( self.topLevelOperator )
+        if opExportModelOp is None:
+            QMessageBox.information( self,
+                                     "Image not ready for export",
+                                     "Export isn't possible yet: No images are ready for export.  "
+                                     "Please configure upstream pipeline with valid settings, "
+                                     "check that images were specified in the (batch) input applet and try again." )
+            return
+
+        settingsDlg = PluginExportOptionsDlg(self, opExportModelOp)
+        if settingsDlg.exec_() == PluginExportOptionsDlg.Accepted:
+            # Copy the settings from our 'model op' into the real op
+            setting_slots = [ opExportModelOp.RegionStart,
+                              opExportModelOp.RegionStop,
+                              opExportModelOp.InputMin,
+                              opExportModelOp.InputMax,
+                              opExportModelOp.ExportMin,
+                              opExportModelOp.ExportMax,
+                              opExportModelOp.ExportDtype,
+                              opExportModelOp.OutputAxisOrder,
+                              opExportModelOp.OutputFilenameFormat,
+                              opExportModelOp.OutputInternalPath,
+                              opExportModelOp.OutputFormat ]
+
+            # Disconnect the special 'transaction' slot to prevent these 
+            #  settings from triggering many calls to setupOutputs.
+            self.topLevelOperator.TransactionSlot.disconnect()
+
+            for model_slot in setting_slots:
+                real_inslot = getattr(self.topLevelOperator, model_slot.name)
+                if model_slot.ready():
+                    real_inslot.setValue( model_slot.value )
+                else:
+                    real_inslot.disconnect()
+
+            # Re-connect the 'transaction' slot to apply all settings at once.
+            self.topLevelOperator.TransactionSlot.setValue(True)
+
+            # Discard the temporary model op
+            opExportModelOp.cleanUp()
+            opSubRegion.cleanUp()
+
+            # Update the gui with the new export paths      
+            for index, slot in enumerate(self.topLevelOperator.ExportPath):
+                self.updateTableForSlot(slot)
 
     def _initAppletDrawerUic(self):
         # first check whether "Plugins" should be made available
