@@ -271,9 +271,6 @@ class OpInputDataReader(Operator):
             if not all(p == externalPaths[0] for p in externalPaths[1::]):
                 raise OpStreamingHdf5SequenceReader.NotTheSameFileError(
                     filePath)
-            # globStrings = os.path.pathsep.join(
-            #     pc.internalPath.lstrip('/')
-            #     for pc in pathComponents)
             opReader.GlobString.setValue(filePath)
             h5file = h5py.File(externalPaths[0], 'r')
             opReader.Hdf5File.setValue(h5file)
