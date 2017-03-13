@@ -25,6 +25,8 @@ import numpy
 import vigra
 import lazyflow.graph
 import tempfile
+import h5py
+
 
 class TestOpInputDataReader(object):
 
@@ -98,7 +100,7 @@ class TestOpInputDataReader(object):
 
                 npzData = npyReader.Output[:].wait()
                 assert npzData.shape == referenceArray.shape
-                numpy.testing.assert_almost_equal(npzData, referenceArray)
+                numpy.testing.assert_array_equal(npzData, referenceArray)
         finally:
             npyReader.cleanUp()
 
@@ -122,7 +124,6 @@ class TestOpInputDataReader(object):
 
     def test_h5(self):
         # Create HDF5 test data
-        import h5py
         with h5py.File(self.testH5FileName) as f:
             f.create_group('volume')
             shape = (1,2,3,4,5)
@@ -151,6 +152,29 @@ class TestOpInputDataReader(object):
             # Call cleanUp() to close the file that this operator opened        
             h5Reader.cleanUp()
             assert not h5Reader._file # Whitebox assertion...
+
+    def test_h5_stack(self):
+        """Test stack/sequence reading in hdf5-files"""
+        shape = (4, 8, 16, 32, 3)
+        data = numpy.random.randint(0, 255, size=shape, dtype=numpy.uint8)
+        with h5py.File(self.testH5FileName) as f:
+            data_group = f.create_group('volumes')
+            for index, t_slice in enumerate(data):
+                data_group.create_dataset(
+                    "timepoint-{index:02d}".format(index=index),
+                    data=t_slice)
+
+        h5SequenceReader = OpInputDataReader(graph=self.graph)
+
+        filenamePlusGlob = "{}/volumes/timepoint-*".format(self.testH5FileName)
+        h5SequenceReader.FilePath.setValue(filenamePlusGlob)
+
+        h5data = h5SequenceReader.Output[:].wait()
+        assert h5data.shape == data.shape
+        numpy.testing.assert_array_equal(h5data, data)
+
+
+
 
     def test_npy_with_roi(self):
         a = numpy.indices((100,100,200)).astype( numpy.uint8 ).sum(0)
