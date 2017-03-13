@@ -242,7 +242,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                                                        size_range, scales[0], scales[1], scales[2], 
                                                        with_div=withDivisions,
                                                        with_classifier_prior=withClassifierPrior)
-        
+
         def constructFov(shape, t0, t1, scale=[1, 1, 1]):
             [xshape, yshape, zshape] = shape
             [xscale, yscale, zscale] = scale
@@ -299,8 +299,12 @@ class OpConservationTracking(Operator, ExportingOperator):
             timesteps.sort()
             
             timeIndex = self.LabelImage.meta.axistags.index('t')
-            
+            numTimeStep = len(timesteps)
+            count=0
             for timestep in timesteps:
+                count +=1
+                self.parent.parent.trackingApplet.progressSignal.emit(100*count/numTimeStep)
+
                 roi = [slice(None) for i in range(len(self.LabelImage.meta.shape))]
                 roi[timeIndex] = slice(timestep, timestep+1)
                 roi = tuple(roi)
@@ -324,6 +328,8 @@ class OpConservationTracking(Operator, ExportingOperator):
                 if coordinatesForIds:
                     mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, maxObjectId, timestep)   
                 
+            self.parent.parent.trackingApplet.progressSignal.emit(100)
+
             # Compute object features, re-run flow solver, update model and result, and get merger dictionary
             resolvedMergersDict = mergerResolver.run()
         return resolvedMergersDict
@@ -894,8 +900,12 @@ class OpConservationTracking(Operator, ExportingOperator):
         filtered_labels = {}
         total_count = 0
         empty_frame = False
-
+        numTimeStep = len(feats.keys())
+        count = 0
         for t in feats.keys():
+            count +=1
+            self.parent.parent.trackingApplet.progressSignal.emit(100*count/numTimeStep)
+
             rc = feats[t][default_features_key]['RegionCenter']
             lower = feats[t][default_features_key]['Coord<Minimum>']
             upper = feats[t][default_features_key]['Coord<Maximum>']
@@ -1015,6 +1025,7 @@ class OpConservationTracking(Operator, ExportingOperator):
 
             total_count += count
 
+        self.parent.parent.trackingApplet.progressSignal.emit(100)
         self.FilteredLabels.setValue(filtered_labels, check_changed=True)
 
         return traxelstore
