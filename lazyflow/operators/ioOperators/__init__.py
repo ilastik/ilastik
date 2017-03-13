@@ -34,6 +34,8 @@ from opRESTfulBlockwiseFilesetReader import OpRESTfulBlockwiseFilesetReader
 from opTiledVolumeReader import OpTiledVolumeReader
 from opCachedTiledVolumeReader import OpCachedTiledVolumeReader
 from opKlbReader import OpKlbReader
+from opTiffReader import OpTiffReader
+from opTiffSequenceReader import OpTiffSequenceReader
 
 # Try to import the dvid-related operator.
 # If it fails, that's okay.

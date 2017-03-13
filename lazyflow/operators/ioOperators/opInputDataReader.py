@@ -21,13 +21,13 @@
 ###############################################################################
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpImageReader, OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
-from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
-from opRawBinaryFileReader import OpRawBinaryFileReader
-from opTiffReader import OpTiffReader
-from opTiffSequenceReader import OpTiffSequenceReader
-from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader, \
-    OpCachedTiledVolumeReader, OpKlbReader
+from lazyflow.operators.ioOperators import (
+    OpBlockwiseFilesetReader, OpKlbReader, OpRESTfulBlockwiseFilesetReader,
+    OpStreamingHdf5Reader, OpStreamingHdf5SequenceReader, OpTiffReader,
+    OpTiffSequenceReader, OpCachedTiledVolumeReader, OpRawBinaryFileReader,
+    OpStackLoader
+)
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import isUrl, PathComponents
 
