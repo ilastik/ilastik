@@ -88,7 +88,7 @@ if __name__ == "__main__":
     op = OpNpyWriter(graph=Graph())
 
     app = QApplication([])
-    w = FileExportOptionsWidget(None, "npy", "numpy files (*.npy)")
+    w = FileExportOptionsWidget(None)
     w.initSlot(op.Filepath)
     w.show()
     app.exec_()
