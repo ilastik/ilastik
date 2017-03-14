@@ -26,6 +26,9 @@ from tests.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 import os
 
+from ilastik.applets.counting.countingApplet import CountingApplet
+COUNTING_APPLET_INDEX = 2
+
 class TestObjectCountingDrawing(ShellGuiTestCaseBase):
     """
     Run a set of GUI-based tests on the pixel classification workflow.
@@ -135,7 +138,8 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
 
             opPix = countingClassApplet.topLevelOperator
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
+            assert isinstance(self.shell.workflow.applets[COUNTING_APPLET_INDEX], CountingApplet)
 
             # Turn off the huds and so we can capture the raw image
             #viewMenu = gui.currentGui().menus()[0]

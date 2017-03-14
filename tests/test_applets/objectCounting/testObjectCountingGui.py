@@ -35,6 +35,9 @@ from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 from lazyflow.utility.timer import Timer, timeLogged
 
+from ilastik.applets.counting.countingApplet import CountingApplet
+COUNTING_APPLET_INDEX = 2
+
 from tests.helpers import ShellGuiTestCaseBase
 
 import logging
@@ -42,6 +45,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler( logging.StreamHandler(sys.stdout) )
 #logger.setLevel(logging.INFO)
 logger.setLevel(logging.DEBUG)
+
 
 class TestObjectCountingGui(ShellGuiTestCaseBase):
     """
@@ -134,7 +138,6 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
                                        [False, False, False, False, False, False, False]] )
  
             opFeatures.SelectionMatrix.setValue(selections)
-            #shell.setSelectedAppletDrawer(5)
             
             
             workflow = self.shell.projectManager.workflow
@@ -143,7 +146,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             opCount = countingClassApplet.topLevelOperator
  
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
              
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
@@ -172,6 +175,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
         def impl():
             self.shell.openProjectFile(self.PROJECT_FILE)
             assert self.shell.projectManager.currentProjectFile is not None
+            assert isinstance(self.shell.workflow.applets[COUNTING_APPLET_INDEX], CountingApplet)
   
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
@@ -191,7 +195,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
   
             opPix = countingClassApplet.topLevelOperator
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
               
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
@@ -200,7 +204,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
              
   
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
               
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
@@ -284,7 +288,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
   
             opPix = countingClassApplet.topLevelOperator
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
               
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
@@ -293,7 +297,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
              
   
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
               
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
@@ -381,7 +385,6 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
         Add boxes and draw them in the volume editor.
         """
         def impl():
- 
              
             workflow = self.shell.projectManager.workflow
             countingClassApplet = workflow.countingApplet
@@ -389,7 +392,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
   
             opPix = countingClassApplet.topLevelOperator
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
               
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
@@ -398,7 +401,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
              
   
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
               
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
