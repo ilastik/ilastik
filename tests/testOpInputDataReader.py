@@ -25,41 +25,25 @@ import numpy
 import vigra
 import lazyflow.graph
 import tempfile
+import shutil
 import h5py
 
 
 class TestOpInputDataReader(object):
 
-    @classmethod
-    def setupClass(cls):
-        cls.graph = lazyflow.graph.Graph()
-        tmpDir = tempfile.gettempdir()
-        cls.testNpyDataFileName = tmpDir + '/test.npy'
-        cls.testNpzDataFileName = tmpDir + '/test.npz'
-        cls.testImageFileName = tmpDir + '/test.png'
-        cls.testH5FileName = tmpDir + '/test.h5'
-        cls.testmultiH5FileName = tmpDir + '/test-{index:02d}.h5'
+    def setUp(self):
+        self.graph = lazyflow.graph.Graph()
+        tmpDir = tempfile.mkdtemp()
+        self.testNpyDataFileName = tmpDir + '/test.npy'
+        self.testNpzDataFileName = tmpDir + '/test.npz'
+        self.testImageFileName = tmpDir + '/test.png'
+        self.testH5FileName = tmpDir + '/test.h5'
+        self.testmultiH5FileName = tmpDir + '/test-{index:02d}.h5'
+        self.tmpDir = tmpDir
 
-    @classmethod
-    def teardownClass(cls):
+    def tearDown(self):
         # Clean up: Delete the test data files.
-        filesToDelete = [ cls.testNpyDataFileName,
-                          cls.testImageFileName,
-                          cls.testH5FileName,
-                          cls.testNpzDataFileName,
-                          ]
-        filesToDelete.extend(
-            cls.testmultiH5FileName.format(index=i)
-            for i in xrange(4)
-            )
-
-        for filename in filesToDelete:
-            try:
-                os.remove(filename)
-            except OSError:
-                # If one of the tests below failed early, the test file may not exist yet.
-                # Avoid an additional backtrace here so as not to obscure the real error.
-                pass
+        shutil.rmtree(self.tmpDir)
 
     def test_npy(self):
         # Create Numpy test data
