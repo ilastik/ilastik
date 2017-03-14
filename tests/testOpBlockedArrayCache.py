@@ -431,7 +431,7 @@ class TestOpBlockedArrayCache(unittest.TestCase):
         opCache.BypassModeEnabled.setValue(True)
 
         # We can set 'fixAtCurrent', but it makes no difference.        
-        opCache.fixAtCurrent.setValue(True)
+        opCache.fixAtCurrent.setValue(False)
 
         
         expectedAccessCount = 0
