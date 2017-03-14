@@ -96,6 +96,6 @@ class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
         pool.wait()
         
     def propagateDirty(self, slot, subindex, roi):
-        if slot is self.BypassModeEnabled:
+        if slot in (self.BypassModeEnabled, self.BlockShape):
             return
         super(OpSimpleBlockedArrayCache, self ).propagateDirty(slot, subindex, roi)
