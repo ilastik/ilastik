@@ -49,8 +49,6 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
     Output = OutputSlot(allow_mask=True)
     CleanBlocks = OutputSlot() # A list of slicings indicating which blocks are stored in the cache and clean.
 
-    innerBlockShape = InputSlot(optional=True) # Deprecated and ignored below.
-    
     def __init__(self, *args, **kwargs):
         super( OpBlockedArrayCache, self ).__init__(*args, **kwargs)
         

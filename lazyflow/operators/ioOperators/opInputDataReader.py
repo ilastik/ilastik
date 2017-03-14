@@ -226,7 +226,6 @@ class OpInputDataReader(Operator):
               
             mmfCache = OpBlockedArrayCache( parent=self )
             mmfCache.fixAtCurrent.setValue( False )
-            mmfCache.innerBlockShape.setValue( frameShape )
             mmfCache.BlockShape.setValue( frameShape )
             mmfCache.Input.connect( mmfReader.Output )
 
@@ -248,7 +247,6 @@ class OpInputDataReader(Operator):
             
             ufmfCache = OpBlockedArrayCache( parent=self )
             ufmfCache.fixAtCurrent.setValue( False )
-            ufmfCache.innerBlockShape.setValue( frameShape )
             ufmfCache.BlockShape.setValue( frameShape )
             ufmfCache.Input.connect( ufmfReader.Output )
              
@@ -543,7 +541,6 @@ class OpInputDataReader(Operator):
         # Cache the pages we read
         opCache = OpBlockedArrayCache( parent=self )
         opCache.fixAtCurrent.setValue( False )
-        opCache.innerBlockShape.setValue( page_shape )
         opCache.BlockShape.setValue( page_shape )
         opCache.Input.connect( opReader.Output )
         
@@ -576,7 +573,6 @@ class OpInputDataReader(Operator):
             cacheBlockShape = tuple(taggedShape.values())
         
         imageCache.fixAtCurrent.setValue( False ) 
-        imageCache.innerBlockShape.setValue( cacheBlockShape ) 
         imageCache.BlockShape.setValue( cacheBlockShape ) 
         assert imageCache.Output.ready()
         

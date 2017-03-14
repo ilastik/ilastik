@@ -31,7 +31,6 @@ class TestOpBlockedArrayCache_BIG_INPUT(object):
         
         opCache = OpBlockedArrayCache(graph=graph)
         opCache.Input.connect( opOnes.Output )
-        opCache.innerBlockShape.setValue( (1,128,128,999) )
         opCache.BlockShape.setValue( (1,256,256,999) )
         opCache.fixAtCurrent.setValue(False)
         

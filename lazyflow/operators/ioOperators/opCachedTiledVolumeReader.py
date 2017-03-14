@@ -35,7 +35,6 @@ class OpCachedTiledVolumeReader(Operator):
         
         z_index = self._opReader.Output.meta.getAxisKeys().index('z')
         tile_shape.insert(z_index, 1)
-        self._opCache.innerBlockShape.setValue( tuple(tile_shape) )
         self._opCache.BlockShape.setValue( tuple(tile_shape) )
 
         self.VolumeDescription.setValue( self._opReader.tiled_volume.description )

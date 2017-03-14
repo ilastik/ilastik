@@ -61,7 +61,6 @@ class TestOpBlockedArrayCache(unittest.TestCase):
         
         opCache = OpBlockedArrayCache(graph=graph)
         opCache.Input.connect(opProvider.Output)
-        opCache.innerBlockShape.setValue( (10,10,10,10,10) )
         opCache.BlockShape.setValue( (20,20,20,20,20) )
         opCache.fixAtCurrent.setValue(False)
         self.opCache = opCache
@@ -384,7 +383,6 @@ class TestOpBlockedArrayCache(unittest.TestCase):
             op = OpBlockedArrayCache(graph=self.opProvider.graph)
             op.Input.connect(self.opProvider.Output)
             s = self.opProvider.Output.meta.shape
-            op.innerBlockShape.setValue(s)
             op.BlockShape.setValue(s)
             op.fixAtCurrent.setValue(False)
             x = op.Output[...].wait()
@@ -473,7 +471,6 @@ class TestOpBlockedArrayCache_masked(object):
 
         opCache = OpBlockedArrayCache(graph=graph)
         opCache.Input.connect(opProvider.Output)
-        opCache.innerBlockShape.setValue( (10,10,10,10,10) )
         opCache.BlockShape.setValue( (20,20,20,20,20) )
         opCache.fixAtCurrent.setValue(False)
         self.opCache = opCache

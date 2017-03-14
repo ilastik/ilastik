@@ -41,7 +41,6 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
     #Inputs
     fixAtCurrent = InputSlot(value = False)
     Input = InputSlot(allow_mask=True)
-    innerBlockShape = InputSlot()
     BlockShape = InputSlot()
     BypassModeEnabled = InputSlot(value=False)
     CompressionEnabled = InputSlot(value=False)
@@ -57,6 +56,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
     def __init__(self, *args, **kwargs):
         super(OpSlicedBlockedArrayCache, self).__init__(*args, **kwargs)
         self._innerOps = []
+        self._blockshapes = []
 
         # Now that we're initialized, it's safe to register with the memory manager
         self.registerWithMemoryManager()
@@ -97,16 +97,13 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
 
     def setupOutputs(self):
         self.shape = self.inputs["Input"].meta.shape
-        self._outerShapes = self.inputs["BlockShape"].value
-        self._innerShapes = self.inputs["innerBlockShape"].value
 
-        for blockshape in self._innerShapes + self._outerShapes:
+        for blockshape in self.BlockShape.value:
             if len(blockshape) != len(self.Input.meta.shape):
                 self.Output.meta.NOTREADY = True
                 return
 
-        # FIXME: This is wrong: Shouldn't it actually compare the new inner block shape with the old one?
-        if len(self._innerShapes) != len(self._innerOps):
+        if self._blockshapes != self.BlockShape.value:
             # Clean up previous inner operators
             for slot in self.InnerOutputs:
                 slot.disconnect()
@@ -114,8 +111,9 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
                 o.cleanUp()
 
             self._innerOps = []
+            self._blockshapes = self.BlockShape.value
 
-            for i,innershape in enumerate(self._innerShapes):
+            for i,innershape in enumerate(self._blockshapes):
                 op = OpBlockedArrayCache(parent=self)
                 op.inputs["fixAtCurrent"].connect(self.inputs["fixAtCurrent"])
                 op.BypassModeEnabled.connect( self.BypassModeEnabled )
@@ -127,10 +125,9 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
                 # Forward "value changed" notifications to our own output
                 op.Output.notifyValueChanged( self.Output._sig_value_changed )
 
-        for i,innershape in enumerate(self._innerShapes):
+        for i,innershape in enumerate(self._blockshapes):
             op = self._innerOps[i]
-            op.inputs["innerBlockShape"].setValue(innershape)
-            op.inputs["BlockShape"].setValue(self._outerShapes[i])
+            op.inputs["BlockShape"].setValue(innershape)
 
         self.Output.meta.assignFrom(self.Input.meta)
         
@@ -166,7 +163,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
         max_dist_squared=sys.maxint
         index=0
 
-        for i,blockshape in enumerate(self._innerShapes):
+        for i,blockshape in enumerate(self._blockshapes):
             blockshape = numpy.array(blockshape)
 
             diff = roishape - blockshape
@@ -191,7 +188,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
         if not fixed:
             if slot == self.Input:
                 self.Output.setDirty( key )        
-            elif slot == self.BlockShape or slot == self.innerBlockShape:
+            elif slot == self.BlockShape:
                 #self.Output.setDirty( slice(None) )
                 pass # Blockshape changes don't trigger dirty notifications
                      # It is considered an error to change the blockshape after the initial configuration.

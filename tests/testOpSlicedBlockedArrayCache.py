@@ -52,7 +52,6 @@ class TestOpSlicedBlockedArrayCache(object):
         
         opCache = OpSlicedBlockedArrayCache(graph=graph)
         opCache.Input.connect(opProvider.Output)
-        opCache.innerBlockShape.setValue( ( (10,1,10,10,10), (10,10,1,10,10), (10,10,10,1,10) ) )
         opCache.BlockShape.setValue( ( (20,2,20,20,20), (20,20,2,20,20), (20,20,20,2,20) ) )
         opCache.fixAtCurrent.setValue(False)
         self.opCache = opCache
@@ -345,7 +344,6 @@ class TestOpSlicedBlockedArrayCache(object):
             
             op = OpSlicedBlockedArrayCache(graph=self.opProvider.graph)
             op.Input.connect(self.opProvider.Output)
-            op.innerBlockShape.setValue(self.opCache.innerBlockShape.value)
             op.BlockShape.setValue(self.opCache.BlockShape.value)
             op.fixAtCurrent.setValue(False)
             x = op.Output[...].wait()
@@ -411,7 +409,6 @@ class TestOpSlicedBlockedArrayCache_masked(object):
 
         opCache = OpSlicedBlockedArrayCache(graph=graph)
         opCache.Input.connect(opProvider.Output)
-        opCache.innerBlockShape.setValue( ( (10,1,10,10,10), (10,10,1,10,10), (10,10,10,1,10) ) )
         opCache.BlockShape.setValue( ( (20,2,20,20,20), (20,20,2,20,20), (20,20,20,2,20) ) )
         opCache.fixAtCurrent.setValue(False)
         self.opCache = opCache
