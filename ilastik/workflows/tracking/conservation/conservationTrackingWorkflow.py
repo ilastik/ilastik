@@ -67,6 +67,10 @@ class ConservationTrackingWorkflowBase( Workflow ):
         
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
         opObjectExtraction.FeatureNamesVigra.setValue(configConservation.allFeaturesObjectCount)
+        
+        # Bypass array cache on headless mode 
+        if headless:
+            opObjectExtraction.BypassModeEnabled.setValue(True)
 
         self.divisionDetectionApplet = self._createDivisionDetectionApplet(configConservation.selectedFeaturesDiv) # Might be None
 
@@ -285,6 +289,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
          
     def prepare_lane_for_export(self, lane_index):
+          
         maxt = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[0] 
         maxx = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[1] 
         maxy = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[2] 
