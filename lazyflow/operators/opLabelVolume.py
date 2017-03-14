@@ -95,6 +95,7 @@ class OpLabelVolume(Operator):
         self.CachedOutput.connect(self._op5_2_cached.Output)
 
         # available OpLabelingABCs:
+        # TODO: OpLazyConnectedComponents and _OpLabelBlocked does not conform to OpLabelingABC
         self._labelOps = {'vigra': _OpLabelVigra,
                           'blocked': _OpLabelBlocked,
                           'lazy': OpLazyConnectedComponents}
@@ -114,7 +115,8 @@ class OpLabelVolume(Operator):
 
         self._opLabel = self._labelOps[method](parent=self)
         self._opLabel.Input.connect(self._op5.Output)
-        self._opLabel.BypassModeEnabled.connect(self.BypassModeEnabled)
+        if method is 'vigra':
+            self._opLabel.BypassModeEnabled.connect(self.BypassModeEnabled)
 
         # connect reordering operators
         self._op5_2.Input.connect(self._opLabel.Output)
