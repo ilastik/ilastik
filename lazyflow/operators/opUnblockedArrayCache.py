@@ -190,25 +190,25 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
             self._store_block_data(block_roi, block_data)
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.CompressionEnabled:
-          pass 
+        if slot is self.CompressionEnabled:
+            return
+
+        dirty_roi = self._standardize_roi( roi.start, roi.stop )
+        maximum_roi = roiFromShape(self.Input.meta.shape)
+        maximum_roi = self._standardize_roi( *maximum_roi )
+        
+        if dirty_roi == maximum_roi:
+            # Optimize the common case:
+            # Everything is dirty, so no need to loop
+            self._resetBlocks()
         else:
-            dirty_roi = self._standardize_roi( roi.start, roi.stop )
-            maximum_roi = roiFromShape(self.Input.meta.shape)
-            maximum_roi = self._standardize_roi( *maximum_roi )
-            
-            if dirty_roi == maximum_roi:
-                # Optimize the common case:
-                # Everything is dirty, so no need to loop
-                self._resetBlocks()
-            else:
-                # FIXME: This is O(N) for now.
-                #        We should speed this up by maintaining a bookkeeping data structure in execute().
-                for block_roi in self._block_data.keys():
-                    if getIntersection(block_roi, dirty_roi, assertIntersect=False):
-                        self.freeBlock(block_roi)
-    
-            self.Output.setDirty( roi.start, roi.stop )
+            # FIXME: This is O(N) for now.
+            #        We should speed this up by maintaining a bookkeeping data structure in execute().
+            for block_roi in self._block_data.keys():
+                if getIntersection(block_roi, dirty_roi, assertIntersect=False):
+                    self.freeBlock(block_roi)
+
+        self.Output.setDirty( roi.start, roi.stop )
 
     ##
     ## OpManagedCache interface implementation
