@@ -34,6 +34,8 @@ from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted 
 from lazyflow.operators.generic import OpSingleChannelSelector
 
+from opThresholdTwoLevels import ThresholdMethod
+
 from opGraphcutSegment import haveGraphCut
 
 # always available
@@ -151,8 +153,8 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # Thresholds
         self._drawer.lowThresholdSpinBox.setValue( op.LowThreshold.value )
         self._drawer.highThresholdSpinBox.setValue( op.HighThreshold.value )
-        self._drawer.thresholdSpinBox.setValue( op.SingleThreshold.value )
-        self._drawer.thresholdSpinBoxGC.setValue( op.SingleThresholdGC.value )
+        self._drawer.thresholdSpinBox.setValue( op.LowThreshold.value )
+        self._drawer.thresholdSpinBoxGC.setValue( op.LowThreshold.value )
         self._drawer.lambdaSpinBoxGC.setValue( op.Beta.value )
         margin = op.Margin.value
         self._drawer.marginSpinBoxGC_X.setValue(margin[0])
@@ -245,10 +247,18 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         op.CurOperator.setValue(curIndex)
         op.Channel.setValue(channel)
         sigmaSlot.setValue(block_shape_dict)
-        op.SingleThreshold.setValue(singleThreshold)
-        op.LowThreshold.setValue(lowThreshold)
+        if curIndex == ThresholdMethod.SIMPLE:
+            op.LowThreshold.setValue(singleThreshold)
+        elif curIndex in (ThresholdMethod.HYSTERESIS, ThresholdMethod.IPHT):
+            op.LowThreshold.setValue(lowThreshold)
+        elif curIndex == ThresholdMethod.GRAPHCUT:
+            op.LowThreshold.setValue(singleThresholdGC)
+        else:
+            assert False, "Unsupported method"
+        
+
         op.HighThreshold.setValue( highThreshold )
-        op.SingleThresholdGC.setValue(singleThresholdGC)
+        
         op.Beta.setValue(beta)
         op.Margin.setValue(margin)
         op.MinSize.setValue(minSize)

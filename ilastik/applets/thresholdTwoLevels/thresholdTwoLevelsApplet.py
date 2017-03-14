@@ -43,7 +43,6 @@ class ThresholdTwoLevelsApplet( StandardApplet ):
                  'LowThreshold',
                  'SmootherSigma',
                  'CurOperator',
-                 'SingleThreshold',
                  'Channel' ]
     
     @property

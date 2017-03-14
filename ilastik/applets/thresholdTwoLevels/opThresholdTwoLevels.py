@@ -169,7 +169,6 @@ class OpThresholdTwoLevels(Operator):
     MaxSize = InputSlot(stype='int', value=1000000)
     HighThreshold = InputSlot(stype='float', value=0.5)
     LowThreshold = InputSlot(stype='float', value=0.2)
-    SingleThreshold = InputSlot(stype='float', value=0.5)
     SmootherSigma = InputSlot(value={'x': 1.0, 'y': 1.0, 'z': 1.0})
     Channel = InputSlot(value=0)
     CurOperator = InputSlot(stype='int', value=ThresholdMethod.SIMPLE) # This slot would be better named 'method',
@@ -203,10 +202,10 @@ class OpThresholdTwoLevels(Operator):
     
     ## Basic schematic (debug outputs not shown)
     ## 
-    ## InputImage -> opSmoother -> opSmootherCache -> opChannelSelector -------------------------------------> opFinalThreshold -> opFinalFilter -> Output
-    ##                                                                 \                                      /                                 \
-    ##                                                                  --> opCoreThreshold -> opCoreFilter --                                   opCache -> CachedOutput
-    ##                                                                                                                                                  `-> CleanBlocks
+    ## InputImage -> opReorder -> opSmoother -> opSmootherCache -> opChannelSelector -------------------------------------> opFinalThreshold -> opFinalFilter -> opReorder -> Output
+    ##                                                                              \                                      /                                              \
+    ##                                                                               --> opCoreThreshold -> opCoreFilter --                                                opCache -> CachedOutput
+    ##                                                                                                                                                                            `-> CleanBlocks
     def __init__(self, *args, **kwargs):
         super(OpThresholdTwoLevels, self).__init__(*args, **kwargs)
 
@@ -252,13 +251,12 @@ class OpThresholdTwoLevels(Operator):
 
         self.opReorderOutput = OpReorderAxes(parent=self)
         #self.opReorderOutput.AxisOrder.setValue('txyzc') # See setupOutputs()
-        self.opReorderOutput.Input.connect(self.InputImage)
+        self.opReorderOutput.Input.connect(self.opFinalFilter.Output)
 
         self.Output.connect( self.opReorderOutput.Output )
 
         self.opCache = OpBlockedArrayCache(parent=self)
         self.opCache.CompressionEnabled.setValue(True)
-        self.opCache.BlockShape.setValue((1, None, None, None, 1))
         self.opCache.Input.connect( self.opReorderOutput.Output )
         
         self.CachedOutput.connect( self.opCache.Output )
@@ -280,7 +278,12 @@ class OpThresholdTwoLevels(Operator):
         self.BigRegions.connect( self.opBigRegionsThreshold.Output )
 
     def setupOutputs(self):
-        self.opReorderOutput.AxisOrder.setValue(self.InputImage.meta.getAxisKeys())
+        axes = self.InputImage.meta.getAxisKeys()
+        self.opReorderOutput.AxisOrder.setValue(axes)
+
+        # Cache individual t,c slices
+        blockshape = tuple(1 if k in 'tc' else None for k in axes)
+        self.opCache.BlockShape.setValue(blockshape)
 
     def setInSlot(self, slot, subindex, roi, value):
         self.opCache.setInSlot(self.opCache.Input, subindex, key, value)

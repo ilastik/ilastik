@@ -27,7 +27,7 @@ class ThresholdTwoLevelsSerializer(AppletSerializer):
                  SerialSlot(operator.MaxSize, selfdepends=True),
                  SerialSlot(operator.HighThreshold, selfdepends=True),
                  SerialSlot(operator.LowThreshold, selfdepends=True),
-                 SerialSlot(operator.SingleThreshold, selfdepends=True),
+                 #SerialSlot(operator.SingleThreshold, selfdepends=True),
                  SerialDictSlot(operator.SmootherSigma, selfdepends=True),
                  SerialSlot(operator.Channel, selfdepends=True),
 #                  SerialHdf5BlockSlot(operator.OutputHdf5,

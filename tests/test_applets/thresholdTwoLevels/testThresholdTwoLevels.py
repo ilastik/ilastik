@@ -220,7 +220,7 @@ class TestThresholdOneLevel(Generator1):
         oper5d.InputImage.setValue(self.data5d)
         oper5d.MinSize.setValue(self.minSize)
         oper5d.MaxSize.setValue(self.maxSize)
-        oper5d.SingleThreshold.setValue(0.5)
+        oper5d.LowThreshold.setValue(0.5)
         oper5d.SmootherSigma.setValue(self.sigma)
         oper5d.Channel.setValue(0)
         oper5d.CurOperator.setValue(self.curOperator)
@@ -234,7 +234,7 @@ class TestThresholdOneLevel(Generator1):
         oper5d.InputImage.setValue(self.data5d)
         oper5d.MinSize.setValue(self.minSize)
         oper5d.MaxSize.setValue(self.maxSize)
-        oper5d.SingleThreshold.setValue(0.5)
+        oper5d.LowThreshold.setValue(0.5)
         oper5d.SmootherSigma.setValue(self.sigma)
         # the operator should be able to figure out that this channel index is wrong
         oper5d.Channel.setValue(15)
@@ -249,7 +249,7 @@ class TestThresholdOneLevel(Generator1):
         oper5d.InputImage.setValue(self.data5d)
         oper5d.MinSize.setValue(1)
         oper5d.MaxSize.setValue(self.data5d.size)
-        oper5d.SingleThreshold.setValue(-0.01)
+        oper5d.LowThreshold.setValue(-0.01)
         oper5d.SmootherSigma.setValue({'x': 0.0, 'y': 0.0, 'z': 0.0})
         oper5d.Channel.setValue(0)
         oper5d.CurOperator.setValue(self.curOperator)
@@ -262,7 +262,7 @@ class TestThresholdOneLevel(Generator1):
         assert numpy.all(out5d > 0),\
             "{}% elements <= 0".format((out5d <= 0).sum()/float(out5d.size)*100)
 
-        oper5d.SingleThreshold.setValue(1.01)
+        oper5d.LowThreshold.setValue(1.01)
         out5d = oper5d.Output[:].wait()
 
         # the image should be black, because of threshold larger than 1
@@ -282,7 +282,7 @@ class TestThresholdOneLevel(Generator1):
         oper5d.InputImage.setValue(vol)
         oper5d.MinSize.setValue(1)
         oper5d.MaxSize.setValue(vol.size)
-        oper5d.SingleThreshold.setValue(128)
+        oper5d.LowThreshold.setValue(128)
         oper5d.SmootherSigma.setValue({'x': 0.0, 'y': 0.0, 'z': 0.0})
         oper5d.CurOperator.setValue(self.curOperator)
         oper5d.UsePreThreshold.setValue(self.usePreThreshold)
