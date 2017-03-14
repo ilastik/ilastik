@@ -244,7 +244,9 @@ class OpTrackingFeatureExtraction(Operator):
             assert False, "Shouldn't get here."
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.FeatureNamesVigra or slot == self.FeatureNamesDivision:
+        if  slot == self.BypassModeEnabled:
+            pass
+        elif slot == self.FeatureNamesVigra or slot == self.FeatureNamesDivision:
             self.ComputedFeatureNamesAll.setDirty(roi)
             self.ComputedFeatureNamesNoDivisions.setDirty(roi)
 
