@@ -102,6 +102,9 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             return []
 
     def _chooseSettings(self):
+        if self.topLevelOperator.SelectedExportSource._value != 'Plugin':
+            super(TrackingBaseDataExportGui, self)._chooseSettings()
+            return
         opExportModelOp, opSubRegion = get_model_op( self.topLevelOperator )
         if opExportModelOp is None:
             QMessageBox.information( self,
