@@ -9,6 +9,7 @@ from lazyflow.rtype import SubRegion
 
 class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
     BlockShape = InputSlot(optional=True)
+    BypassModeEnabled = InputSlot(value=False)
 
     def __init__(self, *args, **kwargs):
         super( OpSimpleBlockedArrayCache, self ).__init__(*args, **kwargs)
@@ -90,4 +91,10 @@ class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
             req = Request( partial( copy_block, full_block_roi, clipped_block_roi ) )
             pool.add(req)
         pool.wait()
+        
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.BypassModeEnabled:
+            pass
+        else:
+            super(OpSimpleBlockedArrayCache, self ).propagateDirty(slot, subindex, roi)
         

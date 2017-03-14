@@ -52,7 +52,6 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
     Input = InputSlot(allow_mask=True)
     CompressionEnabled = InputSlot(value=False) # If True, compression will be enabled for certain dtypes
     Output = OutputSlot(allow_mask=True)
-    BypassModeEnabled = InputSlot(value=False)
 
     CleanBlocks = OutputSlot() # A list of slicings indicating which blocks are stored in the cache and clean.
     
@@ -191,7 +190,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
             self._store_block_data(block_roi, block_data)
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.BypassModeEnabled or slot == self.CompressionEnabled:
+        if slot == self.CompressionEnabled:
           pass 
         else:
             dirty_roi = self._standardize_roi( roi.start, roi.stop )
