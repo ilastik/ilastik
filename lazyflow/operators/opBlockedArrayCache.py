@@ -74,7 +74,9 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self._opSimpleBlockedArrayCache.CompressionEnabled.connect( self.CompressionEnabled )
         self._opSimpleBlockedArrayCache.Input.connect( self._opCacheFixer.Output )
         self._opSimpleBlockedArrayCache.BlockShape.connect( self.outerBlockShape )
+        self._opSimpleBlockedArrayCache.BypassModeEnabled.connect( self.BypassModeEnabled )
         self.CleanBlocks.connect( self._opSimpleBlockedArrayCache.CleanBlocks )
+        self.Output.connect( self._opSimpleBlockedArrayCache.Output )
 
         # Instead of connecting our Output directly to our internal pipeline,
         # We manually forward the data via the execute() function,
@@ -95,13 +97,7 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self.Output.meta.assignFrom( self._opSimpleBlockedArrayCache.Output.meta )
 
     def execute(self, slot, subindex, roi, result):
-        assert slot is self.Output, "Requesting data from unknown output slot."
-        if self.BypassModeEnabled.value:
-            # Pass data directly from Input to Output
-            self.Input(roi.start, roi.stop).writeInto(result).wait()
-        else:
-            # Pass data from internal pipeline to Output
-            self._opSimpleBlockedArrayCache.Output(roi.start, roi.stop).writeInto(result).wait()
+        assert False, "Shouldn't get here"
 
     def propagateDirty(self, slot, subindex, roi):
         pass
