@@ -38,13 +38,20 @@ class TestOpInputDataReader(object):
         cls.testNpzDataFileName = tmpDir + '/test.npz'
         cls.testImageFileName = tmpDir + '/test.png'
         cls.testH5FileName = tmpDir + '/test.h5'
+        cls.testmultiH5FileName = tmpDir + '/test-{index:02d}.h5'
 
     @classmethod
     def teardownClass(cls):
         # Clean up: Delete the test data files.
         filesToDelete = [ cls.testNpyDataFileName,
                           cls.testImageFileName,
-                          cls.testH5FileName ]
+                          cls.testH5FileName,
+                          cls.testNpzDataFileName,
+                          ]
+        filesToDelete.extend(
+            cls.testmultiH5FileName.format(index=i)
+            for i in xrange(4)
+            )
 
         for filename in filesToDelete:
             try:
@@ -153,7 +160,7 @@ class TestOpInputDataReader(object):
             h5Reader.cleanUp()
             assert not h5Reader._file # Whitebox assertion...
 
-    def test_h5_stack(self):
+    def test_h5_stack_single_file(self):
         """Test stack/sequence reading in hdf5-files"""
         shape = (4, 8, 16, 32, 3)
         data = numpy.random.randint(0, 255, size=shape, dtype=numpy.uint8)
@@ -173,8 +180,27 @@ class TestOpInputDataReader(object):
         assert h5data.shape == data.shape
         numpy.testing.assert_array_equal(h5data, data)
 
+    def test_h5_stack_multi_file(self):
+        """Test stack/sequence reading in hdf5-files"""
+        shape = (4, 8, 16, 32, 3)
+        data = numpy.random.randint(0, 255, size=shape, dtype=numpy.uint8)
+        for index, t_slice in enumerate(data):
+            fname = self.testmultiH5FileName.format(index=index)
+            with h5py.File(fname) as f:
+                data_group = f.create_group('volume')
+                data_group.create_dataset(
+                    "data",
+                    data=t_slice)
 
+        h5SequenceReader = OpInputDataReader(graph=self.graph)
 
+        globString = self.testmultiH5FileName.replace('02d}', 's}').format(index='*')
+        filenamePlusGlob = "{}/volume/data".format(globString)
+        h5SequenceReader.FilePath.setValue(filenamePlusGlob)
+
+        h5data = h5SequenceReader.Output[:].wait()
+        assert h5data.shape == data.shape
+        numpy.testing.assert_array_equal(h5data, data)
 
     def test_npy_with_roi(self):
         a = numpy.indices((100,100,200)).astype( numpy.uint8 ).sum(0)
