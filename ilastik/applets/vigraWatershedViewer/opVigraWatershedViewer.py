@@ -164,20 +164,12 @@ class OpVigraWatershedViewer(Operator):
         # Set the blockshapes for each input image separately, depending on which axistags it has.
         axisOrder = [ tag.key for tag in self.InputImage.meta.axistags ]
 
-        innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
         outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
-
-        innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
         outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
-
-        innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
         outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
-
-        self.opWatershedCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.opWatershedCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
         # Seed cache has same shape as watershed cache
-        self.opSeedCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.opSeedCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
         # For now watershed labels always come from the X-Y slicing view
