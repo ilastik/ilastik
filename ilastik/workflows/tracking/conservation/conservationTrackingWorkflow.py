@@ -355,7 +355,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             withBatchProcessing = True
         )
 
-    def post_process_lane_export(self, lane_index):
+    def post_process_lane_export(self, lane_index, time=1):
         # FIXME: This probably only works for the non-blockwise export slot.
         #        We should assert that the user isn't using the blockwise slot.
 
@@ -385,6 +385,11 @@ class ConservationTrackingWorkflowBase( Workflow ):
                 if filename is None or len(str(filename)) == 0:
                     logger.error("Cannot export from plugin with empty output filename")
                     return
+
+                if time == 0 and selectedPlugin == 'H5-Event-Sequence' and os.path.exists(filename + '/00000.h5'):
+                    return False
+                if time == 0 and selectedPlugin == 'Fiji-MaMuT' and os.path.exists(filename + '_mamut.xml'):
+                    return False
 
                 self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin)
 

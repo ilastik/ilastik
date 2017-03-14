@@ -104,6 +104,8 @@ class DataExportGui(QWidget):
         
         self.parentApplet = parentApplet
         self.progressSignal = parentApplet.progressSignal
+
+        self.overwrite = False
         
         @threadRoutedWithRouter(self.threadRouter)
         def handleNewDataset( multislot, index ):
@@ -391,7 +393,11 @@ class DataExportGui(QWidget):
                     opLaneView.run_export()
                     
                     # Client hook
-                    self.parentApplet.post_process_lane_export(lane_index)
+                    exportStatus = self.parentApplet.post_process_lane_export(lane_index, 0)
+                    if exportStatus == False:
+                        self.showOverwriteQuestion()
+                        if self.overwrite == True:
+                            self.parentApplet.post_process_lane_export(lane_index, 1)
                 except Exception as ex:
                     if opLaneView.ExportPath.ready():
                         msg = "Failed to generate export file: \n"
@@ -435,6 +441,14 @@ class DataExportGui(QWidget):
     @threadRouted
     def showExportError(self, msg):
         QMessageBox.critical(self, "Failed to export", msg )
+
+    @threadRouted
+    def showOverwriteQuestion(self):
+        reply = QMessageBox.question(self, 'Warning!',
+                                         'This filename already exists. Are you sure you want to overwrite?',
+                                         QMessageBox.Yes, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self.overwrite = True
 
     def exportResultsForSlot(self, opLane):
         # Make sure all 'on disk' layers are discarded so we aren't using those files any more.
