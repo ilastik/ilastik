@@ -41,7 +41,8 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
     fixAtCurrent = InputSlot(value=False)
     Input = InputSlot(allow_mask=True)
     #BlockShape = InputSlot()
-    BlockShape = InputSlot(optional=True) # If not provided, will be set to Input.meta.shape
+    BlockShape = InputSlot(optional=True) # If 'None' is present, those items will be treated as max for the dimension.
+                                          # If not provided, will be set to Input.meta.shape
     BypassModeEnabled = InputSlot(value=False)
     CompressionEnabled = InputSlot(value=False)
     

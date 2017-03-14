@@ -8,7 +8,7 @@ from lazyflow.roi import getIntersectingRois, roiToSlice
 from lazyflow.rtype import SubRegion
 
 class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
-    BlockShape = InputSlot(optional=True)
+    BlockShape = InputSlot(optional=True) # Must be a tuple.  Any 'None' elements will be interpreted as 'max' for that dimension.
     BypassModeEnabled = InputSlot(value=False)
 
     def __init__(self, *args, **kwargs):
@@ -25,6 +25,9 @@ class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
         if len(self._blockshape) != len(self.Input.meta.shape):
             self.Output.meta.NOTREADY = True
             return
+
+        # Replace 'None' (or zero) with default (from Input shape)
+        self._blockshape = tuple( numpy.where(self._blockshape, self._blockshape, self.Input.meta.shape) )
 
         self.Output.meta.ideal_blockshape = tuple(numpy.minimum(self._blockshape, self.Input.meta.shape))
 
