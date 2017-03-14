@@ -437,18 +437,18 @@ class TestOpBlockedArrayCache(unittest.TestCase):
         expectedAccessCount = 0
         assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
 
-        # Not block-aligned request -- in bypass mode, blocking is ignored
+        # Not block-aligned request -- even in bypass mode, blocking is not ignored
         slicing = make_key[0:1, 35:45, 10:20, 0:10, 0:1]
         data = opCache.Output( slicing ).wait()
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
-        expectedAccessCount += 1
+        expectedAccessCount += 2
         assert (data == self.data[slicing]).all()
         assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
 
         # In bypass mode, the data wasn't cached, so the data is simply requested a second time.
         data = opCache.Output( slicing ).wait()
-        expectedAccessCount += 1
+        expectedAccessCount += 2
         assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
 
 class TestOpBlockedArrayCache_masked(object):
