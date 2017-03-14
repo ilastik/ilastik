@@ -98,7 +98,7 @@ class OpSlicCached(Operator):
         # but we want to force the entire image to be handled and stored at once.
         # Therefore, we set the 'block shape' to be the entire image -- there will only be one block stored in the cache.
         # (Note: The OpBlockedArrayCache.innerBlockshape slot is deprecated and ignored.)
-        self.opCache.outerBlockShape.setValue( self.Input.meta.shape )
+        self.opCache.BlockShape.setValue( self.Input.meta.shape )
     
     def execute(self, slot, subindex, roi, result):
         # When an output slot is accessed, it asks for data from it's upstream connection (if any)
