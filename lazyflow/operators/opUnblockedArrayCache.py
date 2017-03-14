@@ -52,6 +52,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
     Input = InputSlot(allow_mask=True)
     CompressionEnabled = InputSlot(value=False) # If True, compression will be enabled for certain dtypes
     Output = OutputSlot(allow_mask=True)
+    BypassModeEnabled = InputSlot(value=False)
 
     CleanBlocks = OutputSlot() # A list of slicings indicating which blocks are stored in the cache and clean.
     
@@ -190,22 +191,25 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
             self._store_block_data(block_roi, block_data)
 
     def propagateDirty(self, slot, subindex, roi):
-        dirty_roi = self._standardize_roi( roi.start, roi.stop )
-        maximum_roi = roiFromShape(self.Input.meta.shape)
-        maximum_roi = self._standardize_roi( *maximum_roi )
-        
-        if dirty_roi == maximum_roi:
-            # Optimize the common case:
-            # Everything is dirty, so no need to loop
-            self._resetBlocks()
+        if slot == self.BypassModeEnabled or slot == self.CompressionEnabled:
+          pass 
         else:
-            # FIXME: This is O(N) for now.
-            #        We should speed this up by maintaining a bookkeeping data structure in execute().
-            for block_roi in self._block_data.keys():
-                if getIntersection(block_roi, dirty_roi, assertIntersect=False):
-                    self.freeBlock(block_roi)
-
-        self.Output.setDirty( roi.start, roi.stop )
+            dirty_roi = self._standardize_roi( roi.start, roi.stop )
+            maximum_roi = roiFromShape(self.Input.meta.shape)
+            maximum_roi = self._standardize_roi( *maximum_roi )
+            
+            if dirty_roi == maximum_roi:
+                # Optimize the common case:
+                # Everything is dirty, so no need to loop
+                self._resetBlocks()
+            else:
+                # FIXME: This is O(N) for now.
+                #        We should speed this up by maintaining a bookkeeping data structure in execute().
+                for block_roi in self._block_data.keys():
+                    if getIntersection(block_roi, dirty_roi, assertIntersect=False):
+                        self.freeBlock(block_roi)
+    
+            self.Output.setDirty( roi.start, roi.stop )
 
     ##
     ## OpManagedCache interface implementation
