@@ -24,7 +24,7 @@ from lazyflow.operators import OpImageReader, OpBlockedArrayCache, OpMetadataInj
 from opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import (
     OpBlockwiseFilesetReader, OpKlbReader, OpRESTfulBlockwiseFilesetReader,
-    OpStreamingHdf5Reader, OpStreamingHdf5SequenceReader, OpTiffReader,
+    OpStreamingHdf5Reader, OpStreamingHdf5SequenceReaderS, OpTiffReader,
     OpTiffSequenceReader, OpCachedTiledVolumeReader, OpRawBinaryFileReader,
     OpStackLoader
 )
@@ -263,19 +263,19 @@ class OpInputDataReader(Operator):
             return ([], None)
 
         try:
-            opReader = OpStreamingHdf5SequenceReader(parent=self)
+            opReader = OpStreamingHdf5SequenceReaderS(parent=self)
             pathComponents = [PathComponents(fp)
                               for fp in filePath.split(os.path.pathsep)]
             externalPaths = [pc.externalPath for pc in pathComponents]
             # Check if all internalPaths reference the same hdf5 file:
             if not all(p == externalPaths[0] for p in externalPaths[1::]):
-                raise OpStreamingHdf5SequenceReader.NotTheSameFileError(
+                raise OpStreamingHdf5SequenceReaderS.NotTheSameFileError(
                     filePath)
             opReader.GlobString.setValue(filePath)
             h5file = h5py.File(externalPaths[0], 'r')
             opReader.Hdf5File.setValue(h5file)
             return ([opReader], opReader.OutputImage)
-        except OpStreamingHdf5SequenceReader.WrongFileTypeError:
+        except OpStreamingHdf5SequenceReaderS.WrongFileTypeError:
             return ([], None)
 
     def _attemptOpenAsTiffStack(self, filePath):

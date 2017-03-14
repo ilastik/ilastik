@@ -6,7 +6,7 @@ import h5py
 import numpy
 
 from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpStreamingHdf5SequenceReader
+from lazyflow.operators.ioOperators import OpStreamingHdf5SequenceReaderS
 import vigra
 
 
@@ -37,7 +37,7 @@ class TestOpStreamingHdf5SequenceReader(object):
             vigra.AxisInfo("x", typeFlags=vigra.AxisType.Space),
             vigra.AxisInfo("c", typeFlags=vigra.AxisType.Channels)])
 
-        op = OpStreamingHdf5SequenceReader(graph=self.graph)
+        op = OpStreamingHdf5SequenceReaderS(graph=self.graph)
 
         with tempdir() as d:
             testDataFileName = '{}/test.h5'.format(d)
@@ -82,7 +82,7 @@ class TestOpStreamingHdf5SequenceReader(object):
             vigra.AxisInfo("x", typeFlags=vigra.AxisType.Space),
             vigra.AxisInfo("c", typeFlags=vigra.AxisType.Channels)])
 
-        op = OpStreamingHdf5SequenceReader(graph=self.graph)
+        op = OpStreamingHdf5SequenceReaderS(graph=self.graph)
 
         with tempdir() as d:
             testDataFileName = '{}/test.h5'.format(d)
@@ -127,7 +127,7 @@ class TestOpStreamingHdf5SequenceReader(object):
             vigra.AxisInfo("x", typeFlags=vigra.AxisType.Space),
             vigra.AxisInfo("c", typeFlags=vigra.AxisType.Channels)])
 
-        op = OpStreamingHdf5SequenceReader(graph=self.graph)
+        op = OpStreamingHdf5SequenceReaderS(graph=self.graph)
 
         with tempdir() as d:
             testDataFileName = '{}/test.h5'.format(d)

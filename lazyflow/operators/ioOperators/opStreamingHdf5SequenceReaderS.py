@@ -30,9 +30,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class OpStreamingHdf5SequenceReader(Operator):
+class OpStreamingHdf5SequenceReaderS(Operator):
     """
-    Imports a sequence of (ND) volumes inside a hdf5 file into a single volume (ND+1)
+    Imports a sequence of (ND) volumes inside one hdf5 file into a single volume (ND+1)
+
+    The 'S' at the end of the file name implies that this class handles multiple
+    volumes in a single file.
 
     :param globstring: A glob string as defined by the glob module. We
         also support the following special extension to globstring
@@ -60,16 +63,16 @@ class OpStreamingHdf5SequenceReader(Operator):
         def __init__(self, filename):
             self.filename = filename
             self.msg = "File is not a HDF5: {}".format(filename)
-            super(OpStreamingHdf5SequenceReader.WrongFileTypeError, self).__init__(self.msg)
+            super(OpStreamingHdf5SequenceReaderS.WrongFileTypeError, self).__init__(self.msg)
 
     class NotTheSameFileError(Exception):
         def __init__(self, globString):
             self.globString = globString
             self.message = "Glob string encompasses more than one HDF5 file: {}".format(globString)
-            super(OpStreamingHdf5SequenceReader.NotTheSameFileError, self).__init__(self.msg)
+            super(OpStreamingHdf5SequenceReaderS.NotTheSameFileError, self).__init__(self.msg)
 
     def __init__(self, *args, **kwargs):
-        super(OpStreamingHdf5SequenceReader, self).__init__(*args, **kwargs)
+        super(OpStreamingHdf5SequenceReaderS, self).__init__(*args, **kwargs)
         self._hdf5File = None
         self._readers = []
         self._opStacker = OpMultiArrayStacker(parent=self)
@@ -79,7 +82,7 @@ class OpStreamingHdf5SequenceReader(Operator):
         self._opStacker.Images.resize(0)
         for opReader in self._readers:
             opReader.cleanUp()
-        super(OpStreamingHdf5SequenceReader, self).cleanUp()
+        super(OpStreamingHdf5SequenceReaderS, self).cleanUp()
 
     def setupOutputs(self):
         self._hdf5File = self.Hdf5File.value
@@ -102,7 +105,7 @@ class OpStreamingHdf5SequenceReader(Operator):
             opFirstImg.cleanUp()
         except RuntimeError as e:
             logger.error(str(e))
-            raise OpStreamingHdf5SequenceReader.FileOpenError(file_paths[0])
+            raise OpStreamingHdf5SequenceReaderS.FileOpenError(file_paths[0])
 
         # Use given new axis or try to do something sensible
         if self.SequenceAxis.ready():
@@ -135,7 +138,7 @@ class OpStreamingHdf5SequenceReader(Operator):
                 opReader.Hdf5File.setValue(self._hdf5File)
             except RuntimeError as e:
                 logger.error(str(e))
-                raise OpStreamingHdf5SequenceReader.FileOpenError(file_paths[0])
+                raise OpStreamingHdf5SequenceReaderS.FileOpenError(file_paths[0])
             else:
                 stacker_slot.connect(opReader.OutputImage)
                 self._readers.append(opReader)
