@@ -431,7 +431,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
         if os.path.pathsep in nickname:
             nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
         known_keys['nickname'] = nickname
-        known_keys['result_type'] = self.dataExportApplet._title.lower().replace(" ", "_")
+        opDataExport = self.dataExportApplet.topLevelOperator.getLane(lane_index)
+        known_keys['result_type'] = self.dataExportApplet.topLevelOperator.SelectedPlugin._value
         # use partial formatting to fill in non-coordinate name fields
         partially_formatted_name = format_known_keys(path_format_string, known_keys)
         return partially_formatted_name
