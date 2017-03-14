@@ -134,7 +134,9 @@ class OpLabelVolume(Operator):
         self._setBG()
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.Method:
+        if slot == self.BypassModeEnabled:
+            pass
+        elif slot == self.Method:
             # We are changing the labeling method. In principle, the labelings
             # are equivalent, but not necessarily the same!
             self.Output.setDirty(slice(None))
@@ -232,13 +234,16 @@ class OpLabelingABC(Operator):
         self.Output.meta.dtype = self.labelType
 
     def propagateDirty(self, slot, subindex, roi):
-        # a change in either input or background makes the whole
-        # time-channel-slice dirty (CCL is a global operation)
-        outroi = roi.copy()
-        outroi.start[1:4] = (0, 0, 0)
-        outroi.stop[1:4] = self.Input.meta.shape[1:4]
-        self.Output.setDirty(outroi)
-        self.CachedOutput.setDirty(outroi)
+        if slot == self.BypassModeEnabled:
+            pass
+        else:
+            # a change in either input or background makes the whole
+            # time-channel-slice dirty (CCL is a global operation)
+            outroi = roi.copy()
+            outroi.start[1:4] = (0, 0, 0)
+            outroi.stop[1:4] = self.Input.meta.shape[1:4]
+            self.Output.setDirty(outroi)
+            self.CachedOutput.setDirty(outroi)
 
     def setInSlot(self, slot, subindex, roi, value):
         #    "Invalid slot for setInSlot(): {}".format( slot.name )
