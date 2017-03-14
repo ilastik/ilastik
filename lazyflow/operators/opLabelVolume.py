@@ -40,6 +40,9 @@ class OpLabelVolume(Operator):
     #TODO relax requirements (single value is already working)
     Background = InputSlot(optional=True)
 
+    # Bypass cache (for headless mode)
+    BypassModeEnabled = InputSlot(value=False)
+
     ## decide which CCL method to use
     #
     # currently available:
@@ -111,6 +114,7 @@ class OpLabelVolume(Operator):
 
         self._opLabel = self._labelOps[method](parent=self)
         self._opLabel.Input.connect(self._op5.Output)
+        self._opLabel.BypassModeEnabled.connect(self.BypassModeEnabled)
 
         # connect reordering operators
         self._op5_2.Input.connect(self._opLabel.Output)
@@ -176,6 +180,9 @@ class OpLabelingABC(Operator):
 
     ## background with axes 'txyzc', spatial axes must be singletons
     Background = InputSlot()
+    
+    # Bypass cache (for headless mode)
+    BypassModeEnabled = InputSlot(value=False)
 
     Output = OutputSlot()
     CachedOutput = OutputSlot()
@@ -195,6 +202,7 @@ class OpLabelingABC(Operator):
         super(OpLabelingABC, self).__init__(*args, **kwargs)
         self._cache = OpBlockedArrayCache(parent=self)
         self._cache.name = "OpLabelVolume.OutputCache"
+        self._cache.BypassModeEnabled.connect(self.BypassModeEnabled)
         self._cache.CompressionEnabled.setValue(True)
         self._cache.Input.connect(self.Output)
         self.CachedOutput.connect(self._cache.Output)
