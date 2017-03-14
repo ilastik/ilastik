@@ -46,7 +46,9 @@ class OpStreamingHdf5Reader(Operator):
 
     # Output data
     OutputImage = OutputSlot()
-    
+
+    H5EXTS = ['h5', 'hdf5', 'ilp']
+
     class DatasetReadError(Exception):
         def __init__(self, internalPath):
             self.internalPath = internalPath

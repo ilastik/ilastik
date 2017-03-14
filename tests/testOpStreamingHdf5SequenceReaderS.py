@@ -1,3 +1,4 @@
+import unittest
 import contextlib
 import tempfile
 import shutil
@@ -17,7 +18,7 @@ def tempdir():
     shutil.rmtree(d)
 
 
-class TestOpStreamingHdf5SequenceReader(object):
+class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
 
     def setUp(self):
         self.graph = Graph()
@@ -152,8 +153,32 @@ class TestOpStreamingHdf5SequenceReader(object):
 
             assert op.OutputImage.ready()
             assert op.OutputImage.meta.axistags == expected_axistags
-            assert (op.OutputImage[0:2, 5:10, 20:50, 40:70].wait() == 
+            assert (op.OutputImage[0:2, 5:10, 20:50, 40:70].wait() ==
                     data[0:2, 5:10, 20:50, 40:70]).all()
+
+    def test_globStringValidity(self):
+        """Check whether globStrings are correctly verified"""
+        testGlobString = '/tmp/test.h5'
+        with self.assertRaises(OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError):
+            OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString)
+
+        testGlobString = '/tmp/test.h5/a:/tmp/test2.h5/a'
+        with self.assertRaises(OpStreamingHdf5SequenceReaderS.NotTheSameFileError):
+            OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString)
+
+        testGlobString = '/tmp/test.jpg/*'
+        with self.assertRaises(OpStreamingHdf5SequenceReaderS.WrongFileTypeError):
+            OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString)
+
+        validGlobStrings = [
+            '/tmp/test.h5/*',
+            '/tmp/test.h5/data1:/tmp/test.h5/data2',
+            '/tmp/test.h5/data*'
+        ]
+
+        for testGlobString in validGlobStrings:
+            self.assertTrue(
+                OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString))
 
 
 if __name__ == "__main__":

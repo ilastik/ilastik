@@ -58,18 +58,23 @@ class OpStreamingHdf5SequenceReaderS(Operator):
     SequenceAxis = InputSlot(optional=True)  # The axis to stack across.
     OutputImage = OutputSlot()
 
-    # FIXIT: Just for my reference, think of a proper exception to use here
     class WrongFileTypeError(Exception):
-        def __init__(self, filename):
-            self.filename = filename
-            self.msg = "File is not a HDF5: {}".format(filename)
+        def __init__(self, globString):
+            self.filename = globString
+            self.msg = "File is not a HDF5: {}".format(globString)
             super(OpStreamingHdf5SequenceReaderS.WrongFileTypeError, self).__init__(self.msg)
 
     class NotTheSameFileError(Exception):
         def __init__(self, globString):
             self.globString = globString
-            self.message = "Glob string encompasses more than one HDF5 file: {}".format(globString)
+            self.msg = "Glob string encompasses more than one HDF5 file: {}".format(globString)
             super(OpStreamingHdf5SequenceReaderS.NotTheSameFileError, self).__init__(self.msg)
+
+    class NoInternalPlaceholderError(Exception):
+        def __init__(self, globString):
+            self.globString = globString
+            self.msg = "Glob string does not contain a placeholder: {}".format(globString)
+            super(OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError, self).__init__(self.msg)
 
     def __init__(self, *args, **kwargs):
         super(OpStreamingHdf5SequenceReaderS, self).__init__(*args, **kwargs)
@@ -168,3 +173,51 @@ class OpStreamingHdf5SequenceReaderS(Operator):
                 globHdf5(
                     hdf5File, components.internalPath.lstrip('/')))
         return ret
+
+    @staticmethod
+    def checkGlobString(globString):
+        """Checks whether globString is valid for this class
+
+        Rules for globString:
+            * must only contain one distinct external path
+            * multiple internal paths, or placeholder '*' must be contained
+
+        Args:
+            globString (string): String, one or multiple paths separated with
+              os.path.pathsep and possibly containing '*' as a placeholder.
+
+        Returns:
+            bool: True if rules are met -> this is the right reader
+
+        Raises:
+            OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError: This
+              exception is raised if only a single path is provided ->
+              OpStreamingHdf5Reader should be used in this case
+            OpStreamingHdf5SequenceReaderS.NotTheSameFileError: if multiple
+              hdf5 files are (possibly) referenced in the globstring, this
+              Exception is raised
+              OpStreamingHdf5SequenceReaderM should be used in this case
+            OpStreamingHdf5SequenceReaderS.WrongFileTypeError: If extension of
+              file name is not in the known hdf5 extensions.
+        """
+        pathStrings = globString.split(os.path.pathsep)
+
+        pathComponents = [PathComponents(p.strip()) for p in pathStrings]
+        assert len(pathComponents) > 0
+
+        if not all(p.extension.lstrip('.') in OpStreamingHdf5Reader.H5EXTS
+                   for p in pathComponents):
+            raise OpStreamingHdf5SequenceReaderS.WrongFileTypeError(globString)
+
+        if len(pathComponents) == 1:
+            if '*' in pathComponents[0].internalPath:
+                return True
+            else:
+                raise OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError(globString)
+        else:
+            sameExternal = all(pathComponents[0].externalPath == x.externalPath
+                               for x in pathComponents[1::])
+            if sameExternal is not True:
+                raise OpStreamingHdf5SequenceReaderS.NotTheSameFileError(globString)
+
+        return True
