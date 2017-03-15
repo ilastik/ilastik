@@ -28,7 +28,7 @@ from lazyflow.operators import OpBlockedArrayCache, OpSingleChannelSelector, OpR
 from ilastik.applets.base.applet import DatasetConstraintError
 
 # local
-from thresholdingTools import OpAnisotropicGaussianSmoothing5d, OpSelectLabels, select_labels
+from thresholdingTools import OpAnisotropicGaussianSmoothing5d, select_labels
 from ipht import threshold_from_cores
 from _OpGraphCut import segmentGC
 
@@ -193,6 +193,16 @@ class OpLabeledThreshold(Operator):
     GraphcutBeta = InputSlot(value=0.2) # Graphcut only
 
     Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super(OpLabeledThreshold, self).__init__(*args, **kwargs)
+
+        execute_funcs = {}
+        execute_funcs[ThresholdMethod.SIMPLE]     = self._execute_SIMPLE
+        execute_funcs[ThresholdMethod.HYSTERESIS] = self._execute_HYSTERESIS
+        execute_funcs[ThresholdMethod.GRAPHCUT]   = self._execute_GRAPHCUT
+        execute_funcs[ThresholdMethod.IPHT]       = self._execute_IPHT
+        self.execute_funcs = execute_funcs
     
     def setupOutputs(self):
         assert self.Input.meta.getAxisKeys() == list("txyzc")
@@ -207,12 +217,6 @@ class OpLabeledThreshold(Operator):
         self.Output.setDirty()
 
     def execute(self, slot, subindex, roi, result):
-        execute_funcs = {}
-        execute_funcs[ThresholdMethod.SIMPLE]     = self._execute_SIMPLE
-        execute_funcs[ThresholdMethod.HYSTERESIS] = self._execute_HYSTERESIS
-        execute_funcs[ThresholdMethod.GRAPHCUT]   = self._execute_GRAPHCUT
-        execute_funcs[ThresholdMethod.IPHT]       = self._execute_IPHT
-
         # Iterate over time slices to avoid connected component problems.
         for t_index, t in enumerate(range(roi.start[0], roi.stop[0])):
             t_slice_roi = roi.copy()
@@ -220,9 +224,7 @@ class OpLabeledThreshold(Operator):
             t_slice_roi.stop[0] = t+1
 
             result_slice = result[t_index:t_index+1]
-
-            # Execute            
-            execute_funcs[self.Method.value](t_slice_roi, result_slice)
+            self.execute_funcs[self.Method.value](t_slice_roi, result_slice)
         
     def _execute_SIMPLE(self, roi, result):
         assert result.shape[0] == 1

@@ -57,6 +57,19 @@
       </widget>
      </item>
      <item>
+      <spacer name="horizontalSpacer_5">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
       <widget class="QLabel" name="coreChannelLabel">
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the channel of the prediction images which you want to threshold. Look at &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Selected input channel&amp;quot;&lt;/span&gt; layer for the results of this operation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -78,19 +91,6 @@
         <string>Final:</string>
        </property>
       </widget>
-     </item>
-     <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
      </item>
      <item>
       <widget class="QComboBox" name="inputChannelComboBox"/>
@@ -415,6 +415,13 @@
     </layout>
    </item>
    <item>
+    <widget class="Line" name="line">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QPushButton" name="applyButton">
      <property name="toolTip">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apply all the settings and compute results. If you want to see the final filtering results, don't forget to enable the &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Final output&amp;quot;&lt;/span&gt; layer in the layer selection widget.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -466,15 +473,6 @@ recomputation and might take a while.</string>
     </spacer>
    </item>
   </layout>
-  <zorder>showDebugCheckbox</zorder>
-  <zorder>applyButton</zorder>
-  <zorder>label_4</zorder>
-  <zorder></zorder>
-  <zorder></zorder>
-  <zorder>verticalSpacer</zorder>
-  <zorder></zorder>
-  <zorder>horizontalLayoutWidget_3</zorder>
-  <zorder>horizontalLayoutWidget_2</zorder>
  </widget>
  <tabstops>
   <tabstop>sigmaSpinBox_X</tabstop>
@@ -483,7 +481,6 @@ recomputation and might take a while.</string>
   <tabstop>highThresholdSpinBox</tabstop>
   <tabstop>minSizeSpinBox</tabstop>
   <tabstop>maxSizeSpinBox</tabstop>
-  <tabstop>showDebugCheckbox</tabstop>
  </tabstops>
  <resources/>
  <connections/>
