@@ -110,6 +110,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._drawer.applyButton.clicked.connect(self._onApplyButtonClicked)
         self._drawer.tabWidget.currentChanged.connect(bind(self._onTabCurrentChanged))
 
+    def showEvent(self, event):
+        super( ThresholdTwoLevelsGui, self ).showEvent(event)
+        self._updateGuiFromOperator()
 
     @threadRouted
     def _updateGuiFromOperator(self):
