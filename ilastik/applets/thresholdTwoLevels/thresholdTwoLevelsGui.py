@@ -81,6 +81,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._allWatchedWidgets = self._sigmaSpinBoxes.values() + \
         [
             self._drawer.inputChannelComboBox,
+            self._drawer.coreChannelComboBox,
             self._drawer.lowThresholdSpinBox,
             self._drawer.highThresholdSpinBox,
             self._drawer.minSizeSpinBox,
@@ -138,13 +139,18 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                 self._defaultInputChannelColors = self._createDefault16ColorColorTable()
             input_channel_colors = map(QColor, self._defaultInputChannelColors)
 
+        self._drawer.inputChannelComboBox.clear()
+        self._drawer.coreChannelComboBox.clear()
+        
         for ichannel in range(numChannels):
             # make an icon
             pm = QPixmap(16, 16)
             pm.fill(input_channel_colors[ichannel])
             self._drawer.inputChannelComboBox.insertItem(ichannel, QIcon(pm), str(ichannel))
+            self._drawer.coreChannelComboBox.insertItem(ichannel, QIcon(pm), str(ichannel))
 
         self._drawer.inputChannelComboBox.setCurrentIndex( op.Channel.value )
+        self._drawer.coreChannelComboBox.setCurrentIndex( op.CoreChannel.value )
 
         # Sigmas
         sigmaDict = self.topLevelOperatorView.SmootherSigma.value
@@ -177,11 +183,16 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             method = 3
 
         # Show/hide some controls depending on the selected method
-        self._drawer.highThresholdSpinBox.setVisible( method in (ThresholdMethod.HYSTERESIS, ThresholdMethod.IPHT) )
-        self._drawer.highThresholdLabel.setVisible( method in (ThresholdMethod.HYSTERESIS, ThresholdMethod.IPHT) )
-        self._drawer.preserveIdentitiesCheckbox.setVisible( method in (ThresholdMethod.HYSTERESIS, ThresholdMethod.IPHT) )
-        self._drawer.lambdaLabel.setVisible( method == ThresholdMethod.GRAPHCUT )
-        self._drawer.lambdaSpinBoxGC.setVisible( method == ThresholdMethod.GRAPHCUT )
+        show_hysteresis_controls = (method in (ThresholdMethod.HYSTERESIS, ThresholdMethod.IPHT))
+        self._drawer.highThresholdSpinBox.setVisible( show_hysteresis_controls )
+        self._drawer.highThresholdLabel.setVisible( show_hysteresis_controls )
+        self._drawer.preserveIdentitiesCheckbox.setVisible( show_hysteresis_controls )
+        self._drawer.coreChannelComboBox.setVisible( show_hysteresis_controls )
+        self._drawer.coreChannelLabel.setVisible( show_hysteresis_controls )
+
+        show_graphcut_controls = (method == ThresholdMethod.GRAPHCUT)
+        self._drawer.lambdaLabel.setVisible( show_graphcut_controls )
+        self._drawer.lambdaSpinBoxGC.setVisible( show_graphcut_controls )
         self._drawer.layout().update()
 
     def _updateOperatorFromGui(self):
@@ -192,7 +203,8 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         #  and we don't want it to update until we've read all gui values.)
 
         # Read Channel
-        channel = self._drawer.inputChannelComboBox.currentIndex()
+        final_channel = self._drawer.inputChannelComboBox.currentIndex()
+        core_channel = self._drawer.coreChannelComboBox.currentIndex()
 
         # Read Sigmas
         block_shape_dict = dict( op.SmootherSigma.value )
@@ -224,12 +236,6 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         highThreshold = self._drawer.highThresholdSpinBox.value()
         beta = self._drawer.lambdaSpinBoxGC.value()
 
-        if lowThreshold>highThreshold:
-            mexBox=QMessageBox()
-            mexBox.setText("Low threshold must be lower than high threshold ")
-            mexBox.exec_()
-            return
-
         # Read Size filters
         minSize = self._drawer.minSizeSpinBox.value()
         maxSize = self._drawer.maxSizeSpinBox.value()
@@ -242,7 +248,8 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             curIndex = 3
         # Apply new settings to the operator
         op.CurOperator.setValue(curIndex)
-        op.Channel.setValue(channel)
+        op.Channel.setValue(final_channel)
+        op.CoreChannel.setValue(core_channel)
         op.SmootherSigma.setValue(block_shape_dict)
         op.LowThreshold.setValue(lowThreshold)
         op.HighThreshold.setValue( highThreshold )

@@ -18,6 +18,33 @@
     <number>5</number>
    </property>
    <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <item>
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string>Method:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_4">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QComboBox" name="methodComboBox"/>
+     </item>
+    </layout>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_5">
      <item>
       <widget class="QLabel" name="label_3">
@@ -25,7 +52,30 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the channel of the prediction images which you want to threshold. Look at &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Selected input channel&amp;quot;&lt;/span&gt; layer for the results of this operation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Input Channel:</string>
+        <string>Input:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="coreChannelLabel">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the channel of the prediction images which you want to threshold. Look at &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Selected input channel&amp;quot;&lt;/span&gt; layer for the results of this operation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>Core:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="coreChannelComboBox"/>
+     </item>
+     <item>
+      <widget class="QLabel" name="finalChannelLabel">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the channel of the prediction images which you want to threshold. Look at &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Selected input channel&amp;quot;&lt;/span&gt; layer for the results of this operation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>Final:</string>
        </property>
       </widget>
      </item>
@@ -156,33 +206,6 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_4">
-     <item>
-      <widget class="QLabel" name="label_6">
-       <property name="text">
-        <string>Method:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="horizontalSpacer_4">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QComboBox" name="methodComboBox"/>
-     </item>
-    </layout>
-   </item>
-   <item>
     <layout class="QHBoxLayout" name="horizontalLayout_6">
      <item>
       <widget class="QLabel" name="label_2">
@@ -296,7 +319,7 @@
         <enum>Qt::RightToLeft</enum>
        </property>
        <property name="text">
-        <string>Don't merge cores</string>
+        <string>Don't merge objects</string>
        </property>
       </widget>
      </item>
@@ -450,8 +473,8 @@ recomputation and might take a while.</string>
   <zorder></zorder>
   <zorder>verticalSpacer</zorder>
   <zorder></zorder>
-  <zorder>horizontalLayoutWidget_2</zorder>
   <zorder>horizontalLayoutWidget_3</zorder>
+  <zorder>horizontalLayoutWidget_2</zorder>
  </widget>
  <tabstops>
   <tabstop>sigmaSpinBox_X</tabstop>

@@ -24,7 +24,7 @@ import numpy as np
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpBlockedArrayCache, OpSingleChannelSelector, OpReorderAxes, OpFilterLabels
+from lazyflow.operators import OpBlockedArrayCache, OpSingleChannelSelector, OpReorderAxes, OpFilterLabels, OpMultiArrayMerger
 from ilastik.applets.base.applet import DatasetConstraintError
 
 # local
@@ -51,6 +51,7 @@ class OpThresholdTwoLevels(Operator):
     LowThreshold = InputSlot(stype='float', value=0.2)
     SmootherSigma = InputSlot(value={'x': 1.0, 'y': 1.0, 'z': 1.0})
     Channel = InputSlot(value=0)
+    CoreChannel = InputSlot(value=0)
     CurOperator = InputSlot(stype='int', value=ThresholdMethod.SIMPLE) # This slot would be better named 'method',
                                                                        # but we're keeping this slot name for backwards
                                                                        # compatibility with old project files
@@ -75,10 +76,10 @@ class OpThresholdTwoLevels(Operator):
     
     ## Basic schematic (debug outputs not shown)
     ## 
-    ## InputImage -> opReorder -> opSmoother -> opSmootherCache -> opChannelSelector -------------------------------------> opFinalThreshold -> opFinalFilter -> opReorder -> Output
-    ##                                                                              \                                      /                                              \
-    ##                                                                               --> opCoreThreshold -> opCoreFilter --                                                opCache -> CachedOutput
-    ##                                                                                                                                                                            `-> CleanBlocks
+    ## InputImage -> opReorder -> opSmoother -> opSmootherCache --> opFinalChannelSelector --> opSumInputs --------------------> opFinalThreshold -> opFinalFilter -> opReorder -> Output
+    ##                                                         \                             /                                  /                                              \
+    ##                                                          --> opCoreChannelSelector --> opCoreThreshold -> opCoreFilter --                                                opCache -> CachedOutput
+    ##                                                                                                                                                                                 `-> CleanBlocks
     def __init__(self, *args, **kwargs):
         super(OpThresholdTwoLevels, self).__init__(*args, **kwargs)
 
@@ -94,14 +95,14 @@ class OpThresholdTwoLevels(Operator):
         self.opSmootherCache.BlockShape.setValue((1, None, None, None, 1))
         self.opSmootherCache.Input.connect( self.opSmoother.Output )
         
-        self.opChannelSelector = OpSingleChannelSelector(parent=self)
-        self.opChannelSelector.Index.connect( self.Channel )
-        self.opChannelSelector.Input.connect( self.opSmootherCache.Output )
+        self.opCoreChannelSelector = OpSingleChannelSelector(parent=self)
+        self.opCoreChannelSelector.Index.connect( self.CoreChannel )
+        self.opCoreChannelSelector.Input.connect( self.opSmootherCache.Output )
         
         self.opCoreThreshold = OpLabeledThreshold(parent=self)
         self.opCoreThreshold.Method.setValue( ThresholdMethod.SIMPLE )
         self.opCoreThreshold.FinalThreshold.connect( self.HighThreshold )
-        self.opCoreThreshold.Input.connect( self.opChannelSelector.Output )
+        self.opCoreThreshold.Input.connect( self.opCoreChannelSelector.Output )
 
         self.opCoreFilter = OpFilterLabels(parent=self)
         self.opCoreFilter.BinaryOut.setValue(False)
@@ -109,12 +110,19 @@ class OpThresholdTwoLevels(Operator):
         self.opCoreFilter.MaxLabelSize.connect( self.MaxSize )
         self.opCoreFilter.Input.connect( self.opCoreThreshold.Output )
         
+        self.opFinalChannelSelector = OpSingleChannelSelector(parent=self)
+        self.opFinalChannelSelector.Index.connect( self.Channel )
+        self.opFinalChannelSelector.Input.connect( self.opSmootherCache.Output )
+
+        self.opSumInputs = OpMultiArrayMerger(parent=self) # see setupOutputs (below) for input connections
+        self.opSumInputs.MergingFunction.setValue( sum )
+        
         self.opFinalThreshold = OpLabeledThreshold(parent=self)
         self.opFinalThreshold.Method.connect( self.CurOperator )
         self.opFinalThreshold.FinalThreshold.connect( self.LowThreshold )
         self.opFinalThreshold.GraphcutBeta.connect( self.Beta )
         self.opFinalThreshold.CoreLabels.connect( self.opCoreFilter.Output )
-        self.opFinalThreshold.Input.connect( self.opChannelSelector.Output )
+        self.opFinalThreshold.Input.connect( self.opSumInputs.Output )
         
         self.opFinalFilter = OpFilterLabels(parent=self)
         self.opFinalFilter.BinaryOut.setValue(False)
@@ -137,7 +145,7 @@ class OpThresholdTwoLevels(Operator):
         
         ## Debug outputs
         self.Smoothed.connect( self.opSmootherCache.Output )
-        self.InputChannel.connect( self.opChannelSelector.Output )
+        self.InputChannel.connect( self.opFinalChannelSelector.Output )
         self.SmallRegions.connect( self.opCoreThreshold.Output )
         self.FilteredSmallLabels.connect( self.opCoreFilter.Output )
         self.BeforeSizeFilter.connect( self.opFinalThreshold.Output )
@@ -147,7 +155,7 @@ class OpThresholdTwoLevels(Operator):
         self.opBigRegionsThreshold = OpLabeledThreshold(parent=self)
         self.opBigRegionsThreshold.Method.setValue( ThresholdMethod.SIMPLE )
         self.opBigRegionsThreshold.FinalThreshold.connect( self.LowThreshold )
-        self.opBigRegionsThreshold.Input.connect( self.opChannelSelector.Output )
+        self.opBigRegionsThreshold.Input.connect( self.opFinalChannelSelector.Output )
         self.BigRegions.connect( self.opBigRegionsThreshold.Output )
 
     def setupOutputs(self):
@@ -157,9 +165,18 @@ class OpThresholdTwoLevels(Operator):
         # Cache individual t,c slices
         blockshape = tuple(1 if k in 'tc' else None for k in axes)
         self.opCache.BlockShape.setValue(blockshape)
+        
+        if self.CurOperator.value in (ThresholdMethod.HYSTERESIS, ThresholdMethod.IPHT) \
+        and self.Channel.value != self.CoreChannel.value:
+            self.opSumInputs.Inputs.resize(2)
+            self.opSumInputs.Inputs[0].connect( self.opFinalChannelSelector.Output )
+            self.opSumInputs.Inputs[1].connect( self.opCoreChannelSelector.Output )
+        else:
+            self.opSumInputs.Inputs.resize(1)
+            self.opSumInputs.Inputs[0].connect( self.opFinalChannelSelector.Output )
 
     def setInSlot(self, slot, subindex, roi, value):
-        self.opCache.setInSlot(self.opCache.Input, subindex, key, value)
+        self.opCache.setInSlot(self.opCache.Input, subindex, roi, value)
 
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."

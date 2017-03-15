@@ -30,6 +30,7 @@ class ThresholdTwoLevelsSerializer(AppletSerializer):
                  SerialSlot(operator.LowThreshold, selfdepends=True),
                  SerialDictSlot(operator.SmootherSigma, selfdepends=True),
                  SerialSlot(operator.Channel, selfdepends=True),
+                 SerialSlot(operator.CoreChannel, selfdepends=True),
                  SerialBlockSlot(operator.CachedOutput,
                                  operator.CacheInput,
                                  operator.CleanBlocks,
@@ -54,3 +55,11 @@ class ThresholdTwoLevelsSerializer(AppletSerializer):
         if method == ThresholdMethod.SIMPLE and 'SingleThreshold' in topGroup.keys():
             threshold = topGroup['SingleThreshold'].value
             self.operator.LowThreshold.setValue(threshold)
+
+        # We used to always compute cores from the same channel as the 'final' threshold input.
+        # If the user has an old project file, make sure channels are matching by default.
+        if method in (ThresholdMethod.HYSTERESIS, ThresholdMethod.IPHT) \
+        and 'Channel' in topGroup.keys() \
+        and 'CoreChannel' not in topGroup.keys():
+            channel = topGroup['Channel'].value
+            self.operator.CoreChannel.setValue(channel)
