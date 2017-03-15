@@ -91,7 +91,7 @@ class OpStreamingHdf5SequenceReaderS(Operator):
 
     def setupOutputs(self):
         self._hdf5File = self.Hdf5File.value
-
+        self.checkGlobString(self.GlobString.value)
         file_paths = self.expandGlobStrings(self._hdf5File, self.GlobString.value)
 
         num_files = len(file_paths)

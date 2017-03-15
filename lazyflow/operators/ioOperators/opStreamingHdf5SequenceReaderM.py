@@ -36,24 +36,23 @@ logger = logging.getLogger(__name__)
 class OpStreamingHdf5SequenceReaderM(Operator):
     """
     Imports a sequence of (ND) volumes inside multiple hdf5 file into a single volume (ND+1)
-
+    
     The 'M' at the end of the file name implies that this class handles multiple
     volumes in a multiple files.
-
+    
     :param globstring: A glob string as defined by the glob module. We
         also support the following special extension to globstring
         syntax: A single string can hold a *list* of globstrings.
         The delimiter that separates the globstrings in the list is
         OS-specific via os.path.pathsep.
-
+    
         For example, on Linux the pathsep is':', so
-
+    
             '/a/b/c.txt:/d/e/f.txt:../g/i/h.txt'
-
+    
         is parsed as
-
+    
             ['/a/b/c.txt', '/d/e/f.txt', '../g/i/h.txt']
-
     """
     GlobString = InputSlot()
     SequenceAxis = InputSlot(optional=True)  # The axis to stack across.
@@ -108,7 +107,7 @@ class OpStreamingHdf5SequenceReaderM(Operator):
         super(OpStreamingHdf5SequenceReaderM, self).cleanUp()
 
     def setupOutputs(self):
-
+        self.checkGlobString(self.GlobString.value)
         external_paths, internal_paths = self.expandGlobStrings(
             self.GlobString.value)
 
