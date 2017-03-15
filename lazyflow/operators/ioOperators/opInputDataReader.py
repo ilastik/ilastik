@@ -24,7 +24,8 @@ from lazyflow.operators import OpImageReader, OpBlockedArrayCache, OpMetadataInj
 from opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import (
     OpBlockwiseFilesetReader, OpKlbReader, OpRESTfulBlockwiseFilesetReader,
-    OpStreamingHdf5Reader, OpStreamingHdf5SequenceReaderS, OpTiffReader,
+    OpStreamingHdf5Reader, OpStreamingHdf5SequenceReaderS,
+    OpStreamingHdf5SequenceReaderM, OpTiffReader,
     OpTiffSequenceReader, OpCachedTiledVolumeReader, OpRawBinaryFileReader,
     OpStackLoader
 )
@@ -262,21 +263,43 @@ class OpInputDataReader(Operator):
         if not ('*' in filePath or os.path.pathsep in filePath):
             return ([], None)
 
+        # Now use the .checkGlobString method of the stack readers
+        isSingleFile = False
         try:
-            opReader = OpStreamingHdf5SequenceReaderS(parent=self)
-            pathComponents = [PathComponents(fp)
-                              for fp in filePath.split(os.path.pathsep)]
-            externalPaths = [pc.externalPath for pc in pathComponents]
-            # Check if all internalPaths reference the same hdf5 file:
-            if not all(p == externalPaths[0] for p in externalPaths[1::]):
-                raise OpStreamingHdf5SequenceReaderS.NotTheSameFileError(
-                    filePath)
-            opReader.GlobString.setValue(filePath)
-            h5file = h5py.File(externalPaths[0], 'r')
-            opReader.Hdf5File.setValue(h5file)
-            return ([opReader], opReader.OutputImage)
+            isSingleFile = OpStreamingHdf5SequenceReaderS.checkGlobString(filePath)
         except OpStreamingHdf5SequenceReaderS.WrongFileTypeError:
             return ([], None)
+        except (OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError,
+                OpStreamingHdf5SequenceReaderS.NotTheSameFileError):
+            pass
+
+        try:
+            isMultiFile = OpStreamingHdf5SequenceReaderM.checkGlobString(filePath)
+        except (OpStreamingHdf5SequenceReaderM.NoExternalPlaceholderError,
+                OpStreamingHdf5SequenceReaderM.SameFileError):
+            pass
+
+        if isSingleFile is True:
+            opReader = OpStreamingHdf5SequenceReaderS(parent=self)
+            try:
+                externalPaths = [PathComponents(p.strip()).externalPath
+                                 for p in filePath.split(os.path.pathsep)]
+                opReader.GlobString.setValue(filePath)
+                h5file = h5py.File(externalPaths[0], 'r')
+                opReader.Hdf5File.setValue(h5file)
+                return ([opReader], opReader.OutputImage)
+            except OpStreamingHdf5SequenceReaderS.WrongFileTypeError:
+                return ([], None)
+        elif isMultiFile is True:
+            opReader = OpStreamingHdf5SequenceReaderM(parent=self)
+            try:
+                opReader.GlobString.setValue(filePath)
+                return ([opReader], opReader.OutputImage)
+            except OpStreamingHdf5SequenceReaderS.WrongFileTypeError:
+                return ([], None)
+        else:
+            return ([], None)
+
 
     def _attemptOpenAsTiffStack(self, filePath):
         if not ('*' in filePath or os.path.pathsep in filePath):

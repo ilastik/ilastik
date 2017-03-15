@@ -81,7 +81,7 @@ class OpStreamingHdf5SequenceReaderM(Operator):
         def __init__(self, fileName):
             self.fileName = fileName
             self.msg = "Could not read file: {}".format(fileName)
-            super(OpStreamingHdf5SequenceReaderM.SameFileError, self).__init__(self.msg)
+            super(OpStreamingHdf5SequenceReaderM.FileOpenError, self).__init__(self.msg)
 
     class SingleFileException(Exception):
         """Summary
