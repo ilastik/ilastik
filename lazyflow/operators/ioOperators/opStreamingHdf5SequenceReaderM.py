@@ -20,11 +20,14 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import os
+import glob
+
+import h5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.generic import OpMultiArrayStacker
 from lazyflow.operators.ioOperators.opStreamingHdf5Reader import OpStreamingHdf5Reader
-from lazyflow.utility.pathHelpers import PathComponents, globHdf5
+from lazyflow.utility.pathHelpers import PathComponents
 
 import logging
 logger = logging.getLogger(__name__)
@@ -74,6 +77,12 @@ class OpStreamingHdf5SequenceReaderM(Operator):
             self.msg = "This reader only works with multiple h5 files: {}".format(globString)
             super(OpStreamingHdf5SequenceReaderM.SameFileError, self).__init__(self.msg)
 
+    class FileOpenError(Exception):
+        def __init__(self, fileName):
+            self.fileName = fileName
+            self.msg = "Could not read file: {}".format(fileName)
+            super(OpStreamingHdf5SequenceReaderM.SameFileError, self).__init__(self.msg)
+
     class SingleFileException(Exception):
         """Summary
         """
@@ -93,30 +102,103 @@ class OpStreamingHdf5SequenceReaderM(Operator):
         self._opStacker.Images.resize(0)
         for opReader in self._readers:
             opReader.cleanUp()
+        for hdfFile in self._hdf5Files:
+            hdfFile.close()
         self._hdf5Files = None
         super(OpStreamingHdf5SequenceReaderM, self).cleanUp()
 
+    def setupOutputs(self):
+
+        external_paths, internal_paths = self.expandGlobStrings(
+            self.GlobString.value)
+
+        num_files = len(external_paths)
+        if num_files == 0:
+            self.OutputImage.disconnect()
+            self.OutputImage.meta.NOTREADY = True
+            return
+
+        self.OutputImage.connect(self._opStacker.Output)
+        # Get slice axes from first image
+        try:
+            h5FirstImage = h5py.File(external_paths[0], mode='r')
+            opFirstImg = OpStreamingHdf5Reader(parent=self)
+            opFirstImg.InternalPath.setValue(internal_paths[0])
+            opFirstImg.Hdf5File.setValue(h5FirstImage)
+            slice_axes = opFirstImg.OutputImage.meta.getAxisKeys()
+            opFirstImg.cleanUp()
+            h5FirstImage.close()
+        except RuntimeError as e:
+            logger.error(str(e))
+            raise OpStreamingHdf5SequenceReaderM.FileOpenError(external_paths[0])
+
+        # Use given new axis or try to do something sensible
+        if self.SequenceAxis.ready():
+            new_axis = self.SequenceAxis.value
+            assert len(new_axis) == 1
+            assert new_axis in 'tzyxc'
+        else:
+            # Try to pick an axis that doesn't already exist in each volume
+            for new_axis in 'tzc0':
+                if new_axis not in slice_axes:
+                    break
+
+            if new_axis == '0':
+                # All axes used already.
+                # Stack across first existing axis
+                new_axis = slice_axes[0]
+
+        self._opStacker.Images.resize(0)
+        self._opStacker.Images.resize(num_files)
+        self._opStacker.AxisFlag.setValue(new_axis)
+
+        for opReader in self._readers:
+            opReader.cleanUp()
+
+        self._hdf5Files = []
+        self._readers = []
+        for external_path, internal_path, stacker_slot in zip(
+                external_paths, internal_paths, self._opStacker.Images):
+            opReader = OpStreamingHdf5Reader(parent=self)
+            try:
+                hdfFile = h5py.File(external_path, 'r')
+                opReader.InternalPath.setValue(internal_path)
+                opReader.Hdf5File.setValue(hdfFile)
+            except RuntimeError as e:
+                logger.error(str(e))
+                raise OpStreamingHdf5SequenceReaderM.FileOpenError(external_path)
+            else:
+                stacker_slot.connect(opReader.OutputImage)
+                self._readers.append(opReader)
+                self._hdf5Files.append(hdfFile)
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.SequenceAxis or slot == self.GlobString:
+            self.OutputImage.setDirty(slice(None))
+
     @staticmethod
-    def expandGlobStrings(hdf5File, globStrings):
+    def expandGlobStrings(globStrings):
         """Matches a list of globStrings to internal paths of files
 
         Args:
-            hdf5File: h5py.File object
             globStrings: string. glob or path strings delimited by os.pathsep
 
         Returns:
             List of internal paths matching the globstrings that were found in
             the provided h5py.File object
+
         """
-        ret = []
+        external_paths = []
+        internal_paths = []
         # Parse list into separate globstrings and combine them
         for globString in globStrings.split(os.path.pathsep):
             s = globString.strip()
             components = PathComponents(s)
-            ret += sorted(
-                globHdf5(
-                    hdf5File, components.internalPath.lstrip('/')))
-        return ret
+            tmp = sorted(glob.glob(components.externalPath))
+            external_paths.extend(tmp)
+            internal_paths.extend(
+                [components.internalPath for i in xrange(len(tmp))])
+        return external_paths, internal_paths
 
     @staticmethod
     def checkGlobString(globString):
