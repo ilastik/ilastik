@@ -27,7 +27,7 @@ import numpy
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QObject, QEvent
-from PyQt4.QtGui import QDialog, QValidator, QDialogButtonBox
+from PyQt4.QtGui import QDialog
 from ilastik.plugins import pluginManager
 
 try:
@@ -114,11 +114,13 @@ class PluginExportOptionsDlg(QDialog):
             "Cannot use {} as an export operator.  "\
             "It doesn't match the required interface".format( type(opDataExport) )
 
-        self._okay_conditions = {}
-
         # Connect the 'transaction slot'.
         # All slot changes will occur immediately
         opDataExport.TransactionSlot.setValue(True)
+
+        # connect the Ok cancel buttons
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
 
         # Init child widgets
         self._initMetaInfoText()
@@ -135,11 +137,6 @@ class PluginExportOptionsDlg(QDialog):
            ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
             return True
         return False
-
-    def _set_okay_condition(self, name, status):
-        self._okay_conditions[name] = status
-        all_okay = all( self._okay_conditions.values() )
-        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled( all_okay )
 
     #**************************************************************************
     # Meta-info (display only)
