@@ -22,6 +22,8 @@ import os
 import logging
 from functools import partial
 
+import numpy as np
+
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
 from PyQt4.QtGui import QColor, QPixmap, QIcon
@@ -36,13 +38,10 @@ from lazyflow.operators.generic import OpSingleChannelSelector
 
 from opThresholdTwoLevels import ThresholdMethod
 
-from opGraphcutSegment import haveGraphCut
-
-# always available
-import numpy as np
-
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
+
+
 
 class ThresholdTwoLevelsGui( LayerViewerGui ):
     _defaultInputChannelColors = None
@@ -71,9 +70,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
 
-        # disable graph cut applet if not available
-        if not haveGraphCut():
-            self._drawer.tabWidget.setTabEnabled(2, False)
+        self._drawer.methodComboBox.addItem("Simple")
+        self._drawer.methodComboBox.addItem("Hysteresis")
+        self._drawer.methodComboBox.addItem("Graph Cut")
 
         self._sigmaSpinBoxes = { 'x' : self._drawer.sigmaSpinBox_X,
                                  'y' : self._drawer.sigmaSpinBox_Y,
@@ -84,10 +83,8 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             self._drawer.inputChannelComboBox,
             self._drawer.lowThresholdSpinBox,
             self._drawer.highThresholdSpinBox,
-            self._drawer.thresholdSpinBox,
             self._drawer.minSizeSpinBox,
             self._drawer.maxSizeSpinBox,
-            self._drawer.thresholdSpinBoxGC,
             self._drawer.lambdaSpinBoxGC
         ]
         
@@ -108,7 +105,8 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
     def _connectCallbacks(self):
         self.topLevelOperatorView.InputImage.notifyMetaChanged(bind(self._onInputMetaChanged))
         self._drawer.applyButton.clicked.connect(self._onApplyButtonClicked)
-        self._drawer.tabWidget.currentChanged.connect(bind(self._onTabCurrentChanged))
+        self._drawer.methodComboBox.currentIndexChanged.connect( self._enableMethodSpecificControls )
+        self._drawer.preserveIdentitiesCheckbox.stateChanged.connect( self._enableMethodSpecificControls )
 
     def showEvent(self, event):
         super( ThresholdTwoLevelsGui, self ).showEvent(event)
@@ -126,7 +124,6 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                 data_has_z_axis = False
 
         self._drawer.sigmaSpinBox_Z.setVisible(data_has_z_axis)
-        self._drawer.marginSpinBoxGC_Z.setVisible(data_has_z_axis)
 
         numChannels = 0
         if op.InputImage.ready():
@@ -140,11 +137,12 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             if self._defaultInputChannelColors is None:
                 self._defaultInputChannelColors = self._createDefault16ColorColorTable()
             input_channel_colors = map(QColor, self._defaultInputChannelColors)
+
         for ichannel in range(numChannels):
             # make an icon
             pm = QPixmap(16, 16)
             pm.fill(input_channel_colors[ichannel])
-            self._drawer.inputChannelComboBox.insertItem(ichannel, QIcon(pm), "Input Channel "+ str(ichannel))
+            self._drawer.inputChannelComboBox.insertItem(ichannel, QIcon(pm), str(ichannel))
 
         self._drawer.inputChannelComboBox.setCurrentIndex( op.Channel.value )
 
@@ -156,26 +154,35 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # Thresholds
         self._drawer.lowThresholdSpinBox.setValue( op.LowThreshold.value )
         self._drawer.highThresholdSpinBox.setValue( op.HighThreshold.value )
-        self._drawer.thresholdSpinBox.setValue( op.LowThreshold.value )
-        self._drawer.thresholdSpinBoxGC.setValue( op.LowThreshold.value )
         self._drawer.lambdaSpinBoxGC.setValue( op.Beta.value )
-        margin = op.Margin.value
-        self._drawer.marginSpinBoxGC_X.setValue(margin[0])
-        self._drawer.marginSpinBoxGC_Y.setValue(margin[1])
-        self._drawer.marginSpinBoxGC_Z.setValue(margin[2])
-        if op.UsePreThreshold.value:
-            self._drawer.radioButtonGC_local.setChecked(True)
-        else:
-            self._drawer.radioButtonGC_global.setChecked(True)
 
         # Size filters
         self._drawer.minSizeSpinBox.setValue( op.MinSize.value )
         self._drawer.maxSizeSpinBox.setValue( op.MaxSize.value )
 
         # Operator
-        tab_index = {0:0, 1:1, 2:2, 3:1}[op.CurOperator.value]
-        self._drawer.tabWidget.setCurrentIndex( tab_index )
+        method = op.CurOperator.value
+        
+        # There isn't a 1-to-1 correspondence between the combo widget and ThresholdingMethod
+        # Methods 0,1,2 are 1-to-1, but method 3 means "two-level, but don't merge cores."
+        method_combo_index = {0:0, 1:1, 2:2, 3:1}[method]
+        self._drawer.methodComboBox.setCurrentIndex( method_combo_index )
         self._drawer.preserveIdentitiesCheckbox.setChecked(op.CurOperator.value == 3)
+        
+        self._enableMethodSpecificControls()
+
+    def _enableMethodSpecificControls(self):
+        method = self._drawer.methodComboBox.currentIndex()
+        if method == 1 and self._drawer.preserveIdentitiesCheckbox.isChecked():
+            method = 3
+
+        # Show/hide some controls depending on the selected method
+        self._drawer.highThresholdSpinBox.setVisible( method in (ThresholdMethod.HYSTERESIS, ThresholdMethod.IPHT) )
+        self._drawer.highThresholdLabel.setVisible( method in (ThresholdMethod.HYSTERESIS, ThresholdMethod.IPHT) )
+        self._drawer.preserveIdentitiesCheckbox.setVisible( method in (ThresholdMethod.HYSTERESIS, ThresholdMethod.IPHT) )
+        self._drawer.lambdaLabel.setVisible( method == ThresholdMethod.GRAPHCUT )
+        self._drawer.lambdaSpinBoxGC.setVisible( method == ThresholdMethod.GRAPHCUT )
+        self._drawer.layout().update()
 
     def _updateOperatorFromGui(self):
         op = self.topLevelOperatorView
@@ -188,8 +195,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         channel = self._drawer.inputChannelComboBox.currentIndex()
 
         # Read Sigmas
-        sigmaSlot = self.topLevelOperatorView.SmootherSigma
-        block_shape_dict = dict( sigmaSlot.value )
+        block_shape_dict = dict( op.SmootherSigma.value )
         block_shape_dict['x'] = self._sigmaSpinBoxes['x'].value()
         block_shape_dict['y'] = self._sigmaSpinBoxes['y'].value()
         block_shape_dict['z'] = self._sigmaSpinBoxes['z'].value()
@@ -214,15 +220,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                 return
 
         # Read Thresholds
-        singleThreshold = self._drawer.thresholdSpinBox.value()
         lowThreshold = self._drawer.lowThresholdSpinBox.value()
         highThreshold = self._drawer.highThresholdSpinBox.value()
-        singleThresholdGC = self._drawer.thresholdSpinBoxGC.value()
         beta = self._drawer.lambdaSpinBoxGC.value()
-        margin = [self._drawer.marginSpinBoxGC_X.value(),
-                  self._drawer.marginSpinBoxGC_Y.value(),
-                  self._drawer.marginSpinBoxGC_Z.value()]
-        margin = np.asarray(margin)
 
         if lowThreshold>highThreshold:
             mexBox=QMessageBox()
@@ -234,14 +234,8 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         minSize = self._drawer.minSizeSpinBox.value()
         maxSize = self._drawer.maxSizeSpinBox.value()
 
-        if minSize>=maxSize:
-            mexBox=QMessageBox()
-            mexBox.setText("Min size must be smaller than max size ")
-            mexBox.exec_()
-            return
-
         # Read the current thresholding method
-        curIndex = self._drawer.tabWidget.currentIndex()
+        curIndex = self._drawer.methodComboBox.currentIndex()
 
         op_index = curIndex
         if curIndex == 1 and self._drawer.preserveIdentitiesCheckbox.isChecked():
@@ -249,25 +243,13 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # Apply new settings to the operator
         op.CurOperator.setValue(curIndex)
         op.Channel.setValue(channel)
-        sigmaSlot.setValue(block_shape_dict)
-        if curIndex == ThresholdMethod.SIMPLE:
-            op.LowThreshold.setValue(singleThreshold)
-        elif curIndex in (ThresholdMethod.HYSTERESIS, ThresholdMethod.IPHT):
-            op.LowThreshold.setValue(lowThreshold)
-        elif curIndex == ThresholdMethod.GRAPHCUT:
-            op.LowThreshold.setValue(singleThresholdGC)
-        else:
-            assert False, "Unsupported method"
-        
-
+        op.SmootherSigma.setValue(block_shape_dict)
+        op.LowThreshold.setValue(lowThreshold)
         op.HighThreshold.setValue( highThreshold )
         
         op.Beta.setValue(beta)
-        op.Margin.setValue(margin)
         op.MinSize.setValue(minSize)
         op.MaxSize.setValue(maxSize)
-        op.UsePreThreshold.setValue(
-            self._drawer.radioButtonGC_local.isChecked())
 
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
