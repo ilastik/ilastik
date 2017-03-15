@@ -40,6 +40,9 @@ class OpLabelVolume(Operator):
     #TODO relax requirements (single value is already working)
     Background = InputSlot(optional=True)
 
+    # Bypass cache (for headless mode)
+    BypassModeEnabled = InputSlot(value=False)
+
     ## decide which CCL method to use
     #
     # currently available:
@@ -92,6 +95,7 @@ class OpLabelVolume(Operator):
         self.CachedOutput.connect(self._op5_2_cached.Output)
 
         # available OpLabelingABCs:
+        # TODO: OpLazyConnectedComponents and _OpLabelBlocked does not conform to OpLabelingABC
         self._labelOps = {'vigra': _OpLabelVigra,
                           'blocked': _OpLabelBlocked,
                           'lazy': OpLazyConnectedComponents}
@@ -111,6 +115,8 @@ class OpLabelVolume(Operator):
 
         self._opLabel = self._labelOps[method](parent=self)
         self._opLabel.Input.connect(self._op5.Output)
+        if method is 'vigra':
+            self._opLabel.BypassModeEnabled.connect(self.BypassModeEnabled)
 
         # connect reordering operators
         self._op5_2.Input.connect(self._opLabel.Output)
@@ -128,7 +134,9 @@ class OpLabelVolume(Operator):
         self._setBG()
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.Method:
+        if slot == self.BypassModeEnabled:
+            pass
+        elif slot == self.Method:
             # We are changing the labeling method. In principle, the labelings
             # are equivalent, but not necessarily the same!
             self.Output.setDirty(slice(None))
@@ -176,6 +184,9 @@ class OpLabelingABC(Operator):
 
     ## background with axes 'txyzc', spatial axes must be singletons
     Background = InputSlot()
+    
+    # Bypass cache (for headless mode)
+    BypassModeEnabled = InputSlot(value=False)
 
     Output = OutputSlot()
     CachedOutput = OutputSlot()
@@ -195,6 +206,7 @@ class OpLabelingABC(Operator):
         super(OpLabelingABC, self).__init__(*args, **kwargs)
         self._cache = OpBlockedArrayCache(parent=self)
         self._cache.name = "OpLabelVolume.OutputCache"
+        self._cache.BypassModeEnabled.connect(self.BypassModeEnabled)
         self._cache.CompressionEnabled.setValue(True)
         self._cache.Input.connect(self.Output)
         self.CachedOutput.connect(self._cache.Output)
@@ -215,20 +227,23 @@ class OpLabelingABC(Operator):
         shape = np.asarray(self.Input.meta.shape, dtype=np.int)
         shape[0] = 1
         shape[4] = 1
-        self._cache.outerBlockShape.setValue(tuple(shape))
+        self._cache.BlockShape.setValue(tuple(shape))
 
         # setup meta for Output
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = self.labelType
 
     def propagateDirty(self, slot, subindex, roi):
-        # a change in either input or background makes the whole
-        # time-channel-slice dirty (CCL is a global operation)
-        outroi = roi.copy()
-        outroi.start[1:4] = (0, 0, 0)
-        outroi.stop[1:4] = self.Input.meta.shape[1:4]
-        self.Output.setDirty(outroi)
-        self.CachedOutput.setDirty(outroi)
+        if slot == self.BypassModeEnabled:
+            pass
+        else:
+            # a change in either input or background makes the whole
+            # time-channel-slice dirty (CCL is a global operation)
+            outroi = roi.copy()
+            outroi.start[1:4] = (0, 0, 0)
+            outroi.stop[1:4] = self.Input.meta.shape[1:4]
+            self.Output.setDirty(outroi)
+            self.CachedOutput.setDirty(outroi)
 
     def setInSlot(self, slot, subindex, roi, value):
         #    "Invalid slot for setInSlot(): {}".format( slot.name )

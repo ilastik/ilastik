@@ -147,6 +147,12 @@ class OpReorderAxes(Operator):
         if inputSlot == self.AxisOrder:
             self.Output.setDirty()
         elif inputSlot == self.Input:
+            # If this assertion triggers, it usually means that some upstream propagateDirty()
+            # function is calling setDirty() with the wrong ROI.
+            assert len(in_roi.start) == len(in_roi.stop) == len(self.Input.meta.shape), \
+                "The dirty ROI ({}) appears incorrect for the InputSlot, which has shape {}."\
+                .format( in_roi, self.Input.meta.shape )
+            
             in_roi_dict = dict( enumerate( zip(in_roi.start, in_roi.stop) ) )
             in_roi_dict[-1] = (0,1) # Output axes that are missing on the input map to roi 0:1
 

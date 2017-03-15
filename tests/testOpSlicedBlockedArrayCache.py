@@ -52,8 +52,7 @@ class TestOpSlicedBlockedArrayCache(object):
         
         opCache = OpSlicedBlockedArrayCache(graph=graph)
         opCache.Input.connect(opProvider.Output)
-        opCache.innerBlockShape.setValue( ( (10,1,10,10,10), (10,10,1,10,10), (10,10,10,1,10) ) )
-        opCache.outerBlockShape.setValue( ( (20,2,20,20,20), (20,20,2,20,20), (20,20,20,2,20) ) )
+        opCache.BlockShape.setValue( ( (20,2,20,20,20), (20,20,2,20,20), (20,20,20,2,20) ) )
         opCache.fixAtCurrent.setValue(False)
         self.opCache = opCache
 
@@ -345,8 +344,7 @@ class TestOpSlicedBlockedArrayCache(object):
             
             op = OpSlicedBlockedArrayCache(graph=self.opProvider.graph)
             op.Input.connect(self.opProvider.Output)
-            op.innerBlockShape.setValue(self.opCache.innerBlockShape.value)
-            op.outerBlockShape.setValue(self.opCache.outerBlockShape.value)
+            op.BlockShape.setValue(self.opCache.BlockShape.value)
             op.fixAtCurrent.setValue(False)
             x = op.Output[...].wait()
             op.Input.disconnect()
@@ -369,23 +367,23 @@ class TestOpSlicedBlockedArrayCache(object):
         opCache.BypassModeEnabled.setValue(True)
 
         # We can set 'fixAtCurrent', but it makes no difference.        
-        opCache.fixAtCurrent.setValue(True)
+        opCache.fixAtCurrent.setValue(False)
         
         expectedAccessCount = 0
         assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
 
-        # Not block-aligned request -- in bypass mode, blocking is ignored
+        # Not block-aligned request -- even in bypass mode, blocking is not ignored
         slicing = make_key[0:1, 35:45, 10:20, 0:10, 0:1]
         data = opCache.Output( slicing ).wait()
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
-        expectedAccessCount += 1
+        expectedAccessCount += 6
         assert (data == self.data[slicing]).all()
         assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
 
         # In bypass mode, the data wasn't cached, so the data is simply requested a second time.
         data = opCache.Output( slicing ).wait()
-        expectedAccessCount += 1
+        expectedAccessCount += 6
         assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
 
 
@@ -411,8 +409,7 @@ class TestOpSlicedBlockedArrayCache_masked(object):
 
         opCache = OpSlicedBlockedArrayCache(graph=graph)
         opCache.Input.connect(opProvider.Output)
-        opCache.innerBlockShape.setValue( ( (10,1,10,10,10), (10,10,1,10,10), (10,10,10,1,10) ) )
-        opCache.outerBlockShape.setValue( ( (20,2,20,20,20), (20,20,2,20,20), (20,20,20,2,20) ) )
+        opCache.BlockShape.setValue( ( (20,2,20,20,20), (20,20,2,20,20), (20,20,20,2,20) ) )
         opCache.fixAtCurrent.setValue(False)
         self.opCache = opCache
 

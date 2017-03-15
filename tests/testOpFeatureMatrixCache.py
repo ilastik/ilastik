@@ -25,7 +25,7 @@ class TestOpFeatureMatrixCache(object):
         # This ensures that the blockwise behavior is tested, even though we're
         # testing with tiny data that would normally fall into a single block.
         opLabelCache = OpBlockedArrayCache(graph=graph)
-        opLabelCache.outerBlockShape.setValue((10,10,1))
+        opLabelCache.BlockShape.setValue((10,10,1))
         opLabelCache.Input.setValue(labels)
         
         opFeatureMatrixCache = OpFeatureMatrixCache(graph=graph)

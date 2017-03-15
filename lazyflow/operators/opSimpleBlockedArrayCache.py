@@ -8,7 +8,8 @@ from lazyflow.roi import getIntersectingRois, roiToSlice
 from lazyflow.rtype import SubRegion
 
 class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
-    BlockShape = InputSlot(optional=True)
+    BlockShape = InputSlot(optional=True) # Must be a tuple.  Any 'None' elements will be interpreted as 'max' for that dimension.
+    BypassModeEnabled = InputSlot(value=False)
 
     def __init__(self, *args, **kwargs):
         super( OpSimpleBlockedArrayCache, self ).__init__(*args, **kwargs)
@@ -24,6 +25,9 @@ class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
         if len(self._blockshape) != len(self.Input.meta.shape):
             self.Output.meta.NOTREADY = True
             return
+
+        # Replace 'None' (or zero) with default (from Input shape)
+        self._blockshape = tuple( numpy.where(self._blockshape, self._blockshape, self.Input.meta.shape) )
 
         self.Output.meta.ideal_blockshape = tuple(numpy.minimum(self._blockshape, self.Input.meta.shape))
 
@@ -61,6 +65,14 @@ class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
             elif self.Input.meta.dontcache:
                 # Data isn't in the cache, but we don't need it in the cache anyway.
                 self.Input(*clipped_block_roi).writeInto(result[roiToSlice(*output_roi)]).block()
+            elif self.BypassModeEnabled.value:
+                full_block_data = self.Output.stype.allocateDestination( SubRegion(self.Output, *full_block_roi ) )
+
+                self.Input(*full_block_roi).writeInto(full_block_data).block()
+                
+                roi_within_block = clipped_block_roi - full_block_roi[0]
+                self.Output.stype.copy_data( result[roiToSlice(*output_roi)],
+                                             full_block_data[roiToSlice(*roi_within_block)] )
             else:
                 # Data doesn't exist yet in the cache.
                 # Request the full block, but then discard the parts we don't need.
@@ -83,3 +95,7 @@ class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
             pool.add(req)
         pool.wait()
         
+    def propagateDirty(self, slot, subindex, roi):
+        if slot in (self.BypassModeEnabled, self.BlockShape):
+            return
+        super(OpSimpleBlockedArrayCache, self ).propagateDirty(slot, subindex, roi)

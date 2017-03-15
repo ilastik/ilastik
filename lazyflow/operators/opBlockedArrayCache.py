@@ -41,15 +41,14 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
     fixAtCurrent = InputSlot(value=False)
     Input = InputSlot(allow_mask=True)
     #BlockShape = InputSlot()
-    outerBlockShape = InputSlot(optional=True) # If not provided, will be set to Input.meta.shape
+    BlockShape = InputSlot(optional=True) # If 'None' is present, those items will be treated as max for the dimension.
+                                          # If not provided, will be set to Input.meta.shape
     BypassModeEnabled = InputSlot(value=False)
     CompressionEnabled = InputSlot(value=False)
     
     Output = OutputSlot(allow_mask=True)
     CleanBlocks = OutputSlot() # A list of slicings indicating which blocks are stored in the cache and clean.
 
-    innerBlockShape = InputSlot(optional=True) # Deprecated and ignored below.
-    
     def __init__(self, *args, **kwargs):
         super( OpBlockedArrayCache, self ).__init__(*args, **kwargs)
         
@@ -73,8 +72,10 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self._opSimpleBlockedArrayCache.Input.connect( self._opCacheFixer.Output )
         self._opSimpleBlockedArrayCache.CompressionEnabled.connect( self.CompressionEnabled )
         self._opSimpleBlockedArrayCache.Input.connect( self._opCacheFixer.Output )
-        self._opSimpleBlockedArrayCache.BlockShape.connect( self.outerBlockShape )
+        self._opSimpleBlockedArrayCache.BlockShape.connect( self.BlockShape )
+        self._opSimpleBlockedArrayCache.BypassModeEnabled.connect( self.BypassModeEnabled )
         self.CleanBlocks.connect( self._opSimpleBlockedArrayCache.CleanBlocks )
+        self.Output.connect( self._opSimpleBlockedArrayCache.Output )
 
         # Instead of connecting our Output directly to our internal pipeline,
         # We manually forward the data via the execute() function,
@@ -89,19 +90,13 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self.registerWithMemoryManager()
         
     def setupOutputs(self):
-        if not self.outerBlockShape.ready():
-            self.outerBlockShape.setValue( self.Input.meta.shape )
+        if not self.BlockShape.ready():
+            self.BlockShape.setValue( self.Input.meta.shape )
         # Copy metadata from the internal pipeline to the output
         self.Output.meta.assignFrom( self._opSimpleBlockedArrayCache.Output.meta )
 
     def execute(self, slot, subindex, roi, result):
-        assert slot is self.Output, "Requesting data from unknown output slot."
-        if self.BypassModeEnabled.value:
-            # Pass data directly from Input to Output
-            self.Input(roi.start, roi.stop).writeInto(result).wait()
-        else:
-            # Pass data from internal pipeline to Output
-            self._opSimpleBlockedArrayCache.Output(roi.start, roi.stop).writeInto(result).wait()
+        assert False, "Shouldn't get here"
 
     def propagateDirty(self, slot, subindex, roi):
         pass

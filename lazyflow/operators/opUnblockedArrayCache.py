@@ -190,6 +190,9 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
             self._store_block_data(block_roi, block_data)
 
     def propagateDirty(self, slot, subindex, roi):
+        if slot is self.CompressionEnabled:
+            return
+
         dirty_roi = self._standardize_roi( roi.start, roi.stop )
         maximum_roi = roiFromShape(self.Input.meta.shape)
         maximum_roi = self._standardize_roi( *maximum_roi )
