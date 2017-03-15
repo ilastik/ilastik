@@ -39,91 +39,6 @@ class ThresholdMethod(object):
     HYSTERESIS = 1  # hysteresis, a.k.a "two-level"
     GRAPHCUT = 2    # single, but tuned by graphcut
     IPHT = 3        # identity-preserving hysteresis thresholding
-    
-class OpLabeledThreshold(Operator):
-    Input = InputSlot() # Must have exactly 1 channel
-    CoreLabels = InputSlot(optional=True) # Not used for 'Simple' method.
-    Method = InputSlot(value=ThresholdMethod.SIMPLE)
-    FinalThreshold = InputSlot(value=0.2)
-    GraphcutBeta = InputSlot(value=0.2) # Graphcut only
-
-    Output = OutputSlot()
-    
-    def setupOutputs(self):
-        assert self.Input.meta.getAxisKeys() == list("txyzc")
-        assert self.Input.meta.shape[-1] == 1
-        if self.CoreLabels.ready():
-            assert self.CoreLabels.meta.getAxisKeys() == list("txyzc")
-        
-        self.Output.meta.assignFrom( self.Input.meta )
-        self.Output.meta.dtype = np.uint32
-
-    def propagateDirty(self, slot, subindex, roi):
-        self.Output.setDirty()
-
-    def execute(self, slot, subindex, roi, result):
-        execute_funcs = {}
-        execute_funcs[ThresholdMethod.SIMPLE]     = self._execute_SIMPLE
-        execute_funcs[ThresholdMethod.HYSTERESIS] = self._execute_HYSTERESIS
-        execute_funcs[ThresholdMethod.GRAPHCUT]   = self._execute_GRAPHCUT
-        execute_funcs[ThresholdMethod.IPHT]       = self._execute_IPHT
-
-        # Iterate over time slices to avoid connected component problems.
-        for t_index, t in enumerate(range(roi.start[0], roi.stop[0])):
-            t_slice_roi = roi.copy()
-            t_slice_roi.start[0] = t
-            t_slice_roi.stop[0] = t+1
-
-            result_slice = result[t_index:t_index+1]
-
-            # Execute            
-            execute_funcs[self.Method.value](t_slice_roi, result_slice)
-        
-    def _execute_SIMPLE(self, roi, result):
-        assert result.shape[0] == 1
-        assert tuple(roi.stop - roi.start) == result.shape
-
-        final_threshold = self.FinalThreshold.value
-
-        data = self.Input(roi.start, roi.stop).wait()
-        data = vigra.taggedView(data, self.Input.meta.axistags)
-        
-        result = vigra.taggedView(result, self.Output.meta.axistags)
-        
-        binary = (data >= final_threshold).view(np.uint8)
-        vigra.analysis.labelMultiArrayWithBackground(binary[0,...,0], out=result[0,...,0])
-
-    def _execute_HYSTERESIS(self, roi, result):
-        self._execute_SIMPLE(roi, result)
-        final_labels = vigra.taggedView( result, self.Output.meta.axistags )
-
-        core_labels = self.CoreLabels(roi.start, roi.stop).wait()
-        core_labels = vigra.taggedView( core_labels, self.CoreLabels.meta.axistags )
-        
-        select_labels(core_labels, final_labels) # Edits final_labels in-place
-
-    def _execute_IPHT(self, roi, result):
-        core_labels = self.CoreLabels(roi.start, roi.stop).wait()
-        core_labels = vigra.taggedView( core_labels, self.CoreLabels.meta.axistags )
-        
-        data = self.Input(roi.start, roi.stop).wait()
-        data = vigra.taggedView(data, self.Input.meta.axistags)
-
-        final_threshold = self.FinalThreshold.value
-        result = vigra.taggedView( result, self.Output.meta.axistags )
-        threshold_from_cores(data[0,...,0], core_labels[0,...,0], final_threshold, out=result[0,...,0])
-
-    def _execute_GRAPHCUT(self, roi, result):
-        data = self.Input(roi.start, roi.stop).wait()
-        data = vigra.taggedView(data, self.Input.meta.axistags)
-        data_xyz = data[0,...,0]
-
-        beta = self.GraphcutBeta.value
-
-        # FIXME: segmentGC() should also use FinalThreshold...
-        binary_seg_xyz = segmentGC( data_xyz, beta ).astype(np.uint8)
-        vigra.analysis.labelMultiArrayWithBackground(binary_seg_xyz, out=result[0,...,0])
-
 
 class OpThresholdTwoLevels(Operator):
     RawInput = InputSlot(optional=True)  # Display only
@@ -251,4 +166,90 @@ class OpThresholdTwoLevels(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         pass # dirtiness propagation is handled in the sub-operators
+
+
+class OpLabeledThreshold(Operator):
+    Input = InputSlot() # Must have exactly 1 channel
+    CoreLabels = InputSlot(optional=True) # Not used for 'Simple' method.
+    Method = InputSlot(value=ThresholdMethod.SIMPLE)
+    FinalThreshold = InputSlot(value=0.2)
+    GraphcutBeta = InputSlot(value=0.2) # Graphcut only
+
+    Output = OutputSlot()
+    
+    def setupOutputs(self):
+        assert self.Input.meta.getAxisKeys() == list("txyzc")
+        assert self.Input.meta.shape[-1] == 1
+        if self.CoreLabels.ready():
+            assert self.CoreLabels.meta.getAxisKeys() == list("txyzc")
+        
+        self.Output.meta.assignFrom( self.Input.meta )
+        self.Output.meta.dtype = np.uint32
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty()
+
+    def execute(self, slot, subindex, roi, result):
+        execute_funcs = {}
+        execute_funcs[ThresholdMethod.SIMPLE]     = self._execute_SIMPLE
+        execute_funcs[ThresholdMethod.HYSTERESIS] = self._execute_HYSTERESIS
+        execute_funcs[ThresholdMethod.GRAPHCUT]   = self._execute_GRAPHCUT
+        execute_funcs[ThresholdMethod.IPHT]       = self._execute_IPHT
+
+        # Iterate over time slices to avoid connected component problems.
+        for t_index, t in enumerate(range(roi.start[0], roi.stop[0])):
+            t_slice_roi = roi.copy()
+            t_slice_roi.start[0] = t
+            t_slice_roi.stop[0] = t+1
+
+            result_slice = result[t_index:t_index+1]
+
+            # Execute            
+            execute_funcs[self.Method.value](t_slice_roi, result_slice)
+        
+    def _execute_SIMPLE(self, roi, result):
+        assert result.shape[0] == 1
+        assert tuple(roi.stop - roi.start) == result.shape
+
+        final_threshold = self.FinalThreshold.value
+
+        data = self.Input(roi.start, roi.stop).wait()
+        data = vigra.taggedView(data, self.Input.meta.axistags)
+        
+        result = vigra.taggedView(result, self.Output.meta.axistags)
+        
+        binary = (data >= final_threshold).view(np.uint8)
+        vigra.analysis.labelMultiArrayWithBackground(binary[0,...,0], out=result[0,...,0])
+
+    def _execute_HYSTERESIS(self, roi, result):
+        self._execute_SIMPLE(roi, result)
+        final_labels = vigra.taggedView( result, self.Output.meta.axistags )
+
+        core_labels = self.CoreLabels(roi.start, roi.stop).wait()
+        core_labels = vigra.taggedView( core_labels, self.CoreLabels.meta.axistags )
+        
+        select_labels(core_labels, final_labels) # Edits final_labels in-place
+
+    def _execute_IPHT(self, roi, result):
+        core_labels = self.CoreLabels(roi.start, roi.stop).wait()
+        core_labels = vigra.taggedView( core_labels, self.CoreLabels.meta.axistags )
+        
+        data = self.Input(roi.start, roi.stop).wait()
+        data = vigra.taggedView(data, self.Input.meta.axistags)
+
+        final_threshold = self.FinalThreshold.value
+        result = vigra.taggedView( result, self.Output.meta.axistags )
+        threshold_from_cores(data[0,...,0], core_labels[0,...,0], final_threshold, out=result[0,...,0])
+
+    def _execute_GRAPHCUT(self, roi, result):
+        data = self.Input(roi.start, roi.stop).wait()
+        data = vigra.taggedView(data, self.Input.meta.axistags)
+        data_xyz = data[0,...,0]
+
+        beta = self.GraphcutBeta.value
+
+        # FIXME: segmentGC() should also use FinalThreshold...
+        binary_seg_xyz = segmentGC( data_xyz, beta ).astype(np.uint8)
+        vigra.analysis.labelMultiArrayWithBackground(binary_seg_xyz, out=result[0,...,0])
+
 
