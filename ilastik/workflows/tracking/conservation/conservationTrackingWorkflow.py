@@ -118,7 +118,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
         # Extra configuration for object export table (as CSV table or HDF5 table)
         opTracking = self.trackingApplet.topLevelOperator
         self.dataExportApplet.set_exporting_operator(opTracking)
-        self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
         self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
         self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
         self.dataExportApplet.includeTableOnlyOption() # Export table only, without volumes
@@ -284,13 +283,10 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opDataExport.Inputs[2].connect( opTracking.MergerOutput )
         opDataExport.RawData.connect( op5Raw.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
-    
-    
-    def prepare_for_entire_export(self):
-        # Bypass cache on headless mode and batch processing mode
-        self.objectExtractionApplet.topLevelOperator.BypassModeEnabled.setValue(True)
          
     def prepare_lane_for_export(self, lane_index):
+        # Bypass cache on headless mode and batch processing mode
+        self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(True)
           
         maxt = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[0] 
         maxx = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[1] 
