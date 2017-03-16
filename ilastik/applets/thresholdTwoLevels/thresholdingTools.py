@@ -52,9 +52,9 @@ def getMemoryUsageMb():
 
 
 class OpAnisotropicGaussianSmoothing5d(Operator):
-    # raw volume, in 5d 'txyzc' order
+    # raw volume, in 5d 'tzyxc' order
     Input = InputSlot()
-    Sigmas = InputSlot(value={'x': 1.0, 'y': 1.0, 'z': 1.0})
+    Sigmas = InputSlot(value={'z': 1.0, 'y': 1.0, 'x': 1.0})
 
     Output = OutputSlot()
 
@@ -63,7 +63,7 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
         self.Output.meta.dtype = numpy.float32 # vigra gaussian only supports float32
         self._sigmas = self.Sigmas.value
         assert isinstance(self.Sigmas.value, dict), "Sigmas slot expects a dict"
-        assert set(self._sigmas.keys()) == set('xyz'), "Sigmas slot expects three key-value pairs for x,y,z"
+        assert set(self._sigmas.keys()) == set('zyx'), "Sigmas slot expects three key-value pairs for z,y,x"
 
     def execute(self, slot, subindex, roi, result):
         assert all(roi.stop <= self.Input.meta.shape),\
@@ -80,9 +80,9 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
             data = self.Input(*inputRoi).wait()
         logger.debug("Obtaining input data took {} seconds for roi {}".format(
             resultTimer.seconds(), inputRoi))
-        data = vigra.taggedView(data, axistags='txyzc')
+        data = vigra.taggedView(data, axistags='tzyxc')
 
-        # input is in txyzc order
+        # input is in tzyxc order
         tIndex = 0
         cIndex = 4
 
@@ -93,7 +93,7 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
         # we need to remove a singleton z axis, otherwise we get 
         # 'kernel longer than line' errors
         ts = self.Input.meta.getTaggedShape()
-        tags = [k for k in 'xyz' if ts[k] > 1]
+        tags = [k for k in 'zyx' if ts[k] > 1]
         sigma = [self._sigmas[k] for k in tags]
 
         # Check if we need to smooth
@@ -106,7 +106,7 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
             for j, c in enumerate(xrange(roi.start[cIndex], roi.stop[cIndex])):
                 # prepare the result as an argument
                 resview = vigra.taggedView(result[i, ..., j],
-                                           axistags='xyz')
+                                           axistags='zyx')
                 dataview = data[i, ..., j]
                 # TODO make this general, not just for z axis
                 resview = resview.withAxes(*tags)
@@ -124,7 +124,7 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
         n = len(stop)
         spatStart = [roi.start[i] for i in range(n) if shape[i] > 1]
         spatStop = [roi.stop[i] for i in range(n) if shape[i] > 1]
-        sigma = [0] + map(self._sigmas.get, 'xyz') + [0]
+        sigma = [0] + map(self._sigmas.get, 'zyx') + [0]
         spatialRoi = (spatStart, spatStop)
 
         inputSpatialRoi = enlargeRoiForHalo(roi.start, roi.stop, shape,
@@ -159,7 +159,7 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
 
 class OpAnisotropicGaussianSmoothing(Operator):
     Input = InputSlot()
-    Sigmas = InputSlot( value={'x':1.0, 'y':1.0, 'z':1.0} )
+    Sigmas = InputSlot( value={'z':1.0, 'y':1.0, 'x':1.0} )
     
     Output = OutputSlot()
 
@@ -176,7 +176,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
         self.Output.meta.dtype = numpy.float32 # vigra gaussian only supports float32
         self._sigmas = self.Sigmas.value
         assert isinstance(self.Sigmas.value, dict), "Sigmas slot expects a dict"
-        assert set(self._sigmas.keys()) == set('xyz'), "Sigmas slot expects three key-value pairs for x,y,z"
+        assert set(self._sigmas.keys()) == set('zyx'), "Sigmas slot expects three key-value pairs for z,y,x"
         print("Assigning output: {} ====> {}".format(self.Input.meta.getTaggedShape(), self.Output.meta.getTaggedShape()))
         #self.Output.setDirty( slice(None) )
     
@@ -189,9 +189,9 @@ class OpAnisotropicGaussianSmoothing(Operator):
             data = self.Input( *inputRoi ).wait()
         logger.debug("Obtaining input data took {} seconds for roi {}".format( resultTimer.seconds(), inputRoi ))
         
+        zIndex = self.Input.meta.axistags.index('z') if self.Input.meta.axistags.index('z')<len(self.Input.meta.shape) else None
         xIndex = self.Input.meta.axistags.index('x')
         yIndex = self.Input.meta.axistags.index('y')
-        zIndex = self.Input.meta.axistags.index('z') if self.Input.meta.axistags.index('z')<len(self.Input.meta.shape) else None
         cIndex = self.Input.meta.axistags.index('c') if self.Input.meta.axistags.index('c')<len(self.Input.meta.shape) else None
         
         # Must be float32
@@ -199,7 +199,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
             data = data.astype(numpy.float32)
         
         axiskeys = self.Input.meta.getAxisKeys()
-        spatialkeys = filter( lambda k: k in 'xyz', axiskeys )
+        spatialkeys = filter( lambda k: k in 'zyx', axiskeys )
 
         # we need to remove a singleton z axis, otherwise we get 
         # 'kernel longer than line' errors
@@ -209,7 +209,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
             removedZ = True
             data = data.reshape((data.shape[xIndex], data.shape[yIndex]))
             reskey[zIndex]=0
-            spatialkeys = filter( lambda k: k in 'xy', axiskeys )
+            spatialkeys = filter( lambda k: k in 'yx', axiskeys )
         else:
             removedZ = False
 
@@ -217,9 +217,9 @@ class OpAnisotropicGaussianSmoothing(Operator):
         #Check if we need to smooth
         if any([x < 0.1 for x in sigma]):
             if removedZ:
-                resultXY = vigra.taggedView(result, axistags="".join(axiskeys))
-                resultXY = resultXY.withAxes(*'xy')
-                resultXY[:] = data
+                resultYX = vigra.taggedView(result, axistags="".join(axiskeys))
+                resultYX = resultYX.withAxes(*'yx')
+                resultYX[:] = data
             else:
                 result[:] = data
             return result
@@ -233,7 +233,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
     
     def _getInputComputeRois(self, roi):
         axiskeys = self.Input.meta.getAxisKeys()
-        spatialkeys = filter( lambda k: k in 'xyz', axiskeys )
+        spatialkeys = filter( lambda k: k in 'zyx', axiskeys )
         sigma = map( self._sigmas.get, spatialkeys )
         inputSpatialShape = self.Input.meta.getTaggedShape()
         spatialRoi = ( TinyVector(roi.start), TinyVector(roi.stop) )

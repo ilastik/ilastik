@@ -211,7 +211,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         block_shape_dict['x'] = self._sigmaSpinBoxes['x'].value()
         block_shape_dict['y'] = self._sigmaSpinBoxes['y'].value()
         block_shape_dict['z'] = self._sigmaSpinBoxes['z'].value()
-        neededAxes = 'xyz' if self._drawer.sigmaSpinBox_Z.isVisible() else 'xy'
+        neededAxes = 'zyx' if self._drawer.sigmaSpinBox_Z.isVisible() else 'yx'
         sigmaIsZero = [block_shape_dict[index] < .1 for index in neededAxes]
         if any(sigmaIsZero) and not all(sigmaIsZero):
             mexBox = QMessageBox()
@@ -221,7 +221,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         # avoid 'kernel longer than line' errors
         shape = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
-        for ax in [item for item in 'xyz' if item in shape and shape[item] > 1]:
+        for ax in [item for item in 'zyx' if item in shape and shape[item] > 1]:
             req_sigma = np.floor(shape[ax]/3)
             if block_shape_dict[ax] > req_sigma:
                 mexBox = QMessageBox()

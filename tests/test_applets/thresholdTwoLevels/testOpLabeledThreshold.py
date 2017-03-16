@@ -2,9 +2,9 @@ import numpy as np
 import vigra
 
 from lazyflow.graph import Graph
-from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import OpMultiMethodThreshold, ThresholdMethod
+from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels import OpLabeledThreshold, ThresholdMethod
 
-class TestOpMultiMethodThreshold(object):
+class TestOpLabeledThreshold(object):
 
     _ = 0
     data = [[_,_,_,_,_,_,_,_,_,_], # 0
@@ -22,13 +22,13 @@ class TestOpMultiMethodThreshold(object):
             [_,_,_,_,_,_,_,_,_,_]] # 12
         
     data = np.asarray(data, dtype=np.float32)[None, :, :, None, None]
-    data = vigra.taggedView(data, 'txyzc')
+    data = vigra.taggedView(data, 'tzyxc')
     
     def test_simple(self):
         data = self.data
         core_labels = np.zeros_like(data) # core_labels aren't used by 'simple' method
         
-        op = OpMultiMethodThreshold(graph=Graph())
+        op = OpLabeledThreshold(graph=Graph())
         op.Method.setValue(ThresholdMethod.SIMPLE)
         op.FinalThreshold.setValue(0.5)
         op.Input.setValue(data)
@@ -44,7 +44,7 @@ class TestOpMultiMethodThreshold(object):
         core_labels = np.empty_like(data, dtype=np.uint32)
         core_labels[0,...,0] = vigra.analysis.labelMultiArrayWithBackground(core_binary[0,...,0].astype(np.uint8))
 
-        op = OpMultiMethodThreshold(graph=Graph())
+        op = OpLabeledThreshold(graph=Graph())
         op.Method.setValue(ThresholdMethod.HYSTERESIS)
         op.FinalThreshold.setValue(0.5)
         op.Input.setValue(data)
@@ -68,7 +68,7 @@ class TestOpMultiMethodThreshold(object):
         core_labels = np.empty_like(data, dtype=np.uint32)
         core_labels[0,...,0] = vigra.analysis.labelMultiArrayWithBackground(core_binary[0,...,0].astype(np.uint8))
 
-        op = OpMultiMethodThreshold(graph=Graph())
+        op = OpLabeledThreshold(graph=Graph())
         op.Method.setValue(ThresholdMethod.IPHT)
         op.FinalThreshold.setValue(0.5)
         op.Input.setValue(data)
@@ -91,7 +91,7 @@ class TestOpMultiMethodThreshold(object):
         core_labels = np.empty_like(data, dtype=np.uint32)
         #core_labels[0,...,0] = vigra.analysis.labelMultiArrayWithBackground(core_binary[0,...,0].astype(np.uint8))
 
-        op = OpMultiMethodThreshold(graph=Graph())
+        op = OpLabeledThreshold(graph=Graph())
         op.Method.setValue(ThresholdMethod.GRAPHCUT)
         op.FinalThreshold.setValue(0.5)
         op.Input.setValue(data)

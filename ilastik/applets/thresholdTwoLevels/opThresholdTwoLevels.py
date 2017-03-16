@@ -49,7 +49,7 @@ class OpThresholdTwoLevels(Operator):
     MaxSize = InputSlot(stype='int', value=1000000)
     HighThreshold = InputSlot(stype='float', value=0.5)
     LowThreshold = InputSlot(stype='float', value=0.2)
-    SmootherSigma = InputSlot(value={'x': 1.0, 'y': 1.0, 'z': 1.0})
+    SmootherSigma = InputSlot(value={'z': 1.0, 'y': 1.0, 'x': 1.0})
     Channel = InputSlot(value=0)
     CoreChannel = InputSlot(value=0)
     CurOperator = InputSlot(stype='int', value=ThresholdMethod.SIMPLE) # This slot would be better named 'method',
@@ -84,7 +84,7 @@ class OpThresholdTwoLevels(Operator):
         super(OpThresholdTwoLevels, self).__init__(*args, **kwargs)
 
         self.opReorderInput = OpReorderAxes(parent=self)
-        self.opReorderInput.AxisOrder.setValue('txyzc')
+        self.opReorderInput.AxisOrder.setValue('tzyxc')
         self.opReorderInput.Input.connect(self.InputImage)
         
         self.opSmoother = OpAnisotropicGaussianSmoothing5d(parent=self)
@@ -131,7 +131,7 @@ class OpThresholdTwoLevels(Operator):
         self.opFinalFilter.Input.connect( self.opFinalThreshold.Output )
 
         self.opReorderOutput = OpReorderAxes(parent=self)
-        #self.opReorderOutput.AxisOrder.setValue('txyzc') # See setupOutputs()
+        #self.opReorderOutput.AxisOrder.setValue('tzyxc') # See setupOutputs()
         self.opReorderOutput.Input.connect(self.opFinalFilter.Output)
 
         self.Output.connect( self.opReorderOutput.Output )
@@ -205,10 +205,10 @@ class OpLabeledThreshold(Operator):
         self.execute_funcs = execute_funcs
     
     def setupOutputs(self):
-        assert self.Input.meta.getAxisKeys() == list("txyzc")
+        assert self.Input.meta.getAxisKeys() == list("tzyxc")
         assert self.Input.meta.shape[-1] == 1
         if self.CoreLabels.ready():
-            assert self.CoreLabels.meta.getAxisKeys() == list("txyzc")
+            assert self.CoreLabels.meta.getAxisKeys() == list("tzyxc")
         
         self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.dtype = np.uint32
@@ -217,6 +217,8 @@ class OpLabeledThreshold(Operator):
         self.Output.setDirty()
 
     def execute(self, slot, subindex, roi, result):
+        result = vigra.taggedView( result, self.Output.meta.axistags )
+
         # Iterate over time slices to avoid connected component problems.
         for t_index, t in enumerate(range(roi.start[0], roi.stop[0])):
             t_slice_roi = roi.copy()
@@ -263,12 +265,12 @@ class OpLabeledThreshold(Operator):
     def _execute_GRAPHCUT(self, roi, result):
         data = self.Input(roi.start, roi.stop).wait()
         data = vigra.taggedView(data, self.Input.meta.axistags)
-        data_xyz = data[0,...,0]
+        data_zyx = data[0,...,0]
 
         beta = self.GraphcutBeta.value
 
         # FIXME: segmentGC() should also use FinalThreshold...
-        binary_seg_xyz = segmentGC( data_xyz, beta ).astype(np.uint8)
-        vigra.analysis.labelMultiArrayWithBackground(binary_seg_xyz, out=result[0,...,0])
+        binary_seg_zyx = segmentGC( data_zyx, beta ).astype(np.uint8)
+        vigra.analysis.labelMultiArrayWithBackground(binary_seg_zyx, out=result[0,...,0])
 
 
