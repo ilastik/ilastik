@@ -386,7 +386,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
                     logger.error("Cannot export from plugin with empty output filename")
                     return
 
-                if time == 0 and selectedPlugin == 'H5-Event-Sequence' and os.path.exists(filename + '/00000.h5'):
+                if time == 0 and selectedPlugin == 'H5-Event-Sequence' and os.path.exists(filename + '/H5-Event-Sequence/'):
                     return False
                 if time == 0 and selectedPlugin == 'Fiji-MaMuT' and os.path.exists(filename + '_mamut.xml'):
                     return False

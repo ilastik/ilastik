@@ -115,8 +115,9 @@ class TrackingH5EventExportFormatPlugin(TrackingExportFormatPlugin):
             roi = tuple(roi)
             labelImage = labelImageSlot[roi].wait()
 
-
-            fn = os.path.join(filename, "{0:05d}.h5".format(int(timestep)))
+            if not os.path.exists(filename + '/H5-Event-Sequence'):
+                os.makedirs(filename + '/H5-Event-Sequence')
+            fn = os.path.join(filename, "H5-Event-Sequence/{0:05d}.h5".format(int(timestep)))
             pool.add(Request(partial(writeEvents,
                                         int(timestep),
                                          linksPerTimestep[timestep],
