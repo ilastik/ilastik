@@ -268,9 +268,24 @@ class OpLabeledThreshold(Operator):
         data_zyx = data[0,...,0]
 
         beta = self.GraphcutBeta.value
+        ft = self.FinalThreshold.value
 
-        # FIXME: segmentGC() should also use FinalThreshold...
+        # The segmentGC() function will implicitly threshold at 0.5,
+        # but we want to respect the user's FinalThreshold setting.
+        # Here, we scale from input pixels --> gc potentials in the following way:
+        #
+        # 0.0..FT --> 0.0..0.5
+        # 0.5..FT --> 0.5..1.0
+        #
+        # For instance, input pixels that match the user's FT exactly will map to 0.5,
+        # and graphcut will place them on the threshold border.
+
+        above_threshold_mask = (data_zyx >= ft)
+        below_threshold_mask = ~above_threshold_mask
+
+        data_zyx[below_threshold_mask] *= 0.5/ft
+        data_zyx[above_threshold_mask] = 0.5 + (data_zyx[above_threshold_mask] - ft)/(1-ft)
+        
         binary_seg_zyx = segmentGC( data_zyx, beta ).astype(np.uint8)
+        del data_zyx
         vigra.analysis.labelMultiArrayWithBackground(binary_seg_zyx, out=result[0,...,0])
-
-
