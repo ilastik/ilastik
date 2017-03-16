@@ -136,12 +136,7 @@ class PluginExportOptionsDlg(QDialog):
             self.pluginName = parent.topLevelOperator.SelectedPlugin.value
             self._initMetaInfoText()
 
-        frame = QFrame(parent=self)
-        horizontalBoxLayout = QHBoxLayout()
-        horizontalBoxLayout.addStretch(1)
-        frame.setLayout(horizontalBoxLayout)
-        self.label = QLabel("Plugin:")
-        self.pluginDropdown = QComboBox()
+        self.pluginDropdown = self.comboBox
         
         self.pluginDropdown.addItems(availableExportPlugins)
         if parent.topLevelOperator.SelectedPlugin.value == 'H5-Event-Sequence':
@@ -151,9 +146,6 @@ class PluginExportOptionsDlg(QDialog):
         else:
             raise NotImplementedError
         self.pluginDropdown.currentIndexChanged[str].connect(onSelectedExportPluginChanged)
-        horizontalBoxLayout.addWidget(self.label)
-        horizontalBoxLayout.addWidget(self.pluginDropdown)
-        self.layout().addWidget(frame)
 
     def _getAvailablePlugins(self):
         '''
