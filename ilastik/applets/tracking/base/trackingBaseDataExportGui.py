@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QFrame, QPushButton, QHBoxLayout, QComboBox, QLabel
+from PyQt4.QtGui import QFrame, QPushButton
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.plugins import pluginManager
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
@@ -166,22 +166,6 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
 
             # register the "plugins" option in the parent
             self._includePluginOnlyOption()
-
-            frame = QFrame(parent=self)
-            horizontalBoxLayout = QHBoxLayout()
-            frame.setLayout(horizontalBoxLayout)
-
-            self.label = QLabel("Plugin:")
-
-            self.pluginDropdown = QComboBox()
-            self.pluginDropdown.addItems(availableExportPlugins)
-            self.pluginDropdown.currentIndexChanged[str].connect(self._onSelectedExportPluginChanged)
-            horizontalBoxLayout.addWidget(self.label)
-            horizontalBoxLayout.addWidget(self.pluginDropdown)
-
-            # add new widgets to drawer
-            self.drawer.exportSettingsGroupBox.layout().addWidget(frame)
-            self._onSelectedExportSourceChanged(self.drawer.inputSelectionCombo.currentText())
         else:
             self.topLevelOperator.SelectedPlugin.setValue(None)
 
@@ -198,12 +182,6 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
 
     def _onSelectedExportSourceChanged(self, sourceName):
         self.topLevelOperator.SelectedExportSource.setValue(sourceName)
-        if sourceName == OpTrackingBaseDataExport.PluginOnlyName:
-            self.label.setEnabled(True)
-            self.pluginDropdown.setEnabled(True)
-        else:
-            self.label.setEnabled(False)
-            self.pluginDropdown.setEnabled(False)
 
     def _onSelectedExportPluginChanged(self, pluginText):
         self.topLevelOperator.SelectedPlugin.setValue(pluginText)

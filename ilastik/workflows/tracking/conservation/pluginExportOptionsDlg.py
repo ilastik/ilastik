@@ -27,7 +27,7 @@ import numpy
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QObject, QEvent
-from PyQt4.QtGui import QDialog
+from PyQt4.QtGui import QDialog, QComboBox, QLabel, QHBoxLayout, QVBoxLayout, QFrame
 from ilastik.plugins import pluginManager
 
 try:
@@ -129,6 +129,47 @@ class PluginExportOptionsDlg(QDialog):
         # See self.eventFilter()
         self.installEventFilter(self)
 
+        # Plugin Dropdown
+        availableExportPlugins = self._getAvailablePlugins()
+        def onSelectedExportPluginChanged(pluginText):
+            parent.topLevelOperator.SelectedPlugin.setValue(pluginText)
+            self.pluginName = parent.topLevelOperator.SelectedPlugin.value
+            self._initMetaInfoText()
+
+        frame = QFrame(parent=self)
+        horizontalBoxLayout = QHBoxLayout()
+        horizontalBoxLayout.addStretch(1)
+        frame.setLayout(horizontalBoxLayout)
+        self.label = QLabel("Plugin:")
+        self.pluginDropdown = QComboBox()
+        
+        self.pluginDropdown.addItems(availableExportPlugins)
+        if parent.topLevelOperator.SelectedPlugin.value == 'H5-Event-Sequence':
+            self.pluginDropdown.setCurrentIndex(0)
+        elif parent.topLevelOperator.SelectedPlugin.value == 'Fiji-MaMuT':
+            self.pluginDropdown.setCurrentIndex(1)
+        else:
+            raise NotImplementedError
+        self.pluginDropdown.currentIndexChanged[str].connect(onSelectedExportPluginChanged)
+        horizontalBoxLayout.addWidget(self.label)
+        horizontalBoxLayout.addWidget(self.pluginDropdown)
+        self.layout().addWidget(frame)
+
+    def _getAvailablePlugins(self):
+        '''
+        Checks whether any plugins are found and whether we use the hytra backend.
+        Returns the list of available plugins
+        '''
+        try:
+            import hytra
+            # export plugins only available with hytra backend
+            exportPlugins = pluginManager.getPluginsOfCategory('TrackingExportFormats')
+            availableExportPlugins = [pluginInfo.name for pluginInfo in exportPlugins]
+
+            return availableExportPlugins
+        except ImportError:
+            return []
+
     def eventFilter(self, watched, event):
         # Ignore 'enter' keypress events, since the user may just be entering settings.
         # The user must manually click the 'OK' button to close the dialog.
@@ -143,7 +184,6 @@ class PluginExportOptionsDlg(QDialog):
     #**************************************************************************
     def _initMetaInfoText(self):
         ## meta-info display widgets
-        opDataExport = self._opDataExport
         plugin = pluginManager.getPluginByName(self.pluginName, category="TrackingExportFormats")
         self.metaInfoTextEdit.setHtml(plugin.description)
 
