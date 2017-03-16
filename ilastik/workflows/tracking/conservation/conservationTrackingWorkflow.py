@@ -287,7 +287,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
     def prepare_lane_for_export(self, lane_index):
         # Bypass cache on headless mode and batch processing mode
         self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(True)
-          
+         
+        # Get axes info  
         maxt = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[0] 
         maxx = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[1] 
         maxy = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[2] 
@@ -357,6 +358,9 @@ class ConservationTrackingWorkflowBase( Workflow ):
         )
 
     def post_process_lane_export(self, lane_index):
+        # Set option to bypass cache to false
+        self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(False)
+        
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
             self.dataExportApplet.progressSignal.emit(0)
