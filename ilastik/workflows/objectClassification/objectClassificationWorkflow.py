@@ -584,6 +584,9 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         self._applets.append(self.pcApplet)
         self._applets.append(self.thresholdingApplet)
 
+        if not self._headless:
+            self._shell.currentAppletChanged.connect( self.handle_applet_changed )
+
 
     def connectInputs(self, laneIndex):
                
@@ -614,7 +617,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opClassify.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
 
         op5raw.Input.connect(rawslot)
-        op5pred.Input.connect(opClassify.PredictionProbabilities)
+        op5pred.Input.connect(opClassify.CachedPredictionProbabilities)
 
         opThreshold.RawInput.connect(op5raw.Output)
         opThreshold.InputImage.connect(op5pred.Output)
@@ -642,7 +645,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         cumulated_readyness = cumulated_readyness and features_ready
         self._shell.setAppletEnabled(self.pcApplet, cumulated_readyness)
 
-        slot = self.pcApplet.topLevelOperator.PredictionProbabilities
+        slot = self.pcApplet.topLevelOperator.CachedPredictionProbabilities
         predictions_ready = len(slot) > 0 and \
             slot[0].ready() and \
             (TinyVector(slot[0].meta.shape) > 0).all()
@@ -660,6 +663,13 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
 
         super(ObjectClassificationWorkflowPixel, self).handleAppletStateUpdateRequested(upstream_ready=cumulated_readyness)
 
+    def handle_applet_changed(self, prev_index, current_index):
+        if prev_index != current_index:
+            # If the user is viewing an applet downstream of the pixel classification applet,
+            # Make sure it's in 'live update' mode, since the rest of the workflow pulls from the *cached* predictions.
+            opPixelClassification = self.pcApplet.topLevelOperator
+            opPixelClassification.FreezePredictions.setValue( self._shell.currentAppletIndex <= self.applets.index( self.pcApplet ) )
+                        
 
 class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from binary image)"
