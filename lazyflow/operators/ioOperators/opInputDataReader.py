@@ -262,20 +262,25 @@ class OpInputDataReader(Operator):
             return ([], None)
 
         # Now use the .checkGlobString method of the stack readers
-        isSingleFile = False
+        isSingleFile = True
         try:
-            isSingleFile = OpStreamingHdf5SequenceReaderS.checkGlobString(filePath)
+            OpStreamingHdf5SequenceReaderS.checkGlobString(filePath)
         except OpStreamingHdf5SequenceReaderS.WrongFileTypeError:
             return ([], None)
         except (OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError,
-                OpStreamingHdf5SequenceReaderS.NotTheSameFileError):
-            pass
+                OpStreamingHdf5SequenceReaderS.NotTheSameFileError,
+                OpStreamingHdf5SequenceReaderS.ExternalPlaceholderError):
+            isSingleFile = False
 
+        isMultiFile = True
         try:
             isMultiFile = OpStreamingHdf5SequenceReaderM.checkGlobString(filePath)
         except (OpStreamingHdf5SequenceReaderM.NoExternalPlaceholderError,
-                OpStreamingHdf5SequenceReaderM.SameFileError):
-            pass
+                OpStreamingHdf5SequenceReaderM.SameFileError,
+                OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
+            isMultiFile = False
+
+        assert(not(isMultiFile and isSingleFile))
 
         if isSingleFile is True:
             opReader = OpStreamingHdf5SequenceReaderS(parent=self)
