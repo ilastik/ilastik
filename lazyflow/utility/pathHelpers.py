@@ -20,7 +20,11 @@
 #                 http://ilastik.org/license/
 ###############################################################################
 import os
+import fnmatch
 import errno
+
+import h5py
+
 
 class PathComponents(object):
     """
@@ -315,3 +319,35 @@ def mkdir_p(path):
             pass
         else:
             raise
+
+
+def globHdf5(hdf5FileObject, globString):
+    """globs a hdf5 file like a file system for datasets
+
+    Note: does not glob Attributes, only data sets.
+
+    Recurses through the hdf5 tree using .visititems and matches the provided
+    globstring to the respective object names using the fnmatch standard module.
+
+
+    Args:
+        hdf5FileObject: h5py.File object
+        globString: String describing the internal path of the dataset(s) with
+            glob-like placeholders
+
+    Returns
+        A sorted list of matched object names. This list is empty if no
+        matches occurred.
+    """
+    pathlist = []
+
+    def addObjectNames(objectName, object):
+        if isinstance(object, h5py.Dataset):
+            pathlist.append(objectName)
+
+    hdf5FileObject.visititems(addObjectNames)
+
+    matches = [x for x in pathlist
+               if fnmatch.fnmatch(x, globString)]
+
+    return sorted(matches)

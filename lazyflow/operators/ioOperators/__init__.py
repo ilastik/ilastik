@@ -27,12 +27,16 @@ from opStreamingUfmfReader import OpStreamingUfmfReader
 from opRawBinaryFileReader import OpRawBinaryFileReader
 from opNpyFileReader import OpNpyFileReader
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
+from opStreamingHdf5SequenceReaderS import OpStreamingHdf5SequenceReaderS
+from opStreamingHdf5SequenceReaderM import OpStreamingHdf5SequenceReaderM
 from opRESTfulVolumeReader import OpRESTfulVolumeReader
 from opBlockwiseFilesetReader import OpBlockwiseFilesetReader
 from opRESTfulBlockwiseFilesetReader import OpRESTfulBlockwiseFilesetReader
 from opTiledVolumeReader import OpTiledVolumeReader
 from opCachedTiledVolumeReader import OpCachedTiledVolumeReader
 from opKlbReader import OpKlbReader
+from opTiffReader import OpTiffReader
+from opTiffSequenceReader import OpTiffSequenceReader
 
 # Try to import the dvid-related operator.
 # If it fails, that's okay.

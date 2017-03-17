@@ -21,13 +21,14 @@
 ###############################################################################
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpImageReader, OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
-from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
-from opRawBinaryFileReader import OpRawBinaryFileReader
-from opTiffReader import OpTiffReader
-from opTiffSequenceReader import OpTiffSequenceReader
-from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader, \
-    OpCachedTiledVolumeReader, OpKlbReader
+from lazyflow.operators.ioOperators import (
+    OpBlockwiseFilesetReader, OpKlbReader, OpRESTfulBlockwiseFilesetReader,
+    OpStreamingHdf5Reader, OpStreamingHdf5SequenceReaderS,
+    OpStreamingHdf5SequenceReaderM, OpTiffReader,
+    OpTiffSequenceReader, OpCachedTiledVolumeReader, OpRawBinaryFileReader,
+    OpStackLoader
+)
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import isUrl, PathComponents
 
@@ -156,6 +157,7 @@ class OpInputDataReader(Operator):
                       self._attemptOpenAsUfmf,
                       self._attemptOpenAsMmf,
                       self._attemptOpenAsDvidVolume,
+                      self._attemptOpenAsHdf5Stack,
                       self._attemptOpenAsTiffStack,
                       self._attemptOpenAsStack,
                       self._attemptOpenAsHdf5,
@@ -254,7 +256,54 @@ class OpInputDataReader(Operator):
             '''
         else :
             return ([], None)
-    
+
+    def _attemptOpenAsHdf5Stack(self, filePath):
+        if not ('*' in filePath or os.path.pathsep in filePath):
+            return ([], None)
+
+        # Now use the .checkGlobString method of the stack readers
+        isSingleFile = True
+        try:
+            OpStreamingHdf5SequenceReaderS.checkGlobString(filePath)
+        except OpStreamingHdf5SequenceReaderS.WrongFileTypeError:
+            return ([], None)
+        except (OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError,
+                OpStreamingHdf5SequenceReaderS.NotTheSameFileError,
+                OpStreamingHdf5SequenceReaderS.ExternalPlaceholderError):
+            isSingleFile = False
+
+        isMultiFile = True
+        try:
+            OpStreamingHdf5SequenceReaderM.checkGlobString(filePath)
+        except (OpStreamingHdf5SequenceReaderM.NoExternalPlaceholderError,
+                OpStreamingHdf5SequenceReaderM.SameFileError,
+                OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
+            isMultiFile = False
+
+        assert(not(isMultiFile and isSingleFile))
+
+        if isSingleFile is True:
+            opReader = OpStreamingHdf5SequenceReaderS(parent=self)
+            try:
+                externalPaths = [PathComponents(p.strip()).externalPath
+                                 for p in filePath.split(os.path.pathsep)]
+                opReader.GlobString.setValue(filePath)
+                h5file = h5py.File(externalPaths[0], 'r')
+                opReader.Hdf5File.setValue(h5file)
+                return ([opReader], opReader.OutputImage)
+            except OpStreamingHdf5SequenceReaderS.WrongFileTypeError:
+                return ([], None)
+        elif isMultiFile is True:
+            opReader = OpStreamingHdf5SequenceReaderM(parent=self)
+            try:
+                opReader.GlobString.setValue(filePath)
+                return ([opReader], opReader.OutputImage)
+            except OpStreamingHdf5SequenceReaderS.WrongFileTypeError:
+                return ([], None)
+        else:
+            return ([], None)
+
+
     def _attemptOpenAsTiffStack(self, filePath):
         if not ('*' in filePath or os.path.pathsep in filePath):
             return ([], None)
@@ -262,7 +311,7 @@ class OpInputDataReader(Operator):
         try:
             opReader = OpTiffSequenceReader(parent=self)
             opReader.GlobString.setValue(filePath)
-            return (opReader, opReader.Output)
+            return ([opReader], opReader.Output)
         except OpTiffSequenceReader.WrongFileTypeError as ex:
             return ([], None)
         
@@ -277,18 +326,13 @@ class OpInputDataReader(Operator):
 
     def _attemptOpenAsHdf5(self, filePath):
         # Check for an hdf5 extension
-        h5Exts = OpInputDataReader.h5Exts + ['ilp']
-        h5Exts = ['.' + ex for ex in h5Exts]
-        ext = None
-        for x in h5Exts:
-            if x in filePath:
-                ext = x
-
-        if ext is None:
+        pathComponents = PathComponents(filePath)
+        ext = pathComponents.extension
+        if ext not in (".%s" % x for x in OpInputDataReader.h5Exts):
             return ([], None)
 
-        externalPath = filePath.split(ext)[0] + ext
-        internalPath = filePath.split(ext)[1]
+        externalPath = pathComponents.externalPath
+        internalPath = pathComponents.internalPath
 
         if not os.path.exists(externalPath):
             raise OpInputDataReader.DatasetReadError("Input file does not exist: " + externalPath)
