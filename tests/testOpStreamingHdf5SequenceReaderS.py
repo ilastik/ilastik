@@ -27,16 +27,8 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         """Test if 2d files generated through vigra are recognized correctly"""
         # Prepare some data set for this case
         data = numpy.random.randint(0, 255, (20, 100, 200, 3)).astype(numpy.uint8)
-        axistags = vigra.AxisTags([
-            vigra.AxisInfo("y", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("x", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("c", typeFlags=vigra.AxisType.Channels)])
-
-        expected_axistags = vigra.AxisTags([
-            vigra.AxisInfo("z", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("y", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("x", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("c", typeFlags=vigra.AxisType.Channels)])
+        axistags = vigra.defaultAxistags('yxc')
+        expected_axistags = vigra.defaultAxistags('zyxc')
 
         op = OpStreamingHdf5SequenceReaderS(graph=self.graph)
 
@@ -72,16 +64,9 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         """Test if 2d files generated through vigra are recognized correctly"""
         # Prepare some data set for this case
         data = numpy.random.randint(0, 255, (20, 100, 200, 3)).astype(numpy.uint8)
-        axistags = vigra.AxisTags([
-            vigra.AxisInfo("y", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("x", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("c", typeFlags=vigra.AxisType.Channels)])
+        axistags = vigra.defaultAxistags('yxc')
 
-        expected_axistags = vigra.AxisTags([
-            vigra.AxisInfo("t", typeFlags=vigra.AxisType.Time),
-            vigra.AxisInfo("y", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("x", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("c", typeFlags=vigra.AxisType.Channels)])
+        expected_axistags = vigra.defaultAxistags('tyxc')
 
         op = OpStreamingHdf5SequenceReaderS(graph=self.graph)
 
@@ -115,18 +100,8 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         # Prepare some data set for this case
         data = numpy.random.randint(0, 255, (10, 15, 50, 100, 3)).astype(numpy.uint8)
 
-        axistags = vigra.AxisTags([
-            vigra.AxisInfo("z", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("y", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("x", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("c", typeFlags=vigra.AxisType.Channels)])
-
-        expected_axistags = vigra.AxisTags([
-            vigra.AxisInfo("t", typeFlags=vigra.AxisType.Time),
-            vigra.AxisInfo("z", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("y", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("x", typeFlags=vigra.AxisType.Space),
-            vigra.AxisInfo("c", typeFlags=vigra.AxisType.Channels)])
+        axistags = vigra.defaultAxistags('zyxc')
+        expected_axistags = vigra.defaultAxistags('tzyxc')
 
         op = OpStreamingHdf5SequenceReaderS(graph=self.graph)
 
