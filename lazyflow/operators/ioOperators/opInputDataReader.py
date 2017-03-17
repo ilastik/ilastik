@@ -274,7 +274,7 @@ class OpInputDataReader(Operator):
 
         isMultiFile = True
         try:
-            isMultiFile = OpStreamingHdf5SequenceReaderM.checkGlobString(filePath)
+            OpStreamingHdf5SequenceReaderM.checkGlobString(filePath)
         except (OpStreamingHdf5SequenceReaderM.NoExternalPlaceholderError,
                 OpStreamingHdf5SequenceReaderM.SameFileError,
                 OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
