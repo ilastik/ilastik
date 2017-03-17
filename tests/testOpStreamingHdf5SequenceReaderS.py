@@ -141,6 +141,10 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         with self.assertRaises(OpStreamingHdf5SequenceReaderS.NotTheSameFileError):
             OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString)
 
+        testGlobString = '/tmp/test*.h5/a:/tmp/test*.h5/a'
+        with self.assertRaises(OpStreamingHdf5SequenceReaderS.ExternalPlaceholderError):
+            OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString)
+
         testGlobString = '/tmp/test.jpg/*'
         with self.assertRaises(OpStreamingHdf5SequenceReaderS.WrongFileTypeError):
             OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString)
@@ -151,9 +155,11 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
             '/tmp/test.h5/data*'
         ]
 
+        # Implicit test for validity; test fails if an exception is raised
         for testGlobString in validGlobStrings:
-            self.assertTrue(
-                OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString))
+            OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString)
+
+        self.assertTrue(True)
 
 
 if __name__ == "__main__":

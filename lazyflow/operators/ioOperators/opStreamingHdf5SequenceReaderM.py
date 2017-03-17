@@ -82,6 +82,13 @@ class OpStreamingHdf5SequenceReaderM(Operator):
             self.msg = "Could not read file: {}".format(fileName)
             super(OpStreamingHdf5SequenceReaderM.FileOpenError, self).__init__(self.msg)
 
+    class InternalPlaceholderError(Exception):
+        def __init__(self, globString):
+            self.globString = globString
+            self.msg = ("Glob string does contains an internal placeholder "
+                        "(not supported!): {}".format(globString))
+            super(OpStreamingHdf5SequenceReaderM.InternalPlaceholderError, self).__init__(self.msg)
+
     class SingleFileException(Exception):
         """Summary
         """
@@ -204,18 +211,26 @@ class OpStreamingHdf5SequenceReaderM(Operator):
         """Checks whether globString is valid for this class
 
         Rules for globString:
-
-        * must contain multiple external paths or
-        * placeholder '*' in external path
-        * must not contain placeholders in internal paths (for now)
+            * must contain multiple external paths or
+            * placeholder '*' in external path
+            * must not contain placeholders in internal paths (for now)
 
         Args:
             globString (string): String, one or multiple paths separated with
               os.path.pathsep and possibly containing '*' as a placeholder.
 
-        Returns:
-            bool: True if rules are met -> this is the right reader
-                  False if rules are not met -> this is not the right reader
+        Raises:
+            OpStreamingHdf5SequenceReaderM.InternalPlaceholderError: Raised if
+              an internal placeholder is encountered!
+            OpStreamingHdf5SequenceReaderM.NoExternalPlaceholderError: Raised if
+              only a single path is supplied and no '*'-placeholder can be
+              found. -> OpStreamingHdf5Reader should be used in this case.
+            OpStreamingHdf5SequenceReaderM.SameFileError: If multiple volumes
+              point to the same file this error is raised.
+              -> OpStreamingHdf5SequenceReaderS should be used in this case.
+            OpStreamingHdf5SequenceReaderM.WrongFileTypeError: If file-
+              extensions are not among the known H5 extensions, this error is
+              raised (see OpStreamingHdf5Reader.H5EXTS).
         """
         pathStrings = globString.split(os.path.pathsep)
 
@@ -227,14 +242,15 @@ class OpStreamingHdf5SequenceReaderM(Operator):
             raise OpStreamingHdf5SequenceReaderM.WrongFileTypeError(globString)
 
         if len(pathComponents) == 1:
-            if '*' in pathComponents[0].externalPath:
-                return True
-            else:
+            if '*' in pathComponents[0].internalPath:
+                raise OpStreamingHdf5SequenceReaderM.InternalPlaceholderError(globString)
+            if '*' not in pathComponents[0].externalPath:
                 raise OpStreamingHdf5SequenceReaderM.NoExternalPlaceholderError(globString)
         else:
-            sameExternal = all(pathComponents[0].externalPath == x.externalPath
+            sameExternal = any(pathComponents[0].externalPath == x.externalPath
                                for x in pathComponents[1::])
             if sameExternal is True:
                 raise OpStreamingHdf5SequenceReaderM.SameFileError(globString)
-
-        return True
+            internalPlaceHolder = any('*' in x.internalPath for x in pathComponents[1::])
+            if internalPlaceHolder is True:
+                raise OpStreamingHdf5SequenceReaderM.InternalPlaceholderError(globString)

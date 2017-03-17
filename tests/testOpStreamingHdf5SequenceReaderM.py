@@ -140,14 +140,23 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         with self.assertRaises(OpStreamingHdf5SequenceReaderM.SameFileError):
             OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
 
+        testGlobString = '/tmp/test-*.h5/data*'
+        with self.assertRaises(OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
+            OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
+
+        testGlobString = '/tmp/test-0.h5/data:/tmp/test-1.h5/data*'
+        with self.assertRaises(OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
+            OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
+
         validGlobStrings = [
             '/tmp/test-*.h5/data',
             '/tmp/test-1.h5/data1:/tmp/test-2.h5/data1',
         ]
 
         for testGlobString in validGlobStrings:
-            self.assertTrue(
-                OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString))
+             OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
+        # Implicit test for validity; test fails if an exception is raised
+        self.assertTrue(True)
 
 
 if __name__ == "__main__":
