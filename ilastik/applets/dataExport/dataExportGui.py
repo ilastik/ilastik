@@ -106,6 +106,7 @@ class DataExportGui(QWidget):
         self.progressSignal = parentApplet.progressSignal
 
         self.overwrite = False
+        self.pluginWasSelected = False
         
         @threadRoutedWithRouter(self.threadRouter)
         def handleNewDataset( multislot, index ):
@@ -451,6 +452,10 @@ class DataExportGui(QWidget):
             self.overwrite = True
 
     def exportResultsForSlot(self, opLane):
+        if self.pluginWasSelected == False:
+            QMessageBox.critical(self, "Choose Export Plugin",
+                                 "You did not select any export plugin. \nPlease do so by clicking 'Choose Export Image Settings'" )
+            return
         # Make sure all 'on disk' layers are discarded so we aren't using those files any more.
         for opLaneView in self.topLevelOperator:
             opLaneView.cleanupOnDiskView()
@@ -460,6 +465,10 @@ class DataExportGui(QWidget):
         exportThread.start()
     
     def exportAllResults(self):
+        if self.pluginWasSelected == False:
+            QMessageBox.critical(self, "Choose Export Plugin",
+                                 "You did not select any export plugin. \nPlease do so by clicking 'Choose Export Image Settings'" )
+            return
         # Make sure all 'on disk' layers are discarded so we aren't using those files any more.
         for opLaneView in self.topLevelOperator:
             opLaneView.cleanupOnDiskView()

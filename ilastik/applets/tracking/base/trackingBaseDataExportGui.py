@@ -183,9 +183,6 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
     def _onSelectedExportSourceChanged(self, sourceName):
         self.topLevelOperator.SelectedExportSource.setValue(sourceName)
 
-    def _onSelectedExportPluginChanged(self, pluginText):
-        self.topLevelOperator.SelectedPlugin.setValue(pluginText)
-
     def set_default_export_filename(self, filename):
         self._default_export_filename = filename
 

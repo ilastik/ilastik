@@ -129,6 +129,9 @@ class PluginExportOptionsDlg(QDialog):
         # See self.eventFilter()
         self.installEventFilter(self)
 
+        # plugin was selected if this dialog was opened
+        parent.pluginWasSelected = True
+
         # Plugin Dropdown
         availableExportPlugins = self._getAvailablePlugins()
         def onSelectedExportPluginChanged(pluginText):
