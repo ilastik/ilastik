@@ -140,7 +140,7 @@ class AppletGuiInterface():
         Abstract method.
         Called by the shell to determine if the shell's lane selection combobox should be displayed.
         Return False if your applet GUI handles switching between lanes itself (e.g. DataSelection, DataExport),
-        or if the notion of lanes doesn't apply to this applet (e.g. ProjectMetadata, BatchProcessing).
+        or if the notion of lanes doesn't apply to this applet (e.g. DataSelection, BatchProcessing).
         """
         raise NotImplementedError
 

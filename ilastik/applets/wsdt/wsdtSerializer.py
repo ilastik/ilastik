@@ -18,11 +18,11 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialBlockSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialBlockSlot, SerialListSlot
 
 class WsdtSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
-        slots = [ SerialSlot(operator.ChannelSelection),
+        slots = [ SerialListSlot(operator.ChannelSelections),
                   SerialSlot(operator.Pmin), 
                   SerialSlot(operator.MinMembraneSize), 
                   SerialSlot(operator.MinSegmentSize), 

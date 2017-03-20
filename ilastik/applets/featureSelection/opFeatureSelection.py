@@ -245,13 +245,12 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
         self.opPixelFeatureCache.fixAtCurrent.setValue(False)
 
     def change_feature_cache_size(self):
-        curr_size = self.opPixelFeatureCache.innerBlockShape.value
+        curr_size = self.opPixelFeatureCache.BlockShape.value
         a = [list(i) for i in curr_size]
         a[2][3] = 1
         c = [tuple(i) for i in a]
         c = tuple(c)
-        self.opPixelFeatureCache.innerBlockShape.setValue(c)
-        self.opPixelFeatureCache.outerBlockShape.setValue(c)
+        self.opPixelFeatureCache.BlockShape.setValue(c)
 
     def setupOutputs(self):
         super( OpFeatureSelection, self ).setupOutputs()
@@ -283,18 +282,12 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
                            'c' : (1000,1000) }
             
             axisOrder = [ tag.key for tag in self.InputImage.meta.axistags ]
-            innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
-            outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
-    
-            innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
-            outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
-    
-            innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
-            outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
+            blockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
+            blockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
+            blockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
     
             # Configure the cache        
-            self.opPixelFeatureCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-            self.opPixelFeatureCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+            self.opPixelFeatureCache.BlockShape.setValue( (blockShapeX, blockShapeY, blockShapeZ) )
 
             # Connect external output to internal output
             self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )

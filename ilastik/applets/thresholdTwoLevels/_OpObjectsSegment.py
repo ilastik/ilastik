@@ -38,11 +38,6 @@ from lazyflow.rtype import SubRegion
 from lazyflow.stype import Opaque
 from lazyflow.request import Request, RequestPool
 
-# required lazyflow operators
-from lazyflow.operators.opLabelVolume import OpLabelVolume
-from lazyflow.operators.opCompressedCache import OpCompressedCache
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-
 from _OpGraphCut import segmentGC, OpGraphCut
 
 
@@ -75,8 +70,8 @@ class OpObjectsSegment(OpGraphCut):
     # (a value of 0 is assumed to be background and ignored)
     LabelImage = InputSlot()
 
-    # margin around each object (always xyz!)
-    Margin = InputSlot(value=np.asarray((20, 20, 20)))
+    # margin around each object (always zyx!)
+    MarginZYX = InputSlot(value=np.asarray((20, 20, 20)))
 
     # bounding boxes of the labeled objects
     # this slot returns an array of dicts with shape (t, c)
@@ -102,12 +97,12 @@ class OpObjectsSegment(OpGraphCut):
         # sanity checks
         shape = self.LabelImage.meta.shape
         assert len(shape) == 5,\
-            "Prediction maps must be a full 5d volume (txyzc)"
+            "Prediction maps must be a full 5d volume (tzyxc)"
         tags = self.LabelImage.meta.getAxisKeys()
         tags = "".join(tags)
-        assert tags == 'txyzc',\
+        assert tags == 'tzyxc',\
             "Label image has wrong axes order"\
-            "(expected: txyzc, got: {})".format(tags)
+            "(expected: tzyxc, got: {})".format(tags)
 
         # bounding boxes are just one element arrays of type object, but we
         # want to request boxes from a specific region, therefore BoundingBoxes
@@ -115,7 +110,7 @@ class OpObjectsSegment(OpGraphCut):
         shape = self.Prediction.meta.shape
         self.BoundingBoxes.meta.shape = shape
         self.BoundingBoxes.meta.dtype = np.object
-        self.BoundingBoxes.meta.axistags = vigra.defaultAxistags('txyzc')
+        self.BoundingBoxes.meta.axistags = vigra.defaultAxistags('tzyxc')
 
     def execute(self, slot, subindex, roi, result):
         # check the axes - cannot do this in setupOutputs because we could be
@@ -136,7 +131,7 @@ class OpObjectsSegment(OpGraphCut):
     def _execute_bbox(self, roi, result):
         cc = self.LabelImage.get(roi).wait()
         cc = vigra.taggedView(cc, axistags=self.LabelImage.meta.axistags)
-        cc = cc.withAxes(*'xyz')
+        cc = cc.withAxes(*'zyx')
 
         logger.debug("computing bboxes...")
         feats = vigra.analysis.extractRegionFeatures(
@@ -156,7 +151,7 @@ class OpObjectsSegment(OpGraphCut):
         t = roi.start[0]
         c = roi.start[4]
 
-        margin = self.Margin.value
+        margin_zyx = self.MarginZYX.value
         beta = self.Beta.value
         MAXBOXSIZE = 10000000  # FIXME justification??
 
@@ -174,28 +169,28 @@ class OpObjectsSegment(OpGraphCut):
         ## request the prediction image ##
         pred = self.Prediction.get(roi).wait()
         pred = vigra.taggedView(pred, axistags=self.Prediction.meta.axistags)
-        pred = pred.withAxes(*'xyz')
+        pred = pred.withAxes(*'zyx')
 
         ## request the connected components image ##
         cc = self.LabelImage.get(roi).wait()
         cc = vigra.taggedView(cc, axistags=self.LabelImage.meta.axistags)
-        cc = cc.withAxes(*'xyz')
+        cc = cc.withAxes(*'zyx')
 
-        # provide xyz view for the output (just need 8bit for segmentation
-        resultXYZ = vigra.taggedView(np.zeros(cc.shape, dtype=np.uint8),
-                                     axistags='xyz')
+        # provide zyx view for the output (just need 8bit for segmentation
+        resultZYX = vigra.taggedView(np.zeros(cc.shape, dtype=np.uint8),
+                                     axistags='zyx')
 
         def processSingleObject(i):
             logger.debug("processing object {}".format(i))
             # maxs are inclusive, so we need to add 1
-            xmin = max(mins[i][0]-margin[0], 0)
-            ymin = max(mins[i][1]-margin[1], 0)
-            zmin = max(mins[i][2]-margin[2], 0)
-            xmax = min(maxs[i][0]+margin[0]+1, cc.shape[0])
-            ymax = min(maxs[i][1]+margin[1]+1, cc.shape[1])
-            zmax = min(maxs[i][2]+margin[2]+1, cc.shape[2])
-            ccbox = cc[xmin:xmax, ymin:ymax, zmin:zmax]
-            resbox = resultXYZ[xmin:xmax, ymin:ymax, zmin:zmax]
+            zmin = max(mins[i][0]-margin_zyx[0], 0)
+            ymin = max(mins[i][1]-margin_zyx[1], 0)
+            xmin = max(mins[i][2]-margin_zyx[2], 0)
+            zmax = min(maxs[i][0]+margin_zyx[0]+1, cc.shape[0])
+            ymax = min(maxs[i][1]+margin_zyx[1]+1, cc.shape[1])
+            xmax = min(maxs[i][2]+margin_zyx[2]+1, cc.shape[2])
+            ccbox = cc[zmin:zmax, ymin:ymax, xmin:xmax]
+            resbox = resultZYX[zmin:zmax, ymin:ymax, xmin:xmax]
 
             nVoxels = ccbox.size
             if nVoxels > MAXBOXSIZE:
@@ -204,9 +199,9 @@ class OpObjectsSegment(OpGraphCut):
                 resbox[ccbox == i] = 1
                 return
 
-            probbox = pred[xmin:xmax, ymin:ymax, zmin:zmax]
+            probbox = pred[zmin:zmax, ymin:ymax, xmin:xmax]
             gcsegm = segmentGC(probbox, beta)
-            gcsegm = vigra.taggedView(gcsegm, axistags='xyz')
+            gcsegm = vigra.taggedView(gcsegm, axistags='zyx')
             ccsegm = vigra.analysis.labelVolumeWithBackground(
                 gcsegm.astype(np.uint8))
 
@@ -221,7 +216,7 @@ class OpObjectsSegment(OpGraphCut):
             assert len(passed.shape) == 1
             if passed.size > 2:
                 logger.warn("ambiguous label assignment for region {}".format(
-                    (xmin, xmax, ymin, ymax, zmin, zmax)))
+                    (zmin, zmax, ymin, ymax, xmin, xmax)))
                 resbox[ccbox == i] = 1
             elif passed.size <= 1:
                 logger.warn(
@@ -246,10 +241,10 @@ class OpObjectsSegment(OpGraphCut):
 
         # prepare result
         resView = vigra.taggedView(result, axistags=self.Output.meta.axistags)
-        resView = resView.withAxes(*'xyz')
+        resView = resView.withAxes(*'zyx')
 
         # some labels could have been removed => relabel
-        vigra.analysis.labelVolumeWithBackground(resultXYZ, out=resView)
+        vigra.analysis.labelVolumeWithBackground(resultZYX, out=resView)
 
     def propagateDirty(self, slot, subindex, roi):
         super(OpObjectsSegment, self).propagateDirty(slot, subindex, roi)
@@ -268,6 +263,6 @@ class OpObjectsSegment(OpGraphCut):
             stop = t[1:2] + self.Output.meta.shape[1:4] + c[1:2]
             roi = SubRegion(self.Output, start=start, stop=stop)
             self.Output.setDirty(roi)
-        elif slot == self.Margin:
+        elif slot == self.MarginZYX:
             # margin affects the whole volume
             self.Output.setDirty(slice(None))

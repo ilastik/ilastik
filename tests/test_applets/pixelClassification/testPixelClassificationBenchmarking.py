@@ -28,6 +28,9 @@ from lazyflow.operators import OpPixelFeaturesPresmoothed
 
 from lazyflow.utility.timer import Timer
 
+from ilastik.applets.pixelClassification.pixelClassificationApplet import PixelClassificationApplet
+PIXEL_CLASSIFICATION_INDEX = 2
+
 import nose
 
 import logging
@@ -148,7 +151,8 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             opPix = pixClassApplet.topLevelOperator
 
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(PIXEL_CLASSIFICATION_INDEX)
+            assert isinstance(self.shell.workflow.applets[PIXEL_CLASSIFICATION_INDEX], PixelClassificationApplet)
             
             # Turn off the huds and so we can capture the raw image
             gui.currentGui().menuGui.actionToggleAllHuds.trigger()

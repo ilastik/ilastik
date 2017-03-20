@@ -123,7 +123,7 @@ class OpConservationTracking(Operator):
         # FIXME: assumes t,x,y,z,c
         chunks[0] = 1  # 't'        
         self._blockshape = tuple(chunks)
-        self._opCache.outerBlockShape.setValue(self._blockshape)
+        self._opCache.BlockShape.setValue(self._blockshape)
 
         self.AllBlocks.meta.shape = (1,)
         self.AllBlocks.meta.dtype = object
@@ -131,8 +131,8 @@ class OpConservationTracking(Operator):
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
         self.RelabeledImage.meta.assignFrom(self.LabelImage.meta)
 
-        self._mergerOpCache.outerBlockShape.setValue( self._blockshape )
-        self._relabeledOpCache.outerBlockShape.setValue( self._blockshape )
+        self._mergerOpCache.BlockShape.setValue( self._blockshape )
+        self._relabeledOpCache.BlockShape.setValue( self._blockshape )
         
         frame_shape = (1,) + self.LabelImage.meta.shape[1:] # assumes t,x,y,z,c order
         assert frame_shape[-1] == 1
@@ -248,7 +248,7 @@ class OpConservationTracking(Operator):
             return fov
 
         fieldOfView = constructFov((x_range[1], y_range[1], z_range[1]),
-                                   0,
+                                   time_range[0],
                                    time_range[-1]+1,
                                    scales)
 
@@ -338,6 +338,7 @@ class OpConservationTracking(Operator):
             avgSize=[0],                        
             withTracklets=False,
             sizeDependent=True,
+            detWeight=10.0,
             divWeight=10.0,
             transWeight=10.0,
             withDivisions=True,
@@ -377,6 +378,7 @@ class OpConservationTracking(Operator):
         parameters['avgSize'] = avgSize
         parameters['withTracklets'] = withTracklets
         parameters['sizeDependent'] = sizeDependent
+        parameters['detWeight'] = detWeight
         parameters['divWeight'] = divWeight
         parameters['transWeight'] = transWeight
         parameters['withDivisions'] = withDivisions
@@ -438,7 +440,7 @@ class OpConservationTracking(Operator):
             result = mht.track(model, weights)
         else:
             raise ValueError("Invalid tracking solver selected")
-        
+
         # Insert the solution into the hypotheses graph and from that deduce the lineages
         if hypothesesGraph:
             hypothesesGraph.insertSolution(result)
@@ -629,7 +631,7 @@ class OpConservationTracking(Operator):
         
         logger.info("fetching region features and division probabilities")
         feats = self.ObjectFeatures(time_range).wait()
-        
+
         if with_div:
             if not self.DivisionProbabilities.ready() or len(self.DivisionProbabilities([0]).wait()[0]) == 0:
                 msgStr = "\nDivision classifier has not been trained! " + \

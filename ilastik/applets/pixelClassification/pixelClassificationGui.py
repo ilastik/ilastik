@@ -21,14 +21,16 @@
 # Built-in
 import os
 import logging
-import collections
+from collections import OrderedDict
 from functools import partial
 
 # Third-party
 import numpy
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, pyqtSlot, QVariant, pyqtRemoveInputHook, pyqtRestoreInputHook
-from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem, QApplication, QCursor, QAction
+from PyQt4.QtCore import Qt, pyqtSlot, QVariant, pyqtRemoveInputHook, pyqtRestoreInputHook, QStringList, QString, QSize
+from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, \
+    QListWidgetItem, QApplication, QCursor, QAction, QComboBox, QTreeWidget, QTreeWidgetItem, QWidget, QSizePolicy, \
+    QPushButton, QLineEdit, QDialog
 
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
@@ -102,7 +104,7 @@ class ClassifierSelectionDlg(QDialog):
         from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, SklearnLazyflowClassifierFactory, \
                                          ParallelVigraRfLazyflowClassifierFactory, VigraRfPixelwiseClassifierFactory,\
                                          LazyflowVectorwiseClassifierFactoryABC, LazyflowPixelwiseClassifierFactoryABC
-        classifiers = collections.OrderedDict()
+        classifiers = OrderedDict()
         classifiers["Parallel Random Forest (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(100)
         
         try:
@@ -141,7 +143,120 @@ class ClassifierSelectionDlg(QDialog):
 
         # Close the dlg
         super( ClassifierSelectionDlg, self ).accept()
+
+class BookmarksWindow(QDialog):
+    """
+    A simple UI for showing bookmarks and navigating to them.
+
+    FIXME: For now, this window is tied to a particular lane.
+           If your project has more than one lane, then each one
+           will have it's own bookmark window, which is kinda dumb.
+    """
+    def __init__(self, parent, topLevelOperatorView):
+        super(BookmarksWindow, self).__init__(parent)
+        self.setWindowTitle("Bookmarks")
+        self.topLevelOperatorView = topLevelOperatorView
+        self.bookmark_tree = QTreeWidget(self)
+        self.bookmark_tree.setHeaderLabels( ["Location", "Notes"] )
+        self.bookmark_tree.setSizePolicy( QSizePolicy.Preferred, QSizePolicy.Preferred )
+        self.bookmark_tree.setColumnWidth(0, 200)
+        self.bookmark_tree.setColumnWidth(1, 300)
+
+        self.note_edit = QLineEdit(self)
+        self.add_bookmark_button = QPushButton("Add Bookmark", self, clicked=self.add_bookmark)
+
+        geometry = self.geometry()
+        geometry.setSize( QSize(520, 520) )
+        self.setGeometry(geometry)
+        
+        layout = QVBoxLayout()
+        layout.addWidget(self.bookmark_tree)
+        layout.addWidget(self.note_edit)
+        layout.addWidget(self.add_bookmark_button)
+        self.setLayout(layout)
+
+        self._load_bookmarks()
+        
+        self.bookmark_tree.setContextMenuPolicy( Qt.CustomContextMenu )
+        self.bookmark_tree.customContextMenuRequested.connect( self.showContextMenu )
+        
+        self.bookmark_tree.itemDoubleClicked.connect(self._handle_doubleclick)
+
+    def _handle_doubleclick(self, item, col):
+        """
+        Navigate to the bookmark
+        """
+        data = item.data(0, Qt.UserRole).toPyObject()
+        if data is None:
+            return
+
+        (coord, notes) = data
+        axes = self.topLevelOperatorView.InputImages.meta.getAxisKeys()
+        axes = axes[:-1] # drop channel
+        axes = sorted(axes)
+        assert len(axes) == len(coord)
+        tagged_coord = dict(zip(axes, coord))
+        tagged_location = OrderedDict(zip('txyzc', (0,0,0,0,0)))
+        tagged_location.update(tagged_coord)
+        t = tagged_location.values()[0]
+        coord3d = tagged_location.values()[1:4]
+        
+        self.parent().editor.posModel.time = t
+        self.parent().editor.navCtrl.panSlicingViews( coord3d, [0,1,2] )
+        self.parent().editor.posModel.slicingPos = coord3d
+
+    def showContextMenu(self, pos):
+        item = self.bookmark_tree.itemAt(pos)
+        data = item.data(0, Qt.UserRole).toPyObject()
+        if data is None:
+            return
+        
+        def delete_bookmark():
+            (coord, notes) = data
+            bookmarks = list(self.topLevelOperatorView.Bookmarks.value)
+            i = bookmarks.index((coord, notes))
+            bookmarks.pop(i)
+            self.topLevelOperatorView.Bookmarks.setValue(bookmarks)
+            self._load_bookmarks()
+
+        menu = QMenu(parent=self)
+        menu.addAction( QAction("Delete", menu, triggered=delete_bookmark) )
+        globalPos = self.bookmark_tree.viewport().mapToGlobal( pos )
+        menu.exec_( globalPos )
+        #selection = menu.exec_( globalPos )
+        #if selection is removeLanesAction:
+        #    self.removeLanesRequested.emit( self._selectedLanes )
+
+    def add_bookmark(self):
+        coord_txyzc = self.parent().editor.posModel.slicingPos5D
+        tagged_coord_txyzc = dict( zip('txyzc', coord_txyzc) )
+        axes = self.topLevelOperatorView.InputImages.meta.getAxisKeys()
+        axes = axes[:-1] # drop channel
+        axes = sorted(axes)
+        coord = tuple(tagged_coord_txyzc[c] for c in axes)
+
+        notes = str(self.note_edit.text())
+        bookmarks = list(self.topLevelOperatorView.Bookmarks.value)
+        bookmarks.append((coord, notes))
+        self.topLevelOperatorView.Bookmarks.setValue(bookmarks)
+        
+        self._load_bookmarks()
     
+    def _load_bookmarks(self):
+        self.bookmark_tree.clear()
+        lane_index = self.topLevelOperatorView.current_view_index()
+        lane_nickname = self.topLevelOperatorView.InputImages.meta.nickname or "Lane {}".format(lane_index)
+        bookmarks = self.topLevelOperatorView.Bookmarks.value
+        group_item = QTreeWidgetItem( self.bookmark_tree, QStringList(lane_nickname) )
+
+        for coord, notes in bookmarks:
+            item = QTreeWidgetItem( group_item, QStringList() )
+            item.setText(0, str(coord))
+            item.setData(0, Qt.UserRole, (coord, notes))
+            item.setText(1, notes)
+
+        self.bookmark_tree.expandAll()
+
 class PixelClassificationGui(LabelingGui):
 
     ###########################################
@@ -176,7 +291,7 @@ class PixelClassificationGui(LabelingGui):
             varImpDlg = VariableImportanceDialog(self.topLevelOperatorView.Classifier.value.named_importances, parent=self)
             varImpDlg.exec_()
             
-        advanced_menu.addAction("Variable Importance Table").triggered.connect(showVarImpDlg)            
+        advanced_menu.addAction("Variable Importance Table").triggered.connect(showVarImpDlg)
         
         def handleImportLabelsAction():
             # Find the directory of the most recently opened image file
@@ -263,6 +378,11 @@ class PixelClassificationGui(LabelingGui):
 
         advanced_menu.addMenu(labels_submenu)
         
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            def showBookmarksWindow():
+                self._bookmarks_window.show()
+            advanced_menu.addAction("Bookmarks...").triggered.connect(showBookmarksWindow)
+
         menus += [advanced_menu]
 
         return menus
@@ -313,6 +433,8 @@ class PixelClassificationGui(LabelingGui):
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
         
         self._initShortcuts()
+
+        self._bookmarks_window = BookmarksWindow(self, self.topLevelOperatorView)
 
 
         # FIXME: We MUST NOT enable the render manager by default,

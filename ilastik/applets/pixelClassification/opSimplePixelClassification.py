@@ -95,7 +95,7 @@ class OpSimplePixelClassification(Operator):
             if 't' in tagged_feature_blockshape:
                 tagged_feature_blockshape['t'] = 1
     
-            self.opAllFeatureCaches[lane_index].outerBlockShape.setValue( tuple( tagged_feature_blockshape.values() ) )
+            self.opAllFeatureCaches[lane_index].BlockShape.setValue( tuple( tagged_feature_blockshape.values() ) )
     
             # Label cache blockshape
             # (this choice has some effect on performance, but is not critical.)

@@ -91,9 +91,10 @@ class OpPixelClassification( Operator ):
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
+    Bookmarks = OutputSlot(level=1)
 
     NumClasses = OutputSlot()
-    
+
     def setupOutputs(self):
         self.LabelNames.meta.dtype = object
         self.LabelNames.meta.shape = (1,)
@@ -184,6 +185,7 @@ class OpPixelClassification( Operator ):
 
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):
+                self.Bookmarks.resize(0)
                 self.LabelImages.resize(0)
                 self.NonzeroLabelBlocks.resize(0)
                 self.PredictionProbabilities.resize(0)
@@ -318,9 +320,12 @@ class OpPixelClassification( Operator ):
         numLanes = len(self.InputImages)
         assert numLanes == laneIndex, "Image lanes must be appended."        
         self.InputImages.resize(numLanes+1)
+        self.Bookmarks.resize(numLanes+1)
+        self.Bookmarks[numLanes].setValue([]) # Default value
         
     def removeLane(self, laneIndex, finalLength):
         self.InputImages.removeSlot(laneIndex, finalLength)
+        self.Bookmarks.removeSlot(laneIndex, finalLength)
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
@@ -391,8 +396,8 @@ class OpLabelPipeline( Operator ):
         if 't' in tagged_shape:
             tagged_shape['t'] = 1
         
-        # Aim for blocks that are roughly 1MB
-        block_shape = determineBlockShape( tagged_shape.values(), 20**3 )
+        # Aim for blocks that are roughly 20px
+        block_shape = determineBlockShape( tagged_shape.values(), 40**3 )
         self.opLabelArray.blockShape.setValue( block_shape )
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -585,20 +590,12 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
                        'x' : (256,256),
                        'c' : (100,100) }
 
-        innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
-        outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
+        blockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
+        blockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
+        blockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
 
-        innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
-        outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
-
-        innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
-        outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
-
-        self.prediction_cache_gui.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.prediction_cache_gui.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
-
-        self.opUncertaintyCache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.opUncertaintyCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+        self.prediction_cache_gui.BlockShape.setValue( (blockShapeX, blockShapeY, blockShapeZ) )
+        self.opUncertaintyCache.BlockShape.setValue( (blockShapeX, blockShapeY, blockShapeZ) )
 
         assert self.opConvertToUint8.Output.meta.drange == (0,255)
 

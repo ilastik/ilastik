@@ -44,16 +44,16 @@ class OpEdgeTraining(Operator):
         self.opCreateRag = OpMultiLaneWrapper( OpCreateRag, parent=self )
         self.opCreateRag.Superpixels.connect( self.Superpixels )
         
-        self.opRagCache = OpMultiLaneWrapper( OpValueCache, parent=self )
+        self.opRagCache = OpMultiLaneWrapper( OpValueCache, parent=self, broadcastingSlotNames=['fixAtCurrent'] )
         self.opRagCache.Input.connect( self.opCreateRag.Rag )
         self.opRagCache.name = 'opRagCache'
         
-        self.opComputeEdgeFeatures = OpMultiLaneWrapper( OpComputeEdgeFeatures, parent=self )
+        self.opComputeEdgeFeatures = OpMultiLaneWrapper( OpComputeEdgeFeatures, parent=self, broadcastingSlotNames=['FeatureNames'] )
         self.opComputeEdgeFeatures.FeatureNames.connect( self.FeatureNames )
         self.opComputeEdgeFeatures.VoxelData.connect( self.VoxelData )
         self.opComputeEdgeFeatures.Rag.connect( self.opRagCache.Output )
         
-        self.opEdgeFeaturesCache = OpMultiLaneWrapper( OpValueCache, parent=self )
+        self.opEdgeFeaturesCache = OpMultiLaneWrapper( OpValueCache, parent=self, broadcastingSlotNames=['fixAtCurrent'] )
         self.opEdgeFeaturesCache.Input.connect( self.opComputeEdgeFeatures.EdgeFeaturesDataFrame )
         self.opEdgeFeaturesCache.name = 'opEdgeFeaturesCache'
 
@@ -64,22 +64,23 @@ class OpEdgeTraining(Operator):
         # classifier cache input is set after training.
         self.opClassifierCache = OpValueCache(parent=self)
         self.opClassifierCache.Input.connect( self.opTrainEdgeClassifier.EdgeClassifier )
-        self.opClassifierCache.name = 'opClassifierCache'
         self.opClassifierCache.fixAtCurrent.connect( self.FreezeClassifier )
+        self.opClassifierCache.name = 'opClassifierCache'
         
-        self.opPredictEdgeProbabilities = OpMultiLaneWrapper( OpPredictEdgeProbabilities, parent=self )
+        self.opPredictEdgeProbabilities = OpMultiLaneWrapper( OpPredictEdgeProbabilities, parent=self, broadcastingSlotNames=['EdgeClassifier'] )
         self.opPredictEdgeProbabilities.EdgeClassifier.connect( self.opClassifierCache.Output )
         self.opPredictEdgeProbabilities.EdgeFeaturesDataFrame.connect( self.opEdgeFeaturesCache.Output )
         
-        self.opEdgeProbabilitiesCache = OpMultiLaneWrapper( OpValueCache, parent=self )
+        self.opEdgeProbabilitiesCache = OpMultiLaneWrapper( OpValueCache, parent=self, broadcastingSlotNames=['fixAtCurrent'] )
         self.opEdgeProbabilitiesCache.Input.connect( self.opPredictEdgeProbabilities.EdgeProbabilities )
         self.opEdgeProbabilitiesCache.name = 'opEdgeProbabilitiesCache'
+        self.opEdgeProbabilitiesCache.fixAtCurrent.connect( self.FreezeClassifier )
 
         self.opEdgeProbabilitiesDict = OpMultiLaneWrapper( OpEdgeProbabilitiesDict, parent=self )
         self.opEdgeProbabilitiesDict.Rag.connect( self.opRagCache.Output )
         self.opEdgeProbabilitiesDict.EdgeProbabilities.connect( self.opEdgeProbabilitiesCache.Output )
         
-        self.opEdgeProbabilitiesDictCache = OpMultiLaneWrapper( OpValueCache, parent=self )
+        self.opEdgeProbabilitiesDictCache = OpMultiLaneWrapper( OpValueCache, parent=self, broadcastingSlotNames=['fixAtCurrent'] )
         self.opEdgeProbabilitiesDictCache.Input.connect( self.opEdgeProbabilitiesDict.EdgeProbabilitiesDict )
         self.opEdgeProbabilitiesDictCache.name = 'opEdgeProbabilitiesDictCache'
 
@@ -88,7 +89,7 @@ class OpEdgeTraining(Operator):
         self.opNaiveSegmentation.Rag.connect( self.opRagCache.Output )
         self.opNaiveSegmentation.EdgeProbabilities.connect( self.opEdgeProbabilitiesCache.Output )
 
-        self.opNaiveSegmentationCache = OpMultiLaneWrapper( OpBlockedArrayCache, parent=self, broadcastingSlotNames=['CompressionEnabled'] )
+        self.opNaiveSegmentationCache = OpMultiLaneWrapper( OpBlockedArrayCache, parent=self, broadcastingSlotNames=['CompressionEnabled', 'fixAtCurrent', 'BypassModeEnabled'] )
         self.opNaiveSegmentationCache.CompressionEnabled.setValue(True)
         self.opNaiveSegmentationCache.Input.connect( self.opNaiveSegmentation.Output )
         self.opNaiveSegmentationCache.name = 'opNaiveSegmentationCache'
@@ -120,7 +121,6 @@ class OpEdgeTraining(Operator):
         def subscribe_to_dirty_sp(slot, position, finalsize):
             # A new lane was added.  Subscribe to it's dirty signal.
             assert slot is self.Superpixels
-            print "Setting up listeners for {}".format(position)
             self.Superpixels[position].notifyDirty(self.handle_dirty_superpixels)
             self.Superpixels[position].notifyReady(self.handle_dirty_superpixels)
             self.Superpixels[position].notifyUnready(self.handle_dirty_superpixels)
@@ -142,7 +142,7 @@ class OpEdgeTraining(Operator):
             self.EdgeLabelsDict[lane_index].setValue({})
 
     def setupOutputs(self):
-        for sp_slot, seg_cache_blockshape_slot in zip(self.Superpixels, self.opNaiveSegmentationCache.outerBlockShape):
+        for sp_slot, seg_cache_blockshape_slot in zip(self.Superpixels, self.opNaiveSegmentationCache.BlockShape):
             assert sp_slot.meta.dtype == np.uint32
             assert sp_slot.meta.getAxisKeys()[-1] == 'c'
             seg_cache_blockshape_slot.setValue( sp_slot.meta.shape )
@@ -327,7 +327,7 @@ class OpTrainEdgeClassifier(Operator):
 class OpPredictEdgeProbabilities(Operator):
     EdgeClassifier = InputSlot()
     EdgeFeaturesDataFrame = InputSlot()
-    EdgeProbabilities = OutputSlot()
+    EdgeProbabilities = OutputSlot() # A 1D array of probabilities, in same order as EdgeFeaturesDataFrame
     
     def setupOutputs(self):
         self.EdgeProbabilities.meta.shape = (1,)
@@ -366,12 +366,16 @@ class OpEdgeProbabilitiesDict(Operator):
         self.EdgeProbabilitiesDict.meta.dtype = object
 
     def execute(self, slot, subindex, roi, result):
-        edge_probabilities = self.EdgeProbabilities.value
-        rag = self.Rag.value
-
         logger.info("Converting edge probabilities to dict...")
-        edge_ids = rag.edge_ids
-        result[0] = dict(izip(imap(tuple, edge_ids), edge_probabilities))
+        rag = self.Rag.value
+        edge_probabilities = self.EdgeProbabilities.value
+        if edge_probabilities is None:
+            # Edge probabilities are 'None' if they haven't been loaded into the cache yet.
+            # Just return 0.0 for all probabilities
+            result[0] = { tuple(edge_id) : 0.0 for edge_id in rag.edge_ids }
+        else:
+            result[0] = dict(izip(imap(tuple, rag.edge_ids), edge_probabilities))
+            
         logger.info("...done")
 
     def propagateDirty(self, slot, subindex, roi):

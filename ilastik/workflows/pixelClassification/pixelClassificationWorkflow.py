@@ -29,7 +29,6 @@ import numpy
 
 from ilastik.config import cfg as ilastik_config
 from ilastik.workflow import Workflow
-from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationDataExportApplet
@@ -42,7 +41,7 @@ class PixelClassificationWorkflow(Workflow):
     
     workflowName = "Pixel Classification"
     workflowDescription = "This is obviously self-explanatory."
-    defaultAppletIndex = 1 # show DataSelection by default
+    defaultAppletIndex = 0 # show DataSelection by default
     
     DATA_ROLE_RAW = 0
     DATA_ROLE_PREDICTION_MASK = 1
@@ -100,8 +99,6 @@ class PixelClassificationWorkflow(Workflow):
                             "Power users: Optionally use the 'Prediction Mask' tab to supply a binary image that tells ilastik where it should avoid computations you don't need."
 
         # Applets for training (interactive) workflow 
-        self.projectMetadataApplet = ProjectMetadataApplet()
-        
         self.dataSelectionApplet = self.createDataSelectionApplet()
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         
@@ -121,7 +118,6 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )        
 
         # Expose for shell
-        self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.featureSelectionApplet)
         self._applets.append(self.pcApplet)

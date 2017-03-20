@@ -64,8 +64,10 @@ class MulticutGuiMixin(object):
         self.__cleanup_fns = []
         self.__topLevelOperatorView = topLevelOperatorView
         self.superpixel_edge_layer = None
+        self.disagreement_layer = None
         super( MulticutGuiMixin, self ).__init__( parentApplet, topLevelOperatorView )
         self.__init_probability_colortable()
+        self.__init_disagreement_label_colortable()
     
     def _after_init(self):
         pass
@@ -109,11 +111,31 @@ class MulticutGuiMixin(object):
         drawer_layout.addLayout( control_layout( "Solver", solver_name_combo ) )
         self.solver_name_combo = solver_name_combo
 
+        button_layout = QHBoxLayout()
+        
+        # Live Multicut Button
+        live_multicut_button = QPushButton(text="Live Multicut",
+                                           checkable=True,
+                                           icon=QIcon(ilastikIcons.Play))
+        configure_update_handlers( live_multicut_button.toggled, op.FreezeCache )
+        
+        # Extra: Auto-show the multicut edges if necessary.
+        def auto_show_multicut_layer(checked):
+            if checked:
+                self.getLayerByName("Multicut Edges").visible = True            
+        live_multicut_button.toggled.connect( auto_show_multicut_layer )
+        
+        button_layout.addWidget(live_multicut_button)
+        self.live_multicut_button = live_multicut_button
+        
         # Update Button
-        update_button = QPushButton(text="Update Multicut",
+        update_button = QPushButton(text="Update Now",
                                     icon=QIcon(ilastikIcons.Play),
-                                    clicked=self.onUpdateMulticutButton)
-        drawer_layout.addWidget(update_button)
+                                    clicked=self._handle_mulicut_update_clicked)
+        button_layout.addWidget(update_button)
+        self.update_button = update_button
+        
+        drawer_layout.addLayout(button_layout)
 
         # Layout
         drawer_layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
@@ -173,6 +195,49 @@ class MulticutGuiMixin(object):
         # touch the layer colortable outside the main thread.
         self.superpixel_edge_layer.pen_table.update(new_pens)
 
+    
+    def __init_disagreement_label_colortable(self):
+        self.disagreement_colortable = [ QColor(255, 0, 255, 255),  # magenta
+                                         QColor(0, 255, 255, 255) ] # cyan
+         
+        self.disagreement_pen_table = []
+        for color in self.disagreement_colortable:
+            pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
+            pen.setColor(color)
+            pen.setWidth(3)
+            self.disagreement_pen_table.append(pen)
+ 
+        op = self.topLevelOperatorView
+        op.EdgeLabelDisagreementDict.notifyReady( self.__update_disagreement_edges )
+        self.__cleanup_fns.append( partial( op.EdgeLabelDisagreementDict.unregisterReady, self.__update_disagreement_edges ) )
+        op.EdgeLabelDisagreementDict.notifyDirty( self.__update_disagreement_edges )
+        self.__cleanup_fns.append( partial( op.EdgeLabelDisagreementDict.unregisterDirty, self.__update_disagreement_edges ) )
+
+
+    def __update_disagreement_edges(self, *args):
+        self.__init_disagreement_label_colortable()
+        def _impl():
+            op = self.__topLevelOperatorView
+            if not self.disagreement_layer:
+                return
+            
+            edge_disagreements = op.EdgeLabelDisagreementDict.value            
+            new_pens = {}
+            for id_pair, disagreement_label in edge_disagreements.items():
+                new_pens[id_pair] = self.disagreement_pen_table[disagreement_label]
+            self.__apply_disagreement_edges(new_pens)
+
+        # submit the worklaod in a request and return immediately
+        Request(_impl).submit()
+
+
+    @threadRouted
+    def __apply_disagreement_edges(self, new_pens):
+        # This function is threadRouted because you can't 
+        # touch the layer colortable outside the main thread.
+        if self.disagreement_layer:
+            self.disagreement_layer.pen_table.overwrite(new_pens)
+
     @contextmanager
     def set_updating(self):
         assert not self._currently_updating
@@ -185,8 +250,10 @@ class MulticutGuiMixin(object):
             return False
         with self.set_updating():
             op = self.__topLevelOperatorView
+            self.update_button.setEnabled( op.FreezeCache.value )
+            self.live_multicut_button.setChecked( not op.FreezeCache.value )
             self.beta_box.setValue( op.Beta.value )
-            
+
             solver_name = op.SolverName.value
             try:
                 solver_index = AVAILABLE_SOLVER_NAMES.index( solver_name )
@@ -206,31 +273,67 @@ class MulticutGuiMixin(object):
             op = self.__topLevelOperatorView
             op.Beta.setValue( self.beta_box.value() )
             op.SolverName.setValue( str(self.solver_name_combo.currentText()) )
+            op.FreezeCache.setValue(not self.live_multicut_button.isChecked())
 
-    def onUpdateMulticutButton(self):
+        # The GUI may need to respond to some changes in the operator outputs
+        # (e.g. the FreezeCache setting).
+        self.configure_gui_from_operator()
+
+    def _handle_mulicut_update_clicked(self):
         def updateThread():
             """
             Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
             """
-            self.topLevelOperatorView.FreezeCache.setValue(False)
-            
-            # This is hacky, but for now it's the only way to do it.
-            # We need to make sure the rendering thread has actually seen that the cache
-            # has been updated before we ask it to wait for all views to be 100% rendered.
-            # If we don't wait, it might complete too soon (with the old data).
-            ndim = len(self.topLevelOperatorView.Output.meta.shape)
-            self.topLevelOperatorView.Output((0,)*ndim, (1,)*ndim).wait()
-
-            # Wait for the image to be rendered into all three image views
-            for imgView in self.editor.imageViews:
-                if imgView.isVisible():
-                    imgView.scene().joinRenderingAllTiles()
-            self.topLevelOperatorView.FreezeCache.setValue(True)
+            with self.set_updating():
+                self.topLevelOperatorView.FreezeCache.setValue(False)
+                self.update_button.setEnabled(False)
+                self.live_multicut_button.setEnabled(False)
+                
+                # This is hacky, but for now it's the only way to do it.
+                # We need to make sure the rendering thread has actually seen that the cache
+                # has been updated before we ask it to wait for all views to be 100% rendered.
+                # If we don't wait, it might complete too soon (with the old data).
+                ndim = len(self.topLevelOperatorView.Output.meta.shape)
+                self.topLevelOperatorView.Output((0,)*ndim, (1,)*ndim).wait()
+    
+                # Wait for the image to be rendered into all three image views
+                for imgView in self.editor.imageViews:
+                    if imgView.isVisible():
+                        imgView.scene().joinRenderingAllTiles()
+                self.topLevelOperatorView.FreezeCache.setValue(True)
+                self.update_button.setEnabled(True)
+                self.live_multicut_button.setEnabled(True)
 
         self.getLayerByName("Multicut Edges").visible = True
         #self.getLayerByName("Multicut Segmentation").visible = True
         th = threading.Thread(target=updateThread)
         th.start()
+
+    def create_multicut_disagreement_layer(self):
+        ActionInfo = ShortcutManager.ActionInfo
+        op = self.__topLevelOperatorView
+        if not op.Output.ready():
+            return None
+
+        # Final segmentation -- Edges
+        default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
+        default_pen.setColor(Qt.transparent)
+        layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels), default_pen )
+        layer.name = "Multicut Disagreements"
+        layer.visible = False # Off by default...
+        layer.opacity = 1.0
+        self.disagreement_layer = layer
+        self.__update_disagreement_edges() # Initialize
+
+        layer.shortcutRegistration = ( "d",
+                                       ActionInfo( "Multicut",
+                                                   "MulticutDisagrementVisibility",
+                                                   "Show/Hide Multicut Disagreement Edges",
+                                                   layer.toggleVisible,
+                                                   self.viewerControlWidget(),
+                                                   layer ) )
+        
+        return layer
 
     def create_multicut_edge_layer(self):
         ActionInfo = ShortcutManager.ActionInfo
@@ -273,6 +376,10 @@ class MulticutGuiMixin(object):
     def setupLayers(self):
         layers = []
         op = self.__topLevelOperatorView
+
+        mc_disagreement_layer = self.create_multicut_disagreement_layer()
+        if mc_disagreement_layer:
+            layers.append(mc_disagreement_layer)
 
         mc_edge_layer = self.create_multicut_edge_layer()
         if mc_edge_layer:
@@ -322,6 +429,13 @@ class MulticutGuiMixin(object):
             layer.visible = True
             layer.opacity = 1.0
             layers.append(layer)
+            layer.shortcutRegistration = ( "i", ActionInfo( "Multicut"
+                                                            "Hide all but Raw",
+                                                            "Hide all but Raw",
+                                                            partial(self.toggle_show_raw, "Raw Data"),
+                                                            self.viewerControlWidget(),
+                                                            layer ) )
+
             del layer
 
         return layers

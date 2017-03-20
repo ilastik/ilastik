@@ -302,17 +302,29 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         Assigned to DataExportApplet.prepare_for_entire_export
         (See above.)
         """
-        # While exporting results, the segmentation cache should not be "frozen"
-        self.freeze_status = self.edgeTrainingWithMulticutApplet.topLevelOperator.FreezeCache.value
-        self.edgeTrainingWithMulticutApplet.topLevelOperator.FreezeCache.setValue(False)
+        # While exporting results, the caches should not be "frozen"
+        opWsdt = self.wsdtApplet.topLevelOperator
+        self.wsdt_frozen = opWsdt.FreezeCache.value
+        opWsdt.FreezeCache.setValue(False)
+
+        opTraining = self.edgeTrainingWithMulticutApplet.topLevelOperator
+        self.freeze_classifier_status = opTraining.FreezeClassifier.value
+        self.freeze_cache_status = opTraining.FreezeCache.value
+        opTraining.FreezeClassifier.setValue(False)
+        opTraining.FreezeCache.setValue(False)
 
     def post_process_entire_export(self):
         """
         Assigned to DataExportApplet.post_process_entire_export
         (See above.)
         """
-        # After export is finished, re-freeze the segmentation cache.
-        self.edgeTrainingWithMulticutApplet.topLevelOperator.FreezeCache.setValue(self.freeze_status)
+        # After export is finished, re-freeze the segmentation caches.
+        opWsdt = self.wsdtApplet.topLevelOperator
+        opWsdt.FreezeCache.setValue(self.wsdt_frozen)
+        
+        opTraining = self.edgeTrainingWithMulticutApplet.topLevelOperator
+        opTraining.FreezeClassifier.setValue(self.freeze_classifier_status)
+        opTraining.FreezeCache.setValue(self.freeze_cache_status)
 
 
     def handleAppletStateUpdateRequested(self):
@@ -361,7 +373,8 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
             opWsdt = self.wsdtApplet.topLevelOperator
             opWsdt.FreezeCache.setValue( self._shell.currentAppletIndex <= self.applets.index( self.wsdtApplet ) )
 
-            # Same for the multicut segmentation
+            # Same for training and multicut
             opMulticut = self.edgeTrainingWithMulticutApplet.topLevelOperator
+            opMulticut.FreezeClassifier.setValue( self._shell.currentAppletIndex <= self.applets.index( self.edgeTrainingWithMulticutApplet ) )
             opMulticut.FreezeCache.setValue( self._shell.currentAppletIndex <= self.applets.index( self.edgeTrainingWithMulticutApplet ) )
             

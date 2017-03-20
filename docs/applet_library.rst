@@ -88,13 +88,6 @@ Standard Applets
 
 These applets are likely to be re-used in many, if not most, worklows.
 
-Project Metadata
-----------------
-
-.. currentmodule:: ilastik.applets.projectMetadata.projectMetadataApplet
-.. autoclass:: ProjectMetadataApplet
-   :members:
-
 Data Selection
 --------------
 
