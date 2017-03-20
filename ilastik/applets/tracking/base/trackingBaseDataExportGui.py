@@ -158,8 +158,6 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             self._includePluginOnlyOption()
 
         super(TrackingBaseDataExportGui, self)._initAppletDrawerUic()
-        btn = QPushButton("Configure Table Export for Tracking+Features", clicked=self.configure_table_export)
-        self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
 
         if len(availableExportPlugins) > 0:
             self.topLevelOperator.SelectedPlugin.setValue(availableExportPlugins[0])
@@ -167,6 +165,8 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             # register the "plugins" option in the parent
             self._includePluginOnlyOption()
         else:
+            btn = QPushButton("Configure Table Export for Tracking+Features", clicked=self.configure_table_export)
+            self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
             self.topLevelOperator.SelectedPlugin.setValue(None)
 
     def _handleInputComboSelectionChanged( self, index ):
@@ -184,6 +184,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         self.topLevelOperator.SelectedExportSource.setValue(sourceName)
 
     def set_default_export_filename(self, filename):
+        # TODO: remove once tracking is hytra-only
         self._default_export_filename = filename
 
     # override this ExportingOperator function so that we can pass the default filename
@@ -191,6 +192,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         """
         Shows the ExportObjectInfoDialog and calls the operators export_object_data method
         """
+        # TODO: remove once tracking is hytra-only
         # Late imports here, so we don't accidentally import PyQt during headless mode.
         from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
         
