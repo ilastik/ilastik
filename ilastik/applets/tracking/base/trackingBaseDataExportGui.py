@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QFrame, QPushButton
+from PyQt4.QtGui import QPushButton, QMessageBox
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.plugins import pluginManager
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
@@ -47,6 +47,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
 
     def __init__(self, *args, **kwargs):
         super(TrackingBaseDataExportGui, self).__init__(*args, **kwargs)
+        self.pluginWasSelected = False
         self._exporting_operator = None
         self._default_export_filename = None
 
@@ -158,6 +159,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             self._includePluginOnlyOption()
 
         super(TrackingBaseDataExportGui, self)._initAppletDrawerUic()
+        self.topLevelOperator.SelectedExportSource.setValue(self.drawer.inputSelectionCombo.currentText())
 
         if len(availableExportPlugins) > 0:
             self.topLevelOperator.SelectedPlugin.setValue(availableExportPlugins[0])
@@ -197,7 +199,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
         
         dimensions = self.get_raw_shape()
-        feature_names = self.get_feature_names()        
+        feature_names = self.get_feature_names()
 
         op = self.get_exporting_operator()
         settings, selected_features = op.get_table_export_settings()
@@ -213,6 +215,22 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         settings = dialog.settings()
         selected_features = list(dialog.checked_features()) # returns a generator, but that's inconvenient because it can't be serialized.
         return settings, selected_features
+
+    def exportResultsForSlot(self, opLane):
+        if self.topLevelOperator.SelectedExportSource._value == OpTrackingBaseDataExport.PluginOnlyName and not self.pluginWasSelected:
+            QMessageBox.critical(self, "Choose Export Plugin",
+                                 "You did not select any export plugin. \nPlease do so by clicking 'Choose Export Image Settings'")
+            return
+        else:
+            super(TrackingBaseDataExportGui, self).exportResultsForSlot(opLane)
+
+    def exportAllResults(self):
+        if self.topLevelOperator.SelectedExportSource._value == OpTrackingBaseDataExport.PluginOnlyName and not self.pluginWasSelected:
+            QMessageBox.critical(self, "Choose Export Plugin",
+                                 "You did not select any export plugin. \nPlease do so by clicking 'Choose Export Image Settings'")
+            return
+        else:
+            super(TrackingBaseDataExportGui, self).exportAllResults()
 
 class TrackingBaseResultsViewer(DataExportLayerViewerGui):
     

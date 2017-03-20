@@ -579,6 +579,10 @@ class OpConservationTracking(Operator):
         if not plugin.export(filename, hypothesesGraph, object_feature_slot, label_image, self.RawImage):
             raise RuntimeError('Exporting tracking solution with plugin failed')
 
+    def get_table_export_settings(self):
+        # TODO: remove once tracking is hytra-only
+        return None, None
+
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
             rawTaggedShape = self.RawImage.meta.getTaggedShape()
