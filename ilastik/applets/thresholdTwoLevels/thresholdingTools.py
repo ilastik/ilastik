@@ -25,8 +25,10 @@ import logging
 
 # Third-party
 import numpy
+import numpy as np
 import vigra
 import psutil
+from itertools import izip
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -50,9 +52,9 @@ def getMemoryUsageMb():
 
 
 class OpAnisotropicGaussianSmoothing5d(Operator):
-    # raw volume, in 5d 'txyzc' order
+    # raw volume, in 5d 'tzyxc' order
     Input = InputSlot()
-    Sigmas = InputSlot(value={'x': 1.0, 'y': 1.0, 'z': 1.0})
+    Sigmas = InputSlot(value={'z': 1.0, 'y': 1.0, 'x': 1.0})
 
     Output = OutputSlot()
 
@@ -61,7 +63,7 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
         self.Output.meta.dtype = numpy.float32 # vigra gaussian only supports float32
         self._sigmas = self.Sigmas.value
         assert isinstance(self.Sigmas.value, dict), "Sigmas slot expects a dict"
-        assert set(self._sigmas.keys()) == set('xyz'), "Sigmas slot expects three key-value pairs for x,y,z"
+        assert set(self._sigmas.keys()) == set('zyx'), "Sigmas slot expects three key-value pairs for z,y,x"
 
     def execute(self, slot, subindex, roi, result):
         assert all(roi.stop <= self.Input.meta.shape),\
@@ -78,9 +80,9 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
             data = self.Input(*inputRoi).wait()
         logger.debug("Obtaining input data took {} seconds for roi {}".format(
             resultTimer.seconds(), inputRoi))
-        data = vigra.taggedView(data, axistags='txyzc')
+        data = vigra.taggedView(data, axistags='tzyxc')
 
-        # input is in txyzc order
+        # input is in tzyxc order
         tIndex = 0
         cIndex = 4
 
@@ -91,7 +93,7 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
         # we need to remove a singleton z axis, otherwise we get 
         # 'kernel longer than line' errors
         ts = self.Input.meta.getTaggedShape()
-        tags = [k for k in 'xyz' if ts[k] > 1]
+        tags = [k for k in 'zyx' if ts[k] > 1]
         sigma = [self._sigmas[k] for k in tags]
 
         # Check if we need to smooth
@@ -104,7 +106,7 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
             for j, c in enumerate(xrange(roi.start[cIndex], roi.stop[cIndex])):
                 # prepare the result as an argument
                 resview = vigra.taggedView(result[i, ..., j],
-                                           axistags='xyz')
+                                           axistags='zyx')
                 dataview = data[i, ..., j]
                 # TODO make this general, not just for z axis
                 resview = resview.withAxes(*tags)
@@ -122,7 +124,7 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
         n = len(stop)
         spatStart = [roi.start[i] for i in range(n) if shape[i] > 1]
         spatStop = [roi.stop[i] for i in range(n) if shape[i] > 1]
-        sigma = [0] + map(self._sigmas.get, 'xyz') + [0]
+        sigma = [0] + map(self._sigmas.get, 'zyx') + [0]
         spatialRoi = (spatStart, spatStop)
 
         inputSpatialRoi = enlargeRoiForHalo(roi.start, roi.stop, shape,
@@ -157,7 +159,7 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
 
 class OpAnisotropicGaussianSmoothing(Operator):
     Input = InputSlot()
-    Sigmas = InputSlot( value={'x':1.0, 'y':1.0, 'z':1.0} )
+    Sigmas = InputSlot( value={'z':1.0, 'y':1.0, 'x':1.0} )
     
     Output = OutputSlot()
 
@@ -174,7 +176,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
         self.Output.meta.dtype = numpy.float32 # vigra gaussian only supports float32
         self._sigmas = self.Sigmas.value
         assert isinstance(self.Sigmas.value, dict), "Sigmas slot expects a dict"
-        assert set(self._sigmas.keys()) == set('xyz'), "Sigmas slot expects three key-value pairs for x,y,z"
+        assert set(self._sigmas.keys()) == set('zyx'), "Sigmas slot expects three key-value pairs for z,y,x"
         print("Assigning output: {} ====> {}".format(self.Input.meta.getTaggedShape(), self.Output.meta.getTaggedShape()))
         #self.Output.setDirty( slice(None) )
     
@@ -187,9 +189,9 @@ class OpAnisotropicGaussianSmoothing(Operator):
             data = self.Input( *inputRoi ).wait()
         logger.debug("Obtaining input data took {} seconds for roi {}".format( resultTimer.seconds(), inputRoi ))
         
+        zIndex = self.Input.meta.axistags.index('z') if self.Input.meta.axistags.index('z')<len(self.Input.meta.shape) else None
         xIndex = self.Input.meta.axistags.index('x')
         yIndex = self.Input.meta.axistags.index('y')
-        zIndex = self.Input.meta.axistags.index('z') if self.Input.meta.axistags.index('z')<len(self.Input.meta.shape) else None
         cIndex = self.Input.meta.axistags.index('c') if self.Input.meta.axistags.index('c')<len(self.Input.meta.shape) else None
         
         # Must be float32
@@ -197,7 +199,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
             data = data.astype(numpy.float32)
         
         axiskeys = self.Input.meta.getAxisKeys()
-        spatialkeys = filter( lambda k: k in 'xyz', axiskeys )
+        spatialkeys = filter( lambda k: k in 'zyx', axiskeys )
 
         # we need to remove a singleton z axis, otherwise we get 
         # 'kernel longer than line' errors
@@ -207,7 +209,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
             removedZ = True
             data = data.reshape((data.shape[xIndex], data.shape[yIndex]))
             reskey[zIndex]=0
-            spatialkeys = filter( lambda k: k in 'xy', axiskeys )
+            spatialkeys = filter( lambda k: k in 'yx', axiskeys )
         else:
             removedZ = False
 
@@ -215,9 +217,9 @@ class OpAnisotropicGaussianSmoothing(Operator):
         #Check if we need to smooth
         if any([x < 0.1 for x in sigma]):
             if removedZ:
-                resultXY = vigra.taggedView(result, axistags="".join(axiskeys))
-                resultXY = resultXY.withAxes(*'xy')
-                resultXY[:] = data
+                resultYX = vigra.taggedView(result, axistags="".join(axiskeys))
+                resultYX = resultYX.withAxes(*'yx')
+                resultYX[:] = data
             else:
                 result[:] = data
             return result
@@ -231,7 +233,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
     
     def _getInputComputeRois(self, roi):
         axiskeys = self.Input.meta.getAxisKeys()
-        spatialkeys = filter( lambda k: k in 'xyz', axiskeys )
+        spatialkeys = filter( lambda k: k in 'zyx', axiskeys )
         sigma = map( self._sigmas.get, spatialkeys )
         inputSpatialShape = self.Input.meta.getTaggedShape()
         spatialRoi = ( TinyVector(roi.start), TinyVector(roi.stop) )
@@ -321,74 +323,73 @@ class OpSelectLabels(Operator):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.BigLabels.meta)
-        self.Output.meta.dtype = numpy.uint32
-        self.Output.meta.drange = (0, 1)
+        assert self.BigLabels.meta.getTaggedShape()['c'] == 1
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output
+        small_labels = self.SmallLabels(roi.start, roi.stop).wait()
+        small_labels = vigra.taggedView(small_labels, self.SmallLabels.meta.axistags)
 
-        # This operator is typically used with very big rois, so be extremely memory-conscious:
-        # - Don't request the small and big inputs in parallel.
-        # - Clean finished requests immediately (don't wait for this function to exit)
-        # - Delete intermediate results as soon as possible.
+        big_labels = result
+        self.BigLabels(roi.start, roi.stop).writeInto(big_labels).wait()
+        big_labels = vigra.taggedView(big_labels, self.BigLabels.meta.axistags)
 
-        if logger.isEnabledFor(logging.DEBUG):
-            dtypeBytes = self.SmallLabels.meta.getDtypeBytes()
-            roiShape = roi.stop - roi.start
-            logger.debug("Roi shape is {} = {} MB".format(roiShape, numpy.prod(roiShape) * dtypeBytes / 1e6 ))
-            starting_memory_usage_mb = getMemoryUsageMb()
-            logger.debug("Starting with memory usage: {} MB".format(starting_memory_usage_mb))
-
-        def logMemoryIncrease(msg):
-            """Log a debug message about the RAM usage compared to when this function started execution."""
-            if logger.isEnabledFor(logging.DEBUG):
-                memory_increase_mb = getMemoryUsageMb() - starting_memory_usage_mb
-                logger.debug("{}, memory increase is: {} MB".format(msg, memory_increase_mb))
-
-        smallLabelsReq = self.SmallLabels(roi.start, roi.stop)
-        smallLabels = smallLabelsReq.wait()
-        smallLabelsReq.clean()
-        logMemoryIncrease("After obtaining small labels")
-
-        smallNonZero = numpy.ndarray(shape=smallLabels.shape, dtype=bool)
-        smallNonZero[...] = (smallLabels != 0)
-        del smallLabels
-
-        logMemoryIncrease("Before obtaining big labels")
-        bigLabels = self.BigLabels(roi.start, roi.stop).wait()
-        logMemoryIncrease("After obtaining big labels")
-
-        prod = smallNonZero * bigLabels
-
-        del smallNonZero
-
-        # get labels that passed the masking
-        #passed = numpy.unique(prod)
-        passed = vigra_bincount(prod).nonzero()[0] # Much faster than unique(), which copies and sorts
-        
-        # 0 is not a valid label
-        if passed[0] == 0:
-            passed = passed[1:]
-
-        logMemoryIncrease("After taking product")
-        del prod
-
-        all_label_values = numpy.zeros((bigLabels.max()+1,),
-                                       dtype=numpy.uint32)
-
-        for i, l in enumerate(passed):
-            all_label_values[l] = i+1
-        all_label_values[0] = 0
-
-        # tricky: map the old labels to the new ones, labels that didnt pass 
-        # are mapped to zero
-        result[:] = all_label_values[bigLabels]
-
-        logMemoryIncrease("Just before return")
-        return result
+        # Writes into big_labels a.k.a. result
+        select_labels(small_labels, big_labels)
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.SmallLabels or slot == self.BigLabels:
             self.Output.setDirty(slice(None))
         else:
             assert False, "Unknown input slot: {}".format(slot.name)
+
+def select_labels( small_labels, big_labels ):
+    """
+    Given label images small_labels and big_labels, remove (overwrite with zero) objects
+    from big_labels which don't overlap with any non-zero pixels in small_labels.
+
+    ** Works IN-PLACE (to save RAM) **
+    
+    Both inputs are modified: small_labels for temporary storage, big_labels for the result
+    """
+    assert hasattr(small_labels, 'axistags')
+    assert hasattr(big_labels, 'axistags')
+    assert small_labels.shape == big_labels.shape
+
+    small_labels = small_labels.withAxes('tzyx')
+    big_labels = big_labels.withAxes('tzyx')
+
+    for small_labels_3d, big_labels_3d in izip(small_labels, big_labels):
+        # For each non-zero small label pixel, replace it with the corresponding big label pixel
+        np.copyto(small_labels_3d, big_labels_3d, where=(small_labels_3d != 0))
+    
+        # Construct mapping to relabel big_labels
+        # By default, big labels map to 0
+        orig_big_values = vigra.analysis.unique( big_labels_3d )    
+        mapping = { v:0 for v in orig_big_values }
+        
+        # But big labels that pass the filter map to themselves.
+        filtered_big_values = vigra.analysis.unique( small_labels_3d )
+        mapping.update( { v:v for v in filtered_big_values } )
+    
+        vigra.analysis.applyMapping(big_labels_3d, mapping, out=big_labels_3d)
+
+
+if __name__ == "__main__":
+    small_labels = np.zeros((100,100), dtype=np.uint32)
+    small_labels[10:20, 10:20] = 1
+    small_labels[40:50, 10:20] = 2 # Won't be used.
+
+    big_labels = np.zeros((100,100), dtype=np.uint32)
+    big_labels[10:30, 10:30] = 2 # Should be preserved
+    big_labels[10:30, 40:50] = 3 # Should get dropped
+
+    small_labels_orig = small_labels.copy()
+    big_labels_orig = big_labels.copy()
+
+    select_labels(small_labels, big_labels)
+
+    expected_result = big_labels_orig.copy()
+    expected_result[10:30, 40:50] = 0
+    assert (big_labels == expected_result).all()
+    print 'DONE'

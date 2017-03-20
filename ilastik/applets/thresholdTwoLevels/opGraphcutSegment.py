@@ -33,5 +33,5 @@ def haveGraphCut():
 
 
 if haveGraphCut():
-    from _OpGraphCut import OpGraphCut
+    from _OpGraphCut import OpGraphCut, segmentGC
     from _OpObjectsSegment import OpObjectsSegment

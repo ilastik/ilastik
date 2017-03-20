@@ -21,47 +21,60 @@ def identity_preserving_hysteresis_thresholding( img,
     binary_seeds = (img >= high_threshold).view(numpy.uint8) # bool is 8-bit in numpy
 
     logger.debug("Labeling")
-    seed_labels = label_with_background(binary_seeds)
+    core_labels = label_with_background(binary_seeds)
+
+    # Toss out the tiny objects
+    logger.debug("Filtering core labels")
+    filter_labels(core_labels, min_size, max_size)
+    if core_labels.max() == 0:
+        # Everything got filtered out.
+        return 
+
+    watershed_labels = threshold_from_cores(img, core_labels, low_threshold, out)
+    return watershed_labels
+
+
+def threshold_from_cores(img, core_labels, final_threshold, out=None):
+    """
+    Given a grayscale image and a label image of object 'cores', use core_labels
+    as the seeds for a (upside-down) watershed operation.  The watershed will be restricted to
+    those pixels within the bounds defined by the given final_threshold value.
+    
+    img:
+        The single-channel input data.  (It will be inverted before the watershed is performed.)
+    
+    core_labels:
+        A label image indicating high-valued pixel regions from which to seed the watershed.
+    
+    low_threshold:
+        The watershed will proceed until reaching this threshold value.
+    
+    out:
+        (Optional.) Where to write the results, a label image filling the around
+        core_labels that are greater than final_threshold.
+    """
+    assert hasattr(img, 'axistags')
 
     # Invert image for the watershed
     # (Must add img_max here because StopAtThreshold method can't handle negative values.)
     logger.debug("Inverting image")
     img_max = img.max()
     inverted_img = -img + img_max
-    inverted_low_threshold = -1*img.dtype.type(low_threshold) + img_max
+    inverted_threshold = -1*img.dtype.type(final_threshold) + img_max
 
-    # The 'low threshold' is actually a watersehd operation.    
-    logger.debug("First watershed")
-    
     # Make sure arrays have matching axes
-    inverted_img = inverted_img.withAxes(seed_labels.axistags.keys())
+    inverted_img = inverted_img.withAxes(core_labels.axistags.keys())
     if out is not None:
-        out = out.withAxes(seed_labels.axistags.keys())
+        out = out.withAxes(core_labels.axistags.keys())
     
+    # The 'low threshold' is actually a watershed operation.    
     watershed_labels, max_label = vigra.analysis.watershedsNew( inverted_img,
-                                                                seeds=seed_labels,
+                                                                seeds=core_labels,
                                                                 terminate=vigra.analysis.SRGType.StopAtThreshold,
-                                                                max_cost=inverted_low_threshold,
+                                                                max_cost=inverted_threshold,
                                                                 out=out )
-
-    # Toss out the tiny objects
-    logger.debug("Filtering labels")
-    filter_labels(watershed_labels, min_size, max_size)
-    
-    if watershed_labels.max() == 0:
-        # Everything got filtered out.
-        return watershed_labels
-      
-    # Run watershed a second time to make sure the larger labels
-    #  eat up the tiny stuff we removed, if it was adjacent.
-    logger.debug("Second watershed")
-    vigra.analysis.watershedsNew( inverted_img,
-                                  seeds=watershed_labels,
-                                  terminate=vigra.analysis.SRGType.StopAtThreshold,
-                                  max_cost=inverted_low_threshold,
-                                  out=watershed_labels )
-    logger.debug("Complete")
     return watershed_labels
+    
 
 def label_with_background(img):
     img = img.squeeze()

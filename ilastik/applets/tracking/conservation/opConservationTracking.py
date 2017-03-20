@@ -126,7 +126,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         # FIXME: assumes t,x,y,z,c
         chunks[0] = 1  # 't'        
         self._blockshape = tuple(chunks)
-        self._opCache.outerBlockShape.setValue(self._blockshape)
+        self._opCache.BlockShape.setValue(self._blockshape)
 
         self.AllBlocks.meta.shape = (1,)
         self.AllBlocks.meta.dtype = object
@@ -134,8 +134,8 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
         self.RelabeledImage.meta.assignFrom(self.LabelImage.meta)
 
-        self._mergerOpCache.outerBlockShape.setValue( self._blockshape )
-        self._relabeledOpCache.outerBlockShape.setValue( self._blockshape )
+        self._mergerOpCache.BlockShape.setValue( self._blockshape )
+        self._relabeledOpCache.BlockShape.setValue( self._blockshape )
         
         frame_shape = (1,) + self.LabelImage.meta.shape[1:] # assumes t,x,y,z,c order
         assert frame_shape[-1] == 1

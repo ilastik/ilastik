@@ -31,6 +31,9 @@ from lazyflow.utility.timer import Timer, timeLogged
 
 from tests.helpers import ShellGuiTestCaseBase
 
+from ilastik.applets.pixelClassification.pixelClassificationApplet import PixelClassificationApplet
+PIXEL_CLASSIFICATION_INDEX = 2
+
 import logging
 logger = logging.getLogger(__name__)
 logger.addHandler( logging.StreamHandler(sys.stdout) )
@@ -147,6 +150,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         def impl():
             self.shell.openProjectFile(self.PROJECT_FILE)
             assert self.shell.projectManager.currentProjectFile is not None
+            assert isinstance(self.shell.workflow.applets[PIXEL_CLASSIFICATION_INDEX], PixelClassificationApplet)
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
@@ -170,7 +174,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             opPix = pixClassApplet.topLevelOperator
 
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(PIXEL_CLASSIFICATION_INDEX)
             
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
@@ -300,7 +304,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             gui = pixClassApplet.getMultiLaneGui()
 
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(PIXEL_CLASSIFICATION_INDEX)
 
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
@@ -350,7 +354,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             opPix = pixClassApplet.topLevelOperator
 
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(PIXEL_CLASSIFICATION_INDEX)
 
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )

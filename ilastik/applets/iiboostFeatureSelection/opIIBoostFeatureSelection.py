@@ -152,8 +152,7 @@ class OpIIBoostFeatureSelection(Operator):
         self.opHessianEigenvectors.Sigma.setValue( hessian_ev_sigma )
 
         # Copy the cache block settings from the standard pixel feature operator.
-        self.opHessianEigenvectorCache.innerBlockShape.setValue( self.opFeatureSelection.opPixelFeatureCache.innerBlockShape.value )
-        self.opHessianEigenvectorCache.outerBlockShape.setValue( self.opFeatureSelection.opPixelFeatureCache.outerBlockShape.value )
+        self.opHessianEigenvectorCache.BlockShape.setValue( self.opFeatureSelection.opPixelFeatureCache.BlockShape.value )
 
     def propagateDirty(self, slot, subindex, roi):
         # All channels are dirty

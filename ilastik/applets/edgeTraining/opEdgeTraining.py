@@ -142,7 +142,7 @@ class OpEdgeTraining(Operator):
             self.EdgeLabelsDict[lane_index].setValue({})
 
     def setupOutputs(self):
-        for sp_slot, seg_cache_blockshape_slot in zip(self.Superpixels, self.opNaiveSegmentationCache.outerBlockShape):
+        for sp_slot, seg_cache_blockshape_slot in zip(self.Superpixels, self.opNaiveSegmentationCache.BlockShape):
             assert sp_slot.meta.dtype == np.uint32
             assert sp_slot.meta.getAxisKeys()[-1] == 'c'
             seg_cache_blockshape_slot.setValue( sp_slot.meta.shape )

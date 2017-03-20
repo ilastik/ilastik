@@ -207,8 +207,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
             We need to double-wrap the cache, so we need this operator to provide the first level of wrapping.
             """
             Input = InputSlot(level=1) 
-            innerBlockShape = InputSlot()
-            outerBlockShape = InputSlot()
+            BlockShape = InputSlot()
             fixAtCurrent = InputSlot(value = False)
     
             Output = OutputSlot(level=1)
@@ -218,8 +217,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
                 self._innerOperator = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self )
                 self._innerOperator.Input.connect( self.Input )
                 self._innerOperator.fixAtCurrent.connect( self.fixAtCurrent )
-                self._innerOperator.innerBlockShape.connect( self.innerBlockShape )
-                self._innerOperator.outerBlockShape.connect( self.outerBlockShape )
+                self._innerOperator.BlockShape.connect( self.BlockShape )
                 self.Output.connect( self._innerOperator.Output )
                 
             def execute(self, slot, subindex, roi, destination):
@@ -390,19 +388,12 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
                        'x' : (256,256),
                        'c' : (100,100) }
 
-        innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
-        outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
+        blockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
+        blockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
+        blockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
 
-        innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
-        outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
-
-        innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
-        outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
-
-        self.opPredictionImageCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.opPredictionImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
-        self.opProbChannelsImageCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.opProbChannelsImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+        self.opPredictionImageCache.BlockShape.setValue( (blockShapeX, blockShapeY, blockShapeZ) )
+        self.opProbChannelsImageCache.BlockShape.setValue( (blockShapeX, blockShapeY, blockShapeZ) )
         self.MaxNumObj.setValue( len(self.LabelNames.value) - 1)
 
     def setInSlot(self, slot, subindex, roi, value):

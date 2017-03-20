@@ -57,6 +57,7 @@ class OpMockPixelClassifier(Operator):
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
+    Bookmarks = OutputSlot(level=1)
     
     def __init__(self, *args, **kwargs):
         super(OpMockPixelClassifier, self).__init__(*args, **kwargs)
