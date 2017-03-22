@@ -560,7 +560,7 @@ class OpConservationTracking(Operator):
 
         return opRelabeledRegionFeatures
 
-    def exportPlugin(self, filename, plugin, checkOverwriteFiles=True):
+    def exportPlugin(self, filename, plugin, checkOverwriteFiles=False):
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False
 
@@ -578,10 +578,12 @@ class OpConservationTracking(Operator):
             label_image = self.LabelImage
         
         hypothesesGraph = self.HypothesesGraph.value
-        if not plugin.checkOverwriteFiles(filename, checkOverwriteFiles):
+        if plugin.checkOverwriteFiles(filename, checkOverwriteFiles):
             return False
         if not plugin.export(filename, hypothesesGraph, object_feature_slot, label_image, self.RawImage):
             raise RuntimeError('Exporting tracking solution with plugin failed')
+        else:
+            return True
 
     def get_table_export_settings(self):
         # TODO: remove once tracking is hytra-only
