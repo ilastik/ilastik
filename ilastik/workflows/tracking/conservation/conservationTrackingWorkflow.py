@@ -391,16 +391,15 @@ class ConservationTrackingWorkflowBase( Workflow ):
                     logger.error("Cannot export from plugin with empty output filename")
                     return
 
-                if overwriteExistingFiles == False and selectedPlugin == 'H5-Event-Sequence' and os.path.exists(filename + '/H5-Event-Sequence/'):
-                    return False
-                if overwriteExistingFiles == False and selectedPlugin == 'Fiji-MaMuT' and os.path.exists(filename + '_mamut.xml'):
-                    return False
+                # if overwriteExistingFiles == False and selectedPlugin == 'H5-Event-Sequence' and os.path.exists(filename + '/H5-Event-Sequence/'):
+                #     return False
+                # if overwriteExistingFiles == False and selectedPlugin == 'Fiji-MaMuT' and os.path.exists(filename + '_mamut.xml'):
+                #     return False
 
-                self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin)
-
+                exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin, overwriteExistingFiles)
+                if not exportStatus:
+                    return False
                 logger.info("Export done")
-                # QMessageBox.information(self, "Export done",
-                #                         "The files have been successfully exported in the requested format.")
 
             return
 

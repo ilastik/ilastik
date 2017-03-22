@@ -35,6 +35,12 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
 
     exportsToFile = True
 
+    def checkOverwriteFiles(self, filename, overwriteExistingFiles):
+        if not overwriteExistingFiles and os.path.exists(filename + '/H5-Event-Sequence/'):
+            return False
+        else:
+            return True
+
     def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
         """Export the tracking solution stored in the hypotheses graph to two XML files so that 
         a) the raw data can be displayed in Fiji's BigDataViewer, and b) that the tracks can be visualized in MaMuT. 
