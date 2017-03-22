@@ -393,11 +393,11 @@ class DataExportGui(QWidget):
                     opLaneView.run_export()
                     
                     # Client hook
-                    exportStatus = self.parentApplet.post_process_lane_export(lane_index, 0)
+                    exportStatus = self.parentApplet.post_process_lane_export(lane_index, overwriteExistingFiles=False)
                     if exportStatus == False:
                         self.showOverwriteQuestion()
                         if self.overwrite == True:
-                            self.parentApplet.post_process_lane_export(lane_index, 1)
+                            self.parentApplet.post_process_lane_export(lane_index, overwriteExistingFiles=True)
                 except Exception as ex:
                     if opLaneView.ExportPath.ready():
                         msg = "Failed to generate export file: \n"

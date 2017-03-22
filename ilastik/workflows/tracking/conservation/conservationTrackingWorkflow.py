@@ -355,7 +355,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             withBatchProcessing = True
         )
 
-    def post_process_lane_export(self, lane_index, time=1):
+    def post_process_lane_export(self, lane_index, overwriteExistingFiles=True):
         # `time` parameter ensures we check only once for files that could be overwritten, pop up
         # the MessageBox and then don't export (time=0). For the next round we click the export button,
         # we really want it to export, so time=1. The default parameter is 1, so everything but not 0,
@@ -391,9 +391,9 @@ class ConservationTrackingWorkflowBase( Workflow ):
                     logger.error("Cannot export from plugin with empty output filename")
                     return
 
-                if time == 0 and selectedPlugin == 'H5-Event-Sequence' and os.path.exists(filename + '/H5-Event-Sequence/'):
+                if overwriteExistingFiles == False and selectedPlugin == 'H5-Event-Sequence' and os.path.exists(filename + '/H5-Event-Sequence/'):
                     return False
-                if time == 0 and selectedPlugin == 'Fiji-MaMuT' and os.path.exists(filename + '_mamut.xml'):
+                if overwriteExistingFiles == False and selectedPlugin == 'Fiji-MaMuT' and os.path.exists(filename + '_mamut.xml'):
                     return False
 
                 self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin)
