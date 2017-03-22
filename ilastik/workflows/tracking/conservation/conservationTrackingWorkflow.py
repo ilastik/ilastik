@@ -356,6 +356,11 @@ class ConservationTrackingWorkflowBase( Workflow ):
         )
 
     def post_process_lane_export(self, lane_index, time=1):
+        # `time` parameter ensures we check only once for files that could be overwritten, pop up
+        # the MessageBox and then don't export (time=0). For the next round we click the export button,
+        # we really want it to export, so time=1. The default parameter is 1, so everything but not 0,
+        # in order to ensure writing out even in headless mode.
+        
         # FIXME: This probably only works for the non-blockwise export slot.
         #        We should assert that the user isn't using the blockwise slot.
 
