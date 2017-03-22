@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QFrame, QPushButton
+from PyQt4.QtGui import QPushButton, QMessageBox
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.plugins import pluginManager
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
@@ -47,6 +47,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
 
     def __init__(self, *args, **kwargs):
         super(TrackingBaseDataExportGui, self).__init__(*args, **kwargs)
+        self.pluginWasSelected = False
         self._exporting_operator = None
         self._default_export_filename = None
 
@@ -158,8 +159,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             self._includePluginOnlyOption()
 
         super(TrackingBaseDataExportGui, self)._initAppletDrawerUic()
-        btn = QPushButton("Configure Table Export for Tracking+Features", clicked=self.configure_table_export)
-        self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
+        self.topLevelOperator.SelectedExportSource.setValue(self.drawer.inputSelectionCombo.currentText())
 
         if len(availableExportPlugins) > 0:
             self.topLevelOperator.SelectedPlugin.setValue(availableExportPlugins[0])
@@ -167,6 +167,8 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             # register the "plugins" option in the parent
             self._includePluginOnlyOption()
         else:
+            btn = QPushButton("Configure Table Export for Tracking+Features", clicked=self.configure_table_export)
+            self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
             self.topLevelOperator.SelectedPlugin.setValue(None)
 
     def _handleInputComboSelectionChanged( self, index ):
@@ -184,6 +186,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         self.topLevelOperator.SelectedExportSource.setValue(sourceName)
 
     def set_default_export_filename(self, filename):
+        # TODO: remove once tracking is hytra-only
         self._default_export_filename = filename
 
     # override this ExportingOperator function so that we can pass the default filename
@@ -191,11 +194,12 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         """
         Shows the ExportObjectInfoDialog and calls the operators export_object_data method
         """
+        # TODO: remove once tracking is hytra-only
         # Late imports here, so we don't accidentally import PyQt during headless mode.
         from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
         
         dimensions = self.get_raw_shape()
-        feature_names = self.get_feature_names()        
+        feature_names = self.get_feature_names()
 
         op = self.get_exporting_operator()
         settings, selected_features = op.get_table_export_settings()
@@ -211,6 +215,22 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         settings = dialog.settings()
         selected_features = list(dialog.checked_features()) # returns a generator, but that's inconvenient because it can't be serialized.
         return settings, selected_features
+
+    def exportResultsForSlot(self, opLane):
+        if self.topLevelOperator.SelectedExportSource._value == OpTrackingBaseDataExport.PluginOnlyName and not self.pluginWasSelected:
+            QMessageBox.critical(self, "Choose Export Plugin",
+                                 "You did not select any export plugin. \nPlease do so by clicking 'Choose Export Image Settings'")
+            return
+        else:
+            super(TrackingBaseDataExportGui, self).exportResultsForSlot(opLane)
+
+    def exportAllResults(self):
+        if self.topLevelOperator.SelectedExportSource._value == OpTrackingBaseDataExport.PluginOnlyName and not self.pluginWasSelected:
+            QMessageBox.critical(self, "Choose Export Plugin",
+                                 "You did not select any export plugin. \nPlease do so by clicking 'Choose Export Image Settings'")
+            return
+        else:
+            super(TrackingBaseDataExportGui, self).exportAllResults()
 
 class TrackingBaseResultsViewer(DataExportLayerViewerGui):
     

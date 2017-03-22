@@ -97,7 +97,9 @@ if __name__ == "__main__":
     #app.setStyle("cleanlooks")
     
     ex = FeatureDlg()
-    ex.createFeatureTable([("Color", [FeatureEntry("Banananananaana")]), ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])], [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
+    ex.createFeatureTable([("Color", [FeatureEntry("Banananananaana")]), ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])],
+                          [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0],
+                          2.0)
     ex.setWindowTitle("FeatureTest")
     ex.setImageToPreView(None)
     ex.exec_()

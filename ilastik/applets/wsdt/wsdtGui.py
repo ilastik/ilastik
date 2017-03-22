@@ -26,7 +26,7 @@ import numpy as np
 
 import sip
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QDoubleSpinBox, QVBoxLayout, \
+from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QDoubleSpinBox, QVBoxLayout, QMenu, QAction, \
                         QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QComboBox, QPushButton
 
 from ilastik.utility.gui import threadRouted
@@ -95,17 +95,26 @@ class WsdtGui(LayerViewerGui):
 
         drawer_layout = QVBoxLayout()
 
-        channel_box = QSpinBox()
-        def set_channel_box_range(*args):
-            if sip.isdeleted(channel_box):
+        channel_button = QPushButton()
+        self.channel_menu = QMenu(self) # Must retain menus (in self) or else they get deleted.
+        channel_button.setMenu(self.channel_menu)
+        channel_button.clicked.connect(channel_button.showMenu)
+        def populate_channel_menu(*args):
+            if sip.isdeleted(channel_button):
                 return
-            channel_box.setMinimum(0)
-            channel_box.setMaximum( op.Input.meta.getTaggedShape()['c']-1 )
-        set_channel_box_range()
-        op.Input.notifyMetaChanged( set_channel_box_range )
-        configure_update_handlers( channel_box.valueChanged, op.ChannelSelection )
-        drawer_layout.addLayout( control_layout( "Input Channel", channel_box ) )
-        self.channel_box = channel_box
+            self.channel_menu.clear()
+            self.channel_actions = []
+            for ch in range(op.Input.meta.getTaggedShape()['c']):
+                action = QAction("Channel {}".format(ch), self.channel_menu)
+                action.setCheckable(True)
+                self.channel_menu.addAction(action)
+                self.channel_actions.append(action)
+                configure_update_handlers( action.toggled, op.ChannelSelections )
+        populate_channel_menu()
+        op.Input.notifyMetaChanged( populate_channel_menu )
+        self.__cleanup_fns.append( partial( op.Input.unregisterMetaChanged, populate_channel_menu ) )
+        drawer_layout.addLayout( control_layout( "Input Channel", channel_button ) )
+        self.channel_button = channel_button
 
         threshold_box = QDoubleSpinBox()
         threshold_box.setDecimals(2)
@@ -165,8 +174,13 @@ class WsdtGui(LayerViewerGui):
         drawer_layout.addLayout( control_layout( "Show Debug Layers", enable_debug_box ) )
         self.enable_debug_box = enable_debug_box
 
-        compute_button = QPushButton("Update Watershed", clicked=self.onUpdateWatershedsButton)
-        drawer_layout.addWidget( compute_button )
+        op.Superpixels.notifyReady(self.configure_gui_from_operator)
+        op.Superpixels.notifyUnready(self.configure_gui_from_operator)
+        self.__cleanup_fns.append( partial( op.Superpixels.unregisterReady, self.configure_gui_from_operator ) )
+        self.__cleanup_fns.append( partial( op.Superpixels.unregisterUnready, self.configure_gui_from_operator ) )
+
+        self.update_ws_button = QPushButton("Update Watershed", clicked=self.onUpdateWatershedsButton)
+        drawer_layout.addWidget( self.update_ws_button )
 
         drawer_layout.setSpacing(0)
         drawer_layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
@@ -193,10 +207,15 @@ class WsdtGui(LayerViewerGui):
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
-            self.channel_box.setValue( op.ChannelSelection.value )
-            input_layer = self.getLayerByName("Input")
-            if input_layer:
-                input_layer.channel = op.ChannelSelection.value
+            
+            channel_selections = op.ChannelSelections.value
+            for ch in range(op.Input.meta.shape[-1]):
+                self.channel_actions[ch].setChecked(ch in channel_selections)
+
+            if len(channel_selections) == 0:
+                self.channel_button.setText("Please Select")
+            else:
+                self.channel_button.setText(",".join(map(str, channel_selections)))
             
             self.threshold_box.setValue( op.Pmin.value )
             self.membrane_size_box.setValue( op.MinMembraneSize.value )
@@ -206,13 +225,21 @@ class WsdtGui(LayerViewerGui):
             self.seed_method_combo.setCurrentIndex( int(op.GroupSeeds.value) )
             self.preserve_pmaps_box.setChecked( op.PreserveMembranePmaps.value )
             self.enable_debug_box.setChecked( op.EnableDebugOutputs.value )
+            
+            self.update_ws_button.setEnabled( op.Superpixels.ready() )
 
     def configure_operator_from_gui(self):
         if self._currently_updating:
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
-            op.ChannelSelection.setValue( self.channel_box.value() )
+            
+            channel_selections = []
+            for ch in range(len(self.channel_actions)):
+                if self.channel_actions[ch].isChecked():
+                    channel_selections.append(ch)
+
+            op.ChannelSelections.setValue( channel_selections )
             op.Pmin.setValue( self.threshold_box.value() )
             op.MinMembraneSize.setValue( self.membrane_size_box.value() )
             op.MinSegmentSize.setValue( self.superpixel_size_box.value() )
@@ -221,6 +248,9 @@ class WsdtGui(LayerViewerGui):
             op.GroupSeeds.setValue( bool(self.seed_method_combo.currentIndex()) )
             op.PreserveMembranePmaps.setValue( self.preserve_pmaps_box.isChecked() )
             op.EnableDebugOutputs.setValue( self.enable_debug_box.isChecked() )
+
+        # The GUI may need to respond to some changes in the operator outputs.
+        self.configure_gui_from_operator()
 
     def onUpdateWatershedsButton(self):
         def updateThread():

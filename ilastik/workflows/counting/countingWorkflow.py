@@ -24,7 +24,6 @@ from lazyflow.graph import Graph, Operator, OperatorWrapper
 
 from ilastik.workflow import Workflow
 
-from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
@@ -42,7 +41,7 @@ logger = logging.getLogger(__name__)
 class CountingWorkflow(Workflow):
     workflowName = "Cell Density Counting"
     workflowDescription = "This is obviously self-explanatory."
-    defaultAppletIndex = 1 # show DataSelection by default
+    defaultAppletIndex = 0 # show DataSelection by default
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
@@ -58,8 +57,6 @@ class CountingWorkflow(Workflow):
         ######################
         # Interactive workflow
         ######################
-
-        self.projectMetadataApplet = ProjectMetadataApplet()
 
         self.dataSelectionApplet = DataSelectionApplet(self,
                                                        "Input Data",
@@ -90,7 +87,6 @@ class CountingWorkflow(Workflow):
         opDataExport.SelectionNames.setValue( ['Probabilities'] )        
 
         self._applets = []
-        self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.featureSelectionApplet)
         self._applets.append(self.countingApplet)

@@ -146,6 +146,8 @@ class PluginExportOptionsDlg(QDialog):
             self.pluginDropdown.setCurrentIndex(0)
         elif parent.topLevelOperator.SelectedPlugin.value == 'Fiji-MaMuT':
             self.pluginDropdown.setCurrentIndex(1)
+        elif parent.topLevelOperator.SelectedPlugin.value == 'CSV-Table':
+            self.pluginDropdown.setCurrentIndex(2)
         else:
             raise NotImplementedError
         self.pluginDropdown.currentIndexChanged[str].connect(onSelectedExportPluginChanged)

@@ -33,19 +33,24 @@ parser.add_argument('--playback_speed', help='Speed to play the playback script.
 parser.add_argument('--exit_on_failure', help='Immediately call exit(1) if an unhandled exception occurs.', action='store_true', default=False)
 parser.add_argument('--exit_on_success', help='Quit the app when the playback is complete.', action='store_true', default=False)
 
-def main( parsed_args, workflow_cmdline_args=[] ):
+def main( parsed_args, workflow_cmdline_args=[], init_logging=True ):
+    """
+    init_logging: Skip logging config initialization by setting this to False.
+                  (Useful when opening multiple projects in a Python script.)
+    """
     this_path = os.path.dirname(__file__)
     ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
     _update_debug_mode( parsed_args )
     
     # If necessary, redirect stdout BEFORE logging is initialized
     _redirect_output( parsed_args )
-    _init_logging( parsed_args ) # Initialize logging before anything else
+
+    if init_logging:
+        _init_logging( parsed_args ) # Initialize logging before anything else
 
     _init_configfile( parsed_args )
     
     _init_threading_logging_monkeypatch()
-    _init_threading_h5py_monkeypatch()
     _validate_arg_compatibility( parsed_args )
 
     # Extra initialization functions.
@@ -169,25 +174,6 @@ def _init_threading_logging_monkeypatch():
             ordinary_start(self)
             thread_start_logger.debug( "Started thread: id={:x}, name={}".format( self.ident, self.name ) )
         threading.Thread.start = logged_start
-
-def _init_threading_h5py_monkeypatch():
-    """
-    Due to an h5py bug [1], spurious error messages aren't properly 
-    hidden if they occur in any thread other than the main thread.
-    As a workaround, here we monkeypatch threading.Thread.run() to 
-    make sure all threads silence errors from h5py.
-    
-    [1]: https://github.com/h5py/h5py/issues/580
-    See also: https://github.com/ilastik/ilastik/issues/1120
-    """
-    import h5py
-    if map(int, h5py.__version__.split('.')) <= [2,5,0]:
-        import threading
-        run_old = threading.Thread.run
-        def run(*args, **kwargs):
-            h5py._errors.silence_errors()
-            run_old(*args, **kwargs)
-        threading.Thread.run = run
 
 def _validate_arg_compatibility( parsed_args ):
     # Check for bad input options

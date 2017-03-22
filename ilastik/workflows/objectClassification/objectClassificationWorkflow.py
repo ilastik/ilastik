@@ -29,7 +29,6 @@ import numpy
 import h5py
 
 from ilastik.workflow import Workflow
-from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet
@@ -49,6 +48,7 @@ from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 from lazyflow.operators.valueProviders import OpAttributeSelector
 from lazyflow.roi import TinyVector
 from lazyflow.utility import PathComponents
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import logging
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ OUTPUT_COLUMNS = ["x_px", "y_px", "z_px",
 
 class ObjectClassificationWorkflow(Workflow):
     workflowName = "Object Classification Workflow Base"
-    defaultAppletIndex = 1 # show DataSelection by default
+    defaultAppletIndex = 0 # show DataSelection by default
 
     def __init__(self, shell, headless,
                  workflow_cmdline_args,
@@ -105,8 +105,6 @@ class ObjectClassificationWorkflow(Workflow):
         self._applets = []
 
         self.pcApplet = None
-        self.projectMetadataApplet = ProjectMetadataApplet()
-        self._applets.append(self.projectMetadataApplet)
 
         self.setupInputs()
         
@@ -466,7 +464,7 @@ class ObjectClassificationWorkflow(Workflow):
         # FIRST, remove all objects that lie outside the block (i.e. remove the ones in the halo)
         region_features = opBatchClassify.BlockwiseRegionFeatures( *sub_block_roi ).wait()
         region_features_dict = region_features.flat[0]
-        region_centers = region_features_dict['Default features']['RegionCenter']
+        region_centers = region_features_dict[default_features_key]['RegionCenter']
 
         opBlockPipeline = opBatchClassify._blockPipelines[ tuple(roi[0]) ]
 
@@ -510,9 +508,9 @@ class ObjectClassificationWorkflow(Workflow):
         total_offset_5d = halo_roi[0] + image_offset
         total_offset_3d = total_offset_5d[1:-1]
 
-        filtered_features["Default features"]["RegionCenter"] += total_offset_3d
-        filtered_features["Default features"]["Coord<Minimum>"] += total_offset_3d
-        filtered_features["Default features"]["Coord<Maximum>"] += total_offset_3d
+        filtered_features[default_features_key]["RegionCenter"] += total_offset_3d
+        filtered_features[default_features_key]["Coord<Minimum>"] += total_offset_3d
+        filtered_features[default_features_key]["Coord<Maximum>"] += total_offset_3d
 
         # Finally, write the features to hdf5
         h5File = blockwise_fileset.getOpenHdf5FileForBlock( roi[0] )
@@ -525,10 +523,10 @@ class ObjectClassificationWorkflow(Workflow):
         pickled_features = vectorized_pickle_dumps(numpy.array((filtered_features,)))
         dataset[0] = pickled_features
 
-        object_centers_xyz = filtered_features["Default features"]["RegionCenter"].astype(int)
-        object_min_coords_xyz = filtered_features["Default features"]["Coord<Minimum>"].astype(int)
-        object_max_coords_xyz = filtered_features["Default features"]["Coord<Maximum>"].astype(int)
-        object_sizes = filtered_features["Default features"]["Count"][:,0].astype(int)
+        object_centers_xyz = filtered_features[default_features_key]["RegionCenter"].astype(int)
+        object_min_coords_xyz = filtered_features[default_features_key]["Coord<Minimum>"].astype(int)
+        object_max_coords_xyz = filtered_features[default_features_key]["Coord<Maximum>"].astype(int)
+        object_sizes = filtered_features[default_features_key]["Count"][:,0].astype(int)
 
         # Also, write out selected features as a 'point cloud' csv file.
         # (Store the csv file next to this block's h5 file.)
@@ -586,6 +584,9 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         self._applets.append(self.pcApplet)
         self._applets.append(self.thresholdingApplet)
 
+        if not self._headless:
+            self._shell.currentAppletChanged.connect( self.handle_applet_changed )
+
 
     def connectInputs(self, laneIndex):
                
@@ -616,7 +617,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opClassify.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
 
         op5raw.Input.connect(rawslot)
-        op5pred.Input.connect(opClassify.PredictionProbabilities)
+        op5pred.Input.connect(opClassify.CachedPredictionProbabilities)
 
         opThreshold.RawInput.connect(op5raw.Output)
         opThreshold.InputImage.connect(op5pred.Output)
@@ -644,7 +645,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         cumulated_readyness = cumulated_readyness and features_ready
         self._shell.setAppletEnabled(self.pcApplet, cumulated_readyness)
 
-        slot = self.pcApplet.topLevelOperator.PredictionProbabilities
+        slot = self.pcApplet.topLevelOperator.CachedPredictionProbabilities
         predictions_ready = len(slot) > 0 and \
             slot[0].ready() and \
             (TinyVector(slot[0].meta.shape) > 0).all()
@@ -662,6 +663,13 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
 
         super(ObjectClassificationWorkflowPixel, self).handleAppletStateUpdateRequested(upstream_ready=cumulated_readyness)
 
+    def handle_applet_changed(self, prev_index, current_index):
+        if prev_index != current_index:
+            # If the user is viewing an applet downstream of the pixel classification applet,
+            # Make sure it's in 'live update' mode, since the rest of the workflow pulls from the *cached* predictions.
+            opPixelClassification = self.pcApplet.topLevelOperator
+            opPixelClassification.FreezePredictions.setValue( self._shell.currentAppletIndex <= self.applets.index( self.pcApplet ) )
+                        
 
 class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from binary image)"

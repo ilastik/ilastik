@@ -211,14 +211,14 @@ def create_slicing(axistags, dimensions, margin, feature_table):
     """
     assert margin >= 0, "Margin muss be greater than or equal to 0"
     time = feature_table[Default.TimeColumnName].astype(np.int32)
-    minx = feature_table["Coord<Minimum>_0"].astype(np.int32)
-    maxx = feature_table["Coord<Maximum>_0"].astype(np.int32)
-    miny = feature_table["Coord<Minimum>_1"].astype(np.int32)
-    maxy = feature_table["Coord<Maximum>_1"].astype(np.int32)
+    minx = feature_table["Bounding Box Minimum_0"].astype(np.int32)
+    maxx = feature_table["Bounding Box Maximum_0"].astype(np.int32)
+    miny = feature_table["Bounding Box Minimum_1"].astype(np.int32)
+    maxy = feature_table["Bounding Box Maximum_1"].astype(np.int32)
     table_shape = feature_table.shape[0]
     try:
-        minz = feature_table["Coord<Minimum>_2"].astype(np.int32)
-        maxz = feature_table["Coord<Maximum>_2"].astype(np.int32)
+        minz = feature_table["Bounding Box Minimum_2"].astype(np.int32)
+        maxz = feature_table["Bounding Box Maximum_2"].astype(np.int32)
     except ValueError:
         minz = maxz = [0] * table_shape
 

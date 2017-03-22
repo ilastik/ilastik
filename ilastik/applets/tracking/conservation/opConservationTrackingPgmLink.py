@@ -207,6 +207,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
         parameters['withArmaCoordinates'] = withArmaCoordinates
         parameters['appearanceCost'] = appearance_cost
         parameters['disappearanceCost'] = disappearance_cost
+        parameters['max_nearest_neighbors'] = max_nearest_neighbors
 
         do_build_hypotheses_graph = True
 
@@ -528,7 +529,6 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
         opRelabeledRegionFeatures.LabelImage.connect(self.LabelImage)
         opRelabeledRegionFeatures.RelabeledImage.connect(self.RelabeledImage)
         opRelabeledRegionFeatures.OriginalRegionFeatures.connect(original_feature_slot)
-        opRelabeledRegionFeatures.ResolvedTo.setValue(self.resolvedto)
 
         vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name]))
         feature_names_vigra = {}

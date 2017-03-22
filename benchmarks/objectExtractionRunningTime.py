@@ -198,11 +198,11 @@ class ObjectExtractionTimeComparison(object):
         # Cache operators
         self.opCacheRaw = OpBlockedArrayCache(graph=g)
         self.opCacheRaw.Input.connect(self.op5Raw.Output)
-        self.opCacheRaw.outerBlockShape.setValue(  (1,)+self.op5Raw.Output.meta.shape[1:] )
+        self.opCacheRaw.BlockShape.setValue(  (1,)+self.op5Raw.Output.meta.shape[1:] )
          
         self.opCacheBinary = OpBlockedArrayCache(graph=g)
         self.opCacheBinary.Input.connect(self.op5Binary.Output)        
-        self.opCacheBinary.outerBlockShape.setValue(  (1,)+self.op5Binary.Output.meta.shape[1:] )
+        self.opCacheBinary.BlockShape.setValue(  (1,)+self.op5Binary.Output.meta.shape[1:] )
         
         # Label volume operator   
         self.opLabel = OpLabelVolume(graph=g)

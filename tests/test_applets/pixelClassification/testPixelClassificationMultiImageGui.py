@@ -25,6 +25,9 @@ from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from tests.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
+from ilastik.applets.pixelClassification.pixelClassificationApplet import PixelClassificationApplet
+PIXEL_CLASSIFICATION_INDEX = 2
+
 class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
     """
     Run a set of GUI-based tests on the pixel classification workflow.
@@ -133,6 +136,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
         def impl():
             self.shell.openProjectFile(self.PROJECT_FILE)
             assert self.shell.projectManager.currentProjectFile is not None
+            assert isinstance(self.shell.workflow.applets[PIXEL_CLASSIFICATION_INDEX], PixelClassificationApplet)
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
@@ -155,7 +159,7 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
             opPix = pixClassApplet.topLevelOperator
 
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(PIXEL_CLASSIFICATION_INDEX)
             
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]

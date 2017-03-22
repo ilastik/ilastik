@@ -33,6 +33,9 @@ from ilastik.workflows.counting import CountingWorkflow
 from tests.helpers import ShellGuiTestCaseBase
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
+from ilastik.applets.counting.countingApplet import CountingApplet
+COUNTING_APPLET_INDEX = 2
+
 class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
     """
     Run a set of GUI-based tests on the pixel classification workflow.
@@ -150,6 +153,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
         def impl():
             self.shell.openProjectFile(self.PROJECT_FILE)
             assert self.shell.projectManager.currentProjectFile is not None
+            assert isinstance(self.shell.workflow.applets[COUNTING_APPLET_INDEX], CountingApplet)
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
@@ -177,7 +181,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
             opPix = countingClassApplet.topLevelOperator
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
 
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
@@ -185,7 +189,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
 
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
 
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
@@ -308,7 +312,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
             opPix = countingClassApplet.topLevelOperator
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
 
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
@@ -317,7 +321,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
 
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
 
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
@@ -438,7 +442,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
             opPix = countingClassApplet.topLevelOperator
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
 
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
@@ -446,7 +450,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
 
             # Select the labeling drawer
-            self.shell.setSelectedAppletDrawer(3)
+            self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
 
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]

@@ -61,6 +61,10 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
     def setupLayers(self):
         layers = []
         edgeTrainingLayers = EdgeTrainingGui.setupLayers(self)
+
+        mc_disagreement_layer = MulticutGuiMixin.create_multicut_disagreement_layer(self)
+        if mc_disagreement_layer:
+            layers.append(mc_disagreement_layer)
         
         mc_edge_layer = MulticutGuiMixin.create_multicut_edge_layer(self)
         if mc_edge_layer:

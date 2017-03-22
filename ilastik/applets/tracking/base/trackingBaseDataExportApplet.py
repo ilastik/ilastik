@@ -54,7 +54,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
 
             assert self.export_op is not None, "Exporting Operator must be set!"
             self._gui.set_exporting_operator(self.export_op)
-            self._gui.set_default_export_filename(self._default_export_filename)
+            self._gui.set_default_export_filename(self._default_export_filename) # remove once the PGMLINK version is gone
         return self._gui
 
     @property

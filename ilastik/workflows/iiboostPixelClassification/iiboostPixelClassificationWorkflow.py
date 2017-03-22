@@ -30,7 +30,7 @@ class IIBoostPixelClassificationWorkflow(PixelClassificationWorkflow):
     workflowName = "IIBoost Synapse Detection"
     workflowDescription = "Find synapses in EM volumes with the IIBoost classifier"
     workflowDisplayName = "IIBoost Synapse Detection"
-    defaultAppletIndex = 1 # show DataSelection by default
+    defaultAppletIndex = 0 # show DataSelection by default
     
     def __init__(self, *args, **kwargs):
         super( IIBoostPixelClassificationWorkflow, self ).__init__( *args, **kwargs )

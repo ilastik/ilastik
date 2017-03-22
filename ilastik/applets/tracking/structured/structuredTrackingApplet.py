@@ -7,6 +7,7 @@ class StructuredTrackingApplet( StandardApplet ):
         super(StructuredTrackingApplet, self).__init__( name=name, workflow=workflow )
         self._serializableItems = [ StructuredTrackingSerializer(self.topLevelOperator, projectFileGroupName) ]
         self.busy = False
+        self.workflow = workflow
 
     @property
     def singleLaneOperatorClass( self ):
@@ -14,7 +15,7 @@ class StructuredTrackingApplet( StandardApplet ):
 
     @property
     def broadcastingSlots( self ):
-        return []
+        return ['Parameters', 'ExportSettings']
 
     @property
     def singleLaneGuiClass( self ):
