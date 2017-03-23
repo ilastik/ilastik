@@ -57,12 +57,7 @@ class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
             # If data data exists already or we can just fetch it without needing extra scratch space,
             # just call the base class
             block_roi = self._get_containing_block_roi( clipped_block_roi )
-            if block_roi is not None or (full_block_roi == clipped_block_roi).all():
-                self._execute_Output_impl( clipped_block_roi, result[roiToSlice(*output_roi)] )
-            elif self.Input.meta.dontcache:
-                # Data isn't in the cache, but we don't need it in the cache anyway.
-                self.Input(*clipped_block_roi).writeInto(result[roiToSlice(*output_roi)]).block()
-            elif self.BypassModeEnabled.value:
+            if self.BypassModeEnabled.value:
                 full_block_data = self.Output.stype.allocateDestination( SubRegion(self.Output, *full_block_roi ) )
 
                 self.Input(*full_block_roi).writeInto(full_block_data).block()
@@ -70,6 +65,11 @@ class OpSimpleBlockedArrayCache(OpUnblockedArrayCache):
                 roi_within_block = clipped_block_roi - full_block_roi[0]
                 self.Output.stype.copy_data( result[roiToSlice(*output_roi)],
                                              full_block_data[roiToSlice(*roi_within_block)] )
+            elif block_roi is not None or (full_block_roi == clipped_block_roi).all():
+                self._execute_Output_impl( clipped_block_roi, result[roiToSlice(*output_roi)] )
+            elif self.Input.meta.dontcache:
+                # Data isn't in the cache, but we don't need it in the cache anyway.
+                self.Input(*clipped_block_roi).writeInto(result[roiToSlice(*output_roi)]).block()
             else:
                 # Data doesn't exist yet in the cache.
                 # Request the full block, but then discard the parts we don't need.
