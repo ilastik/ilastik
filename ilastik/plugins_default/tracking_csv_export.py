@@ -8,12 +8,9 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
 
     exportsToFile = True
 
-    def checkOverwriteFiles(self, filename, checkOverwriteFiles):
-        print filename
-        if checkOverwriteFiles and os.path.exists(filename + '.csv'):
-            return True
-        else:
-            return False
+    def checkFilesExist(self, filename):
+        ''' Check whether the files we want to export are already present '''
+        return os.path.exists(filename + '.csv')
 
     def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
         """

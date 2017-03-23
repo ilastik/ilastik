@@ -578,8 +578,11 @@ class OpConservationTracking(Operator):
             label_image = self.LabelImage
         
         hypothesesGraph = self.HypothesesGraph.value
-        if plugin.checkOverwriteFiles(filename, checkOverwriteFiles):
+
+        if checkOverwriteFiles and plugin.checkFilesExist(filename):
+            # do not export if we would otherwise overwrite files
             return False
+
         if not plugin.export(filename, hypothesesGraph, object_feature_slot, label_image, self.RawImage):
             raise RuntimeError('Exporting tracking solution with plugin failed')
         else:

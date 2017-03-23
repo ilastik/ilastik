@@ -156,6 +156,10 @@ class TrackingExportFormatPlugin(IPlugin):
     def __init__(self, *args, **kwargs):
         super(TrackingExportFormatPlugin, self).__init__(*args, **kwargs)
 
+    def checkFilesExist(self, filename):
+        ''' Check whether the files we want to export (when appending the base filename) are already present '''
+        return False
+
     def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
         """Export the tracking solution stored in the hypotheses graph's "value" and "divisionValue"
         attributes (or the "lineageId" and "trackId" attribs). See https://github.com/chaubold/hytra for more details.

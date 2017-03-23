@@ -35,11 +35,9 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
 
     exportsToFile = True
 
-    def checkOverwriteFiles(self, filename, checkOverwriteFiles):
-        if checkOverwriteFiles and os.path.exists(filename + '_mamut.xml'):
-            return True
-        else:
-            return False
+    def checkFilesExist(self, filename):
+        ''' Check whether the files we want to export are already present '''
+        return os.path.exists(filename + '_mamut.xml') or os.path.exists(filename + '_bdv.xml') or os.path.exists(filename + '_raw.h5')
 
     def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
         """Export the tracking solution stored in the hypotheses graph to two XML files so that 

@@ -79,11 +79,9 @@ class TrackingH5EventExportFormatPlugin(TrackingExportFormatPlugin):
 
     exportsToFile = False
 
-    def checkOverwriteFiles(self, filename, checkOverwriteFiles):
-        if checkOverwriteFiles and os.path.exists(filename + '/H5-Event-Sequence/'):
-            return True
-        else:
-            return False
+    def checkFilesExist(self, filename):
+        ''' Check whether the files we want to export are already present '''
+        return os.path.exists(os.path.join(filename, 'H5-Event-Sequence'))
 
     def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
         """Export the tracking solution stored in the hypotheses graph as a sequence of H5 files,
