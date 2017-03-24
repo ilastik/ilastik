@@ -33,8 +33,11 @@ from volumina.utility import PreferencesManager
 import ilastik.config
 from volumina.utility import encode_from_qstring, decode_to_qstring
 
-from lazyflow.operators.ioOperators import OpStackLoader
-from lazyflow.utility import lsHdf5
+from lazyflow.operators.ioOperators import (
+    OpStackLoader, OpStreamingHdf5SequenceReaderM,
+    OpStreamingHdf5SequenceReaderS
+)
+from lazyflow.utility import lsHdf5, PathComponents
 import h5py
 
 class StackFileSelectionWidget(QDialog):
@@ -134,7 +137,10 @@ class StackFileSelectionWidget(QDialog):
         all_filenames = []
         globstrings = []
 
+        msg = ''
+        H5EXTS = ['ilp', 'h5', 'hdf5']
         exts = vigra.impex.listExtensions().split()
+        exts.extend(H5EXTS)
         for ext in exts:
             fullGlob = directory + '/*.' + ext
             globFileNames = glob.glob(fullGlob)
@@ -144,17 +150,31 @@ class StackFileSelectionWidget(QDialog):
                 # Be helpful: find the longest globstring we can
                 prefix = os.path.commonprefix(new_filenames)
                 globstring = prefix + '*.' + ext
+                # Special handling for h5-files: Try to add internal path
+                if ext in H5EXTS:
+                    # be even more helpful and try to find a common internal path
+                    internal_paths = self._findCommonInternal(new_filenames)
+                    if len(internal_paths) != 1:
+                        msg += 'Could not find a unique common internal path in'
+                        msg += directory + '\n'
+                        QMessageBox.warning(self, "Invalid selection", msg)
+                        return None
+                    else:
+                        new_filenames = ['{}/{}'.format(fn, internal_paths[0])
+                                         for fn in new_filenames]
+                        globstring = '{}/{}'.format(globstring, internal_paths[0])
+
                 globstrings.append(globstring)
                 all_filenames += new_filenames
 
         if len(all_filenames) == 0:
-            msg = 'Cannot create stack: There were no image files in the selected directory:\n'
+            msg += 'Cannot create stack: There were no image files in the selected directory:\n'
             msg += directory
             QMessageBox.warning(self, "Invalid selection", msg )
             return None
 
         if len(all_filenames) == 1:
-            msg = 'Cannot create stack: There is only one image file in the selected directory:\n'
+            msg += 'Cannot create stack: There is only one image file in the selected directory:\n'
             msg += directory + '\n'
             msg += 'If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume),'
             msg += ' please use the "Add File" button.'
@@ -164,7 +184,8 @@ class StackFileSelectionWidget(QDialog):
         # Combine into one string, delimited with os.path.sep
         return os.path.pathsep.join(globstrings)
 
-    def _findCommonInternal(self, h5Files):
+    @staticmethod
+    def _findCommonInternal(h5Files):
         """Tries to find common internal path (containing data)
 
         Method is used, when a directory is selected and the internal path is,
@@ -202,7 +223,7 @@ class StackFileSelectionWidget(QDialog):
 
         # Launch the "Open File" dialog
         extensions = vigra.impex.listExtensions().split()
-        extensions.append('h5')
+        extensions.extend(['ilp', 'h5', 'hdf5'])
         filt = "Image files (" + ' '.join('*.' + x for x in extensions) + ')'
         options = QFileDialog.Options()
         if ilastik.config.cfg.getboolean("ilastik", "debug"):
@@ -241,7 +262,49 @@ class StackFileSelectionWidget(QDialog):
 
     def _applyPattern(self):
         globStrings = encode_from_qstring(self.patternEdit.text())
-        filenames = OpStackLoader.expandGlobStrings(globStrings)
+
+        filenames = []
+        # see if some glob strings include HDF5 files
+        globStrings = globStrings.split(os.path.pathsep)
+        pcs = [PathComponents(x) for x in globStrings]
+        ish5 = [x.extension in ['.ilp', '.h5', '.hdf5'] for x in pcs]
+
+        h5GlobStrings = os.path.pathsep.join([x for x, y in zip(globStrings, ish5) if y is True])
+        globStrings = os.path.pathsep.join([x for x, y in zip(globStrings, ish5) if y is False])
+
+        filenames.extend(OpStackLoader.expandGlobStrings(globStrings))
+
+        try:
+            OpStreamingHdf5SequenceReaderS.checkGlobString(h5GlobStrings)
+            # OK, if nothing raised there is a single h5 file in h5GlobStrings:
+            pathComponents = PathComponents(h5GlobStrings.split(os.path.pathsep)[0])
+            h5file = h5py.File(pathComponents.externalPath, mode='r')
+            filenames.extend(
+                "{}/{}".format(external, internal)
+                for external, internal
+                in zip(*OpStreamingHdf5SequenceReaderS.expandGlobStrings(h5file, h5GlobStrings))
+            )
+        except (
+                OpStreamingHdf5SequenceReaderS.WrongFileTypeError,
+                OpStreamingHdf5SequenceReaderS.NotTheSameFileError,
+                OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError,
+                OpStreamingHdf5SequenceReaderS.ExternalPlaceholderError):
+            pass
+
+        try:
+            OpStreamingHdf5SequenceReaderM.checkGlobString(h5GlobStrings)
+            filenames.extend(
+                "{}/{}".format(external, internal)
+                for external, internal
+                in zip(*OpStreamingHdf5SequenceReaderM.expandGlobStrings(h5GlobStrings))
+            )
+        except (
+                OpStreamingHdf5SequenceReaderM.WrongFileTypeError,
+                OpStreamingHdf5SequenceReaderM.SameFileError,
+                OpStreamingHdf5SequenceReaderM.NoExternalPlaceholderError,
+                OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
+            pass
+
         self._updateFileList(filenames)
 
     def _updateFileList(self, files):
