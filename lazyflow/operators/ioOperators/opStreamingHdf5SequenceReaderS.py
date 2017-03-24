@@ -212,7 +212,7 @@ class OpStreamingHdf5SequenceReaderS(Operator):
         pathComponents = [PathComponents(p.strip()) for p in pathStrings]
         assert len(pathComponents) > 0
 
-        if not all(p.extension.lstrip('.') in OpStreamingHdf5Reader.H5EXTS
+        if not all(p.extension in OpStreamingHdf5Reader.H5EXTS
                    for p in pathComponents):
             raise OpStreamingHdf5SequenceReaderS.WrongFileTypeError(globString)
 
