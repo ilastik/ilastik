@@ -138,9 +138,9 @@ class StackFileSelectionWidget(QDialog):
         globstrings = []
 
         msg = ''
-        H5EXTS = ['ilp', 'h5', 'hdf5']
+        h5exts = [x.lstrip('.') for x in OpStreamingHdf5SequenceReaderM.H5EXTS]
         exts = vigra.impex.listExtensions().split()
-        exts.extend(H5EXTS)
+        exts.extend(h5exts)
         for ext in exts:
             fullGlob = directory + '/*.' + ext
             globFileNames = glob.glob(fullGlob)
@@ -151,7 +151,7 @@ class StackFileSelectionWidget(QDialog):
                 prefix = os.path.commonprefix(new_filenames)
                 globstring = prefix + '*.' + ext
                 # Special handling for h5-files: Try to add internal path
-                if ext in H5EXTS:
+                if ext in h5exts:
                     # be even more helpful and try to find a common internal path
                     internal_paths = self._findCommonInternal(new_filenames)
                     if len(internal_paths) != 1:
@@ -221,9 +221,10 @@ class StackFileSelectionWidget(QDialog):
         if ilastik.config.cfg.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
+        h5exts = [x.lstrip('.') for x in OpStreamingHdf5SequenceReaderM.H5EXTS]
         # Launch the "Open File" dialog
         extensions = vigra.impex.listExtensions().split()
-        extensions.extend(['ilp', 'h5', 'hdf5'])
+        extensions.extend(h5exts)
         filt = "Image files (" + ' '.join('*.' + x for x in extensions) + ')'
         options = QFileDialog.Options()
         if ilastik.config.cfg.getboolean("ilastik", "debug"):
@@ -244,10 +245,11 @@ class StackFileSelectionWidget(QDialog):
             QMessageBox.warning(self, "Invalid selection", msg )
             return None
 
-        directory = os.path.split(fileNames[0])[0]
+        pathComponents = PathComponents(fileNames[0])
+        directory = pathComponents.externalPath
         PreferencesManager().set('DataSelection', 'recent stack directory', directory)
 
-        if '.h5' in fileNames[0]:
+        if pathComponents.extension in OpStreamingHdf5SequenceReaderM.H5EXTS:
             # check for internal paths!
             internal_paths = self._findCommonInternal(fileNames)
             if len(internal_paths) != 1:
@@ -262,12 +264,12 @@ class StackFileSelectionWidget(QDialog):
 
     def _applyPattern(self):
         globStrings = encode_from_qstring(self.patternEdit.text())
-
+        H5EXTS = OpStreamingHdf5SequenceReaderM.H5EXTS
         filenames = []
         # see if some glob strings include HDF5 files
         globStrings = globStrings.split(os.path.pathsep)
         pcs = [PathComponents(x) for x in globStrings]
-        ish5 = [x.extension in ['.ilp', '.h5', '.hdf5'] for x in pcs]
+        ish5 = [x.extension in H5EXTS for x in pcs]
 
         h5GlobStrings = os.path.pathsep.join([x for x, y in zip(globStrings, ish5) if y is True])
         globStrings = os.path.pathsep.join([x for x, y in zip(globStrings, ish5) if y is False])
