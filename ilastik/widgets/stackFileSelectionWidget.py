@@ -34,6 +34,8 @@ import ilastik.config
 from volumina.utility import encode_from_qstring, decode_to_qstring
 
 from lazyflow.operators.ioOperators import OpStackLoader
+from lazyflow.utility import lsHdf5
+import h5py
 
 class StackFileSelectionWidget(QDialog):
     
@@ -164,6 +166,30 @@ class StackFileSelectionWidget(QDialog):
         # Combine into one string, delimited with os.path.sep
         return os.path.pathsep.join(globstrings)
 
+    def _findCommonInternal(self, h5Files):
+        """Tries to find common internal path (containing data)
+
+        Method is used, when a directory is selected and the internal path is,
+        thus, unclear.
+
+        Args:
+            h5_files (list of strings): h5 files to be globbed internally
+
+        Returns:
+            list of internal paths
+        """
+        h5 = h5py.File(h5Files[0], mode='r')
+        internal_paths = set([x['name'] for x in lsHdf5(h5, minShape=2)])
+        h5.close()
+        for h5File in h5Files[1::]:
+            h5 = h5py.File(h5File, 'r')
+            # get all files with with at least 2D shape
+            tmp = set([x['name'] for x in lsHdf5(h5, minShape=2)])
+            internal_paths = internal_paths.intersection(tmp)
+
+        return list(internal_paths)
+
+
     def _selectFiles(self):
         # Find the directory of the most recently opened image file
         mostRecentStackDirectory = PreferencesManager().get( 'DataSelection', 'recent stack directory' )
@@ -178,6 +204,7 @@ class StackFileSelectionWidget(QDialog):
 
         # Launch the "Open File" dialog
         extensions = vigra.impex.listExtensions().split()
+        extensions.append('h5')
         filt = "Image files (" + ' '.join('*.' + x for x in extensions) + ')'
         options = QFileDialog.Options()
         if ilastik.config.cfg.getboolean("ilastik", "debug"):
@@ -187,11 +214,12 @@ class StackFileSelectionWidget(QDialog):
         
         fileNames = map(encode_from_qstring, fileNames)
 
+        msg = ''
         if len(fileNames) == 0:
             return
 
         if len(fileNames) == 1:
-            msg = 'Cannot create stack: You only chose a single file.  '
+            msg += 'Cannot create stack: You only chose a single file.  '
             msg += 'If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume),'
             msg += ' please use the "Add File" button.'
             QMessageBox.warning(self, "Invalid selection", msg )
@@ -199,6 +227,17 @@ class StackFileSelectionWidget(QDialog):
 
         directory = os.path.split(fileNames[0])[0]
         PreferencesManager().set('DataSelection', 'recent stack directory', directory)
+
+        if '.h5' in fileNames[0]:
+            # check for internal paths!
+            internal_paths = self._findCommonInternal(fileNames)
+            if len(internal_paths) != 1:
+                msg += 'Could not find a unique common internal path in'
+                msg += directory + '\n'
+                QMessageBox.warning(self, "Invalid selection", msg)
+                return None
+            else:
+                fileNames = ['{}/{}'.format(fn, internal_paths[0]) for fn in fileNames]
 
         self._updateFileList( fileNames )
 

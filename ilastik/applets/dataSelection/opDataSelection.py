@@ -32,7 +32,7 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.utility import OpMultiLaneWrapper
-from lazyflow.utility import PathComponents, isUrl, make_absolute
+from lazyflow.utility import PathComponents, isUrl, make_absolute, lsHdf5
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 class DatasetInfo(object):
@@ -83,16 +83,43 @@ class DatasetInfo(object):
         if filepath:
             # Check for sequences (either globstring or separated paths),
             file_list = None
-            if '*' in filepath:
-                file_list = glob.glob(filepath)
-                file_list = sorted(file_list)
-            if not isUrl(filepath) and os.path.pathsep in filepath:
+
+            # To support h5 sequences, filepath may contain external and
+            # internal path components
+            if not isUrl(filepath):
                 file_list = filepath.split(os.path.pathsep)
-            
+                pathComponents = [PathComponents(x) for x in file_list]
+                externalPaths = [pc.externalPath for pc in pathComponents]
+                internalPaths = [pc.internalPath for pc in pathComponents]
+
+                if len(externalPaths) == 1:
+                    if '*' in externalPaths[0]:
+                        assert ('*' not in internalPaths[0]), (
+                            "Only internal OR external glob placeholder supported"
+                        )
+                        file_list = sorted(glob.glob(filepath))
+                    else:
+                        if '*' in internalPaths[0]:
+                            # TODO single hdf5 file stacks
+                            raise NotImplementedError(
+                                'Single file h5Stack import is not implemented in the GUI yet.')
+                        else:
+                            file_list = [filepath]
+
+                else:
+                    assert (not any('*' in ep for ep in externalPaths)), (
+                        "Multiple glob paths shouldn't be happening"
+                    )
+                    file_list = [ex for ex in externalPaths]
+
+                # HACK: that's a stretch, check that all files have the same ext?!
+                if pathComponents[0].extension in ['.ilp', '.h5', '.hdf5']:
+                        file_list = ['{}/{}'.format(fn, internalPaths[0])
+                                     for fn in file_list]
+
             # For stacks, choose nickname based on a common prefix
             if file_list:
                 fromstack = True
-    
                 # Convert all paths to absolute 
                 file_list = map(lambda f: make_absolute(f, cwd), file_list)
                 if '*' in filepath:

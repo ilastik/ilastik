@@ -23,6 +23,12 @@ from opDataSelection import OpDataSelection, DatasetInfo
 from lazyflow.operators.ioOperators import OpStackLoader, OpH5WriterBigDataset
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
+from lazyflow.operators.ioOperators.opStreamingHdf5SequenceReaderM import (
+    OpStreamingHdf5SequenceReaderM
+)
+from lazyflow.operators.ioOperators.opStreamingHdf5SequenceReaderS import (
+    OpStreamingHdf5SequenceReaderS
+)
 
 import os
 import vigra
@@ -212,6 +218,37 @@ class DataSelectionSerializer( AppletSerializer ):
             opLoader.SequenceAxis.setValue(sequence_axis)
             opLoader.GlobString.setValue(globstring)
             data_slot = opLoader.Output
+        elif firstPathParts.extension.lower() in OpStreamingHdf5SequenceReaderM.H5EXTS:
+            # Now use the .checkGlobString method of the stack readers
+            isSingleFile = True
+            try:
+                OpStreamingHdf5SequenceReaderS.checkGlobString(globstring)
+            except (OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError,
+                    OpStreamingHdf5SequenceReaderS.NotTheSameFileError,
+                    OpStreamingHdf5SequenceReaderS.ExternalPlaceholderError):
+                isSingleFile = False
+
+            isMultiFile = True
+            try:
+                OpStreamingHdf5SequenceReaderM.checkGlobString(globstring)
+            except (OpStreamingHdf5SequenceReaderM.NoExternalPlaceholderError,
+                    OpStreamingHdf5SequenceReaderM.SameFileError,
+                    OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
+                isMultiFile = False
+
+            assert (not(isMultiFile and isSingleFile)), (
+                "Something is wrong, glob string shouldn't allow both")
+            assert (isMultiFile or isSingleFile), (
+                "Glob string doesn't conform to h5 stack glob string rules")
+
+            if isSingleFile:
+                opLoader = OpStreamingHdf5SequenceReaderS(parent=self.topLevelOperator.parent)
+            elif isMultiFile:
+                opLoader = OpStreamingHdf5SequenceReaderM(parent=self.topLevelOperator.parent)
+
+            opLoader.SequenceAxis.setValue(sequence_axis)
+            opLoader.GlobString.setValue(globstring)
+            data_slot = opLoader.OutputImage
         else:
             # All other sequences (e.g. pngs, jpegs, etc.)
             opLoader = OpStackLoader( parent=self.topLevelOperator.parent )
