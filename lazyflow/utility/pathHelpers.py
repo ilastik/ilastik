@@ -321,6 +321,29 @@ def mkdir_p(path):
             raise
 
 
+def lsHdf5(hdf5FileObject):
+    """Generates dataset list of given h5py file object
+
+    Args:
+        hdf5FileObject (h5py.FIle): Opened hdf5 file
+
+    Returns:
+        list of datasets inside the given file object
+    """
+    listOfDatasets = []
+
+    def addObjectNames(objectName, obj):
+        if isinstance(obj, h5py.Dataset):
+            listOfDatasets.append({
+                'name': objectName,
+                'object': obj
+            })
+
+    hdf5FileObject.visititems(addObjectNames)
+
+    return listOfDatasets
+
+
 def globHdf5(hdf5FileObject, globString):
     """globs a hdf5 file like a file system for datasets
 
@@ -339,13 +362,7 @@ def globHdf5(hdf5FileObject, globString):
         A sorted list of matched object names. This list is empty if no
         matches occurred.
     """
-    pathlist = []
-
-    def addObjectNames(objectName, object):
-        if isinstance(object, h5py.Dataset):
-            pathlist.append(objectName)
-
-    hdf5FileObject.visititems(addObjectNames)
+    pathlist = [x['name'] for x in lsHdf5(hdf5FileObject)]
 
     matches = [x for x in pathlist
                if fnmatch.fnmatch(x, globString)]
