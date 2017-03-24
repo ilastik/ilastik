@@ -11,6 +11,7 @@ import h5py
 
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
+from ilastik.utility.gui.progress import TrackProgressDialog
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
@@ -20,6 +21,9 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 
 from lazyflow.request.request import Request
+
+from hytra.util.progressbar import CommandLineProgressVisitor, DefaultProgressVisitor
+from ilastik.utility.gui.progress import GuiProgressVisitor
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -52,6 +56,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._initColors()
 
         self.topLevelOperatorView = topLevelOperatorView
+        self.progressWindow = None
         super(TrackingBaseGui, self).__init__(parentApplet, topLevelOperatorView)
         self.mainOperator = topLevelOperatorView
         if self.mainOperator.LabelImage.meta.shape:
@@ -377,8 +382,34 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         if not self.mainOperator.ObjectFeatures.ready():
             self._criticalMessage("You have to compute object features first.")            
             return
-        
-        def _track():    
+
+        withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
+        withTracklets = True
+
+        numStages = 6
+        # creating traxel store
+        # generating probabilities
+        # insert energies
+        # convexify costs
+        # solver
+        # compute lineages
+        if withMergerResolution:
+            numStages += 1 # merger resolution
+        if withTracklets:
+            numStages += 3 # initializing tracklet graph, finding tracklets, contracting edges in tracklet graph
+
+        # gui progress visitor
+        if self.mainOperator.parent.parent._progress_bar == 'CommandLineProgressBar':
+            self.progressVisitor = CommandLineProgressVisitor()
+        elif self.mainOperator.parent.parent._progress_bar == 'GuiProgressBar':
+            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+            self.progressWindow.run()
+            self.progressWindow.show()
+            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        else:
+            self.progressVisitor = DefaultProgressVisitor()
+
+        def _track():
             self.applet.busy = True
             self.applet.appletStateUpdateRequested.emit()
             maxDist = self._drawer.maxDistBox.value()
@@ -457,7 +488,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                         #graph_building_parameter_changed = True,
                         #trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
                         max_nearest_neighbors = self._maxNearestNeighbors,
-                        solverName=solverName
+                        solverName=solverName,
+                        progressWindow=self.progressWindow,
+                        progressVisitor=self.progressVisitor
                         )
             except Exception:
                 ex_type, ex, tb = sys.exc_info()
@@ -468,7 +501,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         def _handle_finished(*args):
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            self.applet.progressSignal.emit(100)
             self._drawer.TrackButton.setEnabled(True)
             self._drawer.exportButton.setEnabled(True)
             self._drawer.exportTifButton.setEnabled(True)
@@ -477,13 +509,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            self.applet.progressSignal.emit(100)
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
             self._drawer.TrackButton.setEnabled(True)
-        
-        self.applet.progressSignal.emit(0)
-        self.applet.progressSignal.emit(-1)
+
         req = Request( _track )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )

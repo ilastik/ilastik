@@ -26,6 +26,7 @@ from hytra.core.ilastikmergerresolver import IlastikMergerResolver
 from hytra.core.probabilitygenerator import ProbabilityGenerator
 from hytra.core.probabilitygenerator import Traxel
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+from hytra.util.progressbar import DefaultProgressVisitor, CommandLineProgressVisitor
 
 import vigra
 
@@ -117,6 +118,10 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.mergerResolverPlugin = pluginManager.getMergerResolver()
 
         self.result = None
+
+        # gui progress
+        self.progressWindow = None
+        self.progressVisitor=DefaultProgressVisitor()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta)
@@ -265,7 +270,8 @@ class OpConservationTracking(Operator, ExportingOperator):
             withDivisions=withDivisions,
             maxNeighborDistance=maxDist,
             divisionThreshold=divThreshold,
-            borderAwareWidth=borderAwareWidth
+            borderAwareWidth=borderAwareWidth,
+            progressVisitor=self.progressVisitor
         )
         return hypothesesGraph
     
@@ -303,7 +309,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             count=0
             for timestep in timesteps:
                 count +=1
-                self.parent.parent.trackingApplet.progressSignal.emit(100*count/numTimeStep)
+                self.progressVisitor.showProgress(count/float(numTimeStep))
 
                 roi = [slice(None) for i in range(len(self.LabelImage.meta.shape))]
                 roi[timeIndex] = slice(timestep, timestep+1)
@@ -366,12 +372,21 @@ class OpConservationTracking(Operator, ExportingOperator):
             force_build_hypotheses_graph = False,
             max_nearest_neighbors = 2,
             withBatchProcessing = False,
-            solverName="Flow-based"
+            solverName="Flow-based",
+            progressWindow=None,
+            progressVisitor=DefaultProgressVisitor()
             ):
         """
         Main conservation tracking function. Runs tracking solver, generates hypotheses graph, and resolves mergers.
         """
-        
+
+        self.progressWindow = progressWindow
+        self.progressVisitor=progressVisitor
+
+        # command line visitor
+        if self.parent.parent._progress_bar == 'CommandLineProgressBar':
+            self.progressVisitor = CommandLineProgressVisitor()
+
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
         
@@ -431,7 +446,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                 raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
                     'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' +\
                     'one training example for each class.')
-        
+
         hypothesesGraph = self._createHypothesesGraph()
         hypothesesGraph.allowLengthOneTracks = True
 
@@ -447,6 +462,10 @@ class OpConservationTracking(Operator, ExportingOperator):
         detWeight = 10.0 # FIXME: Should we store this weight in the parameters slot?
         weights = trackingGraph.weightsListToDict([transWeight, detWeight, divWeight, appearance_cost, disappearance_cost])
 
+        stepStr = "Tracking solver"
+        self.progressVisitor.showState(stepStr)
+        self.progressVisitor.showProgress(0)
+
         if solverName == 'Flow-based' and dpct:
             result = dpct.trackFlowBased(model, weights)
         elif solverName == 'ILP' and mht:
@@ -454,6 +473,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         else:
             raise ValueError("Invalid tracking solver selected")
 
+        self.progressVisitor.showProgress(1.0)
         # Insert the solution into the hypotheses graph and from that deduce the lineages
         if hypothesesGraph:
             hypothesesGraph.insertSolution(result)
@@ -461,13 +481,14 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Merger resolution
         resolvedMergersDict = {}
         if withMergerResolution:
+            stepStr = "Merger resolution"
+            self.progressVisitor.showState(stepStr)
             resolvedMergersDict = self._resolveMergers(hypothesesGraph, model)
 
         # Set value of resolved mergers slot (Should be empty if mergers are disabled)
         self.ResolvedMergers.setValue(resolvedMergersDict, check_changed=False)
                 
         # Computing tracking lineage IDs from within Hytra
-        logger.info("Computing hypotheses graph lineages")
         hypothesesGraph.computeLineage()
 
         # Uncomment to export a hypothese graph diagram
@@ -489,6 +510,9 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.EventsVector.setValue(events, check_changed=False)
 
         self.result = result
+        if self.progressWindow is not None:
+            self.progressWindow.onTrackDone()
+
         return result
 
     def propagateDirty(self, inputSlot, subindex, roi):
@@ -901,10 +925,14 @@ class OpConservationTracking(Operator, ExportingOperator):
         total_count = 0
         empty_frame = False
         numTimeStep = len(feats.keys())
-        count = 0
+        countT = 0
+
+        stepStr = "Creating traxel store"
+        self.progressVisitor.showState(stepStr+"                              ")
+
         for t in feats.keys():
-            count +=1
-            self.parent.parent.trackingApplet.progressSignal.emit(100*count/numTimeStep)
+            countT +=1
+            self.progressVisitor.showProgress(countT/float(numTimeStep))
 
             rc = feats[t][default_features_key]['RegionCenter']
             lower = feats[t][default_features_key]['Coord<Minimum>']
