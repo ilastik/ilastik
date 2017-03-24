@@ -180,12 +180,20 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
         opCellClassification.EnableLabelTransfer.setValue(False)
 
+        self._progress_bar = 'Default'
         if workflow_cmdline_args:
 
             if '--testFullAnnotations' in workflow_cmdline_args:
                 self.testFullAnnotations = True
             else:
                 self.testFullAnnotations = False
+
+            if '--gui_progress_bar' in workflow_cmdline_args:
+                self._progress_bar = 'GuiProgressBar'
+                if '--headless' in workflow_cmdline_args:
+                    self._progress_bar = 'CommandLineProgressBar'
+            elif '--command_line_progress_bar' in workflow_cmdline_args:
+                self._progress_bar = 'CommandLineProgressBar'
 
             self._data_export_args, unused_args = self.dataExportTrackingApplet.parse_known_cmdline_args( workflow_cmdline_args )
             self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( workflow_cmdline_args )
