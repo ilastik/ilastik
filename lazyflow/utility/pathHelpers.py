@@ -321,11 +321,12 @@ def mkdir_p(path):
             raise
 
 
-def lsHdf5(hdf5FileObject):
+def lsHdf5(hdf5FileObject, minShape=2):
     """Generates dataset list of given h5py file object
 
     Args:
         hdf5FileObject (h5py.FIle): Opened hdf5 file
+        minShape (int, optional): minimum shape of data
 
     Returns:
         list of datasets inside the given file object
@@ -334,10 +335,11 @@ def lsHdf5(hdf5FileObject):
 
     def addObjectNames(objectName, obj):
         if isinstance(obj, h5py.Dataset):
-            listOfDatasets.append({
-                'name': objectName,
-                'object': obj
-            })
+            if len(obj.shape) >= minShape:
+                listOfDatasets.append({
+                    'name': objectName,
+                    'object': obj
+                })
 
     hdf5FileObject.visititems(addObjectNames)
 
