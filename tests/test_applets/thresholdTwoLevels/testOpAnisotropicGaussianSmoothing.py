@@ -38,7 +38,7 @@ class TestOpAnisotropicGaussianSmoothing5d(unittest.TestCase):
     def setUp(self):
         g = Graph()
         r1 = OpReorderAxes(graph=g)
-        r1.AxisOrder.setValue('txyzc')
+        r1.AxisOrder.setValue('tzyxc')
         op = OpAnisotropicGaussianSmoothing5d(graph=g)
         op.Input.connect(r1.Output)
         self.r1 = r1
@@ -46,41 +46,41 @@ class TestOpAnisotropicGaussianSmoothing5d(unittest.TestCase):
 
     def test2d(self):
         vol = np.random.rand(50, 50)
-        vol = vigra.taggedView(vol, axistags='xy')
+        vol = vigra.taggedView(vol, axistags='yx')
         self.r1.Input.setValue(vol)
         out = self.op.Output[...].wait()
 
     def test3d(self):
         vol = np.random.rand(50, 50, 50)
-        vol = vigra.taggedView(vol, axistags='xyz')
+        vol = vigra.taggedView(vol, axistags='zyx')
         self.r1.Input.setValue(vol)
         out = self.op.Output[...].wait()
 
     def test4d(self):
         vol = np.random.rand(50, 50, 50, 5)
-        vol = vigra.taggedView(vol, axistags='xyzc')
+        vol = vigra.taggedView(vol, axistags='zyxc')
         self.r1.Input.setValue(vol)
         out = self.op.Output[...].wait()
 
     def test5d(self):
         vol = np.random.rand(50, 50, 50, 5, 2)
-        vol = vigra.taggedView(vol, axistags='xyzct')
+        vol = vigra.taggedView(vol, axistags='zyxct')
         self.r1.Input.setValue(vol)
         out = self.op.Output[...].wait()
 
     def testExtend(self):
         vol = np.random.rand(50, 50)
-        vol = vigra.taggedView(vol, axistags='xy')
+        vol = vigra.taggedView(vol, axistags='yx')
         self.r1.Input.setValue(vol)
-        out = self.op.Output[0, :10, :10, 0, 0].wait().squeeze()
+        out = self.op.Output[0, 0, :10, :10, 0].wait().squeeze()
         out2 = self.op.Output[...].wait()
 
-        assert_array_equal(out, out2[0, :10, :10, 0, 0].squeeze())
+        assert_array_equal(out, out2[0, 0, :10, :10, 0].squeeze())
 
     def testSmoothing(self):
         op = self.op
         vol = np.random.rand(50, 50).astype(np.float32)
-        vol = vigra.taggedView(vol, axistags='xy')
+        vol = vigra.taggedView(vol, axistags='yx')
         self.r1.Input.setValue(vol)
         out = op.Output[...].wait()
         out = vigra.taggedView(out, axistags=op.Output.meta.axistags).squeeze()
@@ -90,7 +90,7 @@ class TestOpAnisotropicGaussianSmoothing5d(unittest.TestCase):
 
     def testReqFromMid(self):
         vol = np.random.rand(3, 50, 50, 1, 1)
-        vol = vigra.taggedView(vol, axistags='txyzc')
+        vol = vigra.taggedView(vol, axistags='tzyxc')
         self.r1.Input.setValue(vol)
         out = self.op.Output[2, 10:20, 10:20, 0, 0].wait()
 

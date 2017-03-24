@@ -26,8 +26,3 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
         from carvingFromPixelPredictionsWorkflow import CarvingFromPixelPredictionsWorkflow
     except:
         pass
-    
-#     try:
-#         from splitBodyCarvingWorkflow import SplitBodyCarvingWorkflow
-#     except:
-#         pass

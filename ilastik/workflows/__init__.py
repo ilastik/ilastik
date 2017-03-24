@@ -109,27 +109,10 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     import examples.labeling
     import examples.connectedComponents
 
-# try:
-#     import nanshe.nansheWorkflow
-# except ImportError as e:
-#     if ilastik.config.cfg.getboolean('ilastik', 'debug'):
-#         logger.warn( "Failed to import nanshe workflow. Check dependencies: " + str(e) )
-
-
-
 
 try:
     import watershedSegmentation
     WORKFLOW_CLASSES += [watershedSegmentation.watershedSegmentationWorkflow.WatershedSegmentationWorkflow]
 except ImportError as e:
     logger.warn("Failed to import 'watershedSegmentation' workflow; check dependencies: " + str(e))
-
-
-''' under development
-try:
-    import pixelObjectWatershed
-    WORKFLOW_CLASSES += [pixelObjectWatershed.pixelObjectWatershedWorkflow.PixelObjectWatershedWorkflow]
-except ImportError as e:
-    logger.warn("Failed to import 'pixelObjectWatershed' workflow; check dependencies: " + str(e))
-'''
 

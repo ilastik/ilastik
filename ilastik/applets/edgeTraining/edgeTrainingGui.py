@@ -81,6 +81,13 @@ class EdgeTrainingGui(LayerViewerGui):
         self.configure_gui_from_operator()
 
     def createDrawerControls(self):
+        op = self.topLevelOperatorView
+
+        def configure_update_handlers( qt_signal, op_slot ):
+            qt_signal.connect( self.configure_operator_from_gui )
+            cleanup_fn = op_slot.notifyDirty( self.configure_gui_from_operator, defer=True )
+            self.__cleanup_fns.append( cleanup_fn )
+
         # Controls
         feature_selection_button = QPushButton(text="Select Features",
                                                icon=QIcon(ilastikIcons.AddSel),
@@ -96,8 +103,9 @@ class EdgeTrainingGui(LayerViewerGui):
                                                clicked=self._handle_clear_labels_clicked)
         self.live_update_button = QPushButton(text="Live Predict",
                                               checkable=True,
-                                              icon=QIcon(ilastikIcons.Play),
-                                              toggled=self._handle_live_update_clicked)
+                                              icon=QIcon(ilastikIcons.Play))
+        configure_update_handlers( self.live_update_button.toggled, op.FreezeCache )
+        
         # Layout
         label_layout = QHBoxLayout()
         label_layout.addWidget(self.clear_labels_button)
@@ -138,7 +146,8 @@ class EdgeTrainingGui(LayerViewerGui):
         self._drawer = self.createDrawerControls()
 
         op = self.topLevelOperatorView
-        op.GroundtruthSegmentation.notifyReady( self.configure_gui_from_operator )
+        cleanup_fn = op.GroundtruthSegmentation.notifyReady( self.configure_gui_from_operator, defer=True )
+        self.__cleanup_fns.append( cleanup_fn )
 
     def _open_feature_selection_dlg(self):
         rag = self.topLevelOperatorView.Rag.value
@@ -169,8 +178,8 @@ class EdgeTrainingGui(LayerViewerGui):
 
         # When the edge labels are dirty, update the edge label layer pens
         op = self.topLevelOperatorView
-        op.EdgeLabelsDict.notifyDirty( self.update_labeled_edges )
-        self.__cleanup_fns.append( partial( op.EdgeLabelsDict.unregisterDirty, self.update_labeled_edges ) )        
+        cleanup_fn = op.EdgeLabelsDict.notifyDirty( self.update_labeled_edges, defer=True )
+        self.__cleanup_fns.append( cleanup_fn )        
 
     @threadRouted
     def update_labeled_edges(self, *args):
@@ -229,8 +238,8 @@ class EdgeTrainingGui(LayerViewerGui):
 
         # When the edge probabilities are dirty, update the probability edge layer pens
         op = self.topLevelOperatorView
-        op.EdgeProbabilitiesDict.notifyDirty( self.update_probability_edges )
-        self.__cleanup_fns.append( partial( op.EdgeProbabilitiesDict.unregisterDirty, self.update_probability_edges ) )
+        cleanup_fn = op.EdgeProbabilitiesDict.notifyDirty( self.update_probability_edges, defer=True )
+        self.__cleanup_fns.append( cleanup_fn )
 
     def update_probability_edges(self, *args):
         def _impl():
@@ -277,8 +286,8 @@ class EdgeTrainingGui(LayerViewerGui):
         if self._currently_updating:
             return False
         with self.set_updating():
-            # Currently, there's nothing to do here, but that will change.
             op = self.topLevelOperatorView
+            op.FreezeClassifier.setValue(not self.live_update_button.isChecked())
 
     def create_prefetch_menu(self, layer_name):
         def prefetch_layer(axis='z'):
@@ -411,6 +420,12 @@ class EdgeTrainingGui(LayerViewerGui):
             layer.visible = True
             layer.opacity = 1.0
             layers.append(layer)
+            layer.shortcutRegistration = ( "i", ActionInfo( "Edge Training Layers",
+                                                            "Hide all but Raw",
+                                                            "Hide all but Raw",
+                                                            partial(self.toggle_show_raw, "Raw Data"),
+                                                            self.viewerControlWidget(),
+                                                            layer ) )
             del layer
 
         return layers

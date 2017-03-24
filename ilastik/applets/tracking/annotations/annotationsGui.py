@@ -58,7 +58,7 @@ class AnnotationsGui(LayerViewerGui):
 
     def _loadUiFile(self):
         localDir = os.path.split(__file__)[0]
-        self._drawer = uic.loadUi(localDir+"/drawer.ui")        
+        self._drawer = uic.loadUi(localDir+"/drawerObjects.ui")
         return self._drawer
     
     def initAppletDrawerUi(self):        
@@ -79,8 +79,7 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
-        self._drawer.saveAnnotations.pressed.connect(self._onSaveAnnotations)
-        self._drawer.initializeAnnotations.pressed.connect(self._onInitializeAnnotations)
+        self.editor.cropModel.mouseRelease.connect(bind(self._onSaveAnnotations))
         self._drawer.activeTrackBox.setToolTip("Active track label and colour.")
 
         self.editor.showCropLines(True)
@@ -112,8 +111,284 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.windowYBox.setVisible(False)
         self._drawer.windowZBox.setVisible(False)
         self._drawer.exportLabel.setVisible(False)
-        self._drawer.initializeAnnotations.setVisible(False)
         self._drawer.cropListView.setVisible(False)
+        self._drawer.nextUnlabeledObject.pressed.connect(self.goToNextUnlabeledObject)
+        self._drawer.nextUnlabeledDivision.pressed.connect(self.goToNextUnlabeledDivision)
+        self._drawer.nextUnlabeledMerger.pressed.connect(self.goToNextUnlabeledMerger)
+        self._drawer.nextUnlabeledObjectFrame.pressed.connect(self.goToNextUnlabeledObjectFrame)
+
+        self._drawer.nextUnlabeledObject.setToolTip(
+            "Centers the view on the next unlabeled object ordered by time frames.")
+        self._drawer.nextUnlabeledObjectFrame.setToolTip(
+            "Centers the view on the next unlabeled object in the current time frame.")
+
+        self._drawer.nextUnlabeledDivision.setToolTip(
+            "Centers the view on the next unlabeled division with a probability cut-off "+ \
+            str(self.divisionProbabilityCutOff)+". " + \
+            "Divisions are suggested in the order of increasing probabilities.")
+        self._drawer.nextUnlabeledMerger.setToolTip(
+            "Centers the view on the next unlabeled merger with a probability cut-off "+ \
+            str(self.mergerProbabilityCutOff)+". " + \
+            "Mergers are suggested in the order of increasing probabilities.")
+
+        self._drawer.unlabeledObjectsCount.setToolTip(
+            "Number of unlabeled objects in the current crop.")
+        self._drawer.allObjectsCount.setToolTip(
+            "Number of all objects in the current crop.")
+        self._drawer.unlabeledObjectsCountFrame.setToolTip(
+            "Number of unlabeled objects in the current time frame of the current crop.")
+        self._drawer.allObjectsCountFrame.setToolTip(
+            "Number of all objects in the current time frame of the current crop.")
+
+        self._drawer.unlabeledDivisionsCount.setToolTip(
+            "Number of unlabeled divisions in the current crop.")
+        self._drawer.allDivisionsCount.setToolTip(
+            "Number of all suggested divisions in the current crop for a cut-off probability "+ \
+            str(self.divisionProbabilityCutOff)+".")
+
+        self._drawer.unlabeledMergersCount.setToolTip(
+            "Number of unlabeled mergers in the current crop.")
+        self._drawer.allMergersCount.setToolTip(
+            "Number of all suggested mergers in the current crop for a cut-off probability "+ \
+            str(self.mergerProbabilityCutOff)+".")
+
+        self.topLevelOperatorView.MaxNumObj.notifyDirty(bind(self.updateMergerButtons))
+        self.updateMergerButtons()
+
+    def updateMergerButtons(self):
+        flag = self.topLevelOperatorView.MaxNumObj.value > 1
+        self._drawer.nextUnlabeledMerger.setVisible(flag)
+        self._drawer.unlabeledMergersCount.setVisible(flag)
+        self._drawer.allMergersCount.setVisible(flag)
+        self._drawer.mergersSlash.setVisible(flag)
+
+    def getNumberOfUnlabeledDivisions(self):
+        self.divFeatures = self.topLevelOperatorView.DivisionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        labels = self.topLevelOperatorView.labels
+        divisions = self.topLevelOperatorView.divisions
+        crop = self.getCurrentCrop()
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+
+        divisionCandidates = []
+        for t in range(time_start, time_stop):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                divFlag = False
+                if ul in labels[t].keys():
+                    trackIDs = list(labels[t][ul])
+                    for trackID in trackIDs:
+                        if trackID in divisions.keys():
+                            divFlag = True
+                if not divFlag and ul > 0 and self.divFeatures[t][ul][1]>self.divisionProbabilityCutOff:
+                    divisionCandidates.append([t,ul,self.divFeatures[t][ul][1]])
+
+        return len(divisionCandidates)
+
+    def getNumberOfDivisions(self):
+        self.divFeatures = self.topLevelOperatorView.DivisionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        crop = self.getCurrentCrop()
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+
+        divisionCandidates = []
+        for t in range(time_start, time_stop):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                if ul > 0 and self.divFeatures[t][ul][1]>self.divisionProbabilityCutOff:
+                    divisionCandidates.append([t,ul,self.divFeatures[t][ul][1]])
+
+        return len(divisionCandidates)
+
+    def goToNextUnlabeledDivision(self):
+        self.divFeatures = self.topLevelOperatorView.DivisionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        labels = self.topLevelOperatorView.labels
+        divisions = self.topLevelOperatorView.divisions
+        crop = self.getCurrentCrop()
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+
+        divisionCandidates = []
+        for t in range(time_start, time_stop):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                divFlag = False
+                if ul in labels[t].keys():
+                    trackIDs = list(labels[t][ul])
+                    for trackID in trackIDs:
+                        if trackID in divisions.keys():
+                            divFlag = True
+                if not divFlag and ul > 0 and self.divFeatures[t][ul][1]>self.divisionProbabilityCutOff:
+                    divisionCandidates.append([t,ul,self.divFeatures[t][ul][1]])
+
+        if divisionCandidates == []:
+            self._informationMessage("No more DIVISIONS found for the division probability cut-off {}!".format(self.divisionProbabilityCutOff))
+        else:
+            sorted(divisionCandidates,key=lambda x:x[2])
+            minIndex = 0
+            t = divisionCandidates[minIndex][0]
+            ul = divisionCandidates[minIndex][1]
+            self._gotoObject(ul,t, keepXYZ=False)
+
+            if ul in labels[t].keys() and len(labels[t][ul]) > 0:
+                for track in labels[t][ul]:
+                    for i in range(self._drawer.activeTrackBox.count()):
+                        if int(self._drawer.activeTrackBox.itemText(i)) == track:
+                            self._drawer.activeTrackBox.setCurrentIndex(i)
+                            break
+            return ul, t
+
+        return None, None
+
+    def getNumberOfMergers(self):
+        self.mergerFeatures = self.topLevelOperatorView.DetectionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        crop = self.getCurrentCrop()
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+
+        mergerCandidates = []
+        for t in range(time_start, time_stop+1):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                if ul > 0:
+                    mergerIndex = 0
+                    maxValue = max(self.mergerFeatures[t][ul])
+                    index = list(self.mergerFeatures[t][ul]).index(maxValue)
+                    if maxValue > self.mergerProbabilityCutOff:
+                        mergerIndex = index
+                    if mergerIndex >1:
+                        mergerCandidates.append([t,ul,maxValue])
+        return len(mergerCandidates)
+
+    def getNumberOfUnlabeledMergers(self):
+        self.mergerFeatures = self.topLevelOperatorView.DetectionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        labels = self.topLevelOperatorView.labels
+        crop = self.getCurrentCrop()
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+
+        mergerCandidates = []
+        for t in range(time_start, time_stop+1):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                if ul > 0:
+                    mergerIndex = 0
+                    maxValue = max(self.mergerFeatures[t][ul])
+                    index = list(self.mergerFeatures[t][ul]).index(maxValue)
+                    if maxValue > self.mergerProbabilityCutOff:
+                        mergerIndex = index
+                    if mergerIndex >1:
+                        if (not ul in labels[t].keys()) or( ul in labels[t].keys() and mergerIndex > len(labels[t][ul])):
+                            mergerCandidates.append([t,ul,maxValue])
+        return len(mergerCandidates)
+
+    def goToNextUnlabeledMerger(self):
+        self.mergerFeatures = self.topLevelOperatorView.DetectionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        labels = self.mainOperator.labels
+        crop = self.getCurrentCrop()
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+
+        mergerCandidates = []
+        for t in range(time_start, time_stop+1):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                if ul > 0:
+                    mergerIndex = 0
+                    maxValue = max(self.mergerFeatures[t][ul])
+                    index = list(self.mergerFeatures[t][ul]).index(maxValue)
+                    if maxValue > self.mergerProbabilityCutOff:
+                        mergerIndex = index
+                    if mergerIndex >0:
+                        if (not ul in labels[t].keys()) or( ul in labels[t].keys() and mergerIndex > len(labels[t][ul])):
+                            mergerCandidates.append([t,ul,maxValue])
+
+        if mergerCandidates == []:
+            self._informationMessage("No more MERGERS found for the merger probability cut-off {}!".format(self.mergerProbabilityCutOff))
+        else:
+            mergerCandidates = sorted(mergerCandidates,key=lambda x:x[2])
+            minIndex = 0
+            t = mergerCandidates[minIndex][0]
+            ul = mergerCandidates[minIndex][1]
+            self._gotoObject(ul,t, keepXYZ=False)
+            return ul, t
+
+        return None, None
+
+    def goToNextUnlabeledObject(self):
+        labels = self.mainOperator.labels
+        crop = self.getCurrentCrop()
+
+        time_start = crop["time"][0]
+        time_stop = crop["time"][1]
+
+        for t in range(time_start, time_stop):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+            for ul in uniqueLabels:
+                if ul > 0 and not ul in labels[t].keys():
+                    self._gotoObject(ul, t, keepXYZ=False)
+                    return ul, t
+
+        return None, None
+
+    def goToNextUnlabeledObjectFrame(self):
+        labels = self.mainOperator.labels
+        crop = self.getCurrentCrop()
+        t = self.editor.posModel.time
+
+        roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                            start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                            stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+        li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+        uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
+
+        for ul in uniqueLabels:
+            if ul > 0 and not ul in labels[t].keys():
+                self._gotoObject(ul, t, keepXYZ=False)
+                return ul, t
+
+        return None, None
 
     def getNumberOfAllObjects(self, crop):
         num = 0
@@ -130,6 +405,20 @@ class AnnotationsGui(LayerViewerGui):
 
         return num
 
+    def getNumberOfAllObjectsFrame(self, crop, t):
+        num = 0
+        roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                            start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                            stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+        li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+        uniqueLabels = numpy.unique(li)
+        if uniqueLabels[0] == 0:
+            num += len (uniqueLabels) - 1
+        else:
+            num += len (uniqueLabels)
+
+        return num
+
     def getNumberOfLabeledObjects(self, crop):
         num = 0
         self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
@@ -141,6 +430,32 @@ class AnnotationsGui(LayerViewerGui):
                     upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
 
                     addAnnotation = False
+                    if len(self.topLevelOperatorView.labels[time][label]) > 0:
+                        if len(lower) == 2:
+                            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
+                                addAnnotation = True
+                        else:
+                            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
+                                crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
+                                addAnnotation = True
+
+                    if addAnnotation:
+                        num += 1
+        return num
+
+    def getNumberOfLabeledObjectsFrame(self, crop, time):
+        num = 0
+        self.features = self.topLevelOperatorView.ObjectFeatures([time]).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+
+        if time in self.topLevelOperatorView.labels.keys():
+            for label in self.topLevelOperatorView.labels[time].keys():
+                lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
+                upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
+
+                addAnnotation = False
+                if len(self.topLevelOperatorView.labels[time][label]) > 0:
                     if len(lower) == 2:
                         if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
                             crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
@@ -151,8 +466,8 @@ class AnnotationsGui(LayerViewerGui):
                             crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
                             addAnnotation = True
 
-                    if addAnnotation:
-                        num += 1
+                if addAnnotation:
+                    num += 1
         return num
 
     def updateTime(self):
@@ -209,6 +524,8 @@ class AnnotationsGui(LayerViewerGui):
         self._previousCrop = -1
         self._currentCrop = -1
         self._currentCropName = ""
+        self.divisionProbabilityCutOff = 0.5
+        self.mergerProbabilityCutOff = 1/self.topLevelOperatorView.MaxNumObj.value
 
         super(AnnotationsGui, self).__init__(parentApplet, topLevelOperatorView)
         
@@ -373,36 +690,92 @@ class AnnotationsGui(LayerViewerGui):
                 self.layerstack.append( layerraw )
 
     def _initAnnotations(self):
-        for name in self.topLevelOperatorView.Crops.value.keys():
-            self._onSaveAnnotations(name=name)
+        self._onSaveAnnotations()
         self.topLevelOperatorView.Labels.setValue(self.topLevelOperatorView.labels)
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
 
-    def _onSaveAnnotations(self, name=""):
-        if name == "":
-            name = self._currentCropName
-            crop = self.getCurrentCrop()
-        else:
+    def _onSaveAnnotations(self):
+        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        for name in self.topLevelOperatorView.Crops.value.keys():
             crop = self.topLevelOperatorView.Crops.value[name]
 
+            if name not in self.topLevelOperatorView.Annotations.value.keys():
+                self.topLevelOperatorView.Annotations.value[name] = {}
+            if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
+                self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
+            for parentTrack in self.topLevelOperatorView.divisions.keys():
+                time = self.topLevelOperatorView.divisions[parentTrack][1]
+                child1Track = self.topLevelOperatorView.divisions[parentTrack][0][0]
+                child2Track = self.topLevelOperatorView.divisions[parentTrack][0][1]
 
-        if name not in self.topLevelOperatorView.Annotations.value.keys():
-            self.topLevelOperatorView.Annotations.value[name] = {}
-        if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
-            self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
-        for time in range(crop["time"][0],crop["time"][1]+1):
-            if time in self.topLevelOperatorView.labels.keys():
+                parent = self.getLabel(time, parentTrack)
+                child1 = self.getLabel(time+1, child1Track)
+                child2 = self.getLabel(time+1, child2Track)
+
+                if not (parent and child1 and child2):
+                    logger.info("WARNING:Your divisions and labels do not match for time {} and parent track {} with label {}!".format(time,parentTrack,parent))
+                    pass
+                else:
+                    lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
+                    upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
+
+                    lowerChild1 = self.features[time+1][default_features_key]['Coord<Minimum>'][child1]
+                    upperChild1 = self.features[time+1][default_features_key]['Coord<Maximum>'][child1]
+
+                    lowerChild2 = self.features[time+1][default_features_key]['Coord<Minimum>'][child2]
+                    upperChild2 = self.features[time+1][default_features_key]['Coord<Maximum>'][child2]
+
+                    addAnnotation = False
+                    if len(lowerParent) == 2:
+                        if (crop["time"][0] <= time <= crop["time"][1]) and \
+                            ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1]) and \
+                            ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1]) and \
+                            ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1])):
+                            addAnnotation = True
+                    else:
+                        if (crop["time"][0] <= time <= crop["time"][1]) and \
+                            ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1] and \
+                            crop["starts"][2] <= upperParent[2] and lowerParent[2] <= crop["stops"][2]) and \
+                            ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1] and \
+                            crop["starts"][2] <= upperChild1[2] and lowerChild1[2] <= crop["stops"][2]) and \
+                            ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1] and \
+                            crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
+                            addAnnotation = True
+                    if addAnnotation:
+                        if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
+                            self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
+                        self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
+                    else:
+                        annotations = self.topLevelOperatorView.Annotations.value
+                        if parentTrack in annotations[name]["divisions"].keys():
+                            del annotations[name]["divisions"][parentTrack]
+                        self.topLevelOperatorView.Annotations.setValue(annotations)
+
+            if name not in self.topLevelOperatorView.Annotations.value.keys():
+                self.topLevelOperatorView.Annotations.value[name] = {}
+            if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
+                self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
+
+            for time in self.topLevelOperatorView.labels.keys():
                 for label in self.topLevelOperatorView.labels[time].keys():
                     lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
                     upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
 
                     addAnnotation = False
                     if len(lower) == 2:
-                        if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                        if  crop["time"][0] <= time <= crop["time"][1] and \
+                            crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
                             crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
                             addAnnotation = True
                     else:
-                        if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                        if  crop["time"][0] <= time <= crop["time"][1] and \
+                            crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
                             crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
                             crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
                             addAnnotation = True
@@ -411,59 +784,34 @@ class AnnotationsGui(LayerViewerGui):
                         if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
                             self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
                         self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
+                    else:
+                        annotations = self.topLevelOperatorView.Annotations.value
+                        if time in annotations[name]["labels"].keys() and \
+                                label in annotations[name]["labels"][time].keys():
+                            del annotations[name]["labels"][time][label]
+                        if time in annotations[name]["labels"].keys() and \
+                                annotations[name]["labels"][time] == {}:
+                            del annotations[name]["labels"][time]
+                        self.topLevelOperatorView.Annotations.setValue(annotations)
 
-        if name not in self.topLevelOperatorView.Annotations.value.keys():
-            self.topLevelOperatorView.Annotations.value[name] = {}
-        if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
-            self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
-        for parentTrack in self.topLevelOperatorView.divisions.keys():
-            time = self.topLevelOperatorView.divisions[parentTrack][1]
-            child1Track = self.topLevelOperatorView.divisions[parentTrack][0][0]
-            child2Track = self.topLevelOperatorView.divisions[parentTrack][0][1]
+        for name in self.topLevelOperatorView.Annotations.value.keys():
+            if self.topLevelOperatorView.Annotations.value[name]["divisions"] == {} and \
+                    self.topLevelOperatorView.Annotations.value[name]["labels"] == {}:
+                annotations = self.topLevelOperatorView.Annotations.value
+                del annotations[name]["labels"]
+                del annotations[name]["divisions"]
+                del annotations[name]
+                self.topLevelOperatorView.Annotations.setValue(annotations)
 
-            parent = self.getLabel(time, parentTrack)
-            child1 = self.getLabel(time+1, child1Track)
-            child2 = self.getLabel(time+1, child2Track)
+        for time in self.topLevelOperatorView.labels.keys():
+            for label in self.topLevelOperatorView.labels[time].keys():
+                labelFound = False
+                for name in self.topLevelOperatorView.Annotations.value.keys():
+                    if label in self.topLevelOperatorView.Annotations.value[name]["labels"][time].keys():
+                        labelFound = True
+                if not labelFound:
+                    del self.topLevelOperatorView.labels[time][label]
 
-            if not (parent and child1 and child2):
-                logger.info("WARNING:Your divisions and labels do not match for time {} and parent track {} with label {}!".format(time,parentTrack,parent))
-                pass
-            else:
-                lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
-                upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
-
-                lowerChild1 = self.features[time+1][default_features_key]['Coord<Minimum>'][child1]
-                upperChild1 = self.features[time+1][default_features_key]['Coord<Maximum>'][child1]
-
-                lowerChild2 = self.features[time+1][default_features_key]['Coord<Minimum>'][child2]
-                upperChild2 = self.features[time+1][default_features_key]['Coord<Maximum>'][child2]
-
-                addAnnotation = False
-                if len(lowerParent) == 2:
-                    if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
-                        ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
-                        crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1]) or \
-                        ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
-                        crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1]) or \
-                        ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
-                        crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1])):
-                        addAnnotation = True
-                else:
-                    if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
-                        ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
-                        crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1] and \
-                        crop["starts"][2] <= upperParent[2] and lowerParent[2] <= crop["stops"][2]) or \
-                        ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
-                        crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1] and \
-                        crop["starts"][2] <= upperChild1[2] and lowerChild1[2] <= crop["stops"][2]) or \
-                        ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
-                        crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1] and \
-                        crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
-                        addAnnotation = True
-                if addAnnotation:
-                    if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
-                        self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
-                    self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
         self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
         self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
         self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
@@ -475,9 +823,6 @@ class AnnotationsGui(LayerViewerGui):
         return False
 
     def getCurrentCrop(self):
-        # self._drawer.cropListView still exists and can be reused
-        # row = self._drawer.cropListModel.selectedRow()
-        # name = self._drawer.cropListModel[row].name
         row = self._drawer.cropBoxView.currentIndex()
         name = self._drawer.cropBoxView.itemText(row)
         crop = self.topLevelOperatorView.Crops.value[str(name)]
@@ -486,7 +831,6 @@ class AnnotationsGui(LayerViewerGui):
     def _onCropSelected(self, row):
 
         self._selectedRow = row
-        #currentName = self._drawer.cropListModel[row].name
         currentName = str(self._drawer.cropBoxView.itemText(row))
         self.editor.brushingModel.setDrawnNumber(row+1)
         brushColor = self._drawer.cropListModel[row].brushColor()
@@ -517,27 +861,55 @@ class AnnotationsGui(LayerViewerGui):
     def updateLabeledUnlabeledCount(self, crop):
         labeledObjects = self.getNumberOfLabeledObjects(crop)
         allObjects = self.getNumberOfAllObjects(crop)
-        self._drawer.labeledObjectsCount.setText(str(labeledObjects))
         unlabeledObjects = allObjects - labeledObjects
         if unlabeledObjects > 0:
             unlabeledColor = 'red'
-            labeledColor = 'black'
         else:
-            unlabeledColor = 'black'
-            labeledColor = 'green'
-        self._drawer.unlabeledObjects.setText("<font color="+unlabeledColor+">Unlabeled</font>" )
-        self._drawer.labeledObjects.setText("<font color="+labeledColor+">Labeled</font>" )
-        self._drawer.unlabeledObjectsCount.setText(str(unlabeledObjects))
-        self._drawer.allObjectsCount.setText(str(allObjects))
+            unlabeledColor = 'green'
+        allObjectsColor = 'black'
+        self._drawer.unlabeledObjectsCount.setText("<font color="+unlabeledColor+">"+str(int(unlabeledObjects))+"</font>")
+        self._drawer.allObjectsCount.setText("<font color="+allObjectsColor+">"+str(int(allObjects))+"</font>")
+
+        time = self.editor.posModel.time
+        labeledObjectsFrame = self.getNumberOfLabeledObjectsFrame(crop,time)
+        allObjectsFrame = self.getNumberOfAllObjectsFrame(crop,time)
+        unlabeledObjectsFrame = allObjectsFrame - labeledObjectsFrame
+        if unlabeledObjectsFrame > 0:
+            unlabeledColorFrame = 'red'
+        else:
+            unlabeledColorFrame = 'green'
+        self._drawer.unlabeledObjectsCountFrame.setText("<font color="+unlabeledColorFrame+">"+str(int(unlabeledObjectsFrame))+"</font>")
+        self._drawer.allObjectsCountFrame.setText("<font color="+allObjectsColor+">"+str(int(allObjectsFrame))+"</font>")
+
+        unlabeledDivisions = self.getNumberOfUnlabeledDivisions()
+        if unlabeledDivisions > 0:
+            unlabeledDivisionsColor = 'red'
+        else:
+            unlabeledDivisionsColor = 'green'
+        allDivisions = self.getNumberOfDivisions()
+        self._drawer.unlabeledDivisionsCount.setText("<font color="+unlabeledDivisionsColor+">"+str(int(unlabeledDivisions))+"</font>")
+        self._drawer.allDivisionsCount.setText("<font color="+allObjectsColor+">"+str(int(allDivisions))+"</font>")
+
+        unlabeledMergers = self.getNumberOfUnlabeledMergers()
+        if unlabeledMergers > 0:
+            unlabeledMergersColor = 'red'
+        else:
+            unlabeledMergersColor = 'green'
+        allMergers = self.getNumberOfMergers()
+        self._drawer.unlabeledMergersCount.setText("<font color="+unlabeledMergersColor+">"+str(int(unlabeledMergers))+"</font>")
+        self._drawer.allMergersCount.setText("<font color="+allObjectsColor+">"+str(int(allMergers))+"</font>")
 
     def updateTime(self):
-        delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][0] - self.editor.posModel.time
+        crop = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]
+        delta = crop["time"][0] - self.editor.posModel.time
         if delta > 0:
             self.editor.navCtrl.changeTimeRelative(delta)
         else:
             delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][1] - self.editor.posModel.time
             if delta < 0:
                 self.editor.navCtrl.changeTimeRelative(delta)
+
+        self.updateLabeledUnlabeledCount(crop)
 
     def setupLayers( self ):
         layers = []
@@ -710,52 +1082,53 @@ class AnnotationsGui(LayerViewerGui):
     def handleEditorLeftClick(self, position5d, globalWindowCoordiante):
 
         crop = self.getCurrentCrop()
-        unlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+        unlabeledObjectsCount = self.getNumberOfAllObjects(crop)-self.getNumberOfLabeledObjects(crop)
 
         if self.divLock:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
-            item = (position5d[0], oid)
-            if len(self.divs) == 0:                
-                self.divs.append(item)
-                self._setPosModel(time=self.editor.posModel.time + 1)                
-            elif len(self.divs) > 0:
-                if position5d[0] != self.divs[0][0] + 1:
-                    self._criticalMessage("Error: The daughter cells are expected to be in time step " + str(self.divs[0][0] + 1))
-                    return
-                if item not in self.divs:
+            if not oid == 0:
+                item = (position5d[0], oid)
+                if len(self.divs) == 0:
                     self.divs.append(item)
-                
-            if len(self.divs) == 3:                
-                activeTrack = self._getActiveTrack()
-                if (self.divs[0][1] not in self.mainOperator.labels[self.divs[0][0]]) or (activeTrack not in self.mainOperator.labels[self.divs[0][0]][self.divs[0][1]]):                    
-                    self._criticalMessage("Error: The label of the parent cell must match the active track label.")
+                    self._setPosModel(time=self.editor.posModel.time + 1)
+                elif len(self.divs) > 0:
+                    if position5d[0] != self.divs[0][0] + 1:
+                        self._criticalMessage("Error: The daughter cells are expected to be in time step " + str(self.divs[0][0] + 1))
+                        return
+                    if item not in self.divs:
+                        self.divs.append(item)
+
+                if len(self.divs) == 3:
+                    activeTrack = self._getActiveTrack()
+                    if (self.divs[0][1] not in self.mainOperator.labels[self.divs[0][0]]) or (activeTrack not in self.mainOperator.labels[self.divs[0][0]][self.divs[0][1]]):
+                        self._criticalMessage("Error: The label of the parent cell must match the active track label.")
+                        self.divLock = False
+                        self.divs = []
+                        self._drawer.divEvent.setChecked(False)
+                        return
+
+                    div = [activeTrack,]
+
+                    for i in range(1,3):
+                        activeTrack = self._addNewTrack()
+                        self._addObjectToTrack(activeTrack, self.divs[i][1], self.divs[i][0])
+                        div += [activeTrack,]
+
+                    self._addDivisionToListWidget(div[0], div[1], div[2], self.editor.posModel.time-1)
+
+                    self.mainOperator.divisions[div[0]] = (div[1:], self.divs[0][0])
+                    self._log('division (t,parent,child1,child2) = ' + str((self.editor.posModel.time-1, div[0], div[1], div[2])) + ' added.')
+
+                    self._setDirty(self.mainOperator.Divisions, [])
+                    self._setDirty(self.mainOperator.Labels, [self.divs[0][0],self.divs[0][0]+1])
+                    self._setDirty(self.mainOperator.TrackImage, [self.divs[0][0]])
+                    self._setDirty(self.mainOperator.UntrackedImage, [self.divs[0][0]])
+
+                    # release the division lock
                     self.divLock = False
                     self.divs = []
                     self._drawer.divEvent.setChecked(False)
-                    return
-
-                div = [activeTrack,]
-                
-                for i in range(1,3):
-                    activeTrack = self._addNewTrack()
-                    self._addObjectToTrack(activeTrack, self.divs[i][1], self.divs[i][0])
-                    div += [activeTrack,]
-                
-                self._addDivisionToListWidget(div[0], div[1], div[2], self.editor.posModel.time-1)                
-                
-                self.mainOperator.divisions[div[0]] = (div[1:], self.divs[0][0])
-                self._log('division (t,parent,child1,child2) = ' + str((self.editor.posModel.time-1, div[0], div[1], div[2])) + ' added.')
-                
-                self._setDirty(self.mainOperator.Divisions, [])
-                self._setDirty(self.mainOperator.Labels, [self.divs[0][0],self.divs[0][0]+1])
-                self._setDirty(self.mainOperator.TrackImage, [self.divs[0][0]])            
-                self._setDirty(self.mainOperator.UntrackedImage, [self.divs[0][0]])
-                
-                # release the division lock
-                self.divLock = False
-                self.divs = []
-                self._drawer.divEvent.setChecked(False)
-                self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=True)                
+                    self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=True)
         else:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
             if oid == 0:
@@ -787,14 +1160,17 @@ class AnnotationsGui(LayerViewerGui):
             self._setPosModel(time=self.editor.posModel.time + 1)
 
         self.updateLabeledUnlabeledCount(crop)
-        newUnlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+
+        newUnlabeledObjectsCount = self.getNumberOfAllObjects(crop)-self.getNumberOfLabeledObjects(crop)
 
         if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
             self._informationMessage("Info: All objects in the current crop have been assigned a track label.")
 
+        self._onSaveAnnotations
+
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
         crop = self.getCurrentCrop()
-        unlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+        unlabeledObjectsCount = self.getNumberOfAllObjects(crop)-self.getNumberOfLabeledObjects(crop)
 
         if self.divLock:
             return
@@ -881,7 +1257,7 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.TrackImage, [t])
             self._setDirty(self.mainOperator.UntrackedImage, [t])
             self._setDirty(self.mainOperator.Labels, [t])
-            
+
         elif selection in delSubtrackToEnd.keys():
             track2remove = delSubtrackToEnd[selection]
             maxt = self.mainOperator.LabelImage.meta.shape[0]
@@ -920,10 +1296,36 @@ class AnnotationsGui(LayerViewerGui):
             assert False, "cannot reach this"
 
         self.updateLabeledUnlabeledCount(crop)
-        newUnlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+        newUnlabeledObjectsCount = self.getNumberOfAllObjects(crop)-self.getNumberOfLabeledObjects(crop)
 
         if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
             self._informationMessage("Info: All objects in the current crop have been assigned a track label.")
+
+        self._onSaveAnnotations
+
+    def handleEditorToolTip(self, position5d, globalWindowCoordiante):
+        oid = self._getObject(self.mainOperator.LabelImage, position5d)
+        trackids = []
+        t = position5d[0]
+        if t in self.mainOperator.labels.keys() and oid in self.mainOperator.labels[t].keys():
+            for l in self.mainOperator.labels[t][oid]:
+                trackids.append(l)
+
+        if self.divLock:
+            if len(self.divs)==0:
+                self.setToolTip("Left click on a parent, then left click on each of the children to annotate a division.")
+            elif len(self.divs)==1:
+                self.setToolTip("Left click on a child.")
+            if len(self.divs)==2:
+                self.setToolTip("Left click on the second child.")
+        elif oid == 0:
+            self.setToolTip("Move your mouse to an object you would like to label!")
+        elif trackids == []:
+            self.setToolTip("Left click to add the active track to this unlabelled object. Right click for more options.")
+        else:
+            self.setToolTip("Left click to add the active track to this object. Right click for more options.")
+        return
+
 
     def _delDivisionEvent(self, parent_label):
         children = self.mainOperator.divisions[parent_label][0]            
@@ -939,7 +1341,9 @@ class AnnotationsGui(LayerViewerGui):
         self.labelsWithDivisions[t_parent+1].remove(children[1])
         
         self._setDirty(self.mainOperator.Divisions, [])
-    
+
+        self._onSaveAnnotations
+
     def _currentActiveTrackChanged(self):
         self.mainOperator.ActiveTrack.setValue(self._getActiveTrack())
 
@@ -981,8 +1385,8 @@ class AnnotationsGui(LayerViewerGui):
     def _onNewTrackPressed(self):
         self._addNewTrack()
     
-    def _delLabel(self, t, oid, track2remove):        
-        if t in self.labelsWithDivisions.keys() and track2remove in self.labelsWithDivisions[t]:
+    def _delLabel(self, t, oid, track2remove, errorMessage=True):
+        if t in self.labelsWithDivisions.keys() and track2remove in self.labelsWithDivisions[t] and errorMessage:
             self._criticalMessage("Error: Cannot remove label " + str(track2remove) +
                                        " at t=" + str(t) + ", since it is involved in a division event." + 
                                        " Remove division event first by right clicking on the parent.")
@@ -990,9 +1394,15 @@ class AnnotationsGui(LayerViewerGui):
             return False
         
         self.mainOperator.labels[t][oid].remove(track2remove)
+        if len(self.mainOperator.labels[t][oid])==0:
+            res = self.mainOperator.labels
+            del res[t][oid]
+            self.mainOperator.labels = res
         self._setDirty(self.mainOperator.Labels, [t])
         self._setDirty(self.mainOperator.TrackImage, [t])
         self._setDirty(self.mainOperator.UntrackedImage, [t])
+
+        self._onSaveAnnotations
         return True
         
     def _onDelTrackPressed(self):        
@@ -1020,7 +1430,9 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.TrackImage, affectedT)
             self._setDirty(self.mainOperator.UntrackedImage, affectedT)
             self._setDirty(self.mainOperator.Labels, affectedT)
-    
+
+        self._onSaveAnnotations
+
     def _addObjectToTrack(self, activeTrack, oid, t):
 
         crop = self.getCurrentCrop()
@@ -1177,7 +1589,7 @@ class AnnotationsGui(LayerViewerGui):
                 self._drawer.activeTrackBox.setCurrentIndex(i)
 
         crop = self.getCurrentCrop()
-        unlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+        unlabeledObjectsCount = self.getNumberOfAllObjects(crop)-self.getNumberOfLabeledObjects(crop)
 
         self.applet.busy = True
         self.applet.appletStateUpdateRequested.emit()
@@ -1188,7 +1600,7 @@ class AnnotationsGui(LayerViewerGui):
         req.submit()
 
         self.updateLabeledUnlabeledCount(crop)
-        newUnlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+        newUnlabeledObjectsCount = self.getNumberOfAllObjects(crop)-self.getNumberOfLabeledObjects(crop)
 
         if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
             self._informationMessage("Info: All objects in the current crop have been assigned a track label.")
@@ -1212,6 +1624,7 @@ class AnnotationsGui(LayerViewerGui):
         
         self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=(not self.divLock))                      
 
+        self._onSaveAnnotations
 
     def _setStyleSheet(self, widget, qcolor, qType="QComboBox"):
         values = "{r}, {g}, {b}, {a}".format(r = qcolor.red(),
@@ -1270,7 +1683,8 @@ class AnnotationsGui(LayerViewerGui):
             self._drawer.markMisdetection.setText("Mark as False Detection")
             self._enableButtons(exceptButtons=[self._drawer.markMisdetection], enable=True)
         
-        
+        self._onSaveAnnotations
+
     @staticmethod
     def _appendUnique(lst, obj):
         if obj not in lst:

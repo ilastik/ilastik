@@ -11,8 +11,12 @@ from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.operators.generic import OpPixelOperator, OpSingleChannelSelector
 
 class OpWsdt(Operator):
-    Input = InputSlot() # Can be multi-channel (but you'll have to choose which channel you want to use)
-    ChannelSelection = InputSlot(value=0)
+    # Can be multi-channel (but you'll have to choose which channels you want to use)
+    Input = InputSlot()
+    
+    # List input channels to use as the boundary map
+    # (They'll be summed.)
+    ChannelSelections = InputSlot(value=[0])
 
     # Parameters
     Pmin = InputSlot(value=0.5)
@@ -32,7 +36,15 @@ class OpWsdt(Operator):
         self.debug_results = None
         self.watershed_completed = OrderedSignal()
 
+        self._opSelectedInput = OpSumChannels( parent=self )
+        self._opSelectedInput.ChannelSelections.connect( self.ChannelSelections )
+        self._opSelectedInput.Input.connect( self.Input )
+
     def setupOutputs(self):
+        if not self._opSelectedInput.Output.ready():
+            self.Superpixels.meta.NOTREADY = True
+            return
+        
         assert self.Input.meta.getAxisKeys()[-1] == 'c', \
             "This operator assumes that channel is the last axis."
         self.Superpixels.meta.assignFrom( self.Input.meta )
@@ -43,17 +55,12 @@ class OpWsdt(Operator):
         self.debug_results = None
         if self.EnableDebugOutputs.value:
             self.debug_results = OrderedDict()
-    
+
     def execute(self, slot, subindex, roi, result):
-        assert slot is self.Superpixels, "Unknown or unconnected output slot: {}".format( slot )
-        channel_index = self.ChannelSelection.value
+        assert slot is self.Superpixels, \
+            "Unknown or unconnected output slot: {}".format( slot )
 
-        pmap_roi = roi.copy()
-        pmap_roi.start[-1] = channel_index
-        pmap_roi.stop[-1] = channel_index+1
-
-        # TODO: We could be sneaky and use the result array as a temporary here...
-        pmap = self.Input(pmap_roi.start, pmap_roi.stop).wait()
+        pmap = self._opSelectedInput.Output(roi.start, roi.stop).wait()
 
         if self.debug_results:
             self.debug_results.clear()
@@ -79,7 +86,7 @@ class OpCachedWsdt(Operator):
     FreezeCache = InputSlot(value=True)
     
     Input = InputSlot() # Can be multi-channel (but you'll have to choose which channel you want to use)
-    ChannelSelection = InputSlot(value=0)
+    ChannelSelections = InputSlot(value=[0])
 
     # Parameters
     Pmin = InputSlot(value=0.5)
@@ -97,6 +104,8 @@ class OpCachedWsdt(Operator):
     SuperpixelCacheInput = InputSlot(optional=True)
     CleanBlocks = OutputSlot()
 
+    SelectedInput = OutputSlot()
+
     # Thresholding is cheap and best done interactively,
     # so expose an uncached slot just for it
     ThresholdedInput = OutputSlot()
@@ -111,7 +120,7 @@ class OpCachedWsdt(Operator):
         
         self._opWsdt = OpWsdt( parent=self )
         self._opWsdt.Input.connect( self.Input )
-        self._opWsdt.ChannelSelection.connect( self.ChannelSelection )
+        self._opWsdt.ChannelSelections.connect( self.ChannelSelections )
         self._opWsdt.Pmin.connect( self.Pmin )
         self._opWsdt.MinMembraneSize.connect( self.MinMembraneSize )
         self._opWsdt.MinSegmentSize.connect( self.MinSegmentSize )
@@ -127,9 +136,10 @@ class OpCachedWsdt(Operator):
         self.Superpixels.connect( self._opCache.Output )
         self.CleanBlocks.connect( self._opCache.CleanBlocks )
 
-        self._opSelectedInput = OpSingleChannelSelector( parent=self )
-        self._opSelectedInput.Index.connect( self.ChannelSelection )
+        self._opSelectedInput = OpSumChannels( parent=self )
+        self._opSelectedInput.ChannelSelections.connect( self.ChannelSelections )
         self._opSelectedInput.Input.connect( self.Input )
+        self.SelectedInput.connect( self._opSelectedInput.Output )
 
         self._opThreshold = OpPixelOperator( parent=self )
         self._opThreshold.Input.connect( self._opSelectedInput.Output )
@@ -159,3 +169,48 @@ class OpCachedWsdt(Operator):
         if slot is self.EnableDebugOutputs and self.EnableDebugOutputs.value:
             # Force a refresh so the debug outputs will be updated.
             self._opCache.Input.setDirty()
+
+class OpSumChannels(Operator):
+    Input = InputSlot()
+    ChannelSelections = InputSlot(value=[0])
+    Output = OutputSlot()
+    
+    def setupOutputs(self):
+        if len(self.ChannelSelections.value) == 0:
+            self.Output.meta.NOTREADY = True
+            return
+        
+        self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.shape = self.Input.meta.shape[:-1] + (1,)
+    
+    def execute(self, slot, subindex, roi, result):
+        channel_indexes = np.array(self.ChannelSelections.value)
+        channel_indexes.sort()
+
+        input_roi = roi.copy()
+        input_roi.start[-1] = channel_indexes[0]
+        input_roi.stop[-1] = channel_indexes[-1]+1
+
+        if len(channel_indexes) == 1:
+            # Fetch in-place
+            self.Input(input_roi.start, input_roi.stop).writeInto(result).wait()
+        else:
+            fetched_data = self.Input(input_roi.start, input_roi.stop).wait()
+            channel_indexes = channel_indexes - channel_indexes[0]
+            selected_data = fetched_data[..., tuple(channel_indexes)]
+            selected_data.sum(axis=-1, out=result[...,0])
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.ChannelSelections:
+            # Everything is dirty
+            self.Output.setDirty()
+        elif slot == self.Input:
+            # If any of the channels we care about became dirty, our output is dirty.
+            channel_indexes = np.array(self.ChannelSelections.value).sort()
+            first_channel = channel_indexes[0]
+            last_channel = channel_indexes[-1]
+            if roi.start[-1] > last_channel or roi.stop[-1] <= first_channel:
+                return
+            self.Output.setDirty(roi.start, roi.stop)
+        else:
+            assert False, "Unhandled input slot: {}".format(slot.name)

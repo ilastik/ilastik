@@ -25,6 +25,7 @@ import functools
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.NullHandler())
 from threading import Lock as ThreadLock
 
 # required numerical modules
@@ -40,9 +41,7 @@ from lazyflow.stype import Opaque
 from lazyflow.request import Request, RequestPool
 
 # required lazyflow operators
-from lazyflow.operators.opLabelVolume import OpLabelVolume
 from lazyflow.operators.opCompressedCache import OpCompressedCache
-from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
 # This operator implements an interface to compute Graph Cut segmentations
@@ -51,7 +50,7 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 # a 6-neighborhood for 3D data. The prediction maps in the input
 # are used as unaries and are taken "as is", without an additional
 # Log operation (TODO: make optional log).
-#  - this operator assumes txyzc axis order
+#  - this operator assumes tzyxc axis order
 #  - only ROIs with 1 channel, 1 time slice are valid for slot Output
 #  - requests to slot CachedOutput are guaranteed to be consistent
 class OpGraphCut(Operator):
@@ -77,12 +76,12 @@ class OpGraphCut(Operator):
         # sanity checks
         shape = self.Prediction.meta.shape
         assert len(shape) == 5,\
-            "Prediction maps must be a full 5d volume (txyzc)"
+            "Prediction maps must be a full 5d volume (tzyxc)"
         tags = self.Prediction.meta.getAxisKeys()
         tags = "".join(tags)
-        assert tags == 'txyzc',\
+        assert tags == 'tzyxc',\
             "Prediction maps have wrong axes order"\
-            "(expected: txyzc, got: {})".format(tags)
+            "(expected: tzyxc, got: {})".format(tags)
 
         if self._cache is not None:
             self.CachedOutput.disconnect()
@@ -114,20 +113,20 @@ class OpGraphCut(Operator):
         ## request the prediction image ##
         pred = self.Prediction.get(roi).wait()
         pred = vigra.taggedView(pred, axistags=self.Prediction.meta.axistags)
-        pred = pred.withAxes(*'xyz')
+        pred = pred.withAxes(*'zyx')
 
         # prepare result
         resView = vigra.taggedView(result, axistags=self.Output.meta.axistags)
-        resView = resView.withAxes(*'xyz')
+        resView = resView.withAxes(*'zyx')
 
         logger.info("Executing graph cut ... (this might take a while)")
-        tmp = segmentGC(pred, self.Beta.value)
+        threshold_binary = segmentGC(pred, self.Beta.value)
+        threshold_binary = vigra.taggedView( threshold_binary, 'zyx' )
         logger.info("Graph-cut done")
 
         # label the segmentation so that this operator is consistent with
         # the other thresholding operators
-        vigra.analysis.labelVolumeWithBackground(tmp.astype(np.uint32),
-                                                 out=resView)
+        vigra.analysis.labelVolumeWithBackground(threshold_binary.astype(np.uint8), out=resView)
 
     def propagateDirty(self, slot, subindex, roi):
         # all input slots affect the (global) graph cut computation
@@ -165,7 +164,7 @@ def segmentGC(pred, beta):
        -- binary volume, as produced by OpenGM
 
     '''
-    nx, ny, nz = pred.shape
+    nz, ny, nx = pred.shape
 
     numVar = pred.size
     numLabels = 2
@@ -183,33 +182,28 @@ def segmentGC(pred, beta):
     functions[:, 0] = predflat[:, 0]
     functions[:, 1] = 1-predflat[:, 0]
 
-    fids = gm.addFunctions(functions)
-    gm.addFactors(fids, np.arange(0, numVar))
+    unary_fids = gm.addFunctions(functions)
+    gm.addFactors(unary_fids, np.arange(0, numVar))
 
     #add one binary function (potts fuction)
     potts = opengm.PottsFunction([2, 2], 0.0, beta)
-    fid = gm.addFunction(potts)
+    binary_fid = gm.addFunction(potts)
 
     #add binary factors
-    nyz = ny*nz
-    indices = np.arange(numVar,
-                        dtype=np.uint32).reshape((nx, ny, nz))
-    arg1 = np.concatenate([indices[:nx - 1, :, :], indices[1:, :, :]]
-                            ).reshape((2, numVar - nyz)).transpose()
+    indices = np.arange(numVar, dtype=np.uint32).reshape((nz, ny, nx))
+    z_edges = np.concatenate([indices[:nz-1, :, :], indices[1:, :, :]]).reshape((2, (nz-1)*ny*nx)).transpose()
+    y_edges = np.concatenate([indices[:, :ny-1, :], indices[:, 1:, :]]).reshape((2, nz*(ny-1)*nx)).transpose()
+    x_edges = np.concatenate([indices[:, :, :nx-1], indices[:, :, 1:]]).reshape((2, nz*ny*(nx-1))).transpose()
 
-    arg2 = np.concatenate([indices[:, :ny - 1, :], indices[:, 1:, :]]
-                            ).reshape((2, numVar - nx*nz)).transpose()
-
-    arg3 = np.concatenate([indices[:, :, :nz - 1], indices[:, :, 1:]]
-                            ).reshape((2, numVar - nx*ny)).transpose()
-
-    gm.addFactors(fid, arg1)
-    gm.addFactors(fid, arg2)
-    gm.addFactors(fid, arg3)
+    gm.addFactors(binary_fid, z_edges)
+    gm.addFactors(binary_fid, y_edges)
+    gm.addFactors(binary_fid, x_edges)
 
     grcut = opengm.inference.GraphCut(gm)
     grcut.infer()
     argmin = grcut.arg()
 
-    res = argmin.reshape((nx, ny, nz))
+    res = argmin.reshape((nz, ny, nx))
+    if hasattr(pred, 'axistags'):
+        res = vigra.taggedView(res, pred.axistags)
     return res

@@ -43,8 +43,9 @@ class ThresholdTwoLevelsApplet( StandardApplet ):
                  'LowThreshold',
                  'SmootherSigma',
                  'CurOperator',
-                 'SingleThreshold',
-                 'Channel' ]
+                 'Channel',
+                 'CoreChannel',
+                 'Beta' ]
     
     @property
     def singleLaneGuiClass(self):

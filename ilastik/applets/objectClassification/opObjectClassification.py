@@ -42,6 +42,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 
 from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import logging
 logger = logging.getLogger(__name__)
@@ -206,8 +207,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
             We need to double-wrap the cache, so we need this operator to provide the first level of wrapping.
             """
             Input = InputSlot(level=1) 
-            innerBlockShape = InputSlot()
-            outerBlockShape = InputSlot()
+            BlockShape = InputSlot()
             fixAtCurrent = InputSlot(value = False)
     
             Output = OutputSlot(level=1)
@@ -217,8 +217,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
                 self._innerOperator = OperatorWrapper( OpSlicedBlockedArrayCache, parent=self )
                 self._innerOperator.Input.connect( self.Input )
                 self._innerOperator.fixAtCurrent.connect( self.fixAtCurrent )
-                self._innerOperator.innerBlockShape.connect( self.innerBlockShape )
-                self._innerOperator.outerBlockShape.connect( self.outerBlockShape )
+                self._innerOperator.BlockShape.connect( self.BlockShape )
                 self.Output.connect( self._innerOperator.Output )
                 
             def execute(self, slot, subindex, roi, destination):
@@ -389,19 +388,12 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
                        'x' : (256,256),
                        'c' : (100,100) }
 
-        innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
-        outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
+        blockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
+        blockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
+        blockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
 
-        innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
-        outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
-
-        innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
-        outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
-
-        self.opPredictionImageCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.opPredictionImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
-        self.opProbChannelsImageCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.opProbChannelsImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+        self.opPredictionImageCache.BlockShape.setValue( (blockShapeX, blockShapeY, blockShapeZ) )
+        self.opProbChannelsImageCache.BlockShape.setValue( (blockShapeX, blockShapeY, blockShapeZ) )
         self.MaxNumObj.setValue( len(self.LabelNames.value) - 1)
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -619,8 +611,8 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
                 object_features_timewise = object_feature_slot([t]).wait()
                 object_features = object_features_timewise[t]
 
-                min_coords = object_features["Default features"]["Coord<Minimum>"]
-                max_coords = object_features["Default features"]["Coord<Maximum>"]
+                min_coords = object_features[default_features_key]["Coord<Minimum>"]
+                max_coords = object_features[default_features_key]["Coord<Maximum>"]
 
                 # Don't bother saving info for objects that aren't labeled
                 min_coords = min_coords[labels.nonzero()]
@@ -672,8 +664,8 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
                 old_features = old_features_timewise[time]
                 
                 current_bboxes = {}
-                current_bboxes["Coord<Minimum>"] = old_features["Default features"]["Coord<Minimum>"]
-                current_bboxes["Coord<Maximum>"] = old_features["Default features"]["Coord<Maximum>"]
+                current_bboxes["Coord<Minimum>"] = old_features[default_features_key]["Coord<Minimum>"]
+                current_bboxes["Coord<Maximum>"] = old_features[default_features_key]["Coord<Maximum>"]
 
                 json_data_this_time = json_data_this_lane[time_str]
                 saved_labels = numpy.array( json_data_this_time["labels"] )

@@ -35,6 +35,10 @@ from ilastik.applets.tracking.structured import config as configStructured
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
+from ilastik.applets.batchProcessing import BatchProcessingApplet
+
+import logging
+logger = logging.getLogger(__name__)
 
 class StructuredTrackingWorkflowBase( Workflow ):
     workflowName = "Structured Learning Tracking Workflow BASE"
@@ -109,10 +113,16 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self.default_tracking_export_filename = '{dataset_dir}/{nickname}-tracking_exported_data.csv'
         self.dataExportTrackingApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export",default_export_filename=self.default_tracking_export_filename)
         opDataExportTracking = self.dataExportTrackingApplet.topLevelOperator
-        opDataExportTracking.SelectionNames.setValue( ['Tracking Result', 'Merger Result', 'Object Identities'] )
+        opDataExportTracking.SelectionNames.setValue( ['Tracking-Result', 'Merger-Result', 'Object-Identities'] )
         opDataExportTracking.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
         self.dataExportTrackingApplet.set_exporting_operator(opStructuredTracking)
+        self.dataExportTrackingApplet.prepare_lane_for_export = self.prepare_lane_for_export
         self.dataExportTrackingApplet.post_process_lane_export = self.post_process_lane_export
+
+        # configure export settings
+        settings = {'file path': self.default_tracking_export_filename, 'compression': {}, 'file type': 'h5'}
+        selected_features = ['Count', 'RegionCenter', 'RegionRadii', 'RegionAxes']
+        opStructuredTracking.ExportSettings.setValue( (settings, selected_features) )
 
         self._applets = []
         self._applets.append(self.dataSelectionApplet)
@@ -120,6 +130,9 @@ class StructuredTrackingWorkflowBase( Workflow ):
             self._applets.append(self.thresholdTwoLevelsApplet)
         self._applets.append(self.trackingFeatureExtractionApplet)
         self._applets.append(self.divisionDetectionApplet)
+
+        self.batchProcessingApplet = BatchProcessingApplet(self, "Batch Processing", self.dataSelectionApplet, self.dataExportTrackingApplet)
+
         self._applets.append(self.cellClassificationApplet)
         self._applets.append(self.cropSelectionApplet)
         self._applets.append(self.objectExtractionApplet)
@@ -141,6 +154,17 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opCellClassification.SuggestedLabelNames.setValue( ['False Detection',] + [str(1) + ' Object'] + [str(i) + ' Objects' for i in range(2,10) ] )
         opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
         opCellClassification.EnableLabelTransfer.setValue(False)
+
+        if workflow_cmdline_args:
+            self._data_export_args, unused_args = self.dataExportTrackingApplet.parse_known_cmdline_args( workflow_cmdline_args )
+            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( workflow_cmdline_args )
+        else:
+            unused_args = None
+            self._data_export_args = None
+            self._batch_input_args = None
+
+        if unused_args:
+            logger.warn("Unused command-line args: {}".format( unused_args ))
 
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -213,6 +237,9 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opAnnotations.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
         opAnnotations.ComputedFeatureNames.connect(opObjExtraction.Features)
         opAnnotations.Crops.connect( opCropSelection.Crops)
+        opAnnotations.DivisionProbabilities.connect( opDivDetection.Probabilities )
+        opAnnotations.DetectionProbabilities.connect( opCellClassification.Probabilities )
+        opAnnotations.MaxNumObj.connect (opCellClassification.MaxNumObj)
 
         # opDataAnnotationsExport.Inputs.resize(2)
         # opDataAnnotationsExport.Inputs[0].connect( opAnnotations.TrackImage )
@@ -244,11 +271,106 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opStructuredTracking.MaxNumObj.connect (opCellClassification.MaxNumObj)
 
         opDataTrackingExport.Inputs.resize(3)
-        opDataTrackingExport.Inputs[0].connect( opStructuredTracking.Output )
+        opDataTrackingExport.Inputs[0].connect( opStructuredTracking.RelabeledImage )
         opDataTrackingExport.Inputs[1].connect( opStructuredTracking.MergerOutput )
         opDataTrackingExport.Inputs[2].connect( opStructuredTracking.LabelImage )
         opDataTrackingExport.RawData.connect( op5Raw.Output )
         opDataTrackingExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+
+    def prepare_lane_for_export(self, lane_index):
+        import logging
+        logger = logging.getLogger(__name__)
+
+        maxt = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[0]
+        maxx = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[1]
+        maxy = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[2]
+        maxz = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[3]
+        time_enum = range(maxt)
+        x_range = (0, maxx)
+        y_range = (0, maxy)
+        z_range = (0, maxz)
+
+        ndim = 2
+        if ( z_range[1] - z_range[0] ) > 1:
+            ndim = 3
+
+        parameters = self.trackingApplet.topLevelOperator.Parameters.value
+        # Save state of axis ranges
+        if 'time_range' in parameters:
+            self.prev_time_range = parameters['time_range']
+        else:
+            self.prev_time_range = time_enum
+
+        if 'x_range' in parameters:
+            self.prev_x_range = parameters['x_range']
+        else:
+            self.prev_x_range = x_range
+
+        if 'y_range' in parameters:
+            self.prev_y_range = parameters['y_range']
+        else:
+            self.prev_y_range = y_range
+
+        if 'z_range' in parameters:
+            self.prev_z_range = parameters['z_range']
+        else:
+            self.prev_z_range = z_range
+
+        # batch processing starts a new lane, so training data needs to be copied from the lane that loaded the project
+        loaded_project_lane_index=0
+        self.annotationsApplet.topLevelOperator[lane_index].Annotations.setValue(
+            self.trackingApplet.topLevelOperator[loaded_project_lane_index].Annotations.value)
+
+        self.cropSelectionApplet.topLevelOperator[lane_index].Crops.setValue(
+            self.trackingApplet.topLevelOperator[loaded_project_lane_index].Crops.value)
+
+        logger.info("Test: Structured Learning")
+        weights = self.trackingApplet.topLevelOperator[lane_index]._runStructuredLearning(
+            z_range,
+            parameters['maxObj'],
+            parameters['max_nearest_neighbors'],
+            parameters['maxDist'],
+            parameters['divThreshold'],
+            [parameters['scales'][0],parameters['scales'][1],parameters['scales'][2]],
+            parameters['size_range'],
+            parameters['withDivisions'],
+            parameters['borderAwareWidth'],
+            parameters['withClassifierPrior'],
+            withBatchProcessing=True)
+        logger.info("weights: {}".format(weights))
+
+        logger.info("Test: Tracking")
+        self.trackingApplet.topLevelOperator[lane_index].track(
+            time_range = time_enum,
+            x_range = x_range,
+            y_range = y_range,
+            z_range = z_range,
+            size_range = parameters['size_range'],
+            x_scale = parameters['scales'][0],
+            y_scale = parameters['scales'][1],
+            z_scale = parameters['scales'][2],
+            maxDist=parameters['maxDist'],
+            maxObj = parameters['maxObj'],
+            divThreshold=parameters['divThreshold'],
+            avgSize=parameters['avgSize'],
+            withTracklets=parameters['withTracklets'],
+            sizeDependent=parameters['sizeDependent'],
+            detWeight=parameters['detWeight'],
+            divWeight=parameters['divWeight'],
+            transWeight=parameters['transWeight'],
+            withDivisions=parameters['withDivisions'],
+            withOpticalCorrection=parameters['withOpticalCorrection'],
+            withClassifierPrior=parameters['withClassifierPrior'],
+            ndim=ndim,
+            withMergerResolution=parameters['withMergerResolution'],
+            borderAwareWidth = parameters['borderAwareWidth'],
+            withArmaCoordinates = parameters['withArmaCoordinates'],
+            cplex_timeout = parameters['cplex_timeout'],
+            appearance_cost = parameters['appearanceCost'],
+            disappearance_cost = parameters['disappearanceCost'],
+            force_build_hypotheses_graph = False,
+            withBatchProcessing = True
+        )
 
     def post_process_lane_export(self, lane_index):
         # FIXME: This probably only works for the non-blockwise export slot.
@@ -296,6 +418,24 @@ class StructuredTrackingWorkflowBase( Workflow ):
         else:
             input_ready = False
         return input_ready
+
+    def onProjectLoaded(self, projectManager):
+        """
+        Overridden from Workflow base class.  Called by the Project Manager.
+
+        If the user provided command-line arguments, use them to configure
+        the workflow inputs and output settings.
+        """
+
+        # Configure the data export operator.
+        if self._data_export_args:
+            self.dataExportTrackingApplet.configure_operator_with_parsed_args( self._data_export_args )
+
+        # Configure headless mode.
+        if self._headless and self._batch_input_args and self._data_export_args:
+            logger.info("Beginning Batch Processing")
+            self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
+            logger.info("Completed Batch Processing")
 
     def handleAppletStateUpdateRequested(self):
         """

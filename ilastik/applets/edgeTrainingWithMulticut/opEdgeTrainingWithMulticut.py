@@ -30,6 +30,7 @@ class OpEdgeTrainingWithMulticut(Operator):
  
     # Multicut Output
     Output = OutputSlot(level=1) # Pixelwise output (not RAG, etc.)
+    EdgeLabelDisagreementDict = OutputSlot(level=1)
 
     def __init__(self, *args, **kwargs):
         super(OpEdgeTrainingWithMulticut, self).__init__(*args, **kwargs)
@@ -64,6 +65,7 @@ class OpEdgeTrainingWithMulticut(Operator):
         opMulticut.EdgeProbabilitiesDict.connect( opEdgeTraining.EdgeProbabilitiesDict )
 
         self.Output.connect( opMulticut.Output )
+        self.EdgeLabelDisagreementDict.connect( opMulticut.EdgeLabelDisagreementDict )
 
         self.opEdgeTraining = opEdgeTraining
         self.opMulticut = opMulticut
