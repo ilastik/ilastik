@@ -127,10 +127,8 @@ class StackFileSelectionWidget(QDialog):
         self.directoryEdit.setText( decode_to_qstring(directory) )
         globstring = self._getGlobString(directory)
         if globstring:
-            filenames = OpStackLoader.expandGlobStrings(globstring)
-            self._updateFileList( sorted(filenames) )
-            # As a convenience, also show the glob string in the pattern field
-            self.patternEdit.setText( decode_to_qstring(globstring) )
+            self.patternEdit.setText(decode_to_qstring(globstring))
+            self._applyPattern()
 
     def _getGlobString(self, directory):
         all_filenames = []
