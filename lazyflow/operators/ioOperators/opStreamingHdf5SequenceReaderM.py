@@ -91,14 +91,6 @@ class OpStreamingHdf5SequenceReaderM(Operator):
                         "(not supported!): {}".format(globString))
             super(OpStreamingHdf5SequenceReaderM.InternalPlaceholderError, self).__init__(self.msg)
 
-    class SingleFileException(Exception):
-        """Summary
-        """
-        def __init__(self, fileName):
-            self.filename = fileName
-            self.msg = "Only a single Hdf5 file supplied: {}".format(fileName)
-            super(OpStreamingHdf5SequenceReaderM.SingleFileException, self).__init__(self.msg)
-
     def __init__(self, *args, **kwargs):
         super(OpStreamingHdf5SequenceReaderM, self).__init__(*args, **kwargs)
         self._hdf5Files = None
