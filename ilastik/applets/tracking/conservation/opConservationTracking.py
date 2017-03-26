@@ -7,11 +7,10 @@ from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 
 from ilastik.applets.base.applet import DatasetConstraintError
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpRegionFeatures
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpRegionFeatures, OpAdaptTimeListRoi
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import OpZeroDefault
 from lazyflow.roi import sliceToRoi
-from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
 from functools import partial
 from lazyflow.request import Request, RequestPool
@@ -616,22 +615,6 @@ class OpConservationTracking(Operator, ExportingOperator):
             
         return indexMapping[volume]
                   
-    
-    def _setupRelabeledFeatureSlot(self, original_feature_slot):
-        from ilastik.applets.trackingFeatureExtraction import config
-        # when exporting after merger resolving, the stored object features are not up to date for the relabeled objects
-        opRelabeledRegionFeatures = OpRelabeledMergerFeatureExtraction(parent=self)
-        opRelabeledRegionFeatures.RawImage.connect(self.RawImage)
-        opRelabeledRegionFeatures.LabelImage.connect(self.LabelImage)
-        opRelabeledRegionFeatures.RelabeledImage.connect(self.RelabeledImage)
-        opRelabeledRegionFeatures.OriginalRegionFeatures.connect(original_feature_slot)
-
-        vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name]))
-        feature_names_vigra = {}
-        feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
-        opRelabeledRegionFeatures.FeatureNames.setValue(feature_names_vigra)
-
-        return opRelabeledRegionFeatures
 
     def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
         """
@@ -648,25 +631,40 @@ class OpConservationTracking(Operator, ExportingOperator):
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False
 
-        if with_divisions:
-            object_feature_slot = self.ObjectFeaturesWithDivFeatures
-        else:
-            object_feature_slot = self.ObjectFeatures
-
+        # Create opRegionFeatures to extract features of relabeled volume
         if with_merger_resolution:
+            from ilastik.applets.trackingFeatureExtraction import config
+            
+            self._opRegionFeatures = OpRegionFeatures(parent=self)
+            self._opRegionFeatures.RawVolume.connect(self.RawImage)
+            self._opRegionFeatures.LabelVolume.connect(self.RelabeledImage)
+            
+            vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name]))
+            feature_names_vigra = {}
+            feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
+            self._opRegionFeatures.Features.setValue(feature_names_vigra)
+    
+            self._opAdaptTimeListRoi = OpAdaptTimeListRoi(parent=self)
+            self._opAdaptTimeListRoi.Input.connect(self._opRegionFeatures.Output)
+            
+            object_feature_slot = self._opAdaptTimeListRoi.Output
+            
             label_image = self.RelabeledImage
 
-            opRelabeledRegionFeatures = self._setupRelabeledFeatureSlot(object_feature_slot)
-            object_feature_slot = opRelabeledRegionFeatures.RegionFeatures
+        # Use ObjectFeaturesWithDivFeatures slot
+        elif with_divisions:
+            object_feature_slot = self.ObjectFeaturesWithDivFeatures
+            label_image = self.LabelImage
+        # Use ObjectFeatures slot only
         else:
+            object_feature_slot = self.ObjectFeatures
             label_image = self.LabelImage
 
+        # Call export implementation
         self._do_export_impl(settings, selected_features, progress_slot, object_feature_slot, label_image, lane_index, filename_suffix)
 
-        if with_merger_resolution:
-            opRelabeledRegionFeatures.cleanUp()
-
     def _do_export_impl(self, settings, selected_features, progress_slot, object_feature_slot, label_image_slot, lane_index, filename_suffix=""):
+        # TODO: Remove as many functions from exportFiles as possible and transition to a plugin system
         from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default, \
             flatten_dict, division_flatten_dict
 
