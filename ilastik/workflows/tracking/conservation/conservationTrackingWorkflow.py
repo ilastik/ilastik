@@ -357,10 +357,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             withBatchProcessing = True
         )
 
-    def post_process_lane_export(self, lane_index):
-        # Set option to bypass cache to false
-        self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(False)
-        
+    def post_process_lane_export(self, lane_index):        
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
             self.dataExportApplet.progressSignal.emit(0)
@@ -391,6 +388,9 @@ class ConservationTrackingWorkflowBase( Workflow ):
 
             req.wait()
             self.dataExportApplet.progressSignal.emit(100)
+
+            # Restore option to bypass cache to false
+            self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(False)
             
             # Restore state of axis ranges
             parameters = self.trackingApplet.topLevelOperator.Parameters.value
