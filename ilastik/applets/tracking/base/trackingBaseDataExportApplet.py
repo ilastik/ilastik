@@ -143,6 +143,9 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
                     opTrackingDataExport.OutputFilenameFormat.setValue(parsed_args.output_filename_format)
 
                 return # We don't want to configure the super operator so we quit now!
+            else:
+                # set some value to the SelectedPlugin slot so that it is ready
+                opTrackingDataExport.SelectedPlugin.setValue("None")
 
         # configure super operator
         DataExportApplet._configure_operator_with_parsed_args(parsed_args, opTrackingDataExport)
