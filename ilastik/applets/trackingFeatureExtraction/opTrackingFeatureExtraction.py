@@ -134,7 +134,9 @@ class OpTrackingFeatureExtraction(Operator):
     FeatureNamesVigra = InputSlot(rtype=List, stype=Opaque, value={})
     
     FeatureNamesDivision = InputSlot(rtype=List, stype=Opaque, value={})
-        
+ 
+    # Bypass cache (for headless mode)
+    BypassModeEnabled = InputSlot(value=False)        
 
     LabelImage = OutputSlot()
     ObjectCenterImage = OutputSlot()
@@ -176,7 +178,7 @@ class OpTrackingFeatureExtraction(Operator):
         # connect internal operators
         self._objectExtraction.RawImage.connect(self.RawImage)
         self._objectExtraction.BinaryImage.connect(self.BinaryImage)
-
+        self._objectExtraction.BypassModeEnabled.connect(self.BypassModeEnabled)
         self._objectExtraction.Features.connect(self.FeatureNamesVigra)
         self._objectExtraction.RegionFeaturesCacheInput.connect(self.RegionFeaturesCacheInputVigra)
         self._objectExtraction.LabelImageCacheInput.connect(self.LabelImageCacheInput)
@@ -242,7 +244,9 @@ class OpTrackingFeatureExtraction(Operator):
             assert False, "Shouldn't get here."
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.FeatureNamesVigra or slot == self.FeatureNamesDivision:
+        if  slot == self.BypassModeEnabled:
+            pass
+        elif slot == self.FeatureNamesVigra or slot == self.FeatureNamesDivision:
             self.ComputedFeatureNamesAll.setDirty(roi)
             self.ComputedFeatureNamesNoDivisions.setDirty(roi)
 

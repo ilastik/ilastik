@@ -507,6 +507,11 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Populate events dictionary
         events = {}
         
+        # Get merger dict
+        resolvedMergersDict = self.ResolvedMergers.value
+        if not resolvedMergersDict: 
+            logger.info("Resolved Merger Dictionary not available for generating events vector. Please click on the Track button.")
+        
         # Save mergers, links, detections, and divisions
         for timestep in traxelIdPerTimestepToUniqueIdMap.keys():
             # We need to add an extra column with zeros in order to be backward compatible with the older version
@@ -542,9 +547,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             if len(mul) > 0:
                 events[timestep]['mul'] = mul
 
-            # Write merger results dictionary
-            resolvedMergersDict = self.ResolvedMergers.value
-            
+            # Write merger results dictionary            
             if resolvedMergersDict:
                 mergerRes = {}
                 
@@ -552,9 +555,6 @@ class OpConservationTracking(Operator, ExportingOperator):
                     mergerRes[idx] = resolvedMergersDict[int(timestep)][idx]['newIds']
                     
                 events[timestep]['res'] = mergerRes
-                
-        else:
-            logger.info("Resolved Merger Dictionary not available. Please click on the Track button.")
                 
         return events
 
