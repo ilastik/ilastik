@@ -189,6 +189,8 @@ class CropSelectionGui(CroppingGui):
         new = map(mapf, self.cropListData)
         old = slot.value
         slot.setValue(_listReplace(old, new))
+        self.setCrop()
+        self.topLevelOperatorView.Crops.notifyDirty()
 
     def _onCropRemoved(self, parent, start, end):
         # Call the base class to update the operator.
@@ -204,6 +206,7 @@ class CropSelectionGui(CroppingGui):
                     value.pop(start)
                     # Force dirty propagation even though the list id is unchanged.
                     slot.setValue(value, check_changed=False)
+        self.setCrop()
 
     def onDeleteCrop(self, position):
         numCrops = len(self.topLevelOperatorView.Crops.value)
@@ -449,7 +452,7 @@ class CropSelectionGui(CroppingGui):
                 self.topLevelOperatorView.MaxValueZ.setValue(stop)
             else:
                 logger.info("ERROR: Setting up an axis that does NOT exist!")
-
+        self.setCrop()
         return [[start, stop] for dim, start, stop in zip("xyz", starts, stops)]
 
     def _onCropSelected(self, row):
