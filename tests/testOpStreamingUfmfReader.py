@@ -78,6 +78,11 @@ class TestOpStreamingUfmfReader(object):
         assert output.shape == EXPECTED_SHAPE
         assert ufmfReader.Output.meta.dtype == EXPECTED_DTYPE
         assert ufmfReader.Output.meta.axistags == vigra.defaultAxistags(EXPECTED_AXIS_ORDER)
+
+        # There was a bug that accidentally caused the same frame to be duplicated
+        # across all output frames if you requested more than one frame in a single request.
+        # Here, we at least verify that the first frame and the last frame are not identical.
+        assert not (output[0] == output[99]).all()
         
         # Clean reader
         ufmfReader.cleanUp()

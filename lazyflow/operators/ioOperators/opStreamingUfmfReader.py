@@ -89,7 +89,7 @@ class OpStreamingUfmfReader(Operator):
             with self._lock:
                 if self.position != tFrame:
                     self.position = tFrame
-                    self.fmf.seek(tStart)
+                    self.fmf.seek(tFrame)
                     self.frame, timestamp = self.fmf.get_next_frame()
                 result[tResult, ..., 0] = self.frame[yStart:yStop, xStart:xStop] 
 
