@@ -310,6 +310,9 @@ class OpObjectExtraction(Operator):
     BinaryImage = InputSlot()
     BackgroundLabels = InputSlot(optional=True)
 
+    # Bypass cache (for headless mode)
+    BypassModeEnabled = InputSlot(value=False)
+    
     # which features to compute.
     # nested dictionary with format:
     # dict[plugin_name][feature_name][parameter_name] = parameter_value
@@ -350,7 +353,7 @@ class OpObjectExtraction(Operator):
         #TODO BinaryImage is not binary in some workflows, could be made more
         # efficient
         self._opLabelVolume = OpLabelVolume(parent=self)
-        self._opLabelVolume.name = "OpObjectExtraction._opLabelVolume"
+        self._opLabelVolume.name = "OpObjectExtraction._opLabelVolume"        
         self._opRegFeats = OpCachedRegionFeatures(parent=self)
         self._opRegFeatsAdaptOutput = OpAdaptTimeListRoi(parent=self)
         self._opObjectCenterImage = OpObjectCenterImage(parent=self)
@@ -358,6 +361,7 @@ class OpObjectExtraction(Operator):
         # connect internal operators
         self._opLabelVolume.Input.connect(self.BinaryImage)
         self._opLabelVolume.Background.connect(self.BackgroundLabels)
+        self._opLabelVolume.BypassModeEnabled.connect(self.BypassModeEnabled)
 
         self._opRegFeats.RawImage.connect(self.RawImage)
         self._opRegFeats.LabelImage.connect(self._opLabelVolume.CachedOutput)
