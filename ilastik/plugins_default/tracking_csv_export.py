@@ -25,7 +25,7 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
         """
         features = objectFeaturesSlot([]).wait()  # this is a dict of structure: {frame: {category: {featureNames}}}
         graph = hypothesesGraph._graph
-        headers = ['frame', 'labelimageId', 'trackId', 'lineageId', 'parentTrackId']
+        headers = ['frame', 'labelimageId', 'trackId', 'lineageId', 'parentTrackId', 'mergerLabelId']
         excludedFeatures = ['Histogram']
         
         # check which features are present and construct table of the appropriate size
@@ -51,11 +51,22 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
             table[rowIdx, 1] = label
             table[rowIdx, 2] = trackId
             table[rowIdx, 3] = lineageId
+
+            # insert parent of a division
             try:
                 table[rowIdx, 4] = graph.node[graph.node[node]['parent']]['trackId']
             except KeyError:
                 table[rowIdx, 4] = 0
-            colIdx = 5
+
+            # insert merger
+            try:
+                if isinstance(graph.node[node]['mergerValue'], int):
+                    table[rowIdx, 5] = graph.node[node]['mergerValue']
+                else:
+                    table[rowIdx, 5] = 0
+            except KeyError:
+                table[rowIdx, 5] = 0
+            colIdx = 6
 
             for category in features[frame].keys():
                 for feature in features[frame][category].keys():
