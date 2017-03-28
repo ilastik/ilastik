@@ -7,7 +7,7 @@ from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 
 from ilastik.applets.base.applet import DatasetConstraintError
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpRegionFeatures
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpRegionFeatures, OpAdaptTimeListRoi
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import OpZeroDefault
 from lazyflow.roi import sliceToRoi
@@ -615,8 +615,8 @@ class OpConservationTracking(Operator, ExportingOperator):
                 indexMapping[idx] = lineage_id
             
         return indexMapping[volume]
-                  
-    
+ 
+ 
     def _setupRelabeledFeatureSlot(self, original_feature_slot):
         from ilastik.applets.trackingFeatureExtraction import config
         # when exporting after merger resolving, the stored object features are not up to date for the relabeled objects
@@ -632,6 +632,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         opRelabeledRegionFeatures.FeatureNames.setValue(feature_names_vigra)
 
         return opRelabeledRegionFeatures
+                     
 
     def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
         """
@@ -648,23 +649,47 @@ class OpConservationTracking(Operator, ExportingOperator):
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False
 
-        if with_divisions:
-            object_feature_slot = self.ObjectFeaturesWithDivFeatures
-        else:
-            object_feature_slot = self.ObjectFeatures
-
+        # Create opRegionFeatures to extract features of relabeled volume
         if with_merger_resolution:
+            parameters = self.Parameters.value
+            
+            # Use simple relabeled merger feature slot configuration instead of opRelabeledMergerFeatureExtraction
+            # This is faster for videos with few mergers and few number of objects per frame
+            if 'withAnimalTracking' in parameters and parameters['withAnimalTracking']:  
+                logger.info('Setting relabeled merger feature slots for animal tracking')
+                from ilastik.applets.trackingFeatureExtraction import config
+                
+                self._opRegionFeatures = OpRegionFeatures(parent=self)
+                self._opRegionFeatures.RawVolume.connect(self.RawImage)
+                self._opRegionFeatures.LabelVolume.connect(self.RelabeledImage)
+                
+                vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name]))
+                feature_names_vigra = {}
+                feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
+                self._opRegionFeatures.Features.setValue(feature_names_vigra)
+        
+                self._opAdaptTimeListRoi = OpAdaptTimeListRoi(parent=self)
+                self._opAdaptTimeListRoi.Input.connect(self._opRegionFeatures.Output)
+                
+                object_feature_slot = self._opAdaptTimeListRoi.Output
+            # Use opRelabeledMergerFeatureExtraction for cell tracking
+            else:
+                opRelabeledRegionFeatures = self._setupRelabeledFeatureSlot(self.ObjectFeatures)
+                object_feature_slot = opRelabeledRegionFeatures.RegionFeatures                
+            
             label_image = self.RelabeledImage
 
-            opRelabeledRegionFeatures = self._setupRelabeledFeatureSlot(object_feature_slot)
-            object_feature_slot = opRelabeledRegionFeatures.RegionFeatures
+        # Use ObjectFeaturesWithDivFeatures slot
+        elif with_divisions:
+            object_feature_slot = self.ObjectFeaturesWithDivFeatures
+            label_image = self.LabelImage
+        # Use ObjectFeatures slot only
         else:
+            object_feature_slot = self.ObjectFeatures
             label_image = self.LabelImage
 
+        # Call export implementation
         self._do_export_impl(settings, selected_features, progress_slot, object_feature_slot, label_image, lane_index, filename_suffix)
-
-        if with_merger_resolution:
-            opRelabeledRegionFeatures.cleanUp()
 
     def _do_export_impl(self, settings, selected_features, progress_slot, object_feature_slot, label_image_slot, lane_index, filename_suffix=""):
         from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default, \
