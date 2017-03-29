@@ -88,8 +88,7 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
                             colIdx += 1
 
         # sort table by frame, then labelImage
-        table = table[table[:,1].argsort()]
-        table = table[table[:,0].argsort(kind='mergesort')]
+        table = table[np.lexsort(table[:, :2].transpose()[::-1])]
 
         headerLine = ','.join(headers)
         np.savetxt(filename + '.csv', table, header=headerLine, delimiter=',', comments='')
