@@ -227,6 +227,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.topLevelOperatorView._transitionWeight = self._transitionWeight
         self.topLevelOperatorView._appearanceWeight = self._appearanceWeight
         self.topLevelOperatorView._disappearanceWeight = self._disappearanceWeight
+        self.topLevelOperatorView.parent.parent._with_progress_bar = self._drawer.progressBarCheckBox.isChecked()
 
     def _onOnesButtonPressed(self):
         val = math.sqrt(1.0/5)
@@ -398,7 +399,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         if withTracklets:
             numStages += 3 # initializing tracklet graph, finding tracklets, contracting edges in tracklet graph
 
-        # gui progress visitor
+        self.mainOperator.parent.parent._with_progress_bar = self._drawer.progressBarCheckBox.isChecked()
         if self.mainOperator.parent.parent._with_progress_bar:
             self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
             self.progressWindow.run()
