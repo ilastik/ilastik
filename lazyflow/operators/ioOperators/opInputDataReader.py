@@ -365,7 +365,7 @@ class OpInputDataReader(Operator):
                 compression_setting = h5File[internalPath].compression
             except Exception as e:
                 h5File.close()
-                msg = "Error reading HDF5 File: {}\n{}".format(externalPath, e.msg)
+                msg = "Error reading HDF5 File: {}\n{}".format(externalPath, e)
                 raise OpInputDataReader.DatasetReadError( msg )
  
             # If the h5 dataset is compressed, we'll have better performance 
