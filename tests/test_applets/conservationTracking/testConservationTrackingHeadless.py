@@ -140,11 +140,8 @@ class TestConservationTrackingHeadless(object):
         assert data.shape[0] == self.EXPECTED_NUM_ROWS, 'Number of rows in csv file differs from expected'
 
         # Check that csv contains RegionRadii and RegionAxes (necessary for animal tracking)
-        # assert 'Radii_of_the_object_0' in data.dtype.names, 'RegionRadii not found in csv file (required for animal tracking)'
-        # assert 'Principal_components_of_the_object_0' in data.dtype.names, 'RegionAxes not found in csv file (required for animal tracking)'
-        assert 'RegionRadii_0' in data.dtype.names, 'RegionRadii not found in csv file (required for animal tracking)'
-        assert 'RegionAxes_0' in data.dtype.names, 'RegionAxes not found in csv file (required for animal tracking)'
-        # TODO: use the object feature plugins to translate to long names!
+        assert 'Radii_of_the_object_0' in data.dtype.names, 'RegionRadii not found in csv file (required for animal tracking)'
+        assert 'Principal_components_of_the_object_0' in data.dtype.names, 'RegionAxes not found in csv file (required for animal tracking)'
 
         # Check for expected number of mergers
         mergerIds = set([])

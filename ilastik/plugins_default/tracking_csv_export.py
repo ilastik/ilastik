@@ -33,12 +33,13 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
         for category in features[frame].keys():
             for feature in features[frame][category].keys():
                 if feature not in excludedFeatures:
+                    featureName = self._getFeatureNameTranslation(category, feature).replace(' ', '_')
                     if (np.asarray(features[frame][category][feature])).ndim == 2:
                         for column in range(np.asarray(features[frame][category][feature]).shape[1]):
-                            singleFeatureValueName = '{f}_{c}'.format(f=feature, c=column)
+                            singleFeatureValueName = '{f}_{c}'.format(f=featureName, c=column)
                             headers.append(singleFeatureValueName)
                     else:
-                        headers.append(feature)
+                        headers.append(featureName)
 
         table = np.zeros([graph.number_of_nodes(), len(headers)])
 

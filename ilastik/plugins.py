@@ -173,6 +173,32 @@ class TrackingExportFormatPlugin(IPlugin):
         """
         return False
 
+    @classmethod
+    def _getFeatureNameTranslation(cls, category, name):
+        '''
+        extract the long name of the given feature, or fall back to the plain name if no long name could be found
+
+        :param category: The feature "group" or "plugin" (e.g. "Standard Object Features")
+        :param name: The feature name string
+        :returns: the long name of the feature
+        '''
+        all_props = None
+
+        if category == 'Default features':
+            plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
+        else:
+            plugin = pluginManager.getPluginByName(category, "ObjectFeatures")
+        if plugin:
+            plugin_feature_names = {name: {}}
+            all_props = plugin.plugin_object.fill_properties(plugin_feature_names)  # fill in display name and such
+
+        if all_props:
+            long_name = all_props[name]["displaytext"]
+        else:
+            long_name = name
+
+        return long_name
+
 ###############
 # the manager #
 ###############
