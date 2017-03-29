@@ -109,11 +109,11 @@ class PluginExportOptionsDlg(QDialog):
         uic.loadUi( os.path.splitext(__file__)[0] + '.ui', self )
 
         self._opDataExport = opDataExport
-        self.pluginName = parent.topLevelOperator.SelectedPlugin._value
         assert isinstance( opDataExport, ExportOperatorABC ), \
             "Cannot use {} as an export operator.  "\
             "It doesn't match the required interface".format( type(opDataExport) )
 
+        self.pluginName = parent.topLevelOperator.SelectedPlugin.value
         # Connect the 'transaction slot'.
         # All slot changes will occur immediately
         opDataExport.TransactionSlot.setValue(True)
@@ -140,17 +140,17 @@ class PluginExportOptionsDlg(QDialog):
             self._initMetaInfoText()
 
         self.pluginDropdown = self.comboBox
-        
         self.pluginDropdown.addItems(availableExportPlugins)
-        if parent.topLevelOperator.SelectedPlugin.value == 'H5-Event-Sequence':
-            self.pluginDropdown.setCurrentIndex(0)
-        elif parent.topLevelOperator.SelectedPlugin.value == 'Fiji-MaMuT':
-            self.pluginDropdown.setCurrentIndex(1)
-        elif parent.topLevelOperator.SelectedPlugin.value == 'CSV-Table':
-            self.pluginDropdown.setCurrentIndex(2)
-        else:
-            raise NotImplementedError
         self.pluginDropdown.currentIndexChanged[str].connect(onSelectedExportPluginChanged)
+
+        try:
+            # select the combo box entry that represents the value from SelectedPlugin,
+            # which triggers displaying the appropriate description (because of the connect above)
+            selectedIndex = availableExportPlugins.index(parent.topLevelOperator.SelectedPlugin.value)
+            self.pluginDropdown.setCurrentIndex(selectedIndex)
+        except ValueError:
+            pass
+            # some unknown value was selected before, we ignore that case and simply go with the default selection then
 
     def _getAvailablePlugins(self):
         '''
@@ -190,23 +190,6 @@ class PluginExportOptionsDlg(QDialog):
     def _initFileOptionsWidget(self):
         opDataExport = self._opDataExport
         self.exportFileOptionsWidget.initSlot( opDataExport.OutputFilenameFormat, '' )
-        
-#**************************************************************************
-# Helper functions
-#**************************************************************************
-def default_drange(dtype):
-    if numpy.issubdtype(dtype, numpy.integer):
-        return dtype_limits(dtype)
-    if numpy.issubdtype(dtype, numpy.floating):
-        return (0.0, 1.0)
-    raise RuntimeError( "Unknown dtype: {}".format( dtype ) )
-
-def dtype_limits(dtype):
-    if numpy.issubdtype(dtype, numpy.integer):
-        return (numpy.iinfo(dtype).min, numpy.iinfo(dtype).max)
-    if numpy.issubdtype(dtype, numpy.floating):
-        return (numpy.finfo(dtype).min, numpy.finfo(dtype).max)
-    raise RuntimeError( "Unknown dtype: {}".format( dtype ) )
 
 #**************************************************************************
 # Quick debug
