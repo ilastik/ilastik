@@ -89,23 +89,23 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
 
                             isInt = isinstance(features[frame][category][key], int)
 
-                            if (np.array(features[frame][category][key])).ndim == 2:
+                            if (np.asarray(features[frame][category][key])).ndim == 2:
                                 if key != 'Histogram':
-                                    #print key, np.array(features[key]).shape
-                                    for column in xrange((np.array(features[frame][category][key])).shape[1]):
+                                    #print key, np.asarray(features[key]).shape
+                                    for column in xrange((np.asarray(features[frame][category][key])).shape[1]):
                                         builder.addFeatureName(feature_string + '_' + str(column), feature_string, shortname + '_' + str(column), isInt)
                             else:
-                                #print "ELSE", key, np.array(features[key]).shape
+                                #print "ELSE", key, np.asarray(features[key]).shape
                                 builder.addFeatureName(feature_string, feature_string, shortname, isInt)
 
                         if key != 'Histogram':
                             if label != 0: # ignoring background
-                                if (np.array(features[frame][category][key])).ndim == 0:
+                                if (np.asarray(features[frame][category][key])).ndim == 0:
                                     featureDict[convertKeyName(key)] = features[frame][category][key]
-                                if (np.array(features[frame][category][key])).ndim == 1:
+                                if (np.asarray(features[frame][category][key])).ndim == 1:
                                     featureDict[convertKeyName(key)] = features[frame][category][key][label]
-                                if (np.array(features[frame][category][key])).ndim == 2:
-                                    for j in xrange((np.array(features[frame][category][key])).shape[1]):
+                                if (np.asarray(features[frame][category][key])).ndim == 2:
+                                    for j in xrange((np.asarray(features[frame][category][key])).shape[1]):
                                         try:
                                             exists = features[frame][category][key][label, 0]
                                         except IndexError:

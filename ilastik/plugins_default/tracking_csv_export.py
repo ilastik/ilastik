@@ -33,8 +33,8 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
         for category in features[frame].keys():
             for feature in features[frame][category].keys():
                 if feature not in excludedFeatures:
-                    if (np.array(features[frame][category][feature])).ndim == 2:
-                        for column in range(np.array(features[frame][category][feature]).shape[1]):
+                    if (np.asarray(features[frame][category][feature])).ndim == 2:
+                        for column in range(np.asarray(features[frame][category][feature]).shape[1]):
                             singleFeatureValueName = '{f}_{c}'.format(f=feature, c=column)
                             headers.append(singleFeatureValueName)
                     else:
@@ -72,8 +72,8 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
                 for feature in features[frame][category].keys():
 
                     if feature not in excludedFeatures:
-                        if (np.array(features[frame][category][feature])).ndim == 2:
-                            for column in range(np.array(features[frame][category][feature]).shape[1]):
+                        if (np.asarray(features[frame][category][feature])).ndim == 2:
+                            for column in range(np.asarray(features[frame][category][feature]).shape[1]):
                                 try:
                                     table[rowIdx, colIdx] = features[frame][category][feature][label, column]
                                 except IndexError:
