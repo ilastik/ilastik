@@ -32,7 +32,7 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.utility import OpMultiLaneWrapper
-from lazyflow.utility import PathComponents, isUrl, make_absolute, lsHdf5
+from lazyflow.utility import PathComponents, isUrl, make_absolute
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 class DatasetInfo(object):
@@ -118,7 +118,13 @@ class DatasetInfo(object):
                                for pc in pathComponents[1::]), (
                         "Supplied multiple files with multiple extensions"
                     )
-                    if pathComponents[0].extension in ['.ilp', '.h5', '.hdf5']:
+                    # The following is necessary for h5 as well as npz-files
+                    internalPathExts = (
+                        OpInputDataReader.h5Exts +
+                        OpInputDataReader.npzExts
+                    )
+                    internalPathExts = [".{}".format(ipx) for ipx in internalPathExts]
+                    if pathComponents[0].extension in internalPathExts:
                             file_list = ['{}/{}'.format(fn, internalPaths[0])
                                          for fn in file_list]
 
