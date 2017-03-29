@@ -85,7 +85,6 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         if OpTrackingBaseDataExport.PluginOnlyName not in names:
             names.append(OpTrackingBaseDataExport.PluginOnlyName)
             opDataExport.SelectionNames.setValue(names)
-        logger.info("New available names are: {}".format(names))
 
     def _getAvailablePlugins(self):
         '''
@@ -103,7 +102,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             return []
 
     def _chooseSettings(self):
-        if self.topLevelOperator.SelectedExportSource._value != 'Plugin':
+        if self.topLevelOperator.SelectedExportSource.value != OpTrackingBaseDataExport.PluginOnlyName:
             super(TrackingBaseDataExportGui, self)._chooseSettings()
             return
         opExportModelOp, opSubRegion = get_model_op( self.topLevelOperator )
@@ -217,7 +216,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         return settings, selected_features
 
     def exportResultsForSlot(self, opLane):
-        if self.topLevelOperator.SelectedExportSource._value == OpTrackingBaseDataExport.PluginOnlyName and not self.pluginWasSelected:
+        if self.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName and not self.pluginWasSelected:
             QMessageBox.critical(self, "Choose Export Plugin",
                                  "You did not select any export plugin. \nPlease do so by clicking 'Choose Export Image Settings'")
             return
@@ -225,7 +224,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             super(TrackingBaseDataExportGui, self).exportResultsForSlot(opLane)
 
     def exportAllResults(self):
-        if self.topLevelOperator.SelectedExportSource._value == OpTrackingBaseDataExport.PluginOnlyName and not self.pluginWasSelected:
+        if self.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName and not self.pluginWasSelected:
             QMessageBox.critical(self, "Choose Export Plugin",
                                  "You did not select any export plugin. \nPlease do so by clicking 'Choose Export Image Settings'")
             return
