@@ -88,34 +88,39 @@ class DatasetInfo(object):
             # internal path components
             if not isUrl(filepath):
                 file_list = filepath.split(os.path.pathsep)
+
                 pathComponents = [PathComponents(x) for x in file_list]
                 externalPaths = [pc.externalPath for pc in pathComponents]
                 internalPaths = [pc.internalPath for pc in pathComponents]
 
-                if len(externalPaths) == 1:
-                    if '*' in externalPaths[0]:
-                        assert ('*' not in internalPaths[0]), (
-                            "Only internal OR external glob placeholder supported"
-                        )
-                        file_list = sorted(glob.glob(filepath))
-                    else:
-                        if '*' in internalPaths[0]:
-                            # TODO single hdf5 file stacks
-                            raise NotImplementedError(
-                                'Single file h5Stack import is not implemented in the GUI yet.')
+                if len(file_list) > 0:
+                    if len(externalPaths) == 1:
+                        if '*' in externalPaths[0]:
+                            if internalPaths[0] is not None:
+                                assert ('*' not in internalPaths[0]), (
+                                    "Only internal OR external glob placeholder supported"
+                                )
+                            file_list = sorted(glob.glob(filepath))
                         else:
-                            file_list = [filepath]
+                            file_list = [externalPaths[0]]
+                            if internalPaths[0] is not None:
+                                if '*' in internalPaths[0]:
+                                    # TODO single hdf5 file stacks
+                                    raise NotImplementedError(
+                                        'Single file h5Stack import is not implemented in the GUI yet.')
+                    else:
+                        assert (not any('*' in ep for ep in externalPaths)), (
+                            "Multiple glob paths shouldn't be happening"
+                        )
+                        file_list = [ex for ex in externalPaths]
 
-                else:
-                    assert (not any('*' in ep for ep in externalPaths)), (
-                        "Multiple glob paths shouldn't be happening"
+                    assert all(pc.extension == pathComponents[0].extension
+                               for pc in pathComponents[1::]), (
+                        "Supplied multiple files with multiple extensions"
                     )
-                    file_list = [ex for ex in externalPaths]
-
-                # HACK: that's a stretch, check that all files have the same ext?!
-                if pathComponents[0].extension in ['.ilp', '.h5', '.hdf5']:
-                        file_list = ['{}/{}'.format(fn, internalPaths[0])
-                                     for fn in file_list]
+                    if pathComponents[0].extension in ['.ilp', '.h5', '.hdf5']:
+                            file_list = ['{}/{}'.format(fn, internalPaths[0])
+                                         for fn in file_list]
 
             # For stacks, choose nickname based on a common prefix
             if file_list:
