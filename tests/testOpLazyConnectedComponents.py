@@ -488,13 +488,24 @@ class PropagateDirtyCalled(Exception):
 
 
 if __name__ == "__main__":
-    vol = np.zeros((1000, 100, 10))
-    vol[300:600, 40:70, 2:5] = 255
-    vol = vol.astype(np.uint8)
-    vol = vigra.taggedView(vol, axistags='xyz')
+    #make the program quit on Ctrl+C
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    op = OpLazyCC(graph=Graph())
-    op.Input.setValue(vol)
-    op.ChunkShape.setValue((100, 10, 10))
+    import sys
+    import nose
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    nose.run(defaultTest=__file__)
 
-    out = op.Output[...].wait()
+
+#     vol = np.zeros((1000, 100, 10))
+#     vol[300:600, 40:70, 2:5] = 255
+#     vol = vol.astype(np.uint8)
+#     vol = vigra.taggedView(vol, axistags='xyz')
+# 
+#     op = OpLazyCC(graph=Graph())
+#     op.Input.setValue(vol)
+#     op.ChunkShape.setValue((100, 10, 10))
+# 
+#     out = op.Output[...].wait()
