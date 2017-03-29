@@ -292,6 +292,10 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
          
     def prepare_lane_for_export(self, lane_index):
+        # Bypass cache on headless mode and batch processing mode
+        self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(True)
+         
+        # Get axes info  
         maxt = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[0] 
         maxx = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[1] 
         maxy = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[2] 
@@ -419,6 +423,9 @@ class ConservationTrackingWorkflowBase( Workflow ):
 
             req.wait()
             self.dataExportApplet.progressSignal.emit(100)
+
+            # Restore option to bypass cache to false
+            self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(False)
             
             # Restore state of axis ranges
             parameters = self.trackingApplet.topLevelOperator.Parameters.value

@@ -64,16 +64,16 @@ class OpWsdt(Operator):
 
         if self.debug_results:
             self.debug_results.clear()
-        wsDtSegmentation( pmap[...,0],
-                          self.Pmin.value,
-                          self.MinMembraneSize.value,
-                          self.MinSegmentSize.value,
-                          self.SigmaMinima.value,
-                          self.SigmaWeights.value,
-                          self.GroupSeeds.value,
-                          self.PreserveMembranePmaps.value,
-                          out_debug_image_dict=self.debug_results,
-                          out=result[...,0] )
+        ws, max_label = wsDtSegmentation( pmap[...,0],
+                                          self.Pmin.value,
+                                          self.MinMembraneSize.value,
+                                          self.MinSegmentSize.value,
+                                          self.SigmaMinima.value,
+                                          self.SigmaWeights.value,
+                                          self.GroupSeeds.value,
+                                          self.PreserveMembranePmaps.value,
+                                          out_debug_image_dict=self.debug_results,
+                                          out=result[...,0] )
         
         self.watershed_completed()
         
