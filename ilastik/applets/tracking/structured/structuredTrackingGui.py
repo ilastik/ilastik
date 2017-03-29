@@ -7,9 +7,7 @@ import re
 import traceback
 import math
 import random
-import h5py
 
-from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility.gui.progress import TrackProgressDialog
 from ilastik.utility.exportingOperator import ExportingGui
@@ -22,7 +20,7 @@ from ilastik.utility import bind
 
 from lazyflow.request.request import Request
 
-from hytra.util.progressbar import CommandLineProgressVisitor, DefaultProgressVisitor
+from hytra.util.progressbar import DefaultProgressVisitor
 from ilastik.utility.gui.progress import GuiProgressVisitor
 
 logger = logging.getLogger(__name__)
@@ -366,18 +364,60 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
     def _onRunStructuredLearningButtonPressed(self, withBatchProcessing=False):
 
-        self.topLevelOperatorView._runStructuredLearning(
-            (self._drawer.from_z.value(),self._drawer.to_z.value()),
-            self._maxNumObj,
-            self._maxNearestNeighbors,
-            self._drawer.maxDistBox.value(),
-            self._drawer.divThreshBox.value(),
-            (self._drawer.x_scale.value(), self._drawer.y_scale.value(), self._drawer.z_scale.value()),
-            (self._drawer.from_size.value(), self._drawer.to_size.value()),
-            self._drawer.divisionsBox.isChecked(),
-            self._drawer.bordWidthBox.value(),
-            self._drawer.classifierPriorBox.isChecked(),
-            withBatchProcessing)
+        numStages = 4
+        # creating traxel store
+        # generating probabilities
+        # insert energies
+        # structured learning
+
+        self.mainOperator.parent.parent._with_progress_bar = self._drawer.progressBarCheckBox.isChecked()
+        if self.mainOperator.parent.parent._with_progress_bar:
+            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+            self.progressWindow.run()
+            self.progressWindow.show()
+            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        else:
+            self.progressVisitor = DefaultProgressVisitor()
+
+        def _learn():
+            self.applet.busy = True
+            self.applet.appletStateUpdateRequested.emit()
+            try:
+                self.topLevelOperatorView._runStructuredLearning(
+                    (self._drawer.from_z.value(),self._drawer.to_z.value()),
+                    self._maxNumObj,
+                    self._maxNearestNeighbors,
+                    self._drawer.maxDistBox.value(),
+                    self._drawer.divThreshBox.value(),
+                    (self._drawer.x_scale.value(), self._drawer.y_scale.value(), self._drawer.z_scale.value()),
+                    (self._drawer.from_size.value(), self._drawer.to_size.value()),
+                    self._drawer.divisionsBox.isChecked(),
+                    self._drawer.bordWidthBox.value(),
+                    self._drawer.classifierPriorBox.isChecked(),
+                    withBatchProcessing,
+                    progressWindow=self.progressWindow,
+                    progressVisitor=self.progressVisitor
+                )
+            except Exception:
+                ex_type, ex, tb = sys.exc_info()
+                traceback.print_tb(tb)
+                self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))
+                return
+
+        def _handle_finished(*args):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
+
+        def _handle_failure( exc, exc_info ):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
+            traceback.print_exception(*exc_info)
+            sys.stderr.write("Exception raised during learning.  See traceback above.\n")
+
+        req = Request( _learn )
+        req.notify_failed( _handle_failure )
+        req.notify_finished( _handle_finished )
+        req.submit()
 
     def _onTrackButtonPressed( self ):
         if not self.mainOperator.ObjectFeatures.ready():

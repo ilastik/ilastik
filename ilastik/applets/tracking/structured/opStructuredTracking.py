@@ -1,4 +1,3 @@
-import numpy as np
 import math
 
 from lazyflow.graph import InputSlot, OutputSlot
@@ -9,6 +8,8 @@ from ilastik.utility import bind
 from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+
+from hytra.util.progressbar import DefaultProgressVisitor, CommandLineProgressVisitor
 
 import logging
 logger = logging.getLogger(__name__)
@@ -108,10 +109,19 @@ class OpStructuredTracking(OpConservationTracking):
             withDivisions,
             borderAwareWidth,
             withClassifierPrior,
-            withBatchProcessing=False):
+            withBatchProcessing=False,
+            progressWindow=None,
+            progressVisitor=DefaultProgressVisitor()
+        ):
 
         if not withBatchProcessing:
             gui = self.parent.parent.trackingApplet._gui.currentGui()
+
+        self.progressWindow = progressWindow
+        self.progressVisitor=progressVisitor
+
+        if self.parent.parent._with_progress_bar and progressVisitor==DefaultProgressVisitor():
+            self.progressVisitor = CommandLineProgressVisitor()
 
         emptyAnnotations = False
         for crop in self.Annotations.value.keys():
@@ -160,7 +170,7 @@ class OpStructuredTracking(OpConservationTracking):
 
         self.Parameters.setValue(parameters, check_changed=False)
 
-        foundAllArcs = False;
+        foundAllArcs = False
         new_max_nearest_neighbors = max ([maxNearestNeighbors-1,1])
         maxObjOK = True
         parameters['max_nearest_neighbors'] = maxNearestNeighbors
@@ -176,8 +186,6 @@ class OpStructuredTracking(OpConservationTracking):
             hypothesesGraph = self._createHypothesesGraph()
             if hypothesesGraph.countNodes() == 0:
                 raise DatasetConstraintError('Structured Learning', 'Can not track frames with 0 objects, abort.')
-
-            hypothesesGraph.insertEnergies()
 
             logger.info("Structured Learning: Adding Training Annotations to Hypotheses Graph")
 
@@ -257,12 +265,14 @@ class OpStructuredTracking(OpConservationTracking):
                                             foundAllArcs = False
                                             for edge in hypothesesGraph._graph.in_edges(sink): # an edge is a tuple of source and target nodes
                                                 logger.info("Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label))
+                                                # print "Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label)
                                                 if edge[0][0] == time-1 and edge[0][1] == int(previous_label): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
                                                     foundAllArcs = True
                                                     hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = int(trackCountIntersection)
                                                     break
                                             if not foundAllArcs:
-                                                logger.info("[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS {} {}".format(time-1, int(previous_label)))
+                                                logger.info("[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS t:{} id:{}".format(time-1, int(previous_label)))
+                                                # print "[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS t:{} id:{}".format(time-1, int(previous_label))
                                                 break
 
                                     if type == None:
@@ -275,6 +285,7 @@ class OpStructuredTracking(OpConservationTracking):
                                             # print "[structuredTrackingGui] NODE: {} {} {}".format(time, int(label), int(trackCount))
                                         else:
                                             logger.info("[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label)))
+                                            # print "[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label))
 
                                             foundAllArcs = False
                                             break
@@ -308,6 +319,7 @@ class OpStructuredTracking(OpConservationTracking):
 
                                 if not foundAllArcs:
                                     logger.info("[structuredTrackingGui] Increasing max nearest neighbors! DIVISION {} {}".format(time, parent))
+                                    # print "[structuredTrackingGui] Increasing max nearest neighbors! DIVISION {} {}".format(time, parent)
                                     break
         logger.info("max nearest neighbors= {}".format(new_max_nearest_neighbors))
 
@@ -329,6 +341,9 @@ class OpStructuredTracking(OpConservationTracking):
 
         hypothesesGraph.insertEnergies()
 
+        self.progressVisitor.showState("Structured learning")
+        self.progressVisitor.showProgress(0)
+
         # crops away everything (arcs and nodes) that doesn't have 'value' set
         prunedGraph = hypothesesGraph.pruneGraphToSolution(distanceToSolution=0) # width of non-annotated border needed for negative training examples
 
@@ -347,6 +362,7 @@ class OpStructuredTracking(OpConservationTracking):
 
         weights = trackingGraph.weightsDictToList(weightsDict)
 
+        self.progressVisitor.showProgress(1)
 
         if not withBatchProcessing and withDivisions and numAllAnnotatedDivisions == 0 and not weights[2] == 0.0:
             gui._informationMessage("Divisible objects are checked, but you did not annotate any divisions in your tracking training. " + \
@@ -430,6 +446,9 @@ class OpStructuredTracking(OpConservationTracking):
         parameters['disappearanceCost'] = self.DisappearanceWeight.value
 
         self.Parameters.setValue(parameters)
+
+        if self.progressWindow is not None:
+            self.progressWindow.onTrackDone()
 
         return [self.DetectionWeight.value, self.DivisionWeight.value, self.TransitionWeight.value, self.AppearanceWeight.value, self.DisappearanceWeight.value]
 
