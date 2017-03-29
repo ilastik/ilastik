@@ -399,9 +399,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             numStages += 3 # initializing tracklet graph, finding tracklets, contracting edges in tracklet graph
 
         # gui progress visitor
-        if self.mainOperator.parent.parent._progress_bar == 'CommandLineProgressBar':
-            self.progressVisitor = CommandLineProgressVisitor()
-        elif self.mainOperator.parent.parent._progress_bar == 'GuiProgressBar':
+        if self.mainOperator.parent.parent._with_progress_bar:
             self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
             self.progressWindow.run()
             self.progressWindow.show()

@@ -383,8 +383,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.progressWindow = progressWindow
         self.progressVisitor=progressVisitor
 
-        # command line visitor
-        if self.parent.parent._progress_bar == 'CommandLineProgressBar':
+        if self.parent.parent._with_progress_bar and progressVisitor==DefaultProgressVisitor():
             self.progressVisitor = CommandLineProgressVisitor()
 
         if not self.Parameters.ready():
