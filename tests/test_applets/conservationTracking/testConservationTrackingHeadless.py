@@ -61,8 +61,7 @@ class TestConservationTrackingHeadless(object):
 
     @classmethod
     def teardownClass(cls):
-        #removeFiles = [cls.EXPECTED_TRACKING_RESULT_FILE, cls.EXPECTED_CSV_FILE]
-        removeFiles = []
+        removeFiles = [cls.EXPECTED_TRACKING_RESULT_FILE, cls.EXPECTED_CSV_FILE]
 
         # Clean up: Delete any test files we generated
         for f in removeFiles:
