@@ -82,7 +82,6 @@ class OpConservationTracking(Operator):
 
         self._opCache = OpBlockedArrayCache(parent=self)
         self._opCache.name = "OpConservationTracking._opCache"
-        self._opCache.CompressionEnabled.setValue(True)
         self._opCache.Input.connect(self.Output)
         self.CleanBlocks.connect(self._opCache.CleanBlocks)
         self.CachedOutput.connect(self._opCache.Output)
@@ -98,14 +97,12 @@ class OpConservationTracking(Operator):
 
         self._mergerOpCache = OpBlockedArrayCache(parent=self)
         self._mergerOpCache.name = "OpConservationTracking._mergerOpCache"
-        self._mergerOpCache.CompressionEnabled.setValue(True)
         self._mergerOpCache.Input.connect(self.MergerOutput)
         self.MergerCleanBlocks.connect(self._mergerOpCache.CleanBlocks)
         self.MergerCachedOutput.connect(self._mergerOpCache.Output)
 
         self._relabeledOpCache = OpBlockedArrayCache(parent=self)
         self._relabeledOpCache.name = "OpConservationTracking._mergerOpCache"
-        self._relabeledOpCache.CompressionEnabled.setValue(True)
         self._relabeledOpCache.Input.connect(self.RelabeledImage)
         self.RelabeledCleanBlocks.connect(self._relabeledOpCache.CleanBlocks)
         self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
