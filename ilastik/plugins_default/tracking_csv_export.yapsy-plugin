@@ -1,0 +1,9 @@
+[Core]
+Name = CSV-Table
+Module = tracking_csv_export
+
+[Documentation]
+Author = Carsten Haubold
+Version = 0.1
+Website = ilastik.org
+Description = Plugin to export the ilastik tracking results to a CSV table <br> <br> <b>Usage: </b> Select the filename where the CSV table will be saved. <br> <br> The resulting file will contain the <i>lineageId</i> and <i>trackId</i> of every object in the dataset, where valid track and lineage IDs <b>start from 2</b>, a 1 in these fields means the object is not part of any track. If you additionally export the <i>Object-Identities</i> from the <b>Tracking Result Export</b>, the fields <i>frame</i> and <i>labelimageId</i> allow you to uniquely identify which segment in which frame a row of the table refers to. <br><br>Two special rows indicate divisions and resolved clusters of objects. If a row has the <i>parentTrackId</i> set (value greater 0), it is the immediate child of a division, where the mother cell is the one in the frame before that has the given <i>trackId</i>. For resolved clusters, the <i>mergerLabelId</i> works very similar: if an object has a non-zero value here, then there was an cluster (with the <i>mergerLabelId</i>) in the original segmentation that this object here belonged to. So if you need to know which objects were part of a cluster, find the ones that have the same <i>mergerLabelId</i> per frame. <br><br>For now the set of exported features is predefined and cannot be changed. Note also that for objects that were part of a cluster not all features are recomputed but set to a default (mostly 0), and division features are only present for those objects where two possible children are available in the next frame.

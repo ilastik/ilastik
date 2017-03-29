@@ -19,22 +19,29 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
+from ilastik.utility import OpMultiLaneWrapper
+import os
 
 class TrackingBaseDataExportApplet( DataExportApplet ):
     """
     This a specialization of the generic data export applet that
     provides a special viewer for trackign output.
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, workflow, *args, **kwargs):
         if 'default_export_filename' in kwargs:
             default_export_filename = kwargs['default_export_filename']
             del kwargs['default_export_filename']
         else:
             default_export_filename = ""
 
-        super(TrackingBaseDataExportApplet, self).__init__(*args, **kwargs)
         self.export_op = None
         self._default_export_filename = default_export_filename
+
+        self.__topLevelOperator = OpMultiLaneWrapper(OpTrackingBaseDataExport, parent=workflow,
+                                                     promotedSlotNames=set(['RawData', 'Inputs', 'RawDatasetInfo']))
+
+        super(TrackingBaseDataExportApplet, self).__init__(workflow, *args, **kwargs)
 
     def set_exporting_operator(self, op):
         self.export_op = op
@@ -47,10 +54,100 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
 
             assert self.export_op is not None, "Exporting Operator must be set!"
             self._gui.set_exporting_operator(self.export_op)
-            self._gui.set_default_export_filename(self._default_export_filename)
+            self._gui.set_default_export_filename(self._default_export_filename) # remove once the PGMLINK version is gone
         return self._gui
 
+    @property
+    def topLevelOperator(self):
+        return self.__topLevelOperator
 
+    @classmethod
+    def make_cmdline_parser(cls, starting_parser=None):
+        """
+        Returns a command line parser that includes all parameters from the parent applet and adds export_plugin.
+        """
+        arg_parser = DataExportApplet.make_cmdline_parser(starting_parser)
+        arg_parser.add_argument('--export_plugin',
+                                help='Plugin name for exporting tracking results',
+                                required=False,
+                                default=None)
+        return arg_parser
 
+    @classmethod
+    def parse_known_cmdline_args(cls, cmdline_args, parsed_args=None):
+        """
+        Helper function for headless workflows.
+        Parses commandline args that can be used to configure the ``TrackingBaseDataExportApplet`` top-level operator
+        as well as its parent, the ``DataExportApplet``,
+        and returns ``(parsed_args, unused_args)``, similar to ``argparse.ArgumentParser.parse_known_args()``
+        See also: :py:meth:`configure_operator_with_parsed_args()`.
+
+        parsed_args: Already-parsed args as returned from an ArgumentParser from make_cmdline_parser(), above.
+                     If not provided, make_cmdline_parser().parse_known_args() will be used.
+        """
+        unused_args = []
+        if parsed_args is None:
+            arg_parser = cls.make_cmdline_parser()
+            parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
+
+        msg = "Error parsing command-line arguments for tracking data export applet.\n"
+        if parsed_args.export_plugin is not None:
+            if parsed_args.export_source is None or parsed_args.export_source.lower() != "plugin":
+                msg += "export_plugin should only be specified if export_source is set to Plugin."
+                raise Exception(msg)
+
+        if parsed_args.export_source is not None and parsed_args.export_source.lower() == "plugin" and parsed_args.export_plugin is None:
+                msg += "export_plugin MUST be specified if export_source is set to Plugin!"
+                raise Exception(msg)
+
+        # configure parent applet
+        DataExportApplet.parse_known_cmdline_args(cmdline_args, parsed_args)
+
+        return parsed_args, unused_args
+
+    def configure_operator_with_parsed_args(self, parsed_args):
+        """
+        Helper function for headless workflows.
+        Configures this applet's top-level operator according to the settings provided in ``parsed_args``.
+
+        :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
+        """
+        opTrackingDataExport = self.topLevelOperator
+        self._configure_operator_with_parsed_args(parsed_args, opTrackingDataExport)
+
+    @classmethod
+    def _configure_operator_with_parsed_args(cls, parsed_args, opTrackingDataExport):
+        """
+        Helper function for headless workflows.
+        Configures the given export operator according to the settings provided in ``parsed_args``,
+        and depending on the chosen export source it also configures the parent operator opDataExport
+
+        :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
+        """
+        if parsed_args.export_source is not None:
+            opTrackingDataExport.SelectedExportSource.setValue(parsed_args.export_source)
+
+            if parsed_args.export_source == OpTrackingBaseDataExport.PluginOnlyName:
+                opTrackingDataExport.SelectedPlugin.setValue(parsed_args.export_plugin)
+
+                # if a plugin was selected, the only thing we need is the export name
+                if parsed_args.output_filename_format:
+                    if hasattr(opTrackingDataExport, 'WorkingDirectory'):
+                        # By default, most workflows consider the project directory to be the 'working directory'
+                        #  for transforming relative paths (e.g. export locations) into absolute locations.
+                        # A user would probably expect paths to be relative to his cwd when he launches
+                        #  ilastik from the command line.
+                        opTrackingDataExport.WorkingDirectory.disconnect()
+                        opTrackingDataExport.WorkingDirectory.setValue(os.getcwd())
+
+                    opTrackingDataExport.OutputFilenameFormat.setValue(parsed_args.output_filename_format)
+
+                return # We don't want to configure the super operator so we quit now!
+            else:
+                # set some value to the SelectedPlugin slot so that it is ready
+                opTrackingDataExport.SelectedPlugin.setValue("None")
+
+        # configure super operator
+        DataExportApplet._configure_operator_with_parsed_args(parsed_args, opTrackingDataExport)
 
 
