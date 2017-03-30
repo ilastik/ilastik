@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1215</height>
+    <height>1322</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -836,6 +836,27 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout">
+       <item row="2" column="1">
+        <widget class="QDoubleSpinBox" name="z_scale">
+         <property name="value">
+          <double>1.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QDoubleSpinBox" name="y_scale">
+         <property name="value">
+          <double>1.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QDoubleSpinBox" name="x_scale">
+         <property name="value">
+          <double>1.000000000000000</double>
+         </property>
+        </widget>
+       </item>
        <item row="1" column="0">
         <widget class="QLabel" name="label_10">
          <property name="text">
@@ -854,27 +875,6 @@
         <widget class="QLabel" name="label_9">
          <property name="text">
           <string>x scale</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QDoubleSpinBox" name="x_scale">
-         <property name="value">
-          <double>1.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QDoubleSpinBox" name="y_scale">
-         <property name="value">
-          <double>1.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QDoubleSpinBox" name="z_scale">
-         <property name="value">
-          <double>1.000000000000000</double>
          </property>
         </widget>
        </item>
@@ -923,6 +923,9 @@
         <string>Export Results as tif sequence ...</string>
        </property>
       </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout"/>
      </item>
     </layout>
    </item>

@@ -19,17 +19,10 @@
 #           http://ilastik.org/license.html
 ###############################################################################
 import os
-import sys
 import imp
 import numpy as np
 import h5py
-import tempfile
-import csv
-import nose
-
-from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpStackLoader
-from lazyflow.operators.opReorderAxes import OpReorderAxes
+import sys
 
 import ilastik
 from lazyflow.utility.timer import timeLogged
@@ -45,12 +38,11 @@ class TestConservationTrackingHeadless(object):
     EXPECTED_TRACKING_RESULT_FILE = 'data/inputdata/smallVideo_Tracking-Result.h5'
     EXPECTED_SHAPE = (7, 408, 408, 1, 1) # Expected shape for tracking results HDF5 files
     
-    EXPECTED_CSV_FILE = 'data/inputdata/smallVideo-exported_data_table.csv'
-    EXPECTED_NUM_ROWS = 25 # Number of lines expected in exported csv file
+    EXPECTED_CSV_FILE = 'data/inputdata/smallVideo_CSV-Table.csv'
+    EXPECTED_NUM_ROWS = 23 # Number of lines expected in exported csv file
+    EXPECTED_NUM_LINEAGES = 3
     EXPECTED_MERGER_NUM = 2 # Number of mergers expected in exported csv file
-    
-    EXPECTED_CSV_DIVISIONS_FILE = 'data/inputdata/smallVideo-exported_data_divisions.csv'
-    EXPECTED_NUM_ROWS_DIVISIONS = 1
+    EXPECTED_NUM_DIVISION_CHILDREN = 2 # Number of tracks that have their "parent" set, meaning they are children of a division
 
     @classmethod
     def setupClass(cls):
@@ -69,8 +61,8 @@ class TestConservationTrackingHeadless(object):
 
     @classmethod
     def teardownClass(cls):
-        removeFiles = ['data/inputdata/smallVideo_Tracking-Result.h5', 'data/inputdata/smallVideo-exported_data_table.csv', 'data/inputdata/smallVideo-exported_data_divisions.csv']
-          
+        removeFiles = [cls.EXPECTED_TRACKING_RESULT_FILE, cls.EXPECTED_CSV_FILE]
+
         # Clean up: Delete any test files we generated
         for f in removeFiles:
             try:
@@ -110,32 +102,63 @@ class TestConservationTrackingHeadless(object):
             assert 'exported_data' in f, 'Dataset does not exist in tracking result file'
             shape = f['exported_data'].shape
             assert shape == self.EXPECTED_SHAPE, 'Exported data has wrong shape: {}'.format(shape)
-            
+            data = f['exported_data'].value
+            assert len(np.unique(data)) == self.EXPECTED_NUM_LINEAGES + 1 # background also shows up, hence + 1
+
+    @timeLogged(logger)
+    def testCSVExport(self):
+        # TODO: When Hytra is supported on Windows, we shouldn't skip the test and throw an assert instead
+        try:
+            import hytra
+        except ImportError as e:
+            logger.warn("Hytra tracking pipeline couldn't be imported: " + str(e))
+            raise nose.SkipTest
+
+        # Skip test because there are missing files
+        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(
+                self.BINARY_SEGMENTATION_FILE):
+            logger.info("Test files not found.")
+
+        args = ' --project=' + self.PROJECT_FILE
+        args += ' --headless'
+
+        args += ' --export_source=Plugin'
+        args += ' --export_plugin=CSV-Table'
+        args += ' --raw_data ' + self.RAW_DATA_FILE + '/data'
+        args += ' --segmentation_image ' + self.BINARY_SEGMENTATION_FILE + '/exported_data'
+
+        sys.argv = ['ilastik.py']  # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv += args.split()
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        self.ilastik_startup.main()
+
         # Load csv file
         data = np.genfromtxt(self.EXPECTED_CSV_FILE, dtype=float, delimiter=',', names=True)
 
         # Check for expected number of rows in csv table
-        assert data.shape[0] == self.EXPECTED_NUM_ROWS, 'Number of rows in csv file differs from expected' 
+        assert data.shape[0] == self.EXPECTED_NUM_ROWS, 'Number of rows in csv file differs from expected'
 
         # Check that csv contains RegionRadii and RegionAxes (necessary for animal tracking)
         assert 'Radii_of_the_object_0' in data.dtype.names, 'RegionRadii not found in csv file (required for animal tracking)'
-        assert  'Principal_components_of_the_object_0' in data.dtype.names, 'RegionAxes not found in csv file (required for animal tracking)'   
-        
-        # Check for expected number of mergers
-        merger_count = 0
-        for id in data['lineage_id']:
-            if id == 0:
-                merger_count += 1
-                
-        assert merger_count == self.EXPECTED_MERGER_NUM, 'Number of mergers in csv file differs from expected'     
+        assert 'Principal_components_of_the_object_0' in data.dtype.names, 'RegionAxes not found in csv file (required for animal tracking)'
 
-        # Load csv divisions file
-        data_divisions = np.genfromtxt(self.EXPECTED_CSV_DIVISIONS_FILE, dtype=float, delimiter=',', names=True)
-        data_divisions = np.atleast_1d(data_divisions)
-        
+        # Check for expected number of mergers
+        mergerIds = set([])
+        for row, mergerId in enumerate(data['mergerLabelId']):
+            if mergerId != 0:
+                mergerIds.add((int(data['frame'][row]), int(mergerId)))
+        merger_count = len(mergerIds)
+        assert merger_count == self.EXPECTED_MERGER_NUM, 'Number of mergers in csv file differs from expected'
+
+        tracks_with_parent = 0
+        for p in data['parentTrackId']:
+            if p != 0:
+                tracks_with_parent += 1
+
         # Check for expected number of rows in divisions csv table (we only have one division in the video)
-        assert data_divisions.shape[0] == self.EXPECTED_NUM_ROWS_DIVISIONS, 'Number of rows in csv divisions file differs from expected' 
-         
+        assert tracks_with_parent == self.EXPECTED_NUM_DIVISION_CHILDREN, 'Number of children divisions differs from expected'
+
 
 if __name__ == "__main__":
     # Make the program quit on Ctrl+C

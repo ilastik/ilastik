@@ -1,0 +1,9 @@
+[Core]
+Name = H5-Event-Sequence
+Module = tracking_h5_event_export
+
+[Documentation]
+Author = Carsten Haubold
+Version = 0.1
+Website = ilastik.org
+Description = H5 event sequence export for use of some tracking analysis tools developed by the ilastik tracking guys. <br> <br> <b>Usage: </b> Select the folder where you want to save a time sequence of h5-files numbered incrementally (e.g. <i>00000.h5</i>).

@@ -34,7 +34,6 @@ class TrackingSerializer(AppletSerializer):
         # Serialization for the new pipeline (HyTra)
         if WITH_HYTRA:
             slots = [SerialDictSlot(mainOperator.Parameters, selfdepends=True),
-                     SerialDictSlot(mainOperator.EventsVector, transform=str, selfdepends=True),
                      SerialDictSlot(mainOperator.FilteredLabels, transform=str, selfdepends=True),
                      SerialPickledValueSlot(mainOperator.ExportSettings),                     
                      SerialPickleableSlot(mainOperator.HypothesesGraph, self.VERSION, None),
