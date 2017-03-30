@@ -108,6 +108,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
         if 'max_nearest_neighbors' in parameters.keys():
             self._drawer.maxNearestNeighborsSpinBox.setValue(parameters['max_nearest_neighbors'])
+        if 'numFramesPerSplit' in parameters.keys():
+            self._drawer.numFramesPerSplitSpinBox.setValue(parameters['numFramesPerSplit'])
         
 
         # solver: use stored value only if that solver is available
@@ -311,6 +313,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     motionModelWeight=motionModelWeight,
                     force_build_hypotheses_graph =False,
                     max_nearest_neighbors=self._drawer.maxNearestNeighborsSpinBox.value(),
+                    numFramesPerSplit=self._drawer.numFramesPerSplitSpinBox.value(),
                     solverName=solver
                     )
 
