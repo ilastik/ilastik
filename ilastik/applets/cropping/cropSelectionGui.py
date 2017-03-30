@@ -190,7 +190,7 @@ class CropSelectionGui(CroppingGui):
         old = slot.value
         slot.setValue(_listReplace(old, new))
         self.setCrop()
-        self.topLevelOperatorView.Crops.notifyDirty()
+        self.topLevelOperatorView.Crops.setDirty()
 
     def _onCropRemoved(self, parent, start, end):
         # Call the base class to update the operator.
