@@ -385,7 +385,6 @@ class TestOpDataSelection_Basic_native_3D():
         testH5FileName = "{}/test/data".format(testH5FileName)
         cls.imgFileNames3D.append(testH5FileName)
 
-
         cls.imgData3Dc = numpy.random.randint(0, 255, (10, 11, 12, 3)).astype(numpy.uint8)
         vimgData3Dc = vigra.VigraArray(
             cls.imgData3Dc,
@@ -511,6 +510,224 @@ class TestOpDataSelection_Basic_native_3D():
 
         assert projectInternalData.shape == self.imgData3Dc.shape
         assert (projectInternalData == self.imgData3Dc).all()
+
+
+class TestOpDataSelection_3DStacks():
+
+    @classmethod
+    def setupClass(cls):
+        cls.tmpdir = tempfile.mkdtemp()
+        cls.imgFileNameGlobs2D = []
+        cls.imgFileNameGlobs2Dc = []
+        cls.vigraExtensions = vigra.impex.listExtensions().split(' ')
+        # Comparison of compressed data not possible - those types will be
+        # skipped in raw comparison:
+        cls.compressedExtensions = ['.jpg', '.jpeg']
+        cls.projectFileName = os.path.join(cls.tmpdir, 'testProject.ilp')
+
+        # Create a couple test images of different types
+        # in order to simplify and unify testing among the different file types
+        # the extra dimension is added, as vigra would add one anyway.
+        cls.imgData3D = numpy.random.randint(0, 255, (9, 10, 11, 1)).astype(numpy.uint8)
+        # v- image data variables in order to reflect the correct axis-order
+        # otherwise the axes get scrambled when writing/reloading
+        cls.removedExtensions = []
+        for slice_index, slice2D in enumerate(cls.imgData3D):
+            vimgData2D = vigra.VigraArray(
+                slice2D,
+                axistags=vigra.defaultAxistags('yxc'),
+                dtype=numpy.uint8
+            )
+
+            testNpyFileName = os.path.join(
+                cls.tmpdir, "testimage2D_{:02d}.npy".format(slice_index))
+            numpy.save(testNpyFileName, slice2D)
+
+            testNpzFileName = os.path.join(
+                cls.tmpdir, "testimage2D_{:02d}.npz".format(slice_index))
+            numpy.savez(testNpzFileName, data=slice2D)
+            testNpzFileName = "{}/data".format(testNpzFileName)
+
+            testH5FileName = os.path.join(cls.tmpdir, "testimage2D_{:02d}.h5".format(slice_index))
+            vigra.impex.writeHDF5(
+                data=slice2D,
+                filenameOrGroup=testH5FileName,
+                pathInFile='test/data'
+            )
+
+            for extension in cls.vigraExtensions:
+                if extension in cls.removedExtensions:
+                    continue
+                tmpFileName = os.path.join(
+                    cls.tmpdir, "testImage2D_{:02d}.{}".format(slice_index, extension))
+                # not all extensions support this kind of pixeltype
+                try:
+                    vigra.impex.writeImage(
+                        vimgData2D,
+                        tmpFileName,
+                    )
+                except RuntimeError, e:
+                    cls.removedExtensions.append(extension)
+                    msg = str(e).replace('\n', '')
+                    print(
+                        "Couldn't write temp 2D image file using vigra with `{}` "
+                        "extension : {}".format(extension, msg)
+                    )
+        for extension in cls.removedExtensions:
+            cls.vigraExtensions.pop(cls.vigraExtensions.index(extension))
+
+        for extension in cls.vigraExtensions:
+            cls.imgFileNameGlobs2D.append(
+                os.path.join(cls.tmpdir, "testImage2D_*.{}".format(extension)))
+        cls.imgFileNameGlobs2D.extend([
+            os.path.join(cls.tmpdir, "testimage2D_*.h5/test/data"),
+            # uncomment once support is implemented
+            # os.path.join(cls.tmpdir, "testimage2D_*.npz/data"),
+            # os.path.join(cls.tmpdir, "testimage2D_*.npy"),
+        ])
+
+
+        cls.imgData3Dc = numpy.random.randint(0, 255, (9, 10, 11, 3)).astype(numpy.uint8)
+
+        cls.removedExtensions = []
+        for slice_index, slice2Dc in enumerate(cls.imgData3Dc):
+            # v- image data variables in order to reflect the correct axis-order
+            # otherwise the axes get scrambled when writing/reloading
+            vimgData2Dc = vigra.VigraArray(
+                slice2Dc,
+                axistags=vigra.defaultAxistags('yxc'),
+                dtype=numpy.uint8
+            )
+
+            testNpyFileName = os.path.join(
+                cls.tmpdir, "testimage2Dc_{:02d}.npy".format(slice_index))
+            numpy.save(testNpyFileName, slice2Dc)
+
+            testNpzFileName = os.path.join(
+                cls.tmpdir, "testimage2Dc_{:02d}.npz".format(slice_index))
+            numpy.savez(testNpzFileName, data=slice2Dc)
+            testNpzFileName = "{}/data".format(testNpzFileName)
+
+            testH5FileName = os.path.join(cls.tmpdir, "testimage2Dc_{:02d}.h5".format(slice_index))
+            vigra.impex.writeHDF5(
+                data=slice2Dc,
+                filenameOrGroup=testH5FileName,
+                pathInFile='test/data'
+            )
+
+            for extension in cls.vigraExtensions:
+                if extension in cls.removedExtensions:
+                    continue
+                tmpFileName = os.path.join(
+                    cls.tmpdir, "testImage2Dc_{:02d}.{}".format(slice_index, extension))
+                # not all extensions support this kind of pixeltype
+                try:
+                    vigra.impex.writeImage(
+                        vimgData2Dc,
+                        tmpFileName,
+                    )
+                except RuntimeError, e:
+                    cls.removedExtensions.append(extension)
+                    msg = str(e).replace('\n', '')
+                    print(
+                        "Couldn't write temp 2D image file using vigra with `{}` "
+                        "extension : {}".format(extension, msg)
+                    )
+        for extension in cls.removedExtensions:
+            cls.vigraExtensions.pop(cls.vigraExtensions.index(extension))
+
+        for extension in cls.vigraExtensions:
+            cls.imgFileNameGlobs2Dc.append(
+                os.path.join(cls.tmpdir, "testImage2Dc_*.{}".format(extension)))
+
+        cls.imgFileNameGlobs2Dc.extend([
+            os.path.join(cls.tmpdir, "testimage2Dc_*.h5/test/data"),
+            # uncomment once support is implemented
+            # os.path.join(cls.tmpdir, "testimage2Dc_*.npz/data"),
+            # os.path.join(cls.tmpdir, "testimage2Dc_*.npy"),
+        ])
+
+        # Create a 'project' file and give it some data
+        cls.projectFile = h5py.File(cls.projectFileName)
+        cls.projectFile.create_group('DataSelection')
+        cls.projectFile['DataSelection'].create_group('local_data')
+        # Use the same data as the 3d+c data (above)
+        cls.projectFile['DataSelection/local_data'].create_dataset('dataset1', data=cls.imgData3D)
+        cls.projectFile.flush()
+
+    @classmethod
+    def teardownClass(cls):
+        cls.projectFile.close()
+        try:
+            shutil.rmtree(cls.tmpdir)
+        except OSError, e:
+            print('Exception caught while deleting temporary files: {}'.format(e))
+
+    def testBasic3Dstack(self):
+        """Test if stacked 2d files are loaded correctly"""
+        for fileName in self.imgFileNameGlobs2D:
+            graph = lazyflow.graph.Graph()
+            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader.ProjectFile.setValue(self.projectFile)
+            reader.WorkingDirectory.setValue(os.getcwd())
+            reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
+            info = DatasetInfo()
+            # Will be read from the filesystem since the data won't be found in the project file.
+            info.location = DatasetInfo.Location.ProjectInternal
+            info.filePath = fileName
+            info.internalPath = ""
+            info.invertColors = False
+            info.convertToGrayscale = False
+
+            reader.Dataset.setValues([info])
+
+            # Read the test files using the data selection operator and verify the contents
+            imgData3D = reader.Image[0][...].wait()
+
+            # Check the file name output
+            assert reader.ImageName[0].value == fileName
+            # Check raw images
+            assert imgData3D.shape == self.imgData3D.shape
+            # skip this if image was saved compressed:
+            if any(x in fileName.lower() for x in self.compressedExtensions):
+                print("Skipping raw comparison for compressed data: {}".format(fileName))
+                continue
+            numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
+
+    def testBasic2Dc(self):
+        """Test if stacked 2d 3-channel files are loaded correctly"""
+        # For some reason vigra saves 2D+c data compressed in gifs, so skip!
+        self.compressedExtensions.append('.gif')
+        for fileName in self.imgFileNameGlobs2Dc:
+            graph = lazyflow.graph.Graph()
+            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader.ProjectFile.setValue(self.projectFile)
+            reader.WorkingDirectory.setValue(os.getcwd())
+            reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
+            info = DatasetInfo()
+            # Will be read from the filesystem since the data won't be found in the project file.
+            info.location = DatasetInfo.Location.ProjectInternal
+            info.filePath = fileName
+            info.internalPath = ""
+            info.invertColors = False
+            info.convertToGrayscale = False
+
+            reader.Dataset.setValues([info])
+
+            # Read the test files using the data selection operator and verify the contents
+            imgData3Dc = reader.Image[0][...].wait()
+
+            # Check the file name output
+            assert reader.ImageName[0].value == fileName
+            # Check raw images
+            assert imgData3Dc.shape == self.imgData3Dc.shape
+            # skip this if image was saved compressed:
+            if any(x in fileName.lower() for x in self.compressedExtensions):
+                print("Skipping raw comparison for compressed data: {}".format(fileName))
+                continue
+            numpy.testing.assert_array_equal(imgData3Dc, self.imgData3Dc)
 
 
 if __name__ == "__main__":
