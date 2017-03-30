@@ -189,8 +189,6 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.avgSizeBox.hide()
             self._drawer.label_24.hide() # hide motion model weight label
             self._drawer.motionModelWeightBox.hide()
-            self._drawer.maxNearestNeighborsSpinBox.hide()
-            self._drawer.MaxNearestNeighbourLabel.hide()
           
         self.mergerLabels = [self._drawer.merg1,
                              self._drawer.merg2,
