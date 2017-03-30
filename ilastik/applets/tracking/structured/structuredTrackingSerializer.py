@@ -33,7 +33,6 @@ class StructuredTrackingSerializer(AppletSerializer):
 
         if WITH_HYTRA:
             slots = [ SerialDictSlot(topLevelOperator.Parameters, selfdepends=True),
-                      SerialDictSlot(topLevelOperator.EventsVector, transform=str, selfdepends=True),
                       SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
                       SerialPickledValueSlot(topLevelOperator.ExportSettings),
                       SerialPickledValueSlot(topLevelOperator.HypothesesGraph),

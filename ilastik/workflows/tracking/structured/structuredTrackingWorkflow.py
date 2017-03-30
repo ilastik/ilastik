@@ -294,9 +294,9 @@ class StructuredTrackingWorkflowBase( Workflow ):
             opStructuredTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
 
         # configure tracking export settings
-        settings = {'file path': self.default_tracking_export_filename, 'compression': {}, 'file type': 'csv'}
-        selected_features = ['Count', 'RegionCenter']
-        opStructuredTracking.configure_table_export_settings(settings, selected_features)
+        # settings = {'file path': self.default_tracking_export_filename, 'compression': {}, 'file type': 'csv'}
+        # selected_features = ['Count', 'RegionCenter']
+        # opStructuredTracking.configure_table_export_settings(settings, selected_features)
 
         opStructuredTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opStructuredTracking.NumLabels.connect( opCellClassification.NumLabels )
@@ -573,8 +573,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
                            opAnnotations.TrackImage.ready()
 
         opStructuredTracking = self.trackingApplet.topLevelOperator
-        structured_tracking_ready = objectCountClassifier_ready and \
-                           len(opStructuredTracking.EventsVector) > 0
+        structured_tracking_ready = objectCountClassifier_ready
 
         withIlpSolver = (self._solver=="ILP")
 
