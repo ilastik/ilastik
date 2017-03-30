@@ -4,6 +4,8 @@ import logging
 import sys
 import re
 import traceback
+from PyQt4.QtCore import pyqtSignal
+from volumina.utility import encode_from_qstring
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility import log_exception
 from ilastik.utility.exportingOperator import ExportingGui
@@ -12,6 +14,8 @@ from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.utility.ipcProtocol import Protocol
 from ilastik.shell.gui.ipcManager import IPCFacade
 from ilastik.config import cfg as ilastik_config
+from ilastik.plugins import pluginManager
+
 
 from lazyflow.request.request import Request
 
@@ -198,6 +202,9 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
         self._drawer.mergerResolutionBox.stateChanged.connect(self._onMaxObjectsBoxChanged)
 
+        if WITH_HYTRA:
+            self._drawer.exportButton.hide()
+
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
         inString = str(self._drawer.timeoutBox.text())
@@ -294,21 +301,17 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     withClassifierPrior=classifierPrior,
                     ndim=ndim,
                     withMergerResolution=withMergerResolution,
-                    borderAwareWidth = borderAwareWidth,
-                    withArmaCoordinates = withArmaCoordinates,
-                    cplex_timeout = cplex_timeout,
-                    appearance_cost = appearanceCost,
-                    disappearance_cost = disappearanceCost,
+                    borderAwareWidth =borderAwareWidth,
+                    withArmaCoordinates =withArmaCoordinates,
+                    cplex_timeout =cplex_timeout,
+                    appearance_cost =appearanceCost,
+                    disappearance_cost =disappearanceCost,
                     motionModelWeight=motionModelWeight,
-                    force_build_hypotheses_graph = False,
+                    force_build_hypotheses_graph =False,
                     max_nearest_neighbors=self._drawer.maxNearestNeighborsSpinBox.value(),
                     solverName=solver
                     )
 
-                # update showing the merger legend,
-                # as it might be (no longer) needed if merger resolving
-                # is disabled(enabled)
-                self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
             except Exception as ex:
                 log_exception(logger, "Error during tracking.  See above error traceback.")
                 self._criticalMessage("Error during tracking.  See error log.\n\n"
@@ -321,7 +324,12 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.TrackButton.setEnabled(True)
             self._drawer.exportButton.setEnabled(True)
             self._drawer.exportTifButton.setEnabled(True)
-            self._setLayerVisible("Objects", False) 
+            self._setLayerVisible("Objects", False)
+            
+            # update showing the merger legend,
+            # as it might be (no longer) needed if merger resolving
+            # is disabled(enabled)
+            self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
             
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False
@@ -336,10 +344,14 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         req.submit()
 
     def menus(self):
+        menus = super( ConservationTrackingGui, self ).menus()
+        
         m = QtGui.QMenu("&Export", self.volumeEditorWidget)
         m.addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
 
-        return [m]
+        menus.append(m)
+
+        return menus
 
     def get_raw_shape(self):
         return self.topLevelOperatorView.RawImage.meta.shape

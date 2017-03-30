@@ -18,14 +18,23 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QColor, QPushButton, QVBoxLayout
+from PyQt4.QtGui import QPushButton, QMessageBox
 from ilastik.utility.exportingOperator import ExportingGui
-import volumina.colortables as colortables
-
-from volumina.api import LazyflowSource, ColortableLayer
+from ilastik.plugins import pluginManager
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
+from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
+import volumina.colortables as colortables
+from volumina.api import LazyflowSource, ColortableLayer
 
+
+from ilastik.workflows.tracking.conservation.pluginExportOptionsDlg import PluginExportOptionsDlg
+from ilastik.applets.dataExport.opDataExport import get_model_op
+
+
+import logging
+
+logger = logging.getLogger(__name__)
+traceLogger = logging.getLogger('TRACE.' + __name__)
 
 class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
     """
@@ -38,6 +47,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
 
     def __init__(self, *args, **kwargs):
         super(TrackingBaseDataExportGui, self).__init__(*args, **kwargs)
+        self.pluginWasSelected = False
         self._exporting_operator = None
         self._default_export_filename = None
 
@@ -66,12 +76,116 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
     def createLayerViewer(self, opLane):
         return TrackingBaseResultsViewer(self.parentApplet, opLane)
 
+    def _includePluginOnlyOption(self):
+        """
+        Append Plugin-Only option to export tracking result using a plugin (without exporting volumes)
+        """
+        opDataExport = self.topLevelOperator
+        names = opDataExport.SelectionNames.value
+        if OpTrackingBaseDataExport.PluginOnlyName not in names:
+            names.append(OpTrackingBaseDataExport.PluginOnlyName)
+            opDataExport.SelectionNames.setValue(names)
+
+    def _getAvailablePlugins(self):
+        '''
+        Checks whether any plugins are found and whether we use the hytra backend.
+        Returns the list of available plugins
+        '''
+        try:
+            import hytra
+            # export plugins only available with hytra backend
+            exportPlugins = pluginManager.getPluginsOfCategory('TrackingExportFormats')
+            availableExportPlugins = [pluginInfo.name for pluginInfo in exportPlugins]
+
+            return availableExportPlugins
+        except ImportError:
+            return []
+
+    def _chooseSettings(self):
+        if self.topLevelOperator.SelectedExportSource.value != OpTrackingBaseDataExport.PluginOnlyName:
+            super(TrackingBaseDataExportGui, self)._chooseSettings()
+            return
+        opExportModelOp, opSubRegion = get_model_op( self.topLevelOperator )
+        if opExportModelOp is None:
+            QMessageBox.information( self,
+                                     "Image not ready for export",
+                                     "Export isn't possible yet: No images are ready for export.  "
+                                     "Please configure upstream pipeline with valid settings, "
+                                     "check that images were specified in the (batch) input applet and try again." )
+            return
+
+        settingsDlg = PluginExportOptionsDlg(self, opExportModelOp)
+        if settingsDlg.exec_() == PluginExportOptionsDlg.Accepted:
+            # Copy the settings from our 'model op' into the real op
+            setting_slots = [ opExportModelOp.RegionStart,
+                              opExportModelOp.RegionStop,
+                              opExportModelOp.InputMin,
+                              opExportModelOp.InputMax,
+                              opExportModelOp.ExportMin,
+                              opExportModelOp.ExportMax,
+                              opExportModelOp.ExportDtype,
+                              opExportModelOp.OutputAxisOrder,
+                              opExportModelOp.OutputFilenameFormat,
+                              opExportModelOp.OutputInternalPath,
+                              opExportModelOp.OutputFormat ]
+
+            # Disconnect the special 'transaction' slot to prevent these 
+            #  settings from triggering many calls to setupOutputs.
+            self.topLevelOperator.TransactionSlot.disconnect()
+
+            for model_slot in setting_slots:
+                real_inslot = getattr(self.topLevelOperator, model_slot.name)
+                if model_slot.ready():
+                    real_inslot.setValue( model_slot.value )
+                else:
+                    real_inslot.disconnect()
+
+            # Re-connect the 'transaction' slot to apply all settings at once.
+            self.topLevelOperator.TransactionSlot.setValue(True)
+
+            # Discard the temporary model op
+            opExportModelOp.cleanUp()
+            opSubRegion.cleanUp()
+
+            # Update the gui with the new export paths      
+            for index, slot in enumerate(self.topLevelOperator.ExportPath):
+                self.updateTableForSlot(slot)
+
     def _initAppletDrawerUic(self):
+        # first check whether "Plugins" should be made available
+        availableExportPlugins = self._getAvailablePlugins()
+        if len(availableExportPlugins) > 0:
+            self._includePluginOnlyOption()
+
         super(TrackingBaseDataExportGui, self)._initAppletDrawerUic()
-        btn = QPushButton("Configure Table Export for Tracking+Features", clicked=self.configure_table_export)
-        self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
+        self.topLevelOperator.SelectedExportSource.setValue(self.drawer.inputSelectionCombo.currentText())
+
+        if len(availableExportPlugins) > 0:
+            self.topLevelOperator.SelectedPlugin.setValue(availableExportPlugins[0])
+
+            # register the "plugins" option in the parent
+            self._includePluginOnlyOption()
+        else:
+            btn = QPushButton("Configure Table Export for Tracking+Features", clicked=self.configure_table_export)
+            self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
+            self.topLevelOperator.SelectedPlugin.setValue(None)
+
+    def _handleInputComboSelectionChanged( self, index ):
+        '''
+        Overrides the inherited method that gets called whenever the export source has changed.
+        Only forwards this to the parent GUI class if the user didn't select 'Plugin' because
+        then the superclass needs to configure more things.
+        '''
+        sourceName = self.drawer.inputSelectionCombo.currentText()
+        self._onSelectedExportSourceChanged(sourceName)
+        if sourceName != OpTrackingBaseDataExport.PluginOnlyName:
+            super(TrackingBaseDataExportGui, self)._handleInputComboSelectionChanged(index)
+
+    def _onSelectedExportSourceChanged(self, sourceName):
+        self.topLevelOperator.SelectedExportSource.setValue(sourceName)
 
     def set_default_export_filename(self, filename):
+        # TODO: remove once tracking is hytra-only
         self._default_export_filename = filename
 
     # override this ExportingOperator function so that we can pass the default filename
@@ -79,12 +193,12 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         """
         Shows the ExportObjectInfoDialog and calls the operators export_object_data method
         """
+        # TODO: remove once tracking is hytra-only
         # Late imports here, so we don't accidentally import PyQt during headless mode.
         from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
-        from ilastik.widgets.progressDialog import ProgressDialog
         
         dimensions = self.get_raw_shape()
-        feature_names = self.get_feature_names()        
+        feature_names = self.get_feature_names()
 
         op = self.get_exporting_operator()
         settings, selected_features = op.get_table_export_settings()
@@ -101,10 +215,25 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         selected_features = list(dialog.checked_features()) # returns a generator, but that's inconvenient because it can't be serialized.
         return settings, selected_features
 
+    def exportResultsForSlot(self, opLane):
+        if self.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName and not self.pluginWasSelected:
+            QMessageBox.critical(self, "Choose Export Plugin",
+                                 "You did not select any export plugin. \nPlease do so by clicking 'Choose Export Image Settings'")
+            return
+        else:
+            super(TrackingBaseDataExportGui, self).exportResultsForSlot(opLane)
+
+    def exportAllResults(self):
+        if self.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName and not self.pluginWasSelected:
+            QMessageBox.critical(self, "Choose Export Plugin",
+                                 "You did not select any export plugin. \nPlease do so by clicking 'Choose Export Image Settings'")
+            return
+        else:
+            super(TrackingBaseDataExportGui, self).exportAllResults()
+
 class TrackingBaseResultsViewer(DataExportLayerViewerGui):
     
     ct = colortables.create_random_16bit()
-    #ct[0] = QColor(0,0,0,255)
     ct[0] = 0
 
     def setupLayers(self):

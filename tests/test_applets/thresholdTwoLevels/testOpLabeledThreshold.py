@@ -31,7 +31,7 @@ class TestOpLabeledThreshold(object):
         op = OpLabeledThreshold(graph=Graph())
         op.Method.setValue(ThresholdMethod.SIMPLE)
         op.FinalThreshold.setValue(0.5)
-        op.Input.setValue(data)
+        op.Input.setValue(data.copy())
         op.CoreLabels.setValue(core_labels)
         
         result = op.Output[:].wait()
@@ -47,7 +47,7 @@ class TestOpLabeledThreshold(object):
         op = OpLabeledThreshold(graph=Graph())
         op.Method.setValue(ThresholdMethod.HYSTERESIS)
         op.FinalThreshold.setValue(0.5)
-        op.Input.setValue(data)
+        op.Input.setValue(data.copy())
         op.CoreLabels.setValue(core_labels)
         
         result = op.Output[:].wait()
@@ -71,7 +71,7 @@ class TestOpLabeledThreshold(object):
         op = OpLabeledThreshold(graph=Graph())
         op.Method.setValue(ThresholdMethod.IPHT)
         op.FinalThreshold.setValue(0.5)
-        op.Input.setValue(data)
+        op.Input.setValue(data.copy())
         op.CoreLabels.setValue(core_labels)
         
         result = op.Output[:].wait()
@@ -79,7 +79,7 @@ class TestOpLabeledThreshold(object):
         #print result_yx
         
         label_values = np.unique(result)[1:]
-        assert len(label_values) == 2        
+        assert len(label_values) == 2
         assert len(np.unique(result_yx[1:6, 1:5])) == 1
         assert len(np.unique(result_yx[7:12, 1:5])) == 1
 
@@ -94,7 +94,7 @@ class TestOpLabeledThreshold(object):
         op = OpLabeledThreshold(graph=Graph())
         op.Method.setValue(ThresholdMethod.GRAPHCUT)
         op.FinalThreshold.setValue(0.5)
-        op.Input.setValue(data)
+        op.Input.setValue(data.copy())
         op.CoreLabels.setValue(core_labels)
         op.GraphcutBeta.setValue(0.5) # High enough to fill the hole in the third segment
         

@@ -147,6 +147,57 @@ class ObjectFeaturesPlugin(IPlugin):
         
         return self.combine_dicts_with_numpy(results)
 
+class TrackingExportFormatPlugin(IPlugin):
+    """Plugins of this class can export a tracking solution."""
+
+    name = "Base Tracking export format plugin"
+    exportsToFile = True # depending on this setting, the user can choose a file or a folder where to export 
+
+    def __init__(self, *args, **kwargs):
+        super(TrackingExportFormatPlugin, self).__init__(*args, **kwargs)
+
+    def checkFilesExist(self, filename):
+        ''' Check whether the files we want to export (when appending the base filename) are already present '''
+        return False
+
+    def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
+        """Export the tracking solution stored in the hypotheses graph's "value" and "divisionValue"
+        attributes (or the "lineageId" and "trackId" attribs). See https://github.com/chaubold/hytra for more details.
+
+        :param filename: string of the file where to save the result (or folder where to put the export files)
+        :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
+        :param objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output 
+               of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
+        
+        :returns: True on success, False otherwise
+        """
+        return False
+
+    @classmethod
+    def _getFeatureNameTranslation(cls, category, name):
+        '''
+        extract the long name of the given feature, or fall back to the plain name if no long name could be found
+
+        :param category: The feature "group" or "plugin" (e.g. "Standard Object Features")
+        :param name: The feature name string
+        :returns: the long name of the feature
+        '''
+        all_props = None
+
+        if category == 'Default features':
+            plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
+        else:
+            plugin = pluginManager.getPluginByName(category, "ObjectFeatures")
+        if plugin:
+            plugin_feature_names = {name: {}}
+            all_props = plugin.plugin_object.fill_properties(plugin_feature_names)  # fill in display name and such
+
+        if all_props:
+            long_name = all_props[name]["displaytext"]
+        else:
+            long_name = name
+
+        return long_name
 
 ###############
 # the manager #
@@ -157,6 +208,7 @@ pluginManager.setPluginPlaces(plugin_paths)
 
 pluginManager.setCategoriesFilter({
    "ObjectFeatures" : ObjectFeaturesPlugin,
+   "TrackingExportFormats": TrackingExportFormatPlugin
    })
 
 pluginManager.collectPlugins()
