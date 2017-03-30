@@ -344,6 +344,175 @@ class TestOpDataSelection_Basic2D():
         assert (projectInternalData == self.imgData2Dc).all()
 
 
+class TestOpDataSelection_Basic_native_3D():
+    """Test related to loading file types that support 3D"""
+    @classmethod
+    def setupClass(cls):
+        cls.tmpdir = tempfile.mkdtemp()
+        cls.imgFileNames3D = []
+        cls.imgFileNames3Dc = []
+        # Comparison of compressed data not possible - those types will be
+        # skipped in raw comparison:
+        cls.projectFileName = os.path.join(cls.tmpdir, 'testProject.ilp')
+
+        # Create a couple test images of different types
+        # in order to simplify and unify testing among the different file types
+        # the extra dimension is added, as vigra would add one anyway.
+        cls.imgData3D = numpy.random.randint(0, 255, (10, 11, 12, 1)).astype(numpy.uint8)
+        # v- image data variables in order to reflect the correct axis-order
+        # otherwise the axes get scrambled when writing/reloading
+        vimgData3D = vigra.VigraArray(
+            cls.imgData3D,
+            axistags=vigra.defaultAxistags('zyxc'),
+            dtype=numpy.uint8
+        )
+
+        testNpyFileName = os.path.join(cls.tmpdir, "testimage3D.npy")
+        numpy.save(testNpyFileName, cls.imgData3D)
+        cls.imgFileNames3D.append(testNpyFileName)
+
+        testNpzFileName = os.path.join(cls.tmpdir, "testimage3D.npz")
+        numpy.savez(testNpzFileName, data=cls.imgData3D)
+        testNpzFileName = "{}/data".format(testNpzFileName)
+        cls.imgFileNames3D.append(testNpzFileName)
+
+        testH5FileName = os.path.join(cls.tmpdir, "testimage3D.h5")
+        vigra.impex.writeHDF5(
+            data=cls.imgData3D,
+            filenameOrGroup=testH5FileName,
+            pathInFile='test/data'
+        )
+        testH5FileName = "{}/test/data".format(testH5FileName)
+        cls.imgFileNames3D.append(testH5FileName)
+
+
+        cls.imgData3Dc = numpy.random.randint(0, 255, (10, 11, 12, 3)).astype(numpy.uint8)
+        vimgData3Dc = vigra.VigraArray(
+            cls.imgData3Dc,
+            axistags=vigra.defaultAxistags('zyxc'),
+            dtype=numpy.uint8
+        )
+
+        testNpyFileName = os.path.join(cls.tmpdir, "testimage3Dc.npy")
+        numpy.save(testNpyFileName, cls.imgData3Dc)
+        cls.imgFileNames3Dc.append(testNpyFileName)
+
+        testNpzFileName = os.path.join(cls.tmpdir, "testimage3Dc.npz")
+        numpy.savez(testNpzFileName, data=cls.imgData3Dc)
+        testNpzFileName = "{}/data".format(testNpzFileName)
+        cls.imgFileNames3Dc.append(testNpzFileName)
+
+        testH5FileName = os.path.join(cls.tmpdir, "testimage3Dc.h5")
+        vigra.impex.writeHDF5(
+            data=cls.imgData3Dc,
+            filenameOrGroup=testH5FileName,
+            pathInFile='test/data'
+        )
+        testH5FileName = "{}/test/data".format(testH5FileName)
+        cls.imgFileNames3Dc.append(testH5FileName)
+
+        # Create a 'project' file and give it some data
+        cls.projectFile = h5py.File(cls.projectFileName)
+        cls.projectFile.create_group('DataSelection')
+        cls.projectFile['DataSelection'].create_group('local_data')
+        # Use the same data as the 3d+c data (above)
+        cls.projectFile['DataSelection/local_data'].create_dataset('dataset1', data=cls.imgData3Dc)
+        cls.projectFile.flush()
+
+    @classmethod
+    def teardownClass(cls):
+        cls.projectFile.close()
+        try:
+            shutil.rmtree(cls.tmpdir)
+        except OSError, e:
+            print('Exception caught while deleting temporary files: {}'.format(e))
+
+    def testBasic3D(self):
+        """Test if plane 2d files are loaded correctly"""
+        for fileName in self.imgFileNames3D:
+            graph = lazyflow.graph.Graph()
+            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader.ProjectFile.setValue(self.projectFile)
+            reader.WorkingDirectory.setValue(os.getcwd())
+            reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
+            info = DatasetInfo()
+            # Will be read from the filesystem since the data won't be found in the project file.
+            info.location = DatasetInfo.Location.ProjectInternal
+            info.filePath = fileName
+            info.internalPath = ""
+            info.invertColors = False
+            info.convertToGrayscale = False
+
+            reader.Dataset.setValues([info])
+
+            # Read the test files using the data selection operator and verify the contents
+            imgData3D = reader.Image[0][...].wait()
+
+            # Check the file name output
+            assert reader.ImageName[0].value == fileName
+            # Check raw images
+            assert imgData3D.shape == self.imgData3D.shape
+            # skip this if image was saved compressed:
+            numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
+
+    def testBasic3Dc(self):
+        """Test if 2d 3-channel files are loaded correctly"""
+        # For some reason vigra saves 2D+c data compressed in gifs, so skip!
+        for fileName in self.imgFileNames3Dc:
+            graph = lazyflow.graph.Graph()
+            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader.ProjectFile.setValue(self.projectFile)
+            reader.WorkingDirectory.setValue(os.getcwd())
+            reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
+            info = DatasetInfo()
+            # Will be read from the filesystem since the data won't be found in the project file.
+            info.location = DatasetInfo.Location.ProjectInternal
+            info.filePath = fileName
+            info.internalPath = ""
+            info.invertColors = False
+            info.convertToGrayscale = False
+
+            reader.Dataset.setValues([info])
+
+            # Read the test files using the data selection operator and verify the contents
+            imgData3Dc = reader.Image[0][...].wait()
+
+            # Check the file name output
+            assert reader.ImageName[0].value == fileName
+            # Check raw images
+            assert imgData3Dc.shape == self.imgData3Dc.shape
+            # skip this if image was saved compressed:
+            numpy.testing.assert_array_equal(imgData3Dc, self.imgData3Dc)
+
+    def testProjectLocalData(self):
+        graph = lazyflow.graph.Graph()
+        reader = OperatorWrapper(OpDataSelection, graph=graph)
+        reader.ProjectFile.setValue(self.projectFile)
+        reader.WorkingDirectory.setValue(os.getcwd())
+        reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
+        # Create a list of dataset infos . . .
+        datasetInfos = []
+
+        # From project
+        info = DatasetInfo()
+        info.location = DatasetInfo.Location.ProjectInternal
+        info.filePath = "This string should be ignored..."
+        info._datasetId = 'dataset1'  # (Cheating a bit here...)
+        info.invertColors = False
+        info.convertToGrayscale = False
+        datasetInfos.append(info)
+
+        reader.Dataset.setValues(datasetInfos)
+
+        projectInternalData = reader.Image[0][...].wait()
+
+        assert projectInternalData.shape == self.imgData3Dc.shape
+        assert (projectInternalData == self.imgData3Dc).all()
+
+
 if __name__ == "__main__":
     import nose
     nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE': 1})
