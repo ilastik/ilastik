@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
+import shutil
 import numpy
 import vigra
 import lazyflow
@@ -38,34 +39,41 @@ class TestOpDataSelection_Basic():
         cls.projectFileName = os.path.join(cls.tmpdir, 'testProject.ilp')
 
         # Create a couple test images of different types
-        cls.imgData2D = numpy.zeros((10, 11))
-        for x in range(0,10):
-            for y in range(0,11):
-                cls.imgData2D[x,y] = x+y
-        numpy.save(cls.testNpyFileName, cls.imgData2D)
+        cls.imgData2D = numpy.random.randint(0, 255, (10, 11)).astype(numpy.uint8)
+        # v- image data variables in order to reflect the correct axis-order
+        # otherwise the axes get scrambled when writing/reloading
+        vimgData2D = vigra.VigraArray(
+            cls.imgData2D,
+            axistags=vigra.defaultAxistags('yx'),
+            dtype=numpy.uint8
+        )
 
-        cls.imgData2Dc = numpy.zeros((100, 200, 3))
-        for x in range(cls.imgData2Dc.shape[0]):
-            for y in range(cls.imgData2Dc.shape[1]):
-                for c in range(cls.imgData2Dc.shape[2]):
-                    cls.imgData2Dc[x, y, c] = (x + y) % 256
-        vigra.impex.writeImage(cls.imgData2Dc, cls.testPngFileName)
+        cls.imgData2Dc = numpy.random.randint(0, 255, (100, 200, 3)).astype(numpy.uint8)
+        vimgData2Dc = vigra.VigraArray(
+            cls.imgData2Dc,
+            axistags=vigra.defaultAxistags('yxc'),
+            dtype=numpy.uint8
+        )
+
+        # for compatibility with old tests, saving to explicit filename in cls
+        numpy.save(cls.testNpyFileName, cls.imgData2D)
+        vigra.impex.writeImage(vimgData2Dc, cls.testPngFileName)
+
         # Create a 'project' file and give it some data
         cls.projectFile = h5py.File(cls.projectFileName)
         cls.projectFile.create_group('DataSelection')
         cls.projectFile['DataSelection'].create_group('local_data')
-        # Use the same data as the png data (above)
+        # Use the same data as the 2d+c data (above)
         cls.projectFile['DataSelection/local_data'].create_dataset('dataset1', data=cls.imgData2Dc)
         cls.projectFile.flush()
 
     @classmethod
     def teardownClass(cls):
         cls.projectFile.close()
-        for path in [ cls.testNpyFileName, cls.testPngFileName, cls.projectFileName ]:
-            try:
-                os.remove(path)
-            except:
-                pass
+        try:
+            shutil.rmtree(cls.tmpdir)
+        except OSError, e:
+            print('Exception caught while deleting temporary files: {}'.format(e))
     
     def testBasic2D(self):
         graph = lazyflow.graph.Graph()
@@ -108,16 +116,13 @@ class TestOpDataSelection_Basic():
         assert reader.ImageName[1].value == self.testPngFileName
 
         # Check raw images
-        assert imgData2D.shape == (10,11,1)
-        for y in range(imgData2D.shape[0]):
-            for x in range(imgData2D.shape[1]):
-                assert imgData2D[y,x,0] == x+y
+        assert imgData2D.shape == (10, 11, 1)
+        numpy.testing.assert_array_equal(imgData2D[:, :, 0], self.imgData2D)
 
-        assert imgData2Dc.shape == (200, 100, 3)
-        for y in range(imgData2Dc.shape[0]):
-            for x in range(imgData2Dc.shape[1]):
-                for c in range(imgData2Dc.shape[2]):
-                    assert imgData2Dc[y, x, c] == (x + y) % 256
+        # can assert in the correct axisorders
+        assert imgData2Dc.shape == (100, 200, 3)
+        # vigra scrambles the axes by default it seems
+        numpy.testing.assert_array_equal(imgData2Dc[:], self.imgData2Dc)
 
 #
 #    def testColorInversion(self):
