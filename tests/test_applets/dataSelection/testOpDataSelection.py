@@ -58,6 +58,20 @@ class TestOpDataSelection_Basic2D():
         numpy.save(testNpyFileName, cls.imgData2D)
         cls.imgFileNames2D.append(testNpyFileName)
 
+        testNpzFileName = os.path.join(cls.tmpdir, "testimage2D.npz")
+        numpy.savez(testNpzFileName, data=cls.imgData2D)
+        testNpzFileName = "{}/data".format(testNpzFileName)
+        cls.imgFileNames2D.append(testNpzFileName)
+
+        testH5FileName = os.path.join(cls.tmpdir, "testimage2D.h5")
+        vigra.impex.writeHDF5(
+            data=cls.imgData2D,
+            filenameOrGroup=testH5FileName,
+            pathInFile='test/data'
+        )
+        testH5FileName = "{}/test/data".format(testH5FileName)
+        cls.imgFileNames2D.append(testH5FileName)
+
         for extension in vigra.impex.listExtensions().split(' '):
             tmpFileName = os.path.join(cls.tmpdir, "testImage2D.{}".format(extension))
             # not all extensions support this kind of pixeltype
@@ -84,6 +98,20 @@ class TestOpDataSelection_Basic2D():
         testNpyFileName = os.path.join(cls.tmpdir, "testimage2Dc.npy")
         numpy.save(testNpyFileName, cls.imgData2Dc)
         cls.imgFileNames2Dc.append(testNpyFileName)
+
+        testNpzFileName = os.path.join(cls.tmpdir, "testimage2Dc.npz")
+        numpy.savez(testNpzFileName, data=cls.imgData2Dc)
+        testNpzFileName = "{}/data".format(testNpzFileName)
+        cls.imgFileNames2Dc.append(testNpzFileName)
+
+        testH5FileName = os.path.join(cls.tmpdir, "testimage2Dc.h5")
+        vigra.impex.writeHDF5(
+            data=cls.imgData2Dc,
+            filenameOrGroup=testH5FileName,
+            pathInFile='test/data'
+        )
+        testH5FileName = "{}/test/data".format(testH5FileName)
+        cls.imgFileNames2Dc.append(testH5FileName)
 
         for extension in vigra.impex.listExtensions().split(' '):
             tmpFileName = os.path.join(cls.tmpdir, "testImage2Dc.{}".format(extension))
