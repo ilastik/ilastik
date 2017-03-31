@@ -286,9 +286,9 @@ class StackFileSelectionWidget(QDialog):
 
         if len(fileNames) == 1:
             msg += 'Cannot create stack: You only chose a single file.  '
-            msg += 'If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume),'
-            msg += ' please use the "Add File" button.'
-            QMessageBox.warning(self, "Invalid selection", msg )
+            msg += 'If your stack is contained in a single file (e.g. a multi-page tiff or '
+            msg += 'hdf5 volume), please use the "Add File" button.'
+            QMessageBox.warning(self, "Invalid selection", msg)
             return None
 
         pathComponents = PathComponents(fileNames[0])
@@ -298,15 +298,27 @@ class StackFileSelectionWidget(QDialog):
         if pathComponents.extension in OpStreamingHdf5SequenceReaderM.H5EXTS:
             # check for internal paths!
             internal_paths = self._findCommonInternal(fileNames)
-            if len(internal_paths) != 1:
+            if len(internal_paths) == 0:
                 msg += 'Could not find a unique common internal path in'
                 msg += directory + '\n'
                 QMessageBox.warning(self, "Invalid selection", msg)
                 return None
-            else:
+            elif len(internal_paths) == 1:
                 fileNames = ['{}/{}'.format(fn, internal_paths[0]) for fn in fileNames]
+            else:
+                # Ask the user which dataset to choose
+                dlg = H5VolumeSelectionDlg(internal_paths, self)
+                if dlg.exec_() == QDialog.Accepted:
+                    selected_index = dlg.combo.currentIndex()
+                    selected_dataset = str(internal_paths[selected_index])
+                    fileNames = ['{}/{}'.format(fn, selected_dataset)
+                                 for fn in fileNames]
+                else:
+                    msg = 'No valid internal path selected.'
+                    QMessageBox.warning(self, "Invalid selection", msg)
+                    return None
 
-        self._updateFileList( fileNames )
+        self._updateFileList(fileNames)
 
     def _applyPattern(self):
         globStrings = encode_from_qstring(self.patternEdit.text())
