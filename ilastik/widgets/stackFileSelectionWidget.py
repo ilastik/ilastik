@@ -70,7 +70,12 @@ class H5VolumeSelectionDlg(QDialog):
 
 
 class StackFileSelectionWidget(QDialog):
-    
+
+    class DetermineStackError(Exception):
+        """Class related to errors in determining the stack of files"""
+        def __init__(self, message):
+            super(StackFileSelectionWidget.DetermineStackError, self).__init__(message)
+
     def __init__(self, parent, files=None):
         super( StackFileSelectionWidget, self ).__init__( parent )
     
@@ -157,7 +162,10 @@ class StackFileSelectionWidget(QDialog):
         PreferencesManager().set('DataSelection', 'recent stack directory', directory)
 
         self.directoryEdit.setText( decode_to_qstring(directory) )
-        globstring = self._getGlobString(directory)
+        try:
+            globstring = self._getGlobString(directory)
+        except:
+            QMessageBox.warning(self, "Invalid selection", msg )
         if globstring:
             self.patternEdit.setText(decode_to_qstring(globstring))
             self._applyPattern()
@@ -183,15 +191,26 @@ class StackFileSelectionWidget(QDialog):
                 if ext in h5exts:
                     # be even more helpful and try to find a common internal path
                     internal_paths = self._findCommonInternal(new_filenames)
-                    if len(internal_paths) != 1:
+                    if len(internal_paths) == 0:
                         msg += 'Could not find a unique common internal path in'
                         msg += directory + '\n'
-                        QMessageBox.warning(self, "Invalid selection", msg)
-                        return None
-                    else:
+                        raise StackFileSelectionWidget.DetermineStackError(msg)
+                    elif len(internal_paths) == 1:
                         new_filenames = ['{}/{}'.format(fn, internal_paths[0])
                                          for fn in new_filenames]
                         globstring = '{}/{}'.format(globstring, internal_paths[0])
+                    elif len(internal_paths) > 1:
+                        # Ask the user which dataset to choose
+                        dlg = H5VolumeSelectionDlg(internal_paths, self)
+                        if dlg.exec_() == QDialog.Accepted:
+                            selected_index = dlg.combo.currentIndex()
+                            selected_dataset = str(internal_paths[selected_index])
+                            new_filenames = ['{}/{}'.format(fn, selected_dataset)
+                                             for fn in new_filenames]
+                            globstring = '{}/{}'.format(globstring, selected_dataset)
+                        else:
+                            msg = 'No valid internal path selected.'
+                            raise StackFileSelectionWidget.DetermineStackError(msg)
 
                 globstrings.append(globstring)
                 all_filenames += new_filenames
@@ -199,16 +218,14 @@ class StackFileSelectionWidget(QDialog):
         if len(all_filenames) == 0:
             msg += 'Cannot create stack: There were no image files in the selected directory:\n'
             msg += directory
-            QMessageBox.warning(self, "Invalid selection", msg )
-            return None
+            raise StackFileSelectionWidget.DetermineStackError(msg)
 
         if len(all_filenames) == 1:
             msg += 'Cannot create stack: There is only one image file in the selected directory:\n'
             msg += directory + '\n'
-            msg += 'If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume),'
-            msg += ' please use the "Add File" button.'
-            QMessageBox.warning(self, "Invalid selection", msg )
-            return None
+            msg += 'If your stack is contained in a single file (e.g. a multi-page tiff or '
+            msg += 'hdf5 volume), please use the "Add File" button.'
+            raise StackFileSelectionWidget.DetermineStackError(msg)
 
         # Combine into one string, delimited with os.path.sep
         return os.path.pathsep.join(globstrings)
