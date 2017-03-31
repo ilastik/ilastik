@@ -21,7 +21,7 @@
 from PyQt4.QtGui import *
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal, QSize, QStringList
-from PyQt4.QtGui import QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QColor
+from PyQt4.QtGui import QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QColor, QProgressBar
 from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
@@ -42,6 +42,8 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.plugins import pluginManager
+
+from lazyflow.request import Request
 
 import logging
 logger = logging.getLogger(__name__)
@@ -947,12 +949,15 @@ class LabelAssistDialog(QDialog):
     def __init__(self, parent, topLevelOperatorView):
         super(LabelAssistDialog, self).__init__(parent)
         
+        # Create thread router to populate table on main thread
+        self.threadRouter = ThreadRouter(self)
+        
         # Set object classification operator view
         self.topLevelOperatorView = topLevelOperatorView
         
         self.setWindowTitle("Label Assist")
         self.setMinimumWidth(500)
-        self.setMinimumHeight(800)
+        self.setMinimumHeight(700)
 
         layout = QGridLayout() 
         layout.setContentsMargins(10, 10, 10, 10)
@@ -962,7 +967,7 @@ class LabelAssistDialog(QDialog):
         columns = 4
         self.table = QTableWidget(rows, columns)   
         self.table.setHorizontalHeaderLabels(['Frame', 'Max Area', 'Min Area', 'Labels'])
-        self.table.verticalHeader().setVisible(False)      
+        self.table.verticalHeader().setVisible(False)     
         
         # Select full row on-click and call capture double click
         self.table.setSelectionBehavior(QTableView.SelectRows);
@@ -970,28 +975,50 @@ class LabelAssistDialog(QDialog):
                 
         layout.addWidget(self.table, 1, 0, 3, 2) 
 
-        # Create and add close button
-        closeButton = QPushButton('Compute Areas')
-        closeButton.clicked.connect(self._populateTable)
-        layout.addWidget(closeButton, 4, 0)
+        # Create progress bar
+        self.progressBar = QProgressBar()
+        self.progressBar.setMinimum(0)
+        self.progressBar.setMaximum(0)
+        self.progressBar.hide()
+        layout.addWidget(self.progressBar, 4, 0, 1, 2)
+
+        # Create button to populate table
+        self.computeButton = QPushButton('Compute object info')
+        self.computeButton.clicked.connect(self._triggerTableUpdate)
+        layout.addWidget(self.computeButton, 5, 0)
         
-        # Create and add close button
+        # Create close button
         closeButton = QPushButton('Close')
         closeButton.clicked.connect(self.close)
-        layout.addWidget(closeButton, 4, 1)
+        layout.addWidget(closeButton, 5, 1)
         
         # Set dialog layout
         self.setLayout(layout)       
 
-    def _populateTable(self):
-        # Clear and prepare table
+
+    def _triggerTableUpdate(self):
         self.table.clearContents()
         self.table.setRowCount(0)
         self.table.setSortingEnabled(False)
+        self.progressBar.show()
+        self.computeButton.setEnabled(False)
         
-        # Get object features
-        features = self.topLevelOperatorView.ObjectFeatures([]).wait()
-        labels = self.topLevelOperatorView.LabelInputs([]).wait()
+        # Compute object features and number of labels per frame
+        def compute_features():
+            features = self.topLevelOperatorView.ObjectFeatures([]).wait()
+            labels = self.topLevelOperatorView.LabelInputs([]).wait()
+            return features, labels
+        
+        req = Request(compute_features)
+        req.notify_finished(self._populateTable)
+        req.submit()
+
+
+    @threadRouted
+    def _populateTable(self, features_and_labels):
+        features, labels = features_and_labels
+        self.progressBar.hide()
+        self.computeButton.setEnabled(True)
                 
         for frame, objectFeatures in features.iteritems():
             # Insert row
@@ -1006,27 +1033,28 @@ class LabelAssistDialog(QDialog):
             # Get number of labeled objects
             labelNum = numpy.count_nonzero(labels[frame])
             
+            # Load fram number
             item = QTableWidgetItem(str(frame))
             item.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
             self.table.setItem(rowNum, 0, item) 
 
-            # Load max object areas as strings
+            # Load max object areas
             item = QTableWidgetItemWithFloatSorting(str("{: .02f}".format(maxObjArea)))
             item.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
             self.table.setItem(rowNum, 1, item)
                 
-            # Load min object areas as strings
+            # Load min object areas
             item = QTableWidgetItemWithFloatSorting(str("{: .02f}".format(minObjArea)))
             item.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
             self.table.setItem(rowNum, 2, item)
             
-            # Load min object areas as strings
+            # Load label numbers
             item = QTableWidgetItemWithFloatSorting(str("{: .01f}".format(labelNum)))
             item.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
             self.table.setItem(rowNum, 3, item)
         
-        # Resize column size to content
-        self.table.resizeColumnsToContents()  
+        # Resize column size to fit dialog size
+        self.table.horizontalHeader().setResizeMode(QHeaderView.Stretch)   
         
         # Sort by max object area
         self.table.setSortingEnabled(True)                         

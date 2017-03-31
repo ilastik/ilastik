@@ -129,13 +129,6 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="labelAssistButton">
-       <property name="text">
-        <string>Label Assist</string>
-       </property>
-      </widget>
-     </item>
-     <item>
       <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,1,0,0,0">
        <property name="spacing">
         <number>2</number>
@@ -201,6 +194,13 @@
         </widget>
        </item>
       </layout>
+     </item>
+     <item>
+      <widget class="QPushButton" name="labelAssistButton">
+       <property name="text">
+        <string>Label Assist</string>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
