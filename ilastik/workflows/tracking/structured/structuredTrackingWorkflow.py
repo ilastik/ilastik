@@ -20,6 +20,7 @@
 ###############################################################################
 import os
 from lazyflow.graph import Graph
+from lazyflow.utility import PathComponents, make_absolute, format_known_keys
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.tracking.annotations.annotationsApplet import AnnotationsApplet
@@ -35,7 +36,9 @@ from ilastik.applets.tracking.structured import config as configStructured
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
+from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ilastik.plugins import pluginManager
 
 import logging
 logger = logging.getLogger(__name__)
@@ -471,9 +474,46 @@ class StructuredTrackingWorkflowBase( Workflow ):
             logger.info("Transition results are correct.")
         self.result = runLearningAndTracking(withMergerResolution=parameters['withMergerResolution'])
 
-    def post_process_lane_export(self, lane_index):
+    def post_process_lane_export(self, lane_index, checkOverwriteFiles=False):
         # FIXME: This probably only works for the non-blockwise export slot.
         #        We should assert that the user isn't using the blockwise slot.
+
+        # Plugin export if selected
+        logger.info("Export source is: " + self.dataExportTrackingApplet.topLevelOperator.SelectedExportSource.value)
+
+        print "in post_process_lane_export"
+        if self.dataExportTrackingApplet.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName:
+            logger.info("Export source plugin selected!")
+            selectedPlugin = self.dataExportTrackingApplet.topLevelOperator.SelectedPlugin.value
+
+            exportPluginInfo = pluginManager.getPluginByName(selectedPlugin, category="TrackingExportFormats")
+            if exportPluginInfo is None:
+                logger.error("Could not find selected plugin %s" % exportPluginInfo)
+            else:
+                exportPlugin = exportPluginInfo.plugin_object
+                logger.info("Exporting tracking result using %s" % selectedPlugin)
+                name_format = self.dataExportTrackingApplet.topLevelOperator.getLane(lane_index).OutputFilenameFormat.value
+                partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
+
+                if exportPlugin.exportsToFile:
+                    filename = partially_formatted_name
+                    if os.path.basename(filename) == '':
+                        filename = os.path.join(filename, 'pluginExport.txt')
+                else:
+                    filename = os.path.dirname(partially_formatted_name)
+
+                if filename is None or len(str(filename)) == 0:
+                    logger.error("Cannot export from plugin with empty output filename")
+                    return
+
+                exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin, checkOverwriteFiles)
+                if not exportStatus:
+                    return False
+                logger.info("Export done")
+
+            return
+
+        # CSV Table export (only if plugin was not selected)
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         from lazyflow.utility import PathComponents, make_absolute, format_known_keys
 
@@ -506,6 +546,24 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
             req.wait()
             self.dataExportTrackingApplet.progressSignal.emit(100)
+
+    def getPartiallyFormattedName(self, lane_index, path_format_string):
+        ''' Takes the format string for the output file, fills in the most important placeholders, and returns it '''
+        raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
+        project_path = self.shell.projectManager.currentProjectPath
+        project_dir = os.path.dirname(project_path)
+        dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
+        abs_dataset_dir = make_absolute(dataset_dir, cwd=project_dir)
+        known_keys = {}
+        known_keys['dataset_dir'] = abs_dataset_dir
+        nickname = raw_dataset_info.nickname.replace('*', '')
+        if os.path.pathsep in nickname:
+            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
+        known_keys['nickname'] = nickname
+        known_keys['result_type'] = self.dataExportTrackingApplet.topLevelOperator.SelectedPlugin._value
+        # use partial formatting to fill in non-coordinate name fields
+        partially_formatted_name = format_known_keys(path_format_string, known_keys)
+        return partially_formatted_name
 
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
