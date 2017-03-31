@@ -107,6 +107,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
         if 'max_nearest_neighbors' in parameters.keys():
             self._drawer.maxNearestNeighborsSpinBox.setValue(parameters['max_nearest_neighbors'])
+        if 'numFramesPerSplit' in parameters.keys():
+            self._drawer.numFramesPerSplitSpinBox.setValue(parameters['numFramesPerSplit'])
 
         # solver: use stored value only if that solver is available
         self._drawer.solverComboBox.clear()
@@ -185,8 +187,6 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.avgSizeBox.hide()
             self._drawer.label_24.hide() # hide motion model weight label
             self._drawer.motionModelWeightBox.hide()
-            self._drawer.maxNearestNeighborsSpinBox.hide()
-            self._drawer.MaxNearestNeighbourLabel.hide()
           
         self.mergerLabels = [self._drawer.merg1,
                              self._drawer.merg2,
@@ -309,6 +309,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     motionModelWeight=motionModelWeight,
                     force_build_hypotheses_graph =False,
                     max_nearest_neighbors=self._drawer.maxNearestNeighborsSpinBox.value(),
+                    numFramesPerSplit=self._drawer.numFramesPerSplitSpinBox.value(),
                     solverName=solver
                     )
 
