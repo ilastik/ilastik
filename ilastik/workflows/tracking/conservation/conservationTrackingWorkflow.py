@@ -360,6 +360,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             appearance_cost = parameters['appearanceCost'],
             disappearance_cost = parameters['disappearanceCost'],
             max_nearest_neighbors = parameters['max_nearest_neighbors'],
+            numFramesPerSplit = parameters['numFramesPerSplit'],
             force_build_hypotheses_graph = False,
             withBatchProcessing = True
         )

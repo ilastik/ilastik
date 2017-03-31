@@ -351,6 +351,7 @@ class OpConservationTracking(Operator):
             motionModelWeight=10.0,
             force_build_hypotheses_graph = False,
             max_nearest_neighbors = 2,
+            numFramesPerSplit=1000,
             withBatchProcessing = False,
             solverName="Flow-based"
             ):
@@ -392,6 +393,7 @@ class OpConservationTracking(Operator):
         parameters['y_range'] = y_range
         parameters['z_range'] = z_range
         parameters['max_nearest_neighbors'] = max_nearest_neighbors
+        parameters['numFramesPerSplit'] = numFramesPerSplit
         parameters['solver'] = str(solverName)
 
         # Set a size range with a minimum area equal to the max number of objects (since the GMM throws an error if we try to fit more gaussians than the number of pixels in the object)
@@ -432,7 +434,13 @@ class OpConservationTracking(Operator):
         weights = trackingGraph.weightsListToDict([transWeight, detWeight, divWeight, appearance_cost, disappearance_cost])
 
         if solverName == 'Flow-based' and dpct:
-            result = dpct.trackFlowBased(model, weights)
+            if numFramesPerSplit:
+                # Run solver with frame splits (split, solve, and stitch video to improve running-time)
+                from hytra.core.splittracking import SplitTracking 
+                result = SplitTracking.trackFlowBasedWithSplits(model, weights, numFramesPerSplit=numFramesPerSplit)
+            else:
+                result = dpct.trackFlowBased(model, weights)
+
         elif solverName == 'ILP' and mht:
             result = mht.track(model, weights)
         else:
@@ -568,7 +576,7 @@ class OpConservationTracking(Operator):
             
             # Use simple relabeled merger feature slot configuration instead of opRelabeledMergerFeatureExtraction
             # This is faster for videos with few mergers and few number of objects per frame
-            if 'withAnimalTracking' in parameters and parameters['withAnimalTracking']:  
+            if False:#'withAnimalTracking' in parameters and parameters['withAnimalTracking']:  
                 logger.info('Setting relabeled merger feature slots for animal tracking')
                 from ilastik.applets.trackingFeatureExtraction import config
                 
