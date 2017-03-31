@@ -997,6 +997,19 @@ class LabelAssistDialog(QDialog):
 
 
     def _triggerTableUpdate(self):
+        # Check that object area is included in selected features
+        featureNames = self.topLevelOperatorView.SelectedFeatures.value
+        
+        if 'Standard Object Features' not in featureNames or 'Count' not in featureNames['Standard Object Features']:
+            box = QMessageBox(QMessageBox.Warning,
+                  'Warning',
+                  'Object area is not a selected feature. Please select this feature on: \"Standard Object Features > Shape > Size in pixels\"',
+                  QMessageBox.NoButton,
+                  self)
+            box.show()
+            return 
+        
+        # Clear table
         self.table.clearContents()
         self.table.setRowCount(0)
         self.table.setSortingEnabled(False)
