@@ -211,6 +211,8 @@ class ObjectClassificationGui(LabelingGui):
         self.badObjectBox = None
 
         self.checkEnableButtons()
+        
+        self._labelAssistDialog = None
 
     def menus(self):
         m = QMenu("&Export", self.volumeEditorWidget)
@@ -351,7 +353,8 @@ class ObjectClassificationGui(LabelingGui):
 
     @pyqtSlot()
     def handleLabelAssistClicked(self):
-        self._labelAssistDialog = LabelAssistDialog(self, self.topLevelOperatorView)
+        if self._labelAssistDialog is None:
+            self._labelAssistDialog = LabelAssistDialog(self, self.topLevelOperatorView)
         self._labelAssistDialog.show()       
 
     @pyqtSlot()
