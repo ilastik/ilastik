@@ -24,7 +24,9 @@ from functools import partial
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
-from PyQt4.QtGui import QDialog, QFileDialog, QMessageBox
+from PyQt4.QtGui import (
+    QDialogButtonBox, QComboBox, QDialog, QFileDialog, QLabel, QMessageBox, QVBoxLayout
+)
 
 import vigra
 
@@ -39,6 +41,33 @@ from lazyflow.operators.ioOperators import (
 )
 from lazyflow.utility import lsHdf5, PathComponents
 import h5py
+
+
+class H5VolumeSelectionDlg(QDialog):
+    """
+    A window to ask the user to choose between multiple HDF5 datasets in a single file.
+    """
+    def __init__(self, datasetNames, parent):
+        super(H5VolumeSelectionDlg, self).__init__(parent)
+        label = QLabel("Your HDF5 File contains multiple image volumes.\n"
+                       "Please select the one you would like to open.")
+
+        self.combo = QComboBox()
+        for name in datasetNames:
+            self.combo.addItem(name)
+
+        buttonbox = QDialogButtonBox(Qt.Horizontal, parent=self)
+        buttonbox.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttonbox.accepted.connect(self.accept)
+        buttonbox.rejected.connect(self.reject)
+
+        layout = QVBoxLayout()
+        layout.addWidget(label)
+        layout.addWidget(self.combo)
+        layout.addWidget(buttonbox)
+
+        self.setLayout(layout)
+
 
 class StackFileSelectionWidget(QDialog):
     

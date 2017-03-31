@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 #PyQt
 from PyQt4 import uic
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QStackedWidget, QMessageBox, QFileDialog, \
-                        QDialog, QVBoxLayout, QLabel, QComboBox, QDialogButtonBox
-
+from PyQt4.QtGui import (
+    QDialog, QFileDialog, QMessageBox, QStackedWidget, QWidget
+)
 #lazyflow
 from lazyflow.request import Request
 
@@ -51,7 +51,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from opDataSelection import OpDataSelection, DatasetInfo
 from dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from datasetInfoEditorWidget import DatasetInfoEditorWidget
-from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget
+from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, H5VolumeSelectionDlg
 from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDetailedInfoTableModel
 from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 
@@ -73,31 +73,6 @@ class GuiMode():
     Normal = 0
     Batch = 1
 
-
-class H5VolumeSelectionDlg(QDialog):
-    """
-    A window to ask the user to choose between multiple HDF5 datasets in a single file.
-    """
-    def __init__(self, datasetNames, parent):
-        super(H5VolumeSelectionDlg, self).__init__(parent)                        
-        label = QLabel( "Your HDF5 File contains multiple image volumes.\n"
-                        "Please select the one you would like to open." )
-        
-        self.combo = QComboBox()
-        for name in datasetNames:
-            self.combo.addItem(name)
-        
-        buttonbox = QDialogButtonBox( Qt.Horizontal, parent=self )
-        buttonbox.setStandardButtons( QDialogButtonBox.Ok | QDialogButtonBox.Cancel )
-        buttonbox.accepted.connect( self.accept )
-        buttonbox.rejected.connect( self.reject )
-        
-        layout = QVBoxLayout()
-        layout.addWidget( label )
-        layout.addWidget( self.combo )
-        layout.addWidget( buttonbox )
-        
-        self.setLayout(layout)
 
 class DataSelectionGui(QWidget):
     """
