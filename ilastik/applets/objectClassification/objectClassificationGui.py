@@ -20,8 +20,8 @@
 ###############################################################################
 from PyQt4.QtGui import *
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal
-from PyQt4.QtGui import QFileDialog
+from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal, QSize, QStringList
+from PyQt4.QtGui import QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QColor, QProgressBar
 from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
@@ -42,6 +42,8 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.plugins import pluginManager
+
+from lazyflow.request import Request
 
 import logging
 logger = logging.getLogger(__name__)
@@ -162,6 +164,8 @@ class ObjectClassificationGui(LabelingGui):
 
         self.labelingDrawerUi.subsetFeaturesButton.clicked.connect(
             self.handleSubsetFeaturesClicked)
+        self.labelingDrawerUi.labelAssistButton.clicked.connect(
+            self.handleLabelAssistClicked)
         self.labelingDrawerUi.checkInteractive.toggled.connect(
             self.handleInteractiveModeClicked)
         self.labelingDrawerUi.checkShowPredictions.toggled.connect(
@@ -209,6 +213,8 @@ class ObjectClassificationGui(LabelingGui):
         self.badObjectBox = None
 
         self.checkEnableButtons()
+        
+        self._labelAssistDialog = None
 
     def menus(self):
         m = QMenu("&Export", self.volumeEditorWidget)
@@ -346,6 +352,12 @@ class ObjectClassificationGui(LabelingGui):
                 nfeatures += len(plugin_features)
             self.labelingDrawerUi.featuresSubset.setText("{} features selected,\nsome may have multiple channels".format(nfeatures))
         mainOperator.ComputedFeatureNames.setDirty(())
+
+    @pyqtSlot()
+    def handleLabelAssistClicked(self):
+        if self._labelAssistDialog is None:
+            self._labelAssistDialog = LabelAssistDialog(self, self.topLevelOperatorView)
+        self._labelAssistDialog.show()       
 
     @pyqtSlot()
     def checkEnableButtons(self):
@@ -912,7 +924,165 @@ class ObjectClassificationGui(LabelingGui):
 
     def get_export_dialog_title(self):
     	return "Export Object Information"
-    	
+
+
+# Overload QTableWidgetItem class to allow comparisons of float instead of strings
+class QTableWidgetItemWithFloatSorting(QTableWidgetItem):
+    def __lt__(self, other):
+        if ( isinstance(other, QTableWidgetItem) ):
+            my_value, my_ok = self.data(Qt.EditRole).toFloat()
+            other_value, other_ok = other.data(Qt.EditRole).toFloat()
+
+            if ( my_ok and other_ok ):
+                return my_value < other_value
+
+        return super(QTableWidgetItemWithFloatSorting, self).__lt__(other)
+
+class LabelAssistDialog(QDialog):
+    """
+    A simple UI for showing bookmarks and navigating to them.
+
+    FIXME: For now, this window is tied to a particular lane.
+           If your project has more than one lane, then each one
+           will have it's own bookmark window, which is kinda dumb.
+    """
+    def __init__(self, parent, topLevelOperatorView):
+        super(LabelAssistDialog, self).__init__(parent)
+        
+        # Create thread router to populate table on main thread
+        self.threadRouter = ThreadRouter(self)
+        
+        # Set object classification operator view
+        self.topLevelOperatorView = topLevelOperatorView
+        
+        self.setWindowTitle("Label Assist")
+        self.setMinimumWidth(500)
+        self.setMinimumHeight(700)
+
+        layout = QGridLayout() 
+        layout.setContentsMargins(10, 10, 10, 10)
+                       
+        # Show variable importance table
+        rows = 0
+        columns = 4
+        self.table = QTableWidget(rows, columns)   
+        self.table.setHorizontalHeaderLabels(['Frame', 'Max Area', 'Min Area', 'Labels'])
+        self.table.verticalHeader().setVisible(False)     
+        
+        # Select full row on-click and call capture double click
+        self.table.setSelectionBehavior(QTableView.SelectRows);
+        self.table.doubleClicked.connect(self._captureDoubleClick)
+                
+        layout.addWidget(self.table, 1, 0, 3, 2) 
+
+        # Create progress bar
+        self.progressBar = QProgressBar()
+        self.progressBar.setMinimum(0)
+        self.progressBar.setMaximum(0)
+        self.progressBar.hide()
+        layout.addWidget(self.progressBar, 4, 0, 1, 2)
+
+        # Create button to populate table
+        self.computeButton = QPushButton('Compute object info')
+        self.computeButton.clicked.connect(self._triggerTableUpdate)
+        layout.addWidget(self.computeButton, 5, 0)
+        
+        # Create close button
+        closeButton = QPushButton('Close')
+        closeButton.clicked.connect(self.close)
+        layout.addWidget(closeButton, 5, 1)
+        
+        # Set dialog layout
+        self.setLayout(layout)       
+
+
+    def _triggerTableUpdate(self):
+        # Check that object area is included in selected features
+        featureNames = self.topLevelOperatorView.SelectedFeatures.value
+        
+        if 'Standard Object Features' not in featureNames or 'Count' not in featureNames['Standard Object Features']:
+            box = QMessageBox(QMessageBox.Warning,
+                  'Warning',
+                  'Object area is not a selected feature. Please select this feature on: \"Standard Object Features > Shape > Size in pixels\"',
+                  QMessageBox.NoButton,
+                  self)
+            box.show()
+            return 
+        
+        # Clear table
+        self.table.clearContents()
+        self.table.setRowCount(0)
+        self.table.setSortingEnabled(False)
+        self.progressBar.show()
+        self.computeButton.setEnabled(False)
+        
+        # Compute object features and number of labels per frame
+        def compute_features():
+            features = self.topLevelOperatorView.ObjectFeatures([]).wait()
+            labels = self.topLevelOperatorView.LabelInputs([]).wait()
+            return features, labels
+        
+        req = Request(compute_features)
+        req.notify_finished(self._populateTable)
+        req.submit()
+
+
+    @threadRouted
+    def _populateTable(self, features_and_labels):
+        features, labels = features_and_labels
+        self.progressBar.hide()
+        self.computeButton.setEnabled(True)
+                
+        for frame, objectFeatures in features.iteritems():
+            # Insert row
+            rowNum = self.table.rowCount()
+            self.table.insertRow(self.table.rowCount())
+            
+            # Get max and min object areas
+            areas = objectFeatures['Standard Object Features']['Count']
+            maxObjArea = numpy.max(areas[numpy.nonzero(areas)])
+            minObjArea = numpy.min(areas[numpy.nonzero(areas)])
+            
+            # Get number of labeled objects
+            labelNum = numpy.count_nonzero(labels[frame])
+            
+            # Load fram number
+            item = QTableWidgetItem(str(frame))
+            item.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
+            self.table.setItem(rowNum, 0, item) 
+
+            # Load max object areas
+            item = QTableWidgetItemWithFloatSorting(str("{: .02f}".format(maxObjArea)))
+            item.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
+            self.table.setItem(rowNum, 1, item)
+                
+            # Load min object areas
+            item = QTableWidgetItemWithFloatSorting(str("{: .02f}".format(minObjArea)))
+            item.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
+            self.table.setItem(rowNum, 2, item)
+            
+            # Load label numbers
+            item = QTableWidgetItemWithFloatSorting(str("{: .01f}".format(labelNum)))
+            item.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
+            self.table.setItem(rowNum, 3, item)
+        
+        # Resize column size to fit dialog size
+        self.table.horizontalHeader().setResizeMode(QHeaderView.Stretch)   
+        
+        # Sort by max object area
+        self.table.setSortingEnabled(True)                         
+        self.table.sortByColumn(1) 
+        
+
+    def _captureDoubleClick(self):
+        # Navigate to selected frame
+        index = self.table.selectedIndexes()[0]
+        frameStr = self.table.model().data(index).toString()
+        
+        if frameStr:
+            frameNum = int(frameStr)
+            self.parent().editor.posModel.time = frameNum
+
         
 class BadObjectsDialog(QMessageBox):
     def __init__(self, warning, parent):
