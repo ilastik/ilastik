@@ -1,0 +1,9 @@
+[Core]
+Name = Contours
+Module = tracking_contour_export
+
+[Documentation]
+Author = Jaime I. Cervantes
+Version = 0.1
+Website = ilastik.org
+Description = Plugin to export the ilastik tracking results as contours (initially used to larvae contours) <br> <br> <b>Usage: </b> Select the filename where the contours will be saved to an ASCII file. <br> <br> The resulting file will contain a list of x,y coordinates with the contour information for each object.
