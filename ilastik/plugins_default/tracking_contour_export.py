@@ -20,6 +20,11 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
     def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
         """
         Export the contours and corresponding IDs for all objects on the video
+        
+         Each .outline file consists of a line for each frame the animal is tracked for. 
+         The first number on this line is the timestamp of the frame, followed by the id, 
+         and unknown number, and then the rest of numbers are the (x,y) coordinates of 
+         the contour points (in what units?).
 
         :param filename: string of the FILE where to save the result (different .xml files were)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
@@ -80,7 +85,7 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
                 # Generate contour string compatible with the .outline format
                 contour = contoursDict[id][t]
                 contourString =' '.join(str(contour[i, 1])+' '+str(contour[i, 0]) for i in range(len(contour)))
-                contourString = '00000000_000000 '+str(int(id)).zfill(5)+' '+'0.000 '+contourString+'\n'
+                contourString = '00000000_'+str(int(t)).zfill(6)+' '+str(int(id)).zfill(5)+' '+'0.000 '+contourString+'\n'
                  
                 # Append contour to file
                 outlineFile.write(contourString)
