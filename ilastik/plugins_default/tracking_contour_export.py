@@ -35,40 +35,40 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
         tMax = labelImageSlot.meta.shape[tIndex] 
        
         # Method to compute contours for single frame (called in parallel by a request parallel)
-        def compute_contours_for_frame(tIndex, t, labelImageSlot, contoursDict): 
+        def compute_contours_for_frame(tIndex, t, labelImageSlot, hypothesesGraph, contoursDict): 
             roi = [slice(None) for i in range(len(labelImageSlot.meta.shape))]
             roi[tIndex] = slice(t, t+1)
             roi = tuple(roi)
 
-            # Request in parallel
             frame = labelImageSlot[roi].wait()            
-            frame = frame.squeeze()#frame[0,:,:,0,0]
+            frame = frame.squeeze()
                    
-            for label in vigra.analysis.unique(frame):
-                # Generate frame with single label
-                frameSingleLabel = np.zeros(frame.shape).astype(np.uint8)
-                frameSingleLabel[frame==label] = 1
-            
-                # Find contours using skimage marching squares
-                contours = measure._find_contours.find_contours(frameSingleLabel,0)
+            for idx in vigra.analysis.unique(frame):
+                nodeId = (t, idx)
                 
-                # Save contours to dictionary
-                id = label
-                if id in contoursDict:
-                    #if t in contoursDict[id]:
-                        #contoursDict[id][t].append(contours[0])
-                    contoursDict[id][t] = contours[0]
-#                     else:
-#                         contoursDict[id] = {t:contours[0]}
-                else:
-                    #contoursDict[id] = [contours[0]]
-                    contoursDict[id] = {t:contours[0]}
+                if hypothesesGraph.hasNode(nodeId) and 'lineageId' in hypothesesGraph._graph.node[nodeId]:
+                    # Generate frame with single label idx
+                    frameSingleLabel = np.zeros(frame.shape).astype(np.uint8)
+                    frameSingleLabel[frame==idx] = 1
+                
+                    # Find contours using skimage marching squares
+                    contours = measure._find_contours.find_contours(frameSingleLabel,0)
+                
+                    # Save contours to dictionary
+                    lineageId = hypothesesGraph._graph.node[nodeId]['lineageId']
+                    
+                    if lineageId in contoursDict:
+                        contoursDict[lineageId][t] = contours[0]
+                    else:
+                        contoursDict[lineageId] = {t:contours[0]}
+                else: 
+                    print('Skipping node {}'.format(nodeId))
             
         # Compute the contours in parallel
         pool = RequestPool()
         
         for t in range(tMax):
-            pool.add( Request( partial(compute_contours_for_frame, tIndex, t, labelImageSlot, contoursDict) ) )
+            pool.add( Request( partial(compute_contours_for_frame, tIndex, t, labelImageSlot, hypothesesGraph, contoursDict) ) )
          
         pool.wait()  
         
@@ -80,7 +80,7 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
                 # Generate contour string compatible with the .outline format
                 contour = contoursDict[id][t]
                 contourString =' '.join(str(contour[i, 1])+' '+str(contour[i, 0]) for i in range(len(contour)))
-                contourString = '20170201_000000 '+str(int(id)).zfill(5)+' '+'0.000 '+contourString+'\n'
+                contourString = '00000000_000000 '+str(int(id)).zfill(5)+' '+'0.000 '+contourString+'\n'
                  
                 # Append contour to file
                 outlineFile.write(contourString)
