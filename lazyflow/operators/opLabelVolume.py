@@ -101,34 +101,34 @@ class OpLabelVolume(Operator):
                           'lazy': OpLazyConnectedComponents}
 
     def setupOutputs(self):
-
-        if self._opLabel is not None:
-            # fully remove old labeling operator
-            self._op5_2.Input.disconnect()
-            self._op5_2_cached.Input.disconnect()
-            self._opLabel.Input.disconnect()
-            del self._opLabel
-
         method = self.Method.value
         if not isinstance(method, str):
             method = method[0]
 
-        self._opLabel = self._labelOps[method](parent=self)
-        self._opLabel.Input.connect(self._op5.Output)
-        if method is 'vigra':
-            self._opLabel.BypassModeEnabled.connect(self.BypassModeEnabled)
+        if self._opLabel is not None and type(self._opLabel) != self._labelOps[method]:
+            # fully remove old labeling operator
+            self._op5_2.Input.disconnect()
+            self._op5_2_cached.Input.disconnect()
+            self._opLabel.Input.disconnect()
+            self._opLabel = None
 
-        # connect reordering operators
-        self._op5_2.Input.connect(self._opLabel.Output)
-        self._op5_2_cached.Input.connect(self._opLabel.CachedOutput)
-
-        # set the final reordering operator's AxisOrder to that of the input
-        origOrder = self.Input.meta.getAxisKeys()
-        self._op5_2.AxisOrder.setValue(origOrder)
-        self._op5_2_cached.AxisOrder.setValue(origOrder)
-
-        # connect cache access slots
-        self.CleanBlocks.connect(self._opLabel.CleanBlocks)
+        if self._opLabel is None:
+            self._opLabel = self._labelOps[method](parent=self)
+            self._opLabel.Input.connect(self._op5.Output)
+            if method is 'vigra':
+                self._opLabel.BypassModeEnabled.connect(self.BypassModeEnabled)
+    
+            # connect reordering operators
+            self._op5_2.Input.connect(self._opLabel.Output)
+            self._op5_2_cached.Input.connect(self._opLabel.CachedOutput)
+    
+            # set the final reordering operator's AxisOrder to that of the input
+            origOrder = self.Input.meta.getAxisKeys()
+            self._op5_2.AxisOrder.setValue(origOrder)
+            self._op5_2_cached.AxisOrder.setValue(origOrder)
+    
+            # connect cache access slots
+            self.CleanBlocks.connect(self._opLabel.CleanBlocks)
 
         # set background values
         self._setBG()
