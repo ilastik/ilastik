@@ -220,6 +220,7 @@ class OpComputeEdgeFeatures(Operator):
     FeatureNames = InputSlot()
     VoxelData = InputSlot()
     Rag = InputSlot()
+    # TODO Change that to the proper numpy array ->
     EdgeFeaturesDataFrame = OutputSlot() # Includes columns 'sp1' and 'sp2'
 
     def setupOutputs(self):
@@ -266,6 +267,7 @@ class OpComputeEdgeFeatures(Operator):
         self.EdgeFeaturesDataFrame.setDirty()
 
 
+# TODO
 class OpTrainEdgeClassifier(Operator):
     EdgeLabelsDict = InputSlot(level=1)
     EdgeFeaturesDataFrame = InputSlot(level=1)
@@ -287,6 +289,7 @@ class OpTrainEdgeClassifier(Operator):
             if not labels_dict:
                 continue
 
+            # TODO get labeled edges and features with np
             sp_columns = np.array(labels_dict.keys())
             edge_features_df = features_slot.value
             assert list(edge_features_df.columns[0:2]) == ['sp1', 'sp2']
