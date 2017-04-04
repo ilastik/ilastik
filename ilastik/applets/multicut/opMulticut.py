@@ -127,13 +127,13 @@ class OpMulticut(Operator):
 class OpProjectNodeLabeling(Operator):
     Superpixels = InputSlot()
     NodeLabels = InputSlot() # 1D array, mapping superpixels to segment labels
-    
+
     Output = OutputSlot()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Superpixels.meta)
         self.Output.meta.display_mode = 'random-colortable'
-    
+
     def execute(self, slot, subindex, roi, result):
         mapping_index_array = self.NodeLabels.value
         self.Superpixels(roi.start, roi.stop).writeInto(result).wait()
@@ -148,24 +148,24 @@ class OpProjectNodeLabeling(Operator):
 # class OpNodeLabelingToEdgeDecisionsDict(Operator):
 #     Rag = InputSlot()
 #     NodeLabels = InputSlot()
-#     
+#
 #     EdgeDecisionsDict = OutputSlot()
-#     
+#
 #     def setupOutputs(self):
 #         self.EdgeLabelsDict.meta.shape = (1,)
 #         self.EdgeLabelsDict.meta.dtype = object
-# 
+#
 #     def execute(self, slot, subindex, roi, result):
 #         node_labels = self.NodeLabels.value
 #         rag = self.Rag.value
-#         
+#
 #         # 0: edge is "inactive", nodes belong to the same segment
 #         # 1: edge is "active", nodes belong to separate segments
 #         edge_labels = (node_labels[rag.edge_ids[:,0]] != node_labels[rag.edge_ids[:,1]]).view(np.uint8)
-# 
+#
 #         edge_labels_dict = dict(izip(imap(tuple, rag.edge_ids), edge_labels))
 #         result[0] = edge_labels_dict
-# 
+#
 #     def propagateDirty(self, slot, subindex, roi):
 #         self.EdgeLabelsDict.setDirty()
 
@@ -173,20 +173,20 @@ class OpEdgeLabelDisagreementDict(Operator):
     Rag = InputSlot()
     NodeLabels = InputSlot()
     EdgeProbabilities = InputSlot()
-    
+
     EdgeLabelDisagreementDict = OutputSlot()
-    
+
     def setupOutputs(self):
         self.EdgeLabelDisagreementDict.meta.shape = (1,)
         self.EdgeLabelDisagreementDict.meta.dtype = object
-        
+
     def execute(self, slot, subindex, roi, result):
         node_labels = self.NodeLabels.value
         if node_labels is None:
             # This can happen when the cache doesn't have data yet.
             result[0] = {}
             return
-        
+
         rag = self.Rag.value
         edge_ids = rag.edge_ids
         edge_probabilities = self.EdgeProbabilities.value
@@ -241,7 +241,7 @@ class OpMulticutAgglomerator(Operator):
     @classmethod
     def agglomerate_with_multicut(cls, rag, edge_probabilities, beta, solver_name):
         """
-        rag: ilastikrag.Rag
+        rag: nifty_rag_wrapper.Rag
 
         edge_probabilities: 1D array, same order as rag.edge_ids.
                             Should indicate probability of each edge being ON.
@@ -285,7 +285,7 @@ class OpMulticutAgglomerator(Operator):
 def compute_edge_weights( edge_ids, edge_probabilities, beta ):
     """
     Convert edge probabilities to energies for the multicut problem.
-    
+
     edge_ids:
         The list of edges in the graph. shape=(N, 2)
     edge_probabilities:
@@ -310,7 +310,7 @@ def compute_edge_weights( edge_ids, edge_probabilities, beta ):
         logger.warn("Volume contains label 0, which will be excluded from the segmentation.")
         MINIMUM_ENERGY = -1000.0
         edge_weights[edges_touching_zero] = MINIMUM_ENERGY
-    
+
     return edge_weights
 
 

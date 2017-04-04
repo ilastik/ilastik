@@ -28,7 +28,7 @@ from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayou
                         QSpacerItem, QSizePolicy, QColor, QPen, QPushButton, QMessageBox, \
                         QAction, QMenu, QIcon
 
-from ilastikrag.gui import FeatureSelectionDialog
+from nifty_rag_wrapper.gui import FeatureSelectionDialog
 
 from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -48,7 +48,7 @@ class EdgeTrainingGui(LayerViewerGui):
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
-    
+
     def appletDrawer(self):
         return self._drawer
 
@@ -59,10 +59,10 @@ class EdgeTrainingGui(LayerViewerGui):
 
         # Base class
         super( EdgeTrainingGui, self ).stopAndCleanUp()
-    
+
     ###########################################
     ###########################################
-    
+
     def __init__(self, parentApplet, topLevelOperatorView):
         self._currently_updating = False
         self.__cleanup_fns = []
@@ -105,20 +105,20 @@ class EdgeTrainingGui(LayerViewerGui):
                                               checkable=True,
                                               icon=QIcon(ilastikIcons.Play))
         configure_update_handlers( self.live_update_button.toggled, op.FreezeCache )
-        
+
         # Layout
         label_layout = QHBoxLayout()
         label_layout.addWidget(self.clear_labels_button)
         label_layout.addWidget(self.train_from_gt_button)
         label_layout.setSpacing(1)
-        
+
         layout = QVBoxLayout()
         layout.addWidget(feature_selection_button)
         layout.setSpacing(1)
         layout.addLayout(label_layout)
         layout.addWidget(self.live_update_button)
         layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
-        
+
         # Finally, the whole drawer widget
         drawer = QWidget(parent=self)
         drawer.setLayout(layout)
@@ -134,7 +134,7 @@ class EdgeTrainingGui(LayerViewerGui):
                                        self.live_update_button,
                                        self.live_update_button ) )
 
-        
+
         return drawer
 
 
@@ -159,16 +159,16 @@ class EdgeTrainingGui(LayerViewerGui):
         dlg_result = dlg.exec_()
         if dlg_result != dlg.Accepted:
             return
-        
+
         selections = dlg.selections()
         self.topLevelOperatorView.FeatureNames.setValue(selections)
 
     # Configure the handler for updated edge label maps
     def _init_edge_label_colortable(self):
         self.edge_label_colortable = [ QColor(  0,  0,  0,   0),  # transparent
-                                       QColor(  0, 255, 0, 255),  # green 
+                                       QColor(  0, 255, 0, 255),  # green
                                        QColor(255,   0, 0, 255) ] # red
-        
+
         self.edge_label_pen_table = []
         for color in self.edge_label_colortable:
             pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
@@ -179,7 +179,7 @@ class EdgeTrainingGui(LayerViewerGui):
         # When the edge labels are dirty, update the edge label layer pens
         op = self.topLevelOperatorView
         cleanup_fn = op.EdgeLabelsDict.notifyDirty( self.update_labeled_edges, defer=True )
-        self.__cleanup_fns.append( cleanup_fn )        
+        self.__cleanup_fns.append( cleanup_fn )
 
     @threadRouted
     def update_labeled_edges(self, *args):
@@ -189,7 +189,7 @@ class EdgeTrainingGui(LayerViewerGui):
             return
 
         edge_label_layer.overwrite_edge_labels( op.EdgeLabelsDict.value )
-    
+
     def _handle_edge_label_clicked(self, updated_edge_labels):
         """
         The user clicked an edge label.
@@ -229,7 +229,7 @@ class EdgeTrainingGui(LayerViewerGui):
         self.probability_colortable = []
         for v in np.linspace(0.0, 1.0, num=101):
             self.probability_colortable.append( QColor(255*(v), 255*(1.0-v), 0) )
-        
+
         self.probability_pen_table = []
         for color in self.probability_colortable:
             pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
@@ -260,7 +260,7 @@ class EdgeTrainingGui(LayerViewerGui):
 
     @threadRouted
     def apply_new_probability_edges(self, new_pens):
-        # This function is threadRouted because you can't 
+        # This function is threadRouted because you can't
         # touch the layer colortable outside the main thread.
         superpixel_edge_layer = self.getLayerByName("Edge Probabilities")
         if superpixel_edge_layer:
@@ -301,13 +301,13 @@ class EdgeTrainingGui(LayerViewerGui):
         prefetch_menu.addAction( QAction("All Y-slices", prefetch_menu, triggered=partial(prefetch_layer, 'y')) )
         prefetch_menu.addAction( QAction("All X-slices", prefetch_menu, triggered=partial(prefetch_layer, 'x')) )
         return prefetch_menu
-    
+
     def setupLayers(self):
         layers = []
         op = self.topLevelOperatorView
         ActionInfo = ShortcutManager.ActionInfo
 
-        # Superpixels -- Edge Labels 
+        # Superpixels -- Edge Labels
         if op.Superpixels.ready() and op.EdgeLabelsDict.ready():
             edge_labels = op.EdgeLabelsDict.value
             layer = LabelableSegmentationEdgesLayer( LazyflowSource(op.Superpixels), self.edge_label_pen_table, edge_labels )
@@ -327,7 +327,7 @@ class EdgeTrainingGui(LayerViewerGui):
                                                 layer.toggleVisible,
                                                 self.viewerControlWidget(),
                                                 layer ) )
-            
+
             layers.append(layer)
             del layer
 
@@ -341,7 +341,7 @@ class EdgeTrainingGui(LayerViewerGui):
 
             layer.contexts.append( self.create_prefetch_menu("Edge Probabilities") )
 
-            
+
             layer.shortcutRegistration = ( "p",
                                            ActionInfo(
                                                "Edge Training Layers",
@@ -350,10 +350,10 @@ class EdgeTrainingGui(LayerViewerGui):
                                                 layer.toggleVisible,
                                                 self.viewerControlWidget(),
                                                 layer ) )
-            
+
             layers.append(layer)
             del layer
-                
+
         # Superpixels -- Edges
         if op.Superpixels.ready():
             default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
@@ -364,7 +364,7 @@ class EdgeTrainingGui(LayerViewerGui):
             layer.opacity = 1.0
             layers.append(layer)
             del layer
- 
+
         # Naive Segmentation
         if op.NaiveSegmentation.ready():
             layer = self.createStandardLayerFromSlot( op.NaiveSegmentation )
@@ -380,10 +380,10 @@ class EdgeTrainingGui(LayerViewerGui):
                                                 layer.toggleVisible,
                                                 self.viewerControlWidget(),
                                                 layer ) )
-            
+
             layers.append(layer)
             del layer
-         
+
         # Groundtruth
         if op.GroundtruthSegmentation.ready():
             layer = self.createStandardLayerFromSlot( op.GroundtruthSegmentation )
@@ -402,7 +402,7 @@ class EdgeTrainingGui(LayerViewerGui):
 
             layers.append(layer)
             del layer
- 
+
         # Voxel data
         if op.VoxelData.ready():
             layer = self._create_grayscale_layer_from_slot( op.VoxelData,
