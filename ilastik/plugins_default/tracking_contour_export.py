@@ -66,8 +66,6 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
                         contoursDict[lineageId][t] = contours[0]
                     else:
                         contoursDict[lineageId] = {t:contours[0]}
-                else: 
-                    print('Skipping node {}'.format(nodeId))
             
         # Compute the contours in parallel
         pool = RequestPool()
