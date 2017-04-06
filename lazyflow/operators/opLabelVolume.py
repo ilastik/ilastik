@@ -207,7 +207,6 @@ class OpLabelingABC(Operator):
         self._cache = OpBlockedArrayCache(parent=self)
         self._cache.name = "OpLabelVolume.OutputCache"
         self._cache.BypassModeEnabled.connect(self.BypassModeEnabled)
-        self._cache.CompressionEnabled.setValue(True)
         self._cache.Input.connect(self.Output)
         self.CachedOutput.connect(self._cache.Output)
         self.CleanBlocks.connect(self._cache.CleanBlocks)
