@@ -121,6 +121,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
 
         # Hide division GUI widgets
         if 'withAnimalTracking' in parameters.keys() and parameters['withAnimalTracking'] == True:
+            self._drawer.label_5.hide()
+            self._drawer.divThreshBox.hide()
             self._drawer.divisionsBox.hide()
             self._drawer.divWeightBox.hide()
             self._drawer.label_6.hide()       
