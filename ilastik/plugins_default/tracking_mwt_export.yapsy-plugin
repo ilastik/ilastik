@@ -1,0 +1,9 @@
+[Core]
+Name = Multi-Worm-Tracker
+Module = tracking_mwt_export
+
+[Documentation]
+Author = Jaime I. Cervantes
+Version = 0.1
+Website = ilastik.org
+Description = Plugin to export the ilastik tracking results in the Multi-Worm Tracker format (.blobs and .summary files). The .blobs file contains properties of the larvae and a the compressed contours in a string. More information on this format can be found in the MWT Users Guide by Rex Kerr.
