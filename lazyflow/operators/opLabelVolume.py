@@ -118,17 +118,17 @@ class OpLabelVolume(Operator):
             if method is 'vigra':
                 self._opLabel.BypassModeEnabled.connect(self.BypassModeEnabled)
     
-            # connect reordering operators
-            self._op5_2.Input.connect(self._opLabel.Output)
-            self._op5_2_cached.Input.connect(self._opLabel.CachedOutput)
+        # connect reordering operators
+        self._op5_2.Input.connect(self._opLabel.Output)
+        self._op5_2_cached.Input.connect(self._opLabel.CachedOutput)
+
+        # set the final reordering operator's AxisOrder to that of the input
+        origOrder = self.Input.meta.getAxisKeys()
+        self._op5_2.AxisOrder.setValue(origOrder)
+        self._op5_2_cached.AxisOrder.setValue(origOrder)
     
-            # set the final reordering operator's AxisOrder to that of the input
-            origOrder = self.Input.meta.getAxisKeys()
-            self._op5_2.AxisOrder.setValue(origOrder)
-            self._op5_2_cached.AxisOrder.setValue(origOrder)
-    
-            # connect cache access slots
-            self.CleanBlocks.connect(self._opLabel.CleanBlocks)
+        # connect cache access slots
+        self.CleanBlocks.connect(self._opLabel.CleanBlocks)
 
         # set background values
         self._setBG()
