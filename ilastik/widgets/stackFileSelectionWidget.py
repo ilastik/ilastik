@@ -340,10 +340,8 @@ class StackFileSelectionWidget(QDialog):
             pathComponents = PathComponents(h5GlobStrings.split(os.path.pathsep)[0])
             h5file = h5py.File(pathComponents.externalPath, mode='r')
             filenames.extend(
-                "{}/{}".format(external, internal)
-                for external, internal
-                in zip(*OpStreamingHdf5SequenceReaderS.expandGlobStrings(h5file, h5GlobStrings))
-            )
+                "{}/{}".format(pathComponents.externalPath, internal)
+                for internal in OpStreamingHdf5SequenceReaderS.expandGlobStrings(h5file, h5GlobStrings))
         except (
                 OpStreamingHdf5SequenceReaderS.WrongFileTypeError,
                 OpStreamingHdf5SequenceReaderS.NotTheSameFileError,
