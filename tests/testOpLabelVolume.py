@@ -436,3 +436,6 @@ if __name__ == "__main__":
     out = op.Output[...].wait()
 
     assert_array_equal(vol.shape, out.shape)
+    
+    import nose
+    ret = nose.run(defaultTest=__file__)
