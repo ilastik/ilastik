@@ -43,7 +43,7 @@ from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.plugins import pluginManager
 
-from lazyflow.request import Request
+from lazyflow.request import Request, RequestPool
 
 import logging
 logger = logging.getLogger(__name__)
@@ -1015,39 +1015,63 @@ class LabelAssistDialog(QDialog):
         self.table.setSortingEnabled(False)
         self.progressBar.show()
         self.computeButton.setEnabled(False)
+
+        def compute_features_for_frame(tIndex, t, features): 
+            # Compute features and labels (called in parallel from request pool)
+            roi = [slice(None) for i in range(len(self.topLevelOperatorView.LabelImages.meta.shape))]
+            roi[tIndex] = slice(t, t+1)
+            roi = tuple(roi)
+
+            frame = self.topLevelOperatorView.SegmentationImages(roi).wait()           
+            frame = frame.squeeze().astype(numpy.uint32, copy=False)
+            
+            # Dirty trick: We don't care what we're passing here for the 'image' parameter,
+            # but vigra insists that we pass *something*, so we'll cast the label image as float32.
+            features[t] = vigra.analysis.extractRegionFeatures(frame.view(numpy.float32),
+                                                               frame,
+                                                               ['Count'],
+                                                               ignoreLabel=0)
+            
+        tIndex = self.topLevelOperatorView.SegmentationImages.meta.axistags.index('t')
+        tMax = self.topLevelOperatorView.SegmentationImages.meta.shape[tIndex]     
         
-        # Compute object features and number of labels per frame
-        def compute_features():
-            features = self.topLevelOperatorView.ObjectFeatures([]).wait()
-            labels = self.topLevelOperatorView.LabelInputs([]).wait()
-            return features, labels
-        
-        req = Request(compute_features)
-        req.notify_finished(self._populateTable)
+        features = {}
+        labels = {}
+
+        def compute_all_features():
+            # Compute features in parallel
+            pool = RequestPool()
+            for t in range(tMax):
+                pool.add( Request( partial(compute_features_for_frame, tIndex, t, features) ) )
+            pool.wait()
+            
+        # Compute labels
+        labels = self.topLevelOperatorView.LabelInputs([]).wait()
+            
+        req = Request(compute_all_features)
+        req.notify_finished( partial(self._populateTable, features, labels) )
         req.submit()
 
-
     @threadRouted
-    def _populateTable(self, features_and_labels):
-        features, labels = features_and_labels
+    def _populateTable(self, features, labels, *args):
         self.progressBar.hide()
         self.computeButton.setEnabled(True)
                 
-        for frame, objectFeatures in features.iteritems():
+        for time, feature in features.iteritems():
             # Insert row
             rowNum = self.table.rowCount()
             self.table.insertRow(self.table.rowCount())
             
             # Get max and min object areas
-            areas = objectFeatures['Standard Object Features']['Count']
+            areas = feature['Count']#objectFeatures['Standard Object Features']['Count']
             maxObjArea = numpy.max(areas[numpy.nonzero(areas)])
             minObjArea = numpy.min(areas[numpy.nonzero(areas)])
             
             # Get number of labeled objects
-            labelNum = numpy.count_nonzero(labels[frame])
+            labelNum = numpy.count_nonzero(labels[time])
             
             # Load fram number
-            item = QTableWidgetItem(str(frame))
+            item = QTableWidgetItem(str(time))
             item.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
             self.table.setItem(rowNum, 0, item) 
 
