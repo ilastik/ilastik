@@ -1017,35 +1017,43 @@ class LabelAssistDialog(QDialog):
         self.computeButton.setEnabled(False)
 
         def compute_features_and_labels_for_frame(tIndex, t, features): 
+            # Compute features and labels (called in parallel from request pool)
             roi = [slice(None) for i in range(len(self.topLevelOperatorView.LabelImages.meta.shape))]
             roi[tIndex] = slice(t, t+1)
             roi = tuple(roi)
 
             frame = self.topLevelOperatorView.SegmentationImages(roi).wait()           
-            frame = frame.squeeze()
+            frame = frame.squeeze().astype(numpy.uint32, copy=False)
             
-            features[t] = vigra.analysis.extractRegionFeatures(frame.squeeze().astype(numpy.float32), frame.squeeze().astype(numpy.uint32), ['Count'], ignoreLabel=0)
-            
+            # Dirty trick: We don't care what we're passing here for the 'image' parameter,
+            # but vigra insists that we pass *something*, so we'll cast the label image as float32.
+            features[t] = vigra.analysis.extractRegionFeatures(frame.view(numpy.float32),
+                                                               frame,
+                                                               ['Count'],
+                                                               ignoreLabel=0)
             labels[t] = self.topLevelOperatorView.LabelInputs([t]).wait()
             
         tIndex = self.topLevelOperatorView.SegmentationImages.meta.axistags.index('t')
         tMax = self.topLevelOperatorView.SegmentationImages.meta.shape[tIndex]     
         
-        features = {}    
+        features = {}
         labels = {}
-        
-        # Compute features in parallel    
-        pool = RequestPool()
-        
-        for t in range(tMax):
-            pool.add( Request( partial(compute_features_and_labels_for_frame, tIndex, t, features) ) )
+
+        def compute_all_features_and_labels():
+            # Compute features and labels in parallel
+            pool = RequestPool()
+            for t in range(tMax):
+                pool.add( Request( partial(compute_features_and_labels_for_frame, tIndex, t, features) ) )
+            pool.wait()
             
-        pool.wait()  
 
-        self._populateTable(features, labels)
+        req = Request(compute_all_features_and_labels)
+        req.notify_finished( partial(self._populateTable, features, labels) )
+        req.submit()
 
-    #@threadRouted
-    def _populateTable(self, features, labels):
+
+    @threadRouted
+    def _populateTable(self, features, labels, *args):
         self.progressBar.hide()
         self.computeButton.setEnabled(True)
                 
