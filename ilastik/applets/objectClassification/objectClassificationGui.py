@@ -1016,7 +1016,7 @@ class LabelAssistDialog(QDialog):
         self.progressBar.show()
         self.computeButton.setEnabled(False)
 
-        def compute_features_and_labels_for_frame(tIndex, t, features): 
+        def compute_features_for_frame(tIndex, t, features): 
             # Compute features and labels (called in parallel from request pool)
             roi = [slice(None) for i in range(len(self.topLevelOperatorView.LabelImages.meta.shape))]
             roi[tIndex] = slice(t, t+1)
@@ -1031,7 +1031,6 @@ class LabelAssistDialog(QDialog):
                                                                frame,
                                                                ['Count'],
                                                                ignoreLabel=0)
-            labels[t] = self.topLevelOperatorView.LabelInputs([t]).wait()
             
         tIndex = self.topLevelOperatorView.SegmentationImages.meta.axistags.index('t')
         tMax = self.topLevelOperatorView.SegmentationImages.meta.shape[tIndex]     
@@ -1039,18 +1038,19 @@ class LabelAssistDialog(QDialog):
         features = {}
         labels = {}
 
-        def compute_all_features_and_labels():
-            # Compute features and labels in parallel
+        def compute_all_features():
+            # Compute features in parallel
             pool = RequestPool()
             for t in range(tMax):
-                pool.add( Request( partial(compute_features_and_labels_for_frame, tIndex, t, features) ) )
+                pool.add( Request( partial(compute_features_for_frame, tIndex, t, features) ) )
             pool.wait()
             
-
-        req = Request(compute_all_features_and_labels)
+        # Compute labels
+        labels = self.topLevelOperatorView.LabelInputs([]).wait()
+            
+        req = Request(compute_all_features)
         req.notify_finished( partial(self._populateTable, features, labels) )
         req.submit()
-
 
     @threadRouted
     def _populateTable(self, features, labels, *args):
