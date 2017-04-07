@@ -124,9 +124,9 @@ class DatasetInfo(object):
                         OpInputDataReader.npzExts
                     )
                     internalPathExts = [".{}".format(ipx) for ipx in internalPathExts]
-                    if pathComponents[0].extension in internalPathExts:
-                            file_list = ['{}/{}'.format(fn, internalPaths[0])
-                                         for fn in file_list]
+                    if pathComponents[0].extension in internalPathExts and internalPaths[0]:
+                        for i in range(file_list):
+                            file_list[i] += '/' + internalPaths[0]
 
             # For stacks, choose nickname based on a common prefix
             if file_list:
