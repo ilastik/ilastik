@@ -74,14 +74,15 @@ class OpInputDataReader(Operator):
     videoExts = ['ufmf', 'mmf', 'avi']
     h5Exts = ['h5', 'hdf5', 'ilp']
     klbExts = ['klb']
-    npyExts = ['npy', 'npz']
+    npyExts = ['npy']
+    npzExts = ['npz']
     rawExts = ['dat', 'bin', 'raw']
     blockwiseExts = ['json']
     tiledExts = ['json']
     tiffExts = ['tif', 'tiff']
     vigraImpexExts = vigra.impex.listExtensions().split()
 
-    SupportedExtensions = h5Exts + npyExts + rawExts + vigraImpexExts + blockwiseExts + videoExts + klbExts
+    SupportedExtensions = h5Exts + npyExts + npzExts + rawExts + vigraImpexExts + blockwiseExts + videoExts + klbExts
 
     if _supports_dvid:
         dvidExts = ['dvidvol']
@@ -365,7 +366,7 @@ class OpInputDataReader(Operator):
                 compression_setting = h5File[internalPath].compression
             except Exception as e:
                 h5File.close()
-                msg = "Error reading HDF5 File: {}\n{}".format(externalPath, e.msg)
+                msg = "Error reading HDF5 File: {}\n{}".format(externalPath, e)
                 raise OpInputDataReader.DatasetReadError( msg )
  
             # If the h5 dataset is compressed, we'll have better performance 
@@ -405,7 +406,8 @@ class OpInputDataReader(Operator):
     def _attemptOpenAsNpy(self, filePath):
         pathComponents = PathComponents(filePath)
         ext = pathComponents.extension
-        if ext not in (".%s" % x for x in OpInputDataReader.npyExts):
+        npyzExts = OpInputDataReader.npyExts + OpInputDataReader.npzExts
+        if ext not in (".%s" % x for x in npyzExts):
             return ([], None)
 
         externalPath = pathComponents.externalPath

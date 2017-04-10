@@ -58,6 +58,8 @@ class OpStreamingHdf5SequenceReaderM(Operator):
     SequenceAxis = InputSlot(optional=True)  # The axis to stack across.
     OutputImage = OutputSlot()
 
+    H5EXTS = OpStreamingHdf5Reader.H5EXTS
+
     class WrongFileTypeError(Exception):
         def __init__(self, globString):
             self.filename = globString
@@ -88,14 +90,6 @@ class OpStreamingHdf5SequenceReaderM(Operator):
             self.msg = ("Glob string does contains an internal placeholder "
                         "(not supported!): {}".format(globString))
             super(OpStreamingHdf5SequenceReaderM.InternalPlaceholderError, self).__init__(self.msg)
-
-    class SingleFileException(Exception):
-        """Summary
-        """
-        def __init__(self, fileName):
-            self.filename = fileName
-            self.msg = "Only a single Hdf5 file supplied: {}".format(fileName)
-            super(OpStreamingHdf5SequenceReaderM.SingleFileException, self).__init__(self.msg)
 
     def __init__(self, *args, **kwargs):
         super(OpStreamingHdf5SequenceReaderM, self).__init__(*args, **kwargs)
@@ -237,7 +231,7 @@ class OpStreamingHdf5SequenceReaderM(Operator):
         pathComponents = [PathComponents(p.strip()) for p in pathStrings]
         assert len(pathComponents) > 0
 
-        if not all(p.extension.lstrip('.') in OpStreamingHdf5Reader.H5EXTS
+        if not all(p.extension in OpStreamingHdf5Reader.H5EXTS
                    for p in pathComponents):
             raise OpStreamingHdf5SequenceReaderM.WrongFileTypeError(globString)
 

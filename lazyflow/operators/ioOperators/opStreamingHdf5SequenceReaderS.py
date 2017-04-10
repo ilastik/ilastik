@@ -20,6 +20,7 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import os
+import h5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.generic import OpMultiArrayStacker
@@ -54,7 +55,6 @@ class OpStreamingHdf5SequenceReaderS(Operator):
     """
     GlobString = InputSlot()
     # The project hdf5 File object (already opened)
-    Hdf5File = InputSlot(stype='hdf5File')
     SequenceAxis = InputSlot(optional=True)  # The axis to stack across.
     OutputImage = OutputSlot()
 
@@ -94,10 +94,16 @@ class OpStreamingHdf5SequenceReaderS(Operator):
         self._opStacker.Images.resize(0)
         for opReader in self._readers:
             opReader.cleanUp()
+        if self._hdf5File is not None:
+            assert isinstance(self._hdf5File, h5py.File), (
+                "_hdf5File should not be of any other type")
+            self._hdf5File.close()
+
         super(OpStreamingHdf5SequenceReaderS, self).cleanUp()
 
     def setupOutputs(self):
-        self._hdf5File = self.Hdf5File.value
+        pcs = PathComponents(self.GlobString.value.split(os.path.pathsep)[0])
+        self._hdf5File = h5py.File(pcs.externalPath, mode='r')
         self.checkGlobString(self.GlobString.value)
         file_paths = self.expandGlobStrings(self._hdf5File, self.GlobString.value)
 
@@ -156,7 +162,7 @@ class OpStreamingHdf5SequenceReaderS(Operator):
                 self._readers.append(opReader)
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.Hdf5File or slot == self.GlobString:
+        if slot == self.GlobString or slot == self.SequenceAxis:
             self.OutputImage.setDirty(slice(None))
 
     @staticmethod
@@ -212,7 +218,7 @@ class OpStreamingHdf5SequenceReaderS(Operator):
         pathComponents = [PathComponents(p.strip()) for p in pathStrings]
         assert len(pathComponents) > 0
 
-        if not all(p.extension.lstrip('.') in OpStreamingHdf5Reader.H5EXTS
+        if not all(p.extension in OpStreamingHdf5Reader.H5EXTS
                    for p in pathComponents):
             raise OpStreamingHdf5SequenceReaderS.WrongFileTypeError(globString)
 

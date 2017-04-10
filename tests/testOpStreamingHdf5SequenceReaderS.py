@@ -54,7 +54,6 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
             hdf5GlobString = "{}/volumes/subvolume-*".format(testDataFileName)
             op.SequenceAxis.setValue('z')
             op.GlobString.setValue(hdf5GlobString)
-            op.Hdf5File.setValue(h5File)
 
             assert op.OutputImage.ready()
             assert op.OutputImage.meta.axistags == expected_axistags
@@ -89,7 +88,6 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
             hdf5GlobString = "{}/volumes/subvolume-*".format(testDataFileName)
             op.SequenceAxis.setValue('t')
             op.GlobString.setValue(hdf5GlobString)
-            op.Hdf5File.setValue(h5File)
 
             assert op.OutputImage.ready()
             assert op.OutputImage.meta.axistags == expected_axistags
@@ -124,7 +122,6 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
             hdf5GlobString = "{}/volumes/subvolume-*".format(testDataFileName)
             op.SequenceAxis.setValue('t')
             op.GlobString.setValue(hdf5GlobString)
-            op.Hdf5File.setValue(h5File)
 
             assert op.OutputImage.ready()
             assert op.OutputImage.meta.axistags == expected_axistags
