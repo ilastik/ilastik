@@ -331,7 +331,12 @@ class ConservationTrackingWorkflowBase( Workflow ):
             self.prev_z_range = parameters['z_range']
         else:
             self.prev_z_range = z_range
-        
+
+        if 'numFramesPerSplit' in parameters:
+            numFramesPerSplit = parameters['numFramesPerSplit']
+        else:
+            numFramesPerSplit = 0
+
         self.trackingApplet.topLevelOperator[lane_index].track(
             time_range = time_enum,
             x_range = x_range,
@@ -360,7 +365,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             appearance_cost = parameters['appearanceCost'],
             disappearance_cost = parameters['disappearanceCost'],
             max_nearest_neighbors = parameters['max_nearest_neighbors'],
-            numFramesPerSplit = parameters['numFramesPerSplit'],
+            numFramesPerSplit = numFramesPerSplit,
             force_build_hypotheses_graph = False,
             withBatchProcessing = True
         )
