@@ -93,7 +93,7 @@ class OpStreamingHdf5SequenceReaderM(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpStreamingHdf5SequenceReaderM, self).__init__(*args, **kwargs)
-        self._hdf5Files = None
+        self._hdf5Files = []
         self._readers = []
         self._opStacker = OpMultiArrayStacker(parent=self)
         self._opStacker.AxisIndex.setValue(0)
