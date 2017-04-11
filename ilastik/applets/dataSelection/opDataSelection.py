@@ -125,7 +125,7 @@ class DatasetInfo(object):
                     )
                     internalPathExts = [".{}".format(ipx) for ipx in internalPathExts]
                     if pathComponents[0].extension in internalPathExts and internalPaths[0]:
-                        for i in range(file_list):
+                        for i in xrange(len(file_list)):
                             file_list[i] += '/' + internalPaths[0]
 
             # For stacks, choose nickname based on a common prefix
