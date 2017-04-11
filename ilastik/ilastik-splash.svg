@@ -292,7 +292,7 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.3"
-     inkscape:cx="216.02968"
+     inkscape:cx="741.02968"
      inkscape:cy="767.43423"
      inkscape:document-units="px"
      inkscape:current-layer="layer2"
@@ -359,7 +359,7 @@
          y="213.05829"
          x="1200.5056"
          id="tspan4609"
-         sodipodi:role="line">1.2.0</tspan></text>
+         sodipodi:role="line">1.2.1</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:36px;font-style:normal;font-weight:normal;text-align:end;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;font-family:Berta_Drug;-inkscape-font-specification:Berta_Drug"
@@ -720,6 +720,17 @@
          id="tspan3485"
          x="-171.2527"
          y="-115.37067">Note: When exporting from Inkscape, choose export area &quot;Page&quot; not &quot;Drawing&quot; or &quot;Selection&quot;. </tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="1105.4139"
+       y="-432.03732"
+       id="text4285"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4287"
+         x="1105.4139"
+         y="-432.03732">s</tspan></text>
   </g>
   <g
      inkscape:groupmode="layer"
