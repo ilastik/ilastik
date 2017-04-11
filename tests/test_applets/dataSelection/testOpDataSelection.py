@@ -20,6 +20,7 @@
 ###############################################################################
 import os
 import shutil
+from collections import defaultdict
 import numpy
 import vigra
 import lazyflow
@@ -519,6 +520,9 @@ class TestOpDataSelection_3DStacks():
         cls.tmpdir = tempfile.mkdtemp()
         cls.imgFileNameGlobs2D = []
         cls.imgFileNameGlobs2Dc = []
+
+        cls.imgFileLists2D = defaultdict(list)
+
         cls.vigraExtensions = vigra.impex.listExtensions().split(' ')
         # Comparison of compressed data not possible - those types will be
         # skipped in raw comparison:
@@ -528,6 +532,7 @@ class TestOpDataSelection_3DStacks():
         # Create a couple test images of different types
         # in order to simplify and unify testing among the different file types
         # the extra dimension is added, as vigra would add one anyway.
+        # 2D Stacks ##
         cls.imgData3D = numpy.random.randint(0, 255, (9, 10, 11, 1)).astype(numpy.uint8)
         # v- image data variables in order to reflect the correct axis-order
         # otherwise the axes get scrambled when writing/reloading
@@ -555,6 +560,8 @@ class TestOpDataSelection_3DStacks():
                 pathInFile='test/data'
             )
 
+            cls.imgFileLists2D['h5'].append('{}/test/data'.format(testH5FileName))
+
             for extension in cls.vigraExtensions:
                 if extension in cls.removedExtensions:
                     continue
@@ -566,6 +573,7 @@ class TestOpDataSelection_3DStacks():
                         vimgData2D,
                         tmpFileName,
                     )
+                    cls.imgFileLists2D[extension].append(tmpFileName)
                 except RuntimeError, e:
                     cls.removedExtensions.append(extension)
                     msg = str(e).replace('\n', '')
@@ -586,7 +594,7 @@ class TestOpDataSelection_3DStacks():
             # os.path.join(cls.tmpdir, "testimage2D_*.npy"),
         ])
 
-
+        # 2Dc Stacks ##
         cls.imgData3Dc = numpy.random.randint(0, 255, (9, 10, 11, 3)).astype(numpy.uint8)
 
         cls.removedExtensions = []
@@ -663,7 +671,7 @@ class TestOpDataSelection_3DStacks():
         except OSError, e:
             print('Exception caught while deleting temporary files: {}'.format(e))
 
-    def testBasic3Dstack(self):
+    def testBasic3DstackFromGlobString(self):
         """Test if stacked 2d files are loaded correctly"""
         for fileName in self.imgFileNameGlobs2D:
             graph = lazyflow.graph.Graph()
@@ -695,7 +703,36 @@ class TestOpDataSelection_3DStacks():
                 continue
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
-    def testBasic2Dc(self):
+    def testBasic3DstacksFromFileList(self):
+        for ext, fileNames in self.imgFileLists2D.items():
+            fileNameString = os.path.pathsep.join(fileNames)
+            graph = lazyflow.graph.Graph()
+            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader.ProjectFile.setValue(self.projectFile)
+            reader.WorkingDirectory.setValue(os.getcwd())
+            reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
+            info = DatasetInfo(filepath=fileNameString)
+            # Will be read from the filesystem since the data won't be found in the project file.
+            info.location = DatasetInfo.Location.ProjectInternal
+            info.internalPath = ""
+            info.invertColors = False
+            info.convertToGrayscale = False
+
+            reader.Dataset.setValues([info])
+
+            # Read the test files using the data selection operator and verify the contents
+            imgData3D = reader.Image[0][...].wait()
+
+            # Check raw images
+            assert imgData3D.shape == self.imgData3D.shape
+            # skip this if image was saved compressed:
+            if any(x.strip('.') in ext.lower() for x in self.compressedExtensions):
+                print("Skipping raw comparison for compressed data: {}".format(ext))
+                continue
+            numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
+
+    def testBasic3DcStackFromGlobString(self):
         """Test if stacked 2d 3-channel files are loaded correctly"""
         # For some reason vigra saves 2D+c data compressed in gifs, so skip!
         self.compressedExtensions.append('.gif')
