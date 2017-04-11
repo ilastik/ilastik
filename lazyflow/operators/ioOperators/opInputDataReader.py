@@ -285,22 +285,15 @@ class OpInputDataReader(Operator):
 
         if isSingleFile is True:
             opReader = OpStreamingHdf5SequenceReaderS(parent=self)
-            try:
-                externalPaths = [PathComponents(p.strip()).externalPath
-                                 for p in filePath.split(os.path.pathsep)]
-                opReader.GlobString.setValue(filePath)
-                h5file = h5py.File(externalPaths[0], 'r')
-                opReader.Hdf5File.setValue(h5file)
-                return ([opReader], opReader.OutputImage)
-            except OpStreamingHdf5SequenceReaderS.WrongFileTypeError:
-                return ([], None)
         elif isMultiFile is True:
             opReader = OpStreamingHdf5SequenceReaderM(parent=self)
-            try:
-                opReader.GlobString.setValue(filePath)
-                return ([opReader], opReader.OutputImage)
-            except OpStreamingHdf5SequenceReaderS.WrongFileTypeError:
-                return ([], None)
+
+        try:
+            opReader.GlobString.setValue(filePath)
+            return ([opReader], opReader.OutputImage)
+        except (OpStreamingHdf5SequenceReaderM.WrongFileTypeError,
+                OpStreamingHdf5SequenceReaderS.WrongFileTypeError):
+            return ([], None)
         else:
             return ([], None)
 
