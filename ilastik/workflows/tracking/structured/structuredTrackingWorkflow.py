@@ -213,6 +213,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         # feature_names_vigra = {}
         # feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
 
+        opTrackingFeatureExtraction.setDefaultFeatures(configConservation.allFeaturesObjectCount)
         opTrackingFeatureExtraction.FeatureNamesVigra.setValue(configConservation.allFeaturesObjectCount)
         feature_dict_division = {}
         feature_dict_division[config.features_division_name] = { name: {} for name in config.division_features }
