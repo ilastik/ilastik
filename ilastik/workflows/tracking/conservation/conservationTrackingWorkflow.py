@@ -69,7 +69,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
                                                                       name="Object Feature Computation")                                                                     
         
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
-        opObjectExtraction.FeatureNamesVigra.setValue(configConservation.allFeaturesObjectCount)
 
         self.divisionDetectionApplet = self._createDivisionDetectionApplet(configConservation.selectedFeaturesDiv) # Might be None
 
@@ -223,7 +222,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
         if self.withOptTrans:
             opOptTranslation = self.opticalTranslationApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
-        
+        opObjExtraction.setDefaultFeatures(configConservation.allFeaturesObjectCount)
+
         if self.divisionDetectionApplet:
                 opDivDetection = self.divisionDetectionApplet.topLevelOperator.getLane(laneIndex)
             
