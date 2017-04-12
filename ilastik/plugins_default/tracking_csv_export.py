@@ -69,6 +69,11 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
             trackId = graph.node[node]['trackId']
             lineageId = graph.node[node]['lineageId']
 
+            if trackId is None:
+                trackId = -1
+            if lineageId is None:
+                lineageId = -1
+
             table[rowIdx, 0] = frame
             table[rowIdx, 1] = label
             table[rowIdx, 2] = trackId
