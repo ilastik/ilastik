@@ -9,7 +9,7 @@ from vigraRfPixelwiseClassifier import VigraRfPixelwiseClassifier, VigraRfPixelw
 # IIBoost
 try:
     from iiboostLazyflowClassifier import IIBoostLazyflowClassifier, IIBoostLazyflowClassifierFactory
-except ImportError:
+except ImportError, OSError:
     import warnings
     warnings.warn("Couldn't import IIBoost classifier.")
     
