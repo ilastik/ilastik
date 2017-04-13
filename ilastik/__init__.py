@@ -43,39 +43,41 @@ def _format_version(t):
     """converts a tuple to a string"""
     return '.'.join(str(i) for i in t)
 
-__version_info__ = (1, 2, '1b3') # Don't forget to update the splash screen!
+__version_info__ = (1, 2, '1b4') # Don't forget to update the splash screen!
 __version__ = _format_version(__version_info__)
 
 core_developers = [ "Janez Ales",
                     "Thorsten Beier",
-                    "Stuart Berg", 
+                    "Stuart Berg",
                     "Jaime Cervantes",
                     "Markus Doering",
-                    "Fred Hamprecht", 
+                    "Fred Hamprecht",
                     "Carsten Haubold",
-                    "Bernhard Kausler", 
-                    "Anna Kreshuk", 
-                    "Ullrich Koethe", 
-                    "Thorben Kroeger", 
-                    "Martin Schiegg", 
-                    "Christoph Sommer", 
+                    "Bernhard Kausler",
+                    "Anna Kreshuk",
+                    "Ullrich Koethe",
+                    "Thorben Kroeger",
+                    "Martin Schiegg",
+                    "Christoph Sommer",
                     "Christoph Straehle" ]
 
 developers = [ "Niels Buwen",
                "Christoph Decker",
-               "Kemal Eren", 
-               "Burcin Erocal", 
-               "Luca Fiaschi", 
-               "Philipp Hanslovsky", 
+               "Kemal Eren",
+               "Burcin Erocal",
+               "Luca Fiaschi",
+               "Philipp Hanslovsky",
                "Ben Heuer",
                "Glendon Holst",
-               "Fabian Isensee", 
-               "Kai Karius", 
-               "Jens Kleesiek", 
-               "Markus Nullmeier", 
-               "Oliver Petra", 
+               "Fabian Isensee",
+               "Kai Karius",
+               "Jens Kleesiek",
+               "Dominik Kutra",
+               "Markus Nullmeier",
+               "Letitia Parcalabescu",
+               "Oliver Petra",
                "Steffen Wolf",
-               "Buote Xu", 
+               "Buote Xu",
                "Chong Zhang" ]
 
 def convertVersion(vstring):
