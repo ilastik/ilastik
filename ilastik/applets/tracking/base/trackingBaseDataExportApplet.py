@@ -57,6 +57,17 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
             self._gui.set_default_export_filename(self._default_export_filename) # remove once the PGMLINK version is gone
         return self._gui
 
+    @staticmethod
+    def postprocessCanCheckForExistingFiles():
+        '''
+        While exporting, we can check whether files would be overwritten.
+        This is handled by an additional parameter to post_process_lane_export called "checkOverwriteFiles",
+        and that method should return True if the export files do NOT exist yet.
+
+        In Tracking export we want to check for existing files, so return True.
+        '''
+        return True
+
     @property
     def topLevelOperator(self):
         return self.__topLevelOperator

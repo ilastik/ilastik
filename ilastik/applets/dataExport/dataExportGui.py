@@ -393,11 +393,14 @@ class DataExportGui(QWidget):
                     opLaneView.run_export()
                     
                     # Client hook
-                    exportStatus = self.parentApplet.post_process_lane_export(lane_index, checkOverwriteFiles=True)
-                    if exportStatus == False:
-                        self.showOverwriteQuestion()
-                        if self.overwrite == True:
-                            self.parentApplet.post_process_lane_export(lane_index, checkOverwriteFiles=False)
+                    if self.parentApplet.postprocessCanCheckForExistingFiles():
+                        exportStatus = self.parentApplet.post_process_lane_export(lane_index, checkOverwriteFiles=True)
+                        if exportStatus == False:
+                            if self.showOverwriteQuestion():
+                                self.parentApplet.post_process_lane_export(lane_index, checkOverwriteFiles=False)
+                    else:
+                        self.parentApplet.post_process_lane_export(lane_index)
+
                 except Exception as ex:
                     if opLaneView.ExportPath.ready():
                         msg = "Failed to generate export file: \n"
@@ -448,7 +451,8 @@ class DataExportGui(QWidget):
                                          'This filename already exists. Are you sure you want to overwrite?',
                                          QMessageBox.Yes, QMessageBox.No)
         if reply == QMessageBox.Yes:
-            self.overwrite = True
+            return True
+        return False
 
     def exportResultsForSlot(self, opLane):
         # Make sure all 'on disk' layers are discarded so we aren't using those files any more.
