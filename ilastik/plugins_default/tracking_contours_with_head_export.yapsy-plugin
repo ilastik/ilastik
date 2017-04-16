@@ -1,0 +1,9 @@
+[Core]
+Name = Contours-With-Head
+Module = tracking_contours_with_head_export
+
+[Documentation]
+Author = Jaime I. Cervantes
+Version = 0.1
+Website = ilastik.org
+Description = Plugin to export the ilastik tracking results as contours with the head location (head index). The .contours file contains a line for each object on the video. Each value is separated by a space. The first value is the time (frame number), the second value is the ID, the third value is the head index (in the contour array), the fourth value is the length of the contour array, and the rest of the values are a list of xy pairs from the contour array.

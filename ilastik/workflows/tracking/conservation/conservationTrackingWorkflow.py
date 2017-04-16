@@ -294,6 +294,10 @@ class ConservationTrackingWorkflowBase( Workflow ):
     def prepare_lane_for_export(self, lane_index):
         # Bypass cache on headless mode and batch processing mode
         self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(True)
+        
+        if not self.fromBinary:
+            self.thresholdTwoLevelsApplet.topLevelOperator[lane_index].opCache.BypassModeEnabled.setValue(True)
+            self.thresholdTwoLevelsApplet.topLevelOperator[lane_index].opSmootherCache.BypassModeEnabled.setValue(True)
          
         # Get axes info  
         maxt = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[0] 
