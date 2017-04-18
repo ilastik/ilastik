@@ -92,6 +92,7 @@ class TestStructuredLearningTrackingHeadless(object):
         
         args = ' --project='+self.PROJECT_FILE
         args += ' --headless'
+        args += ' --testFullAnnotations'
         args += ' --export_source=Tracking-Result'
         args += ' --raw_data '+self.RAW_DATA_FILE
         args += ' --prediction_maps '+self.PREDICTION_FILE

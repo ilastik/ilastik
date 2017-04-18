@@ -153,9 +153,13 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self._applets.append(self.batchProcessingApplet)
         
         # Parse export and batch command-line arguments for headless mode
+        self._with_progress_bar = True
         if workflow_cmdline_args:
             self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( workflow_cmdline_args )
             self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( workflow_cmdline_args )
+
+            if '--without_progress_bar' in workflow_cmdline_args:
+                self._with_progress_bar = False
         else:
             unused_args = None
             self._data_export_args = None
@@ -457,7 +461,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
         if os.path.pathsep in nickname:
             nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
         known_keys['nickname'] = nickname
-        opDataExport = self.dataExportApplet.topLevelOperator.getLane(lane_index)
         known_keys['result_type'] = self.dataExportApplet.topLevelOperator.SelectedPlugin._value
         # use partial formatting to fill in non-coordinate name fields
         partially_formatted_name = format_known_keys(path_format_string, known_keys)

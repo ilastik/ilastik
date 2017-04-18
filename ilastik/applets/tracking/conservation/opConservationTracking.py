@@ -26,6 +26,7 @@ from hytra.core.ilastikmergerresolver import IlastikMergerResolver
 from hytra.core.probabilitygenerator import ProbabilityGenerator
 from hytra.core.probabilitygenerator import Traxel
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+from hytra.util.progressbar import DefaultProgressVisitor, CommandLineProgressVisitor
 
 import vigra
 
@@ -110,7 +111,13 @@ class OpConservationTracking(Operator):
         # Merger resolver plugin manager (contains GMM fit routine)
         self.pluginPaths = [os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')]
         pluginManager = TrackingPluginManager(verbose=False, pluginPaths=self.pluginPaths)
-        self.mergerResolverPlugin = pluginManager.getMergerResolver()       
+        self.mergerResolverPlugin = pluginManager.getMergerResolver()
+
+        self.result = None
+
+        # gui progress
+        self.progressWindow = None
+        self.progressVisitor=DefaultProgressVisitor()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta)
@@ -230,12 +237,13 @@ class OpConservationTracking(Operator):
         maxObj = parameters['maxObj']
         divThreshold = parameters['divThreshold']
         max_nearest_neighbors = parameters['max_nearest_neighbors']
+        borderAwareWidth = parameters['borderAwareWidth']
 
         traxelstore = self._generate_traxelstore(time_range, x_range, y_range, z_range,
                                                        size_range, scales[0], scales[1], scales[2], 
                                                        with_div=withDivisions,
                                                        with_classifier_prior=withClassifierPrior)
-        
+
         def constructFov(shape, t0, t1, scale=[1, 1, 1]):
             [xshape, yshape, zshape] = shape
             [xscale, yscale, zscale] = scale
@@ -257,7 +265,9 @@ class OpConservationTracking(Operator):
             fieldOfView=fieldOfView,
             withDivisions=withDivisions,
             maxNeighborDistance=maxDist,
-            divisionThreshold=divThreshold
+            divisionThreshold=divThreshold,
+            borderAwareWidth=borderAwareWidth,
+            progressVisitor=self.progressVisitor
         )
         return hypothesesGraph
     
@@ -291,8 +301,12 @@ class OpConservationTracking(Operator):
             timesteps.sort()
             
             timeIndex = self.LabelImage.meta.axistags.index('t')
-            
+            numTimeStep = len(timesteps)
+            count=0
             for timestep in timesteps:
+                count +=1
+                self.progressVisitor.showProgress(count/float(numTimeStep))
+
                 roi = [slice(None) for i in range(len(self.LabelImage.meta.shape))]
                 roi[timeIndex] = slice(timestep, timestep+1)
                 roi = tuple(roi)
@@ -316,6 +330,8 @@ class OpConservationTracking(Operator):
                 if coordinatesForIds:
                     mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, maxObjectId, timestep)   
                 
+            self.parent.parent.trackingApplet.progressSignal.emit(100)
+
             # Compute object features, re-run flow solver, update model and result, and get merger dictionary
             resolvedMergersDict = mergerResolver.run()
         return resolvedMergersDict
@@ -353,12 +369,20 @@ class OpConservationTracking(Operator):
             max_nearest_neighbors = 1,
             numFramesPerSplit=0,
             withBatchProcessing = False,
-            solverName="Flow-based"
+            solverName="Flow-based",
+            progressWindow=None,
+            progressVisitor=DefaultProgressVisitor()
             ):
         """
         Main conservation tracking function. Runs tracking solver, generates hypotheses graph, and resolves mergers.
         """
-        
+
+        self.progressWindow = progressWindow
+        self.progressVisitor=progressVisitor
+
+        if self.parent.parent._with_progress_bar and progressVisitor==DefaultProgressVisitor():
+            self.progressVisitor = CommandLineProgressVisitor()
+
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
         
@@ -419,8 +443,9 @@ class OpConservationTracking(Operator):
                 raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
                     'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' +\
                     'one training example for each class.')
-        
+
         hypothesesGraph = self._createHypothesesGraph()
+        hypothesesGraph.allowLengthOneTracks = True
 
         if withTracklets:
             hypothesesGraph = hypothesesGraph.generateTrackletGraph()
@@ -429,9 +454,14 @@ class OpConservationTracking(Operator):
         trackingGraph = hypothesesGraph.toTrackingGraph()
         trackingGraph.convexifyCosts()
         model = trackingGraph.model
+        model['settings']['allowLengthOneTracks'] = True
 
         detWeight = 10.0 # FIXME: Should we store this weight in the parameters slot?
         weights = trackingGraph.weightsListToDict([transWeight, detWeight, divWeight, appearance_cost, disappearance_cost])
+
+        stepStr = "Tracking solver"
+        self.progressVisitor.showState(stepStr)
+        self.progressVisitor.showProgress(0)
 
         if solverName == 'Flow-based' and dpct:
             if numFramesPerSplit:
@@ -446,6 +476,7 @@ class OpConservationTracking(Operator):
         else:
             raise ValueError("Invalid tracking solver selected")
 
+        self.progressVisitor.showProgress(1.0)
         # Insert the solution into the hypotheses graph and from that deduce the lineages
         if hypothesesGraph:
             hypothesesGraph.insertSolution(result)
@@ -453,13 +484,14 @@ class OpConservationTracking(Operator):
         # Merger resolution
         resolvedMergersDict = {}
         if withMergerResolution:
+            stepStr = "Merger resolution"
+            self.progressVisitor.showState(stepStr)
             resolvedMergersDict = self._resolveMergers(hypothesesGraph, model)
-        
-        # Set value of resolved mergers slot (Should be empty if mergers are disabled)         
+
+        # Set value of resolved mergers slot (Should be empty if mergers are disabled)
         self.ResolvedMergers.setValue(resolvedMergersDict, check_changed=False)
                 
         # Computing tracking lineage IDs from within Hytra
-        logger.info("Computing hypotheses graph lineages")
         hypothesesGraph.computeLineage()
 
         # Uncomment to export a hypothese graph diagram
@@ -694,8 +726,16 @@ class OpConservationTracking(Operator):
         filtered_labels = {}
         total_count = 0
         empty_frame = False
+        numTimeStep = len(feats.keys())
+        countT = 0
+
+        stepStr = "Creating traxel store"
+        self.progressVisitor.showState(stepStr+"                              ")
 
         for t in feats.keys():
+            countT +=1
+            self.progressVisitor.showProgress(countT/float(numTimeStep))
+
             rc = feats[t][default_features_key]['RegionCenter']
             lower = feats[t][default_features_key]['Coord<Minimum>']
             upper = feats[t][default_features_key]['Coord<Maximum>']
@@ -718,14 +758,22 @@ class OpConservationTracking(Operator):
                 if len(rc[idx]) == 2:
                     x, y = rc[idx]
                     z = 0
+                    x_lower, y_lower = lower[idx]
+                    x_upper, y_upper = upper[idx]
+                    z_lower = 0
+                    z_upper = 0
                 elif len(rc[idx]) == 3:
                     x, y, z = rc[idx]
+                    x_lower, y_lower, z_lower = lower[idx]
+                    x_upper, y_upper, z_upper = upper[idx]
                 else:
                     raise DatasetConstraintError ("Tracking", "The RegionCenter feature must have dimensionality 2 or 3.")
+
                 size = ct[idx]
-                if (x < x_range[0] or x >= x_range[1] or
-                            y < y_range[0] or y >= y_range[1] or
-                            z < z_range[0] or z >= z_range[1] or
+
+                if (x_upper < x_range[0]  or x_lower >= x_range[1] or
+                            y_upper < y_range[0] or y_lower >= y_range[1] or
+                            z_upper < z_range[0] or z_lower >= z_range[1] or
                             size < size_range[0] or size >= size_range[1]):
                     filtered_labels_at.append(int(idx + 1))
                     continue
@@ -786,13 +834,14 @@ class OpConservationTracking(Operator):
                 traxel.add_feature_array("count", 1)
                 traxel.set_feature_value("count", 0, float(size))
 
-                # Add traxel to traxelstore after checking position, time, and size ranges
-                if (x < x_range[0] or x >= x_range[1] or
-                            y < y_range[0] or y > y_range[1] or
-                            z < z_range[0] or z > z_range[1] or
-                            size < size_range[0] or size > size_range[1]):
-                    logger.info("Omitting traxel with ID: {}".format(traxel.Id))
+                if (x_upper < x_range[0]  or x_lower >= x_range[1] or
+                            y_upper < y_range[0] or y_lower >= y_range[1] or
+                            z_upper < z_range[0] or z_lower >= z_range[1] or
+                            size < size_range[0] or size >= size_range[1]):
+                    logger.info("Omitting traxel with ID: {} {}".format(traxel.Id,t))
+                    print "Omitting traxel with ID: {} {}".format(traxel.Id,t)
                 else:
+                    logger.info("Adding traxel with ID: {}  {}".format(traxel.Id,t))
                     traxelstore.TraxelsPerFrame.setdefault(int(t), {})[int(idx + 1)] = traxel
 
             if len(filtered_labels_at) > 0:
@@ -802,10 +851,11 @@ class OpConservationTracking(Operator):
 
             if count == 0:
                 empty_frame = True
-                logger.info('Found empty frames')
+                logger.info('Found empty frames for time {}'.format(t))
 
             total_count += count
 
+        self.parent.parent.trackingApplet.progressSignal.emit(100)
         self.FilteredLabels.setValue(filtered_labels, check_changed=True)
 
         return traxelstore

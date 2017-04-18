@@ -1,5 +1,4 @@
-from PyQt4 import uic, QtGui
-from PyQt4.QtGui import *
+from PyQt4 import uic, QtGui, Qt
 import os
 import logging
 import sys
@@ -110,7 +109,6 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.maxNearestNeighborsSpinBox.setValue(parameters['max_nearest_neighbors'])
         if 'numFramesPerSplit' in parameters.keys():
             self._drawer.numFramesPerSplitSpinBox.setValue(parameters['numFramesPerSplit'])
-        
 
         # solver: use stored value only if that solver is available
         self._drawer.solverComboBox.clear()
@@ -234,8 +232,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         if not self.mainOperator.ObjectFeatures.ready():
             self._criticalMessage("You have to compute object features first.")            
             return
-        
-        def _track():    
+
+        def _track():
             self.applet.busy = True
             self.applet.appletStateUpdateRequested.emit()
             maxDist = self._drawer.maxDistBox.value()
@@ -326,7 +324,6 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         def _handle_finished(*args):
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            self.applet.progressSignal.emit(100)
             self._drawer.TrackButton.setEnabled(True)
             self._drawer.exportButton.setEnabled(True)
             self._drawer.exportTifButton.setEnabled(True)
@@ -340,13 +337,10 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            self.applet.progressSignal.emit(100)
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
             self._drawer.TrackButton.setEnabled(True)
         
-        self.applet.progressSignal.emit(0)
-        self.applet.progressSignal.emit(-1)
         req = Request( _track )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
@@ -475,3 +469,5 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             menu.addAction("Start IPC Server", IPCFacade().start)
 
         menu.exec_(win_coord)
+
+

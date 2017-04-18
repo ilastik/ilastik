@@ -7,12 +7,9 @@ import re
 import traceback
 import math
 import random
-import h5py
 
-import pgmlink
-
-from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
+from ilastik.utility.gui.progress import TrackProgressDialog
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
@@ -22,6 +19,9 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 
 from lazyflow.request.request import Request
+
+from hytra.util.progressbar import DefaultProgressVisitor
+from ilastik.utility.gui.progress import GuiProgressVisitor
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -54,6 +54,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._initColors()
 
         self.topLevelOperatorView = topLevelOperatorView
+        self.progressWindow = None
         super(TrackingBaseGui, self).__init__(parentApplet, topLevelOperatorView)
         self.mainOperator = topLevelOperatorView
         if self.mainOperator.LabelImage.meta.shape:
@@ -107,7 +108,14 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.appearanceBox.setValue(parameters['appearanceCost'])
         if 'disappearanceCost' in parameters.keys():
             self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
-        
+
+        solverName = self.topLevelOperatorView._solver
+        if solverName == "Flow-based":
+            self._drawer.StructuredLearningButton.setEnabled(False)
+            self._drawer.RandomButton.setEnabled(False)
+            self._drawer.OnesButton.setEnabled(False)
+            self._drawer.ZerosButton.setEnabled(False)
+
         return self._drawer
 
     def initAppletDrawerUi(self):
@@ -146,13 +154,16 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             checkboxAssertHandler(self._drawer.opticalBox, False)
             checkboxAssertHandler(self._drawer.mergerResolutionBox, True)
 
-            self._drawer.maxDistBox.hide()
-            self._drawer.label_2.hide()
             self._drawer.label_5.hide()
             self._drawer.divThreshBox.hide()
             self._drawer.label_25.hide()
             self._drawer.avgSizeBox.hide()
-          
+
+            self._drawer.InitialWeightsLabel.hide()
+            self._drawer.ZerosButton.hide()
+            self._drawer.OnesButton.hide()
+            self._drawer.RandomButton.hide()
+
         self.mergerLabels = [
             self._drawer.merg1,
             self._drawer.merg2,
@@ -214,6 +225,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.topLevelOperatorView._transitionWeight = self._transitionWeight
         self.topLevelOperatorView._appearanceWeight = self._appearanceWeight
         self.topLevelOperatorView._disappearanceWeight = self._disappearanceWeight
+        self.topLevelOperatorView.parent.parent._with_progress_bar = self._drawer.progressBarCheckBox.isChecked()
 
     def _onOnesButtonPressed(self):
         val = math.sqrt(1.0/5)
@@ -352,25 +364,91 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
     def _onRunStructuredLearningButtonPressed(self, withBatchProcessing=False):
 
-        self.topLevelOperatorView._runStructuredLearning(
-            (self._drawer.from_z.value(),self._drawer.to_z.value()),
-            self._maxNumObj,
-            self._maxNearestNeighbors,
-            self._drawer.maxDistBox.value(),
-            self._drawer.divThreshBox.value(),
-            (self._drawer.x_scale.value(), self._drawer.y_scale.value(), self._drawer.z_scale.value()),
-            (self._drawer.from_size.value(), self._drawer.to_size.value()),
-            self._drawer.divisionsBox.isChecked(),
-            self._drawer.bordWidthBox.value(),
-            self._drawer.classifierPriorBox.isChecked(),
-            withBatchProcessing)
+        numStages = 4
+        # creating traxel store
+        # generating probabilities
+        # insert energies
+        # structured learning
+
+        self.mainOperator.parent.parent._with_progress_bar = self._drawer.progressBarCheckBox.isChecked()
+        if self.mainOperator.parent.parent._with_progress_bar:
+            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+            self.progressWindow.run()
+            self.progressWindow.show()
+            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        else:
+            self.progressVisitor = DefaultProgressVisitor()
+
+        def _learn():
+            self.applet.busy = True
+            self.applet.appletStateUpdateRequested.emit()
+            try:
+                self.topLevelOperatorView._runStructuredLearning(
+                    (self._drawer.from_z.value(),self._drawer.to_z.value()),
+                    self._maxNumObj,
+                    self._maxNearestNeighbors,
+                    self._drawer.maxDistBox.value(),
+                    self._drawer.divThreshBox.value(),
+                    (self._drawer.x_scale.value(), self._drawer.y_scale.value(), self._drawer.z_scale.value()),
+                    (self._drawer.from_size.value(), self._drawer.to_size.value()),
+                    self._drawer.divisionsBox.isChecked(),
+                    self._drawer.bordWidthBox.value(),
+                    self._drawer.classifierPriorBox.isChecked(),
+                    withBatchProcessing,
+                    progressWindow=self.progressWindow,
+                    progressVisitor=self.progressVisitor
+                )
+            except Exception:
+                ex_type, ex, tb = sys.exc_info()
+                traceback.print_tb(tb)
+                self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))
+                return
+
+        def _handle_finished(*args):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
+
+        def _handle_failure( exc, exc_info ):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
+            traceback.print_exception(*exc_info)
+            sys.stderr.write("Exception raised during learning.  See traceback above.\n")
+
+        req = Request( _learn )
+        req.notify_failed( _handle_failure )
+        req.notify_finished( _handle_finished )
+        req.submit()
 
     def _onTrackButtonPressed( self ):
         if not self.mainOperator.ObjectFeatures.ready():
             self._criticalMessage("You have to compute object features first.")            
             return
-        
-        def _track():    
+
+        withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
+        withTracklets = True
+
+        numStages = 6
+        # creating traxel store
+        # generating probabilities
+        # insert energies
+        # convexify costs
+        # solver
+        # compute lineages
+        if withMergerResolution:
+            numStages += 1 # merger resolution
+        if withTracklets:
+            numStages += 3 # initializing tracklet graph, finding tracklets, contracting edges in tracklet graph
+
+        self.mainOperator.parent.parent._with_progress_bar = self._drawer.progressBarCheckBox.isChecked()
+        if self.mainOperator.parent.parent._with_progress_bar:
+            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+            self.progressWindow.run()
+            self.progressWindow.show()
+            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        else:
+            self.progressVisitor = DefaultProgressVisitor()
+
+        def _track():
             self.applet.busy = True
             self.applet.appletStateUpdateRequested.emit()
             maxDist = self._drawer.maxDistBox.value()
@@ -409,7 +487,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             withArmaCoordinates = True
             appearanceCost = self._drawer.appearanceBox.value()
             disappearanceCost = self._drawer.disappearanceBox.value()
-    
+
+            solverName = self.topLevelOperatorView._solver
+
             ndim=3
             if (to_z - from_z == 0):
                 ndim=2
@@ -447,7 +527,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                         #graph_building_parameter_changed = True,
                         #trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
                         max_nearest_neighbors = self._maxNearestNeighbors,
-                        solverName="ILP"
+                        solverName=solverName,
+                        progressWindow=self.progressWindow,
+                        progressVisitor=self.progressVisitor
                         )
             except Exception:
                 ex_type, ex, tb = sys.exc_info()
@@ -458,7 +540,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         def _handle_finished(*args):
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            self.applet.progressSignal.emit(100)
             self._drawer.TrackButton.setEnabled(True)
             self._drawer.exportButton.setEnabled(True)
             self._drawer.exportTifButton.setEnabled(True)
@@ -467,13 +548,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            self.applet.progressSignal.emit(100)
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
             self._drawer.TrackButton.setEnabled(True)
-        
-        self.applet.progressSignal.emit(0)
-        self.applet.progressSignal.emit(-1)
+
         req = Request( _track )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
