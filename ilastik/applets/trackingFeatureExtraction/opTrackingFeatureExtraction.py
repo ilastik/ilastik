@@ -168,7 +168,7 @@ class OpTrackingFeatureExtraction(Operator):
         
     def __init__(self, parent):
         super(OpTrackingFeatureExtraction, self).__init__(parent)
-        
+        self._default_features = None
         # internal operators
         self._objectExtraction = OpObjectExtraction(parent=self)
                 
@@ -206,7 +206,9 @@ class OpTrackingFeatureExtraction(Operator):
         # FIXME this shouldn't be done in post-filtering, but in reading the config or around that time
         self.RawImage.notifyReady( self._filterFeaturesByDim )
     
-               
+    def setDefaultFeatures(self, feats):
+        self._default_features = feats
+
     def setupOutputs(self, *args, **kwargs):
         self.ComputedFeatureNamesAll.meta.assignFrom(self.FeatureNamesVigra.meta)
         self.ComputedFeatureNamesNoDivisions.meta.assignFrom(self.FeatureNamesVigra.meta)
@@ -287,18 +289,24 @@ class OpTrackingFeatureExtraction(Operator):
         # dict[plugin_name][feature_name][parameter_name] = parameter_value
         # for example {"Standard Object Features": {"Mean in neighborhood":{"margin": (5, 5, 2)}}}
 
+        # FIXME: this is a hacky solution because we overwrite the INPUT slot FeatureNamesVigra depending on the data shape.
+        # We store the _default_features separately because if the user switches from a 3D to a 2D dataset the value of
+        # FeatureNamesVigra would not be populated with all the features again, but only those that work for 3D.
+
         if self.RawImage.ready() and self.FeatureNamesVigra.ready():
 
             rawTaggedShape = self.RawImage.meta.getTaggedShape()
             filtered_features_dict = {}
             if rawTaggedShape['z']>1:
                 # Filter out the 2D-only features, which helpfully have "2D" in their plugin name
-                current_dict = self.FeatureNamesVigra.value
+                current_dict = self._default_features
                 for plugin in current_dict.keys():
                     if not "2D" in plugin:
                         filtered_features_dict[plugin] = current_dict[plugin]
 
                 self.FeatureNamesVigra.setValue(filtered_features_dict)
+            else:
+                self.FeatureNamesVigra.setValue(self._default_features)
 
 class OpCachedDivisionFeatures(Operator):
     """Caches the division features computed by OpDivisionFeatures."""    

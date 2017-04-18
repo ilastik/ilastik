@@ -69,7 +69,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
                                                                       name="Object Feature Computation")                                                                     
         
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
-        opObjectExtraction.FeatureNamesVigra.setValue(configConservation.allFeaturesObjectCount)
 
         self.divisionDetectionApplet = self._createDivisionDetectionApplet(configConservation.selectedFeaturesDiv) # Might be None
 
@@ -227,7 +226,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
         if self.withOptTrans:
             opOptTranslation = self.opticalTranslationApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
-        
+        opObjExtraction.setDefaultFeatures(configConservation.allFeaturesObjectCount)
+
         if self.divisionDetectionApplet:
                 opDivDetection = self.divisionDetectionApplet.topLevelOperator.getLane(laneIndex)
             
@@ -298,6 +298,10 @@ class ConservationTrackingWorkflowBase( Workflow ):
     def prepare_lane_for_export(self, lane_index):
         # Bypass cache on headless mode and batch processing mode
         self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(True)
+        
+        if not self.fromBinary:
+            self.thresholdTwoLevelsApplet.topLevelOperator[lane_index].opCache.BypassModeEnabled.setValue(True)
+            self.thresholdTwoLevelsApplet.topLevelOperator[lane_index].opSmootherCache.BypassModeEnabled.setValue(True)
          
         # Get axes info  
         maxt = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[0] 
@@ -335,7 +339,12 @@ class ConservationTrackingWorkflowBase( Workflow ):
             self.prev_z_range = parameters['z_range']
         else:
             self.prev_z_range = z_range
-        
+
+        if 'numFramesPerSplit' in parameters:
+            numFramesPerSplit = parameters['numFramesPerSplit']
+        else:
+            numFramesPerSplit = 0
+
         self.trackingApplet.topLevelOperator[lane_index].track(
             time_range = time_enum,
             x_range = x_range,
@@ -364,7 +373,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             appearance_cost = parameters['appearanceCost'],
             disappearance_cost = parameters['disappearanceCost'],
             max_nearest_neighbors = parameters['max_nearest_neighbors'],
-            numFramesPerSplit = parameters['numFramesPerSplit'],
+            numFramesPerSplit = numFramesPerSplit,
             force_build_hypotheses_graph = False,
             withBatchProcessing = True
         )

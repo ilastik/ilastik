@@ -37,5 +37,5 @@ class OpTrackingBaseDataExport(OpDataExport):
         '''
         We only run the export method of the parent export operator if we are not exporting via a plugin
         '''
-        if self.SelectedExportSource.value is not self.PluginOnlyName:
+        if self.SelectedExportSource.value != self.PluginOnlyName:
             super(OpTrackingBaseDataExport, self).run_export()

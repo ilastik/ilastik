@@ -195,6 +195,36 @@
        </item>
       </layout>
      </item>
+     <item>
+      <widget class="Line" name="labelAssistLine">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="labelAssistLabel">
+       <property name="font">
+        <font>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:400;&quot;&gt;Show table with object areas and number of labels per frame in order to find the frames where something interesting is happening.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>Label-Assist</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="labelAssistButton">
+       <property name="text">
+        <string>Label-Assist Table</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
   </layout>
