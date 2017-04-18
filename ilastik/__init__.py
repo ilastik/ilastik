@@ -43,7 +43,7 @@ def _format_version(t):
     """converts a tuple to a string"""
     return '.'.join(str(i) for i in t)
 
-__version_info__ = (1, 2, '1b4') # Don't forget to update the splash screen!
+__version_info__ = (1, 2, '1') # Don't forget to update the splash screen!
 __version__ = _format_version(__version_info__)
 
 core_developers = [ "Janez Ales",
