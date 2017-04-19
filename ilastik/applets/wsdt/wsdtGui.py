@@ -319,7 +319,7 @@ class WsdtGui(LayerViewerGui):
         # Raw Data (grayscale)
         if op.Input.ready():
             layer = self._create_grayscale_layer_from_slot( op.Input, op.Input.meta.getTaggedShape()['c'] )
-            layer.name = "Input"
+            layer.name = "Probability Map"
             layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
