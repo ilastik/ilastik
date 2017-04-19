@@ -166,6 +166,9 @@ class _Worker(threading.Thread):
             self.state = 'freeing task'
             next_task = None
 
+            if self.stopped:
+                return
+            
             # Now try to get some work (wait if necessary).
             self.state = 'waiting'
             next_task = self._get_next_job()
