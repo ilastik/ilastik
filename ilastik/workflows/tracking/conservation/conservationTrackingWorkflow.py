@@ -153,13 +153,10 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self._applets.append(self.batchProcessingApplet)
         
         # Parse export and batch command-line arguments for headless mode
-        self._with_progress_bar = True
         if workflow_cmdline_args:
             self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( workflow_cmdline_args )
             self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( workflow_cmdline_args )
 
-            if '--without_progress_bar' in workflow_cmdline_args:
-                self._with_progress_bar = False
         else:
             unused_args = None
             self._data_export_args = None

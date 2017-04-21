@@ -388,19 +388,6 @@
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QRadioButton" name="trainingToHardConstraints">
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose this optin to use tracking training annotations as part of the tracking solution.&lt;/p&gt;&lt;p&gt;By default training annotations are used only in structured learning for calculating weights.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="text">
-        <string>Use Training Annotations in Tracking</string>
-       </property>
-       <property name="checked">
-        <bool>false</bool>
-       </property>
-      </widget>
-     </item>
     </layout>
    </item>
    <item row="9" column="0">

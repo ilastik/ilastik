@@ -371,7 +371,7 @@ class OpConservationTracking(Operator):
             withBatchProcessing = False,
             solverName="Flow-based",
             progressWindow=None,
-            progressVisitor=DefaultProgressVisitor()
+            progressVisitor=CommandLineProgressVisitor()
             ):
         """
         Main conservation tracking function. Runs tracking solver, generates hypotheses graph, and resolves mergers.
@@ -379,9 +379,6 @@ class OpConservationTracking(Operator):
 
         self.progressWindow = progressWindow
         self.progressVisitor=progressVisitor
-
-        if self.parent.parent._with_progress_bar and progressVisitor==DefaultProgressVisitor():
-            self.progressVisitor = CommandLineProgressVisitor()
 
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
@@ -493,6 +490,9 @@ class OpConservationTracking(Operator):
                 
         # Computing tracking lineage IDs from within Hytra
         hypothesesGraph.computeLineage()
+
+        if self.progressWindow is not None:
+            self.progressWindow.onTrackDone()
 
         # Uncomment to export a hypothese graph diagram
         #logger.info("Exporting hypotheses graph diagram")
