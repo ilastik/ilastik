@@ -44,4 +44,4 @@ dependencies:
 ## Customize test commands
 test:
   override:
-    - cd ${TEST_ENV_PREFIX}/ilastik-meta/ilastik/tests ./run_each_unit_test.sh
+    - cd ${TEST_ENV_PREFIX}/ilastik-meta/ilastik/tests && ./run_each_unit_test.sh
