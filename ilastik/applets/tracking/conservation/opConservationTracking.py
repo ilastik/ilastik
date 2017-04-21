@@ -508,6 +508,8 @@ class OpConservationTracking(Operator):
         self.MergerOutput.setDirty()
         self.RelabeledImage.setDirty()
 
+        return result
+
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
