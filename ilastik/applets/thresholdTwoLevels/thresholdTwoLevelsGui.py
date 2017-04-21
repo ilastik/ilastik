@@ -189,6 +189,8 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._drawer.preserveIdentitiesCheckbox.setVisible( show_hysteresis_controls )
         self._drawer.coreChannelComboBox.setVisible( show_hysteresis_controls )
         self._drawer.coreChannelLabel.setVisible( show_hysteresis_controls )
+        self._drawer.finalChannelLabel.setVisible( show_hysteresis_controls )
+        self._drawer.lowThresholdLabel.setVisible( show_hysteresis_controls )
 
         show_graphcut_controls = (method == ThresholdMethod.GRAPHCUT)
         self._drawer.lambdaLabel.setVisible( show_graphcut_controls )

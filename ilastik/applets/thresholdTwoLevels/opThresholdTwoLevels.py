@@ -26,6 +26,8 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache, OpSingleChannelSelector, OpReorderAxes, OpFilterLabels, OpMultiArrayMerger
 from ilastik.applets.base.applet import DatasetConstraintError
+from lazyflow.operators.generic import OpConvertDtype, OpPixelOperator
+
 
 # local
 from thresholdingTools import OpAnisotropicGaussianSmoothing5d, select_labels
@@ -86,10 +88,27 @@ class OpThresholdTwoLevels(Operator):
         self.opReorderInput = OpReorderAxes(parent=self)
         self.opReorderInput.AxisOrder.setValue('tzyxc')
         self.opReorderInput.Input.connect(self.InputImage)
+
+        # PROBABILITIES: Convert to float32
+        self.opConvertProbabilities = OpConvertDtype( parent=self )
+        self.opConvertProbabilities.ConversionDtype.setValue( np.float32 )
+        self.opConvertProbabilities.Input.connect( self.opReorderInput.Output )
+
+        # PROBABILITIES: Normalize drange to [0.0, 1.0]
+        self.opNormalizeProbabilities = OpPixelOperator( parent=self )
+        def normalize_inplace(a):
+            drange = self.opNormalizeProbabilities.Input.meta.drange
+            if drange is None or (drange[0] == 0.0 and drange[1] == 1.0):
+                return a
+            a[:] -= drange[0]
+            a[:] /= ( drange[1] - drange[0] )
+            return a
+        self.opNormalizeProbabilities.Input.connect( self.opConvertProbabilities.Output )
+        self.opNormalizeProbabilities.Function.setValue( normalize_inplace )
         
         self.opSmoother = OpAnisotropicGaussianSmoothing5d(parent=self)
         self.opSmoother.Sigmas.connect( self.SmootherSigma )
-        self.opSmoother.Input.connect( self.opReorderInput.Output )
+        self.opSmoother.Input.connect( self.opNormalizeProbabilities.Output )
         
         self.opSmootherCache = OpBlockedArrayCache(parent=self)
         self.opSmootherCache.BlockShape.setValue((1, None, None, None, 1))

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>345</width>
+    <width>685</width>
     <height>451</height>
    </rect>
   </property>
@@ -80,7 +80,14 @@
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="coreChannelComboBox"/>
+      <widget class="QComboBox" name="coreChannelComboBox">
+       <property name="sizeAdjustPolicy">
+        <enum>QComboBox::AdjustToMinimumContentsLengthWithIcon</enum>
+       </property>
+       <property name="minimumContentsLength">
+        <number>2</number>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QLabel" name="finalChannelLabel">
@@ -93,7 +100,14 @@
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="inputChannelComboBox"/>
+      <widget class="QComboBox" name="inputChannelComboBox">
+       <property name="sizeAdjustPolicy">
+        <enum>QComboBox::AdjustToMinimumContentsLengthWithIcon</enum>
+       </property>
+       <property name="minimumContentsLength">
+        <number>2</number>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
@@ -443,9 +457,10 @@
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The reason for the recomputation is that objects change shape if you change the settings of this applet. The object features have to be recalculated accordingly. Besides, if you have already annotated objects in one of the downstream applets, their labels have to be transfered to the new objects.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
-      <string>If you already have something computed,
-changing the settings here will cause
-recomputation and might take a while.</string>
+      <string>If you already have something computed, changing the settings here will cause recomputation and might take a while.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
      </property>
     </widget>
    </item>
