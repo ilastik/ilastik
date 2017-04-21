@@ -194,64 +194,6 @@ class TestStructuredLearningTrackingHeadless(object):
         logger.info("Number of divisions in the csv file: {}".format(division_count))
         assert division_count == self.EXPECTED_NUM_DIVISIONS, 'Number of divisions {} in the csv file differs from expected {}.'.format(division_count,self.EXPECTED_NUM_DIVISIONS)
 
-        # # Load csv file
-        # data = np.genfromtxt(self.EXPECTED_CSV_FILE, dtype=float, delimiter=',', names=True)
-        #
-        # # Check for expected number of lines
-        # logger.info("Number of rows in the csv file: {}    ({})".format(data.shape[0],self.EXPECTED_NUM_LINES_TRACKING))
-        # print "Number of rows in the csv file: {}    ({})".format(data.shape[0],self.EXPECTED_NUM_LINES_TRACKING)
-        # assert abs(data.shape[0] - self.EXPECTED_NUM_LINES_TRACKING) <=2, 'Number of rows {} in the csv file differs from expected {}'.format(data.shape[0],self.EXPECTED_NUM_LINES_TRACKING)
-        #
-        # # Check that the csv file contains the default fields.
-        # assert 'object_id' in data.dtype.names, "'object_id' not found in the csv file!"
-        # assert 'timestep' in data.dtype.names, "'timestep' not found in the csv file!"
-        # assert 'labelimage_oid' in data.dtype.names, "'labelimage_oid' not found in the csv file!"
-        # assert 'lineage_id' in data.dtype.names, "'lineage_id' not found in the csv file!"
-        # assert 'track_id' in data.dtype.names, "'track_id' not found in the csv file!"
-        # assert 'Size_in_pixels' in data.dtype.names, "'Size_in_pixels' not found in the csv file!"
-        # assert 'Bounding_Box_Minimum_0' in data.dtype.names, "'Bounding_Box_Minimum_0' not found in the csv file!"
-        # assert 'Bounding_Box_Minimum_1' in data.dtype.names, "'Bounding_Box_Minimum_1' not found in the csv file!"
-        # assert 'Center_of_the_object_0' in data.dtype.names, "'Center_of_the_object_0' not found in the csv file!"
-        # assert 'Center_of_the_object_1' in data.dtype.names, "'Center_of_the_object_1' not found in the csv file!"
-        # assert 'Bounding_Box_Maximum_0' in data.dtype.names, "'Bounding_Box_Maximum_0' not found in the csv file!"
-        # assert 'Bounding_Box_Maximum_1' in data.dtype.names, "'Bounding_Box_Maximum_1' not found in the csv file!"
-        #
-        # # Check for expected number of mergers
-        # merger_count = 0
-        # for id in data['lineage_id']:
-        #     if id == 0:
-        #         merger_count += 1
-        # logger.info("Number of mergers in the csv file: {}    ({})".format(merger_count,self.EXPECTED_MERGER_NUM))
-        # print "Number of mergers in the csv file: {}    ({})".format(merger_count,self.EXPECTED_MERGER_NUM)
-        # assert abs(merger_count - self.EXPECTED_MERGER_NUM)<=2, 'Number of mergers {} in the csv file differs from expected {}.'.format(merger_count,self.EXPECTED_MERGER_NUM)
-        #
-        # # Check for expected number of false detections
-        # false_detection_count = 0
-        # for id in data['lineage_id']:
-        #     if id == 1:
-        #         false_detection_count += 1
-        # logger.info("Number of false detections in the csv file: {}    ({})".format(false_detection_count,self.EXPECTED_FALSE_DETECTIONS_NUM))
-        # print "Number of false detections in the csv file: {}    ({})".format(false_detection_count,self.EXPECTED_FALSE_DETECTIONS_NUM)
-        # assert abs(false_detection_count - self.EXPECTED_FALSE_DETECTIONS_NUM)<=3, 'Number of false detections {} in the csv file differs from expected {}.'.format(false_detection_count,self.EXPECTED_FALSE_DETECTIONS_NUM)
-        #
-        # # Load divisions csv file
-        # data = np.genfromtxt(self.EXPECTED_DIVISIONS_CSV_FILE, dtype=float, delimiter=',', names=True)
-        #
-        # # Check for expected number of lines
-        # logger.info("Number of rows in the divisions csv file: {}    ({})".format(data.shape[0],self.EXPECTED_NUM_LINES_DIVISIONS))
-        # print "Number of rows in the divisions csv file: {}    ({})".format(data.shape[0],self.EXPECTED_NUM_LINES_DIVISIONS)
-        # assert abs(data.shape[0] - self.EXPECTED_NUM_LINES_DIVISIONS)<=2, 'Number of rows {} in the divisions csv file differs from expected {}.'.format(data.shape[0],self.EXPECTED_NUM_LINES_DIVISIONS)
-        #
-        # # Check that the csv file contains the default fields.
-        # assert 'object_id' in data.dtype.names, "'object_id' not found in the csv file!"
-        # assert 'timestep' in data.dtype.names, "'timestep' not found in the csv file!"
-        # assert 'lineage_id' in data.dtype.names, "'lineage_id' not found in the csv file!"
-        # assert 'track_id' in data.dtype.names, "'track_id' not found in the csv file!"
-        # assert 'child1_object_id' in data.dtype.names, "'child1_object_id' not found in the csv file!"
-        # assert 'child1_track_id' in data.dtype.names, "'child1_track_id' not found in the csv file!"
-        # assert 'child2_object_id' in data.dtype.names, "'child2_object_id' not found in the csv file!"
-        # assert 'child2_track_id' in data.dtype.names, "'child2_track_id' not found in the csv file!"
-
 if __name__ == "__main__":
     # Make the program quit on Ctrl+C
     import signal
