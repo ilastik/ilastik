@@ -54,8 +54,11 @@ class TrackProgressDialog(QDialog):
         self.update()
 
     def __onCurrentStepProgressChanged(self, progress):
-        self.currentStepProgress.setValue( round(100.0*progress) )
-        self.update()
+        timesHundred = round(1000.0*progress)
+        timesTen = round(100.0*progress)
+        if ( not self.currentStepProgress.value() == timesTen ) and   (timesHundred - 10*timesTen)==0:
+            self.currentStepProgress.setValue( timesTen )
+            self.update()
 
     def run(self):
         self.trackProgress = TrackProgress(self)

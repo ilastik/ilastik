@@ -111,7 +111,7 @@ class OpStructuredTracking(OpConservationTracking):
             withClassifierPrior,
             withBatchProcessing=False,
             progressWindow=None,
-            progressVisitor=DefaultProgressVisitor()
+            progressVisitor=CommandLineProgressVisitor()
         ):
 
         if not withBatchProcessing:
@@ -119,9 +119,6 @@ class OpStructuredTracking(OpConservationTracking):
 
         self.progressWindow = progressWindow
         self.progressVisitor=progressVisitor
-
-        if self.parent.parent._with_progress_bar and progressVisitor==DefaultProgressVisitor():
-            self.progressVisitor = CommandLineProgressVisitor()
 
         emptyAnnotations = False
         for crop in self.Annotations.value.keys():
@@ -432,6 +429,9 @@ class OpStructuredTracking(OpConservationTracking):
                 gui._drawer.appearanceBox.setValue(self.AppearanceWeight.value)
                 gui._drawer.disappearanceBox.setValue(self.DisappearanceWeight.value)
 
+        if self.progressWindow is not None:
+            self.progressWindow.onTrackDone()
+
         logger.info("Structured Learning Tracking Weights (normalized):")
         logger.info("   detection weight     = {}".format(self.DetectionWeight.value))
         logger.info("   division weight     = {}".format(self.DivisionWeight.value))
@@ -446,9 +446,7 @@ class OpStructuredTracking(OpConservationTracking):
         parameters['disappearanceCost'] = self.DisappearanceWeight.value
 
         self.Parameters.setValue(parameters)
-
-        if self.progressWindow is not None:
-            self.progressWindow.onTrackDone()
+        self.Parameters.setDirty()
 
         return [self.DetectionWeight.value, self.DivisionWeight.value, self.TransitionWeight.value, self.AppearanceWeight.value, self.DisappearanceWeight.value]
 

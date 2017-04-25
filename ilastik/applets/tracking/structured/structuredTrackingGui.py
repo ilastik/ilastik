@@ -215,8 +215,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.operator.labels = self.operator.Labels.value
         self.topLevelOperatorView._updateCropsFromOperator()
 
-        self._drawer.trainingToHardConstraints.setChecked(False)
-        self._drawer.trainingToHardConstraints.setVisible(False) # will be used when we can handle sparse annotations
         self._drawer.exportButton.setVisible(True)
         self._drawer.exportTifButton.setVisible(False)
 
@@ -225,7 +223,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.topLevelOperatorView._transitionWeight = self._transitionWeight
         self.topLevelOperatorView._appearanceWeight = self._appearanceWeight
         self.topLevelOperatorView._disappearanceWeight = self._disappearanceWeight
-        self.topLevelOperatorView.parent.parent._with_progress_bar = self._drawer.progressBarCheckBox.isChecked()
 
     def _onOnesButtonPressed(self):
         val = math.sqrt(1.0/5)
@@ -370,14 +367,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         # insert energies
         # structured learning
 
-        self.mainOperator.parent.parent._with_progress_bar = self._drawer.progressBarCheckBox.isChecked()
-        if self.mainOperator.parent.parent._with_progress_bar:
-            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
-            self.progressWindow.run()
-            self.progressWindow.show()
-            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
-        else:
-            self.progressVisitor = DefaultProgressVisitor()
+        self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+        self.progressWindow.run()
+        self.progressWindow.show()
+        self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
 
         def _learn():
             self.applet.busy = True
@@ -439,14 +432,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         if withTracklets:
             numStages += 3 # initializing tracklet graph, finding tracklets, contracting edges in tracklet graph
 
-        self.mainOperator.parent.parent._with_progress_bar = self._drawer.progressBarCheckBox.isChecked()
-        if self.mainOperator.parent.parent._with_progress_bar:
-            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
-            self.progressWindow.run()
-            self.progressWindow.show()
-            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
-        else:
-            self.progressVisitor = DefaultProgressVisitor()
+        self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+        self.progressWindow.run()
+        self.progressWindow.show()
+        self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
 
         def _track():
             self.applet.busy = True
@@ -495,42 +484,41 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 ndim=2
             
             try:
-                if True:
-                    self.mainOperator.track(
-                        time_range = self.time_range,
-                        x_range = (from_x, to_x + 1),
-                        y_range = (from_y, to_y + 1),
-                        z_range = (from_z, to_z + 1),
-                        size_range = (from_size, to_size + 1),
-                        x_scale = self._drawer.x_scale.value(),
-                        y_scale = self._drawer.y_scale.value(),
-                        z_scale = self._drawer.z_scale.value(),
-                        maxDist=maxDist,
-                        maxObj = maxObj,
-                        divThreshold=divThreshold,
-                        avgSize=avgSize,
-                        withTracklets=withTracklets,
-                        sizeDependent=sizeDependent,
-                        detWeight=detWeight,
-                        divWeight=divWeight,
-                        transWeight=transWeight,
-                        withDivisions=withDivisions,
-                        withOpticalCorrection=withOpticalCorrection,
-                        withClassifierPrior=classifierPrior,
-                        ndim=ndim,
-                        withMergerResolution=withMergerResolution,
-                        borderAwareWidth = borderAwareWidth,
-                        withArmaCoordinates = withArmaCoordinates,
-                        cplex_timeout = cplex_timeout,
-                        appearance_cost = appearanceCost,
-                        disappearance_cost = disappearanceCost,
-                        #graph_building_parameter_changed = True,
-                        #trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
-                        max_nearest_neighbors = self._maxNearestNeighbors,
-                        solverName=solverName,
-                        progressWindow=self.progressWindow,
-                        progressVisitor=self.progressVisitor
-                        )
+                self.mainOperator.track(
+                    time_range = self.time_range,
+                    x_range = (from_x, to_x + 1),
+                    y_range = (from_y, to_y + 1),
+                    z_range = (from_z, to_z + 1),
+                    size_range = (from_size, to_size + 1),
+                    x_scale = self._drawer.x_scale.value(),
+                    y_scale = self._drawer.y_scale.value(),
+                    z_scale = self._drawer.z_scale.value(),
+                    maxDist=maxDist,
+                    maxObj = maxObj,
+                    divThreshold=divThreshold,
+                    avgSize=avgSize,
+                    withTracklets=withTracklets,
+                    sizeDependent=sizeDependent,
+                    detWeight=detWeight,
+                    divWeight=divWeight,
+                    transWeight=transWeight,
+                    withDivisions=withDivisions,
+                    withOpticalCorrection=withOpticalCorrection,
+                    withClassifierPrior=classifierPrior,
+                    ndim=ndim,
+                    withMergerResolution=withMergerResolution,
+                    borderAwareWidth = borderAwareWidth,
+                    withArmaCoordinates = withArmaCoordinates,
+                    cplex_timeout = cplex_timeout,
+                    appearance_cost = appearanceCost,
+                    disappearance_cost = disappearanceCost,
+                    #graph_building_parameter_changed = True,
+                    #trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
+                    max_nearest_neighbors = self._maxNearestNeighbors,
+                    solverName=solverName,
+                    progressWindow=self.progressWindow,
+                    progressVisitor=self.progressVisitor
+                )
             except Exception:
                 ex_type, ex, tb = sys.exc_info()
                 traceback.print_tb(tb)
