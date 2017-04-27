@@ -99,9 +99,15 @@ class Request( object ):
     active_count = 0
 
     @classmethod
-    def reset_thread_pool( cls, num_workers = multiprocessing.cpu_count() ):
+    def reset_thread_pool( cls, num_workers = min(multiprocessing.cpu_count(), 8) ):
         """
         Change the number of threads allocated to the request system.
+
+        :param num_workers: How many threads to create in the threadpool.
+                            Note: Beyond a certain point, we don't benefit from extra
+                            workers, even on machines with many CPUs.
+                            For more details, see:
+                            https://github.com/ilastik/ilastik/issues/1458
 
         As a special case, you may set ``num_workers`` to 0.  
         In that case, the normal thread pool is not used at all.  
