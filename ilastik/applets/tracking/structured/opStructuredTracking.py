@@ -9,7 +9,7 @@ from ilastik.applets.tracking.conservation.opConservationTracking import OpConse
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
-from hytra.util.progressbar import DefaultProgressVisitor, CommandLineProgressVisitor
+from ilastik.utility.gui.progress import DefaultProgressVisitor, CommandLineProgressVisitor
 
 import logging
 logger = logging.getLogger(__name__)
@@ -125,7 +125,7 @@ class OpStructuredTracking(OpConservationTracking):
             emptyCrop = self.Annotations.value[crop]["divisions"]=={} and self.Annotations.value[crop]["labels"]=={}
             if emptyCrop and not withBatchProcessing:
                 gui._criticalMessage("Error: Weights can not be calculated because training annotations for crop {} are missing. ".format(crop) +\
-                                  "Go back to Training applet and Save your training for each crop.")
+                                  "Go back to Training applet and train on each crop.")
             emptyAnnotations = emptyAnnotations or emptyCrop
 
         if emptyAnnotations:
@@ -197,8 +197,8 @@ class OpStructuredTracking(OpConservationTracking):
 
                     if not cropKey in self.Annotations.value.keys():
                         if not withBatchProcessing:
-                            gui._criticalMessage("You have not trained or saved your training for " + str(cropKey) + \
-                                              ". \nGo back to the Training applet and save all your training!")
+                            gui._criticalMessage("You have not trained your training for " + str(cropKey) + \
+                                              ". \nGo back to the Training applet and train on all crops!")
                         return [self.DetectionWeight.value, self.DivisionWeight.value, self.TransitionWeight.value, self.AppearanceWeight.value, self.DisappearanceWeight.value]
 
                     crop = self.Annotations.value[cropKey]

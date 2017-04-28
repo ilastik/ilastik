@@ -26,7 +26,7 @@ from hytra.core.ilastikmergerresolver import IlastikMergerResolver
 from hytra.core.probabilitygenerator import ProbabilityGenerator
 from hytra.core.probabilitygenerator import Traxel
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
-from hytra.util.progressbar import DefaultProgressVisitor, CommandLineProgressVisitor
+from ilastik.utility.gui.progress import DefaultProgressVisitor, CommandLineProgressVisitor
 
 import vigra
 
@@ -34,11 +34,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 import dpct
+WITH_ILP=False
 try:
     import multiHypoTracking_with_cplex as mht
+    WITH_ILP = True
 except ImportError:
     try:
         import multiHypoTracking_with_gurobi as mht
+        WITH_ILP = True
     except ImportError:
         logger.warning("Could not find any ILP solver")
 
@@ -257,18 +260,31 @@ class OpConservationTracking(Operator):
                                    time_range[-1]+1,
                                    scales)
 
-        hypothesesGraph = IlastikHypothesesGraph(
-            probabilityGenerator=traxelstore,
-            timeRange=(time_range[0],time_range[-1]+1),
-            maxNumObjects=maxObj,
-            numNearestNeighbors=max_nearest_neighbors,
-            fieldOfView=fieldOfView,
-            withDivisions=withDivisions,
-            maxNeighborDistance=maxDist,
-            divisionThreshold=divThreshold,
-            borderAwareWidth=borderAwareWidth,
-            progressVisitor=self.progressVisitor
-        )
+        if WITH_ILP:
+            hypothesesGraph = IlastikHypothesesGraph(
+                probabilityGenerator=traxelstore,
+                timeRange=(time_range[0],time_range[-1]+1),
+                maxNumObjects=maxObj,
+                numNearestNeighbors=max_nearest_neighbors,
+                fieldOfView=fieldOfView,
+                withDivisions=withDivisions,
+                maxNeighborDistance=maxDist,
+                divisionThreshold=divThreshold,
+                borderAwareWidth=borderAwareWidth
+            )
+        else:
+            hypothesesGraph = IlastikHypothesesGraph(
+                probabilityGenerator=traxelstore,
+                timeRange=(time_range[0],time_range[-1]+1),
+                maxNumObjects=maxObj,
+                numNearestNeighbors=max_nearest_neighbors,
+                fieldOfView=fieldOfView,
+                withDivisions=withDivisions,
+                maxNeighborDistance=maxDist,
+                divisionThreshold=divThreshold,
+                borderAwareWidth=borderAwareWidth,
+                progressVisitor=self.progressVisitor
+            )
         return hypothesesGraph
     
     def _resolveMergers(self, hypothesesGraph, model):
