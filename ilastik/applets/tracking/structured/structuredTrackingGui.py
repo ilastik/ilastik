@@ -20,7 +20,6 @@ from ilastik.utility import bind
 
 from lazyflow.request.request import Request
 
-from hytra.util.progressbar import DefaultProgressVisitor
 from ilastik.utility.gui.progress import GuiProgressVisitor
 
 logger = logging.getLogger(__name__)
@@ -252,7 +251,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.solverComboBox.addItems(availableSolvers)
         parameters = self.topLevelOperatorView.Parameters.value
         if 'solver' in parameters.keys() and parameters['solver'] in availableSolvers:
-            print "setting solver automagically",parameters['solver']
             self._drawer.solverComboBox.setCurrentIndex(availableSolvers.index(parameters['solver']))
 
         return self._drawer
@@ -466,6 +464,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self.applet.appletStateUpdateRequested.emit()
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during learning.  See traceback above.\n")
+
+            if self.progressWindow is not None:
+                self.progressWindow.onTrackDone()
 
         req = Request( _learn )
         req.notify_failed( _handle_failure )
