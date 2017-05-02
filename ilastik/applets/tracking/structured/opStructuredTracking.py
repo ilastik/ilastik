@@ -22,6 +22,19 @@ except ImportError:
     except ImportError:
         logger.warning("Could not find any ILP solver")
 
+try:
+    import hytra
+    WITH_HYTRA = True
+except ImportError as e:
+    WITH_HYTRA = False
+
+if WITH_HYTRA:
+    from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
+else:
+    # Use old PgmLink tracking operator if we can't import Hytra (When OS is Windows)
+    from ilastik.applets.tracking.conservation.opConservationTrackingPgmLink import OpConservationTrackingPgmLink as OpConservationTracking
+    logger.info("Using old conservation tracking workflow (PgmLink)")
+
 class OpStructuredTracking(OpConservationTracking):
     Crops = InputSlot()
     Labels = InputSlot(stype=Opaque, rtype=List)
