@@ -63,6 +63,12 @@ class OpIIBoostFeatureSelection(Operator):
     CachedOutputImage = OutputSlot()
 
     def __init__(self, filter_implementation, *args, **kwargs):
+        # Schematic for cached images is as follows.
+        #
+        # InputImage -> opFeatureSelection -> opIntegralImage_from_cache -> opIntegralImageCache ---
+        #           \                                                                               `-- (stacked via execute) -> CachedOutputImage
+        #            `-> opHessianEigenvectors -> opConvertToChannels -> opHessianEigenvectorCache -/ 
+        
         super( OpIIBoostFeatureSelection, self ).__init__(*args, **kwargs)
         self.opFeatureSelection = OpFeatureSelection(filter_implementation, parent=self)
         
