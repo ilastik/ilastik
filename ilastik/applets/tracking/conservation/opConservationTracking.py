@@ -352,12 +352,12 @@ class OpConservationTracking(Operator):
             resolvedMergersDict = mergerResolver.run()
         return resolvedMergersDict
 
-    def raiseException(progressWindow, str):
+    def raiseException(self, progressWindow, str):
         if progressWindow is not None:
             progressWindow.onTrackDone()
         raise Exception (str)
 
-    def raiseDatasetConstraintError(progressWindow, titleStr, str):
+    def raiseDatasetConstraintError(self, progressWindow, titleStr, str):
         if progressWindow is not None:
             progressWindow.onTrackDone()
         raise DatasetConstraintError(titleStr, str)
