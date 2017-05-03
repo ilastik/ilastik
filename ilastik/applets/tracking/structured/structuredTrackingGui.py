@@ -543,7 +543,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             ndim=3
             if (to_z - from_z == 0):
                 ndim=2
-            
+
             try:
                 self.mainOperator.track(
                     time_range = self.time_range,
@@ -600,6 +600,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
             self._drawer.TrackButton.setEnabled(True)
+
+            if self.progressWindow is not None:
+                self.progressWindow.onTrackDone()
 
         req = Request( _track )
         req.notify_failed( _handle_failure )

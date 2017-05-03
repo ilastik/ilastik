@@ -352,6 +352,16 @@ class OpConservationTracking(Operator):
             resolvedMergersDict = mergerResolver.run()
         return resolvedMergersDict
 
+    def raiseException(progressWindow, str):
+        if progressWindow is not None:
+            progressWindow.onTrackDone()
+        raise Exception (str)
+
+    def raiseDatasetConstraintError(progressWindow, titleStr, str):
+        if progressWindow is not None:
+            progressWindow.onTrackDone()
+        raise DatasetConstraintError(titleStr, str)
+
     def track(self,
             time_range,
             x_range,
@@ -397,7 +407,7 @@ class OpConservationTracking(Operator):
         self.progressVisitor=progressVisitor
 
         if not self.Parameters.ready():
-            raise Exception("Parameter slot is not ready")
+            self.raiseException(self.progressWindow, "Parameter slot is not ready")
         
         # it is assumed that the self.Parameters object is changed only at this
         # place (ugly assumption). Therefore we can track any changes in the
@@ -447,13 +457,13 @@ class OpConservationTracking(Operator):
         
         if withClassifierPrior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
-                raise DatasetConstraintError('Tracking', 'Classifier not ready yet. Did you forget to train the Object Count Classifier?')
+                self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'Classifier not ready yet. Did you forget to train the Object Count Classifier?')
             if not self.NumLabels.ready() or self.NumLabels.value < (maxObj + 1):
-                raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
+                self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
                     'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' +\
                     'one training example for each class.')
             if len(self.DetectionProbabilities([0]).wait()[0][0]) < (maxObj + 1):
-                raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
+                self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
                     'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' +\
                     'one training example for each class.')
 

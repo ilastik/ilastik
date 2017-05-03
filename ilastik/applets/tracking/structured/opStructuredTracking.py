@@ -240,7 +240,7 @@ class OpStructuredTracking(OpConservationTracking):
                                         logger.info("Your track count for object {} in time frame {} is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(label,time,trackCount,trackSet,maxObj))
                                         logger.info("Either remove track(s) from this object or train the object count classifier with more labels!")
                                         maxObjOK = False
-                                        raise DatasetConstraintError('Structured Learning', "Your track count for object "+str(label)+" in time frame " +str(time)+ " equals "+str(trackCount)+"=|"+str(trackSet)+"|," + \
+                                        self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', "Your track count for object "+str(label)+" in time frame " +str(time)+ " equals "+str(trackCount)+"=|"+str(trackSet)+"|," + \
                                                 " which is greater than the maximum object number "+str(maxObj)+" defined by object count classifier! " + \
                                                 "Either remove track(s) from this object or train the object count classifier with more labels!")
 
@@ -253,7 +253,7 @@ class OpStructuredTracking(OpConservationTracking):
                                         # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
                                         type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
                                         if type == None:
-                                            raise DatasetConstraintError('Structured Learning', mergeMsgStr)
+                                            self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
 
                                         elif type[0] in ["LAST", "INTERMEDIATE"]:
 
@@ -266,7 +266,7 @@ class OpStructuredTracking(OpConservationTracking):
                                                 logger.info("Your track count for transition ( {},{} ) ---> ( {},{} ) is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(previous_label,time-1,label,time,trackCountIntersection,intersectionSet,maxObj))
                                                 logger.info("Either remove track(s) from these objects or train the object count classifier with more labels!")
                                                 maxObjOK = False
-                                                raise DatasetConstraintError('Structured Learning', "Your track count for transition ("+str(previous_label)+","+str(time-1)+") ---> ("+str(label)+","+str(time)+") is "+str(trackCountIntersection)+"=|"+str(intersectionSet)+"|, " + \
+                                                self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', "Your track count for transition ("+str(previous_label)+","+str(time-1)+") ---> ("+str(label)+","+str(time)+") is "+str(trackCountIntersection)+"=|"+str(intersectionSet)+"|, " + \
                                                         "which is greater than maximum object number "+str(maxObj)+" defined by object count classifier!" + \
                                                         "Either remove track(s) from these objects or train the object count classifier with more labels!")
 
@@ -286,7 +286,7 @@ class OpStructuredTracking(OpConservationTracking):
                                                 break
 
                                     if type == None:
-                                        raise DatasetConstraintError('Structured Learning', mergeMsgStr)
+                                        self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
 
                                     elif type[0] in ["FIRST", "LAST", "INTERMEDIATE", "SINGLETON(FIRST_LAST)"]:
                                         if (time, int(label)) in hypothesesGraph._graph.node.keys():

@@ -217,7 +217,7 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         self.progressVisitor=progressVisitor
 
         if not self.Parameters.ready():
-            raise Exception("Parameter slot is not ready")
+            self.raiseException(self.progressWindow, "Parameter slot is not ready")
         
         # it is assumed that the self.Parameters object is changed only at this
         # place (ugly assumption). Therefore we can track any changes in the
@@ -255,13 +255,13 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         
         if withClassifierPrior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
-                raise DatasetConstraintError('Tracking', 'Classifier not ready yet. Did you forget to train the Object Count Classifier?')
+                self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'Classifier not ready yet. Did you forget to train the Object Count Classifier?')
             if not self.NumLabels.ready() or self.NumLabels.value != (maxObj + 1):
-                raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'+\
+                self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'+\
                     'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least' +\
                     'one training example for each class.')
             if len(self.DetectionProbabilities([0]).wait()[0][0]) != (maxObj + 1):
-                raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'+\
+                self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'+\
                     'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least' +\
                     'one training example for each class.')
         
@@ -279,8 +279,8 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         self.progressVisitor.showProgress(1)
 
         if empty_frame:
-            raise DatasetConstraintError('Tracking', 'Can not track frames with 0 objects, abort.')
-              
+            self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'Can not track frames with 0 objects, abort.')
+
         
         if avgSize[0] > 0:
             median_obj_size = avgSize
@@ -525,13 +525,13 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
 
         except Exception as e:
             if trainingToHardConstraints:
-                raise Exception, 'Tracking: Your training can not be extended to a feasible solution! ' + \
-                                 'Turn training to hard constraints off or correct your tracking training. '
+                self.raiseException (self.progressWindow, 'Tracking: Your training can not be extended to a feasible solution! ' + \
+                                 'Turn training to hard constraints off or correct your tracking training. ')
             else:
-                raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
+                self.raiseException (self.progressWindow, 'Tracking terminated unsuccessfully: ' + str(e))
 
         if len(eventsVector) == 0:
-            raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
+            self.raiseException (self.progressWindow, 'Tracking terminated unsuccessfully: Events vector has zero length.')
         
         events = get_events(eventsVector)
         self.Parameters.setValue(parameters, check_changed=False)
