@@ -483,10 +483,11 @@ class OpStructuredTracking(OpConservationTracking):
         lastTime = -1
         lastLabel = -1
         for t in range(crop["time"][0],time):
-            for label in labels[t]:
-                if track in labels[t][label]:
-                    lastTime = t
-                    lastLabel = label
+            if t in labels.keys():
+                for label in labels[t]:
+                    if track in labels[t][label]:
+                        lastTime = t
+                        lastLabel = label
         if lastTime == -1:
             type = "FIRST"
         elif lastTime < time-1:
