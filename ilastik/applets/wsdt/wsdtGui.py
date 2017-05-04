@@ -129,7 +129,7 @@ class WsdtGui(LayerViewerGui):
         membrane_size_box.setMinimum(0)
         membrane_size_box.setMaximum(1000000)
         configure_update_handlers( membrane_size_box.valueChanged, op.MinMembraneSize )
-        drawer_layout.addLayout( control_layout( "Min Membrane Size", membrane_size_box ) )
+        drawer_layout.addLayout( control_layout( "Min Boundary Size", membrane_size_box ) )
         self.membrane_size_box = membrane_size_box
 
         seed_presmoothing_box = QDoubleSpinBox()
@@ -138,7 +138,7 @@ class WsdtGui(LayerViewerGui):
         seed_presmoothing_box.setMaximum(10.0)
         seed_presmoothing_box.setSingleStep(0.1)
         configure_update_handlers( seed_presmoothing_box.valueChanged, op.SigmaMinima )
-        drawer_layout.addLayout( control_layout( "Presmooth before seeds", seed_presmoothing_box ) )
+        drawer_layout.addLayout( control_layout( "Presmooth before Seeds", seed_presmoothing_box ) )
         self.seed_presmoothing_box = seed_presmoothing_box
 
         seed_method_combo = QComboBox()
@@ -154,7 +154,7 @@ class WsdtGui(LayerViewerGui):
         watershed_presmoothing_box.setMaximum(10.0)
         watershed_presmoothing_box.setSingleStep(0.1)
         configure_update_handlers( watershed_presmoothing_box.valueChanged, op.SigmaWeights )
-        drawer_layout.addLayout( control_layout( "Presmooth before watershed", watershed_presmoothing_box ) )
+        drawer_layout.addLayout( control_layout( "Presmooth before Watershed", watershed_presmoothing_box ) )
         self.watershed_presmoothing_box = watershed_presmoothing_box
 
         superpixel_size_box = QSpinBox()
@@ -166,7 +166,7 @@ class WsdtGui(LayerViewerGui):
 
         preserve_pmaps_box = QCheckBox()
         configure_update_handlers( preserve_pmaps_box.toggled, op.PreserveMembranePmaps )
-        drawer_layout.addLayout( control_layout( "Preserve membrane probabilities", preserve_pmaps_box ) )
+        drawer_layout.addLayout( control_layout( "Preserve Boundary Probs", preserve_pmaps_box ) )
         self.preserve_pmaps_box = preserve_pmaps_box
 
         enable_debug_box = QCheckBox()
