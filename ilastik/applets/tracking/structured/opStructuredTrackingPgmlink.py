@@ -17,6 +17,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 
 import sys
 
+from ilastik.utility.gui.progress import DefaultProgressVisitor, CommandLineProgressVisitor
 
 import logging
 logger = logging.getLogger(__name__)
@@ -95,6 +96,8 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         self.appearanceWeight = 1
         self.disappearanceWeight = 1
         self.Crops.notifyReady(bind(self._updateCropsFromOperator) )
+
+        self._solver = self.parent.parent._solver
 
     def setupOutputs(self):
         super(OpStructuredTrackingPgmlink, self).setupOutputs()
@@ -202,11 +205,19 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
             max_nearest_neighbors = 1,
             force_build_hypotheses_graph = False,
             withBatchProcessing = False,
-            solverName = 'ILP'
+            solverName = 'ILP',
+            progressWindow=None,
+            progressVisitor=CommandLineProgressVisitor()
             ):
         
+        if not withBatchProcessing:
+            gui = self.parent.parent.trackingApplet._gui.currentGui()
+
+        self.progressWindow = None
+        self.progressVisitor=DefaultProgressVisitor()
+
         if not self.Parameters.ready():
-            raise Exception("Parameter slot is not ready")
+            self.raiseException(self.progressWindow, "Parameter slot is not ready")
         
         # it is assumed that the self.Parameters object is changed only at this
         # place (ugly assumption). Therefore we can track any changes in the
@@ -244,18 +255,20 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         
         if withClassifierPrior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
-                raise DatasetConstraintError('Tracking', 'Classifier not ready yet. Did you forget to train the Object Count Classifier?')
+                self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'Classifier not ready yet. Did you forget to train the Object Count Classifier?')
             if not self.NumLabels.ready() or self.NumLabels.value != (maxObj + 1):
-                raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'+\
+                self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'+\
                     'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least' +\
                     'one training example for each class.')
             if len(self.DetectionProbabilities([0]).wait()[0][0]) != (maxObj + 1):
-                raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'+\
+                self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'+\
                     'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least' +\
                     'one training example for each class.')
         
         median_obj_size = [0]
 
+        self.progressVisitor.showState("Generate traxel store")
+        self.progressVisitor.showProgress(0)
         fs, ts, empty_frame, max_traxel_id_at = self._generate_traxelstore(
             time_range, x_range, y_range, z_range,
             size_range, x_scale, y_scale, z_scale,
@@ -263,10 +276,11 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
             with_div=withDivisions,
             with_opt_correction=withOpticalCorrection,
             with_classifier_prior=withClassifierPrior)
-        
+        self.progressVisitor.showProgress(1)
+
         if empty_frame:
-            raise DatasetConstraintError('Tracking', 'Can not track frames with 0 objects, abort.')
-              
+            self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'Can not track frames with 0 objects, abort.')
+
         
         if avgSize[0] > 0:
             median_obj_size = avgSize
@@ -298,6 +312,9 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
 
         solverType = self.getPgmlinkSolverType(solverName)
 
+        self.progressVisitor.showState("Building hypotheses graph")
+        self.progressVisitor.showProgress(0)
+
         if(self.consTracker == None or graph_building_parameter_changed):# or do_build_hypotheses_graph):
 
             foundAllArcs = False;
@@ -319,8 +336,8 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
                     "none", # dump traxelstore,
                     solverType,
                     ndim)
-                hypothesesGraph = self.consTracker.buildGraph(ts, new_max_nearest_neighbors)
 
+                hypothesesGraph = self.consTracker.buildGraph(ts, new_max_nearest_neighbors)
 
                 self.features = self.ObjectFeatures(range(0,self.LabelImage.meta.shape[0])).wait()
 
@@ -418,6 +435,7 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
 
                 logger.info("max nearest neighbors={}".format(new_max_nearest_neighbors))
 
+        self.progressVisitor.showProgress(1)
         if not withBatchProcessing:
             drawer = self.parent.parent.trackingApplet._gui.currentGui()._drawer
             if new_max_nearest_neighbors > max_nearest_neighbors:
@@ -488,6 +506,9 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
                                              eventsVector)
                 self.CoordinateMap.setValue(coordinate_map)
 
+                self.progressVisitor.showState("Merger resolution")
+                self.progressVisitor.showProgress(0)
+
                 eventsVector = self.consTracker.resolve_mergers(
                     eventsVector,
                     consTrackerParameters,
@@ -500,16 +521,17 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
                     max_traxel_id_at,
                     True, # with_constraints
                     None) # TransitionClassifier
+                self.progressVisitor.showProgress(1)
 
         except Exception as e:
             if trainingToHardConstraints:
-                raise Exception, 'Tracking: Your training can not be extended to a feasible solution! ' + \
-                                 'Turn training to hard constraints off or correct your tracking training. '
+                self.raiseException (self.progressWindow, 'Tracking: Your training can not be extended to a feasible solution! ' + \
+                                 'Turn training to hard constraints off or correct your tracking training. ')
             else:
-                raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
+                self.raiseException (self.progressWindow, 'Tracking terminated unsuccessfully: ' + str(e))
 
         if len(eventsVector) == 0:
-            raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
+            self.raiseException (self.progressWindow, 'Tracking terminated unsuccessfully: Events vector has zero length.')
         
         events = get_events(eventsVector)
         self.Parameters.setValue(parameters, check_changed=False)
@@ -525,6 +547,9 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
             else:
                 self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
                     self.parent.parent.trackingApplet._gui.currentGui().tracking_colortable
+
+        if self.progressWindow is not None:
+            self.progressWindow.onTrackDone()
 
     @staticmethod
     def getPgmlinkSolverType(solverName):
@@ -769,21 +794,34 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
             z_range,
             maxObj,
             maxNearestNeighbors,
+            maxDist,
+            divThreshold,
+            scales,
+            size_range,
             withDivisions,
             borderAwareWidth,
             withClassifierPrior,
-            withBatchProcessing=False):
+            withBatchProcessing=False,
+            progressWindow=None,
+            progressVisitor=CommandLineProgressVisitor()):
 
         if not withBatchProcessing:
             gui = self.parent.parent.trackingApplet._gui.currentGui()
 
-        if self.Annotations.value == {}:
-            if not withBatchProcessing:
-                gui._criticalMessage("Error: Weights can not be calculated because there are no training annotations. " +\
-                                  "Go back to Training applet and Save your training for each crop.")
-            return
+        self.progressWindow = progressWindow
+        self.progressVisitor=progressVisitor
 
-        print "in _runStructuredLearning  <============================================"
+        emptyAnnotations = False
+        for crop in self.Annotations.value.keys():
+            emptyCrop = self.Annotations.value[crop]["divisions"]=={} and self.Annotations.value[crop]["labels"]=={}
+            if emptyCrop and not withBatchProcessing:
+                gui._criticalMessage("Error: Weights can not be calculated because training annotations for crop {} are missing. ".format(crop) +\
+                                  "Go back to Training applet and train on each crop.")
+            emptyAnnotations = emptyAnnotations or emptyCrop
+
+        if emptyAnnotations:
+            return [self.DetectionWeight.value, self.DivisionWeight.value, self.TransitionWeight.value, self.AppearanceWeight.value, self.DisappearanceWeight.value]
+
         self._updateCropsFromOperator()
         median_obj_size = [0]
 
@@ -811,7 +849,7 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         parameters['borderAwareWidth'] = borderAwareWidth
 
         foundAllArcs = False;
-        new_max_nearest_neighbors = maxNearestNeighbors-1
+        new_max_nearest_neighbors = max ([maxNearestNeighbors-1,1])
         maxObjOK = True
         parameters['maxNearestNeighbors'] = maxNearestNeighbors
         while not foundAllArcs and maxObjOK:
@@ -999,7 +1037,7 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
             maxNearestNeighbors = new_max_nearest_neighbors
             parameters['maxNearestNeighbors'] = maxNearestNeighbors
             if not withBatchProcessing:
-                self.parent.parent.trackingApplet._drawer.maxNearestNeighborsSpinBox.setValue(maxNearestNeighbors)
+                gui._drawer.maxNearestNeighborsSpinBox.setValue(maxNearestNeighbors)
 
         forbidden_cost = 0.0
         ep_gap = 0.005
@@ -1060,6 +1098,9 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
             withNonNegativeWeights
         )
 
+        self.progressVisitor.showState("Structured learning")
+        self.progressVisitor.showProgress(0)
+
         # will be needed for python defined TRANSITION function
         #structuredLearningTrackerParameters.register_transition_func(self.mainOperator.track_transition_func_no_weight)
         structuredLearningTracker.structuredLearning(structuredLearningTrackerParameters)
@@ -1067,6 +1108,8 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
             self._informationMessage ("Divisible objects are checked, but you did not annotate any divisions in your tracking training. " + \
                                  "The resulting division weight might be arbitrarily high and if there are divisions present in the dataset, " +\
                                  "they might not be present in the tracking solution.")
+
+        self.progressVisitor.showProgress(1)
 
         norm = 0
         for i in range(5):
@@ -1142,11 +1185,10 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         parameters['appearanceCost'] = self.AppearanceWeight.value
         parameters['disappearanceCost'] = self.DisappearanceWeight.value
 
-        print "-----------+------------->parameters['detWeight']",parameters['detWeight']
-        print "-----------+------------->parameters['divWeight']",parameters['divWeight']
-        print "-----------+------------->parameters['transWeight']",parameters['transWeight']
-
         self.Parameters.setValue(parameters)
+
+        if self.progressWindow is not None:
+            self.progressWindow.onTrackDone()
 
         return [self.DetectionWeight.value, self.DivisionWeight.value, self.TransitionWeight.value, self.AppearanceWeight.value, self.DisappearanceWeight.value]
 
@@ -1170,10 +1212,11 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         lastTime = -1
         lastLabel = -1
         for t in range(crop["time"][0],time):
-            for label in labels[t]:
-                if track in labels[t][label]:
-                    lastTime = t
-                    lastLabel = label
+            if t in labels.keys():
+                for label in labels[t]:
+                    if track in labels[t][label]:
+                        lastTime = t
+                        lastLabel = label
         if lastTime == -1:
             type = "FIRST"
         elif lastTime < time-1:
