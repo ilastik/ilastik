@@ -213,8 +213,8 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         if not withBatchProcessing:
             gui = self.parent.parent.trackingApplet._gui.currentGui()
 
-        self.progressWindow = progressWindow
-        self.progressVisitor=progressVisitor
+        self.progressWindow = None
+        self.progressVisitor=DefaultProgressVisitor()
 
         if not self.Parameters.ready():
             self.raiseException(self.progressWindow, "Parameter slot is not ready")
@@ -1212,10 +1212,11 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         lastTime = -1
         lastLabel = -1
         for t in range(crop["time"][0],time):
-            for label in labels[t]:
-                if track in labels[t][label]:
-                    lastTime = t
-                    lastLabel = label
+            if t in labels.keys():
+                for label in labels[t]:
+                    if track in labels[t][label]:
+                        lastTime = t
+                        lastLabel = label
         if lastTime == -1:
             type = "FIRST"
         elif lastTime < time-1:
