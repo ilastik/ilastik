@@ -44,7 +44,15 @@ dependencies:
 ## Customize test commands
 test:
   override:
-    - cd ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow/tests && ${TEST_ENV_PREFIX}/bin/nosetests --nologcapture --ignore-files=testInterpolatedFeatures.py .
+    - mkdir -p $CIRCLE_TEST_REPORTS/lazyflow-nose
+    - >
+      cd ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow/tests &&
+      ${TEST_ENV_PREFIX}/bin/nosetests
+      --nologcapture
+      --ignore-files=testInterpolatedFeatures.py
+      --with-xunit
+      --xunit-file=${CIRCLE_TEST_REPORTS}/lazyflow-nose/nosetest.out.xml
+      .
     - mkdir -p $CIRCLE_TEST_REPORTS/lazyflow-flake8
     - >
       cd ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow/ &&
