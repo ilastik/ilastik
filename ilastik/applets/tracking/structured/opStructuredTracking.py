@@ -130,8 +130,12 @@ class OpStructuredTracking(OpConservationTracking):
         if not withBatchProcessing:
             gui = self.parent.parent.trackingApplet._gui.currentGui()
 
-        self.progressWindow = progressWindow
-        self.progressVisitor=progressVisitor
+        if WITH_HYTRA:
+            self.progressWindow = progressWindow
+            self.progressVisitor=progressVisitor
+        else:
+            self.progressWindow = None
+            self.progressVisitor=DefaultProgressVisitor()
 
         emptyAnnotations = False
         for crop in self.Annotations.value.keys():

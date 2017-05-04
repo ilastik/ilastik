@@ -20,7 +20,7 @@ from ilastik.utility import bind
 
 from lazyflow.request.request import Request
 
-from ilastik.utility.gui.progress import GuiProgressVisitor
+from ilastik.utility.gui.progress import GuiProgressVisitor, DefaultProgressVisitor
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -425,10 +425,14 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         # insert energies
         # structured learning
 
-        self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
-        self.progressWindow.run()
-        self.progressWindow.show()
-        self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        if WITH_HYTRA:
+            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+            self.progressWindow.run()
+            self.progressWindow.show()
+            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        else:
+            self.progressWindow = None
+            self.progressVisitor = DefaultProgressVisitor()
 
         def _learn():
             self.applet.busy = True
@@ -493,10 +497,14 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         if withTracklets:
             numStages += 3 # initializing tracklet graph, finding tracklets, contracting edges in tracklet graph
 
-        self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
-        self.progressWindow.run()
-        self.progressWindow.show()
-        self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        if WITH_HYTRA:
+            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+            self.progressWindow.run()
+            self.progressWindow.show()
+            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        else:
+            self.progressWindow = None
+            self.progressVisitor = DefaultProgressVisitor()
 
         def _track():
             self.applet.busy = True

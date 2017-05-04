@@ -34,16 +34,20 @@ import logging
 logger = logging.getLogger(__name__)
 
 import dpct
-WITH_ILP=False
 try:
     import multiHypoTracking_with_cplex as mht
-    WITH_ILP = True
 except ImportError:
     try:
         import multiHypoTracking_with_gurobi as mht
-        WITH_ILP = True
     except ImportError:
         logger.warning("Could not find any ILP solver")
+
+try:
+    import hytra
+    WITH_HYTRA = True
+
+except ImportError as e:
+    WITH_HYTRA = False
 
 class OpConservationTracking(Operator):
     LabelImage = InputSlot()
@@ -260,19 +264,7 @@ class OpConservationTracking(Operator):
                                    time_range[-1]+1,
                                    scales)
 
-        if WITH_ILP:
-            hypothesesGraph = IlastikHypothesesGraph(
-                probabilityGenerator=traxelstore,
-                timeRange=(time_range[0],time_range[-1]+1),
-                maxNumObjects=maxObj,
-                numNearestNeighbors=max_nearest_neighbors,
-                fieldOfView=fieldOfView,
-                withDivisions=withDivisions,
-                maxNeighborDistance=maxDist,
-                divisionThreshold=divThreshold,
-                borderAwareWidth=borderAwareWidth
-            )
-        else:
+        if WITH_HYTRA:
             hypothesesGraph = IlastikHypothesesGraph(
                 probabilityGenerator=traxelstore,
                 timeRange=(time_range[0],time_range[-1]+1),
@@ -284,6 +276,18 @@ class OpConservationTracking(Operator):
                 divisionThreshold=divThreshold,
                 borderAwareWidth=borderAwareWidth,
                 progressVisitor=self.progressVisitor
+            )
+        else:
+            hypothesesGraph = IlastikHypothesesGraph(
+                probabilityGenerator=traxelstore,
+                timeRange=(time_range[0],time_range[-1]+1),
+                maxNumObjects=maxObj,
+                numNearestNeighbors=max_nearest_neighbors,
+                fieldOfView=fieldOfView,
+                withDivisions=withDivisions,
+                maxNeighborDistance=maxDist,
+                divisionThreshold=divThreshold,
+                borderAwareWidth=borderAwareWidth
             )
         return hypothesesGraph
     
@@ -403,8 +407,12 @@ class OpConservationTracking(Operator):
         Main conservation tracking function. Runs tracking solver, generates hypotheses graph, and resolves mergers.
         """
 
-        self.progressWindow = progressWindow
-        self.progressVisitor=progressVisitor
+        if WITH_HYTRA:
+            self.progressWindow = progressWindow
+            self.progressVisitor=progressVisitor
+        else:
+            self.progressWindow = None
+            self.progressVisitor = DefaultProgressVisitor()
 
         if not self.Parameters.ready():
             self.raiseException(self.progressWindow, "Parameter slot is not ready")
