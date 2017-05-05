@@ -20,11 +20,33 @@ from ilastik.utility import bind
 
 from lazyflow.request.request import Request
 
-from hytra.util.progressbar import DefaultProgressVisitor
-from ilastik.utility.gui.progress import GuiProgressVisitor
+from ilastik.utility.gui.progress import GuiProgressVisitor, DefaultProgressVisitor
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
+
+try:
+    import hytra
+    WITH_HYTRA = True
+except ImportError as e:
+    WITH_HYTRA = False
+
+if WITH_HYTRA:
+    # Import solvers for HyTra
+    import dpct
+    try:
+        import multiHypoTracking_with_cplex as mht
+    except ImportError:
+        try:
+            import multiHypoTracking_with_gurobi as mht
+        except ImportError:
+            logger.warning("Could not find any ILP solver")
+else:
+    # Try to import pgmlink for backward compatibility with old pipeline
+    try:
+        import pgmlink
+    except:
+        import pgmlinkNoIlpSolver as pgmlink
 
 class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     
@@ -224,6 +246,42 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.topLevelOperatorView._appearanceWeight = self._appearanceWeight
         self.topLevelOperatorView._disappearanceWeight = self._disappearanceWeight
 
+        self._drawer.solverComboBox.clear()
+        availableSolvers = self.getAvailableTrackingSolverTypes()
+        self._drawer.solverComboBox.addItems(availableSolvers)
+        parameters = self.topLevelOperatorView.Parameters.value
+        if 'solver' in parameters.keys() and parameters['solver'] in availableSolvers:
+            self._drawer.solverComboBox.setCurrentIndex(availableSolvers.index(parameters['solver']))
+
+        return self._drawer
+
+    @staticmethod
+    def getAvailableTrackingSolverTypes():
+        solvers = []
+        if WITH_HYTRA:
+            try:
+                if dpct:
+                    solvers.append('Flow-based')
+            except Exception as e:
+                logger.info(str(e))
+
+            try:
+                if mht:
+                    solvers.append('ILP')
+            except Exception as e:
+                logger.info(str(e))
+
+        else:
+            if hasattr(pgmlink.ConsTrackingSolverType, "CplexSolver"):
+                solvers.append("ILP")
+
+            if hasattr(pgmlink.ConsTrackingSolverType, "DynProgSolver"):
+                solvers.append("Magnusson")
+
+            if hasattr(pgmlink.ConsTrackingSolverType, "FlowSolver"):
+                solvers.append("Flow-based")
+        return solvers
+
     def _onOnesButtonPressed(self):
         val = math.sqrt(1.0/5)
         self.topLevelOperatorView.DivisionWeight.setValue(val)
@@ -367,10 +425,14 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         # insert energies
         # structured learning
 
-        self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
-        self.progressWindow.run()
-        self.progressWindow.show()
-        self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        if WITH_HYTRA:
+            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+            self.progressWindow.run()
+            self.progressWindow.show()
+            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        else:
+            self.progressWindow = None
+            self.progressVisitor = DefaultProgressVisitor()
 
         def _learn():
             self.applet.busy = True
@@ -407,6 +469,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during learning.  See traceback above.\n")
 
+            if self.progressWindow is not None:
+                self.progressWindow.onTrackDone()
+
         req = Request( _learn )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
@@ -432,10 +497,14 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         if withTracklets:
             numStages += 3 # initializing tracklet graph, finding tracklets, contracting edges in tracklet graph
 
-        self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
-        self.progressWindow.run()
-        self.progressWindow.show()
-        self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        if WITH_HYTRA:
+            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+            self.progressWindow.run()
+            self.progressWindow.show()
+            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        else:
+            self.progressWindow = None
+            self.progressVisitor = DefaultProgressVisitor()
 
         def _track():
             self.applet.busy = True
@@ -477,12 +546,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             appearanceCost = self._drawer.appearanceBox.value()
             disappearanceCost = self._drawer.disappearanceBox.value()
 
-            solverName = self.topLevelOperatorView._solver
+            solverName = self._drawer.solverComboBox.currentText()
 
             ndim=3
             if (to_z - from_z == 0):
                 ndim=2
-            
+
             try:
                 self.mainOperator.track(
                     time_range = self.time_range,
@@ -539,6 +608,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
             self._drawer.TrackButton.setEnabled(True)
+
+            if self.progressWindow is not None:
+                self.progressWindow.onTrackDone()
 
         req = Request( _track )
         req.notify_failed( _handle_failure )
