@@ -490,7 +490,7 @@ class OpConservationTracking(Operator):
         detWeight = 10.0 # FIXME: Should we store this weight in the parameters slot?
         weights = trackingGraph.weightsListToDict([transWeight, detWeight, divWeight, appearance_cost, disappearance_cost])
 
-        stepStr = "Tracking solver"
+        stepStr = solverName + " tracking solver"
         self.progressVisitor.showState(stepStr)
         self.progressVisitor.showProgress(0)
 
