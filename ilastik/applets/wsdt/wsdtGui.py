@@ -113,6 +113,7 @@ class WsdtGui(LayerViewerGui):
         populate_channel_menu()
         op.Input.notifyMetaChanged( populate_channel_menu )
         self.__cleanup_fns.append( partial( op.Input.unregisterMetaChanged, populate_channel_menu ) )
+        channel_button.setToolTip("Boundary channel index in the probability map")
         drawer_layout.addLayout( control_layout( "Input Channel", channel_button ) )
         self.channel_button = channel_button
 
@@ -122,6 +123,7 @@ class WsdtGui(LayerViewerGui):
         threshold_box.setMaximum(1.0)
         threshold_box.setSingleStep(0.1)
         configure_update_handlers( threshold_box.valueChanged, op.Pmin )
+        threshold_box.setToolTip("Boundary probability threshold")
         drawer_layout.addLayout( control_layout( "Threshold", threshold_box ) )
         self.threshold_box = threshold_box
 
@@ -129,6 +131,7 @@ class WsdtGui(LayerViewerGui):
         membrane_size_box.setMinimum(0)
         membrane_size_box.setMaximum(1000000)
         configure_update_handlers( membrane_size_box.valueChanged, op.MinMembraneSize )
+        membrane_size_box.setToolTip("Size filter for boundary pieces, in pixels")
         drawer_layout.addLayout( control_layout( "Min Boundary Size", membrane_size_box ) )
         self.membrane_size_box = membrane_size_box
 
@@ -138,6 +141,7 @@ class WsdtGui(LayerViewerGui):
         seed_presmoothing_box.setMaximum(10.0)
         seed_presmoothing_box.setSingleStep(0.1)
         configure_update_handlers( seed_presmoothing_box.valueChanged, op.SigmaMinima )
+        seed_presmoothing_box.setToolTip("Smooth the distance transform map with this sigma")
         drawer_layout.addLayout( control_layout( "Presmooth before Seeds", seed_presmoothing_box ) )
         self.seed_presmoothing_box = seed_presmoothing_box
 
@@ -145,6 +149,7 @@ class WsdtGui(LayerViewerGui):
         seed_method_combo.addItem("Connected")
         seed_method_combo.addItem("Clustered")
         configure_update_handlers( seed_method_combo.currentIndexChanged, op.GroupSeeds )
+        seed_method_combo.setToolTip("Connected: 4-neighborhood in 2D, 6 in 3D. Clustered: 8-neighborhood in 2D, 26 in 3D")
         drawer_layout.addLayout( control_layout( "Seed Labeling", seed_method_combo ) )
         self.seed_method_combo = seed_method_combo
 
@@ -152,12 +157,14 @@ class WsdtGui(LayerViewerGui):
         superpixel_size_box.setMinimum(0)
         superpixel_size_box.setMaximum(1000000)
         configure_update_handlers( superpixel_size_box.valueChanged, op.MinSegmentSize )
+        superpixel_size_box.setToolTip("Minimal size of a superpixel")
         drawer_layout.addLayout( control_layout( "Min Superpixel Size", superpixel_size_box ) )
         self.superpixel_size_box = superpixel_size_box
 
         preserve_pmaps_box = QCheckBox()
         configure_update_handlers( preserve_pmaps_box.toggled, op.PreserveMembranePmaps )
-        drawer_layout.addLayout( control_layout( "Preserve Boundary Probs", preserve_pmaps_box ) )
+        preserve_pmaps_box.setToolTip("Preserve thin structures. Use that option when some of your foreground objects have long and thin parts")
+        drawer_layout.addLayout( control_layout( "Preserve Thin Structures", preserve_pmaps_box ) )
         self.preserve_pmaps_box = preserve_pmaps_box
 
         enable_debug_box = QCheckBox()
