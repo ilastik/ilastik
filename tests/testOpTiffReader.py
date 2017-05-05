@@ -3,6 +3,7 @@ import shutil
 import contextlib
 
 import numpy
+from numpy.testing import assert_array_equal
 import vigra
 
 from lazyflow.graph import Graph
@@ -58,6 +59,23 @@ class TestOpTiffReader(object):
             op.Filepath.setValue( tiff_path )
             assert op.Output.ready()
             assert (op.Output[20:30, 50:100, 50:150].wait() == data[20:30, 50:100, 50:150]).all()
+
+    def test_unknown_axes_tags(self):
+        """
+        This test is related to https://github.com/ilastik/ilastik/issues/1487
+
+        Here, we generate a 3D tiff file with scikit-learn and try to read it
+        """
+        data = numpy.random.randint(0, 256, (10, 20, 30)).astype(numpy.uint8)
+        import skimage.io
+        with tempdir() as d:
+            tiff_path = '{}/myfile.tiff'.format(d)
+            skimage.io.imsave(tiff_path, data, 'tifffile')
+            op = OpTiffReader(graph=Graph())
+            op.Filepath.setValue(tiff_path)
+            assert op.Output.ready()
+            assert_array_equal(data, op.Output[:].wait())
+            assert op.Output.meta.axistags == vigra.defaultAxistags('zyx')
 
 if __name__ == "__main__":
     import sys
