@@ -149,7 +149,7 @@ class WsdtGui(LayerViewerGui):
         seed_method_combo.addItem("Connected")
         seed_method_combo.addItem("Clustered")
         configure_update_handlers( seed_method_combo.currentIndexChanged, op.GroupSeeds )
-        seed_method_combo.setToolTip("Connected: 4-neighborhood in 2D, 6 in 3D. Clustered: 8-neighborhood in 2D, 26 in 3D")
+        seed_method_combo.setToolTip("Connected: combine directly adjacent pixels into seeds (more superpixels). Clustered: group pixels into seeds by distance heuristic (less superpixels)")
         drawer_layout.addLayout( control_layout( "Seed Labeling", seed_method_combo ) )
         self.seed_method_combo = seed_method_combo
 
