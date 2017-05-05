@@ -147,15 +147,6 @@ class WsdtGui(LayerViewerGui):
         configure_update_handlers( seed_method_combo.currentIndexChanged, op.GroupSeeds )
         drawer_layout.addLayout( control_layout( "Seed Labeling", seed_method_combo ) )
         self.seed_method_combo = seed_method_combo
-        
-        watershed_presmoothing_box = QDoubleSpinBox()
-        watershed_presmoothing_box.setDecimals(1)
-        watershed_presmoothing_box.setMinimum(0.0)
-        watershed_presmoothing_box.setMaximum(10.0)
-        watershed_presmoothing_box.setSingleStep(0.1)
-        configure_update_handlers( watershed_presmoothing_box.valueChanged, op.SigmaWeights )
-        drawer_layout.addLayout( control_layout( "Presmooth before Watershed", watershed_presmoothing_box ) )
-        self.watershed_presmoothing_box = watershed_presmoothing_box
 
         superpixel_size_box = QSpinBox()
         superpixel_size_box.setMinimum(0)
@@ -221,7 +212,6 @@ class WsdtGui(LayerViewerGui):
             self.membrane_size_box.setValue( op.MinMembraneSize.value )
             self.superpixel_size_box.setValue( op.MinSegmentSize.value )
             self.seed_presmoothing_box.setValue( op.SigmaMinima.value )
-            self.watershed_presmoothing_box.setValue( op.SigmaWeights.value )
             self.seed_method_combo.setCurrentIndex( int(op.GroupSeeds.value) )
             self.preserve_pmaps_box.setChecked( op.PreserveMembranePmaps.value )
             self.enable_debug_box.setChecked( op.EnableDebugOutputs.value )
@@ -244,7 +234,6 @@ class WsdtGui(LayerViewerGui):
             op.MinMembraneSize.setValue( self.membrane_size_box.value() )
             op.MinSegmentSize.setValue( self.superpixel_size_box.value() )
             op.SigmaMinima.setValue( self.seed_presmoothing_box.value() )
-            op.SigmaWeights.setValue( self.watershed_presmoothing_box.value() )
             op.GroupSeeds.setValue( bool(self.seed_method_combo.currentIndex()) )
             op.PreserveMembranePmaps.setValue( self.preserve_pmaps_box.isChecked() )
             op.EnableDebugOutputs.setValue( self.enable_debug_box.isChecked() )
