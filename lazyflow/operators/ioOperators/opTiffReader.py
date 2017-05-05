@@ -112,6 +112,24 @@ class OpTiffReader(Operator):
                     raise RuntimeError("Image has an 'I' axis, and I don't know what it represents. "
                                        "(Separate T,Z,C axes already exist.)")
             
+            if 'q' in axes:
+                # in case of unknown axes, assume default axis order TZYXC
+                if not all(elem=='q' for elem in axes):
+                    raise RuntimeError(
+                        "Image has SOME unknown ('Q') axes, which is currently not supported. ")
+                logger.warning('Unknown axistags detected - assuming default axis order.')
+                axisorders = {
+                    2: 'yx',
+                    3: 'zyx',
+                    4: 'zyxc',
+                    5: 'tzyxc'
+                }
+                ndims = len(axes)
+                axes = axisorders[ndims]
+                if ndims == 3 and shape[2] <= 4:
+                    # Special case: If the 3rd dim is small, assume it's 'c', not 'z'
+                    axisorder = 'yxc'
+
             self.Output.meta.shape = shape
             self.Output.meta.axistags = vigra.defaultAxistags( axes )
             self.Output.meta.dtype = numpy.dtype(dtype_code).type
