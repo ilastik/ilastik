@@ -75,7 +75,7 @@ class TestOpTiffReader(object):
         # skimage are >= 0.13.0 for all flavours of ilastik
         # scikit image version which includes tifffile changes that enable the
         # saving of metadata, in particular axis-tags
-        skimage_version_ref = version.StrictVersion("1.13.0")
+        skimage_version_ref = version.StrictVersion("0.13.0")
         skimage_version = version.StrictVersion(skimage.__version__)
 
         with tempdir() as d:
