@@ -66,7 +66,6 @@ class TestOpTiffReader(object):
 
         Here, we generate a 3D tiff file with scikit-learn and try to read it
         """
-        data = numpy.random.randint(0, 256, (10, 20, 30)).astype(numpy.uint8)
         import tifffile
         from distutils import version
 
@@ -77,24 +76,33 @@ class TestOpTiffReader(object):
         tifffile_version_ref = version.StrictVersion('0.7.0')
         tifffile_version = version.StrictVersion(tifffile.__version__)
 
+        testshapes = [
+            ((10, 20), 'yx'),
+            ((10, 20, 30), 'zyx'),
+            ((10, 20, 30, 3), 'zyxc'),
+            ((5, 10, 20, 30, 3), 'tzyxc')
+        ]
+
         with tempdir() as d:
-            tiff_path = '{}/myfile.tiff'.format(d)
-            # TODO(Dominik) remove version checking once dependencies for
-            # skimage are >= 0.13.0 for all flavours of ilastik
-            if ((tifffile_version > tifffile_version_ilastik_ref) or
-                    (tifffile_version < tifffile_version_ref)):
-                tifffile.imsave(tiff_path, data)
-            else:
-                tifffile.imsave(
-                    tiff_path,
-                    data,
-                    metadata={"axes": "QQQ"}
-                )
-            op = OpTiffReader(graph=Graph())
-            op.Filepath.setValue(tiff_path)
-            assert op.Output.ready()
-            assert_array_equal(data, op.Output[:].wait())
-            assert op.Output.meta.axistags == vigra.defaultAxistags('zyx')
+            for test_shape, test_axes in testshapes:
+                data = numpy.random.randint(0, 256, test_shape).astype(numpy.uint8)
+                tiff_path = '{}/myfile_{}.tiff'.format(d, test_axes)
+                # TODO(Dominik) remove version checking once dependencies for
+                # skimage are >= 0.13.0 for all flavours of ilastik
+                if ((tifffile_version > tifffile_version_ilastik_ref) or
+                        (tifffile_version < tifffile_version_ref)):
+                    tifffile.imsave(tiff_path, data)
+                else:
+                    tifffile.imsave(
+                        tiff_path,
+                        data,
+                        metadata={"axes": "QQQ"}
+                    )
+                op = OpTiffReader(graph=Graph())
+                op.Filepath.setValue(tiff_path)
+                assert op.Output.ready()
+                assert_array_equal(data, op.Output[:].wait())
+                assert op.Output.meta.axistags == vigra.defaultAxistags(test_axes)
 
 if __name__ == "__main__":
     import sys
