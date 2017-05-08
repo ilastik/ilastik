@@ -16,6 +16,7 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.request import RequestLock
+from lazyflow.utility.helpers import get_default_axisordering
 
 import logging
 logger = logging.getLogger(__name__)
@@ -118,17 +119,7 @@ class OpTiffReader(Operator):
                     raise RuntimeError(
                         "Image has SOME unknown ('Q') axes, which is currently not supported. ")
                 logger.warning('Unknown axistags detected - assuming default axis order.')
-                axisorders = {
-                    2: 'yx',
-                    3: 'zyx',
-                    4: 'zyxc',
-                    5: 'tzyxc'
-                }
-                ndims = len(axes)
-                axes = axisorders[ndims]
-                if ndims == 3 and shape[2] <= 4:
-                    # Special case: If the 3rd dim is small, assume it's 'c', not 'z'
-                    axisorder = 'yxc'
+                axes = get_default_axisordering(shape)
 
             self.Output.meta.shape = shape
             self.Output.meta.axistags = vigra.defaultAxistags( axes )

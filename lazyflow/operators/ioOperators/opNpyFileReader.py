@@ -20,6 +20,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.utility.helpers import get_default_axisordering
 
 import vigra
 import numpy
@@ -81,21 +82,9 @@ class OpNpyFileReader(Operator):
                     "{fileName}".format(
                         fileName=fileName))
 
-        axisorders = { 2 : 'yx',
-                       3 : 'zyx',
-                       4 : 'zyxc',
-                       5 : 'tzyxc' }
-
         shape = rawNumpyArray.shape
-        ndims = len( shape )
-        assert ndims != 0, "OpNpyFileReader: Support for 0-D data not yet supported"
-        assert ndims != 1, "OpNpyFileReader: Support for 1-D data not yet supported"
-        assert ndims <= 5, "OpNpyFileReader: No support for data with more than 5 dimensions."
 
-        axisorder = axisorders[ndims]
-        if ndims == 3 and shape[2] <= 4:
-            # Special case: If the 3rd dim is small, assume it's 'c', not 'z'
-            axisorder = 'yxc'
+        axisorder = get_default_axisordering(shape)
 
         # Cast to vigra array
         self._rawVigraArray = rawNumpyArray.view(vigra.VigraArray)

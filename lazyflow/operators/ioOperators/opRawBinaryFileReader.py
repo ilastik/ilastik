@@ -24,6 +24,7 @@ import re
 import numpy
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.utility.helpers import get_default_axisordering
 
 class OpRawBinaryFileReader(Operator):
     """
@@ -78,26 +79,13 @@ class OpRawBinaryFileReader(Operator):
             if d in filename:
                 dtype = numpy.dtype(d).type
                 break
-        
+
         try:
             self._memmap = numpy.memmap(filepath, dtype=dtype, shape=shape, mode='r')
         except:
             raise OpRawBinaryFileReader.DatasetReadError( "Unable to open numpy dataset: {}".format( filepath ) )
 
-        axisorders = { 2 : 'yx',
-                       3 : 'zyx',
-                       4 : 'zyxc',
-                       5 : 'tzyxc' }
-
-        ndims = len( shape )
-        assert ndims != 0, "OpRawBinaryFileReader: Support for 0-D data not yet supported"
-        assert ndims != 1, "OpRawBinaryFileReader: Support for 1-D data not yet supported"
-        assert ndims <= 5, "OpRawBinaryFileReader: No support for data with more than 5 dimensions."
-
-        axisorder = axisorders[ndims]
-        if ndims == 3 and shape[2] <= 4:
-            # Special case: If the 3rd dim is small, assume it's 'c', not 'z'
-            axisorder = 'yxc'
+        axisorder = get_default_axisordering(shape)
 
         self.Output.meta.dtype = dtype
         self.Output.meta.axistags = vigra.defaultAxistags(axisorder)
