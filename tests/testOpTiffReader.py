@@ -67,10 +67,30 @@ class TestOpTiffReader(object):
         Here, we generate a 3D tiff file with scikit-learn and try to read it
         """
         data = numpy.random.randint(0, 256, (10, 20, 30)).astype(numpy.uint8)
+        import skimage
         import skimage.io
+        from distutils import version
+
+        # TODO(Dominik) remove version checking once dependencies for
+        # skimage are >= 0.13.0 for all flavours of ilastik
+        # scikit image version which includes tifffile changes that enable the
+        # saving of metadata, in particular axis-tags
+        skimage_version_ref = version.StrictVersion("1.13.0")
+        skimage_version = version.StrictVersion(skimage.__version__)
+
         with tempdir() as d:
             tiff_path = '{}/myfile.tiff'.format(d)
-            skimage.io.imsave(tiff_path, data, 'tifffile')
+            # TODO(Dominik) remove version checking once dependencies for
+            # skimage are >= 0.13.0 for all flavours of ilastik
+            if skimage_version < skimage_version_ref:
+                skimage.io.imsave(tiff_path, data, 'tifffile')
+            else:
+                skimage.io.imsave(
+                    tiff_path,
+                    data,
+                    'tifffile',
+                    metadata={"axes": "QQQ"}
+                )
             op = OpTiffReader(graph=Graph())
             op.Filepath.setValue(tiff_path)
             assert op.Output.ready()
