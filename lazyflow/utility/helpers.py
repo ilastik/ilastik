@@ -250,7 +250,45 @@ class newIterator:
         retSlice = [(self.toSlice(src,True),self.toSlice(trgt,True),self.toSlice(mask)) \
                     for src,trgt,mask in retRoi]
         return retSlice.__iter__()
- 
+
+
+def get_default_axisordering(shape):
+    """Given a data shape, return the default axis ordering
+
+    For data types that do not support axistags, we assume a default axis
+    ordering, given the shape, and implicitly the number of dimensions.
+
+    Args:
+        shape (tuple): Shape of the data
+
+    Returns:
+        str: String, each position represents one axis.
+    """
+    axisorders = {
+        2: 'yx',
+        3: 'zyx',
+        4: 'zyxc',
+        5: 'tzyxc'
+    }
+    ndim = len(shape)
+
+    if ndim in [0, 1]:
+        raise ValueError(
+            "Got 'ndim' == {dim}. {dim}-D data not yet supported".format(dim=ndim))
+    elif ndim > 5:
+        raise ValueError(
+            "Got 'ndim' == {dim} dim. No Support for data with more than 5 "
+            "dimensions".format(dim=ndim))
+
+    axisorder = axisorders[ndim]
+
+    if ndim == 3 and shape[2] <= 4:
+        # Special case: If the 3rd dim is small, assume it's 'c', not 'z'
+        axisorder = 'yxc'
+
+    return axisorder
+
+
 if __name__ == "__main__":
     import vigra
     
