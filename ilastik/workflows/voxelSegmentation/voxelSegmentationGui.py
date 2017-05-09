@@ -106,6 +106,22 @@ class VoxelSegmentationGui(pixelClassificationGui.PixelClassificationGui):
         
         return menus
 
+    def setupLayers(self):
+        """
+        Called by our base class when one of our data slots has changed.
+        This function creates a layer for each slot we want displayed in the volume editor.
+        """
+        # Base class provides the label layer.
+        layers = super(VoxelSegmentationGui, self).setupLayers()
+
+        superVoxelSlot = self.topLevelOperatorView.SlicBoundaries
+        if superVoxelSlot.ready():
+            layer = self.createStandardLayerFromSlot(superVoxelSlot)
+            layer.name = "SLIC segmentation"
+            layer.visible = True
+            layer.opacity = 1.0
+            layers.append(layer)
+        return layers
 
     def _toggleSegmentation3D(self):
         self._showSegmentationIn3D = not self._showSegmentationIn3D

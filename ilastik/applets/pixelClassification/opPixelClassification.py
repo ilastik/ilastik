@@ -108,6 +108,8 @@ class OpPixelClassification( Operator ):
         """
         Instantiate all internal operators and connect them together.
         """
+        from traceback import print_stack
+        print_stack()
         super(OpPixelClassification, self).__init__(*args, **kwargs)
         
         # Default values for some input slots

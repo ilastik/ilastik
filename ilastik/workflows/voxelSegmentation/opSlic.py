@@ -27,40 +27,62 @@ class OpSlic(Operator):
     NumSegments = InputSlot(value=100)
     Compactness = InputSlot(value=0.1)
     MaxIter = InputSlot(value=10)
-    
+
     Output = OutputSlot()
-    
+    BoundariesOutput = OutputSlot()
+
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
+        self.BoundariesOutput.meta.assignFrom(self.Input.meta)
 
         tagged_shape = self.Input.meta.getTaggedShape()
         assert 'c' in tagged_shape, "We assume the image has an explicit channel axis."
         assert tagged_shape.keys()[-1] == 'c', "This code assumes that channel is the LAST axis."
-        
+
         # Output will have exactly one channel, regardless of input channels
         tagged_shape['c'] = 1
         self.Output.meta.shape = tuple(tagged_shape.values())
-    
+        self.BoundariesOutput.meta.shape = tuple(tagged_shape.values())
+
     def execute(self, slot, subindex, roi, result):
         input_data = self.Input(roi.start, roi.stop).wait()
-        print input_data.shape
-        numpy.save("/tmp/image", input_data)
-        slic_sp = skimage.segmentation.slic(input_data,
-                                            n_segments=self.NumSegments.value,
-                                            compactness=self.Compactness.value,
-                                            max_iter=self.MaxIter.value,
-                                            multichannel=True,
-                                            enforce_connectivity=True,
-                                            convert2lab=False) # Use with caution.
-                                                               # This would cause slic() to have special behavior for 3-channel data,
-                                                               # in which case we better really be dealing with RGB channels
-                                                               # (not, say 3 unrelated image features).
-        
-        # slic_sp has no channel axis, so insert that axis before copying to 'result'
-        result[:] = slic_sp[...,None]
-        # result = slic_sp
-        return result
-    
+        if slot == self.Output:
+            # print input_data.shape
+            # numpy.save("/tmp/image", input_data)
+            slic_sp = skimage.segmentation.slic(input_data,
+                                                n_segments=self.NumSegments.value,
+                                                compactness=self.Compactness.value,
+                                                max_iter=self.MaxIter.value,
+                                                multichannel=True,
+                                                enforce_connectivity=True,
+                                                convert2lab=False) # Use with caution.
+                                                                   # This would cause slic() to have special behavior for 3-channel data,
+                                                                   # in which case we better really be dealing with RGB channels
+                                                                   # (not, say 3 unrelated image features).
+
+            # slic_sp has no channel axis, so insert that axis before copying to 'result'
+            result[:] = slic_sp[...,None]
+
+            return result
+
+        if slot == self.BoundariesOutput:
+            slic_sp = self.Output(roi.start, roi.stop).wait()
+            boundaries = numpy.empty(input_data.shape[:3])
+
+
+            for i in range(len(input_data)):
+                # import IPython; IPython.embed()
+                print slic_sp[i].shape
+                print boundaries[i].shape
+                reshaped_slic = slic_sp[i].reshape(boundaries[i].shape)
+                boundaries[i] = skimage.segmentation.find_boundaries(
+                    reshaped_slic)
+
+            print result.shape
+            print boundaries.shape
+            result[:] = boundaries[...,None]
+            return result
+
     def propagateDirty(self, slot, subindex, roi):
         # For some operators, a dirty in one part of the image only causes changes in nearby regions.
         # But for superpixel operators, changes in one corner can affect results in the opposite corner.
@@ -78,7 +100,7 @@ class OpSlicCached(Operator):
     MaxIter = InputSlot(value=10)
     
     Output = OutputSlot()
-    
+    BoundariesOutput = OutputSlot()
     def __init__(self, *args, **kwargs):
         super(OpSlicCached, self).__init__(*args, **kwargs)
         # This operator does no computation on its own.
@@ -97,6 +119,10 @@ class OpSlicCached(Operator):
         self.opCache = OpBlockedArrayCache( parent=self )
         self.opCache.Input.connect( self.opSlic.Output )
         self.Output.connect( self.opCache.Output )
+
+        self.boundariesOpCache = OpBlockedArrayCache( parent=self )
+        self.boundariesOpCache.Input.connect( self.opSlic.BoundariesOutput )
+        self.BoundariesOutput.connect( self.boundariesOpCache.Output )
     
     def setupOutputs(self):
         # The cache is capable of requesting and storing results in small blocks,
@@ -104,6 +130,7 @@ class OpSlicCached(Operator):
         # Therefore, we set the 'block shape' to be the entire image -- there will only be one block stored in the cache.
         # (Note: The OpBlockedArrayCache.innerBlockshape slot is deprecated and ignored.)
         self.opCache.outerBlockShape.setValue( self.Input.meta.shape )
+        self.boundariesOpCache.outerBlockShape.setValue( self.Input.meta.shape)
     
     def execute(self, slot, subindex, roi, result):
         # When an output slot is accessed, it asks for data from it's upstream connection (if any)
