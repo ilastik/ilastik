@@ -28,6 +28,7 @@ import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import Timer
+from lazyflow.utility.helpers import get_default_axisordering
 
 logger = logging.getLogger(__name__)    
 
@@ -78,21 +79,7 @@ class OpStreamingHdf5Reader(Operator):
                 raise KeyError('?')
         except KeyError:
             # No axistags found.
-            ndims = len(dataset.shape)
-            assert ndims != 0, "OpStreamingHdf5Reader: Zero-dimensional datasets not supported."
-            assert ndims != 1, "OpStreamingHdf5Reader: Support for 1-D data not yet supported"
-            assert ndims <= 5, "OpStreamingHdf5Reader: No support for data with more than 5 dimensions."
-
-            axisorders = { 2 : 'yx',
-                           3 : 'zyx',
-                           4 : 'zyxc',
-                           5 : 'tzyxc' }
-    
-            axisorder = axisorders[ndims]
-            if ndims == 3 and dataset.shape[2] <= 4:
-                # Special case: If the 3rd dim is small, assume it's 'c', not 'z'
-                axisorder = 'yxc'
-
+            axisorder = get_default_axisordering(dataset.shape)
             axistags = vigra.defaultAxistags(axisorder)
 
         assert len(axistags) == len( dataset.shape ),\
