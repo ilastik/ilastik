@@ -27,7 +27,7 @@ from functools import partial
 # Third-party
 import numpy
 from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSlot, pyqtRemoveInputHook, pyqtRestoreInputHook
+from PyQt5.QtCore import Qt, pyqtSlot, pyqtRemoveInputHook, pyqtRestoreInputHook, QSize
 from PyQt5.QtWidgets import QMessageBox, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem, \
     QApplication, QAction, QPushButton, QLineEdit, QDialog, QComboBox, QTreeWidget, QTreeWidgetItem, \
     QWidget, QSizePolicy, QMenu
@@ -250,10 +250,10 @@ class BookmarksWindow(QDialog):
         lane_index = self.topLevelOperatorView.current_view_index()
         lane_nickname = self.topLevelOperatorView.InputImages.meta.nickname or "Lane {}".format(lane_index)
         bookmarks = self.topLevelOperatorView.Bookmarks.value
-        group_item = QTreeWidgetItem( self.bookmark_tree, QStringList(lane_nickname) )
+        group_item = QTreeWidgetItem( self.bookmark_tree, [lane_nickname] )
 
         for coord, notes in bookmarks:
-            item = QTreeWidgetItem( group_item, QStringList() )
+            item = QTreeWidgetItem( group_item, [] )
             item.setText(0, str(coord))
             item.setData(0, Qt.UserRole, (coord, notes))
             item.setText(1, notes)
