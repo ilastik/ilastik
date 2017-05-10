@@ -52,7 +52,7 @@ except ImportError as e:
 try:
     import tracking.manual
     WORKFLOW_CLASSES += [tracking.manual.manualTrackingWorkflow.ManualTrackingWorkflow]
-except ImportError as e:
+except (ImportError, AttributeError) as e:
     logger.warn( "Failed to import tracking workflow; check pgmlink dependency: " + str(e) )
 
 try:
