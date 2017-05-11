@@ -295,15 +295,15 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.42426407"
-     inkscape:cx="765.79855"
+     inkscape:cx="863.096"
      inkscape:cy="661.82964"
      inkscape:document-units="px"
      inkscape:current-layer="layer2"
      showgrid="false"
-     inkscape:window-width="1440"
-     inkscape:window-height="851"
+     inkscape:window-width="1200"
+     inkscape:window-height="1871"
      inkscape:window-x="0"
-     inkscape:window-y="1"
+     inkscape:window-y="23"
      inkscape:snap-global="false"
      inkscape:window-maximized="1"
      fit-margin-top="-2.7755576e-17"
@@ -318,7 +318,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -366,7 +366,7 @@
          y="149.05829"
          x="1224.5056"
          id="tspan4609"
-         sodipodi:role="line">1.2.1</tspan></text>
+         sodipodi:role="line">1.2.2</tspan></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:36px;font-family:Berta_Drug;-inkscape-font-specification:Berta_Drug;text-align:end;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none"
@@ -767,6 +767,17 @@
          id="tspan4656"
          x="-93.62114"
          y="-177.83549">Note: When exporting from Inkscape, choose export area &quot;Page&quot; not &quot;Drawing&quot; or &quot;Selection&quot;. </tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="1378.1152"
+       y="-433.01862"
+       id="text3494"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3496"
+         x="1378.1152"
+         y="-433.01862">s</tspan></text>
   </g>
   <g
      inkscape:groupmode="layer"
