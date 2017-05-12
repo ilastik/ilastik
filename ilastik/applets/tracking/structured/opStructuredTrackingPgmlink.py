@@ -17,7 +17,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 
 import sys
 
-from ilastik.utility.gui.progress import DefaultProgressVisitor, CommandLineProgressVisitor
+from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgressVisitor
 
 import logging
 logger = logging.getLogger(__name__)

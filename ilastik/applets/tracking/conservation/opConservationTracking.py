@@ -26,7 +26,7 @@ from hytra.core.ilastikmergerresolver import IlastikMergerResolver
 from hytra.core.probabilitygenerator import ProbabilityGenerator
 from hytra.core.probabilitygenerator import Traxel
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
-from ilastik.utility.gui.progress import DefaultProgressVisitor, CommandLineProgressVisitor
+from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgressVisitor
 
 import vigra
 
