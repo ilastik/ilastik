@@ -20,7 +20,8 @@ from ilastik.utility import bind
 
 from lazyflow.request.request import Request
 
-from ilastik.utility.gui.progress import GuiProgressVisitor, DefaultProgressVisitor
+from ilastik.utility.gui.progress import GuiProgressVisitor
+from ilastik.utility.progress import DefaultProgressVisitor
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)

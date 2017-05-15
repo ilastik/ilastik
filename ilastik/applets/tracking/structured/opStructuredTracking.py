@@ -9,7 +9,7 @@ from ilastik.applets.tracking.conservation.opConservationTracking import OpConse
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
-from ilastik.utility.gui.progress import DefaultProgressVisitor, CommandLineProgressVisitor
+from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgressVisitor
 
 import logging
 logger = logging.getLogger(__name__)

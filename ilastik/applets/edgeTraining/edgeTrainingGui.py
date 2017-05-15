@@ -103,7 +103,9 @@ class EdgeTrainingGui(LayerViewerGui):
                                                clicked=self._handle_clear_labels_clicked)
         self.live_update_button = QPushButton(text="Live Predict",
                                               checkable=True,
-                                              icon=QIcon(ilastikIcons.Play))
+                                              icon=QIcon(ilastikIcons.Play),
+                                              toolTip="Update the edge classifier predictions",
+                                              clicked=self._handle_live_update_clicked)
         configure_update_handlers( self.live_update_button.toggled, op.FreezeCache )
         
         # Layout
@@ -219,8 +221,10 @@ class EdgeTrainingGui(LayerViewerGui):
             op.EdgeLabelsDict.setValue( {} )
 
     def _handle_live_update_clicked(self, checked):
-        op = self.topLevelOperatorView
-        op.FreezeClassifier.setValue( not checked )
+        if checked:
+            probs_layer = self.getLayerByName("Edge Probabilities")
+            if probs_layer:
+                probs_layer.visible=True
 
     # Configure the handler for updated probability maps
     # FIXME: Should we make a new Layer subclass that handles this colortable mapping for us?  Yes.
@@ -335,7 +339,7 @@ class EdgeTrainingGui(LayerViewerGui):
         if op.Superpixels.ready() and op.EdgeProbabilitiesDict.ready():
             layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels) )
             layer.name = "Edge Probabilities" # Name is hard-coded in multiple places: grep before changing.
-            layer.visible = True
+            layer.visible = False
             layer.opacity = 1.0
             self.update_probability_edges() # Initialize
 
@@ -360,7 +364,7 @@ class EdgeTrainingGui(LayerViewerGui):
             default_pen.setColor(Qt.yellow)
             layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels), default_pen )
             layer.name = "Superpixel Edges"
-            layer.visible = False
+            layer.visible = True
             layer.opacity = 1.0
             layers.append(layer)
             del layer
