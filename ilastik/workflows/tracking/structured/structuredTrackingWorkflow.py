@@ -53,12 +53,16 @@ except ImportError:
         SOLVER = "GUROBI"
     except ImportError:
         try:
-            import dpct
-            SOLVER = "DPCT"
-            logger.warning("Could not find any ILP solver (CPLEX or GUROBI). Tracking will use flow-based solver (DPCT). " + \
-                           "Learning for tracking including crop selection and training for tracking will be disabled!")
+            import pgmlink
+            SOLVER = "PGMLINK"
         except ImportError:
-            raise ImportError("Could not find any solver.")
+            try:
+                import dpct
+                SOLVER = "DPCT"
+                logger.warning("Could not find any learning solver (HYTRA, PGMLINK). Tracking will use flow-based solver (DPCT). " + \
+                               "Learning for tracking will be disabled!")
+            except ImportError:
+                raise ImportError("Could not find any solver.")
 
 class StructuredTrackingWorkflowBase( Workflow ):
     workflowName = "Structured Learning Tracking Workflow BASE"
@@ -132,6 +136,8 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
         if SOLVER=="CPLEX" or SOLVER=="GUROBI":
             self._solver="ILP"
+        elif SOLVER=="PGMLINK":
+            self._solver="PgmLink"
         elif SOLVER=="DPCT":
             self._solver="Flow-based"
         else:
