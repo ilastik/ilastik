@@ -778,7 +778,6 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         opRelabeledRegionFeatures.LabelImage.connect(self.LabelImage)
         opRelabeledRegionFeatures.RelabeledImage.connect(self.RelabeledImage)
         opRelabeledRegionFeatures.OriginalRegionFeatures.connect(original_feature_slot)
-        opRelabeledRegionFeatures.ResolvedTo.setValue(self.resolvedto)
 
         vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name]))
         feature_names_vigra = {}
