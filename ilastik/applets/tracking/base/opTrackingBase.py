@@ -646,7 +646,7 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         if settings["file type"] == "h5":
             export_file.add_rois(Default.LabelRoiPath, label_image_slot, "table", settings["margin"], "labeling")
-            if settings["include raw"]:
+            if "include raw" in settings.keys():
                 export_file.add_image(Default.RawPath, self.RawImage)
             else:
                 export_file.add_rois(Default.RawRoiPath, self.RawImage, "table", settings["margin"])
