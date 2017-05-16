@@ -855,11 +855,11 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         while not foundAllArcs and maxObjOK:
             new_max_nearest_neighbors += 1
             consTracker = pgmlink.ConsTracking(
-                maxObj, # max_number_objects
+                int(maxObj), # max_number_objects
                 True, # size_dependent_detection_prob
                 float(median_obj_size[0]), # avg_obj_size
                 float(200), # max_neighbor_distance
-                withDivisions, # with_divisions
+                bool(withDivisions), # with_divisions
                 float(0.5), # division_threshold
                 "none", # random_forest_filename
                 fieldOfView,
@@ -892,12 +892,12 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
 
             structuredLearningTracker = pgmlink.StructuredLearningTracking(
                 hypothesesGraph,
-                maxObj,
-                sizeDependent,
+                int(maxObj),
+                bool(sizeDependent),
                 float(median_obj_size[0]),
-                maxDist,
-                withDivisions,
-                divThreshold,
+                float(maxDist),
+                bool(withDivisions),
+                float(divThreshold),
                 "none",  # detection_rf_filename
                 fieldOfView,
                 "none", # dump traxelstore,
@@ -1075,27 +1075,27 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         structuredLearningTrackerParameters = structuredLearningTracker.getStructuredLearningTrackingParameters(
             float(forbidden_cost),
             float(ep_gap),
-            withTracklets,
-            detectionWeight,
-            divisionWeight,
-            transitionWeight,
-            disappearanceWeight,
-            appearanceWeight,
-            withMergerResolution,
-            ndim,
-            transition_parameter,
-            borderAwareWidth,
-            with_constraints,
+            bool(withTracklets),
+            float(detectionWeight),
+            float(divisionWeight),
+            float(transitionWeight),
+            float(disappearanceWeight),
+            float(appearanceWeight),
+            bool(withMergerResolution),
+            int(ndim),
+            float(transition_parameter),
+            float(borderAwareWidth),
+            bool(with_constraints),
             uncertaintyParams,
-            cplex_timeout,
+            float(cplex_timeout),
             transitionClassifier,
             pgmlink.ConsTrackingSolverType.CplexSolver,
-            training_to_hard_constraints,
-            num_threads,
-            withNormalization,
-            withClassifierPrior,
-            verbose,
-            withNonNegativeWeights
+            bool(training_to_hard_constraints),
+            int(num_threads),
+            bool(withNormalization),
+            bool(withClassifierPrior),
+            bool(verbose),
+            bool(withNonNegativeWeights)
         )
 
         self.progressVisitor.showState("Structured learning")
