@@ -644,6 +644,8 @@ class OpTrackingBase(Operator, ExportingOperator):
             else:
                 logger.debug("No divisions occurred. Division Table will not be exported!")
 
+        if 'margin' not in settings.keys():
+            settings['margin']=0
         if settings["file type"] == "h5":
             export_file.add_rois(Default.LabelRoiPath, label_image_slot, "table", settings["margin"], "labeling")
             if "include raw" in settings.keys():
