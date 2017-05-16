@@ -39,14 +39,18 @@ logger = logging.getLogger(__name__)
 
 SOLVER = None
 try:
-    import multiHypoTracking_with_cplex as mht
-    SOLVER = "CPLEX"
+    import pgmlink
+    SOLVER = "PGMLINK"
 except ImportError:
     try:
-        import multiHypoTracking_with_gurobi as mht
-        SOLVER = "GUROBI"
+        import multiHypoTracking_with_cplex as mht
+        SOLVER = "CPLEX"
     except ImportError:
-        logger.info("Could not find any ILP solver.")
+        try:
+            import multiHypoTracking_with_gurobi as mht
+            SOLVER = "GUROBI"
+        except ImportError:
+            logger.info("Could not find any ILP solver.")
 
 class TestStructuredLearningTrackingHeadless(object):
 
@@ -106,7 +110,10 @@ class TestStructuredLearningTrackingHeadless(object):
         
         args = ' --project='+self.PROJECT_FILE
         args += ' --headless'
-        args += ' --testFullAnnotations'
+
+        if SOLVER is not 'PGMLINK':
+            args += ' --testFullAnnotations'
+
         args += ' --export_source=Tracking-Result'
         args += ' --raw_data '+self.RAW_DATA_FILE
         args += ' --prediction_maps '+self.PREDICTION_FILE
