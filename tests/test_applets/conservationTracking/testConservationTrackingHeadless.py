@@ -23,6 +23,7 @@ import imp
 import numpy as np
 import h5py
 import sys
+import nose
 
 import ilastik
 from lazyflow.utility.timer import timeLogged
