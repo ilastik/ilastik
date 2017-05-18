@@ -178,12 +178,16 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
             force_build_hypotheses_graph = False,
             max_nearest_neighbors = 1,
             withBatchProcessing = False,
-            solverName="ILP"
+            solverName="ILP",
+            numFramesPerSplit = 0
             ):
         
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
         
+        if numFramesPerSplit != 0:
+            raise Exception("PGMLINK tracking does not support sliding window tracking")
+
         # it is assumed that the self.Parameters object is changed only at this
         # place (ugly assumption). Therefore we can track any changes in the
         # parameters as done in the following lines: If the same value for the
@@ -210,6 +214,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
         parameters['appearanceCost'] = appearance_cost
         parameters['disappearanceCost'] = disappearance_cost
         parameters['max_nearest_neighbors'] = max_nearest_neighbors
+        parameters['numFramesPerSplit'] = numFramesPerSplit
 
         do_build_hypotheses_graph = True
 
