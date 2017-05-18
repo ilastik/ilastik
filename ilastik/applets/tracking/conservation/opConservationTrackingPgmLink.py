@@ -162,6 +162,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
             withTracklets=False,
             sizeDependent=True,
             divWeight=10.0,
+            detWeight=10.0,
             transWeight=10.0,
             withDivisions=True,
             withOpticalCorrection=True,
@@ -177,12 +178,16 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
             force_build_hypotheses_graph = False,
             max_nearest_neighbors = 1,
             withBatchProcessing = False,
-            solverName="ILP"
+            solverName="ILP",
+            numFramesPerSplit = 0
             ):
         
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
         
+        if numFramesPerSplit != 0:
+            raise Exception("PGMLINK tracking does not support sliding window tracking")
+
         # it is assumed that the self.Parameters object is changed only at this
         # place (ugly assumption). Therefore we can track any changes in the
         # parameters as done in the following lines: If the same value for the
@@ -197,7 +202,8 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
         parameters['avgSize'] = avgSize
         parameters['withTracklets'] = withTracklets
         parameters['sizeDependent'] = sizeDependent
-        parameters['divWeight'] = divWeight   
+        parameters['detWeight'] = detWeight
+        parameters['divWeight'] = divWeight
         parameters['transWeight'] = transWeight
         parameters['withDivisions'] = withDivisions
         parameters['withOpticalCorrection'] = withOpticalCorrection
@@ -208,6 +214,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
         parameters['appearanceCost'] = appearance_cost
         parameters['disappearanceCost'] = disappearance_cost
         parameters['max_nearest_neighbors'] = max_nearest_neighbors
+        parameters['numFramesPerSplit'] = numFramesPerSplit
 
         do_build_hypotheses_graph = True
 
@@ -302,7 +309,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
             0,       # forbidden_cost
             float(ep_gap), # ep_gap
             bool(withTracklets), # with tracklets
-            float(10.0), # detection weight
+            float(detWeight), # detection weight
             float(divWeight), # division weight
             float(transWeight), # transition weight
             float(disappearance_cost), # disappearance cost
