@@ -206,6 +206,10 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
 
         if WITH_HYTRA:
             self._drawer.exportButton.hide()
+        else:
+            self._drawer.numFramesPerSplitLabel.hide()
+            self._drawer.numFramesPerSplitSpinBox.hide()
+            self._drawer.solverComboBox.setEnabled(False)
 
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
