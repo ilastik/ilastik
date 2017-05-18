@@ -162,6 +162,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
             withTracklets=False,
             sizeDependent=True,
             divWeight=10.0,
+            detWeight=10.0,
             transWeight=10.0,
             withDivisions=True,
             withOpticalCorrection=True,
@@ -197,7 +198,8 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
         parameters['avgSize'] = avgSize
         parameters['withTracklets'] = withTracklets
         parameters['sizeDependent'] = sizeDependent
-        parameters['divWeight'] = divWeight   
+        parameters['detWeight'] = detWeight
+        parameters['divWeight'] = divWeight
         parameters['transWeight'] = transWeight
         parameters['withDivisions'] = withDivisions
         parameters['withOpticalCorrection'] = withOpticalCorrection
@@ -302,7 +304,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
             0,       # forbidden_cost
             float(ep_gap), # ep_gap
             bool(withTracklets), # with tracklets
-            float(10.0), # detection weight
+            float(detWeight), # detection weight
             float(divWeight), # division weight
             float(transWeight), # transition weight
             float(disappearance_cost), # disappearance cost
