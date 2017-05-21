@@ -815,7 +815,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
 class UnionFindArray(object):
 
     def __init__(self, nextFree=1):
-        self._map = dict(list(zip(*(range(nextFree),)*2)))
+        self._map = dict(list(zip(*(list(range(nextFree)),)*2)))
         self._lock = HardLock()
         self._nextFree = nextFree
         self._it = None

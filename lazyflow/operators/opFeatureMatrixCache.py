@@ -222,7 +222,7 @@ class OpFeatureMatrixCache(Operator):
             # Technically, this would be inefficient if it's possible for the features
             # to become only partially dirty in a small ROI.
             # But currently, there is no known use-case for that.
-            block_starts = self._blockwise_feature_matrices.keys()
+            block_starts = list(self._blockwise_feature_matrices.keys())
         else:
             block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
             block_starts = list( map( tuple, block_starts ) )

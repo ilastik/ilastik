@@ -121,7 +121,7 @@ class TestPathHelpers(object):
         globString = 'here/is/the/data/test-*'
 
         expectedPaths = ['here/is/the/data/test-{index:02d}'.format(index=index)
-                         for index in xrange(5)
+                         for index in range(5)
                          ]
 
         globbedPaths = globHdf5(hdf5File, globString)
@@ -134,7 +134,7 @@ class TestPathHelpers(object):
         data_group = f.create_group('here/is/the/data')
         data_group2 = f.create_group('this/is/also/some/data')
 
-        for i in xrange(5):
+        for i in range(5):
             for dg in [data_group, data_group2]:
                 dg.create_dataset(
                     'test-{index:02d}'.format(index=i),

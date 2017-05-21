@@ -128,7 +128,7 @@ class OpNode(Node):
 
     def _construct(self):
 
-        for inputs in self.ob.inputs.values():
+        for inputs in list(self.ob.inputs.values()):
             if self.tree.created(id(inputs)):
                 nNode = self.tree.getNode(id(inputs))
             else:
@@ -137,7 +137,7 @@ class OpNode(Node):
             nNode.operator = self
             self.IOChilds.append(nNode)
             self.addNext(nNode)
-        for outputs in self.ob.outputs.values():
+        for outputs in list(self.ob.outputs.values()):
             if self.tree.created(id(outputs)):
                 nNode = self.tree.getNode(id(outputs))
             else:
@@ -367,7 +367,7 @@ class Tree(object):
         return len(self.nodes)
 
     def _collectOpNodes(self):
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
             if node.gettype() in ["Operator","OperatorWrapper"]:
                 self.opNodes.append(node)
 
@@ -394,7 +394,7 @@ class Tree(object):
 
 
     def _getMoreInfo(self):
-        for node in self.nodes.values():
+        for node in list(self.nodes.values()):
 
             if node.gettype() in ["Operator","OperatorWrapper"]:
                 if node.parentID != None:
@@ -841,7 +841,7 @@ class GraphStructutre(object):
     def _writeDebugFiles(self,tree):
         if not os.access(self.debugFilesPath, os.F_OK):
             os.mkdir(self.debugFilesPath)
-        for nID, node in tree.getAllNodes().items():
+        for nID, node in list(tree.getAllNodes().items()):
             f = open(self.debugFilesPath + node.infoFile, 'w')
             f.write(str(node.info))
             f.close()

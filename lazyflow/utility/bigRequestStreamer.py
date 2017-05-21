@@ -179,7 +179,7 @@ class BigRequestStreamer(object):
         # Generally, we don't want to join time slices
         if 't' in tagged_shape.keys():
             blockshape_time_steps = 1
-            time_index = tagged_shape.keys().index('t')
+            time_index = list(tagged_shape.keys()).index('t')
             input_shape = input_shape[:time_index] + input_shape[time_index+1:]
             max_blockshape = max_blockshape[:time_index] + max_blockshape[time_index+1:]
             if ideal_blockshape:
