@@ -23,6 +23,7 @@ from __future__ import division
 from builtins import next
 from builtins import range
 from builtins import object
+from future.utils import raise_with_traceback
 import sys
 from functools import partial
 
@@ -174,7 +175,8 @@ class RoiRequestBatch( object ):
                         self._condition.wait()
 
                 if self._failure_excinfo:
-                    raise self._failure_excinfo[0], self._failure_excinfo[1], self._failure_excinfo[2]
+                    exc_type, exc_value, exc_tb = self._failure_excinfo
+                    raise_with_traceback(exc_type(exc_value), exc_tb)
 
                 # Launch new requests until we have the correct number of active requests
                 while not self._failure_excinfo and self._activated_count - self._completed_count < self._batchSize:
@@ -183,7 +185,8 @@ class RoiRequestBatch( object ):
                         self._activated_count += 1
 
                 if self._failure_excinfo:
-                    raise self._failure_excinfo[0], self._failure_excinfo[1], self._failure_excinfo[2]
+                    exc_type, exc_value, exc_tb = self._failure_excinfo
+                    raise_with_traceback(exc_type(exc_value), exc_tb)
 
         except StopIteration:
             # We've run out of requests to launch.
@@ -193,7 +196,8 @@ class RoiRequestBatch( object ):
                     self._condition.wait()
 
             if self._failure_excinfo:
-                raise self._failure_excinfo[0], self._failure_excinfo[1], self._failure_excinfo[2]
+                exc_type, exc_value, exc_tb = self._failure_excinfo
+                raise_with_traceback(exc_type(exc_value), exc_tb)
 
         self.progressSignal( 100 )
 

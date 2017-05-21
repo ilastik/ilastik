@@ -2,6 +2,7 @@ from builtins import next
 
 from builtins import range
 from builtins import object
+from future.utils import raise_with_traceback
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -1279,8 +1280,9 @@ class Slot(object):
                 #  continue unwinding the stack with the first one.
                 self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
                 import traceback
-                traceback.print_exc() 
-                raise exc_info[0], exc_info[1], exc_info[2]
+                traceback.print_exc()
+                exc_type, exc_value, exc_tb = exc_info
+                raise_with_traceback(exc_type(exc_value), exc_tb)
             raise
 
     @property

@@ -4,6 +4,7 @@ standard_library.install_aliases()
 from builtins import next
 from builtins import range
 from builtins import object
+from future.utils import raise_with_traceback
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -425,7 +426,8 @@ class Request( object ):
             # The _execute() function normally intercepts exceptions to hide them from the worker threads.
             # In this debug mode, we want to re-raise the exception.
             if self.exception is not None:
-                raise self.exception_info[0], self.exception_info[1], self.exception_info[2]
+                exc_type, exc_value, exc_tb = self.exception_info
+                raise_with_traceback(exc_value, exc_tb)
 
     def _wake_up(self):
         """
@@ -453,7 +455,7 @@ class Request( object ):
             self.exception = Request.InternalError( "A serious error was detected while waiting for another request.  "
                                                     "Check the log for other exceptions." )
             self.exception_info = ( type(self.exception), 
-                                    self.exception, 
+                                    self.exception.args[0], 
                                     sys.exc_info()[2] ) 
             self._post_execute()
             
@@ -550,7 +552,8 @@ class Request( object ):
             # (which can happen if the request is calling wait() from within a notify_finished callback)
             if self.finished:
                 if self.exception is not None:
-                    raise self.exception_info[0], self.exception_info[1], self.exception_info[2]
+                    exc_type, exc_value, exc_tb = self.exception_info
+                    raise_with_traceback(exc_value, exc_tb)
                 else:
                     return
             else:
@@ -572,7 +575,8 @@ class Request( object ):
             raise Request.InvalidRequestException()
         
         if self.exception is not None:
-            raise self.exception_info[0], self.exception_info[1], self.exception_info[2]
+            exc_type, exc_value, exc_tb = self.exception_info
+            raise_with_traceback(exc_value, exc_tb)
 
     def _wait_within_request(self, current_request):
         """
@@ -601,7 +605,8 @@ class Request( object ):
             if self.exception is not None:
                 # This request was already started and already failed.
                 # Simply raise the exception back to the current request.
-                raise self.exception_info[0], self.exception_info[1], self.exception_info[2]
+                exc_type, exc_value, exc_tb = self.exception_info
+                raise_with_traceback(exc_type(exc_value), exc_tb)
 
             direct_execute_needed = not self.started
             suspend_needed = self.started and not self.execution_complete
@@ -642,7 +647,8 @@ class Request( object ):
         
         # Are we back because we failed?
         if self.exception is not None:
-            raise self.exception_info[0], self.exception_info[1], self.exception_info[2]
+            exc_type, exc_value, exc_tb = self.exception_info
+            raise_with_traceback(exc_value, exc_tb)
 
     def _handle_finished_request(self, request, *args):
         """
