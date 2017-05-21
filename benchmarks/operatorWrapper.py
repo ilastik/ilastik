@@ -1,3 +1,4 @@
+from __future__ import print_function
 from builtins import range
 from builtins import object
 ###############################################################################
@@ -108,7 +109,7 @@ for slots in range(0,100):
     with time_gc:
         gc.collect()
         
-    print "slots: %d, time_resize=%2.2f, time_addlane=%2.2f, time_gc=%2.2f" % (slots, time_resize.time(), time_addlane.time(), time_gc.time())
+    print("slots: %d, time_resize=%2.2f, time_addlane=%2.2f, time_gc=%2.2f" % (slots, time_resize.time(), time_addlane.time(), time_gc.time()))
     results_gc.append(time_gc.time())
     
 pyplot.title("Garbage collection time")

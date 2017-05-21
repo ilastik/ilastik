@@ -678,7 +678,7 @@ def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_
 
         # Choose the best among the canidates
         scores = map(normalized_surface_area, candidate_blockshapes)
-        (best_shape, best_score) = min(zip(candidate_blockshapes, scores), key=lambda (shape, score): score )
+        (best_shape, best_score) = min(zip(candidate_blockshapes, scores), key=lambda shape_score: shape_score[1] )
         blockshape = best_shape
         
     return tuple(blockshape)

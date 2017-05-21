@@ -135,8 +135,8 @@ class SubRegion(Roi):
         self.dim = len(self.start)
 
         for start, stop in zip(self.start, self.stop):
-            assert isinstance(start, (int, int, numpy.integer)), "Roi contains non-integers: {}".format( self )
-            assert isinstance(start, (int, int, numpy.integer)), "Roi contains non-integers: {}".format( self )
+            assert isinstance(start, (int, numpy.integer)), "Roi contains non-integers: {}".format( self )
+            assert isinstance(start, (int, numpy.integer)), "Roi contains non-integers: {}".format( self )
 
 # FIXME: This assertion is good at finding bugs, but it is currently triggered by 
 #        the DataExport applet when the output axis order is changed. 
