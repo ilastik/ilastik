@@ -792,6 +792,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         menu.exec_(win_coord)
 
+    @threadRouted
     def _informationMessage(self, prompt):
         self.emit( QtCore.SIGNAL('postInformationMessage(QString)'), prompt)
 
