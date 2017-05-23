@@ -50,16 +50,6 @@ class PreprocessingViewerGui( LayerViewerGui ):
             watershedLayer.opacity = 1.0
             layers.append(watershedLayer)
 
-        ''' FIXME: disabled for 0.6 release
-        wsSourceSlot = opLane.WatershedSourceImage
-        if wsSourceSlot.ready():
-            wsSourceLayer = self.createStandardLayerFromSlot( wsSourceSlot )
-            wsSourceLayer.name = "Watershed Source"
-            wsSourceLayer.visible = False
-            wsSourceLayer.opacity = 1.0
-            layers.append( wsSourceLayer )
-        '''
-
         filteredSlot = opLane.FilteredImage
         if filteredSlot.ready():
             filteredLayer = self.createStandardLayerFromSlot( filteredSlot )
@@ -84,4 +74,5 @@ class PreprocessingViewerGui( LayerViewerGui ):
             inputLayer.opacity = 1.0
             layers.append( inputLayer )
 
-        return layers 
+        return layers
+

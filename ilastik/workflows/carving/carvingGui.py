@@ -36,7 +36,6 @@ from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
 
-from ilastik.widgets.labelListModel import LabelListModel
 try:
     from volumina.view3d.volumeRendering import RenderingManager
     from volumina.view3d.view3d import convertVTPtoOBJ
@@ -45,7 +44,12 @@ try:
 except ImportError:
     _have_vtk = False
 
+
+#lazyflow
+from lazyflow.utility.timer import timeLogged
+
 #ilastik
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiFromShape
 from ilastik.utility import bind
 from ilastik.applets.labeling.labelingGui import LabelingGui
 
@@ -53,7 +57,6 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 import logging
 logger = logging.getLogger(__name__)
 
-#===----------------------------------------------------------------------------------------------------------------===
 
 class CarvingGui(LabelingGui):
     def __init__(self, parentApplet, topLevelOperatorView, drawerUiPath=None ):
@@ -62,7 +65,6 @@ class CarvingGui(LabelingGui):
         #members
         self._doneSegmentationLayer = None
         self._showSegmentationIn3D = False
-        #self._showUncertaintyLayer = False
         #end: members
 
         labelingSlots = LabelingGui.LabelingSlots()
@@ -81,7 +83,12 @@ class CarvingGui(LabelingGui):
         self.dialogdirSAD = os.path.join(directory, 'saveAsDialog.ui')
 
         super(CarvingGui, self).__init__(parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath)
-        
+
+        hdf5File = parentApplet.topLevelOperator._parent._shell.projectManager.currentProjectFile
+        h5ProjectMetadataGrp = hdf5File.require_group('ProjectMetadata')
+        assert "block_size" in h5ProjectMetadataGrp.attrs.keys()
+        self._blockSize = h5ProjectMetadataGrp.attrs["block_size"]
+
         self.labelingDrawerUi.currentObjectLabel.setText("<not saved yet>")
 
         # Init special base class members
@@ -124,46 +131,6 @@ class CarvingGui(LabelingGui):
 
         self.topLevelOperatorView.Segmentation.notifyDirty( bind( self._update_rendering ) )
         self.topLevelOperatorView.HasSegmentation.notifyValueChanged( bind( self._updateGui ) )
-
-        ## uncertainty
-
-        #self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
-        #self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
-
-        #def onUncertaintyFGButton():
-        #    logger.debug( "uncertFG button clicked" )
-        #    pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=2)
-        #    self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
-        #self.labelingDrawerUi.pushButtonUncertaintyFG.clicked.connect(onUncertaintyFGButton)
-
-        #def onUncertaintyBGButton():
-        #    logger.debug( "uncertBG button clicked" )
-        #    pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=1)
-        #    self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
-        #self.labelingDrawerUi.pushButtonUncertaintyBG.clicked.connect(onUncertaintyBGButton)
-
-        #def onUncertaintyCombo(value):
-        #    if value == 0:
-        #        value = "none"
-        #        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
-        #        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
-        #        self._showUncertaintyLayer = False
-        #    else:
-        #        if value == 1:
-        #            value = "localMargin"
-        #        elif value == 2:
-        #            value = "exchangeCount"
-        #        elif value == 3:
-        #            value = "gabow"
-        #        else:
-        #            raise RuntimeError("unhandled case '%r'" % value)
-        #        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(True)
-        #        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
-        #        self._showUncertaintyLayer = True
-        #        logger.debug( "uncertainty changed to %r" % value )
-        #    self.topLevelOperatorView.UncertaintyType.setValue(value)
-        #    self.updateAllLayers() #make sure that an added/deleted uncertainty layer is recognized
-        #self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onUncertaintyCombo)
 
         ## background priority
         
@@ -443,7 +410,9 @@ class CarvingGui(LabelingGui):
         
         self._exportMeshes([_name], [obj_filepath])
 
-    def _exportAllObjectMeshes(self):
+
+    @timeLogged(logger, logging.INFO)
+    def _exportAllObjectMeshes(self, extra):
         """
         Export all objects in the project as separate .obj files, stored to a user-specified directory.
         """
@@ -475,6 +444,7 @@ class CarvingGui(LabelingGui):
         if object_names:
             self._exportMeshes( object_names, obj_filepaths )
 
+    @timeLogged(logger, logging.INFO)
     def _exportMeshes(self, object_names, obj_filepaths):
         """
         Export a mesh .obj file for each object in the object_names list to the corresponding file name from the obj_filepaths list.
@@ -485,39 +455,23 @@ class CarvingGui(LabelingGui):
         4) When the export dlg is finished, create the mesh file (by writing a temporary .vtk file and converting it into a .obj file)
         5) If there are still more items in the object_names list to process, repeat this function.
         """
-        # Pop the first object off the list
-        object_name = object_names.pop(0)
-        obj_filepath = obj_filepaths.pop(0)
-        
-        # Construct a volume with only this object.
-        # We might be tempted to get the object directly from opCarving.DoneObjects, 
-        #  but that won't be correct for overlapping objects.
-        mst = self.topLevelOperatorView.MST.value
-        object_supervoxels = mst.object_lut[object_name]
-        object_lut = numpy.zeros(mst.nodeNum+1, dtype=numpy.int32)
-        object_lut[object_supervoxels] = 1
-        supervoxel_volume = mst.supervoxelUint32
-        object_volume = object_lut[supervoxel_volume]
-
-        # Run the mesh extractor
-        window = MeshExtractorDialog(parent=self)
-        
+        # helper functions
         def onMeshesComplete():
             """
             Called when mesh extraction is complete.
             Writes the extracted mesh to an .obj file
             """
-            logger.info( "Mesh generation complete." )
-            mesh_count = len( window.extractor.meshes )
+            logger.info("Mesh generation complete.")
+            mesh_count = len(window.extractor.meshes)
 
             # Mesh count can sometimes be 0 for the '<not saved yet>' object...
             if mesh_count > 0:
                 assert mesh_count == 1, \
-                    "Found {} meshes processing object '{}',"\
-                    "(only expected 1)".format( mesh_count, object_name )
+                    "Found {} meshes processing object '{}'," \
+                    "(only expected 1)".format(mesh_count, object_name)
                 mesh = window.extractor.meshes.values()[0]
-                logger.info( "Saving meshes to {}".format( obj_filepath ) )
-    
+                logger.info("Saving meshes to {}".format(obj_filepath))
+
                 # Use VTK to write to a temporary .vtk file
                 tmpdir = tempfile.mkdtemp()
                 vtkpoly_path = os.path.join(tmpdir, 'meshes.vtk')
@@ -526,18 +480,45 @@ class CarvingGui(LabelingGui):
                 w.SetInput(mesh)
                 w.SetFileName(vtkpoly_path)
                 w.Write()
-                
+
                 # Now convert the file to .obj format.
                 convertVTPtoOBJ(vtkpoly_path, obj_filepath)
-    
+
             # Cleanup: We don't need the window anymore.
             window.setParent(None)
 
-            # If there are still objects left to process,
-            #   start again with the remainder of the list.
+            # If there are still objects left to process, start again with the remainder of the list.
             if object_names:
                 self._exportMeshes(object_names, obj_filepaths)
-            
+
+
+        op = self.topLevelOperatorView
+
+        # Pop the first object off the list
+        object_name = object_names.pop(0)
+        obj_filepath = obj_filepaths.pop(0)
+
+        # Construct a volume with only this object.
+        # We might be tempted to get the object directly from opCarving.DoneObjects,
+        #  but that won't be correct for overlapping objects.
+        mst = self.topLevelOperatorView.MST.value
+        object_supervoxels = mst.object_lut[object_name]
+        object_lut = numpy.zeros(mst.nodeNum+1, dtype=numpy.int8)
+        object_lut[object_supervoxels] = 1
+
+        object_volume = numpy.zeros(mst.supervoxelUint32.meta.shape[1:-1], dtype=numpy.int8)
+
+        bsz = self._blockSize
+        block_shape = (1,bsz,bsz,bsz,1)
+        block_starts = getIntersectingBlocks( block_shape, roiFromShape(mst.supervoxelUint32.meta.shape) )
+        for b_id, block in enumerate(block_starts):
+            labels_roi = getBlockBounds(mst.supervoxelUint32.meta.shape,block_shape, block)
+            supervoxel_volume = mst.supervoxelUint32(*labels_roi).wait()[0, ..., 0]
+            block_slice = map(lambda x: slice(x[0], x[1]), zip(labels_roi[0][1:-1], labels_roi[1][1:-1]))
+            object_volume[block_slice] = object_lut[supervoxel_volume]
+
+        # Run the mesh extractor
+        window = MeshExtractorDialog(parent=self)
         window.finished.connect( onMeshesComplete )
 
         # Kick off the save process and exit to the event loop
@@ -562,33 +543,33 @@ class CarvingGui(LabelingGui):
             self._renderMgr.removeObject(self._segmentation_3d_label)
             self._segmentation_3d_label = None
         self._update_rendering()
-    
+
+
+    @timeLogged(logger, logging.INFO)
     def _update_rendering(self):
         if not self.render:
             return
 
         op = self.topLevelOperatorView
         if not self._renderMgr.ready:
-            shape = op.InputData.meta.shape[1:4]
             self._renderMgr.setup(op.InputData.meta.shape[1:4])
 
         # remove nonexistent objects
         self._shownObjects3D = dict((k, v) for k, v in self._shownObjects3D.iteritems()
                                     if k in op.MST.value.object_lut.keys())
 
-        lut = numpy.zeros(op.MST.value.nodeNum+1, dtype=numpy.int32)
-        for name, label in self._shownObjects3D.iteritems():
-            objectSupervoxels = op.MST.value.objects[name]
-            lut[objectSupervoxels] = label
+        # Note: don't waste time calculating segmentation here if scene will be re-initialized)
+        if not self._renderMgr._overview_scene._needs_reinit \
+                and self._showSegmentationIn3D and op._opSegmentationCache.Output.ready():
+            seg = op._opSegmentationCache.Output
+            self._renderMgr.volume[:] = seg.value[0,...,0]
+            self._renderMgr.volume[self._renderMgr.volume>0] -= 1
+        else:
+            self._renderMgr.volume[:] = 0
 
-        if self._showSegmentationIn3D:
-            # Add segmentation as label, which is green
-            lut[:] = numpy.where( op.MST.value.getSuperVoxelSeg() == 2, self._segmentation_3d_label, lut )
-        import vigra
-        #with vigra.Timer("remapping"):          
-        self._renderMgr.volume = lut[op.MST.value.supervoxelUint32] # (Advanced indexing)
         self._update_colors()
         self._renderMgr.update()
+
 
     def _update_colors(self):
         op = self.topLevelOperatorView
@@ -601,6 +582,7 @@ class CarvingGui(LabelingGui):
 
         if self._showSegmentationIn3D and self._segmentation_3d_label is not None:
             self._renderMgr.setColor(self._segmentation_3d_label, (0.0, 1.0, 0.0)) # Green
+
 
     def _getNext(self, slot, parentFun, transform=None):
         numLabels = self.labelListData.rowCount()
@@ -644,28 +626,9 @@ class CarvingGui(LabelingGui):
             # Tell the editor where to draw label data
             self.editor.setLabelSink(labelsrc)
 
-        #uncertainty
-        #if self._showUncertaintyLayer:
-        #    uncert = self.topLevelOperatorView.Uncertainty
-        #    if uncert.ready():
-        #        colortable = []
-        #        for i in range(256-len(colortable)):
-        #            r,g,b,a = i,0,0,i
-        #            colortable.append(QColor(r,g,b,a).rgba())
-        #        layer = ColortableLayer(LazyflowSource(uncert), colortable, direct=True)
-        #        layer.name = "Uncertainty"
-        #        layer.visible = True
-        #        layer.opacity = 0.3
-        #        layers.append(layer)
-       
         #segmentation 
-        seg = self.topLevelOperatorView.Segmentation
-        
-        #seg = self.topLevelOperatorView.MST.value.segmentation
-        #temp = self._done_lut[self.MST.value.supervoxelUint32[sl[1:4]]]
+        seg = self.topLevelOperatorView._opSegmentationCache.Output
         if seg.ready():
-            #source = RelabelingArraySource(seg)
-            #source.setRelabeling(numpy.arange(256, dtype=numpy.uint8))
             colortable = [QColor(0,0,0,0).rgba(), QColor(0,0,0,0).rgba(), QColor(0,255,0).rgba()]
             for i in range(256-len(colortable)):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
@@ -717,7 +680,7 @@ class CarvingGui(LabelingGui):
             layer = ColortableLayer(LazyflowSource(sv), colortable, direct=True)
             layer.name = "Supervoxels"
             layer.setToolTip("<html>This layer shows the partitioning of the input image into <b>supervoxels</b>. The carving " \
-                             "algorithm uses these tiny puzzle-piceces to piece together the segmentation of an " \
+                             "algorithm uses these tiny puzzle-pieces to piece together the segmentation of an " \
                              "object. Sometimes, supervoxels are too large and straddle two distinct objects " \
                              "(undersegmentation). In this case, it will be impossible to achieve the desired " \
                              "segmentation. This layer helps you to understand these cases.</html>")

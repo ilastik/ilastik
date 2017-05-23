@@ -88,8 +88,6 @@ class CarvingWorkflow(Workflow):
                                            hintOverlayFile=hintoverlayFile,
                                            pmapOverlayFile=pmapoverlayFile)
         
-        #self.carvingApplet.topLevelOperator.MST.connect(self.preprocessingApplet.topLevelOperator.PreprocessedData)
-        
         # Expose to shell
         self._applets = []
         self._applets.append(self.dataSelectionApplet)

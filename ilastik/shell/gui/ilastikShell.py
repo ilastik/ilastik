@@ -1396,6 +1396,7 @@ class IlastikShell(QMainWindow):
 
             self.openProjectFile(projectFilePath)
 
+    @timeLogged(logger, logging.INFO)
     def openProjectFile(self, projectFilePath, force_readonly=False):
         """
         Explicitly required by ShellABC
@@ -1426,6 +1427,7 @@ class IlastikShell(QMainWindow):
             QApplication.restoreOverrideCursor()
             self.statusBar.clearMessage()
 
+    @timeLogged(logger, logging.INFO)
     def _loadProject(self, hdf5File, projectFilePath, workflow_class, readOnly, importFromPath=None):
         """
         Load the data from the given hdf5File (which should already be open).
