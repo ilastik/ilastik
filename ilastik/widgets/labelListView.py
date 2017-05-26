@@ -83,25 +83,31 @@ class LabelListView(ListView):
         if (modelIndex.column() == self.model.ColumnID.Delete and
             not self.model.flags(modelIndex) == Qt.NoItemFlags):
             self.model.removeRow(modelIndex.row())
-        
 
     def contextMenuEvent(self, event):
         from_index = self._table.indexAt(event.pos())
         if not (0 <= from_index.row() < self.model.rowCount()):
             return
 
-        from_name = self.model.data(from_index, Qt.DisplayRole)
+        # The context menu event is the same regardless of the selected column
+        # Therefore ColumnID is set such that the label name is retrieved
+        from_index_to_name = self.model.index(from_index.row(), LabelListModel.ColumnID.Name)
+
+        from_name = self.model.data(from_index_to_name, Qt.DisplayRole)
         menu = QMenu(parent=self)
-        menu.addAction("Clear {}".format(from_name), partial(self.clearRequested.emit, from_index.row(), str(from_name)))
+        menu.addAction(
+            "Clear {}".format(from_name),
+            partial(self.clearRequested.emit, from_index_to_name.row(), str(from_name))
+        )
 
         if self.support_merges and self.allowDelete:
             for to_row in range(self.model.rowCount()):
                 to_index = self.model.index(to_row, LabelListModel.ColumnID.Name)
                 to_name = self.model.data(to_index, Qt.DisplayRole)
                 action = menu.addAction( "Merge {} into {}".format( from_name, to_name ),
-                                         partial( self.mergeRequested.emit, from_index.row(), str(from_name),
+                                         partial( self.mergeRequested.emit, from_index_to_name.row(), str(from_name),
                                                                             to_row,           str(to_name)) )
-                if to_row == from_index.row():
+                if to_row == from_index_to_name.row():
                     action.setEnabled(False)
 
         menu.exec_( self.mapToGlobal(event.pos()) )

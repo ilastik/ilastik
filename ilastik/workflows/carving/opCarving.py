@@ -223,7 +223,7 @@ class OpCarving(Operator):
         
     def setupOutputs(self):
         self.Segmentation.meta.assignFrom(self.InputData.meta)
-        self.Segmentation.meta.dtype = numpy.int32
+        self.Segmentation.meta.dtype = numpy.uint32
         
         self.Supervoxels.meta.assignFrom(self.Segmentation.meta)
         self.DoneObjects.meta.assignFrom(self.Segmentation.meta)
