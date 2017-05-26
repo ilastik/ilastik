@@ -47,14 +47,17 @@ SOLVER = None
 try:
     import multiHypoTracking_with_cplex as mht
     SOLVER = "CPLEX"
+    logger.info("CPLEX found!")
 except ImportError:
     try:
         import multiHypoTracking_with_gurobi as mht
         SOLVER = "GUROBI"
+        logger.info("GUROBI found!")
     except ImportError:
         try:
             import pgmlink
             SOLVER = "PGMLINK"
+            logger.info("PGMLINK found!")
         except ImportError:
             try:
                 import dpct
