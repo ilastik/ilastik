@@ -371,6 +371,7 @@ class OpStructuredTracking(OpConservationTracking):
 
         initialWeights = trackingGraph.weightsListToDict([transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight])
 
+        self.HypothesesGraph.setValue(hypothesesGraph)
         mht.trainWithWeightInitialization(model,gt, initialWeights)
         weightsDict = mht.train(model, gt)
 
