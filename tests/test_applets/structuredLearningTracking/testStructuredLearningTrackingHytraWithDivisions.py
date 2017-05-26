@@ -61,12 +61,17 @@ except ImportError:
 
 class TestStructuredLearningTrackingHeadless(object):
 
-    PROJECT_FILE = 'data/inputdata/mitocheckStructuredLearningTrackingHytraWithDivisions.ilp'
-    RAW_DATA_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t.h5'
-    PREDICTION_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_export.h5'
+    logger.info('looking for tests directory ...')
+    ilastik_tests_file_path = os.path.join( os.path.split( os.path.realpath(ilastik.__file__) )[0], "../tests/" )
+    if not os.path.exists( ilastik_tests_file_path ):
+        raise RuntimeError("Couldn't find ilastik/tests directory: {}".format( ilastik_tests_file_path ))
 
-    EXPECTED_TRACKING_RESULT_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_Tracking-Result.h5'
-    EXPECTED_CSV_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_CSV-Table.csv'
+    PROJECT_FILE = ilastik_tests_file_path+'data/inputdata/mitocheckStructuredLearningTrackingHytraWithDivisions.ilp'
+    RAW_DATA_FILE = ilastik_tests_file_path+'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t.h5'
+    PREDICTION_FILE = ilastik_tests_file_path+'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_export.h5'
+
+    EXPECTED_TRACKING_RESULT_FILE = ilastik_tests_file_path+'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_Tracking-Result.h5'
+    EXPECTED_CSV_FILE = ilastik_tests_file_path+'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_CSV-Table.csv'
     EXPECTED_SHAPE = (9, 99, 105, 1, 1) # Expected shape for tracking results HDF5 files
     EXPECTED_NUM_LINES_TRACKING = 25 # Number of lines expected in exported csv file
     EXPECTED_NUM_DIVISIONS = 2 # Number of lines expected in exported csv file
@@ -90,8 +95,8 @@ class TestStructuredLearningTrackingHeadless(object):
 
     @classmethod
     def teardownClass(cls):
-        removeFiles = ['data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_Tracking-Result.h5',
-                       'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_CSV-Table.csv']
+        removeFiles = [cls.ilastik_tests_file_path+'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_Tracking-Result.h5',
+                       cls.ilastik_tests_file_path+'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_CSV-Table.csv']
 
         # Clean up: Delete any test files we generated
         for f in removeFiles:
@@ -109,8 +114,8 @@ class TestStructuredLearningTrackingHeadless(object):
             import ilastik.workflows.tracking.structured
         except ImportError as e:
             logger.warn( "Structured learning tracking could not be imported. CPLEX is most likely missing: " + str(e) )
-            raise nose.SkipTest 
-        
+            raise nose.SkipTest
+
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.PREDICTION_FILE):
             logger.info("Test files not found.")   

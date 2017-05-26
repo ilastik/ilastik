@@ -50,12 +50,17 @@ except ImportError:
 
 class TestStructuredLearningTrackingHeadless(object):
 
-    PROJECT_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learning-with-segmentation-gt-2017-01-17.ilp'
-    RAW_DATA_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17.h5'
-    BINARY_SEGMENTATION_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01_GT/SEG/learningSeg-2017-01-17.h5'
+    logger.info('looking for tests directory ...')
+    ilastik_tests_file_path = os.path.join( os.path.split( os.path.realpath(ilastik.__file__) )[0], "../tests/" )
+    if not os.path.exists( ilastik_tests_file_path ):
+        raise RuntimeError("Couldn't find ilastik/tests directory: {}".format( ilastik_tests_file_path ))
 
-    EXPECTED_TRACKING_RESULT_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_Tracking-Result.h5'
-    EXPECTED_CSV_FILE = 'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_CSV-Table.csv'
+    PROJECT_FILE = ilastik_tests_file_path+'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learning-with-segmentation-gt-2017-01-17.ilp'
+    RAW_DATA_FILE = ilastik_tests_file_path+'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17.h5'
+    BINARY_SEGMENTATION_FILE = ilastik_tests_file_path+'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01_GT/SEG/learningSeg-2017-01-17.h5'
+
+    EXPECTED_TRACKING_RESULT_FILE = ilastik_tests_file_path+'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_Tracking-Result.h5'
+    EXPECTED_CSV_FILE = ilastik_tests_file_path+'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_CSV-Table.csv'
     EXPECTED_SHAPE = (10, 495, 534, 1, 1) # Expected shape for tracking results HDF5 files
     EXPECTED_NUM_LINES_TRACKING = 164 # Number of lines expected in exported csv file
     EXPECTED_NUM_DIVISIONS = 6 # Number of lines expected in exported csv file
@@ -79,8 +84,8 @@ class TestStructuredLearningTrackingHeadless(object):
 
     @classmethod
     def teardownClass(cls):
-        removeFiles = ['data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_Tracking-Result.h5',
-                       'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_CSV-Table.csv']
+        removeFiles = [cls.ilastik_tests_file_path+'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_Tracking-Result.h5',
+                       cls.ilastik_tests_file_path+'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_CSV-Table.csv']
 
         # Clean up: Delete any test files we generated
         for f in removeFiles:
