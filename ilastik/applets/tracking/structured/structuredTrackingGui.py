@@ -420,6 +420,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
     def _onRunStructuredLearningButtonPressed(self, withBatchProcessing=False):
 
+        if not self.mainOperator.ObjectFeatures.ready():
+            self._criticalMessage("You have to compute object features first.")
+            return
+
         numStages = 4
         # creating traxel store
         # generating probabilities
