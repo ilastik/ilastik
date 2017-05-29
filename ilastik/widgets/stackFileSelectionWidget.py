@@ -238,7 +238,7 @@ class StackFileSelectionWidget(QDialog):
         thus, unclear.
 
         Args:
-            h5_files (list of strings): h5 files to be globbed internally
+            h5Files (list of strings): h5 files to be globbed internally
 
         Returns:
             list of internal paths
