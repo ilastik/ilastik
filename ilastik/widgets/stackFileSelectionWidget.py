@@ -25,7 +25,8 @@ from functools import partial
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
 from PyQt4.QtGui import (
-    QDialogButtonBox, QComboBox, QDialog, QFileDialog, QLabel, QMessageBox, QVBoxLayout
+    QDialogButtonBox, QComboBox, QDialog, QFileDialog, QLabel, QLineEdit,
+    QMessageBox, QTextEdit, QVBoxLayout
 )
 
 import vigra
@@ -39,7 +40,7 @@ from lazyflow.operators.ioOperators import (
     OpStackLoader, OpStreamingHdf5SequenceReaderM,
     OpStreamingHdf5SequenceReaderS
 )
-from lazyflow.utility import lsHdf5, PathComponents
+from lazyflow.utility import globList, lsHdf5, PathComponents
 import h5py
 
 
@@ -67,6 +68,47 @@ class H5VolumeSelectionDlg(QDialog):
         layout.addWidget(buttonbox)
 
         self.setLayout(layout)
+
+
+class H5PatternSpecifyDlg(QDialog):
+    """
+    A window to ask the user to enter a glob pattern to specify the internal
+    datasets to be stacked.
+    """
+    def __init__(self, parent, list_of_paths):
+        super(H5PatternSpecifyDlg, self).__init__(parent)
+        label = QLabel("Please specify the volume to be stacked using \n"
+                       "'*' - wildcards.")
+
+        self.input_text = QLineEdit()
+        self.input_text.setText('*')
+        self.list_of_paths = list_of_paths
+
+        self.info_text = QTextEdit()
+        self.info_text.setReadOnly(True)
+        info_label = QLabel('Resulting images used for stacking:')
+
+        buttonbox = QDialogButtonBox(Qt.Horizontal, parent=self)
+        buttonbox.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttonbox.accepted.connect(self.accept)
+        buttonbox.rejected.connect(self.reject)
+
+        layout = QVBoxLayout()
+        layout.addWidget(label)
+        layout.addWidget(self.input_text)
+        layout.addWidget(buttonbox)
+        layout.addWidget(info_label)
+        layout.addWidget(self.info_text)
+
+        self.setLayout(layout)
+
+        # connect the signals
+        self.input_text.textEdited.connect(self.validate_globstring)
+        self.validate_globstring('*')
+
+    def validate_globstring(self, globstring):
+        resulting = globList([x['name'] for x in self.list_of_paths], str(self.input_text.text()))
+        self.info_text.setText("\n".join(resulting))
 
 
 class StackFileSelectionWidget(QDialog):
@@ -254,6 +296,23 @@ class StackFileSelectionWidget(QDialog):
 
         return list(internal_paths)
 
+    @staticmethod
+    def _findInternalStacks(h5File):
+        """Tries to find common internal path (containing data)
+
+        Method is used, when a directory is selected and the internal path is,
+        thus, unclear.
+
+        Args:
+            h5file (list of strings): h5 files to be globbed internally
+
+        Returns:
+            list of internal stacks
+        """
+        # get all internal paths
+        h5 = h5py.File(h5File, mode='r')
+        internal_paths = lsHdf5(h5, minShape=2)
+        return internal_paths
 
     def _selectFiles(self):
         # Find the directory of the most recently opened image file
@@ -284,20 +343,38 @@ class StackFileSelectionWidget(QDialog):
         if len(fileNames) == 0:
             return
 
-        if len(fileNames) == 1:
+        pathComponents = PathComponents(fileNames[0])
+
+        if (len(fileNames) == 1 and
+                pathComponents.extension not in OpStreamingHdf5SequenceReaderM.H5EXTS):
             msg += 'Cannot create stack: You only chose a single file.  '
             msg += 'If your stack is contained in a single file (e.g. a multi-page tiff or '
             msg += 'hdf5 volume), please use the "Add File" button.'
             QMessageBox.warning(self, "Invalid selection", msg)
             return None
 
-        pathComponents = PathComponents(fileNames[0])
         directory = pathComponents.externalPath
         PreferencesManager().set('DataSelection', 'recent stack directory', directory)
 
         if pathComponents.extension in OpStreamingHdf5SequenceReaderM.H5EXTS:
-            # check for internal paths!
-            internal_paths = self._findCommonInternal(fileNames)
+            # check for internal paths
+            if len(fileNames) == 1:
+                # open dialog and ask for internal path
+                tmp_h5_file = h5py.File(fileNames[0], mode='r')
+                internal_paths_list = lsHdf5(tmp_h5_file)
+                tmp_h5_file.close()
+                dlg = H5PatternSpecifyDlg(parent=self, list_of_paths=internal_paths_list)
+                if dlg.exec_() == QDialog.Accepted:
+                    glob_string_entered = str(dlg.input_text.text())
+                    globstring = '{}/{}'.format(fileNames[0], glob_string_entered)
+                    self.patternEdit.setText(globstring)
+                    self._applyPattern()
+                    return None
+                else:
+                    msg = 'No valid internal path specified.'
+                    raise StackFileSelectionWidget.DetermineStackError(msg)
+            else:
+                internal_paths = self._findCommonInternal(fileNames)
             if len(internal_paths) == 0:
                 msg += 'Could not find a unique common internal path in'
                 msg += directory + '\n'
