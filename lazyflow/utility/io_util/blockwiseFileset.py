@@ -45,7 +45,7 @@ def vectorized_pickle_dumps(a):
     out = numpy.ndarray(shape=a.shape, dtype='O')
     for i,x in enumerate(a.flat):
         # Must use protocol 0 to avoid null bytes in the h5py dataset
-        out.flat[i] = pickle.dumps(x)
+        out.flat[i] = pickle.dumps(x, 0)
     return out
 
 def vectorized_pickle_loads(a):
@@ -500,13 +500,16 @@ class BlockwiseFileset(object):
                 self._createDatasetInFile( hdf5File, path_parts.internalPath, entire_block_roi )
             dataset = hdf5File[ path_parts.internalPath ]
             data = array_data[ array_slicing ]
-            if data.dtype == object:
+            if data.dtype != object:
+                dataset[ roiToSlice( *block_relative_roi ) ] = data
+            else:
                 # hdf5 can't handle datasets with dtype=object,
                 #  so we have to pickle each item first.
-                dataset[ roiToSlice( *block_relative_roi ) ] = vectorized_pickle_dumps(data)
-            else:
-                dataset[ roiToSlice( *block_relative_roi ) ] = data
-            
+                pickled_data = vectorized_pickle_dumps(data)
+                for index in numpy.ndindex(pickled_data.shape):
+                    block_index = index + numpy.array(block_relative_roi[0])
+                    dataset[tuple(block_index)] = list(pickled_data[index])
+
 
     def _createDatasetInFile(self, hdf5File, datasetName, roi):
         shape = tuple( roi[1] - roi[0] )
@@ -520,7 +523,7 @@ class BlockwiseFileset(object):
         
         dtype=self._description.dtype
         if dtype == object:
-            dtype = h5py.new_vlen(str)
+            dtype = h5py.special_dtype(vlen=numpy.uint8)
         dataset = hdf5File.create_dataset( datasetName,
                                  shape=shape,
                                  dtype=dtype,
