@@ -60,7 +60,7 @@ class Namespace(object):
         Implemented to support copy.copy()
         """
         super(Namespace, self).__setattr__( '_items', collections.OrderedDict() )
-        self._items.update( state )
+        self._items.update( state['_items'] )
 
     def __eq__(self, other):
         """
