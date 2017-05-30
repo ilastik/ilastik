@@ -436,8 +436,6 @@ class OpDummyData(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
 
     def execute(self, slot, subindex, roi, result):
-        assert sys.version_info.major == 2, "Alert! This function has not been tested "\
-        "under python 3. Please remove this assetion and be wary of any strange behavior you encounter"
         # Replace this entire request with a simple pattern to indicate "not available"
         # The pattern is simply a bunch of diagonal planes.
         pattern = numpy.indices( roi.stop - roi.start ).sum(0)
