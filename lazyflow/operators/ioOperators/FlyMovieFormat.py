@@ -55,14 +55,14 @@ class FlyMovie(object):
         else:
             self.writeable = True
         
-	# get the extension
-	tmp,ext = os.path.splitext(self.filename)
-	if ext == '.sbfmf':
-	    self.init_sbfmf()
-	    self.issbfmf = True
-	    return
-	else:
-	    self.issbfmf = False
+        # get the extension
+        tmp,ext = os.path.splitext(self.filename)
+        if ext == '.sbfmf':
+            self.init_sbfmf()
+            self.issbfmf = True
+            return
+        else:
+            self.issbfmf = False
         
         r=self.file.read # shorthand
         t=self.file.tell # shorthand
@@ -99,7 +99,7 @@ class FlyMovie(object):
         if self.bytes_per_chunk != self.bits_per_pixel//8*self.framesize[0]*self.framesize[1] + self.timestamp_len:
             logger.warn("FMF reading will probably end badly: {}, {}, {}, {}, {}".format(self.bytes_per_chunk, self.bits_per_pixel, self.framesize, self.timestamp_len, self.bits_per_pixel*self.framesize[0]*self.framesize[1] + self.timestamp_len) )
 
-	if self.n_frames == 0: # unknown movie length, read to find out
+        if self.n_frames == 0: # unknown movie length, read to find out
             # seek to end of the movie
             self.file.seek(0,2)
             # get the byte position
@@ -117,13 +117,13 @@ class FlyMovie(object):
                     n_frames_ok = True
                 except NoMoreFramesException:
                     self.n_frames -= 1
-	    self.file.seek(self.chunk_start,0) # go back to beginning
+            self.file.seek(self.chunk_start,0) # go back to beginning
 
         self._all_timestamps = None # cache
 
     def init_sbfmf(self):
-	
-	#try:
+        
+        #try:
         # read the version number
         format = '<I'
         nbytesver, = struct.unpack(format,self.file.read(struct.calcsize(format)))
@@ -132,7 +132,7 @@ class FlyMovie(object):
         # read header parameters
         format = '<4IQ'
         nr,nc,self.n_frames,difference_mode,self.indexloc = \
-	      struct.unpack(format,self.file.read(struct.calcsize(format)))
+              struct.unpack(format,self.file.read(struct.calcsize(format)))
 
         # read the background image
         self.bgcenter = nx.fromstring(self.file.read(struct.calcsize('<d')*nr*nc),'<d')
@@ -144,16 +144,16 @@ class FlyMovie(object):
         self.file.seek(self.indexloc,0)
         self.framelocs = nx.fromstring(self.file.read(self.n_frames*8),'<Q')
 
-	#except:
+        #except:
         #    raise InvalidMovieFileException('file could not be read')
 
-	if version == "0.1":
-	    self.format = 'MONO8'
-	    self.bits_per_pixel = 8
+        if version == "0.1":
+            self.format = 'MONO8'
+            self.bits_per_pixel = 8
 
-	self.framesize = (nr,nc)
-	self.bytes_per_chunk = None
-	self.timestamp_len = struct.calcsize('<d')
+        self.framesize = (nr,nc)
+        self.bytes_per_chunk = None
+        self.timestamp_len = struct.calcsize('<d')
         self.chunk_start = self.file.tell()
         self.next_frame = None
         self._all_timestamps = None # cache
@@ -397,14 +397,14 @@ class FlyMovieSaver(object):
                 self.compressor = 'non'
                 
             if self.compressor == 'non':
-    	        self.compress_func = lambda x: x
-    	    elif self.compressor == 'lzo':
-    	        import lzo
-    	        self.compress_func = lzo.compress
-    	    else:
-    	        raise ValueError("unknown compressor '%s'"%(self.compressor,))
-    	    assert isinstance(self.compressor, (str, unicode)) and len(self.compressor)<=4
-    	    self.file.write(self.compressor)
+                    self.compress_func = lambda x: x
+            elif self.compressor == 'lzo':
+                import lzo
+                self.compress_func = lzo.compress
+            else:
+                raise ValueError("unknown compressor '%s'"%(self.compressor,))
+            assert isinstance(self.compressor, (str, unicode)) and len(self.compressor)<=4
+            self.file.write(self.compressor)
             
         if version == 3:
             if not isinstance(format, str):
@@ -563,4 +563,3 @@ class FlyMovieSaver(object):
     def __del__(self):
         if hasattr(self,'file'):
             self.close()
-
