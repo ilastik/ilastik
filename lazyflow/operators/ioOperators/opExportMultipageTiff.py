@@ -21,8 +21,8 @@
 ###############################################################################
 from __future__ import division
 from __future__ import print_function
-from future import standard_library
-standard_library.install_aliases()
+#from future import standard_library
+#standard_library.install_aliases()
 from builtins import zip
 from builtins import next
 #
@@ -216,10 +216,11 @@ class OpExportMultipageTiff(Operator):
         from textwrap import dedent
         import sys
         import io
-        if sys.version_info.major == 2:
-            xml_stream = io.BytesIO()
-        else:
-            xml_stream = io.StringIO()
+        xml_stream = io.BytesIO()
+        #if sys.version_info.major == 2:
+        #    xml_stream = io.BytesIO()
+        #else:
+        #    xml_stream = io.StringIO()
 
         comment = ET.Comment(
             ' Warning: this comment is an OME-XML metadata block, which contains crucial '
