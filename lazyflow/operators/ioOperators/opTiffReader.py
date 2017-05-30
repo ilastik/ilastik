@@ -8,11 +8,11 @@ import numpy
 #import skimage.external.tifffile.tifffile_local as tifffile
 
 import tifffile
-import _tifffile
-if tifffile.decodelzw != _tifffile.decodelzw:
-    import warnings
-    warnings.warn("tifffile C-extension is not working, probably due to a bug in tifffile._replace_by().\n"
-                  "TIFF decompression will be VERY SLOW.")
+# import tifffile._tifffile
+# if tifffile.decode_lzw != tifffile._tifffile.decode_lzw:
+#     import warnings
+#     warnings.warn("tifffile C-extension is not working, probably due to a bug in tifffile._replace_by().\n"
+#                   "TIFF decompression will be VERY SLOW.")
 
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
