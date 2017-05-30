@@ -261,7 +261,7 @@ class JsonConfigParser( object ):
                 raise
 
             try:
-                # Conver the dict we got into a namespace
+                # Convert the dict we got into a namespace
                 namespace = self._getNamespace(jsonDict)
             except JsonConfigParser.ParsingError as e:
                 raise type(e)( "Error parsing config file '{f}':\n{msg}".format( f=configFilePath, msg=e.args[0] ) )
@@ -299,12 +299,12 @@ class JsonConfigParser( object ):
             jsonDict = jsonDict.__dict__
         if not isinstance(jsonDict, collections.OrderedDict):
             raise JsonConfigParser.ParsingError( "Expected a collections.OrderedDict, got a {}".format( type(jsonDict) ) )
-        configDict = collections.OrderedDict( (str(k) , v) for k,v in list(jsonDict.items()) )
+        configDict = collections.OrderedDict( (str(k) , v) for k,v in jsonDict.items() )
 
         namespace = Namespace()
         # Keys that the user gave us are 
-        for key, value in list(configDict.items()):
-            if key in list(self._fields.keys()):
+        for key, value in configDict.items():
+            if key in self._fields.keys():
                 fieldType = self._fields[key]
                 try:
                     finalValue = self._transformValue( fieldType, value )
@@ -315,9 +315,9 @@ class JsonConfigParser( object ):
                     setattr( namespace, key, finalValue )
 
         # All other config fields are None by default
-        for key in list(self._fields.keys()):
+        for key in self._fields.keys():
             key = key.replace(' ', '_')
-            if key not in list(namespace.__dict__.keys()):
+            if key not in namespace.__dict__.keys():
                 setattr(namespace, key, None)
 
         # Check for schema errors
