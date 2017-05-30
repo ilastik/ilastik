@@ -23,6 +23,7 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+import sys
 import copy
 import operator # This is the Python standard operator module, not lazyflow.operator!
 import numpy
@@ -77,7 +78,6 @@ class TestTinyVector(object):
         self._checkBinaryOperation(operator.add)
         self._checkBinaryOperation(operator.sub)
         self._checkBinaryOperation(operator.mul)
-        self._checkBinaryOperation(operator.div, lambda a,b: a / b)
         self._checkBinaryOperation(operator.mod)
         self._checkBinaryOperation(operator.floordiv)
 
@@ -91,6 +91,9 @@ class TestTinyVector(object):
         self._checkBinaryOperation(operator.le)
         self._checkBinaryOperation(operator.ge)
         self._checkBinaryOperation(operator.gt)
+
+        if sys.version_info.major == 2:
+            self._checkBinaryOperation(operator.div, lambda a,b: a / b)
     
     def _checkAssignment(self, assignmentOp, numpyOp=None):
         if numpyOp is None:
@@ -135,12 +138,15 @@ class TestTinyVector(object):
         self._checkAssignment(operator.iadd)
         self._checkAssignment(operator.isub)
         self._checkAssignment(operator.imul)
-        self._checkAssignment(operator.idiv, lambda a,b: a / b)
         self._checkAssignment(operator.imod)
         self._checkAssignment(operator.ifloordiv)
         self._checkAssignment(operator.iand)
         self._checkAssignment(operator.ior)
         self._checkAssignment(operator.ixor)
+
+        if sys.version_info.major == 2:
+            self._checkAssignment(operator.idiv, lambda a,b: a / b)
+
     
     def testComparison(self):
         v1 = self.v1
