@@ -98,15 +98,15 @@ class TinyVector(list):
 
     def __truediv__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x.__truediv__(y) for x,y in zip(self,other))
+            return TinyVector(x/y for x,y in zip(self,other))
         else:
-            return TinyVector(x.__truediv__(other) for x in self)
+            return TinyVector(x/other for x in self)
 
     def __rtruediv__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(y.__truediv__(x) for x,y in zip(self,other))
+            return TinyVector(y/x for x,y in zip(self,other))
         else:
-            return TinyVector(other.__truediv__(x) for x in self)
+            return TinyVector(other/x for x in self)
 
     def __mod__(self, other):
         if isinstance(other, collections.Iterable):
