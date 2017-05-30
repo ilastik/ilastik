@@ -5,6 +5,9 @@
 __author__="John Kirkham <kirkhamj@janelia.hhmi.org>"
 __date__ ="$May 14, 2014 10:19:59 PM$"
 
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
 
 import numpy
 import h5py
@@ -33,7 +36,7 @@ def write_numpy_structured_array_to_HDF5(fid, internalPath, data, overwrite = Fa
     
     close_fid = False
     
-    if isinstance(fid, basestring):
+    if isinstance(fid, (str, unicode)):
         fid = h5py.File(fid, "a")
         close_fid = True
     
@@ -81,7 +84,7 @@ def read_numpy_structured_array_from_HDF5(fid, internalPath):
     
     close_fid = False
     
-    if isinstance(fid, basestring):
+    if isinstance(fid, (str, unicode)):
         fid = h5py.File(fid, "r")
         close_fid = True
     
@@ -128,7 +131,7 @@ def read_numpy_structured_array_from_HDF5(fid, internalPath):
 #    
 #    close_fid = False
 #    
-#    if isinstance(fid, basestring):
+#    if isinstance(fid, (str, unicode)):
 #        fid = h5py.File(fid, "a")
 #        close_fid = True
 #    
@@ -190,7 +193,7 @@ def read_numpy_structured_array_from_HDF5(fid, internalPath):
 #    
 #    close_fid = False
 #    
-#    if isinstance(fid, basestring):
+#    if isinstance(fid, (str, unicode)):
 #        fid = h5py.File(fid, "r")
 #        close_fid = True
 #    

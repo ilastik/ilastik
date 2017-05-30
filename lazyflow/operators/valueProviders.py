@@ -1,5 +1,3 @@
-
-from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,7 +23,11 @@ from builtins import object
 import copy
 import logging
 import threading
+
+from builtins import object
 import sys
+if sys.version_info.major >= 3:
+    unicode = str
 
 #SciPy
 import numpy
@@ -163,7 +165,7 @@ class OpMetadataMerge(Operator):
 
         # Merge in additional fields, selected from the source connection.
         for key in self.FieldsToClone.value:
-            assert isinstance(key, basestring), "Metadata field names are expected to be strings"
+            assert isinstance(key, (str, unicode)), "Metadata field names are expected to be strings"
             if key in self.MetadataSource.meta:
                 setattr( self.Output.meta, key, self.MetadataSource.meta[key] )
 

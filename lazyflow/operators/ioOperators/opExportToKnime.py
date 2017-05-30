@@ -1,6 +1,10 @@
 from __future__ import print_function
 
 from builtins import range
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
+
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.stype import Opaque
@@ -37,7 +41,7 @@ def write_numpy_structured_array_to_HDF5(fid, internalPath, data, overwrite = Fa
     
     close_fid = False
     
-    if isinstance(fid, basestring):
+    if isinstance(fid, (str, unicode)):
         fid = h5py.File(fid, "a")
         close_fid = True
     
@@ -85,7 +89,7 @@ def read_numpy_structured_array_from_HDF5(fid, internalPath):
     
     close_fid = False
     
-    if isinstance(fid, basestring):
+    if isinstance(fid, (str, unicode)):
         fid = h5py.File(fid, "r")
         close_fid = True
     

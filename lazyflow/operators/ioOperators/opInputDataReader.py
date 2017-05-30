@@ -1,5 +1,8 @@
 from __future__ import absolute_import
 from builtins import next
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
 
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
@@ -133,7 +136,7 @@ class OpInputDataReader(Operator):
         TODO: Handle datasets of non-standard (non-5d) dimensions.
         """
         filePath = self.FilePath.value
-        assert isinstance(filePath, basestring), "Error: filePath is not of type str.  It's of type {}".format(type(filePath))
+        assert isinstance(filePath, (str, unicode)), "Error: filePath is not of type str.  It's of type {}".format(type(filePath))
 
         # Does this look like a relative path?
         useRelativePath = not isUrl(filePath) and not os.path.isabs(filePath)

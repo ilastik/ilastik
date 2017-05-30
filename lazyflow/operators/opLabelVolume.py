@@ -2,6 +2,9 @@ from __future__ import absolute_import
 
 from builtins import range
 from builtins import object
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
 
 from threading import Lock as ThreadLock
 from functools import partial
@@ -107,7 +110,7 @@ class OpLabelVolume(Operator):
 
     def setupOutputs(self):
         method = self.Method.value
-        if not isinstance(method, basestring):
+        if not isinstance(method, (str, unicode)):
             method = method[0]
 
         if self._opLabel is not None and type(self._opLabel) != self._labelOps[method]:

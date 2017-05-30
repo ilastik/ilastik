@@ -3,6 +3,10 @@ from builtins import next
 from builtins import range
 from builtins import object
 from future.utils import raise_with_traceback
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,7 +29,6 @@ from future.utils import raise_with_traceback
 #		   http://ilastik.org/license/
 ###############################################################################
 #Python
-import sys
 import logging
 import collections
 import itertools
@@ -176,12 +179,12 @@ class Slot(object):
             % (self.operator.name, self.name)
         
         # Check for simple mistakes in parameter order...
-        assert isinstance(name, basestring)
+        assert isinstance(name, (str, unicode))
         assert isinstance(optional, bool)
         
         if not hasattr(self, "_type"):
             self._type = None
-        if isinstance(stype, basestring):
+        if isinstance(stype, (str, unicode)):
             stype = ArrayLike
         self.partners = []
         self.name = name

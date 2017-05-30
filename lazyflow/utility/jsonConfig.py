@@ -1,6 +1,9 @@
 from builtins import zip
-
 from builtins import object
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -108,7 +111,7 @@ class AutoEval(object):
 
         if type(x) is self._t:
             return x
-        if isinstance(x, basestring) and (not isinstance(self._t, type) or not issubclass(self._t, basestring)):
+        if isinstance(x, (str, unicode)) and (not isinstance(self._t, type) or not issubclass(self._t, (str, unicode))):
             return self._t(eval(x))
         return self._t(x)
 

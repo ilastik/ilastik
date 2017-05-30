@@ -26,6 +26,11 @@ standard_library.install_aliases()
 from builtins import map
 from builtins import zip
 from builtins import range
+
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
+
 import os
 import tempfile
 from functools import partial

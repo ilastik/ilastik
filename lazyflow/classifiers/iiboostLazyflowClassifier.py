@@ -3,6 +3,11 @@ from future import standard_library
 standard_library.install_aliases()
 from builtins import map
 from builtins import zip
+
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #

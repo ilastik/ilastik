@@ -6,6 +6,9 @@ from builtins import zip
 from builtins import range
 from builtins import object
 import sys
+if sys.version_info.major >= 3:
+    unicode = str
+
 import struct
 import warnings
 import os.path
@@ -400,7 +403,7 @@ class FlyMovieSaver(object):
     	        self.compress_func = lzo.compress
     	    else:
     	        raise ValueError("unknown compressor '%s'"%(self.compressor,))
-    	    assert isinstance(self.compressor, basestring) and len(self.compressor)<=4
+    	    assert isinstance(self.compressor, (str, unicode)) and len(self.compressor)<=4
     	    self.file.write(self.compressor)
             
         if version == 3:

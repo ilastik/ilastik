@@ -1,5 +1,8 @@
 from __future__ import print_function
 from builtins import object
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -55,7 +58,7 @@ class Tracer(object):
     >>> traceLogger.setLevel(logging.INFO)
     """
     def __init__(self, logger, level=logging.DEBUG, msg='', determine_caller=True, caller_name=''):
-        if isinstance(logger, basestring):
+        if isinstance(logger, (str, unicode)):
             self._logger = logging.getLogger(logger)
         else:
             self._logger = logger
