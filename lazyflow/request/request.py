@@ -1188,6 +1188,7 @@ class RequestPool(object):
 
         # Set default max_active here because global_thread_pool might change after startup
         # Also, remember that num_workers could be 0 (when debugging)
+        max_active = max_active or 0
         self._max_active = max_active or max(max_active, Request.global_thread_pool.num_workers)
 
         self.clean() # Initialize request sets
