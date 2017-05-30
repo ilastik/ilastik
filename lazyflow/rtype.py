@@ -46,7 +46,7 @@ class RoiMeta(type):
     def __new__(cls, name, bases, classDict):
         cls = super(RoiMeta, cls).__new__(cls, name, bases, classDict)
         # Don't register the Roi baseclass itself.
-        if bases[0] != object > 1:
+        if bases[0] != object:
             Roi._registerSubclass(cls)
         return cls
 
@@ -254,8 +254,6 @@ class SubRegion(Roi):
         return self
 
     def adjustChannel(self,cPerC,cIndex,channelRes):
-        assert sys.version_info.major == 2, "Alert! This function has not been tested "\
-        "under python 3. Please remove this assetion and be wary of any strange behavior you encounter"
         if cPerC != 1 and channelRes == 1:
             start = [self.start[i]//cPerC if i == cIndex else self.start[i] for i in range(len(self.start))]
             stop = [self.stop[i]//cPerC+1 if i==cIndex else self.stop[i] for i in range(len(self.stop))]
