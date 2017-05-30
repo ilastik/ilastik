@@ -29,11 +29,13 @@ class TestOpBlockedArrayCache_BIG_INPUT(object):
     def test(self):
         graph = Graph()
         opOnes = OpOnes( (4000,30000,30000,4), numpy.uint8, graph=graph )
-        
+
         opCache = OpBlockedArrayCache(graph=graph)
-        opCache.Input.connect( opOnes.Output )
-        opCache.BlockShape.setValue( (1,256,256,999) )
-        opCache.fixAtCurrent.setValue(False)
+        
+        with opCache.setup_ram_context:
+            opCache.Input.connect( opOnes.Output )
+            opCache.BlockShape.setValue( (1,256,256,999) )
+            opCache.fixAtCurrent.setValue(False)
         
         assert opCache.setup_ram_context.ram_increase_mb < 10, \
             "Cache book-keeping members are consuming more RAM than expected."
