@@ -21,7 +21,6 @@
 from future import standard_library
 standard_library.install_aliases()
 import configparser
-import io
 import os
 
 """
@@ -76,7 +75,7 @@ cfg = configparser.SafeConfigParser()
 
 def init_ilastik_config(userConfig=None):
     global cfg
-    cfg.readfp(io.BytesIO(default_config))
+    cfg.read_string(default_config)
 
     if userConfig is not None and not os.path.exists(userConfig):
         raise Exception(
