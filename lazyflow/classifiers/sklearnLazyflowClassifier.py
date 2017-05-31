@@ -90,10 +90,10 @@ class SklearnLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         return self._feature_names
 
     def serialize_hdf5(self, h5py_group):
-        h5py_group['pickled_classifier'] = pickle.dumps( self )
+        h5py_group['pickled_classifier'] = pickle.dumps( self, 0 )
 
         # This is a required field for all classifiers
-        h5py_group['pickled_type'] = pickle.dumps( type(self) )
+        h5py_group['pickled_type'] = pickle.dumps( type(self), 0 )
 
     @classmethod
     def deserialize_hdf5(cls, h5py_group):

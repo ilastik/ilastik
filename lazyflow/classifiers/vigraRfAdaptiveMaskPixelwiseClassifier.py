@@ -191,7 +191,7 @@ class VigraRfAdaptiveMaskPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
         h5py_group['known_labels'] = self._known_labels
         
         # This field is required for all classifiers
-        h5py_group['pickled_type'] = pickle.dumps( type(self) )
+        h5py_group['pickled_type'] = pickle.dumps( type(self), 0 )
 
     @classmethod
     def deserialize_hdf5(cls, h5py_group):

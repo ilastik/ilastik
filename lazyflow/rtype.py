@@ -69,7 +69,7 @@ class Roi(with_metaclass(RoiMeta, object)):
         The default implementation uses pickle.
         Subclasses may override this and _fromString for more human-friendly string representations.
         """
-        return pickle.dumps(roi)
+        return pickle.dumps(roi, 0)
     
     @staticmethod
     def _fromString(s):

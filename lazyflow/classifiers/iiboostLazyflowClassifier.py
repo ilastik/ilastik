@@ -306,7 +306,7 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         h5py_group['feature_names'] = [name.encode('utf-8') for name in self._feature_names]
         
         # This field is required for all classifiers
-        h5py_group['pickled_type'] = pickle.dumps( type(self) )
+        h5py_group['pickled_type'] = pickle.dumps( type(self), 0 )
         
         # Just store the string IIBoost gives us
         h5py_group['serialized_model'] = self._model.serialize()

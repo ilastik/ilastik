@@ -391,7 +391,7 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
             h5py_group.create_dataset('feature_names', data=feature_names)
         
         # This field is required for all classifiers
-        h5py_group['pickled_type'] = pickle.dumps( type(self) )
+        h5py_group['pickled_type'] = pickle.dumps( type(self), 0 )
         
         if self._named_importances:
             h5py_group.create_dataset('named_importances_keys', data=list(self._named_importances.keys()))

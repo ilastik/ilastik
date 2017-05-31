@@ -158,7 +158,7 @@ class VigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         h5py_group['feature_names'] = [name.encode('utf-8') for name in self._feature_names]
         
         # This field is required for all classifiers
-        h5py_group['pickled_type'] = pickle.dumps( type(self) )
+        h5py_group['pickled_type'] = pickle.dumps( type(self), 0 )
 
     @classmethod
     def deserialize_hdf5(cls, h5py_group):

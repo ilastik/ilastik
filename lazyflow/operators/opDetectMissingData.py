@@ -504,7 +504,7 @@ class OpDetectMissing(Operator):
         if cls._manager is None:
             cls._manager = SVMManager()
 
-        return pickle.dumps(cls._manager.extract())
+        return pickle.dumps(cls._manager.extract(), 0)
 
     @classmethod
     def loads(cls, s):

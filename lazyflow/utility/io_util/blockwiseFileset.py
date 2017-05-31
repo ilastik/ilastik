@@ -38,7 +38,7 @@ import pickle as pickle
 
 # The natural thing to do here is to use numpy.vectorize,
 #  but that somehow interacts strangely with pickle.
-#vectorized_pickle_dumps = numpy.vectorize( pickle.dumps, otypes=[str] )
+#vectorized_pickle_dumps = numpy.vectorize( pickle.dumps, otypes=[str], 0 )
 #vectorized_pickle_loads = numpy.vectorize( pickke.loads, otypes=[object] )
 
 def vectorized_pickle_dumps(a):
