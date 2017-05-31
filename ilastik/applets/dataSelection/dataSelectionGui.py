@@ -20,6 +20,10 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from builtins import object
 import os
 import sys
 import threading
@@ -27,7 +31,7 @@ import h5py
 import numpy
 from functools import partial
 import logging
-from __builtin__ import False
+from builtins import False
 logger = logging.getLogger(__name__)
 
 #PyQt
@@ -65,13 +69,13 @@ except:
 
 #===----------------------------------------------------------------------------------------------------------------===
 
-class LocationOptions():
+class LocationOptions(object):
     """ Enum for location menu options """
     Project = 0
     AbsolutePath = 1
     RelativePath = 2
 
-class GuiMode():
+class GuiMode(object):
     Normal = 0
     Batch = 1
 
@@ -106,7 +110,7 @@ class DataSelectionGui(QWidget):
 
     def stopAndCleanUp(self):
         self._cleaning_up = True
-        for editor in self.volumeEditors.values():
+        for editor in list(self.volumeEditors.values()):
             self.viewerStack.removeWidget( editor )
             self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
             editor.stopAndCleanUp()
@@ -170,7 +174,7 @@ class DataSelectionGui(QWidget):
         def handleImageRemove(multislot, index, finalLength):
             # Remove the viewer for this dataset
             datasetSlot = self.topLevelOperator.DatasetGroup[index]
-            if datasetSlot in self.volumeEditors.keys():
+            if datasetSlot in list(self.volumeEditors.keys()):
                 editor = self.volumeEditors[datasetSlot]
                 self.viewerStack.removeWidget( editor )
                 self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
@@ -320,7 +324,7 @@ class DataSelectionGui(QWidget):
         datasetSlot = self.topLevelOperator.DatasetGroup[laneIndex]
 
         # Create if necessary
-        if datasetSlot not in self.volumeEditors.keys():
+        if datasetSlot not in list(self.volumeEditors.keys()):
             class DatasetViewer(LayerViewerGui):
                 def moveToTop(self, roleIndex):
                     opLaneView = self.topLevelOperatorView
@@ -437,7 +441,7 @@ class DataSelectionGui(QWidget):
         # Determine the number of files this role already has
         # Search for the last valid value.
         firstNewLane = 0
-        for laneIndex, slot in reversed(zip(range(len(opTop.DatasetGroup)), opTop.DatasetGroup)):
+        for laneIndex, slot in reversed(list(zip(list(range(len(opTop.DatasetGroup))), opTop.DatasetGroup))):
             if slot[roleIndex].ready():
                 firstNewLane = laneIndex+1
                 break
@@ -596,7 +600,7 @@ class DataSelectionGui(QWidget):
             opTop.DatasetGroup.resize( endingLane+1 )
         
         # Configure each subslot
-        for laneIndex, info in zip(range(startingLane, endingLane+1), infos):
+        for laneIndex, info in zip(list(range(startingLane, endingLane+1)), infos):
             try:
                 self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
             except DatasetConstraintError as ex:
@@ -771,8 +775,8 @@ class DataSelectionGui(QWidget):
             self.topLevelOperator.DatasetGroup[row][roleIndex].disconnect()
 
         # Remove all operators that no longer have any connected slots        
-        laneIndexes = range( len(self.topLevelOperator.DatasetGroup) )
-        for laneIndex, multislot in reversed(zip(laneIndexes, self.topLevelOperator.DatasetGroup)):
+        laneIndexes = list(range( len(self.topLevelOperator.DatasetGroup)))
+        for laneIndex, multislot in reversed(list(zip(laneIndexes, self.topLevelOperator.DatasetGroup))):
             any_ready = False
             for slot in multislot:
                 any_ready |= slot.ready()
@@ -798,7 +802,7 @@ class DataSelectionGui(QWidget):
         recent_hosts = recent_hosts_pref.get()
         if not recent_hosts:
             recent_hosts = ["localhost:8000"]
-        recent_hosts = filter(lambda h: h, recent_hosts) # There used to be a bug where empty strings could be saved. Filter those out.
+        recent_hosts = [h for h in recent_hosts if h] # There used to be a bug where empty strings could be saved. Filter those out.
 
         recent_nodes_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Nodes")
         recent_nodes = recent_nodes_pref.get() or {}

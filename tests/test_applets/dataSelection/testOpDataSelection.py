@@ -19,6 +19,7 @@ from __future__ import print_function
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import object
 import os
 import shutil
 from collections import defaultdict
@@ -32,7 +33,7 @@ from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, Datas
 import tempfile
 
 
-class TestOpDataSelection_Basic2D():
+class TestOpDataSelection_Basic2D(object):
 
     @classmethod
     def setupClass(cls):
@@ -346,7 +347,7 @@ class TestOpDataSelection_Basic2D():
         assert (projectInternalData == self.imgData2Dc).all()
 
 
-class TestOpDataSelection_Basic_native_3D():
+class TestOpDataSelection_Basic_native_3D(object):
     """Test related to loading file types that support 3D"""
     @classmethod
     def setupClass(cls):
@@ -514,7 +515,7 @@ class TestOpDataSelection_Basic_native_3D():
         assert (projectInternalData == self.imgData3Dc).all()
 
 
-class TestOpDataSelection_3DStacks():
+class TestOpDataSelection_3DStacks(object):
 
     @classmethod
     def setupClass(cls):
@@ -705,7 +706,7 @@ class TestOpDataSelection_3DStacks():
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
     def testBasic3DstacksFromFileList(self):
-        for ext, fileNames in self.imgFileLists2D.items():
+        for ext, fileNames in list(self.imgFileLists2D.items()):
             fileNameString = os.path.pathsep.join(fileNames)
             graph = lazyflow.graph.Graph()
             reader = OperatorWrapper(OpDataSelection, graph=graph)

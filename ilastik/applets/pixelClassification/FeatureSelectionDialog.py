@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+from builtins import range
 __author__ = 'fabian'
 
 import numpy
@@ -594,7 +595,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         do_transpose = axisOrder.index('x') > axisOrder.index('y')
 
         # we need to reset the 'c' axis because it only has length 1 for segmentation
-        if 'c' not in bbox.keys():
+        if 'c' not in list(bbox.keys()):
             axisOrder += ['c']
 
         bbox['c'] = [0, 1]

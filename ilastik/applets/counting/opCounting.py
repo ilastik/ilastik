@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,6 +20,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
+from builtins import range
+from past.utils import old_div
 import copy
 from functools import partial
 import itertools
@@ -76,11 +79,11 @@ class OpVolumeOperator(Operator):
                 #data = self.inputs["Input"][:].wait()
                 #split up requests into blocks
                 shape = self.Input.meta.shape
-                numBlocks = numpy.ceil(shape/(1.0*fullBlockShape)).astype("int")
+                numBlocks = numpy.ceil(old_div(shape,(1.0*fullBlockShape))).astype("int")
                 blockCache = numpy.ndarray(shape = numpy.prod(numBlocks), dtype=self.Output.meta.dtype)
                 pool = RequestPool()
                 #blocks holds the different roi keys for each of the blocks
-                blocks = itertools.product(*[range(i) for i in numBlocks])
+                blocks = itertools.product(*[list(range(i)) for i in numBlocks])
                 blockKeys = []
                 for b in blocks:
                     start = b * fullBlockShape
@@ -121,7 +124,7 @@ class OpUpperBound(Operator):
     def execute(self, slot, subindex, roi, result):
             
         sigma = self.Sigma.value
-        result[...] = 3 / (2 * math.pi * sigma**2)
+        result[...] = old_div(3, (2 * math.pi * sigma**2))
         return result
     
     def propagateDirty(self, slot, subindex, roi):
@@ -318,7 +321,7 @@ class OpCounting( Operator ):
 
         # All input multi-slots should be kept in sync
         # Output multi-slots will auto-sync via the graph
-        multiInputs = filter( lambda s: s.level >= 1, self.inputs.values() )
+        multiInputs = [s for s in list(self.inputs.values()) if s.level >= 1]
         for s1 in multiInputs:
             for s2 in multiInputs:
                 if s1 != s2:
@@ -620,7 +623,7 @@ class OpEnsembleMargin(Operator):
         pmap_sort.axistags = self.Input.meta.axistags
 
         res = pmap_sort.bindAxis('c', -1) - pmap_sort.bindAxis('c', -2)
-        res = res.withAxes( *taggedShape.keys() ).view(numpy.ndarray)
+        res = res.withAxes( *list(taggedShape.keys()) ).view(numpy.ndarray)
         result[...] = res
         return result 
 

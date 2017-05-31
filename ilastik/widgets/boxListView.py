@@ -176,7 +176,7 @@ class BoxListView(ListView):
                                                      self._colorDialog.getLineWidth(),
                                                      self._colorDialog.getFontColor())
         names=["color","fontsize","linewidth",'fontcolor']
-        d=dict(zip(names,prop))
+        d=dict(list(zip(names,prop)))
 
         modelIndex=self._colorDialog.getModelIndex()
         self._table.model().setData(modelIndex,d)

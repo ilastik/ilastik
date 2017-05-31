@@ -18,7 +18,9 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-import ConfigParser
+from future import standard_library
+standard_library.install_aliases()
+import configparser
 import io
 import os
 
@@ -69,7 +71,7 @@ filename: in
 """
 
 
-cfg = ConfigParser.SafeConfigParser()
+cfg = configparser.SafeConfigParser()
 
 
 def init_ilastik_config(userConfig=None):

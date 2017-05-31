@@ -19,6 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
+from builtins import range
+from builtins import object
 import os
 import re
 import logging
@@ -48,7 +50,7 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 # Loggers
 logger = logging.getLogger(__name__)
 
-class Tool():
+class Tool(object):
     """Enumerate the types of toolbar buttons."""
     Navigation = 0 # Arrow
     Paint      = 1
@@ -310,7 +312,7 @@ class CroppingGui(LayerViewerGui):
          """
          # Uncheck all the other buttons
          if self.toolButtons != None:
-             for tool, button in self.toolButtons.items():
+             for tool, button in list(self.toolButtons.items()):
                  if tool != toolId:
                      button.setChecked(False)
 
@@ -537,7 +539,7 @@ class CroppingGui(LayerViewerGui):
     def getLayer(self, name):
         """find a layer by name"""
         try:
-            croplayer = next(itertools.ifilter(lambda l: l.name == name, self.layerstack))
+            croplayer = next(filter(lambda l: l.name == name, self.layerstack))
         except StopIteration:
             return None
         else:

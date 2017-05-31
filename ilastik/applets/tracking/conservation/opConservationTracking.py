@@ -1,5 +1,8 @@
 from __future__ import print_function
 from __future__ import absolute_import
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import numpy as np
 import os
 import itertools
@@ -154,7 +157,7 @@ class OpConservationTracking(Operator):
             resolvedMergers = self.ResolvedMergers.value
             
             # Assume [t,x,y,z,c] order           
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
             offset = roi.start[1:-1]
        
             result[:] =  self.LabelImage.get(roi).wait()
@@ -173,7 +176,7 @@ class OpConservationTracking(Operator):
             resolvedMergers = self.ResolvedMergers.value
             
             # Assume [t,x,y,z,c] order
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
             offset = roi.start[1:-1]
 
             result[:] =  self.LabelImage.get(roi).wait()
@@ -192,7 +195,7 @@ class OpConservationTracking(Operator):
             resolvedMergers = self.ResolvedMergers.value
             
             # Assume [t,x,y,z,c] order
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
             offset = roi.start[1:-1] 
 
             result[:] =  self.LabelImage.get(roi).wait()
@@ -227,7 +230,7 @@ class OpConservationTracking(Operator):
         Construct a hypotheses graph given the current settings in the parameters slot
         '''
         parameters = self.Parameters.value
-        time_range = range(parameters['time_range'][0],parameters['time_range'][1] + 1)
+        time_range = list(range(parameters['time_range'][0],parameters['time_range'][1] + 1))
         x_range = parameters['x_range']
         y_range = parameters['y_range']
         z_range = parameters['z_range']
@@ -299,7 +302,7 @@ class OpConservationTracking(Operator):
             # Fit and refine merger nodes using a GMM 
             # It has to be done per time-step in order to aviod loading the whole video on RAM
             traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(model)
-            timesteps = [int(t) for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+            timesteps = [int(t) for t in list(traxelIdPerTimestepToUniqueIdMap.keys())]
             timesteps.sort()
             
             timeIndex = self.LabelImage.meta.axistags.index('t')
@@ -307,7 +310,7 @@ class OpConservationTracking(Operator):
             count=0
             for timestep in timesteps:
                 count +=1
-                self.progressVisitor.showProgress(count/float(numTimeStep))
+                self.progressVisitor.showProgress(old_div(count,float(numTimeStep)))
 
                 roi = [slice(None) for i in range(len(self.LabelImage.meta.shape))]
                 roi[timeIndex] = slice(timestep, timestep+1)
@@ -569,7 +572,7 @@ class OpConservationTracking(Operator):
                 if time not in resolvedMergersDict:
                     idxs = []
                 else:
-                    newIds = [newId for _, nodeDict in resolvedMergersDict[time].items() for newId in nodeDict['newIds']]
+                    newIds = [newId for _, nodeDict in list(resolvedMergersDict[time].items()) for newId in nodeDict['newIds']]
                     idxs = [id for id in idxs if id in newIds]
             else:
                 idxs = [idx for idx in idxs if idx > 0 and hypothesesGraph.hasNode((time,idx)) and hypothesesGraph._graph.node[(time,idx)]['value'] > 1]
@@ -730,15 +733,15 @@ class OpConservationTracking(Operator):
         filtered_labels = {}
         total_count = 0
         empty_frame = False
-        numTimeStep = len(feats.keys())
+        numTimeStep = len(list(feats.keys()))
         countT = 0
 
         stepStr = "Creating traxel store"
         self.progressVisitor.showState(stepStr+"                              ")
 
-        for t in feats.keys():
+        for t in list(feats.keys()):
             countT +=1
-            self.progressVisitor.showProgress(countT/float(numTimeStep))
+            self.progressVisitor.showProgress(old_div(countT,float(numTimeStep)))
 
             rc = feats[t][default_features_key]['RegionCenter']
             lower = feats[t][default_features_key]['Coord<Minimum>']

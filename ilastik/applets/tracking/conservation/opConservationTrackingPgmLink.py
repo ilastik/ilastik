@@ -1,5 +1,6 @@
 from __future__ import print_function
 from __future__ import absolute_import
+from builtins import range
 import numpy as np
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.rtype import List
@@ -100,7 +101,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
     def execute(self, slot, subindex, roi, result):
         if slot is self.Output:
             parameters = self.Parameters.value
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
             original = np.zeros(result.shape, dtype=slot.meta.dtype)
             super(OpConservationTrackingPgmLink, self).execute(slot, subindex, roi, original)
             result[:] = self.LabelImage.get(roi).wait()
@@ -117,14 +118,14 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
             result[:] = original
         elif slot is self.MergerOutput:
             parameters = self.Parameters.value
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
             result[:] = self.LabelImage.get(roi).wait()
             pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
                         and len(self.mergers) > t and len(self.mergers[t])):
-                    if 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']:
+                    if 'withMergerResolution' in list(parameters.keys()) and parameters['withMergerResolution']:
                         result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, True)
                     else:
                         result[t-roi.start[0],...,0] = highlightMergers(result[t-roi.start[0],...,0], self.mergers[t])
@@ -132,14 +133,14 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
                     result[t-roi.start[0],...][:] = 0
         elif slot is self.RelabeledImage:
             parameters = self.Parameters.value
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
             result[:] = self.LabelImage.get(roi).wait()
             pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
                         and len(self.resolvedto) > t and len(self.resolvedto[t])
-                        and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
+                        and 'withMergerResolution' in list(parameters.keys()) and parameters['withMergerResolution']):
                         result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, False, True)
         else:  # default bahaviour
             super(OpConservationTrackingPgmLink, self).execute(slot, subindex, roi, result)
@@ -367,7 +368,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
         if not withBatchProcessing:
             merger_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Merger")
             tracking_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Tracking")
-            if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
+            if 'withMergerResolution' in list(parameters.keys()) and not parameters['withMergerResolution']:
                 self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
                     self.parent.parent.trackingApplet._gui.currentGui().merger_colortable
             else:
@@ -410,7 +411,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
         # fetch features
         feats = self.ObjectFeatures(time_range).wait()
         # iterate over all timesteps
-        for t in feats.keys():
+        for t in list(feats.keys()):
             rc = feats[t][default_features_key]['RegionCenter']
             lower = feats[t][default_features_key]['Coord<Minimum>']
             upper = feats[t][default_features_key]['Coord<Maximum>']
@@ -459,7 +460,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
 
         coordinate_map = self.CoordinateMap.value
         valid_ids = []
-        for old_id, new_ids in self.resolvedto[time].iteritems():
+        for old_id, new_ids in self.resolvedto[time].items():
             for new_id in new_ids:
                 # TODO Reliable distinction between 2d and 3d?
                 if self._ndim == 2:

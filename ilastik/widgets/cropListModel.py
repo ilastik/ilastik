@@ -19,6 +19,8 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
+from builtins import object
 from PyQt5.QtGui import QColor, QPixmap, QIcon, QImage
 from PyQt5.QtCore import Qt, pyqtSignal, QModelIndex, QItemSelectionModel
 from .listModel import ListModel, ListElement, _NPIXELS
@@ -81,7 +83,7 @@ class CropListModel(ListModel):
     
     icon_cache = {}
         
-    class ColumnID():
+    class ColumnID(object):
         Color  = 0
         Name   = 1
         Delete = 2

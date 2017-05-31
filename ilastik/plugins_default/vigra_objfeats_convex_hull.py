@@ -41,7 +41,7 @@ def cleanup_value(val, nObjects):
     return val
 
 def cleanup(d, nObjects, features):
-    result = dict((k, cleanup_value(v, nObjects)) for k, v in d.iteritems())
+    result = dict((k, cleanup_value(v, nObjects)) for k, v in d.items())
     newkeys = set(result.keys()) & set(features)
     return dict((k, result[k]) for k in newkeys)
 
@@ -57,7 +57,7 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
         tooltips = {}
         result = dict((n, {}) for n in names)
         result = self.fill_properties(result)
-        for f, v in result.iteritems():
+        for f, v in result.items():
             v['tooltip'] = self.local_preffix + f
         
         return result
@@ -67,7 +67,7 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
         # fill in the detailed information about the features.
         # features should be a dict with the feature_name as key.
         # NOTE, this function needs to be updated every time skeleton features change
-        for feature in features.iterkeys():
+        for feature in features.keys():
             features[feature]["displaytext"] = feature
             features[feature]["detailtext"] = feature + ", stay tuned for more details"
             features[feature]["advanced"] = False
@@ -183,5 +183,5 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
 
     def compute_global(self, image, labels, features, axes):
         
-        return self._do_4d(image, labels, features.keys(), axes)
+        return self._do_4d(image, labels, list(features.keys()), axes)
 

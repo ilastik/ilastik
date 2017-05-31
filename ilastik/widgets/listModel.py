@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import object
 from PyQt5.QtGui import QColor, QPixmap, QIcon, QPainter, QPen, QImage
 from PyQt5.QtCore import QObject, QAbstractTableModel, QItemSelectionModel, Qt, QModelIndex, pyqtSignal
 
@@ -53,7 +54,7 @@ class ListModel(QAbstractTableModel):
     elementSelected = pyqtSignal(int)
 
 
-    class ColumnID():
+    class ColumnID(object):
         '''
         Define how many column the model holds and their type
 

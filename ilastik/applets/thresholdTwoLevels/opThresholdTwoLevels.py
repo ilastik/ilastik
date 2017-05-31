@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,6 +20,8 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
+from past.utils import old_div
 import logging
 
 import numpy as np
@@ -303,8 +306,8 @@ class OpLabeledThreshold(Operator):
         above_threshold_mask = (data_zyx >= ft)
         below_threshold_mask = ~above_threshold_mask
 
-        data_zyx[below_threshold_mask] *= 0.5/ft
-        data_zyx[above_threshold_mask] = 0.5 + (data_zyx[above_threshold_mask] - ft)/(1-ft)
+        data_zyx[below_threshold_mask] *= old_div(0.5,ft)
+        data_zyx[above_threshold_mask] = 0.5 + old_div((data_zyx[above_threshold_mask] - ft),(1-ft))
         
         binary_seg_zyx = segmentGC( data_zyx, beta ).astype(np.uint8)
         del data_zyx

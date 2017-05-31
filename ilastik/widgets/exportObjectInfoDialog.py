@@ -157,7 +157,7 @@ class ExportObjectInfoDialog(QDialog):
             return
         if parent is None:
             parent = self.ui.featureView
-        for entry, child in features.iteritems():
+        for entry, child in features.items():
             item = QTreeWidgetItem(parent)
             try:
                 #if it's the feature name, show the human version of the text
@@ -229,7 +229,7 @@ class ExportObjectInfoDialog(QDialog):
 
     # slot is called from button.click
     def choose_path(self):
-        filters = ";;".join(DIALOG_FILTERS.values())
+        filters = ";;".join(list(DIALOG_FILTERS.values()))
         current_extension = FILE_TYPES[self.ui.fileFormat.currentIndex()]
         current_filter = DIALOG_FILTERS[current_extension]
         path, _filter = QFileDialog.getSaveFileName(self.parent(), "Save File", self.ui.exportPath.text(), filters,

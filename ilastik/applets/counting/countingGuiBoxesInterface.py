@@ -1,4 +1,5 @@
 from __future__ import print_function
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -26,6 +27,9 @@ from __future__ import print_function
 #===============================================================================
 
 
+from builtins import range
+from past.utils import old_div
+from builtins import object
 from PyQt5 import QtCore
 from PyQt5.QtCore import Qt, QTimer, QPointF, QRectF, QObject, QRect, QSize, pyqtSignal, QEvent, QPoint, pyqtSlot
 from PyQt5.QtGui import QPen, QFont, QBrush, QColor, QMouseEvent
@@ -57,7 +61,7 @@ logger = logging.getLogger(__name__)
 DELAY=10 #In millisec,delay in updating the text in the handles, needed because lazy flow cannot stay back the
          #user shuffling the boxes
 
-class Tool():
+class Tool(object):
 
     Navigation = 0 # Arrow
     Paint      = 1
@@ -73,7 +77,7 @@ class ResizeHandle(QGraphicsRectItem):
     def __init__(self, rect, constrainAxis, parent):
         size = 5
         self._rect=rect
-        super(ResizeHandle, self).__init__(-size/2, -size/2, 2*size, 2*size, parent)
+        super(ResizeHandle, self).__init__(old_div(-size,2), old_div(-size,2), 2*size, 2*size, parent)
 
         #self._offset = offset
         self._constrainAxis = constrainAxis
@@ -94,15 +98,15 @@ class ResizeHandle(QGraphicsRectItem):
 
         if constrainAxis == 0:
             if  rect.bottom()>0:
-                self._offset = ((rect.left()+rect.right())/2.0, rect.bottom() )
+                self._offset = (old_div((rect.left()+rect.right()),2.0), rect.bottom() )
             else:
-                self._offset = ((rect.left()+rect.right())/2.0, rect.top() )
+                self._offset = (old_div((rect.left()+rect.right()),2.0), rect.top() )
 
         elif constrainAxis == 1:
             if rect.right()>0:
-                self._offset = (rect.right(),(rect.top()+rect.bottom())/2.0 )
+                self._offset = (rect.right(),old_div((rect.top()+rect.bottom()),2.0) )
             else:
-                self._offset = (rect.left(),(rect.top()+rect.bottom())/2.0 )
+                self._offset = (rect.left(),old_div((rect.top()+rect.bottom()),2.0) )
 
 
             #self._offset = ( sel, self.shape[0] )
@@ -144,16 +148,16 @@ class ResizeHandle(QGraphicsRectItem):
         if self._constrainAxis == 0:
 
 
-            if (rect.left()+rect.right())/2.0<0:
+            if old_div((rect.left()+rect.right()),2.0)<0:
                 flip=True
-            newPoint=QPointF((rect.left()+rect.right())/2.0,self.pos().y())
+            newPoint=QPointF(old_div((rect.left()+rect.right()),2.0),self.pos().y())
             self.setPos(newPoint)
             self.parentItem().setNewSize(axes[self._constrainAxis],self.pos().y(),flip)
         else:
 
-            if (rect.top()+rect.bottom())/2.0<0:
+            if old_div((rect.top()+rect.bottom()),2.0)<0:
                 flip=True
-            self.setPos(QPointF(self.pos().x(),(rect.top()+rect.bottom())/2.0))
+            self.setPos(QPointF(self.pos().x(),old_div((rect.top()+rect.bottom()),2.0)))
             self.parentItem().setNewSize(axes[self._constrainAxis],self.pos().x(),flip=flip)
 
     def _updateColor(self):
@@ -384,7 +388,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             self._resizeHandles.append( h )
 
     def moveHandles(self):
-        for h, constrAxes in zip(self._resizeHandles, range(2)):
+        for h, constrAxes in zip(self._resizeHandles, list(range(2))):
             h.resetOffset(constrAxes, self.rect())
 
 
@@ -808,7 +812,7 @@ class BoxInterpreter(QObject):
 
         #Rectangles under the current point
         items=watched.scene().items(QPointF(*pos[1:3]))
-        items=filter(lambda el: isinstance(el, QGraphicsResizableRect),items)
+        items=[el for el in items if isinstance(el, QGraphicsResizableRect)]
 
 
         #Keyboard interaction
@@ -845,7 +849,7 @@ class BoxInterpreter(QObject):
                 self.rubberBand.setGeometry(QRect(self.origin, QSize()))
 
                 itemsall=watched.scene().items(QPointF(*pos[1:3]))
-                itemsall =filter(lambda el: isinstance(el, ResizeHandle), itemsall)
+                itemsall =[el for el in itemsall if isinstance(el, ResizeHandle)]
 
 #                 if len(itemsall)==0: #show rubber band only if there is no rubbber band
 #                     self.rubberBand.show()
@@ -1006,14 +1010,14 @@ class BoxController(QObject):
     def itemsAtPos(self,pos5D):
         pos5D=pos5D[1:3]
         items=self.scene.items(QPointF(*pos5D))
-        items=filter(lambda el: isinstance(el, ResizeHandle),items)
+        items=[el for el in items if isinstance(el, ResizeHandle)]
         return items
 
     def onChangedPos(self,pos,gpos):
         pos=pos[1:3]
         items=self.scene.items(QPointF(*pos))
         #print items
-        items=filter(lambda el: isinstance(el, QGraphicsResizableRect),items)
+        items=[el for el in items if isinstance(el, QGraphicsResizableRect)]
 
         self.itemsAtpos=items
 

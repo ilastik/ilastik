@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from abc import ABCMeta
+from future.utils import with_metaclass
 
 class SubclassRegistryMeta(ABCMeta):
     """
@@ -60,8 +61,8 @@ if __name__ == "__main__":
     class SubclassTracker(SubclassRegistryMeta):
         pass
     
-    class SomeBase(object):
-        __metaclass__ = SubclassTracker
+    class SomeBase(with_metaclass(SubclassTracker, object)):
+        pass
     
     class SomeSubclass(SomeBase):
         pass

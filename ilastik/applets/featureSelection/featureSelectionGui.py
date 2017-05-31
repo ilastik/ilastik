@@ -20,6 +20,7 @@
 ###############################################################################
 # Python
 from __future__ import division
+from builtins import range
 import os
 import sys
 from functools import partial
@@ -163,7 +164,7 @@ class FeatureSelectionGui(LayerViewerGui):
                     layerListWidget.item(0).setSelected(True)
 
         def handleRemovedLayers(parent, start, end):
-            for i in reversed(range(start, end+1)):
+            for i in reversed(list(range(start, end+1))):
                 layerListWidget.takeItem(i)
         
         self.layerstack.dataChanged.connect(handleLayerStackDataChanged)

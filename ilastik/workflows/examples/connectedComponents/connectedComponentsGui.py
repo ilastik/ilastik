@@ -57,7 +57,7 @@ class ConnectedComponentsGui(LayerViewerGui):
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
 
         box = self._drawer.methodSelectingBox
-        for k, v in self._methods.iteritems():
+        for k, v in self._methods.items():
             box.insertItem(v, k, k)
 
         self._allWatchedWidgets = [box]

@@ -61,7 +61,7 @@ class RegressorC(object):
         return result
     
     def fitcplex(self,X,Yl,tags, boxConstraints = None):
-        from . import cwrapper.cplex
+        from .cwrapper import cplex
         import ctypes
         c_float_p = ctypes.POINTER(ctypes.c_float)
         c_char_p= ctypes.POINTER(ctypes.c_char)
@@ -102,13 +102,13 @@ class RegressorC(object):
 
         #import sitecustomize
         #sitecustomize.debug_trace()
-        cwrapper.cplex.extlib.fit(X_p, Yl_p, w_p, ctypes.c_int(tags[0]), numRows, numCols, ctypes.c_double(self._C),
+        cplex.extlib.fit(X_p, Yl_p, w_p, ctypes.c_int(tags[0]), numRows, numCols, ctypes.c_double(self._C),
                                 ctypes.c_double(self._epsilon), numConstraints, boxValues_p, boxIndices_p,
                                 boxFeatures_p)#, dens_p)
         #self.dens[np.where(self.dens < 0)] = 0
 
     def fitgurobi(self,X,Yl,tags, boxConstraints = None):
-        from . import cwrapper.gurobi
+        from .cwrapper import gurobi
         import ctypes
         #extlib.main()
         c_float_p = ctypes.POINTER(ctypes.c_float)
@@ -150,7 +150,7 @@ class RegressorC(object):
 
         #import sitecustomize
         #sitecustomize.debug_trace()
-        cwrapper.gurobi.extlib.fit(X_p, Yl_p, w_p, ctypes.c_int(tags[0]), numRows, numCols, ctypes.c_double(self._C),
+        gurobi.extlib.fit(X_p, Yl_p, w_p, ctypes.c_int(tags[0]), numRows, numCols, ctypes.c_double(self._C),
                                 ctypes.c_double(self._epsilon), numConstraints, boxValues_p, boxIndices_p,
                                 boxFeatures_p)#, dens_p)
         #self.dens[np.where(self.dens < 0)] = 0

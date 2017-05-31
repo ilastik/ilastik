@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,6 +21,8 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
+from builtins import range
+from past.utils import old_div
 import sys
 
 #SciPy
@@ -75,7 +78,7 @@ class OpFilter(Operator):
         result_view = result[0,:,:,:,0]
         
         logger.info( "input volume shape: %r" %  (volume.shape,) )
-        logger.info( "input volume size: %r MB", (volume.nbytes / 1024**2,) )
+        logger.info( "input volume size: %r MB", (old_div(volume.nbytes, 1024**2),) )
         fvol = numpy.asarray(volume, numpy.float32)
 
         #Choose filter selected by user

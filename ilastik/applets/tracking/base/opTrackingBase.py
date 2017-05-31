@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 # http://ilastik.org/license.html
 # ##############################################################################
+from builtins import range
 import os
 from functools import partial
 import logging
@@ -214,7 +215,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         time_max = self.RawImage.meta.shape[0] - 1 # Assumes t,x,y,z,c
         if 'time_range' in parameters:
             time_min, time_max = parameters['time_range']
-        time_range = range(time_min, time_max)
+        time_range = list(range(time_min, time_max))
 
         filtered_labels = self.FilteredLabels.value
 
@@ -317,7 +318,7 @@ class OpTrackingBase(Operator, ExportingOperator):
             for e in merger:
                 mergers[-1][int(e[0])] = int(e[1])
 
-            for o, r in res.iteritems():
+            for o, r in res.items():
                 resolvedto[-1][int(o)] = [int(c) for c in r[:-1]]
                 # label the original object with the false detection label
                 mergers[-1][int(o)] = len(r[:-1])
@@ -336,7 +337,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         resolvedto.append({})
         if export_mode:
             extra_track_ids[time_range[-1] + 1] = {}
-        for o, r in res.iteritems():
+        for o, r in res.items():
             resolvedto[-1][int(o)] = [int(c) for c in r[:-1]]
             mergers[-1][int(o)] = len(r[:-1])
 
@@ -344,7 +345,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                     extra_track_ids[time_range[-1] + 1][int(o)] = [int(c) for c in r[:-1]]
 
         # mark the filtered objects
-        for i in filtered_labels.keys():
+        for i in list(filtered_labels.keys()):
             if int(i) + time_range[0] >= len(label2color):
                 continue
             fl_at = filtered_labels[i]
@@ -454,7 +455,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         total_count = 0
         empty_frame = False
 
-        for t in feats.keys():
+        for t in list(feats.keys()):
             rc = feats[t][default_features_key]['RegionCenter']
             lower = feats[t][default_features_key]['Coord<Minimum>']
             upper = feats[t][default_features_key]['Coord<Maximum>']
@@ -625,7 +626,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         export_file.ExportProgress.subscribe(progress_slot)
         export_file.InsertionProgress.subscribe(progress_slot)
 
-        export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
+        export_file.add_columns("table", list(range(sum(obj_count))), Mode.List, Default.KnimeId)
         export_file.add_columns("table", list(ids), Mode.List, Default.IlastikId)
         export_file.add_columns("table", lineage, Mode.List, Default.Lineage)
         export_file.add_columns("table", track_ids, Mode.IlastikTrackingTable,
@@ -638,8 +639,8 @@ class OpTrackingBase(Operator, ExportingOperator):
         if with_divisions:
             if divisions:
                 div_lineage = division_flatten_dict(divisions, self.label2color)
-                zips = zip(*divisions)
-                divisions = zip(zips[0], div_lineage, *zips[1:])
+                zips = list(zip(*divisions))
+                divisions = list(zip(zips[0], div_lineage, *zips[1:]))
                 export_file.add_columns("divisions", divisions, Mode.List, Default.DivisionNames)
             else:
                 logger.debug("No divisions occurred. Division Table will not be exported!")

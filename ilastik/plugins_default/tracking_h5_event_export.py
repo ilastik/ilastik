@@ -1,3 +1,4 @@
+from builtins import range
 import os
 import numpy as np
 import h5py
@@ -26,9 +27,9 @@ def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn,
         # convert to ndarray for better indexing
         dis = np.asarray(dis)
         app = np.asarray(app)
-        div = np.asarray([[k, v[0], v[1]] for k,v in activeDivisions.iteritems()])
+        div = np.asarray([[k, v[0], v[1]] for k,v in activeDivisions.items()])
         mov = np.asarray(activeLinks)
-        mer = np.asarray([[k,v] for k,v in mergers.iteritems()])
+        mer = np.asarray([[k,v] for k,v in mergers.items()])
         mul = np.asarray(mul)
 
         with h5py.File(fn, 'w') as dest_file:
@@ -96,7 +97,7 @@ class TrackingH5EventExportFormatPlugin(TrackingExportFormatPlugin):
         :returns: True on success, False otherwise
         """
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hypothesesGraph.getMappingsBetweenUUIDsAndTraxels()
-        timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+        timesteps = [t for t in list(traxelIdPerTimestepToUniqueIdMap.keys())]
 
         result = hypothesesGraph.getSolutionDictionary()
         mergers, detections, links, divisions = getMergersDetectionsLinksDivisions(result, uuidToTraxelMap)
@@ -112,7 +113,7 @@ class TrackingH5EventExportFormatPlugin(TrackingExportFormatPlugin):
 
         timeIndex = labelImageSlot.meta.axistags.index('t')
 
-        for timestep in traxelIdPerTimestepToUniqueIdMap.keys():
+        for timestep in list(traxelIdPerTimestepToUniqueIdMap.keys()):
             # extract current frame lable image
             roi = [slice(None) for i in range(len(labelImageSlot.meta.shape))]
             roi[timeIndex] = slice(int(timestep), int(timestep)+1)

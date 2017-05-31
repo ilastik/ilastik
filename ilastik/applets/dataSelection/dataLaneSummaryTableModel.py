@@ -19,16 +19,17 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import object
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 
 from lazyflow.utility import PathComponents
 from ilastik.utility import bind
 from .opDataSelection import DatasetInfo
 
-class LaneColumn():
+class LaneColumn(object):
     NumColumns = 0
 
-class DatasetInfoColumn():
+class DatasetInfoColumn(object):
     Name = 0
     NumColumns = 1
 

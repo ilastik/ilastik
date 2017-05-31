@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,6 +19,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from past.utils import old_div
+from builtins import object
 import os
 import copy
 import subprocess
@@ -77,7 +80,7 @@ class OpTaskWorker(Operator):
         blockwiseFileset = self._primaryBlockwiseFileset
         
         # Check axis compatibility
-        inputAxes = self.Input.meta.getTaggedShape().keys()
+        inputAxes = list(self.Input.meta.getTaggedShape().keys())
         outputAxes = list(blockwiseFileset.description.axes)
         assert set(inputAxes) == set(outputAxes), \
             "Output dataset has the wrong set of axes.  Input axes: {}, Output axes: {}".format( "".join(inputAxes), "".join(outputAxes) )
@@ -134,7 +137,7 @@ class OpClusterize(Operator):
     
     ReturnCode = OutputSlot()
 
-    class TaskInfo():
+    class TaskInfo(object):
         taskName = None
         command = None
         subregion = None
@@ -146,7 +149,7 @@ class OpClusterize(Operator):
     def execute(self, slot, subindex, roi, result):
         dtypeBytes = self._getDtypeBytes()
         totalBytes = dtypeBytes * numpy.prod(self.Input.meta.shape)
-        totalMB = totalBytes / (1000*1000)
+        totalMB = old_div(totalBytes, (1000*1000))
         logger.info( "Clusterizing computation of {} MB dataset, outputting according to {}".format(totalMB, self.OutputDatasetDescription.value) )
 
         configFilePath = self.ConfigFilePath.value
@@ -158,7 +161,7 @@ class OpClusterize(Operator):
         try:
             # Figure out which work doesn't need to be recomputed (if any)
             unneeded_rois = []
-            for roi in taskInfos.keys():
+            for roi in list(taskInfos.keys()):
                 if blockwiseFileset.getBlockStatus(roi[0]) == BlockwiseFileset.BLOCK_AVAILABLE \
                 or blockwiseFileset.isBlockLocked(roi[0]): # We don't attempt to process currently locked blocks.
                     unneeded_rois.append( roi )
@@ -187,7 +190,7 @@ class OpClusterize(Operator):
                 launchFunc = functools.partial( fab.execute, remoteCommand )
     
             # Spawn each task
-            for taskInfo in taskInfos.values():
+            for taskInfo in list(taskInfos.values()):
                 logger.info("Launching node task: " + taskInfo.command )
                 launchFunc( taskInfo.command )
         
@@ -245,7 +248,7 @@ class OpClusterize(Operator):
 
         # Modify description fields as needed
         # -- axes
-        datasetDescription.axes = "".join( self.Input.meta.getTaggedShape().keys() )
+        datasetDescription.axes = "".join( list(self.Input.meta.getTaggedShape().keys()) )
         assert set(originalDescription.axes) == set( datasetDescription.axes ), \
             "Can't prepare destination dataset: original dataset description listed " \
             "axes as {}, but actual output axes are {}".format( originalDescription.axes, datasetDescription.axes )
@@ -254,14 +257,14 @@ class OpClusterize(Operator):
         datasetDescription.view_shape = list(self.Input.meta.shape)
         # -- block_shape
         assert originalDescription.block_shape is not None
-        originalBlockDims = collections.OrderedDict( zip( originalDescription.axes, originalDescription.block_shape ) )
-        datasetDescription.block_shape = map( lambda a: originalBlockDims[a], datasetDescription.axes )
-        datasetDescription.block_shape = map( min, zip( datasetDescription.block_shape, self.Input.meta.shape ) )
+        originalBlockDims = collections.OrderedDict( list(zip( originalDescription.axes, originalDescription.block_shape )) )
+        datasetDescription.block_shape = [originalBlockDims[a] for a in datasetDescription.axes]
+        datasetDescription.block_shape = list(map( min, list(zip( datasetDescription.block_shape, self.Input.meta.shape )) ))
         # -- chunks
         if originalDescription.chunks is not None:
-            originalChunkDims = collections.OrderedDict( zip( originalDescription.axes, originalDescription.chunks ) )
-            datasetDescription.chunks = map( lambda a: originalChunkDims[a], datasetDescription.axes )
-            datasetDescription.chunks = map( min, zip( datasetDescription.chunks, self.Input.meta.shape ) )
+            originalChunkDims = collections.OrderedDict( list(zip( originalDescription.axes, originalDescription.chunks )) )
+            datasetDescription.chunks = [originalChunkDims[a] for a in datasetDescription.axes]
+            datasetDescription.chunks = list(map( min, list(zip( datasetDescription.chunks, self.Input.meta.shape )) ))
         # -- dtype
         if datasetDescription.dtype != self.Input.meta.dtype:
             dtype = self.Input.meta.dtype
@@ -294,14 +297,14 @@ class OpClusterize(Operator):
             # Something about our blocking scheme changed.
             # Make sure all blocks are marked as NOT available.
             # (Just in case some were left over from a previous run.)
-            for roi in taskInfos.keys():
+            for roi in list(taskInfos.keys()):
                 blockwiseFileset.setBlockStatus( roi[0], BlockwiseFileset.BLOCK_NOT_AVAILABLE )
 
         return blockwiseFileset, taskInfos
 
     def _determineCompletedBlocks(self, blockwiseFileset, taskInfos):
         finished_rois = []
-        for roi in taskInfos.keys():
+        for roi in list(taskInfos.keys()):
             if blockwiseFileset.getBlockStatus(roi[0]) == BlockwiseFileset.BLOCK_AVAILABLE:
                 finished_rois.append( roi )
         return finished_rois

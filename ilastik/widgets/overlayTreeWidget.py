@@ -18,13 +18,15 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
+from builtins import object
 from PyQt5.QtWidgets import QTreeWidgetItem, QTreeWidget, QTreeWidgetItemIterator
 from PyQt5.QtCore import pyqtSignal, Qt, QEvent
 
 class OverlayTreeWidgetIter(QTreeWidgetItemIterator):
     def __init__(self, *args):
         QTreeWidgetItemIterator.__init__(self, *args)
-    def next(self):
+    def __next__(self):
         self.__iadd__(1)
         value = self.value()
         if value:
@@ -63,7 +65,7 @@ class OverlayTreeWidget(QTreeWidget):
     def addOverlaysToTreeWidget(self, overlayDict, forbiddenOverlays, preSelectedOverlays, singleOverlaySelection):
         self.singleOverlaySelection = singleOverlaySelection
         testItem = QTreeWidgetItem("a")
-        for keys in overlayDict.keys():
+        for keys in list(overlayDict.keys()):
             if overlayDict[keys] in forbiddenOverlays:
                 continue
             else:
@@ -157,7 +159,7 @@ class OverlayTreeWidget(QTreeWidget):
         return QTreeWidget.event(self, event)
     
 
-class OverlayEntry:
+class OverlayEntry(object):
     def __init__(self, name):
         self.name = name
 

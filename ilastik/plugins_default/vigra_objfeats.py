@@ -50,7 +50,7 @@ def cleanup_value(val, nObjects, isGlobal):
     return val
 
 def cleanup(d, nObjects, features):
-    result = dict((cleanup_key(k), cleanup_value(v, nObjects, "Global" in k)) for k, v in d.iteritems())
+    result = dict((cleanup_key(k), cleanup_value(v, nObjects, "Global" in k)) for k, v in d.items())
     newkeys = set(result.keys()) & set(features)
     return dict((k, result[k]) for k in newkeys)
 
@@ -78,7 +78,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
     def fill_properties(self, features):
         # fills properties into the dictionary of features
 
-        for feature_name in features.iterkeys():
+        for feature_name in features.keys():
             features[feature_name]["displaytext"] = feature_name
             features[feature_name]["detailtext"] = feature_name + ", stay tuned for more details"
             features[feature_name]["advanced"] = False
@@ -207,7 +207,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         return cleanup(result, nobj, features)
 
     def compute_global(self, image, labels, features, axes):
-        features = features.keys()
+        features = list(features.keys())
         local = [x+self.local_suffix for x in self.local_features]
         features = list(set(features) - set(local))
         
@@ -225,7 +225,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
     def compute_local(self, image, binary_bbox, feature_dict, axes):
         """helper that deals with individual objects"""
         
-        featurenames = feature_dict.keys()
+        featurenames = list(feature_dict.keys())
         local = [x+self.local_suffix for x in self.local_features]
         featurenames = list(set(featurenames) & set(local))
         featurenames = [x.split(' ')[0] for x in featurenames]

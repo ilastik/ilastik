@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 import os.path

@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from builtins import range
 from PyQt5 import uic, QtWidgets, QtCore
 from PyQt5.QtGui import QColor, QTextCursor
 
@@ -265,9 +266,9 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         divItem.setBackground(QColor(self.ct[trackid]))
         divItem.setCheckState(False)
         self._drawer.divisionsList.addItem(divItem)
-        if t_parent not in self.labelsWithDivisions.keys():
+        if t_parent not in list(self.labelsWithDivisions.keys()):
             self.labelsWithDivisions[t_parent] = []
-        if t_parent+1 not in self.labelsWithDivisions.keys():
+        if t_parent+1 not in list(self.labelsWithDivisions.keys()):
             self.labelsWithDivisions[t_parent+1] = []
         self.labelsWithDivisions[t_parent].append(trackid)
         self.labelsWithDivisions[t_parent+1].append(child1)
@@ -277,7 +278,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
     def _setDivisionsList(self):
         self._drawer.divisionsList.clear()
 
-        for trackid in self.mainOperator.divisions.keys():
+        for trackid in list(self.mainOperator.divisions.keys()):
             self._addDivisionToListWidget(trackid, self.mainOperator.divisions[trackid][0][0], self.mainOperator.divisions[trackid][0][1],
                                           self.mainOperator.divisions[trackid][-1])
         # set all items checked
@@ -291,8 +292,8 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         activeTrackBox.clear()
 
         allTracks = set()
-        for t in self.mainOperator.labels.keys():            
-            for oid in self.mainOperator.labels[t].keys():
+        for t in list(self.mainOperator.labels.keys()):            
+            for oid in list(self.mainOperator.labels[t].keys()):
                 for tr in list(self.mainOperator.labels[t][oid]):
                     allTracks.add(tr)        
         
@@ -423,7 +424,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         activeTrack = self._getActiveTrack()
         
         trackids = []
-        if t in self.mainOperator.labels.keys() and oid in self.mainOperator.labels[t].keys():
+        if t in list(self.mainOperator.labels.keys()) and oid in list(self.mainOperator.labels[t].keys()):
             for l in self.mainOperator.labels[t][oid]:
                 trackids.append(l)
         
@@ -472,7 +473,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         delDivision = {}
         if activeTrack != self.misdetIdx:
             for trackid in trackids:
-                if trackid in self.mainOperator.divisions.keys() and self.mainOperator.divisions[trackid][1] == t:
+                if trackid in list(self.mainOperator.divisions.keys()) and self.mainOperator.divisions[trackid][1] == t:
                     text = "remove division event from label " + str(trackid)
                     delDivision[text] = trackid
                     menu.addSeparator()
@@ -483,40 +484,40 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             return
 
         selection = str(action.text())
-        if selection in delLabel.keys():
+        if selection in list(delLabel.keys()):
             self._delLabel(t, oid, delLabel[selection])
             
             self._setDirty(self.mainOperator.TrackImage, [t])
             self._setDirty(self.mainOperator.UntrackedImage, [t])
             self._setDirty(self.mainOperator.Labels, [t])
             
-        elif selection in delSubtrackToEnd.keys():
+        elif selection in list(delSubtrackToEnd.keys()):
             track2remove = delSubtrackToEnd[selection]
             maxt = self.mainOperator.LabelImage.meta.shape[0]
             for time in range(t,maxt):
-                for oid in self.mainOperator.labels[time].keys():
+                for oid in list(self.mainOperator.labels[time].keys()):
                     if track2remove in self.mainOperator.labels[time][oid]:
                         self._delLabel(time, oid, track2remove)
             
-            self._setDirty(self.mainOperator.TrackImage, range(t,maxt))
-            self._setDirty(self.mainOperator.UntrackedImage, range(t, maxt))
-            self._setDirty(self.mainOperator.Labels, range(t,maxt))
+            self._setDirty(self.mainOperator.TrackImage, list(range(t,maxt)))
+            self._setDirty(self.mainOperator.UntrackedImage, list(range(t, maxt)))
+            self._setDirty(self.mainOperator.Labels, list(range(t,maxt)))
         
-        elif selection in delSubtrackToStart.keys():
+        elif selection in list(delSubtrackToStart.keys()):
             track2remove = delSubtrackToStart[selection]
             for time in range(0,t+1):
-                for oid in self.mainOperator.labels[time].keys():
+                for oid in list(self.mainOperator.labels[time].keys()):
                     if track2remove in self.mainOperator.labels[time][oid]:
                         self._delLabel(time, oid, track2remove)
             
-            self._setDirty(self.mainOperator.TrackImage, range(0,t+1))
-            self._setDirty(self.mainOperator.UntrackedImage, range(0,t+1))
-            self._setDirty(self.mainOperator.Labels, range(0,t+1))
+            self._setDirty(self.mainOperator.TrackImage, list(range(0,t+1)))
+            self._setDirty(self.mainOperator.UntrackedImage, list(range(0,t+1)))
+            self._setDirty(self.mainOperator.Labels, list(range(0,t+1)))
             
         elif selection == runTracking:
             self._runSubtracking(position5d, oid)
         
-        elif selection in delDivision.keys():
+        elif selection in list(delDivision.keys()):
             self._delDivisionEvent(delDivision[selection])
             
         else:
@@ -571,7 +572,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         self._addNewTrack()
     
     def _delLabel(self, t, oid, track2remove):        
-        if t in self.labelsWithDivisions.keys() and track2remove in self.labelsWithDivisions[t]:
+        if t in list(self.labelsWithDivisions.keys()) and track2remove in self.labelsWithDivisions[t]:
             self._criticalMessage("Error: Cannot remove label " + str(track2remove) +
                                        " at t=" + str(t) + ", since it is involved in a division event." + 
                                        " Remove division event first by right clicking on the parent.")
@@ -594,8 +595,8 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
 
         affectedT = []
         success = True
-        for t in self.mainOperator.labels.keys():
-            for oid in self.mainOperator.labels[t].keys():
+        for t in list(self.mainOperator.labels.keys()):
+            for oid in list(self.mainOperator.labels[t].keys()):
                 if track2remove in self.mainOperator.labels[t][oid]:
                     if self._delLabel(t,oid,track2remove):                    
                         affectedT.append(t)
@@ -611,16 +612,16 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             self._setDirty(self.mainOperator.Labels, affectedT)
     
     def _addObjectToTrack(self, activeTrack, oid, t):
-        if t not in self.mainOperator.labels.keys():
+        if t not in list(self.mainOperator.labels.keys()):
             self.mainOperator.labels[t] = {}
-        if oid not in self.mainOperator.labels[t].keys():
+        if oid not in list(self.mainOperator.labels[t].keys()):
             self.mainOperator.labels[t][oid] = set()
         if activeTrack == self.misdetIdx:
             if len(self.mainOperator.labels[t][oid]) > 0:
                 self._criticalMessage("Error: This object is already marked as part of a track, cannot mark it as a misdetection.")            
                 return -1
         else:
-            for tracklist in self.mainOperator.labels[t].values():
+            for tracklist in list(self.mainOperator.labels[t].values()):
                 if activeTrack in tracklist:                    
                     self._criticalMessage("Error: There is already an object with this track id in this time step")            
                     return -1
@@ -695,9 +696,9 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             if t_end == self.mainOperator.LabelImage.meta.shape[0] - 1:
                 self._log('tracking reached last time step.')
                 
-            self._setDirty(self.mainOperator.TrackImage, range(t_start, max(t_start+1,t_end-1)))
-            self._setDirty(self.mainOperator.UntrackedImage, range(t_start, max(t_start+1,t_end-1)))
-            self._setDirty(self.mainOperator.Labels, range(t_start, max(t_start+1,t_end-1)))
+            self._setDirty(self.mainOperator.TrackImage, list(range(t_start, max(t_start+1,t_end-1))))
+            self._setDirty(self.mainOperator.UntrackedImage, list(range(t_start, max(t_start+1,t_end-1))))
+            self._setDirty(self.mainOperator.Labels, list(range(t_start, max(t_start+1,t_end-1))))
     
             if t_end > 0:
                 self._setPosModel(time=t_end)
@@ -755,7 +756,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         t = self.mainOperator.divisions[parent][1]        
                 
         found = False
-        for oid in self.mainOperator.labels[t].keys():
+        for oid in list(self.mainOperator.labels[t].keys()):
             if parent in self.mainOperator.labels[t][oid]:
                 found = True
                 break
@@ -817,7 +818,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         apps = {}
         disapps = {}
         multiMoves = {}
-        for t in oid2tids.keys():
+        for t in list(oid2tids.keys()):
             moves[t] = []
             divs[t] = []
             mergers[t] = []
@@ -828,7 +829,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         t_start = time_range[0]
         
         tracks_starting_in_div = {}
-        for d in divisions.keys():
+        for d in list(divisions.keys()):
             [tid_child1, tid_child2], t_div = divisions[d]
             tracks_starting_in_div[tid_child1] = t_div + 1
             tracks_starting_in_div[tid_child2] = t_div + 1
@@ -839,19 +840,19 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             
             for t in sorted(oid2tids.keys()):  
                 oid_cur = None                
-                for o in oid2tids[t].keys():
+                for o in list(oid2tids[t].keys()):
                     if tid in oid2tids[t][o]:
                         oid_cur = o
                         break
                        
                 if (oid_prev is not None) and (oid_cur is None): # track ends
-                    if tid in divisions.keys(): # division
+                    if tid in list(divisions.keys()): # division
                         [tid_child1, tid_child2], t_div = divisions[tid]
                         
                         if t == t_div+1:                    
                             oid_child1 = None
                             oid_child2 = None
-                            for o in oid2tids[t].keys():
+                            for o in list(oid2tids[t].keys()):
                                 if tid_child1 in oid2tids[t][o]:
                                     oid_child1 = o
                                     if oid_child2:
@@ -863,8 +864,8 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                                           
                             if (oid_child1 is not None) and (oid_child2 is not None):
                                 # check if both children can be found in the current frame                            
-                                child1_exists = (oid_child1 in oid2tids[t].keys())
-                                child2_exists = (oid_child2 in oid2tids[t].keys())
+                                child1_exists = (oid_child1 in list(oid2tids[t].keys()))
+                                child2_exists = (oid_child2 in list(oid2tids[t].keys()))
                                 if child1_exists and child2_exists:
                                     self._appendUnique(divs[t], (oid_prev,oid_child1,oid_child2,0.))
                                 elif child1_exists:
@@ -878,7 +879,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                     # do not break, maybe the track starts somewhere else again (due to the size/fov filter)
                 
                 elif (oid_prev is None) and (t != t_start) and (oid_cur is not None): # track starts
-                    if tid in tracks_starting_in_div.keys() and tracks_starting_in_div[tid] != t:
+                    if tid in list(tracks_starting_in_div.keys()) and tracks_starting_in_div[tid] != t:
                         self._appendUnique(apps[t], (oid_cur, 0.))
                 
                 elif (oid_prev is not None) and (oid_cur is not None): # move
@@ -889,8 +890,8 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                         oid_multiprev = None
                         
                         found = False            
-                        for tt in reversed(range(t)):
-                            for o in oid2tids[tt].keys():
+                        for tt in reversed(list(range(t))):
+                            for o in list(oid2tids[tt].keys()):
                                 if (tid in oid2tids[tt][o]) and (len(oid2tids[tt][o]) == 1):
                                     found = True
                                     oid_multiprev = o
@@ -905,12 +906,12 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                 oid_prev = oid_cur
         
         merger_sizes = {}
-        for t in oid2tids.keys():
-            for oid in oid2tids[t].keys():
+        for t in list(oid2tids.keys()):
+            for oid in list(oid2tids[t].keys()):
                 if len(oid2tids[t][oid]) > 1:
                     mergers[t].append((oid, len(oid2tids[t][oid]), 0.))                    
                     m_size = len(oid2tids[t][oid])
-                    if m_size not in merger_sizes.keys():
+                    if m_size not in list(merger_sizes.keys()):
                         merger_sizes[m_size] = 0
                     merger_sizes[m_size] += 1
         
@@ -938,7 +939,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             with open(out_fn, 'w') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
                 writer.writerow(['timestep_parent','track_id_parent','track_id_child1','track_id_child2'])
-                for tid in self.mainOperator.divisions.keys():
+                for tid in list(self.mainOperator.divisions.keys()):
                     children, t_parent = self.mainOperator.divisions[tid]
                     writer.writerow([t_parent, tid, children[0], children[1]])
                 
@@ -966,8 +967,8 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             with open(out_fn, 'w') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
                 writer.writerow(['timestep','object_id','track_ids'])
-                for t in self.mainOperator.labels.keys():
-                    for oid in self.mainOperator.labels[t].keys():
+                for t in list(self.mainOperator.labels.keys()):
+                    for oid in list(self.mainOperator.labels[t].keys()):
                         if len(self.mainOperator.labels[t][oid]) > 1:
                             writer.writerow([t,oid,";".join(list(str(x) for x in self.mainOperator.labels[t][oid]))])
                 
@@ -997,7 +998,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             self.applet.appletStateUpdateRequested.emit()    
             oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
             
-            num_files = float(len(oid2tids.keys()))
+            num_files = float(len(list(oid2tids.keys())))
             
             for t in sorted(oid2tids.keys()):
                 fn =  directory + "/" + str(t).zfill(5)  + ".h5"
@@ -1018,7 +1019,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                 try:
                     with h5py.File(fn, 'w-') as f_curr:
                         # delete old label image
-                        if "segmentation" in f_curr.keys():
+                        if "segmentation" in list(f_curr.keys()):
                             del f_curr["segmentation"]
                         
                         seg = f_curr.create_group("segmentation")            
@@ -1027,13 +1028,13 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                         
                         oids_meta = numpy.sort(vigra.analysis.unique(labelImage)).astype(numpy.uint32)[1:]  
                         ones = numpy.ones(oids_meta.shape, dtype=numpy.uint8)
-                        if 'objects' in f_curr.keys(): del f_curr['objects']
+                        if 'objects' in list(f_curr.keys()): del f_curr['objects']
                         f_meta = f_curr.create_group('objects').create_group('meta')
                         f_meta.create_dataset('id', data=oids_meta, compression=1)
                         f_meta.create_dataset('valid', data=ones, compression=1)
         
                         # delete old tracking
-                        if "tracking" in f_curr.keys():
+                        if "tracking" in list(f_curr.keys()):
                             del f_curr["tracking"]
             
                         tg = f_curr.create_group("tracking")            
@@ -1121,7 +1122,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             self.applet.appletStateUpdateRequested.emit()
             divisions = self.mainOperator.divisions
             inverseDivisions = {}
-            for k, vals in divisions.items():
+            for k, vals in list(divisions.items()):
                 for v in vals[0]:
                     inverseDivisions[v] = k
             replace = {}
@@ -1140,9 +1141,9 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             for tid in tids:
                 replace[tid] = [tid] # identity
                 
-            for tid in inverseDivisions.keys():
+            for tid in list(inverseDivisions.keys()):
                 rootTid = inverseDivisions[tid]
-                while rootTid in inverseDivisions.keys():
+                while rootTid in list(inverseDivisions.keys()):
                     rootTid = inverseDivisions[rootTid]
                 replace[tid] = [rootTid]
                     
@@ -1205,7 +1206,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             return
         
         found = False
-        for oid in self.mainOperator.labels[t].keys():
+        for oid in list(self.mainOperator.labels[t].keys()):
             if tid in self.mainOperator.labels[t][oid]:
                 found = True
                 break

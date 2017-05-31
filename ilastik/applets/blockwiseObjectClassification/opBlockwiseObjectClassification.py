@@ -153,7 +153,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         # Output roi in our own coordinates (i.e. relative to the halo start)
         self._output_roi = self.block_roi - self._halo_roi[0]
         
-        halo_start, halo_stop = map(tuple, self._halo_roi)
+        halo_start, halo_stop = list(map(tuple, self._halo_roi))
         
         self._opRawSubRegion.Roi.setValue( (halo_start, halo_stop) )
 
@@ -162,7 +162,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         c_index = self.BinaryImage.meta.axistags.channelIndex
         binary_halo_roi = numpy.array(self._halo_roi)
         binary_halo_roi[:, c_index] = (0,1) # Binary has only 1 channel.
-        binary_halo_start, binary_halo_stop = map(tuple, binary_halo_roi)
+        binary_halo_start, binary_halo_stop = list(map(tuple, binary_halo_roi))
         
         self._opBinarySubRegion.Roi.setValue( (binary_halo_start, binary_halo_stop) )
 
@@ -223,7 +223,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         block_roi = numpy.array(block_roi)
         block_start, block_stop = block_roi
         
-        channel_index = tagged_dataset_shape.keys().index('c')
+        channel_index = list(tagged_dataset_shape.keys()).index('c')
         block_start[ channel_index ] = 0
         block_stop[ channel_index ] = tagged_dataset_shape['c']
         
@@ -232,7 +232,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         halo_start = numpy.maximum( halo_start, (0,)*len(halo_start) )
 
         halo_stop = block_stop + halo_padding
-        halo_stop = numpy.minimum( halo_stop, tagged_dataset_shape.values() )
+        halo_stop = numpy.minimum( halo_stop, list(tagged_dataset_shape.values()) )
         
         halo_roi = (halo_start, halo_stop)
         return halo_roi
@@ -315,7 +315,7 @@ class OpBlockwiseObjectClassification( Operator ):
         # Determine intersecting blocks
         block_shape = self._getFullShape( self.BlockShape3dDict.value )
         block_starts = getIntersectingBlocks( block_shape, roi_one_channel )
-        block_starts = map( tuple, block_starts )
+        block_starts = list(map( tuple, block_starts ))
 
         # Ensure that block pipelines exist (create first if necessary)
         for block_start in block_starts:
@@ -361,16 +361,16 @@ class OpBlockwiseObjectClassification( Operator ):
         block_shape = self._getFullShape( self.BlockShape3dDict.value )
         pixel_roi = numpy.array(block_shape) * (roi.start, roi.stop)
         block_starts = getIntersectingBlocks( block_shape, pixel_roi )
-        block_starts = map( tuple, block_starts )
+        block_starts = list(map( tuple, block_starts ))
         
         # TODO: Parallelize this?
         for block_start in block_starts:
             assert block_start in self._blockPipelines, "Not allowed to request region features for blocks that haven't yet been processed." # See note above
 
             # Discard spatial axes to get (t,c) index for region slot roi
-            tagged_block_start = zip( axiskeys, block_start )
-            tagged_block_start_tc = filter( lambda k_v: k_v[0] in 'tc', tagged_block_start )
-            block_start_tc = map( lambda k_v1: k_v1[1], tagged_block_start_tc )
+            tagged_block_start = list(zip( axiskeys, block_start ))
+            tagged_block_start_tc = [k_v for k_v in tagged_block_start if k_v[0] in 'tc']
+            block_start_tc = [k_v1[1] for k_v1 in tagged_block_start_tc]
             block_roi_tc = ( block_start_tc, block_start_tc + numpy.array([1,1]) )
             block_roi_t = (block_roi_tc[0][:-1], block_roi_tc[1][:-1])
 
@@ -458,7 +458,7 @@ class OpBlockwiseObjectClassification( Operator ):
         oldBlockPipelines = self._blockPipelines
         self._blockPipelines = {}
         with self._lock:
-            for opBlockPipeline in oldBlockPipelines.values():
+            for opBlockPipeline in list(oldBlockPipelines.values()):
                 opBlockPipeline.cleanUp()
     
     

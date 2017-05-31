@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import logging
 import warnings
 from functools import partial
@@ -62,9 +63,9 @@ class SerialObjectFeaturesSlot(SerialSlot):
                 region_features = region_features_arr[0]
                 roi_grp = subgroup.create_group(name=str(roi))
                 logger.debug('Saving region features into group: "{}"'.format( roi_grp.name ))
-                for key, val in region_features.iteritems():
+                for key, val in region_features.items():
                     plugin_group = getOrCreateGroup(roi_grp, key)
-                    for featname, featval in val.iteritems():
+                    for featname, featval in val.items():
                         plugin_group.create_dataset(name=featname, data=featval)
 
         self.dirty = False
@@ -74,16 +75,16 @@ class SerialObjectFeaturesSlot(SerialSlot):
             return
         opgroup = group[self.name]
         # Note: We sort by NUMERICAL VALUE here.
-        for i, (group_name, subgroup) in enumerate( sorted(opgroup.items(), key=lambda k_v: int(k_v[0]) ) ):
+        for i, (group_name, subgroup) in enumerate( sorted(list(opgroup.items()), key=lambda k_v: int(k_v[0]) ) ):
             assert int(group_name) == i, "subgroup extraction order should be numerical order!"
-            for roiString, roi_grp in subgroup.iteritems():
+            for roiString, roi_grp in subgroup.items():
                 logger.debug('Loading region features from dataset: "{}"'.format( roi_grp.name ))
                 roi = eval(roiString)
 
                 region_features = {}
-                for key, val in roi_grp.iteritems():
+                for key, val in roi_grp.items():
                     region_features[key] = {}
-                    for featname, featval in val.iteritems():
+                    for featname, featval in val.items():
                         region_features[key][featname] = featval[...]
 
                 slicing = roiToSlice( *roi )

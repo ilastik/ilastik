@@ -1,4 +1,5 @@
 from __future__ import print_function
+from builtins import range
 import copy
 import collections
 
@@ -78,7 +79,7 @@ class AxistagsEditorWidget(QTableWidget):
 
         # Fill table with widgets
         self.setRowCount( len(row_widgets) )
-        self.setVerticalHeaderLabels( row_widgets.keys() )
+        self.setVerticalHeaderLabels( list(row_widgets.keys()) )
         for row, widgets in enumerate(row_widgets.values()):
             self.setCellWidget( row, 0, widgets.resolution_box )
             self.setCellWidget( row, 1, widgets.description_edit )

@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import os
 import numpy
 from lazyflow.roi import sliceToRoi

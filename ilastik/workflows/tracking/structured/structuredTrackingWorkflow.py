@@ -19,6 +19,7 @@ from __future__ import print_function
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import os
 from lazyflow.graph import Graph
 from lazyflow.utility import PathComponents, make_absolute, format_known_keys
@@ -322,7 +323,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         maxx = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[1]
         maxy = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[2]
         maxz = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[3]
-        time_enum = range(maxt)
+        time_enum = list(range(maxt))
         x_range = (0, maxx)
         y_range = (0, maxy)
         z_range = (0, maxz)
@@ -424,13 +425,13 @@ class StructuredTrackingWorkflowBase( Workflow ):
             annotations = self.trackingApplet.topLevelOperator[lane_index].Annotations.value
 
             # assuming one crop == the whole dataset
-            key = annotations.keys()[0]
+            key = list(annotations.keys())[0]
             annotations = annotations[key]
             self.trackingApplet.topLevelOperator[lane_index].insertAnnotationsToHypothesesGraph(hypothesesGraph,annotations,misdetectionLabel=-1)
             hypothesesGraph.computeLineage()
             solutionFromAnnotations = hypothesesGraph.getSolutionDictionary()
 
-            for key in solution.keys():
+            for key in list(solution.keys()):
                 if key == 'detectionResults':
                     detectionFlag = True
                     for i in range(len(solution[key])):

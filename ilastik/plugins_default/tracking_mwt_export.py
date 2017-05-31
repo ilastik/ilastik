@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import os.path
 import numpy as np
 from ilastik.plugins import TrackingExportFormatPlugin
@@ -62,7 +65,7 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
                         summaryDict[t]['averageRelativeLength'] = summaryDict[t]['averageLength']
                         summaryDict[t]['averageWidth'] += features[t]['Standard Object Features']['RegionRadii'][idx,1]
                         summaryDict[t]['averageRelativeWidth'] = summaryDict[t]['averageWidth']         
-                        summaryDict[t]['averageAspectRatio'] += features[t]['Standard Object Features']['RegionRadii'][idx,0] / features[t]['Standard Object Features']['RegionRadii'][idx,1]
+                        summaryDict[t]['averageAspectRatio'] += old_div(features[t]['Standard Object Features']['RegionRadii'][idx,0], features[t]['Standard Object Features']['RegionRadii'][idx,1])
                         summaryDict[t]['averageRelativeAspectRatio'] = summaryDict[t]['averageAspectRatio']
                         summaryDict[t]['endWiggle'] = 0.0               
                     else:
@@ -76,7 +79,7 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
                         summaryDict[t]['averageRelativeLength'] = summaryDict[t]['averageLength']
                         summaryDict[t]['averageWidth'] = features[t]['Standard Object Features']['RegionRadii'][idx,1]
                         summaryDict[t]['averageRelativeWidth'] = summaryDict[t]['averageWidth']         
-                        summaryDict[t]['averageAspectRatio'] = features[t]['Standard Object Features']['RegionRadii'][idx,0] / features[t]['Standard Object Features']['RegionRadii'][idx,1]
+                        summaryDict[t]['averageAspectRatio'] = old_div(features[t]['Standard Object Features']['RegionRadii'][idx,0], features[t]['Standard Object Features']['RegionRadii'][idx,1])
                         summaryDict[t]['averageRelativeAspectRatio'] = summaryDict[t]['averageAspectRatio']
                         summaryDict[t]['endWiggle'] = 0.0                             
                     

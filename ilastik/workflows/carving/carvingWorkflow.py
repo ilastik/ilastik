@@ -168,7 +168,7 @@ class CarvingWorkflow(Workflow):
         parser.add_argument('--run-preprocessing', action='store_true')
         parser.add_argument('--preprocessing-sigma', type=float, required=False)
         parser.add_argument('--preprocessing-filter', required=False, type=str.lower,
-                            choices=filter_indexes.keys())
+                            choices=list(filter_indexes.keys()))
 
         parsed_args, unused_args = parser.parse_known_args(unused_args)
         if unused_args:

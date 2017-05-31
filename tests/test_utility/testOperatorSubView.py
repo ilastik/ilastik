@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import random
 from lazyflow.graph import Graph, Operator, OperatorWrapper, InputSlot, OutputSlot
 from ilastik.utility import OpMultiLaneWrapper

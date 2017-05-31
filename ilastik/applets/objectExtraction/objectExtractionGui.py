@@ -18,6 +18,9 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 from PyQt5.QtWidgets import QTreeWidgetItem, QMessageBox, QHeaderView
 from PyQt5.QtGui import QColor, QResizeEvent, QMouseEvent
 from PyQt5 import uic
@@ -49,7 +52,7 @@ import numpy
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QDialog, QFileDialog
 
-import cPickle as pickle
+import pickle as pickle
 import threading
 
 import logging
@@ -112,7 +115,7 @@ class FeatureSelectionDialog(QDialog):
 
     def populate(self):
         #self.ui.treeWidget.setColumnCount(2)
-        for pluginName, features in self.featureDict.iteritems():
+        for pluginName, features in self.featureDict.items():
             if pluginName=="TestFeatures" and not ilastik_config.getboolean("ilastik", "debug"):
                 continue
             parent = QTreeWidgetItem(self.ui.treeWidget)
@@ -139,8 +142,8 @@ class FeatureSelectionDialog(QDialog):
             for name in sorted(features.keys()):
                 parameters = features[name]
 
-                for prop, prop_value in features_with_props[name].iteritems():
-                    if not prop in parameters.keys():
+                for prop, prop_value in features_with_props[name].items():
+                    if not prop in list(parameters.keys()):
                         # this property has not been added yet (perhaps the feature dictionary has been read from file)
                         # set it now
                         parameters[prop] = prop_value
@@ -355,7 +358,7 @@ class FeatureSelectionDialog(QDialog):
                     plugin_feature_name = self.displayNamesDict[ff]
                     features[plugin_feature_name] = {}
                     # properties other than margin have not changed, copy them over
-                    for prop_name, prop_value in self.featureDict[plugin_name][plugin_feature_name].iteritems():
+                    for prop_name, prop_value in self.featureDict[plugin_name][plugin_feature_name].items():
                         features[plugin_feature_name][prop_name] = prop_value
                     # update the margin
                     if 'margin' in self.featureDict[plugin_name][plugin_feature_name]:
@@ -493,7 +496,7 @@ class ObjectExtractionGui(LayerViewerGui):
         
         nfeatures = 0
         if selectedFeatures is not None:
-            for plugin_features in selectedFeatures.itervalues():
+            for plugin_features in selectedFeatures.values():
                 nfeatures += len(plugin_features)
 
         self._drawer.featuresSelected.setText("{} features computed, \nsome may have multiple channels".format(nfeatures))
@@ -559,7 +562,7 @@ class ObjectExtractionGui(LayerViewerGui):
 
         # Make sure no plugins use the same feature names.
         # (Currently, our feature export implementation doesn't support repeated column names.)
-        all_feature_names = chain(*[plugin_dict.keys() for plugin_dict in featureDict.values()])
+        all_feature_names = chain(*[list(plugin_dict.keys()) for plugin_dict in list(featureDict.values())])
         feature_set = set()
         for name in all_feature_names:
             assert name not in feature_set, \
@@ -592,9 +595,9 @@ class ObjectExtractionGui(LayerViewerGui):
             nchannels = 0
 
             try:
-                for pname, pfeats in feats[0].iteritems():
+                for pname, pfeats in feats[0].items():
                     if pname != default_features_key:
-                        for featname, feat in pfeats.iteritems():
+                        for featname, feat in pfeats.items():
                             nchannels += feat.shape[1]
                             nfeatures += 1
                 if interactive:

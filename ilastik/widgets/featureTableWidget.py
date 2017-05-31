@@ -19,6 +19,10 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
+from builtins import range
+from past.utils import old_div
+from builtins import object
 from PyQt5.QtGui import QPixmap, QPainter, QIcon, QBrush, QColor, \
                         QPalette, QFont, QPen, QPolygon, QImage
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QTableWidgetItem, QItemDelegate, QStyle, \
@@ -28,7 +32,7 @@ from PyQt5.QtCore import Qt, QRect, QSize, QEvent, QPoint, pyqtSignal
 
 import numpy
 
-class FeatureEntry:
+class FeatureEntry(object):
     def __init__(self, name):
         self.name = name
 
@@ -138,7 +142,7 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
         painter.setPen(color)
         brush = QBrush(color)
         painter.setBrush(brush)
-        painter.drawEllipse(QRect(self.pixmapSize.width()/2 - self.brushSize/2, self.pixmapSize.height()/2 - self.brushSize/2, self.brushSize, self.brushSize))
+        painter.drawEllipse(QRect(old_div(self.pixmapSize.width(),2) - old_div(self.brushSize,2), old_div(self.pixmapSize.height(),2) - old_div(self.brushSize,2), self.brushSize, self.brushSize))
         painter.end()
         self.setIcon(QIcon(pixmap))
         self.setTextAlignment(Qt.AlignVCenter)
@@ -199,8 +203,8 @@ class ItemDelegate(QItemDelegate):
         painter.drawRect(QRect(5,5,self.itemWidth-10, self.itemHeight-10))
         pen.setWidth(4)
         painter.setPen(pen)
-        painter.drawLine(self.itemWidth/2-5, self.itemHeight/2, self.itemWidth/2, self.itemHeight-9)
-        painter.drawLine(self.itemWidth/2, self.itemHeight-9, self.itemWidth/2+10, 2)
+        painter.drawLine(old_div(self.itemWidth,2)-5, old_div(self.itemHeight,2), old_div(self.itemWidth,2), self.itemHeight-9)
+        painter.drawLine(old_div(self.itemWidth,2), self.itemHeight-9, old_div(self.itemWidth,2)+10, 2)
         painter.end()
         
     def drawPixmapForPartiallyChecked(self):
@@ -216,8 +220,8 @@ class ItemDelegate(QItemDelegate):
         pen.setWidth(4)
         pen.setColor(QColor(139,137,137))
         painter.setPen(pen)
-        painter.drawLine(self.itemWidth/2-5, self.itemHeight/2, self.itemWidth/2, self.itemHeight-9)
-        painter.drawLine(self.itemWidth/2, self.itemHeight-9, self.itemWidth/2+10, 2)
+        painter.drawLine(old_div(self.itemWidth,2)-5, old_div(self.itemHeight,2), old_div(self.itemWidth,2), self.itemHeight-9)
+        painter.drawLine(old_div(self.itemWidth,2), self.itemHeight-9, old_div(self.itemWidth,2)+10, 2)
         painter.end()
     
     def paint(self, painter, option, index):
@@ -256,9 +260,9 @@ class ItemDelegate(QItemDelegate):
         
     def adjustRectForImage(self, option):
         if self.itemWidth > self.itemHeight:
-            return option.rect.adjusted((self.itemWidth-self.itemHeight)/2+5, 5,-((self.itemWidth-self.itemHeight)/2)-5,-5 )
+            return option.rect.adjusted(old_div((self.itemWidth-self.itemHeight),2)+5, 5,-(old_div((self.itemWidth-self.itemHeight),2))-5,-5 )
         else:
-            return option.rect.adjusted(5, (self.itemHeight-self.itemWidth)/2+5, -((self.itemHeight-self.itemWidth)/2)-5,-5 )
+            return option.rect.adjusted(5, old_div((self.itemHeight-self.itemWidth),2)+5, -(old_div((self.itemHeight-self.itemWidth),2))-5,-5 )
 
 
 #===============================================================================
@@ -701,7 +705,7 @@ class SliderDlg(QDialog):
         self.slider.setSliderPosition(self.sigma*10)
     
     def on_sliderMoved(self, i):
-        self.sigma = float(i)/10
+        self.sigma = old_div(float(i),10)
         self.setlabelSigma()
         self.setLabelBrushSize()
         self.parent().parent().parent().preView.setSizeToLabel(self.brushSize)

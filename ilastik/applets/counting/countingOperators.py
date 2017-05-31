@@ -20,6 +20,7 @@
 ###############################################################################
 
 from __future__ import division
+from builtins import range
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)

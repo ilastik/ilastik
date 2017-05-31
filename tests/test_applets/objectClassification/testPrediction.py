@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 

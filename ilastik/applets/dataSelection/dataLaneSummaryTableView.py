@@ -19,6 +19,7 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 from functools import partial
 from PyQt5.QtCore import pyqtSignal, Qt, QItemSelection, QItemSelectionModel
 from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QPushButton, QAction

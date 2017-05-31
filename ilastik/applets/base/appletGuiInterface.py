@@ -18,7 +18,9 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import object
 from abc import ABCMeta, abstractmethod
+from future.utils import with_metaclass
 
 def _has_attribute( cls, attr ):
     return True if any(attr in B.__dict__ for B in cls.__mro__) else False
@@ -26,12 +28,10 @@ def _has_attribute( cls, attr ):
 def _has_attributes( cls, attrs ):
     return True if all(_has_attribute(cls, a) for a in attrs) else False
 
-class VolumeViewerGui():
+class VolumeViewerGui(with_metaclass(ABCMeta, object)):
     """
     This class defines the methods which all GUIs with a volume editor/viewer should implement
     """
-    
-    __metaclass__ = ABCMeta
     
     def __init__(self, topLevelOperatorView):
         pass
@@ -49,12 +49,10 @@ class VolumeViewerGui():
             return _has_attribute(C, 'setViewerPos')
         return NotImplemented
     
-class AppletGuiInterface():
+class AppletGuiInterface(with_metaclass(ABCMeta, object)):
     """
     This is the abstract interface to which all applet GUI classes should adhere.
     """
-
-    __metaclass__ = ABCMeta
 
     def __init__(self, topLevelOperatorView):
         pass

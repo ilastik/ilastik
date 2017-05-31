@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 from PyQt5 import uic, QtWidgets, QtCore
 
 import os
@@ -32,7 +35,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     @threadRouted
     def _setMergerLegend(self, labels, selection):   
         param = self.topLevelOperatorView.Parameters.value
-        if 'withMergerResolution' in param.keys():
+        if 'withMergerResolution' in list(param.keys()):
             if param['withMergerResolution']:
                 selection = 1
         elif self._drawer.mergerResolutionBox.isChecked():
@@ -71,41 +74,41 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         
         parameters = self.topLevelOperatorView.Parameters.value        
-        if 'maxDist' in parameters.keys():
+        if 'maxDist' in list(parameters.keys()):
             self._drawer.maxDistBox.setValue(parameters['maxDist'])
-        if 'maxObj' in parameters.keys():
+        if 'maxObj' in list(parameters.keys()):
             self._drawer.maxObjectsBox.setValue(parameters['maxObj'])
-        if 'maxNearestNeighbors' in parameters.keys():
+        if 'maxNearestNeighbors' in list(parameters.keys()):
             self._drawer.maxObjectsBox.setValue(parameters['maxNearestNeighbors'])
-        if 'divThreshold' in parameters.keys():
+        if 'divThreshold' in list(parameters.keys()):
             self._drawer.divThreshBox.setValue(parameters['divThreshold'])
-        if 'avgSize' in parameters.keys():
+        if 'avgSize' in list(parameters.keys()):
             self._drawer.avgSizeBox.setValue(parameters['avgSize'][0])
-        if 'withTracklets' in parameters.keys():
+        if 'withTracklets' in list(parameters.keys()):
             self._drawer.trackletsBox.setChecked(parameters['withTracklets'])
-        if 'sizeDependent' in parameters.keys():
+        if 'sizeDependent' in list(parameters.keys()):
             self._drawer.sizeDepBox.setChecked(parameters['sizeDependent'])
-        if 'detWeight' in parameters.keys():
+        if 'detWeight' in list(parameters.keys()):
             self._drawer.detWeightBox.setValue(parameters['detWeight'])
-        if 'divWeight' in parameters.keys():
+        if 'divWeight' in list(parameters.keys()):
             self._drawer.divWeightBox.setValue(parameters['divWeight'])
-        if 'transWeight' in parameters.keys():
+        if 'transWeight' in list(parameters.keys()):
             self._drawer.transWeightBox.setValue(parameters['transWeight'])
-        if 'withDivisions' in parameters.keys():
+        if 'withDivisions' in list(parameters.keys()):
             self._drawer.divisionsBox.setChecked(parameters['withDivisions'])
-        if 'withOpticalCorrection' in parameters.keys():
+        if 'withOpticalCorrection' in list(parameters.keys()):
             self._drawer.opticalBox.setChecked(parameters['withOpticalCorrection'])
-        if 'withClassifierPrior' in parameters.keys():
+        if 'withClassifierPrior' in list(parameters.keys()):
             self._drawer.classifierPriorBox.setChecked(parameters['withClassifierPrior'])
-        if 'withMergerResolution' in parameters.keys():
+        if 'withMergerResolution' in list(parameters.keys()):
             self._drawer.mergerResolutionBox.setChecked(parameters['withMergerResolution'])
-        if 'borderAwareWidth' in parameters.keys():
+        if 'borderAwareWidth' in list(parameters.keys()):
             self._drawer.bordWidthBox.setValue(parameters['borderAwareWidth'])
-        if 'cplex_timeout' in parameters.keys():
+        if 'cplex_timeout' in list(parameters.keys()):
             self._drawer.timeoutBox.setText(str(parameters['cplex_timeout']))
-        if 'appearanceCost' in parameters.keys():
+        if 'appearanceCost' in list(parameters.keys()):
             self._drawer.appearanceBox.setValue(parameters['appearanceCost'])
-        if 'disappearanceCost' in parameters.keys():
+        if 'disappearanceCost' in list(parameters.keys()):
             self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
 
         solverName = self.topLevelOperatorView._solver
@@ -224,7 +227,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.topLevelOperatorView._disappearanceWeight = self._disappearanceWeight
 
     def _onOnesButtonPressed(self):
-        val = math.sqrt(1.0/5)
+        val = math.sqrt(old_div(1.0,5))
         self.topLevelOperatorView.DivisionWeight.setValue(val)
         self.topLevelOperatorView.DetectionWeight.setValue(val)
         self.topLevelOperatorView.TransitionWeight.setValue(val)
@@ -251,11 +254,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         for i in range(5):
            sltWeightNorm += weights[i] * weights[i]
         sltWeightNorm = math.sqrt(sltWeightNorm)
-        self.topLevelOperatorView.DivisionWeight.setValue(weights[0]/sltWeightNorm)
-        self.topLevelOperatorView.DetectionWeight.setValue(weights[1]/sltWeightNorm)
-        self.topLevelOperatorView.TransitionWeight.setValue(weights[2]/sltWeightNorm)
-        self.topLevelOperatorView.AppearanceWeight.setValue(weights[3]/sltWeightNorm)
-        self.topLevelOperatorView.DisappearanceWeight.setValue(weights[4]/sltWeightNorm)
+        self.topLevelOperatorView.DivisionWeight.setValue(old_div(weights[0],sltWeightNorm))
+        self.topLevelOperatorView.DetectionWeight.setValue(old_div(weights[1],sltWeightNorm))
+        self.topLevelOperatorView.TransitionWeight.setValue(old_div(weights[2],sltWeightNorm))
+        self.topLevelOperatorView.AppearanceWeight.setValue(old_div(weights[3],sltWeightNorm))
+        self.topLevelOperatorView.DisappearanceWeight.setValue(old_div(weights[4],sltWeightNorm))
 
         self._divisionWeight = self.topLevelOperatorView.DivisionWeight.value
         self._detectionWeight = self.topLevelOperatorView.DetectionWeight.value
@@ -337,7 +340,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         maxBorder = min(maxx, maxy)
         if maxz != 0:
             maxBorder = min(maxBorder, maxz)
-        self._drawer.bordWidthBox.setRange(0, maxBorder/2)
+        self._drawer.bordWidthBox.setRange(0, old_div(maxBorder,2))
         
     def _onMaxObjectsBoxChanged(self):
         self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
@@ -353,7 +356,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.operator.divisions = self.topLevelOperatorView.Divisions.wait()
 
     def getLabel(self, time, track):
-        for label in self.operator.labels[time].keys():
+        for label in list(self.operator.labels[time].keys()):
             if self.operator.labels[time][label] == set([track]):
                 return label
         return False
@@ -454,7 +457,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             from_size = self._drawer.from_size.value()
             to_size = self._drawer.to_size.value()        
             
-            self.time_range =  range(from_t, to_t + 1)
+            self.time_range =  list(range(from_t, to_t + 1))
             avgSize = [self._drawer.avgSizeBox.value()]
 
             cplex_timeout = None

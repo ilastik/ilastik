@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,6 +19,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
+from past.utils import old_div
 import os
 import copy
 from functools import partial
@@ -187,7 +190,7 @@ class CropSelectionGui(CroppingGui):
 
     def _onCropChanged(self, parentFun, mapf, slot):
         parentFun()
-        new = map(mapf, self.cropListData)
+        new = list(map(mapf, self.cropListData))
         old = slot.value
         slot.setValue(_listReplace(old, new))
         self.setCrop()
@@ -265,7 +268,7 @@ class CropSelectionGui(CroppingGui):
             self._renderMgr.setup(shape)
 
         layernames = set(layer.name for layer in self.layerstack)
-        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.iteritems()
+        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.items()
                                 if k in layernames)
 
         newvolume = numpy.zeros(shape, dtype=numpy.uint8)
@@ -290,7 +293,7 @@ class CropSelectionGui(CroppingGui):
             except KeyError:
                 continue
             color = layer.tintColor
-            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+            color = (old_div(color.red(), 255.0), old_div(color.green(), 255.0), old_div(color.blue(), 255.0))
             self._renderMgr.setColor(crop, color)
 
     def newCrop(self):
@@ -478,7 +481,7 @@ class CropSelectionGui(CroppingGui):
         self.editor.navCtrl.changeTimeRelative(times[0] - self.editor.posModel.time)
         self.editor.cropModel.colorChanged.emit(brushColor)
         if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
-            cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
+            cropMidPos = [old_div((b+a),2) for [a,b] in self.editor.cropModel._crop_extents]
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
         self.editor.navCtrl.panSlicingViews(cropMidPos,[0,1,2])

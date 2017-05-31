@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import os
 from PyQt5.QtWidgets import QTableView, QAbstractItemView, QHeaderView,  QStackedWidget, QLabel, QSizePolicy
 from PyQt5.QtCore import Qt

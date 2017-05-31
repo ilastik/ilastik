@@ -18,10 +18,12 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from future import standard_library
+standard_library.install_aliases()
 import sys
 import traceback
 import threading
-import StringIO
+import io
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel( logging.INFO )
@@ -53,7 +55,7 @@ def init_user_mode_excepthook():
         from volumina.pixelpipeline.asyncabcs import IndeterminateRequestError
         if isinstance(exc_info[1], IndeterminateRequestError):
             logger.warn( "Caught unhandled IndeterminateRequestError from volumina." )
-            sio = StringIO.StringIO()
+            sio = io.StringIO()
             traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
             logger.warn( sio.getvalue() )
             return
@@ -71,7 +73,7 @@ def init_user_mode_excepthook():
                 shell.postErrorMessage( exc_info[0].__name__, msg )
         except:
             logger.error( "UNHANDLED EXCEPTION WHILE DISPLAYING AN ERROR TO THE USER:" )
-            sio = StringIO.StringIO()
+            sio = io.StringIO()
             traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
             logger.error( sio.getvalue() )
             raise
@@ -89,7 +91,7 @@ def init_developer_mode_excepthook():
 def _log_exception(*exc_info):
     thread_name = threading.current_thread().name
     logger.error( "Unhandled exception in thread: '{}'".format(thread_name) )
-    sio = StringIO.StringIO()
+    sio = io.StringIO()
     traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
     logger.error( sio.getvalue() )
 

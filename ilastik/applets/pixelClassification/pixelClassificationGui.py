@@ -1,5 +1,6 @@
 from __future__ import print_function
 from __future__ import absolute_import
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,6 +22,7 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
+from past.utils import old_div
 import os
 import logging
 from collections import OrderedDict
@@ -84,7 +86,7 @@ class ClassifierSelectionDlg(QDialog):
         classifier_listwidget.setSelectionMode( QListWidget.SingleSelection )
 
         classifier_factories = self._get_available_classifier_factories()
-        for name, classifier_factory in classifier_factories.items():
+        for name, classifier_factory in list(classifier_factories.items()):
             item = QListWidgetItem( name )
             item.setData( Qt.UserRole, classifier_factory )
             classifier_listwidget.addItem(item)
@@ -200,11 +202,11 @@ class BookmarksWindow(QDialog):
         axes = axes[:-1] # drop channel
         axes = sorted(axes)
         assert len(axes) == len(coord)
-        tagged_coord = dict(zip(axes, coord))
-        tagged_location = OrderedDict(zip('txyzc', (0,0,0,0,0)))
+        tagged_coord = dict(list(zip(axes, coord)))
+        tagged_location = OrderedDict(list(zip('txyzc', (0,0,0,0,0))))
         tagged_location.update(tagged_coord)
-        t = tagged_location.values()[0]
-        coord3d = tagged_location.values()[1:4]
+        t = list(tagged_location.values())[0]
+        coord3d = list(tagged_location.values())[1:4]
         
         self.parent().editor.posModel.time = t
         self.parent().editor.navCtrl.panSlicingViews( coord3d, [0,1,2] )
@@ -234,7 +236,7 @@ class BookmarksWindow(QDialog):
 
     def add_bookmark(self):
         coord_txyzc = self.parent().editor.posModel.slicingPos5D
-        tagged_coord_txyzc = dict( zip('txyzc', coord_txyzc) )
+        tagged_coord_txyzc = dict( list(zip('txyzc', coord_txyzc)) )
         axes = self.topLevelOperatorView.InputImages.meta.getAxisKeys()
         axes = axes[:-1] # drop channel
         axes = sorted(axes)
@@ -306,7 +308,7 @@ class PixelClassificationGui(LabelingGui):
             else:
                 defaultDirectory = os.path.expanduser('~')
             fileNames = DataSelectionGui.getImageFileNamesToOpen(self, defaultDirectory)
-            fileNames = map(str, fileNames)
+            fileNames = list(map(str, fileNames))
             
             # For now, we require a single hdf5 file
             if len(fileNames) > 1:
@@ -869,7 +871,7 @@ class PixelClassificationGui(LabelingGui):
 
     def _onLabelChanged(self, parentFun, mapf, slot):
         parentFun()
-        new = map(mapf, self.labelListData)
+        new = list(map(mapf, self.labelListData))
         old = slot.value
         slot.setValue(_listReplace(old, new))
 
@@ -938,7 +940,7 @@ class PixelClassificationGui(LabelingGui):
             self._renderMgr.setup(shape)
 
         layernames = set(layer.name for layer in self.layerstack)
-        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.iteritems()
+        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.items()
                                 if k in layernames)
 
         newvolume = numpy.zeros(shape, dtype=numpy.uint8)
@@ -963,5 +965,5 @@ class PixelClassificationGui(LabelingGui):
             except KeyError:
                 continue
             color = layer.tintColor
-            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+            color = (old_div(color.red(), 255.0), old_div(color.green(), 255.0), old_div(color.blue(), 255.0))
             self._renderMgr.setColor(label, color)

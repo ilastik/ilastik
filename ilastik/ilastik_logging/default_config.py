@@ -19,6 +19,7 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import object
 import os
 import logging.config
 import warnings
@@ -27,7 +28,7 @@ from ilastik.config import cfg as ilastik_config
 
 DEFAULT_LOGFILE_PATH = os.path.expanduser("~/ilastik_log.txt")
 
-class OutputMode:
+class OutputMode(object):
     CONSOLE = 0
     LOGFILE = 1
     BOTH = 2

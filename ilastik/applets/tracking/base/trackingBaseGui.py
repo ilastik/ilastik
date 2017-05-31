@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 from functools import partial
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QMenu, QWidgetAction, QLabel
 from PyQt5.QtGui import QColor, QIcon
@@ -98,7 +99,7 @@ class TrackingBaseGui( LayerViewerGui ):
         if "MergerOutput" in self.topLevelOperatorView.outputs:
             parameters = self.mainOperator.Parameters.value
 
-            if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
+            if 'withMergerResolution' in list(parameters.keys()) and not parameters['withMergerResolution']:
                 merger_ct = self.merger_colortable
             else:
                 merger_ct = self.tracking_colortable
@@ -114,7 +115,7 @@ class TrackingBaseGui( LayerViewerGui ):
             mergerLayer = ColortableLayer( self.mergersrc, merger_ct )
             mergerLayer.name = "Merger"
 
-            if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
+            if 'withMergerResolution' in list(parameters.keys()) and not parameters['withMergerResolution']:
                 mergerLayer.visible = True
             else:
                 mergerLayer.visible = False

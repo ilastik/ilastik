@@ -142,7 +142,7 @@ class ProjectManager(object):
         readOnly = (hdf5File.mode == 'r')
 
         projectVersion = "0.5"
-        if "ilastikVersion" in hdf5File.keys():
+        if "ilastikVersion" in list(hdf5File.keys()):
             projectVersion = hdf5File["ilastikVersion"].value
         
         # FIXME: version comparison
@@ -151,7 +151,7 @@ class ProjectManager(object):
             raise ProjectManager.ProjectVersionError(projectVersion, ilastik.__version__)
         
         workflow_class = None
-        if "workflowName" in hdf5File.keys():
+        if "workflowName" in list(hdf5File.keys()):
             #if workflow is found in file, take it
             workflowName = hdf5File["workflowName"].value
             workflow_class = getWorkflowFromName(workflowName)
@@ -174,7 +174,7 @@ class ProjectManager(object):
                 project_key = keys[0]
             else:
                 # Try to find a key that looks like a project file.
-                possible_project_keys = filter(lambda s: s.endswith('.ilp'), keys)
+                possible_project_keys = [s for s in keys if s.endswith('.ilp')]
                 if len(possible_project_keys) == 1:
                     project_key = possible_project_keys[0]
                 else:
@@ -311,7 +311,7 @@ class ProjectManager(object):
 
             # Start by copying the current project state into the file
             # This should be faster than serializing everything from scratch
-            for key in self.currentProjectFile.keys():
+            for key in list(self.currentProjectFile.keys()):
                 snapshotFile.copy(self.currentProjectFile[key], key)
 
             try:
@@ -376,7 +376,7 @@ class ProjectManager(object):
         
         # Copy the contents of the current project file to a newly-created file (with the old name)
         with h5py.File(oldPath, 'a') as oldFile:
-            for key in self.currentProjectFile.keys():
+            for key in list(self.currentProjectFile.keys()):
                 oldFile.copy(self.currentProjectFile[key], key)
         
         for aplt in self._applets:

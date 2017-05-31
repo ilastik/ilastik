@@ -21,7 +21,10 @@
 from __future__ import division
 from __future__ import absolute_import
 # Standard
-from Queue import Queue
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from queue import Queue
 import re
 import os
 import time
@@ -235,7 +238,7 @@ class ProgressDisplayManager(QObject):
     def handleAppletProgressImpl(self, index, percentage, cancelled):
         # No need for locking; this function is always run from the GUI thread
         if cancelled:
-            if index in self.appletPercentages.keys():
+            if index in list(self.appletPercentages.keys()):
                 del self.appletPercentages[index]
         else:
             # Take max (never go back down)
@@ -249,10 +252,10 @@ class ProgressDisplayManager(QObject):
 
         numActive = len(self.appletPercentages)
         if numActive > 0:
-            totalPercentage = numpy.sum(self.appletPercentages.values()) // numActive
+            totalPercentage = numpy.sum(list(self.appletPercentages.values())) // numActive
 
         # If any applet gave -1, put progress bar in "busy indicator" mode
-        if (TinyVector(self.appletPercentages.values()) == -1).any():
+        if (TinyVector(list(self.appletPercentages.values())) == -1).any():
             self.progressBar.setMaximum(0)
         else:
             self.progressBar.setMaximum(100)
@@ -1197,14 +1200,14 @@ class IlastikShell(QMainWindow):
         self._clearStackedWidget(self.viewerControlStack)
 
         # Remove all drawers
-        for i in reversed(range(self.appletBar.count())):
+        for i in reversed(list(range(self.appletBar.count()))):
             widget = self.appletBar.widget(i)
             widget.hide()
             widget.setParent(None)
             self.appletBar.removeItem(i)
 
     def _clearStackedWidget(self, stackedWidget):
-        for i in reversed(range(stackedWidget.count())):
+        for i in reversed(list(range(stackedWidget.count()))):
             lastWidget = stackedWidget.widget(i)
             stackedWidget.removeWidget(lastWidget)
 
@@ -1327,7 +1330,7 @@ class IlastikShell(QMainWindow):
         recent_hosts = recent_hosts_pref.get()
         if not recent_hosts:
             recent_hosts = ["localhost:8000"]
-        recent_hosts = filter(lambda h: h, recent_hosts) # There used to be a bug where empty strings could be saved. Filter those out.
+        recent_hosts = [h for h in recent_hosts if h] # There used to be a bug where empty strings could be saved. Filter those out.
 
         recent_nodes_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Nodes")
         recent_nodes = recent_nodes_pref.get() or {}
@@ -1446,9 +1449,9 @@ class IlastikShell(QMainWindow):
         #  load them so that the workflow can be instantiated with the same settings 
         #  that were used when the project was first created. 
         project_creation_args = []
-        if "workflow_cmdline_args" in hdf5File.keys():
+        if "workflow_cmdline_args" in list(hdf5File.keys()):
             if len(hdf5File["workflow_cmdline_args"]) > 0:
-                project_creation_args = map(str, hdf5File["workflow_cmdline_args"][...])
+                project_creation_args = list(map(str, hdf5File["workflow_cmdline_args"][...]))
 
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
@@ -1518,7 +1521,7 @@ class IlastikShell(QMainWindow):
                 PreferencesManager().set('shell', 'recently opened', projectFilePath)
 
                 #be friendly to user: if this file has not specified a default workflow, do it now
-                if not "workflowName" in hdf5File.keys() and not readOnly:
+                if not "workflowName" in list(hdf5File.keys()) and not readOnly:
                     hdf5File.create_dataset("workflowName", data=workflowName)
 
                 #switch away from the startup screen to show the loaded project
@@ -1535,7 +1538,7 @@ class IlastikShell(QMainWindow):
                 # Enable all the applet controls
                 self.enableWorkflow = True
 
-                if "currentApplet" in hdf5File.keys():
+                if "currentApplet" in list(hdf5File.keys()):
                     appletName = hdf5File["currentApplet"].value
                     self.setSelectedAppletDrawer(appletName)
                 else:
@@ -1550,7 +1553,7 @@ class IlastikShell(QMainWindow):
 
             projectFile = self.projectManager.currentProjectFile
             if not self.projectManager.closed and projectFile is not None and not self.projectManager.currentProjectIsReadOnly:
-                if "currentApplet" in projectFile.keys():
+                if "currentApplet" in list(projectFile.keys()):
                     del projectFile["currentApplet"]
                 self.projectManager.currentProjectFile.create_dataset("currentApplet", data=self.currentAppletIndex)
 
