@@ -1532,7 +1532,7 @@ class AnnotationsGui(LayerViewerGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
-        out_fn, _filter = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/divisions.csv", options=options).encode()
+        out_fn, _filter = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/divisions.csv", options=options)
         
         if out_fn is None or str(out_fn) == '':            
             return

@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#           http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
 from __future__ import print_function
@@ -251,10 +251,10 @@ class RegressorGurobi(object):
                 model.addConstr(constr)        
         else:
             for i in range(X.shape[0]):
-		    constr=gu.quicksum([float(X_hat[i,j])*w_vars[j] for j in range(self.Nf+1)]) - u_vars1[i]<=float(Yl[i]) + self._epsilon
-		    model.addConstr(constr )
-		    constr=gu.quicksum([-(float(X_hat[i,j])*w_vars[j])  for j in range(self.Nf+1)]) - u_vars2[i]<=-float(Yl[i]) + self._epsilon
-		    model.addConstr(constr)        
+                constr=gu.quicksum([float(X_hat[i,j])*w_vars[j] for j in range(self.Nf+1)]) - u_vars1[i]<=float(Yl[i]) + self._epsilon
+                model.addConstr(constr )
+                constr=gu.quicksum([-(float(X_hat[i,j])*w_vars[j])  for j in range(self.Nf+1)]) - u_vars2[i]<=-float(Yl[i]) + self._epsilon
+                model.addConstr(constr)        
 
         model.update()
         #model.setParam('OutputFlag', False) 
@@ -792,5 +792,4 @@ if __name__ == "__main__":
     #  print 'x: ', sol[0], 'y: ', sol[1], 'z: ', sol[2]
     #for i in range(numVariables):
     #    m.addVar()
-
 

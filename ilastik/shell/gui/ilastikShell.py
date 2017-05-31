@@ -910,7 +910,6 @@ class IlastikShell(QMainWindow):
             options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
         if svgPath:
-            svgPath = svgPath.encode()
             PreferencesManager().set('shell', 'recent debug diagram', svgPath)
             lazyflow.tools.schematic.generateSvgFileForOperator(svgPath, op, detail)
             QDesktopServices.openUrl(QUrl.fromLocalFile(svgPath))
@@ -944,7 +943,7 @@ class IlastikShell(QMainWindow):
             if readOnly:
                 windowTitle += " [Read Only]"
 
-        self.setWindowTitle(windowTitle.decode())
+        self.setWindowTitle(windowTitle)
 
         # Enable/Disable menu items
         projectIsOpen = self.projectManager is not None and not self.projectManager.closed
@@ -1272,7 +1271,6 @@ class IlastikShell(QMainWindow):
             # If the user cancelled, stop now
             if not projectFilePath:
                 return None
-            projectFilePath = projectFilePath.encode()
             fileSelected = True
 
             # Add extension if necessary
@@ -1381,7 +1379,7 @@ class IlastikShell(QMainWindow):
         if not projectFilePath:
             return None
 
-        return projectFilePath.encode()
+        return projectFilePath
 
     def onOpenProjectActionTriggered(self):
         logger.debug("Open Project action triggered")

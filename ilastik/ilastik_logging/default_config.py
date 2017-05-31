@@ -266,7 +266,7 @@ def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, l
     # Custom format for warnings
     def simple_warning_format(message, category, filename, lineno, line=None):
         filename = os.path.split(filename)[1]
-        return filename + "(" + str(lineno) + "): " + category.__name__ + ": " + message[0]
+        return filename + "(" + str(lineno) + "): " + category.__name__ + ": " + message.args[0]
 
     warnings.formatwarning = simple_warning_format
     

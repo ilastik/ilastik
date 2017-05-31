@@ -30,7 +30,6 @@ import h5py
 import numpy
 from functools import partial
 import logging
-from builtins import False
 logger = logging.getLogger(__name__)
 
 #PyQt

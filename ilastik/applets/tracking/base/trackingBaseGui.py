@@ -299,7 +299,7 @@ class TrackingBaseGui( LayerViewerGui ):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
-        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options).encode()
+        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options)
 
         if directory is None or len(str(directory)) == 0:
             logger.info( "cancelled." )
@@ -376,7 +376,7 @@ class TrackingBaseGui( LayerViewerGui ):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
-        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options).encode()
+        directory = QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options)
 
         if directory is None or len(str(directory)) == 0:
             logger.info( "cancelled." )
