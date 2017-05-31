@@ -13,7 +13,10 @@ from ilastik.applets.trackingFeatureExtraction import config
 from ilastik.applets.tracking.conservation import config as configConservation
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
+from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ilastik.plugins import pluginManager
+from ilastik.config import cfg as ilastik_config
 
 import logging
 logger = logging.getLogger(__name__)
@@ -66,7 +69,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
                                                                       name="Object Feature Computation")                                                                     
         
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
-        opObjectExtraction.FeatureNamesVigra.setValue(configConservation.allFeaturesObjectCount)
 
         self.divisionDetectionApplet = self._createDivisionDetectionApplet(configConservation.selectedFeaturesDiv) # Might be None
 
@@ -120,8 +122,13 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self.dataExportApplet.set_exporting_operator(opTracking)
         self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
         self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
-        self.dataExportApplet.includeTableOnlyOption() # Export table only, without volumes
-        
+
+        # table only export is just available for the pgmlink backend, hytra uses the CSV plugin instead
+        try:
+            import hytra
+        except ImportError:
+            self.dataExportApplet.includeTableOnlyOption() # Export table only, without volumes
+
         # configure export settings
         settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}
         selected_features = ['Count', 'RegionCenter', 'RegionRadii', 'RegionAxes']                  
@@ -134,8 +141,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         if self.withOptTrans:
             self._applets.append(self.opticalTranslationApplet)
         self._applets.append(self.objectExtractionApplet)
-        
-        
+
         if self.divisionDetectionApplet:
             self._applets.append(self.divisionDetectionApplet)
         
@@ -150,6 +156,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         if workflow_cmdline_args:
             self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( workflow_cmdline_args )
             self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( workflow_cmdline_args )
+
         else:
             unused_args = None
             self._data_export_args = None
@@ -216,7 +223,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
         if self.withOptTrans:
             opOptTranslation = self.opticalTranslationApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
-        
+        opObjExtraction.setDefaultFeatures(configConservation.allFeaturesObjectCount)
+
         if self.divisionDetectionApplet:
                 opDivDetection = self.divisionDetectionApplet.topLevelOperator.getLane(laneIndex)
             
@@ -287,6 +295,10 @@ class ConservationTrackingWorkflowBase( Workflow ):
     def prepare_lane_for_export(self, lane_index):
         # Bypass cache on headless mode and batch processing mode
         self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(True)
+        
+        if not self.fromBinary:
+            self.thresholdTwoLevelsApplet.topLevelOperator[lane_index].opCache.BypassModeEnabled.setValue(True)
+            self.thresholdTwoLevelsApplet.topLevelOperator[lane_index].opSmootherCache.BypassModeEnabled.setValue(True)
          
         # Get axes info  
         maxt = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[0] 
@@ -324,7 +336,12 @@ class ConservationTrackingWorkflowBase( Workflow ):
             self.prev_z_range = parameters['z_range']
         else:
             self.prev_z_range = z_range
-        
+
+        if 'numFramesPerSplit' in parameters:
+            numFramesPerSplit = parameters['numFramesPerSplit']
+        else:
+            numFramesPerSplit = 0
+
         self.trackingApplet.topLevelOperator[lane_index].track(
             time_range = time_enum,
             x_range = x_range,
@@ -353,31 +370,60 @@ class ConservationTrackingWorkflowBase( Workflow ):
             appearance_cost = parameters['appearanceCost'],
             disappearance_cost = parameters['disappearanceCost'],
             max_nearest_neighbors = parameters['max_nearest_neighbors'],
+            numFramesPerSplit = numFramesPerSplit,
             force_build_hypotheses_graph = False,
             withBatchProcessing = True
         )
 
-    def post_process_lane_export(self, lane_index):        
+    def post_process_lane_export(self, lane_index, checkOverwriteFiles=False):
+        # `time` parameter ensures we check only once for files that could be overwritten, pop up
+        # the MessageBox and then don't export (time=0). For the next round we click the export button,
+        # we really want it to export, so time=1. The default parameter is 1, so everything but not 0,
+        # in order to ensure writing out even in headless mode.
+        
+        # FIXME: This probably only works for the non-blockwise export slot.
+        #        We should assert that the user isn't using the blockwise slot.
+
+        # Plugin export if selected
+        logger.info("Export source is: " + self.dataExportApplet.topLevelOperator.SelectedExportSource.value)
+
+        if self.dataExportApplet.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName:
+            logger.info("Export source plugin selected!")
+            selectedPlugin = self.dataExportApplet.topLevelOperator.SelectedPlugin.value
+
+            exportPluginInfo = pluginManager.getPluginByName(selectedPlugin, category="TrackingExportFormats")
+            if exportPluginInfo is None:
+                logger.error("Could not find selected plugin %s" % exportPluginInfo)
+            else:
+                exportPlugin = exportPluginInfo.plugin_object
+                logger.info("Exporting tracking result using %s" % selectedPlugin)
+                name_format = self.dataExportApplet.topLevelOperator.getLane(lane_index).OutputFilenameFormat.value
+                partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
+
+                if exportPlugin.exportsToFile:
+                    filename = partially_formatted_name
+                    if os.path.basename(filename) == '':
+                        filename = os.path.join(filename, 'pluginExport.txt')
+                else:
+                    filename = os.path.dirname(partially_formatted_name)
+
+                if filename is None or len(str(filename)) == 0:
+                    logger.error("Cannot export from plugin with empty output filename")
+                    return
+
+                exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin, checkOverwriteFiles)
+                if not exportStatus:
+                    return False
+                logger.info("Export done")
+
+            return
+
+        # CSV Table export (only if plugin was not selected)
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
             self.dataExportApplet.progressSignal.emit(0)
-            raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
-            
-            project_path = self.shell.projectManager.currentProjectPath
-            project_dir = os.path.dirname(project_path)
-            dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
-            abs_dataset_dir = make_absolute(dataset_dir, cwd=project_dir)
-
-            known_keys = {}        
-            known_keys['dataset_dir'] = abs_dataset_dir
-            nickname = raw_dataset_info.nickname.replace('*', '')
-            if os.path.pathsep in nickname:
-                nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
-            known_keys['nickname'] = nickname
-            
-            # use partial formatting to fill in non-coordinate name fields
             name_format = settings['file path']
-            partially_formatted_name = format_known_keys( name_format, known_keys )
+            partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
             settings['file path'] = partially_formatted_name
 
             req = self.trackingApplet.topLevelOperator.getLane(lane_index).export_object_data(
@@ -397,8 +443,27 @@ class ConservationTrackingWorkflowBase( Workflow ):
             parameters['time_range'] = self.prev_time_range
             parameters['x_range'] = self.prev_x_range
             parameters['y_range'] = self.prev_y_range
-            parameters['z_range'] = self.prev_z_range          
-    
+            parameters['z_range'] = self.prev_z_range
+
+    def getPartiallyFormattedName(self, lane_index, path_format_string):
+        ''' Takes the format string for the output file, fills in the most important placeholders, and returns it '''
+        raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
+        project_path = self.shell.projectManager.currentProjectPath
+        project_dir = os.path.dirname(project_path)
+        dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
+        abs_dataset_dir = make_absolute(dataset_dir, cwd=project_dir)
+        known_keys = {}
+        known_keys['dataset_dir'] = abs_dataset_dir
+        nickname = raw_dataset_info.nickname.replace('*', '')
+        if os.path.pathsep in nickname:
+            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
+        known_keys['nickname'] = nickname
+        known_keys['result_type'] = self.dataExportApplet.topLevelOperator.SelectedPlugin._value
+        # use partial formatting to fill in non-coordinate name fields
+        partially_formatted_name = format_known_keys(path_format_string, known_keys)
+        return partially_formatted_name
+
+
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
         if len(slot) > 0:

@@ -1,4 +1,3 @@
-import numpy as np
 import math
 
 from lazyflow.graph import InputSlot, OutputSlot
@@ -10,16 +9,31 @@ from ilastik.applets.tracking.conservation.opConservationTracking import OpConse
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
+from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgressVisitor
+
+import logging
+logger = logging.getLogger(__name__)
+
 try:
     import multiHypoTracking_with_cplex as mht
 except ImportError:
     try:
         import multiHypoTracking_with_gurobi as mht
     except ImportError:
-        raise ImportError("Could not find any ILP solver")
+        logger.warning("Could not find any ILP solver")
 
-import logging
-logger = logging.getLogger(__name__)
+try:
+    import hytra
+    WITH_HYTRA = True
+except ImportError as e:
+    WITH_HYTRA = False
+
+if WITH_HYTRA:
+    from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
+else:
+    # Use old PgmLink tracking operator if we can't import Hytra (When OS is Windows)
+    from ilastik.applets.tracking.conservation.opConservationTrackingPgmLink import OpConservationTrackingPgmLink as OpConservationTracking
+    logger.info("Using old conservation tracking workflow (PgmLink)")
 
 class OpStructuredTracking(OpConservationTracking):
     Crops = InputSlot()
@@ -36,6 +50,7 @@ class OpStructuredTracking(OpConservationTracking):
     MaxNumObjOut = OutputSlot()
 
     def __init__(self, parent=None, graph=None):
+        self._solver = "ILP"
         super(OpStructuredTracking, self).__init__(parent=parent, graph=graph)
 
         self.labels = {}
@@ -63,6 +78,8 @@ class OpStructuredTracking(OpConservationTracking):
         self.Crops.notifyReady(bind(self._updateCropsFromOperator) )
         self.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
         self.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
+
+        self._solver = self.parent.parent._solver
 
     def _updateLabelsFromOperator(self):
         self.labels = self.Labels.value
@@ -105,17 +122,27 @@ class OpStructuredTracking(OpConservationTracking):
             withDivisions,
             borderAwareWidth,
             withClassifierPrior,
-            withBatchProcessing=False):
+            withBatchProcessing=False,
+            progressWindow=None,
+            progressVisitor=CommandLineProgressVisitor()
+        ):
 
         if not withBatchProcessing:
             gui = self.parent.parent.trackingApplet._gui.currentGui()
+
+        if WITH_HYTRA:
+            self.progressWindow = progressWindow
+            self.progressVisitor=progressVisitor
+        else:
+            self.progressWindow = None
+            self.progressVisitor=DefaultProgressVisitor()
 
         emptyAnnotations = False
         for crop in self.Annotations.value.keys():
             emptyCrop = self.Annotations.value[crop]["divisions"]=={} and self.Annotations.value[crop]["labels"]=={}
             if emptyCrop and not withBatchProcessing:
                 gui._criticalMessage("Error: Weights can not be calculated because training annotations for crop {} are missing. ".format(crop) +\
-                                  "Go back to Training applet and Save your training for each crop.")
+                                  "Go back to Training applet and train on each crop.")
             emptyAnnotations = emptyAnnotations or emptyCrop
 
         if emptyAnnotations:
@@ -149,6 +176,7 @@ class OpStructuredTracking(OpConservationTracking):
         parameters['y_range'] = y_range
         parameters['z_range'] = z_range
         parameters['max_nearest_neighbors'] = maxNearestNeighbors
+        parameters['withTracklets'] = False
 
         # Set a size range with a minimum area equal to the max number of objects (since the GMM throws an error if we try to fit more gaussians than the number of pixels in the object)
         size_range = (max(maxObj, size_range[0]), size_range[1])
@@ -156,7 +184,7 @@ class OpStructuredTracking(OpConservationTracking):
 
         self.Parameters.setValue(parameters, check_changed=False)
 
-        foundAllArcs = False;
+        foundAllArcs = False
         new_max_nearest_neighbors = max ([maxNearestNeighbors-1,1])
         maxObjOK = True
         parameters['max_nearest_neighbors'] = maxNearestNeighbors
@@ -173,15 +201,6 @@ class OpStructuredTracking(OpConservationTracking):
             if hypothesesGraph.countNodes() == 0:
                 raise DatasetConstraintError('Structured Learning', 'Can not track frames with 0 objects, abort.')
 
-            hypothesesGraph.insertEnergies()
-            # trackingGraph = hypothesesGraph.toTrackingGraph()
-            # import pprint
-            # pprint.pprint(trackingGraph.model)
-
-            maxDist = 200
-            sizeDependent = False
-            divThreshold = float(0.5)
-
             logger.info("Structured Learning: Adding Training Annotations to Hypotheses Graph")
 
             mergeMsgStr = "Your tracking annotations contradict this model assumptions! All tracks must be continuous, tracks of length one are not allowed, and mergers may merge or split but all tracks in a merger appear/disappear together."
@@ -195,8 +214,8 @@ class OpStructuredTracking(OpConservationTracking):
 
                     if not cropKey in self.Annotations.value.keys():
                         if not withBatchProcessing:
-                            gui._criticalMessage("You have not trained or saved your training for " + str(cropKey) + \
-                                              ". \nGo back to the Training applet and save all your training!")
+                            gui._criticalMessage("You have not trained your training for " + str(cropKey) + \
+                                              ". \nGo back to the Training applet and train on all crops!")
                         return [self.DetectionWeight.value, self.DivisionWeight.value, self.TransitionWeight.value, self.AppearanceWeight.value, self.DisappearanceWeight.value]
 
                     crop = self.Annotations.value[cropKey]
@@ -225,7 +244,7 @@ class OpStructuredTracking(OpConservationTracking):
                                         logger.info("Your track count for object {} in time frame {} is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(label,time,trackCount,trackSet,maxObj))
                                         logger.info("Either remove track(s) from this object or train the object count classifier with more labels!")
                                         maxObjOK = False
-                                        raise DatasetConstraintError('Structured Learning', "Your track count for object "+str(label)+" in time frame " +str(time)+ " equals "+str(trackCount)+"=|"+str(trackSet)+"|," + \
+                                        self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', "Your track count for object "+str(label)+" in time frame " +str(time)+ " equals "+str(trackCount)+"=|"+str(trackSet)+"|," + \
                                                 " which is greater than the maximum object number "+str(maxObj)+" defined by object count classifier! " + \
                                                 "Either remove track(s) from this object or train the object count classifier with more labels!")
 
@@ -238,23 +257,20 @@ class OpStructuredTracking(OpConservationTracking):
                                         # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
                                         type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
                                         if type == None:
-                                            raise DatasetConstraintError('Structured Learning', mergeMsgStr)
+                                            self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
 
-                                        elif type[0] in ["LAST", "INTERMEDIATE", "SINGLETON(FIRST_LAST)"]:
-                                            if type[0] == "SINGLETON(FIRST_LAST)":
-                                                trackCountIntersection = len(trackSet)
-                                            else:
-                                                previous_label = int(type[1])
-                                                previousTrackSet = labels[time-1][previous_label]
-                                                intersectionSet = trackSet.intersection(previousTrackSet)
-                                                trackCountIntersection = len(intersectionSet)
-                                            print "trackCountIntersection",trackCountIntersection
+                                        elif type[0] in ["LAST", "INTERMEDIATE"]:
+
+                                            previous_label = int(type[1])
+                                            previousTrackSet = labels[time-1][previous_label]
+                                            intersectionSet = trackSet.intersection(previousTrackSet)
+                                            trackCountIntersection = len(intersectionSet)
 
                                             if trackCountIntersection > maxObj:
                                                 logger.info("Your track count for transition ( {},{} ) ---> ( {},{} ) is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(previous_label,time-1,label,time,trackCountIntersection,intersectionSet,maxObj))
                                                 logger.info("Either remove track(s) from these objects or train the object count classifier with more labels!")
                                                 maxObjOK = False
-                                                raise DatasetConstraintError('Structured Learning', "Your track count for transition ("+str(previous_label)+","+str(time-1)+") ---> ("+str(label)+","+str(time)+") is "+str(trackCountIntersection)+"=|"+str(intersectionSet)+"|, " + \
+                                                self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', "Your track count for transition ("+str(previous_label)+","+str(time-1)+") ---> ("+str(label)+","+str(time)+") is "+str(trackCountIntersection)+"=|"+str(intersectionSet)+"|, " + \
                                                         "which is greater than maximum object number "+str(maxObj)+" defined by object count classifier!" + \
                                                         "Either remove track(s) from these objects or train the object count classifier with more labels!")
 
@@ -263,27 +279,27 @@ class OpStructuredTracking(OpConservationTracking):
                                             foundAllArcs = False
                                             for edge in hypothesesGraph._graph.in_edges(sink): # an edge is a tuple of source and target nodes
                                                 logger.info("Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label))
+                                                # print "Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label)
                                                 if edge[0][0] == time-1 and edge[0][1] == int(previous_label): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
                                                     foundAllArcs = True
                                                     hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = int(trackCountIntersection)
-                                                    print "[structuredTrackingGui] EDGE: ({},{})--->({},{})".format(time-1, int(previous_label), time,int(label))
                                                     break
-
                                             if not foundAllArcs:
-                                                logger.info("[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS {} {}".format(time-1, int(previous_label)))
-                                                logger.info("[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS {} {}".format(time, int(label)))
+                                                logger.info("[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS t:{} id:{}".format(time-1, int(previous_label)))
+                                                # print "[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS t:{} id:{}".format(time-1, int(previous_label))
                                                 break
 
                                     if type == None:
-                                        raise DatasetConstraintError('Structured Learning', mergeMsgStr)
+                                        self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
 
                                     elif type[0] in ["FIRST", "LAST", "INTERMEDIATE", "SINGLETON(FIRST_LAST)"]:
                                         if (time, int(label)) in hypothesesGraph._graph.node.keys():
                                             hypothesesGraph._graph.node[(time, int(label))]['value'] = trackCount
                                             logger.info("[structuredTrackingGui] NODE: {} {}".format(time, int(label)))
-                                            print "[structuredTrackingGui] NODE: {} {} {}".format(time, int(label), int(trackCount))
+                                            # print "[structuredTrackingGui] NODE: {} {} {}".format(time, int(label), int(trackCount))
                                         else:
                                             logger.info("[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label)))
+                                            # print "[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label))
 
                                             foundAllArcs = False
                                             break
@@ -317,6 +333,7 @@ class OpStructuredTracking(OpConservationTracking):
 
                                 if not foundAllArcs:
                                     logger.info("[structuredTrackingGui] Increasing max nearest neighbors! DIVISION {} {}".format(time, parent))
+                                    # print "[structuredTrackingGui] Increasing max nearest neighbors! DIVISION {} {}".format(time, parent)
                                     break
         logger.info("max nearest neighbors= {}".format(new_max_nearest_neighbors))
 
@@ -338,6 +355,9 @@ class OpStructuredTracking(OpConservationTracking):
 
         hypothesesGraph.insertEnergies()
 
+        self.progressVisitor.showState("Structured learning")
+        self.progressVisitor.showProgress(0)
+
         # crops away everything (arcs and nodes) that doesn't have 'value' set
         prunedGraph = hypothesesGraph.pruneGraphToSolution(distanceToSolution=0) # width of non-annotated border needed for negative training examples
 
@@ -346,15 +366,18 @@ class OpStructuredTracking(OpConservationTracking):
         # trackingGraph.convexifyCosts()
         model = trackingGraph.model
         model['settings']['optimizerEpGap'] = 0.005
+        model['settings']['allowLengthOneTracks'] = False
         gt = prunedGraph.getSolutionDictionary()
 
         initialWeights = trackingGraph.weightsListToDict([transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight])
 
+        self.HypothesesGraph.setValue(hypothesesGraph)
         mht.trainWithWeightInitialization(model,gt, initialWeights)
         weightsDict = mht.train(model, gt)
 
         weights = trackingGraph.weightsDictToList(weightsDict)
 
+        self.progressVisitor.showProgress(1)
 
         if not withBatchProcessing and withDivisions and numAllAnnotatedDivisions == 0 and not weights[2] == 0.0:
             gui._informationMessage("Divisible objects are checked, but you did not annotate any divisions in your tracking training. " + \
@@ -424,6 +447,9 @@ class OpStructuredTracking(OpConservationTracking):
                 gui._drawer.appearanceBox.setValue(self.AppearanceWeight.value)
                 gui._drawer.disappearanceBox.setValue(self.DisappearanceWeight.value)
 
+        if self.progressWindow is not None:
+            self.progressWindow.onTrackDone()
+
         logger.info("Structured Learning Tracking Weights (normalized):")
         logger.info("   detection weight     = {}".format(self.DetectionWeight.value))
         logger.info("   division weight     = {}".format(self.DivisionWeight.value))
@@ -438,6 +464,7 @@ class OpStructuredTracking(OpConservationTracking):
         parameters['disappearanceCost'] = self.DisappearanceWeight.value
 
         self.Parameters.setValue(parameters)
+        self.Parameters.setDirty()
 
         return [self.DetectionWeight.value, self.DivisionWeight.value, self.TransitionWeight.value, self.AppearanceWeight.value, self.DisappearanceWeight.value]
 
@@ -461,10 +488,11 @@ class OpStructuredTracking(OpConservationTracking):
         lastTime = -1
         lastLabel = -1
         for t in range(crop["time"][0],time):
-            for label in labels[t]:
-                if track in labels[t][label]:
-                    lastTime = t
-                    lastLabel = label
+            if t in labels.keys():
+                for label in labels[t]:
+                    if track in labels[t][label]:
+                        lastTime = t
+                        lastLabel = label
         if lastTime == -1:
             type = "FIRST"
         elif lastTime < time-1:
@@ -491,3 +519,70 @@ class OpStructuredTracking(OpConservationTracking):
             elif type != None:
                 return [type]
 
+    def getLabel(self, time, track, labels):
+        for label in labels[time].keys():
+            if labels[time][label] == set([track]):
+                return label
+        return False
+
+    def getLabelT(self, track, labelsT):
+        for label in labelsT.keys():
+            if labelsT[label] == set([track]):
+                return label
+        return False
+
+    def insertAnnotationsToHypothesesGraph(self, traxelgraph, annotations,misdetectionLabel=-1):
+        '''
+        Add solution values to nodes and arcs from annotations.
+        The resulting graph (=model) gets an additional property "value" that represents the number of objects inside a detection/arc
+        Additionally a division indicator is saved in the node property "divisionValue".
+        The link also gets a new attribute: the gap that is covered.
+        E.g. 1, if consecutive timeframes, 2 if link skipping one timeframe.
+        '''
+        traxelToUuidMap, uuidToTraxelMap = traxelgraph.getMappingsBetweenUUIDsAndTraxels()
+
+        # reset all values
+        for n in traxelgraph._graph.nodes_iter():
+            traxelgraph._graph.node[n]['value'] = 0
+            traxelgraph._graph.node[n]['divisionValue'] = False
+
+        for e in traxelgraph._graph.edges_iter():
+            traxelgraph._graph.edge[e[0]][e[1]]['value'] = 0
+            traxelgraph._graph.edge[e[0]][e[1]]['gap'] = 1 # only single step transitions supported in annotations
+
+        labels = annotations['labels']
+        divisions = annotations['divisions']
+
+        for t in labels.keys():
+            for obj in labels[t]:
+                trackSet = labels[t][obj]
+                if (not -1 in trackSet) and str(obj) in traxelToUuidMap[str(t)].keys():
+                    traxelgraph._graph.node[(t,obj)]['value'] = len(trackSet)
+
+        for t in labels.keys():
+            if t < max(labels.keys()):
+                for source in labels[t].keys():
+                    if (misdetectionLabel not in labels[t][source]) and t+1 in labels.keys():
+                        for dest in labels[t+1].keys():
+                            if (misdetectionLabel not in labels[t+1][dest]):
+                                intersectSet = labels[t][source].intersection(labels[t+1][dest])
+                                lenIntersectSet = len(intersectSet)
+                                assert ((t,source) in traxelgraph._graph.edge.keys() and (t+1,dest) in traxelgraph._graph.edge[(t,source)].keys(),
+                                        "Annotated arc that you are setting 'value' of is NOT in the hypotheses graph. " + \
+                                        "Your two objects have either very dissimilar features or they are spatially distant. " + \
+                                        "Increase maxNearestNeighbors in your project or force the addition of this arc by changing the code here :)" + \
+                                        "source ---- dest "+str(source)+"--->"+str(dest)+"       : "+str(lenIntersectSet)+" , "+str(intersectSet))
+                                if lenIntersectSet > 0:
+                                    traxelgraph._graph.edge[(t,source)][(t+1,dest)]['value'] = lenIntersectSet
+
+        for parentTrack in divisions.keys():
+            t = divisions[parentTrack][1]
+            childrenTracks = divisions[parentTrack][0]
+            parent = self.getLabelT(parentTrack,labels[t])
+            for childTrack in childrenTracks:
+                child = self.getLabelT(childTrack,labels[t+1])
+                traxelgraph._graph.edge[(t,parent)][(t+1,child)]['value'] = 1
+                traxelgraph._graph.edge[(t,parent)][(t+1,child)]['gap'] = 1
+            traxelgraph._graph.node[(t,parent)]['divisionValue'] = True
+
+        return traxelgraph

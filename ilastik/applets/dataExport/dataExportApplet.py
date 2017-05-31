@@ -76,6 +76,18 @@ class DataExportApplet( Applet ):
             self._gui = DataExportGui( self, self.topLevelOperator )
         return self._gui
 
+    @staticmethod
+    def postprocessCanCheckForExistingFiles():
+        '''
+        While exporting, we can check whether files would be overwritten.
+        This is handled by an additional parameter to post_process_lane_export called "checkOverwriteFiles",
+        and that method should return True if the export files do NOT exist yet.
+
+        By default we do not want to check for existing files,
+        and most operators don't provide checkOverwriteFiles, so return False.
+        '''
+        return False
+
     # The following functions act as hooks for subclasses to override or clients to 
     # monkey-patch for custom behavior before/during/after an export is performed.
     # (The GUI and/or batch applet will call them at the appropriate time.)

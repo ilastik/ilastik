@@ -701,8 +701,8 @@ class OpRegionFeatures(Operator):
         extrafeats = dict((k.replace(' ', ''), v)
                           for k, v in extrafeats.iteritems())
         
-        mincoords = extrafeats["Coord<Minimum>"]
-        maxcoords = extrafeats["Coord<Maximum>"]
+        mincoords = extrafeats["Coord<Minimum>"].astype(int)
+        maxcoords = extrafeats["Coord<Maximum>"].astype(int)
         nobj = mincoords.shape[0]
         
         # local features: loop over all objects

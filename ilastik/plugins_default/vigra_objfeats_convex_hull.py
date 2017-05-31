@@ -51,7 +51,11 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
     ndim = None
     
     def availableFeatures(self, image, labels):
-        names = vigra.analysis.extract2DConvexHullFeatures(labels, list_features_only=True)
+        try:
+            names = vigra.analysis.extract2DConvexHullFeatures(labels, list_features_only=True)
+        except:
+            return {}
+
         logger.debug('2D Convex Hull Features: Supported Convex Hull Features: done.')
 
         tooltips = {}

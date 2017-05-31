@@ -1,11 +1,11 @@
-from PyQt4 import uic, QtGui
-from PyQt4.QtGui import *
+from PyQt4 import uic, QtGui, Qt
 import os
 import logging
 import sys
 import re
 import traceback
 from PyQt4.QtCore import pyqtSignal
+from volumina.utility import encode_from_qstring
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility import log_exception
 from ilastik.utility.exportingOperator import ExportingGui
@@ -14,6 +14,8 @@ from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.utility.ipcProtocol import Protocol
 from ilastik.shell.gui.ipcManager import IPCFacade
 from ilastik.config import cfg as ilastik_config
+from ilastik.plugins import pluginManager
+
 
 from lazyflow.request.request import Request
 
@@ -105,7 +107,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
         if 'max_nearest_neighbors' in parameters.keys():
             self._drawer.maxNearestNeighborsSpinBox.setValue(parameters['max_nearest_neighbors'])
-        
+        if 'numFramesPerSplit' in parameters.keys():
+            self._drawer.numFramesPerSplitSpinBox.setValue(parameters['numFramesPerSplit'])
 
         # solver: use stored value only if that solver is available
         self._drawer.solverComboBox.clear()
@@ -116,6 +119,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
 
         # Hide division GUI widgets
         if 'withAnimalTracking' in parameters.keys() and parameters['withAnimalTracking'] == True:
+            self._drawer.label_5.hide()
+            self._drawer.divThreshBox.hide()
             self._drawer.divisionsBox.hide()
             self._drawer.divWeightBox.hide()
             self._drawer.label_6.hide()       
@@ -184,8 +189,6 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.avgSizeBox.hide()
             self._drawer.label_24.hide() # hide motion model weight label
             self._drawer.motionModelWeightBox.hide()
-            self._drawer.maxNearestNeighborsSpinBox.hide()
-            self._drawer.MaxNearestNeighbourLabel.hide()
           
         self.mergerLabels = [self._drawer.merg1,
                              self._drawer.merg2,
@@ -200,6 +203,13 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         self._onMaxObjectsBoxChanged()
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
         self._drawer.mergerResolutionBox.stateChanged.connect(self._onMaxObjectsBoxChanged)
+
+        if WITH_HYTRA:
+            self._drawer.exportButton.hide()
+        else:
+            self._drawer.numFramesPerSplitLabel.hide()
+            self._drawer.numFramesPerSplitSpinBox.hide()
+            self._drawer.solverComboBox.setEnabled(False)
 
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
@@ -226,8 +236,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         if not self.mainOperator.ObjectFeatures.ready():
             self._criticalMessage("You have to compute object features first.")            
             return
-        
-        def _track():    
+
+        def _track():
             self.applet.busy = True
             self.applet.appletStateUpdateRequested.emit()
             maxDist = self._drawer.maxDistBox.value()
@@ -297,21 +307,18 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     withClassifierPrior=classifierPrior,
                     ndim=ndim,
                     withMergerResolution=withMergerResolution,
-                    borderAwareWidth = borderAwareWidth,
-                    withArmaCoordinates = withArmaCoordinates,
-                    cplex_timeout = cplex_timeout,
-                    appearance_cost = appearanceCost,
-                    disappearance_cost = disappearanceCost,
+                    borderAwareWidth =borderAwareWidth,
+                    withArmaCoordinates =withArmaCoordinates,
+                    cplex_timeout =cplex_timeout,
+                    appearance_cost =appearanceCost,
+                    disappearance_cost =disappearanceCost,
                     motionModelWeight=motionModelWeight,
-                    force_build_hypotheses_graph = False,
+                    force_build_hypotheses_graph =False,
                     max_nearest_neighbors=self._drawer.maxNearestNeighborsSpinBox.value(),
+                    numFramesPerSplit=self._drawer.numFramesPerSplitSpinBox.value(),
                     solverName=solver
                     )
 
-                # update showing the merger legend,
-                # as it might be (no longer) needed if merger resolving
-                # is disabled(enabled)
-                self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
             except Exception as ex:
                 log_exception(logger, "Error during tracking.  See above error traceback.")
                 self._criticalMessage("Error during tracking.  See error log.\n\n"
@@ -321,32 +328,37 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         def _handle_finished(*args):
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            self.applet.progressSignal.emit(100)
             self._drawer.TrackButton.setEnabled(True)
             self._drawer.exportButton.setEnabled(True)
             self._drawer.exportTifButton.setEnabled(True)
-            self._setLayerVisible("Objects", False) 
+            self._setLayerVisible("Objects", False)
+            
+            # update showing the merger legend,
+            # as it might be (no longer) needed if merger resolving
+            # is disabled(enabled)
+            self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
             
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            self.applet.progressSignal.emit(100)
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
             self._drawer.TrackButton.setEnabled(True)
         
-        self.applet.progressSignal.emit(0)
-        self.applet.progressSignal.emit(-1)
         req = Request( _track )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
         req.submit()
 
     def menus(self):
+        menus = super( ConservationTrackingGui, self ).menus()
+        
         m = QtGui.QMenu("&Export", self.volumeEditorWidget)
         m.addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
 
-        return [m]
+        menus.append(m)
+
+        return menus
 
     def get_raw_shape(self):
         return self.topLevelOperatorView.RawImage.meta.shape
@@ -461,3 +473,5 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             menu.addAction("Start IPC Server", IPCFacade().start)
 
         menu.exec_(win_coord)
+
+

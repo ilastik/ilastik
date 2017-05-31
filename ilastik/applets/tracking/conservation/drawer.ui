@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1215</height>
+    <height>1322</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -377,7 +377,7 @@
        <item row="12" column="1">
         <widget class="QSpinBox" name="maxNearestNeighborsSpinBox">
          <property name="minimum">
-          <number>2</number>
+          <number>1</number>
          </property>
          <property name="maximum">
           <number>5</number>
@@ -484,6 +484,26 @@
          </property>
         </widget>
        </item>
+       <item row="13" column="0">
+        <widget class="QLabel" name="numFramesPerSplitLabel">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of frames per video split (0 no splits).&lt;/pre&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Frames per Split</string>
+         </property>
+        </widget>
+       </item>
+       <item row="13" column="1">
+        <widget class="QSpinBox" name="numFramesPerSplitSpinBox">
+         <property name="minimum">
+          <number>0</number>
+         </property>
+         <property name="maximum">
+          <number>1000000000</number>
+         </property>
+        </widget>
+       </item>
        <item row="11" column="1">
         <widget class="QSpinBox" name="motionModelWeightBox">
          <property name="maximum">
@@ -561,7 +581,7 @@
          </property>
         </widget>
        </item>
-       <item row="13" column="1">
+       <item row="14" column="1">
         <widget class="QComboBox" name="solverComboBox">
          <item>
           <property name="text">
@@ -580,7 +600,7 @@
          </item>
         </widget>
        </item>
-       <item row="13" column="0">
+       <item row="14" column="0">
         <widget class="QLabel" name="solverLabel">
          <property name="text">
           <string>Solver</string>
@@ -836,6 +856,27 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout">
+       <item row="2" column="1">
+        <widget class="QDoubleSpinBox" name="z_scale">
+         <property name="value">
+          <double>1.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QDoubleSpinBox" name="y_scale">
+         <property name="value">
+          <double>1.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QDoubleSpinBox" name="x_scale">
+         <property name="value">
+          <double>1.000000000000000</double>
+         </property>
+        </widget>
+       </item>
        <item row="1" column="0">
         <widget class="QLabel" name="label_10">
          <property name="text">
@@ -854,27 +895,6 @@
         <widget class="QLabel" name="label_9">
          <property name="text">
           <string>x scale</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QDoubleSpinBox" name="x_scale">
-         <property name="value">
-          <double>1.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QDoubleSpinBox" name="y_scale">
-         <property name="value">
-          <double>1.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QDoubleSpinBox" name="z_scale">
-         <property name="value">
-          <double>1.000000000000000</double>
          </property>
         </widget>
        </item>
@@ -923,6 +943,9 @@
         <string>Export Results as tif sequence ...</string>
        </property>
       </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout"/>
      </item>
     </layout>
    </item>

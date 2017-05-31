@@ -7,12 +7,9 @@ import re
 import traceback
 import math
 import random
-import h5py
 
-import pgmlink
-
-from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
+from ilastik.utility.gui.progress import TrackProgressDialog
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
@@ -23,8 +20,34 @@ from ilastik.utility import bind
 
 from lazyflow.request.request import Request
 
+from ilastik.utility.gui.progress import GuiProgressVisitor
+from ilastik.utility.progress import DefaultProgressVisitor
+
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
+
+try:
+    import hytra
+    WITH_HYTRA = True
+except ImportError as e:
+    WITH_HYTRA = False
+
+if WITH_HYTRA:
+    # Import solvers for HyTra
+    import dpct
+    try:
+        import multiHypoTracking_with_cplex as mht
+    except ImportError:
+        try:
+            import multiHypoTracking_with_gurobi as mht
+        except ImportError:
+            logger.warning("Could not find any ILP solver")
+else:
+    # Try to import pgmlink for backward compatibility with old pipeline
+    try:
+        import pgmlink
+    except:
+        import pgmlinkNoIlpSolver as pgmlink
 
 class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     
@@ -54,6 +77,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._initColors()
 
         self.topLevelOperatorView = topLevelOperatorView
+        self.progressWindow = None
         super(TrackingBaseGui, self).__init__(parentApplet, topLevelOperatorView)
         self.mainOperator = topLevelOperatorView
         if self.mainOperator.LabelImage.meta.shape:
@@ -107,7 +131,14 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.appearanceBox.setValue(parameters['appearanceCost'])
         if 'disappearanceCost' in parameters.keys():
             self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
-        
+
+        solverName = self.topLevelOperatorView._solver
+        if solverName == "Flow-based":
+            self._drawer.StructuredLearningButton.setEnabled(False)
+            self._drawer.RandomButton.setEnabled(False)
+            self._drawer.OnesButton.setEnabled(False)
+            self._drawer.ZerosButton.setEnabled(False)
+
         return self._drawer
 
     def initAppletDrawerUi(self):
@@ -146,13 +177,16 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             checkboxAssertHandler(self._drawer.opticalBox, False)
             checkboxAssertHandler(self._drawer.mergerResolutionBox, True)
 
-            self._drawer.maxDistBox.hide()
-            self._drawer.label_2.hide()
             self._drawer.label_5.hide()
             self._drawer.divThreshBox.hide()
             self._drawer.label_25.hide()
             self._drawer.avgSizeBox.hide()
-          
+
+            self._drawer.InitialWeightsLabel.hide()
+            self._drawer.ZerosButton.hide()
+            self._drawer.OnesButton.hide()
+            self._drawer.RandomButton.hide()
+
         self.mergerLabels = [
             self._drawer.merg1,
             self._drawer.merg2,
@@ -204,8 +238,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.operator.labels = self.operator.Labels.value
         self.topLevelOperatorView._updateCropsFromOperator()
 
-        self._drawer.trainingToHardConstraints.setChecked(False)
-        self._drawer.trainingToHardConstraints.setVisible(False) # will be used when we can handle sparse annotations
         self._drawer.exportButton.setVisible(True)
         self._drawer.exportTifButton.setVisible(False)
 
@@ -214,6 +246,42 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.topLevelOperatorView._transitionWeight = self._transitionWeight
         self.topLevelOperatorView._appearanceWeight = self._appearanceWeight
         self.topLevelOperatorView._disappearanceWeight = self._disappearanceWeight
+
+        self._drawer.solverComboBox.clear()
+        availableSolvers = self.getAvailableTrackingSolverTypes()
+        self._drawer.solverComboBox.addItems(availableSolvers)
+        parameters = self.topLevelOperatorView.Parameters.value
+        if 'solver' in parameters.keys() and parameters['solver'] in availableSolvers:
+            self._drawer.solverComboBox.setCurrentIndex(availableSolvers.index(parameters['solver']))
+
+        return self._drawer
+
+    @staticmethod
+    def getAvailableTrackingSolverTypes():
+        solvers = []
+        if WITH_HYTRA:
+            try:
+                if dpct:
+                    solvers.append('Flow-based')
+            except Exception as e:
+                logger.info(str(e))
+
+            try:
+                if mht:
+                    solvers.append('ILP')
+            except Exception as e:
+                logger.info(str(e))
+
+        else:
+            if hasattr(pgmlink.ConsTrackingSolverType, "CplexSolver"):
+                solvers.append("ILP")
+
+            if hasattr(pgmlink.ConsTrackingSolverType, "DynProgSolver"):
+                solvers.append("Magnusson")
+
+            if hasattr(pgmlink.ConsTrackingSolverType, "FlowSolver"):
+                solvers.append("Flow-based")
+        return solvers
 
     def _onOnesButtonPressed(self):
         val = math.sqrt(1.0/5)
@@ -352,25 +420,94 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
     def _onRunStructuredLearningButtonPressed(self, withBatchProcessing=False):
 
-        self.topLevelOperatorView._runStructuredLearning(
-            (self._drawer.from_z.value(),self._drawer.to_z.value()),
-            self._maxNumObj,
-            self._maxNearestNeighbors,
-            self._drawer.maxDistBox.value(),
-            self._drawer.divThreshBox.value(),
-            (self._drawer.x_scale.value(), self._drawer.y_scale.value(), self._drawer.z_scale.value()),
-            (self._drawer.from_size.value(), self._drawer.to_size.value()),
-            self._drawer.divisionsBox.isChecked(),
-            self._drawer.bordWidthBox.value(),
-            self._drawer.classifierPriorBox.isChecked(),
-            withBatchProcessing)
+        numStages = 4
+        # creating traxel store
+        # generating probabilities
+        # insert energies
+        # structured learning
+
+        if WITH_HYTRA:
+            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+            self.progressWindow.run()
+            self.progressWindow.show()
+            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        else:
+            self.progressWindow = None
+            self.progressVisitor = DefaultProgressVisitor()
+
+        def _learn():
+            self.applet.busy = True
+            self.applet.appletStateUpdateRequested.emit()
+            try:
+                self.topLevelOperatorView._runStructuredLearning(
+                    (self._drawer.from_z.value(),self._drawer.to_z.value()),
+                    self._maxNumObj,
+                    self._maxNearestNeighbors,
+                    self._drawer.maxDistBox.value(),
+                    self._drawer.divThreshBox.value(),
+                    (self._drawer.x_scale.value(), self._drawer.y_scale.value(), self._drawer.z_scale.value()),
+                    (self._drawer.from_size.value(), self._drawer.to_size.value()),
+                    self._drawer.divisionsBox.isChecked(),
+                    self._drawer.bordWidthBox.value(),
+                    self._drawer.classifierPriorBox.isChecked(),
+                    withBatchProcessing,
+                    progressWindow=self.progressWindow,
+                    progressVisitor=self.progressVisitor
+                )
+            except Exception:
+                ex_type, ex, tb = sys.exc_info()
+                traceback.print_tb(tb)
+                self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))
+                return
+
+        def _handle_finished(*args):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
+
+        def _handle_failure( exc, exc_info ):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
+            traceback.print_exception(*exc_info)
+            sys.stderr.write("Exception raised during learning.  See traceback above.\n")
+
+            if self.progressWindow is not None:
+                self.progressWindow.onTrackDone()
+
+        req = Request( _learn )
+        req.notify_failed( _handle_failure )
+        req.notify_finished( _handle_finished )
+        req.submit()
 
     def _onTrackButtonPressed( self ):
         if not self.mainOperator.ObjectFeatures.ready():
             self._criticalMessage("You have to compute object features first.")            
             return
-        
-        def _track():    
+
+        withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
+        withTracklets = True
+
+        numStages = 6
+        # creating traxel store
+        # generating probabilities
+        # insert energies
+        # convexify costs
+        # solver
+        # compute lineages
+        if withMergerResolution:
+            numStages += 1 # merger resolution
+        if withTracklets:
+            numStages += 3 # initializing tracklet graph, finding tracklets, contracting edges in tracklet graph
+
+        if WITH_HYTRA:
+            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+            self.progressWindow.run()
+            self.progressWindow.show()
+            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        else:
+            self.progressWindow = None
+            self.progressVisitor = DefaultProgressVisitor()
+
+        def _track():
             self.applet.busy = True
             self.applet.appletStateUpdateRequested.emit()
             maxDist = self._drawer.maxDistBox.value()
@@ -409,46 +546,49 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             withArmaCoordinates = True
             appearanceCost = self._drawer.appearanceBox.value()
             disappearanceCost = self._drawer.disappearanceBox.value()
-    
+
+            solverName = self._drawer.solverComboBox.currentText()
+
             ndim=3
             if (to_z - from_z == 0):
                 ndim=2
-            
+
             try:
-                if True:
-                    self.mainOperator.track(
-                        time_range = self.time_range,
-                        x_range = (from_x, to_x + 1),
-                        y_range = (from_y, to_y + 1),
-                        z_range = (from_z, to_z + 1),
-                        size_range = (from_size, to_size + 1),
-                        x_scale = self._drawer.x_scale.value(),
-                        y_scale = self._drawer.y_scale.value(),
-                        z_scale = self._drawer.z_scale.value(),
-                        maxDist=maxDist,
-                        maxObj = maxObj,
-                        divThreshold=divThreshold,
-                        avgSize=avgSize,
-                        withTracklets=withTracklets,
-                        sizeDependent=sizeDependent,
-                        detWeight=detWeight,
-                        divWeight=divWeight,
-                        transWeight=transWeight,
-                        withDivisions=withDivisions,
-                        withOpticalCorrection=withOpticalCorrection,
-                        withClassifierPrior=classifierPrior,
-                        ndim=ndim,
-                        withMergerResolution=withMergerResolution,
-                        borderAwareWidth = borderAwareWidth,
-                        withArmaCoordinates = withArmaCoordinates,
-                        cplex_timeout = cplex_timeout,
-                        appearance_cost = appearanceCost,
-                        disappearance_cost = disappearanceCost,
-                        #graph_building_parameter_changed = True,
-                        #trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
-                        max_nearest_neighbors = self._maxNearestNeighbors,
-                        solverName="ILP"
-                        )
+                self.mainOperator.track(
+                    time_range = self.time_range,
+                    x_range = (from_x, to_x + 1),
+                    y_range = (from_y, to_y + 1),
+                    z_range = (from_z, to_z + 1),
+                    size_range = (from_size, to_size + 1),
+                    x_scale = self._drawer.x_scale.value(),
+                    y_scale = self._drawer.y_scale.value(),
+                    z_scale = self._drawer.z_scale.value(),
+                    maxDist=maxDist,
+                    maxObj = maxObj,
+                    divThreshold=divThreshold,
+                    avgSize=avgSize,
+                    withTracklets=withTracklets,
+                    sizeDependent=sizeDependent,
+                    detWeight=detWeight,
+                    divWeight=divWeight,
+                    transWeight=transWeight,
+                    withDivisions=withDivisions,
+                    withOpticalCorrection=withOpticalCorrection,
+                    withClassifierPrior=classifierPrior,
+                    ndim=ndim,
+                    withMergerResolution=withMergerResolution,
+                    borderAwareWidth = borderAwareWidth,
+                    withArmaCoordinates = withArmaCoordinates,
+                    cplex_timeout = cplex_timeout,
+                    appearance_cost = appearanceCost,
+                    disappearance_cost = disappearanceCost,
+                    #graph_building_parameter_changed = True,
+                    #trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
+                    max_nearest_neighbors = self._maxNearestNeighbors,
+                    solverName=solverName,
+                    progressWindow=self.progressWindow,
+                    progressVisitor=self.progressVisitor
+                )
             except Exception:
                 ex_type, ex, tb = sys.exc_info()
                 traceback.print_tb(tb)
@@ -458,7 +598,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         def _handle_finished(*args):
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            self.applet.progressSignal.emit(100)
             self._drawer.TrackButton.setEnabled(True)
             self._drawer.exportButton.setEnabled(True)
             self._drawer.exportTifButton.setEnabled(True)
@@ -467,13 +606,13 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            self.applet.progressSignal.emit(100)
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
             self._drawer.TrackButton.setEnabled(True)
-        
-        self.applet.progressSignal.emit(0)
-        self.applet.progressSignal.emit(-1)
+
+            if self.progressWindow is not None:
+                self.progressWindow.onTrackDone()
+
         req = Request( _track )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
@@ -653,6 +792,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         menu.exec_(win_coord)
 
+    @threadRouted
     def _informationMessage(self, prompt):
         self.emit( QtCore.SIGNAL('postInformationMessage(QString)'), prompt)
 

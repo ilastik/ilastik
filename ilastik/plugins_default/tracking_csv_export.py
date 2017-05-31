@@ -1,0 +1,122 @@
+import os.path
+import numpy as np
+from ilastik.plugins import TrackingExportFormatPlugin
+import vigra
+
+class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
+    """CSV export"""
+
+    exportsToFile = True
+
+    def checkFilesExist(self, filename):
+        ''' Check whether the files we want to export are already present '''
+        return os.path.exists(filename + '.csv')
+
+    def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
+        """
+        Export the features of all objects together with their tracking information
+
+        :param filename: string of the FILE where to save the result (different .xml files were)
+        :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
+        :param objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output
+               of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
+
+        :returns: True on success, False otherwise
+        """
+        features = objectFeaturesSlot([]).wait()  # this is a dict of structure: {frame: {category: {featureNames}}}
+        graph = hypothesesGraph._graph
+        headers = ['frame', 'labelimageId', 'trackId', 'lineageId', 'parentTrackId', 'mergerLabelId']
+        formats = ['%d'] * len(headers)
+        excludedFeatures = ['Histogram']
+
+        def appendFormat(featureName):
+            if 'Number_of' in featureName or 'Center_of' in featureName or 'Bounding_Box' in featureName or featureName == 'Size_in_pixels':
+                formats.append('%d')
+            else:
+                formats.append('%f')
+
+        # check which features are present and construct table of the appropriate size
+        frame, _ = graph.nodes_iter().next()
+
+        # the feature categories can contain 'Default features' and 'Standard Object Features',
+        # which actually reference the same features. Hence we block all of the one group from the other to prevent duplicates.
+        categories = features[frame].keys()
+        blockedFeatures = dict([(c, []) for c in categories])
+        defaultFeatStr = 'Default features'
+        standardObjFeatStr = 'Standard Object Features'
+
+        if defaultFeatStr in categories and standardObjFeatStr in categories:
+            for feature in features[frame][defaultFeatStr].keys():
+                blockedFeatures[standardObjFeatStr].append(feature)
+
+        for category in categories:
+            for feature in features[frame][category].keys():
+                if feature not in excludedFeatures and feature not in blockedFeatures[category]:
+                    featureName = self._getFeatureNameTranslation(category, feature).replace(' ', '_')
+                    if (np.asarray(features[frame][category][feature])).ndim == 2:
+                        for column in range(np.asarray(features[frame][category][feature]).shape[1]):
+                            singleFeatureValueName = '{f}_{c}'.format(f=featureName, c=column)
+                            headers.append(singleFeatureValueName)
+                            appendFormat(singleFeatureValueName)
+                    else:
+                        headers.append(featureName)
+                        appendFormat(featureName)
+
+        table = np.zeros([graph.number_of_nodes(), len(headers)])
+
+        for rowIdx, node in enumerate(graph.nodes_iter()):
+            frame, label = node
+            trackId = graph.node[node]['trackId']
+            lineageId = graph.node[node]['lineageId']
+
+            if trackId is None:
+                trackId = -1
+            if lineageId is None:
+                lineageId = -1
+
+            table[rowIdx, 0] = frame
+            table[rowIdx, 1] = label
+            table[rowIdx, 2] = trackId
+            table[rowIdx, 3] = lineageId
+
+            # insert parent of a division
+            try:
+                table[rowIdx, 4] = graph.node[graph.node[node]['parent']]['trackId']
+            except KeyError:
+                table[rowIdx, 4] = 0
+
+            # insert merger
+            try:
+                if isinstance(graph.node[node]['mergerValue'], int):
+                    table[rowIdx, 5] = graph.node[node]['mergerValue']
+                else:
+                    table[rowIdx, 5] = 0
+            except KeyError:
+                table[rowIdx, 5] = 0
+            colIdx = 6
+
+            for category in categories:
+                for feature in features[frame][category].keys():
+
+                    if feature not in excludedFeatures and feature not in blockedFeatures[category]:
+                        if (np.asarray(features[frame][category][feature])).ndim == 2:
+                            for column in range(np.asarray(features[frame][category][feature]).shape[1]):
+                                try:
+                                    table[rowIdx, colIdx] = features[frame][category][feature][label, column]
+                                except IndexError:
+                                    if 'SquaredDistances' in feature:
+                                        table[rowIdx, colIdx] = 9999
+                                    else:
+                                        table[rowIdx, colIdx] = 0
+                                colIdx += 1
+                        else:
+                            table[rowIdx, colIdx] = features[frame][category][feature][label]
+                            colIdx += 1
+
+        # sort table by frame, then labelImage
+        table = table[np.lexsort(table[:, :2].transpose()[::-1])]
+
+        headerLine = ','.join(headers)
+        np.savetxt(filename + '.csv', table, header=headerLine, delimiter=',', comments='', fmt=formats)
+
+        return True

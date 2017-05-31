@@ -189,6 +189,8 @@ class CropSelectionGui(CroppingGui):
         new = map(mapf, self.cropListData)
         old = slot.value
         slot.setValue(_listReplace(old, new))
+        self.setCrop()
+        self.topLevelOperatorView.Crops.setDirty()
 
     def _onCropRemoved(self, parent, start, end):
         # Call the base class to update the operator.
@@ -204,6 +206,7 @@ class CropSelectionGui(CroppingGui):
                     value.pop(start)
                     # Force dirty propagation even though the list id is unchanged.
                     slot.setValue(value, check_changed=False)
+        self.setCrop()
 
     def onDeleteCrop(self, position):
         numCrops = len(self.topLevelOperatorView.Crops.value)
@@ -296,10 +299,13 @@ class CropSelectionGui(CroppingGui):
         selectedRow = ncrops-1
         color1 = self._cropControlUi.cropListModel[selectedRow].brushColor()
         color2 = self._cropControlUi.cropListModel[selectedRow].pmapColor()
+        shape = self.editor.dataShape[1:4]
+        starts = [int(0.25 *s) for s in shape]
+        stops = [int(0.75 *s) for s in shape]
         self.topLevelOperatorView.Crops.value[unicode(self._cropControlUi.cropListModel[selectedRow].name)] = {
             unicode("time"): (self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value),
-            unicode("starts"): self.editor.cropModel.get_roi_3d()[0],
-            unicode("stops"): self.editor.cropModel.get_roi_3d()[1],
+            unicode("starts"): starts,
+            unicode("stops"): stops,
             unicode("cropColor"): (color1.red(), color1.green(),color1.blue()),
             unicode("pmapColor"): (color2.red(), color2.green(),color2.blue())
         }
@@ -449,7 +455,7 @@ class CropSelectionGui(CroppingGui):
                 self.topLevelOperatorView.MaxValueZ.setValue(stop)
             else:
                 logger.info("ERROR: Setting up an axis that does NOT exist!")
-
+        self.setCrop()
         return [[start, stop] for dim, start, stop in zip("xyz", starts, stops)]
 
     def _onCropSelected(self, row):

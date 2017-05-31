@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from functools import partial
-from PyQt4.QtGui import QColor, QFileDialog, QMessageBox, QMenu, QWidgetAction, QLabel
+from PyQt4.QtGui import QColor, QFileDialog, QMessageBox, QMenu, QWidgetAction, QLabel, QIcon
 
 from volumina.api import LazyflowSource, ColortableLayer
 import volumina.colortables as colortables
@@ -272,6 +272,10 @@ class TrackingBaseGui( LayerViewerGui ):
         if not ilastik_config.getboolean("ilastik", "debug"):
             self._drawer.exportLabel.hide()
             self._drawer.exportTifButton.hide()
+
+        trackIconPath = os.path.split(__file__)[0] + "/icons/trackIcon.png"
+        trackIcon = QIcon(trackIconPath)
+        self._drawer.TrackButton.setIcon(trackIcon)
 
         self._drawer.TrackButton.pressed.connect(self._onTrackButtonPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
