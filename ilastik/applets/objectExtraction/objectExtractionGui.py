@@ -645,7 +645,7 @@ class ObjectExtractionGui(LayerViewerGui):
         fname = fname.encode( sys.getfilesystemencoding() )
         if len(fname)>0: #not cancelled
             with open(fname, 'w') as f:
-                pickle.dump(mainOperator.RegionFeatures(list()).wait(), f)
+                pickle.dump(mainOperator.RegionFeatures(list()).wait(), f, 0)
         
         
         logger.debug("Exported object features to file '{}'".format(fname))

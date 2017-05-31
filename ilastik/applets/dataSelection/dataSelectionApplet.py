@@ -268,7 +268,7 @@ class DataSelectionApplet( Applet ):
             files = sorted([k.replace('\\', '/') for k in glob.glob( path )])
             for f in files:
                 sha.update(f)
-                sha.update(pickle.dumps(os.stat(f).st_mtime))
+                sha.update(pickle.dumps(os.stat(f).st_mtime, 0))
             stackFile = sha.hexdigest() + '.h5'
             stackPath = os.path.join( stackVolumeCacheDir, stackFile ).replace('\\', '/')
             

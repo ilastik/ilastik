@@ -627,7 +627,7 @@ class SerialPickledValueSlot(SerialSlot):
     
     @staticmethod
     def _saveValue(group, name, value):
-        group.create_dataset(name, data=pickle.dumps(value))
+        group.create_dataset(name, data=pickle.dumps(value, 0))
 
     @staticmethod
     def _getValue(subgroup, slot):
@@ -773,7 +773,7 @@ class SerialClassifierFactorySlot(SerialSlot):
             "(in case the classifier can't be deserialized in a future version of ilastik)."
     
     def _saveValue(self, group, name, value):
-        pickled = pickle.dumps( value )
+        pickled = pickle.dumps( value, 0 )
         group.create_dataset(name, data=pickled)
         self._failed_to_deserialize = False
 
@@ -808,7 +808,7 @@ class SerialPickleableSlot(SerialSlot):
         self._default = default
 
     def _saveValue(self, group, name, value):
-        pickled = pickle.dumps( value )
+        pickled = pickle.dumps( value, 0 )
         dset = group.create_dataset(name, data=pickled)
         dset.attrs['version'] = self._version
         self._failed_to_deserialize = False
