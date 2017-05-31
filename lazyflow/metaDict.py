@@ -99,6 +99,11 @@ class MetaDict(defaultdict):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __hash__(self):
+        # This ensures that a given MetaDict can be relocated in a dict/set,
+        # but doesn't ensure that identical MetaDicts hash to the same place.
+        return hash( id(self) )
+
     def assignFrom(self, other):
         """
         Copy all the elements from other into this
