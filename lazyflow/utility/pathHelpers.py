@@ -365,8 +365,11 @@ def globHdf5(hdf5FileObject, globString):
         matches occurred.
     """
     pathlist = [x['name'] for x in lsHdf5(hdf5FileObject)]
-
-    matches = [x for x in pathlist
-               if fnmatch.fnmatch(x, globString)]
-
+    matches = globList(pathlist, globString)
     return sorted(matches)
+
+
+def globList(listOfPaths, globString):
+    matches = [x for x in listOfPaths
+               if fnmatch.fnmatch(x, globString)]
+    return matches
