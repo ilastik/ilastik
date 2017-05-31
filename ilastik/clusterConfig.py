@@ -76,7 +76,7 @@ if __name__ == "__main__":
     # Create a temporary file
     import tempfile
     fname = tempfile.mktemp()
-    with file(fname, 'w') as f:
+    with open(fname, 'w') as f:
         f.write(testConfig)
     
     config = parseClusterConfigFile(fname)
