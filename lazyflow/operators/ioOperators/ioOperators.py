@@ -38,6 +38,7 @@ import vigra
 from lazyflow.graph import OrderedSignal, Operator, OutputSlot, InputSlot
 from lazyflow.roi import roiToSlice, roiFromShape, determineBlockShape
 from lazyflow.utility.bigRequestStreamer import BigRequestStreamer
+from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.request import Request 
 
 
@@ -98,28 +99,39 @@ class OpStackLoader(Operator):
         if self.slices_per_file == 1:
             if self.SequenceAxis.ready():
                 sequence_axis = str(self.SequenceAxis.value)
-                assert sequence_axis in 'tz'
+                assert sequence_axis in 'tzc'
             else:
                 sequence_axis = 'z'
             # For stacks of 2D images, we assume xy slices
-            Z = num_files
-            shape = (Z, Y, X, C)
-            axistags = vigra.defaultAxistags(sequence_axis + 'yxc')
+            if sequence_axis == 'c':
+                shape = (Y, X, C*num_files)
+                axistags = vigra.defaultAxistags('yxc')
+            else:
+                shape = (num_files, Y, X, C)
+                axistags = vigra.defaultAxistags(sequence_axis + 'yxc')
         else:
             if self.SequenceAxis.ready():
                 sequence_axis = self.SequenceAxis.value
-                assert sequence_axis in 'tz'
+                assert sequence_axis in 'tzc'
             else:
                 sequence_axis = 't'
 
-            stack_order = 'tzyxc'
             if sequence_axis == 'z':
                 stack_order = 'ztyxc'
+            elif sequence_axis == 't':
+                stack_order = 'tzyxc'
+            else:
+                stack_order = 'zyxc'
 
-            # For stacks of 3D volumes, we assume xyz blocks stacked along sequence_axis
-            T = num_files
-            Z = self.slices_per_file
-            shape = (T, Z, Y, X, C)
+            # For stacks of 3D volumes, we assume xyz blocks stacked along
+            # sequence_axis
+            if sequence_axis == 'c':
+                shape = (num_files, Y, X, self.slices_per_file*C)
+            else:
+                T = num_files
+                Z = self.slices_per_file
+                shape = (T, Z, Y, X, C)
+                
             axistags = vigra.defaultAxistags(stack_order)
             
         self.stack.meta.shape = shape
@@ -132,13 +144,38 @@ class OpStackLoader(Operator):
         self.stack.setDirty()
 
     def execute(self, slot, subindex, roi, result):
-        if len(self.stack.meta.shape) == 4:
+        if len(self.stack.meta.shape) == 3:
+            return self._execute_3d( roi, result )
+        elif len(self.stack.meta.shape) == 4:
             return self._execute_4d( roi, result )
         elif len(self.stack.meta.shape) == 5:
             return self._execute_5d( roi, result )
         else:
             assert False, "Unexpected output shape: {}".format( self.stack.meta.shape )
+    
+    def _execute_3d(self, roi, result):
+        traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
+        # roi is in yxc order
+        y_start, x_start, c_start = roi.start
+        y_stop, x_stop, c_stop = roi.stop
         
+        # get C of slice
+        C = self.info.getShape()[2]
+        
+        # Copy each c-slice one at a time.
+        for i, fileName in enumerate(self.fileNameList[c_start//C:c_stop//C]):
+            traceLogger.debug( "Reading image: {}".format(fileName) )
+            if self.info.getShape() != vigra.impex.ImageInfo(fileName).getShape():
+                raise RuntimeError('not all files have the same shape')
+            if self.slices_per_file != vigra.impex.numberImages(self.fileNameList[0]):
+                raise RuntimeError("Not all files have the same number of slices")
+
+            result[:, :, i*C:(i + 1)*C] = \
+                vigra.impex.readImage(fileName)[x_start:x_stop,
+                                                y_start:y_stop,
+                                                :].withAxes(*'yxc')
+        return result
+            
     def _execute_4d(self, roi, result):
         traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
         # roi is in zyxc order or tyxc order, depending on SequenceAxis
