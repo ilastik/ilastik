@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -392,4 +393,4 @@ if __name__ == "__main__":
     expected_result = big_labels_orig.copy()
     expected_result[10:30, 40:50] = 0
     assert (big_labels == expected_result).all()
-    print 'DONE'
+    print('DONE')

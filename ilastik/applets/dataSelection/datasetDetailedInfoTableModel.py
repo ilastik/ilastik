@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -25,9 +26,9 @@ from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 from lazyflow.utility import PathComponents, isUrl
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from opDataSelection import DatasetInfo
+from .opDataSelection import DatasetInfo
 
-from dataLaneSummaryTableModel import rowOfButtonsProxy
+from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
 class DatasetDetailedInfoColumn():
     Nickname = 0

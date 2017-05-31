@@ -1,3 +1,4 @@
+from __future__ import print_function
 import logging
 from itertools import imap, izip
 
@@ -107,4 +108,4 @@ if __name__ == "__main__":
     
     edge_ids, decisions = edge_decisions(vol1, vol2, asdict=False)
     relabel_volume_from_edge_decisions( vol1, edge_ids, decisions )
-    print "DONE"
+    print("DONE")

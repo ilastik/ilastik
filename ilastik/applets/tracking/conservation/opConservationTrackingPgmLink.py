@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 import numpy as np
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.rtype import List
@@ -13,7 +15,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.roi import sliceToRoi
-from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
+from .opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
 import logging
 logger = logging.getLogger(__name__)
@@ -277,7 +279,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
         solverType = self.getPgmlinkSolverType(solverName)
 
         if do_build_hypotheses_graph:
-            print '\033[94m' +"make new graph"+  '\033[0m'
+            print('\033[94m' +"make new graph"+  '\033[0m')
             self.tracker = pgmlink.ConsTracking(int(maxObj),
                                          bool(sizeDependent),   # size_dependent_detection_prob
                                          float(median_obj_size[0]), # median_object_size
@@ -352,10 +354,10 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
                     None) # TransitionClassifier
 
         except Exception as e:
-            raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
+            raise Exception('Tracking terminated unsuccessfully: ' + str(e))
         
         if len(eventsVector) == 0:
-            raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
+            raise Exception('Tracking terminated unsuccessfully: Events vector has zero length.')
         
         events = get_events(eventsVector)
         self.Parameters.setValue(parameters, check_changed=False)
@@ -433,7 +435,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
                     elif n_dim ==3:
                         image_excerpt = image_excerpt[0, ..., 0]
                     else:
-                        raise Exception, "n_dim = %s instead of 2 or 3"
+                        raise Exception("n_dim = %s instead of 2 or 3")
 
                     pgmlink.extract_coord_by_timestep_id(coordinate_map,
                                                          image_excerpt,

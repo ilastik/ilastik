@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,7 +23,7 @@
 import sys        
 import os
 import numpy
-import preView
+from . import preView
 
 from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog
@@ -86,7 +88,7 @@ if __name__ == "__main__":
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     from PyQt5.QtWidgets import QApplication
-    from featureTableWidget import FeatureEntry
+    from .featureTableWidget import FeatureEntry
     
     app = QApplication(sys.argv)
     
@@ -105,10 +107,10 @@ if __name__ == "__main__":
     ex.setImageToPreView(None)
     
     def handle_accepted():
-        print "ACCEPTED"
-        print ex.selectedFeatureBoolMatrix
+        print("ACCEPTED")
+        print(ex.selectedFeatureBoolMatrix)
     ex.accepted.connect(handle_accepted)
     ex.exec_()
-    print "DONE"
+    print("DONE")
     #app.exec_()
     

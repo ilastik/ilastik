@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -84,6 +85,6 @@ if __name__ == "__main__":
     assert config.use_node_local_scratch is True
     assert config.task_timeout_secs == 20*60
 
-    print config.output_log_directory
+    print(config.output_log_directory)
     
     

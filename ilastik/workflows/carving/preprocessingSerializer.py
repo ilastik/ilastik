@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -23,7 +24,7 @@ import h5py
 import numpy
 import os
 
-from watershed_segmentor import WatershedSegmentor
+from .watershed_segmentor import WatershedSegmentor
 
 class PreprocessingSerializer( AppletSerializer ):
     def __init__(self, preprocessingTopLevelOperator, *args, **kwargs):

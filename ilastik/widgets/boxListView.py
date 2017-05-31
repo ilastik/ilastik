@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -29,8 +30,8 @@ from PyQt5.QtGui import QColor
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, QModelIndex, pyqtSignal, QItemSelectionModel
 from PyQt5 import uic
-from labelListModel import LabelListModel, Label
-from listView import ListView
+from .labelListModel import LabelListModel, Label
+from .listView import ListView
 
 logger = logging.getLogger(__name__)
 
@@ -287,7 +288,7 @@ class BoxListView(ListView):
 
 
 if __name__=="__main__":
-    from boxListModel import BoxListModel,BoxLabel
+    from .boxListModel import BoxListModel,BoxLabel
     import numpy
     import sys
     from PyQt5.QtWidgets import QApplication

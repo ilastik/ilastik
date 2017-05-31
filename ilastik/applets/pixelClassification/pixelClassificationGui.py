@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -55,7 +57,7 @@ from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5V
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
 
 # import IPython
-from FeatureSelectionDialog import FeatureSelectionDialog
+from .FeatureSelectionDialog import FeatureSelectionDialog
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -363,7 +365,7 @@ class PixelClassificationGui(LabelingGui):
                 order = "".join( self.topLevelOperatorView.InputImages.meta.getAxisKeys() )
                 line = order[:-1].upper() + ": "
                 line += slicing_to_string( slicing[:-1], input_shape )
-                print line
+                print(line)
 
         labels_submenu = QMenu("Labels")
         self.labels_submenu = labels_submenu # Must retain this reference or else it gets auto-deleted.

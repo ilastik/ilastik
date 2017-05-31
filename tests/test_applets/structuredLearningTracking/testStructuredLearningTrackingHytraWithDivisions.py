@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -106,7 +107,7 @@ class TestStructuredLearningTrackingHeadless(object):
         # Start up the ilastik.py entry script as if we had launched it from the command line
         self.ilastik_startup.main()
 
-        print self
+        print(self)
 
         # Examine the HDF5 output for basic attributes
         with h5py.File(self.EXPECTED_TRACKING_RESULT_FILE, 'r') as f:
@@ -147,7 +148,7 @@ class TestStructuredLearningTrackingHeadless(object):
 
         # Check for expected number of lines
         logger.info("Number of rows in the csv file: {}".format(data.shape[0]))
-        print "Number of rows in the csv file: {}".format(data.shape[0])
+        print("Number of rows in the csv file: {}".format(data.shape[0]))
         assert data.shape[0] == self.EXPECTED_NUM_LINES_TRACKING, 'Number of rows in the csv file differs from expected'
 
         # Check that the csv file contains the default fields.

@@ -276,7 +276,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                     moves_to[e[1]].append(e[0])  # moves_to[target] contains list of incoming object ids
 
                 # alternative way of appearance
-                if not label2color[-2].has_key(int(e[0])):
+                if int(e[0]) not in label2color[-2]:
                     if successive_ids:
                         label2color[-2][int(e[0])] = maxId
                         maxId += 1
@@ -467,7 +467,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                 try:
                     rc_corr = feats[t][config.features_vigra_name]['RegionCenter_corr']
                 except:
-                    raise Exception, 'Can not consider optical correction since it has not been computed before'
+                    raise Exception('Can not consider optical correction since it has not been computed before')
                 if rc_corr.size:
                     rc_corr = rc_corr[1:, ...]
 

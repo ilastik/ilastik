@@ -21,6 +21,7 @@
 """
 Give the histogram of labels in a project file.
 """
+from __future__ import print_function
 import sys
 import os
 import h5py
@@ -35,7 +36,7 @@ if not os.path.exists(project_path):
     sys.stderr.write("Couldn't locate project file: {}\n".format( project_path ))
     sys.exit(2)
 else:
-    print "Counting labels in project: {}\n".format( project_path )
+    print("Counting labels in project: {}\n".format( project_path ))
 
 def print_bincounts(label_names, bins_list, image_name):
     # Sum up the bincounts we got from each label block
@@ -44,11 +45,11 @@ def print_bincounts(label_names, bins_list, image_name):
         zero_pad_bins = numpy.append( bins, [0]*(len(sum_bins)-len(bins)) )
         sum_bins += zero_pad_bins
     
-    print "Counted a total of {} label points for {}.".format( sum_bins.sum(), image_name )
+    print("Counted a total of {} label points for {}.".format( sum_bins.sum(), image_name ))
     max_name_len = max( map(len, label_names ) )
     for name, count in zip( label_names, sum_bins[1:] ):
-        print ("{:" + str(max_name_len) + "} : {}").format( name, count )
-    print ""
+        print(("{:" + str(max_name_len) + "} : {}").format( name, count ))
+    print("")
 
 if __name__ == "__main__":
     all_bins = []

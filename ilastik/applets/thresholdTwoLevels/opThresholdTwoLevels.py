@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -30,9 +31,9 @@ from lazyflow.operators.generic import OpConvertDtype, OpPixelOperator
 
 
 # local
-from thresholdingTools import OpAnisotropicGaussianSmoothing5d, select_labels
-from ipht import threshold_from_cores
-from _OpGraphCut import segmentGC
+from .thresholdingTools import OpAnisotropicGaussianSmoothing5d, select_labels
+from .ipht import threshold_from_cores
+from ._OpGraphCut import segmentGC
 
 logger = logging.getLogger(__name__)
 

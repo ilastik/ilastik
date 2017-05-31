@@ -1,1 +1,2 @@
-from edgeTrainingWithMulticutWorkflow import EdgeTrainingWithMulticutWorkflow
+from __future__ import absolute_import
+from .edgeTrainingWithMulticutWorkflow import EdgeTrainingWithMulticutWorkflow

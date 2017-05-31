@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -23,4 +24,4 @@ __author__ = 'jales'
 import logging
 logger = logging.getLogger(__name__)
 
-from structuredTrackingWorkflow import StructuredTrackingWorkflowFromPrediction, StructuredTrackingWorkflowFromBinary
+from .structuredTrackingWorkflow import StructuredTrackingWorkflowFromPrediction, StructuredTrackingWorkflowFromBinary

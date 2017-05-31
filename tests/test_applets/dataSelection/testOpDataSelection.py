@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -82,7 +83,7 @@ class TestOpDataSelection_Basic2D():
                     tmpFileName,
                 )
                 cls.imgFileNames2D.append(tmpFileName)
-            except RuntimeError, e:
+            except RuntimeError as e:
                 msg = str(e).replace('\n', '')
                 print(
                     "Couldn't write temp 2D image file using vigra with `{}` "
@@ -123,7 +124,7 @@ class TestOpDataSelection_Basic2D():
                     tmpFileName,
                 )
                 cls.imgFileNames2Dc.append(tmpFileName)
-            except RuntimeError, e:
+            except RuntimeError as e:
                 msg = str(e).replace('\n', '')
                 print(
                     "Couldn't write temp 2D+c image file using vigra with `{}` "
@@ -143,7 +144,7 @@ class TestOpDataSelection_Basic2D():
         cls.projectFile.close()
         try:
             shutil.rmtree(cls.tmpdir)
-        except OSError, e:
+        except OSError as e:
             print('Exception caught while deleting temporary files: {}'.format(e))
 
     def testBasic2D(self):
@@ -424,7 +425,7 @@ class TestOpDataSelection_Basic_native_3D():
         cls.projectFile.close()
         try:
             shutil.rmtree(cls.tmpdir)
-        except OSError, e:
+        except OSError as e:
             print('Exception caught while deleting temporary files: {}'.format(e))
 
     def testBasic3D(self):
@@ -574,7 +575,7 @@ class TestOpDataSelection_3DStacks():
                         tmpFileName,
                     )
                     cls.imgFileLists2D[extension].append(tmpFileName)
-                except RuntimeError, e:
+                except RuntimeError as e:
                     cls.removedExtensions.append(extension)
                     msg = str(e).replace('\n', '')
                     print(
@@ -634,7 +635,7 @@ class TestOpDataSelection_3DStacks():
                         vimgData2Dc,
                         tmpFileName,
                     )
-                except RuntimeError, e:
+                except RuntimeError as e:
                     cls.removedExtensions.append(extension)
                     msg = str(e).replace('\n', '')
                     print(
@@ -668,7 +669,7 @@ class TestOpDataSelection_3DStacks():
         cls.projectFile.close()
         try:
             shutil.rmtree(cls.tmpdir)
-        except OSError, e:
+        except OSError as e:
             print('Exception caught while deleting temporary files: {}'.format(e))
 
     def testBasic3DstackFromGlobString(self):

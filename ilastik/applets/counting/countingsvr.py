@@ -19,6 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 import numpy as np
 import vigra
 import itertools
@@ -59,7 +61,7 @@ class RegressorC(object):
         return result
     
     def fitcplex(self,X,Yl,tags, boxConstraints = None):
-        import cwrapper.cplex
+        from . import cwrapper.cplex
         import ctypes
         c_float_p = ctypes.POINTER(ctypes.c_float)
         c_char_p= ctypes.POINTER(ctypes.c_char)
@@ -106,7 +108,7 @@ class RegressorC(object):
         #self.dens[np.where(self.dens < 0)] = 0
 
     def fitgurobi(self,X,Yl,tags, boxConstraints = None):
-        import cwrapper.gurobi
+        from . import cwrapper.gurobi
         import ctypes
         #extlib.main()
         c_float_p = ctypes.POINTER(ctypes.c_float)
@@ -418,7 +420,7 @@ class SVR(object):
         if sigma > 0:
             try:
                 dot = vigra.filters.gaussianSmoothing(dot.astype(np.float32).squeeze(), sigma) #TODO: use it later, but this
-            except Exception,e:
+            except Exception as e:
                 logger.error( "HHHHHHHH {} {}".format(dot.shape,dot.dtype) )
                 logger.error(str(e))
                 raise Exception
@@ -724,14 +726,14 @@ if __name__ == "__main__":
     boxConstraints = {"boxValues": boxValues, "boxIndices" : boxIndices, "boxFeatures" :boxFeatures}
     #boxConstraints = None
 
-    print testtags
+    print(testtags)
     numRegressors = 1
     success = Counter.fitPrepared(testimg[testmapping,:], testdot[testmapping], testtags,
                                   boxConstraints = boxConstraints, numRegressors = numRegressors)
-    print Counter._regressor[0].w
+    print(Counter._regressor[0].w)
     #3uccess = Counter.fitPrepared(testimg[indices,:], testdot[indices], testtags[:len(indices)], epsilon = 0.000)
     #print Counter.w, Counter.
-    print "learning finished"
+    print("learning finished")
 
     #conversion step
     #Q = kernelize(B, method = "gaussian")
@@ -746,10 +748,10 @@ if __name__ == "__main__":
     #print Counter.b, Counter.w
     newdot = Counter.predict(backup_image)
 
-    print "prediction"
+    print("prediction")
     #print img
     #print newdot
-    print "sum", np.sum(newdot) / numRegressors
+    print("sum", np.sum(newdot) / numRegressors)
     #try: 
     #    import matplotlib.pyplot as plt
     #    import matplotlib

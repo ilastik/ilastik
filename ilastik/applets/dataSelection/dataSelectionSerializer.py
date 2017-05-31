@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
@@ -19,7 +20,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from opDataSelection import OpDataSelection, DatasetInfo
+from .opDataSelection import OpDataSelection, DatasetInfo
 from lazyflow.operators.ioOperators import OpStackLoader, OpH5WriterBigDataset
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader

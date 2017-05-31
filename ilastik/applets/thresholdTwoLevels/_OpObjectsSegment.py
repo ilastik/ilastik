@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -38,7 +39,7 @@ from lazyflow.rtype import SubRegion
 from lazyflow.stype import Opaque
 from lazyflow.request import Request, RequestPool
 
-from _OpGraphCut import segmentGC, OpGraphCut
+from ._OpGraphCut import segmentGC, OpGraphCut
 
 
 ## segment predictions with pre-thresholding

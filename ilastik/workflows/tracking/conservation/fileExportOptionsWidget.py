@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   volumina: volume slicing and editing library
 #
@@ -93,6 +94,6 @@ if __name__ == "__main__":
     w.show()
     app.exec_()
 
-    print "Selected Filepath: {}".format( op.Filepath.value )
+    print("Selected Filepath: {}".format( op.Filepath.value ))
 
 

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import collections
 import numpy as np
 import numpy.lib.recfunctions as nlr
@@ -466,5 +467,5 @@ if __name__ == "__main__":
 
     l = prepare_list(l, ("a",))
     l2 = prepare_list(l2, ("a", "b"))
-    print l
-    print l2
+    print(l)
+    print(l2)

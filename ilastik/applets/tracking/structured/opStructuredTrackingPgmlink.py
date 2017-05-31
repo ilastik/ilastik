@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import math
 from lazyflow.graph import InputSlot, OutputSlot
@@ -503,13 +504,13 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
 
         except Exception as e:
             if trainingToHardConstraints:
-                raise Exception, 'Tracking: Your training can not be extended to a feasible solution! ' + \
-                                 'Turn training to hard constraints off or correct your tracking training. '
+                raise Exception('Tracking: Your training can not be extended to a feasible solution! ' + \
+                                 'Turn training to hard constraints off or correct your tracking training. ')
             else:
-                raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
+                raise Exception('Tracking terminated unsuccessfully: ' + str(e))
 
         if len(eventsVector) == 0:
-            raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
+            raise Exception('Tracking terminated unsuccessfully: Events vector has zero length.')
         
         events = get_events(eventsVector)
         self.Parameters.setValue(parameters, check_changed=False)
@@ -657,7 +658,7 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
                     elif n_dim ==3:
                         image_excerpt = image_excerpt[0, ..., 0]
                     else:
-                        raise Exception, "n_dim = %s instead of 2 or 3"
+                        raise Exception("n_dim = %s instead of 2 or 3")
 
                     pgmlink.extract_coord_by_timestep_id(coordinate_map,
                                                          image_excerpt,
@@ -783,7 +784,7 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
                                   "Go back to Training applet and Save your training for each crop.")
             return
 
-        print "in _runStructuredLearning  <============================================"
+        print("in _runStructuredLearning  <============================================")
         self._updateCropsFromOperator()
         median_obj_size = [0]
 
@@ -1142,9 +1143,9 @@ class OpStructuredTrackingPgmlink(OpTrackingBase):
         parameters['appearanceCost'] = self.AppearanceWeight.value
         parameters['disappearanceCost'] = self.DisappearanceWeight.value
 
-        print "-----------+------------->parameters['detWeight']",parameters['detWeight']
-        print "-----------+------------->parameters['divWeight']",parameters['divWeight']
-        print "-----------+------------->parameters['transWeight']",parameters['transWeight']
+        print("-----------+------------->parameters['detWeight']",parameters['detWeight'])
+        print("-----------+------------->parameters['divWeight']",parameters['divWeight'])
+        print("-----------+------------->parameters['transWeight']",parameters['transWeight'])
 
         self.Parameters.setValue(parameters)
 

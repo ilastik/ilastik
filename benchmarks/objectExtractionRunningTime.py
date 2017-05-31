@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -234,26 +235,26 @@ class ObjectExtractionTimeComparison(object):
 #         del binaryVol
     
         # Profile object extraction simplified
-        print "\nStarting object extraction simplified (single-thread, without cache)"
+        print("\nStarting object extraction simplified (single-thread, without cache)")
              
         with Timer() as timerObjectFeaturesSimp:
             featsObjectFeaturesSimp = self.opObjectFeaturesSimp.Features([]).wait()
                  
-        print "Simplified object extraction took: {} seconds".format(timerObjectFeaturesSimp.seconds())     
+        print("Simplified object extraction took: {} seconds".format(timerObjectFeaturesSimp.seconds()))     
         
         # Profile object extraction optimized
-        print "\nStarting object extraction (multi-thread, without cache)"
+        print("\nStarting object extraction (multi-thread, without cache)")
           
         with Timer() as timerObjectExtraction:
             featsObjectExtraction = self.opObjectExtraction.RegionFeatures([]).wait()
               
-        print "Object extraction took: {} seconds".format(timerObjectExtraction.seconds()) 
+        print("Object extraction took: {} seconds".format(timerObjectExtraction.seconds())) 
     
         # Profile for basic multi-threaded feature computation 
         # just a multi-threaded loop that labels volumes and extract object features directly (No operators, no plugin system, no overhead, just a loop)
         featsBasicFeatureComp = dict.fromkeys( range(self.op5Raw.Output.meta.shape[0]), None)
             
-        print "\nStarting basic multi-threaded feature computation"
+        print("\nStarting basic multi-threaded feature computation")
         pool = RequestPool()    
         for t in range(0, self.op5Raw.Output.meta.shape[0], 1):
             pool.add( Request( partial(self._computeObjectFeatures, t, featsBasicFeatureComp) ) )
@@ -261,7 +262,7 @@ class ObjectExtractionTimeComparison(object):
         with Timer() as timerBasicFeatureComp:
             pool.wait()
                  
-        print "Basic multi-threaded feature extraction took: {} seconds".format( timerBasicFeatureComp.seconds() )                 
+        print("Basic multi-threaded feature extraction took: {} seconds".format( timerBasicFeatureComp.seconds() ))                 
 
     
     # Compute object features for single frame        

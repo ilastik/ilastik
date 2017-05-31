@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
 __author__ = 'fabian'
 
 import numpy
@@ -627,7 +628,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         :param feat:
         :return:
         '''
-        import opSimplePixelClassification
+        from . import opSimplePixelClassification
         from lazyflow import graph
         from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 

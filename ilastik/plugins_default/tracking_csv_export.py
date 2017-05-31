@@ -36,7 +36,7 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
                 formats.append('%f')
 
         # check which features are present and construct table of the appropriate size
-        frame, _ = graph.nodes_iter().next()
+        frame, _ = next(graph.nodes_iter())
 
         # the feature categories can contain 'Default features' and 'Standard Object Features',
         # which actually reference the same features. Hence we block all of the one group from the other to prevent duplicates.

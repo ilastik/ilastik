@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -23,6 +24,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 try:
-    from manualTrackingWorkflow import ManualTrackingWorkflow
+    from .manualTrackingWorkflow import ManualTrackingWorkflow
 except ImportError as e:
     logger.warn( "Failed to import manual tracking workflow; check dependencies: " + str(e) )

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import warnings
 from itertools import imap, izip
 import numpy as np
@@ -453,4 +454,4 @@ if __name__ == "__main__":
 
     assert seg.min() == 0
 
-    print "DONE."
+    print("DONE.")

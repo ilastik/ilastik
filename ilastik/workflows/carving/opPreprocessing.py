@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -34,7 +35,7 @@ from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
 
 #carving Cython module
-from watershed_segmentor import WatershedSegmentor
+from .watershed_segmentor import WatershedSegmentor
 
 import logging
 logger = logging.getLogger(__name__)

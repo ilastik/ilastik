@@ -164,7 +164,7 @@ class StackFileSelectionWidget(QDialog):
         self.directoryEdit.setText( directory )
         try:
             globstring = self._getGlobString(directory)
-        except StackFileSelectionWidget.DetermineStackError, e:
+        except StackFileSelectionWidget.DetermineStackError as e:
             QMessageBox.warning(self, "Invalid selection", str(e))
         if globstring:
             self.patternEdit.setText( globstring )

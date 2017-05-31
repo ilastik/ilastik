@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -35,7 +36,7 @@ from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEve
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
-from opDataExport import get_model_op
+from .opDataExport import get_model_op
 from volumina.widgets.dataExportOptionsDlg import DataExportOptionsDlg
 
 import logging

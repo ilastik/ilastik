@@ -42,8 +42,9 @@ import unittest
 ## for testing ThresholdOneLevel
 class Generator1(unittest.TestCase):
 
-    def generateData(self, (nz, ny, nx)):
+    def generateData(self, xxx_todo_changeme):
 
+        (nz, ny, nx) = xxx_todo_changeme
         clusters = []
 
         #cluster of 4 points

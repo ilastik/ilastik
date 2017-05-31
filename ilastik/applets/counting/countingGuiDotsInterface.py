@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -42,7 +43,7 @@ from volumina.brushingcontroller import BrushingController,BrushingInterpreter
 import numpy as np
 import vigra
 
-from countingGuiBoxesInterface import OpArrayPiper2
+from .countingGuiBoxesInterface import OpArrayPiper2
 
 import logging
 logger = logging.getLogger(__name__)
@@ -265,7 +266,7 @@ class DotController(QObject):
                 
     def addNewDot(self,pos5D):
         pos=tuple(pos5D[1:3])
-        if self._currentDotsHash.has_key(pos): 
+        if pos in self._currentDotsHash: 
             logger.debug( "Dot is already there %s",self._currentDotsHash[pos] )
             return
         

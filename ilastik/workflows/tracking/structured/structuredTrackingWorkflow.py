@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -478,7 +479,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         # Plugin export if selected
         logger.info("Export source is: " + self.dataExportTrackingApplet.topLevelOperator.SelectedExportSource.value)
 
-        print "in post_process_lane_export"
+        print("in post_process_lane_export")
         if self.dataExportTrackingApplet.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName:
             logger.info("Export source plugin selected!")
             selectedPlugin = self.dataExportTrackingApplet.topLevelOperator.SelectedPlugin.value

@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from __future__ import absolute_import
 import os
 import glob
 import argparse
@@ -29,8 +30,8 @@ logger = logging.getLogger(__name__)
 import vigra
 from lazyflow.utility import PathComponents, isUrl, make_absolute
 from ilastik.applets.base.applet import Applet
-from opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
-from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
+from .opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
+from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 
 class DataSelectionApplet( Applet ):
     """
@@ -61,7 +62,7 @@ class DataSelectionApplet( Applet ):
     #
     def getMultiLaneGui( self ):
         if self._gui is None:
-            from dataSelectionGui import DataSelectionGui, GuiMode
+            from .dataSelectionGui import DataSelectionGui, GuiMode
             guiMode = { True: GuiMode.Batch, False: GuiMode.Normal }[self._batchDataGui]
             self._gui = DataSelectionGui( self,
                                           self.topLevelOperator,

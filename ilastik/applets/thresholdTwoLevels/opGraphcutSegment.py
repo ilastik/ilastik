@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -33,5 +34,5 @@ def haveGraphCut():
 
 
 if haveGraphCut():
-    from _OpGraphCut import OpGraphCut, segmentGC
-    from _OpObjectsSegment import OpObjectsSegment
+    from ._OpGraphCut import OpGraphCut, segmentGC
+    from ._OpObjectsSegment import OpObjectsSegment

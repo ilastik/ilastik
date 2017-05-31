@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -25,24 +26,24 @@ WORKFLOW_CLASSES = []
 
 import ilastik.config
 
-import pixelClassification
+from . import pixelClassification
 WORKFLOW_CLASSES += [pixelClassification.PixelClassificationWorkflow]
 
-import newAutocontext.newAutocontextWorkflow
+from . import newAutocontext.newAutocontextWorkflow
 WORKFLOW_CLASSES += [newAutocontext.newAutocontextWorkflow.AutocontextTwoStage]
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     WORKFLOW_CLASSES += [newAutocontext.newAutocontextWorkflow.AutocontextThreeStage,
                          newAutocontext.newAutocontextWorkflow.AutocontextFourStage]
 
 try:
-    import iiboostPixelClassification
+    from . import iiboostPixelClassification
     WORKFLOW_CLASSES += [iiboostPixelClassification.IIBoostPixelClassificationWorkflow]
 except ImportError as e:
     logger.warn( "Failed to import the IIBoost Synapse detection workflow.  Check IIBoost dependency." )
 
 
 try:
-    import objectClassification
+    from . import objectClassification
     WORKFLOW_CLASSES += [objectClassification.objectClassificationWorkflow.ObjectClassificationWorkflowPixel,
                          objectClassification.objectClassificationWorkflow.ObjectClassificationWorkflowPrediction,
                          objectClassification.objectClassificationWorkflow.ObjectClassificationWorkflowBinary]
@@ -50,13 +51,13 @@ except ImportError as e:
     logger.warn("Failed to import object workflow; check dependencies: " + str(e))
 
 try:
-    import tracking.manual
+    from . import tracking.manual
     WORKFLOW_CLASSES += [tracking.manual.manualTrackingWorkflow.ManualTrackingWorkflow]
 except (ImportError, AttributeError) as e:
     logger.warn( "Failed to import tracking workflow; check pgmlink dependency: " + str(e) )
 
 try:
-    import tracking.conservation
+    from . import tracking.conservation
     WORKFLOW_CLASSES += [tracking.conservation.conservationTrackingWorkflow.ConservationTrackingWorkflowFromBinary,
                          tracking.conservation.conservationTrackingWorkflow.ConservationTrackingWorkflowFromPrediction,
                          tracking.conservation.animalConservationTrackingWorkflow.AnimalConservationTrackingWorkflowFromBinary,
@@ -66,14 +67,14 @@ except ImportError as e:
                  "instructions on our website ilastik.org; check dependencies: " + str(e) )
 
 try:
-    import tracking.structured
+    from . import tracking.structured
     WORKFLOW_CLASSES += [tracking.structured.structuredTrackingWorkflow.StructuredTrackingWorkflowFromBinary,
                          tracking.structured.structuredTrackingWorkflow.StructuredTrackingWorkflowFromPrediction]    
 except ImportError as e:
     logger.warn( "Failed to import structured learning tracking workflow. For this workflow, see the installation"\
              "instructions on our website ilastik.org; check dependencies: " + str(e) )
 try:
-    import carving
+    from . import carving
     WORKFLOW_CLASSES += [carving.carvingWorkflow.CarvingWorkflow]    
 except ImportError as e:
     logger.warn( "Failed to import carving workflow; check vigra dependency: " + str(e) )
@@ -84,26 +85,26 @@ except ImportError as e:
 #     logger.warn("Failed to import multicut workflow; check dependencies: " + str(e))
 
 try:
-    import edgeTrainingWithMulticut
+    from . import edgeTrainingWithMulticut
     WORKFLOW_CLASSES += [edgeTrainingWithMulticut.EdgeTrainingWithMulticutWorkflow]
 except ImportError as e:
     logger.warn("Failed to import 'Edge Training With Multicut' workflow; check dependencies: " + str(e))
 
 try:
-    import counting
+    from . import counting
     WORKFLOW_CLASSES += [counting.countingWorkflow.CountingWorkflow]
 except ImportError as e:
     logger.warn("Failed to import counting workflow; check dependencies: " + str(e))
 
-import examples.dataConversion
+from . import examples.dataConversion
 WORKFLOW_CLASSES += [examples.dataConversion.dataConversionWorkflow.DataConversionWorkflow]
 
 # Examples
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
-    import vigraWatershed
-    import wsdt
-    import examples.layerViewer
-    import examples.thresholdMasking
-    import examples.deviationFromMean
-    import examples.labeling
-    import examples.connectedComponents
+    from . import vigraWatershed
+    from . import wsdt
+    from . import examples.layerViewer
+    from . import examples.thresholdMasking
+    from . import examples.deviationFromMean
+    from . import examples.labeling
+    from . import examples.connectedComponents

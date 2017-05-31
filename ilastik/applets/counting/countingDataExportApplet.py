@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,7 +19,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from opCountingDataExport import OpCountingDataExport
+from .opCountingDataExport import OpCountingDataExport
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 from ilastik.applets.base.appletSerializer import SerialSlot
@@ -60,7 +61,7 @@ class CountingDataExportApplet( DataExportApplet ):
     def getMultiLaneGui(self):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
-            from countingDataExportGui import CountingDataExportGui
+            from .countingDataExportGui import CountingDataExportGui
             self._gui = CountingDataExportGui( self, self.topLevelOperator )
         return self._gui
 

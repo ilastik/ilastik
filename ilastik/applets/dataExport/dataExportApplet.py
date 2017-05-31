@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,8 +22,8 @@
 import os
 import argparse
 from ilastik.applets.base.applet import Applet
-from opDataExport import OpDataExport
-from dataExportSerializer import DataExportSerializer
+from .opDataExport import OpDataExport
+from .dataExportSerializer import DataExportSerializer
 from ilastik.utility import OpMultiLaneWrapper
 
 class DataExportApplet( Applet ):
@@ -72,7 +73,7 @@ class DataExportApplet( Applet ):
 
     def getMultiLaneGui(self):
         if self._gui is None:
-            from dataExportGui import DataExportGui
+            from .dataExportGui import DataExportGui
             self._gui = DataExportGui( self, self.topLevelOperator )
         return self._gui
 

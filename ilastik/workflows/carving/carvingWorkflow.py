@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -31,8 +32,8 @@ from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 
 #this workflow: carving
-from carvingApplet import CarvingApplet
-from preprocessingApplet import PreprocessingApplet
+from .carvingApplet import CarvingApplet
+from .preprocessingApplet import PreprocessingApplet
 from ilastik.workflows.carving.opPreprocessing import OpPreprocessing, OpFilter
 
 #===----------------------------------------------------------------------------------------------------------------===

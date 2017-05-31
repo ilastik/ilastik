@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from __future__ import absolute_import
 # Standard
 from Queue import Queue
 import re
@@ -65,7 +66,7 @@ from ilastik.applets.base.appletGuiInterface import AppletGuiInterface, VolumeVi
 from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.config import cfg as ilastik_config
-from iconMgr import ilastikIcons
+from .iconMgr import ilastikIcons
 from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
@@ -1410,7 +1411,7 @@ class IlastikShell(QMainWindow):
 
         try:
             hdf5File, workflow_class, readOnly = ProjectManager.openProjectFile(projectFilePath, force_readonly)
-        except ProjectManager.ProjectVersionError, e:
+        except ProjectManager.ProjectVersionError as e:
             QMessageBox.warning(self, "Old Project",
                                 "Could not load old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")
         except ProjectManager.FileMissingError:
@@ -1456,7 +1457,7 @@ class IlastikShell(QMainWindow):
                                                  workflow_cmdline_args=self._workflow_cmdline_args,
                                                  project_creation_args=project_creation_args)
 
-        except Exception, e:
+        except Exception as e:
             msg = "Could not load project file.\n" + str(e)
             log_exception(logger, msg)
             QMessageBox.warning(self, "Failed to Load", msg)
@@ -1608,7 +1609,7 @@ class IlastikShell(QMainWindow):
             self.setAllAppletsEnabled(False)
             try:
                 self.projectManager.saveProject()
-            except ProjectManager.SaveError, err:
+            except ProjectManager.SaveError as err:
                 self.thunkEventHandler.post(partial(QMessageBox.warning, self, "Error Attempting Save", str(err)))
 
             # First, re-enable all applets
@@ -1648,7 +1649,7 @@ class IlastikShell(QMainWindow):
 
                 try:
                     self.projectManager.saveProjectAs(newPath)
-                except ProjectManager.SaveError, err:
+                except ProjectManager.SaveError as err:
                     self.thunkEventHandler.post(partial(QMessageBox.warning, self, "Error Attempting Save", str(err)))
                 self.updateShellProjectDisplay()
 
@@ -1671,7 +1672,7 @@ class IlastikShell(QMainWindow):
         if snapshotPath is not None:
             try:
                 self.projectManager.saveProjectSnapshot(snapshotPath)
-            except ProjectManager.SaveError, err:
+            except ProjectManager.SaveError as err:
                 QMessageBox.warning(self, "Error Attempting Save Snapshot", str(err))
 
     def closeEvent(self, closeEvent):

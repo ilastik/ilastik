@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,8 +21,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from preprocessingSerializer import PreprocessingSerializer
-from opPreprocessing import OpPreprocessing
+from .preprocessingSerializer import PreprocessingSerializer
+from .opPreprocessing import OpPreprocessing
 
 class PreprocessingApplet(StandardApplet):
 
@@ -48,7 +49,7 @@ class PreprocessingApplet(StandardApplet):
     def enableReset(self,er):
         if self._workflow._headless:
             return
-        from preprocessingGui import PreprocessingGui
+        from .preprocessingGui import PreprocessingGui
         if self._enabledReset != er:
             self._enabledReset = er
             #if GUI is not set up, _gui is an Adapter
@@ -58,7 +59,7 @@ class PreprocessingApplet(StandardApplet):
     def enableDownstream(self,ed):
         if self._workflow._headless:
             return
-        from preprocessingGui import PreprocessingGui
+        from .preprocessingGui import PreprocessingGui
         if ed and not self._enabledDS: # enable Downstream 
             self._enabledDS = True
         if not ed and self._enabledDS: # disable Downstream
@@ -67,7 +68,7 @@ class PreprocessingApplet(StandardApplet):
             self._gui.enableWriteprotect(ed)
     
     def createSingleLaneGui( self , laneIndex):
-        from preprocessingGui import PreprocessingGui
+        from .preprocessingGui import PreprocessingGui
         opPre = self.topLevelOperator.getLane(laneIndex)
         self._gui = PreprocessingGui( self, opPre )
         

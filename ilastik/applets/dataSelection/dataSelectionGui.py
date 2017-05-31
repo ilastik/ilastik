@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -49,12 +50,12 @@ from lazyflow.utility.pathHelpers import getPathVariants, PathComponents
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
 
-from opDataSelection import OpDataSelection, DatasetInfo
-from dataLaneSummaryTableModel import DataLaneSummaryTableModel
-from datasetInfoEditorWidget import DatasetInfoEditorWidget
+from .opDataSelection import OpDataSelection, DatasetInfo
+from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
+from .datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, H5VolumeSelectionDlg
-from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDetailedInfoTableModel
-from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
+from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDetailedInfoTableModel
+from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 
 try:
     import libdvid
@@ -802,7 +803,7 @@ class DataSelectionGui(QWidget):
         recent_nodes_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Nodes")
         recent_nodes = recent_nodes_pref.get() or {}
             
-        from dvidDataSelectionBrowser import DvidDataSelectionBrowser
+        from .dvidDataSelectionBrowser import DvidDataSelectionBrowser
         browser = DvidDataSelectionBrowser(recent_hosts, recent_nodes, parent=self)
         if browser.exec_() == DvidDataSelectionBrowser.Rejected:
             return

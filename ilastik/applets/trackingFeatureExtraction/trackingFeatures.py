@@ -209,7 +209,7 @@ class FeatureManager( object ):
                 continue
             
             if len(name_split) != 2:                
-                raise Exception, 'tracking features consist of an operator and a feature name only, given name={}'.format(name_split) 
+                raise Exception('tracking features consist of an operator and a feature name only, given name={}'.format(name_split)) 
             feat_dim = len(feats_cur[name_split[1]][0])
             feat_classes[name] = self.feature_mappings[name_split[0]](name_split[1], delim=self.delim, ndim=self.ndim, feat_dim=feat_dim)
 

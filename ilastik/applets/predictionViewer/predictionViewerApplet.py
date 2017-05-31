@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,8 +20,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.layerViewer import LayerViewerApplet
-from opPredictionViewer import OpPredictionViewer
-from predictionViewerSerializer import PredictionViewerSerializer
+from .opPredictionViewer import OpPredictionViewer
+from .predictionViewerSerializer import PredictionViewerSerializer
 
 class PredictionViewerApplet( LayerViewerApplet ):
     """
@@ -36,7 +37,7 @@ class PredictionViewerApplet( LayerViewerApplet ):
     
     @property
     def singleLaneGuiClass(self):
-        from predictionViewerGui import PredictionViewerGui
+        from .predictionViewerGui import PredictionViewerGui
         return PredictionViewerGui
 
     @property

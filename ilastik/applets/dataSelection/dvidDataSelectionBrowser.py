@@ -1,3 +1,4 @@
+from __future__ import print_function
 import socket
 import logging
 
@@ -142,7 +143,7 @@ if __name__ == "__main__":
                                        mode="select_existing")
 
     if browser.exec_() == DvidDataSelectionBrowser.Accepted:
-        print "The dialog was accepted with result: ", browser.get_selection()
-        print "And subvolume: ", browser.get_subvolume_roi()
+        print("The dialog was accepted with result: ", browser.get_selection())
+        print("And subvolume: ", browser.get_subvolume_roi())
     else:
-        print "The dialog was rejected."
+        print("The dialog was rejected.")

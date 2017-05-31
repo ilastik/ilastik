@@ -402,7 +402,7 @@ class OpCounting( Operator ):
         
         thisLaneTaggedShape = self.InputImages[laneIndex].meta.getTaggedShape()
         
-        if thisLaneTaggedShape.has_key('z'):
+        if 'z' in thisLaneTaggedShape:
             raise DatasetConstraintError(
                 "Objects Counting Workflow",
                 "All input images must be 2D (they cannot contain the z dimension).  "\
@@ -410,7 +410,7 @@ class OpCounting( Operator ):
                 .format( thisLaneTaggedShape['z']))
                 # Find a different lane and use it for comparison
         
-        if thisLaneTaggedShape.has_key('t'):
+        if 't' in thisLaneTaggedShape:
             raise DatasetConstraintError(
                 "Objects Counting Workflow",
                 "All input images must be 2D (they cannot contain the t dimension).  "\

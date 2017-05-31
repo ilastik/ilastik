@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,7 +20,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, SerialBlockSlot
-from opThresholdTwoLevels import ThresholdMethod
+from .opThresholdTwoLevels import ThresholdMethod
 
 class ThresholdTwoLevelsSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):

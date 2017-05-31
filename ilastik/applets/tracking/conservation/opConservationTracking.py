@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 import numpy as np
 import os
 import itertools
@@ -11,7 +13,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import OpZeroDefault
 from lazyflow.roi import sliceToRoi
-from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
+from .opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
 from functools import partial
 from lazyflow.request import Request, RequestPool
@@ -841,7 +843,7 @@ class OpConservationTracking(Operator):
                             z_upper < z_range[0] or z_lower >= z_range[1] or
                             size < size_range[0] or size >= size_range[1]):
                     logger.info("Omitting traxel with ID: {} {}".format(traxel.Id,t))
-                    print "Omitting traxel with ID: {} {}".format(traxel.Id,t)
+                    print("Omitting traxel with ID: {} {}".format(traxel.Id,t))
                 else:
                     logger.info("Adding traxel with ID: {}  {}".format(traxel.Id,t))
                     traxelstore.TraxelsPerFrame.setdefault(int(t), {})[int(idx + 1)] = traxel

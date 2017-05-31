@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,11 +19,11 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from carvingWorkflow import CarvingWorkflow
+from .carvingWorkflow import CarvingWorkflow
 
 import ilastik.config
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     try:
-        from carvingFromPixelPredictionsWorkflow import CarvingFromPixelPredictionsWorkflow
+        from .carvingFromPixelPredictionsWorkflow import CarvingFromPixelPredictionsWorkflow
     except:
         pass

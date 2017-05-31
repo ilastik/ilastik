@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -58,11 +59,11 @@ def check_file(fname):
     firstline = None
     
     if len(lines) and lines[0].startswith("#!"):
-        print "shebang in %s" % fname 
+        print("shebang in %s" % fname) 
         firstline = lines[0]
         c = "".join(lines[1:]) 
     elif len(lines) and "coding" in lines[0]:
-        print "coding in %s" % fname
+        print("coding in %s" % fname)
         firstline = lines[0]
         c = "".join(lines[1:]) 
     else:

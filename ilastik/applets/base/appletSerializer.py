@@ -488,7 +488,7 @@ class SerialBlockSlot(SerialSlot):
         index_capture = re.compile(r'[^0-9]*(\d*).*')
         def extract_index(s):
             return int(index_capture.match(s).groups()[0])
-        for index, t in enumerate(sorted(mygroup.items(), key=lambda (k,v): extract_index(k))):
+        for index, t in enumerate(sorted(mygroup.items(), key=lambda k_v: extract_index(k_v[0]))):
             groupName, labelGroup = t
             for blockData in labelGroup.values():
                 slicing = stringToSlicing(blockData.attrs['blockSlice'])
@@ -542,7 +542,7 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
         index_capture = re.compile(r'[^0-9]*(\d*).*')
         def extract_index(s):
             return int(index_capture.match(s).groups()[0])
-        for index, t in enumerate(sorted(mygroup.items(), key=lambda (k,v): extract_index(k))):
+        for index, t in enumerate(sorted(mygroup.items(), key=lambda k_v1: extract_index(k_v1[0]))):
             groupName, labelGroup = t
             assert extract_index(groupName) == index, "subgroup extraction order should be numerical order!"
             for blockRoiString, blockDataset in labelGroup.items():

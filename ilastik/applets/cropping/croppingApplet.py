@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,8 +20,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from opCropping import OpCroppingTopLevel
-from croppingSerializer import CroppingSerializer
+from .opCropping import OpCroppingTopLevel
+from .croppingSerializer import CroppingSerializer
 
 
 class CroppingApplet( StandardApplet ):
@@ -49,7 +50,7 @@ class CroppingApplet( StandardApplet ):
         return self._serializableItems
 
     def createSingleLaneGui(self, imageLaneIndex):
-        from croppingGui import CroppingGui
+        from .croppingGui import CroppingGui
 
         opCropping = self.topLevelOperator.getLane(imageLaneIndex)
         

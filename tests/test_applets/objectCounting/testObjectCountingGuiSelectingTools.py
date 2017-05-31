@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -186,7 +187,7 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
             LABEL_STOP = (0,0)
             LABEL_ERASE_START = (-128,-128)
             LABEL_ERASE_STOP = (128,128)
-            print "select 1"
+            print("select 1")
 
             gui.currentGui()._labelControlUi.labelListModel.select(1)
             #gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
@@ -198,14 +199,14 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
 
             time.sleep(1)
 
-            print "select box"
+            print("select box")
             gui.currentGui()._labelControlUi.AddBoxButton.click()
             QApplication.processEvents()
-            print "draw box"
+            print("draw box")
             self.strokeMouseFromCenter(imgView, LABEL_START, LABEL_STOP)
 
 
-            print "select 0"
+            print("select 0")
 
             gui.currentGui()._labelControlUi.labelListModel.select(0)
 
@@ -213,7 +214,7 @@ class TestObjectCountingDrawing(ShellGuiTestCaseBase):
             dot_stop_list = [(-20,-11)]
 
             time.sleep(1)
-            print "draw dots"
+            print("draw dots")
            #draw foreground dots
             for start,stop in zip(dot_start_list,dot_stop_list):
                 self.strokeMouseFromCenter( imgView, start,stop )
