@@ -448,12 +448,6 @@ class LayerViewerGui(QWidget):
             # center viewer there
             self.setViewerPos(midpos5d)
 
-            if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
-                cropMidPos = [(b+a)//2 for [a,b] in self.editor.cropModel._crop_extents]
-                for i in range(3):
-                    self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
-
-
         # Old layers are deleted if
         # (1) They are not in the new set or
         # (2) Their data has changed
@@ -551,10 +545,6 @@ class LayerViewerGui(QWidget):
             self.editor.navCtrl.panSlicingViews( pos3d, [0,1,2] )
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(pos3d[i],i)
-            if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
-                cropMidPos = [(b+a)//2 for [a,b] in self.editor.cropModel._crop_extents]
-                for i in range(3):
-                    self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
 
         except Exception, e:
             logger.warn("Failed to navigate to position (%s): %s" % (pos, e))
