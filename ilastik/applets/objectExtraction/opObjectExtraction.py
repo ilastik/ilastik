@@ -591,15 +591,13 @@ class OpRegionFeatures(Operator):
         slc3d[axes.c] = 0
 
         labels = labels[slc3d]
-        
-        logger.debug("Computing default features")
 
         #These are the feature names, selected by the user and the default feature names.
         feature_names = deepcopy(self.Features([]).wait())
         feature_names = self._augmentFeatureNames(feature_names)
 
         # do global features
-        logger.debug("computing global features")
+        logger.debug("Computing global and default features")
         global_features = {}
         pool = RequestPool()
 
@@ -608,18 +606,13 @@ class OpRegionFeatures(Operator):
             plugin_inner = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
             global_features[plugin_name] = plugin_inner.plugin_object.compute_global(image, labels, feature_dict, axes)
 
-        from lazyflow.utility import Timer
-        with Timer() as timer:
-            for plugin_name, feature_dict in feature_names.iteritems():
-                if plugin_name == default_features_key:
-                    continue
-                pool.add(Request(partial(compute_for_one_plugin, plugin_name, feature_dict)))
-                #plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-                #pool.add(Request(partial(plugin.plugin_object.compute_global, image, labels, feature_dict, axes)))
-                #global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_dict, axes)
+        for plugin_name, feature_dict in feature_names.iteritems():
+            if plugin_name == default_features_key:
+                continue
+            pool.add(Request(partial(compute_for_one_plugin, plugin_name, feature_dict)))
 
-            pool.wait()
-            print "global features loop took:", timer.seconds()
+        pool.wait()
+
         extrafeats = {}
         for feat_key in default_features:
             try:
