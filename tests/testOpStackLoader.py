@@ -30,10 +30,8 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackLoader
 
+
 class TestOpStackLoader(object):
-    
-    # TODO: Test with multiple channels.
-    
     def setUp(self):
         self._tmp_dir = tempfile.mkdtemp()
         
@@ -73,6 +71,39 @@ class TestOpStackLoader(object):
         
         assert ( vol_from_stack_zyx == expected_volume_zyx ).all(), "3D Volume from stack did not match expected data."
 
+    def _prepare_data_zyxc(self):
+        file_base = self._tmp_dir + "/rand_3dc"
+
+        Z, Y, X, C = 10, 50, 100, 3
+
+        rand_data_3dc = numpy.random.random((Z, Y, X, C))
+        rand_data_3dc *= 256
+        rand_data_3dc = rand_data_3dc.astype(numpy.uint8)
+        rand_data_3dc = vigra.taggedView(rand_data_3dc, 'zyxc')
+
+        for z in range(Z):
+            file_name = file_base + "_z{}.tiff".format(z)
+            vigra.impex.writeImage(rand_data_3dc[z, :, :, :], file_name)
+
+        return rand_data_3dc, file_base + "*.tiff"
+
+    def test_xyzc(self):
+        expected_volume_zyxc, globstring = self._prepare_data_zyxc()
+
+        graph = Graph()
+        op = OpStackLoader(graph=graph)
+        op.globstring.setValue(globstring)
+
+        assert len(op.stack.meta.axistags) == 4
+        assert op.stack.meta.getAxisKeys() == list('zyxc')
+        assert op.stack.meta.dtype == expected_volume_zyxc.dtype
+
+        vol_from_stack_zyxc = op.stack[:].wait()
+        vol_from_stack_zyxc = vigra.taggedView(vol_from_stack_zyxc, 'zyxc')
+
+        assert (vol_from_stack_zyxc == expected_volume_zyxc).all(), \
+            "3D Volume with channels from stack did not match expected data."
+
     def _prepare_data_tzyx(self):
         file_base = self._tmp_dir + "/rand_4d"
         
@@ -107,7 +138,42 @@ class TestOpStackLoader(object):
         vol_from_stack_tzyx = vol_from_stack_tzyxc.withAxes( *'tzyx' )
         
         assert ( vol_from_stack_tzyx == expected_volume_tzyx ).all(), "4D Volume from stack did not match expected data."
-        
+
+    def _prepare_data_tzyxc(self):
+        file_base = self._tmp_dir + "/rand_4dc"
+
+        T, Z, Y, X, C = 5, 10, 50, 100, 3
+
+        rand_data_4dc = numpy.random.random((T, Z, Y, X, C))
+        rand_data_4dc *= 256
+        rand_data_4dc = rand_data_4dc.astype(numpy.uint8)
+        rand_data_4dc = vigra.taggedView(rand_data_4dc, 'tzyxc')
+
+        for t in range(T):
+            file_name = file_base + "_t{}.tiff".format(t)
+            for z in range(Z):
+                vigra.impex.writeImage(rand_data_4dc[t, z, :, :, :],
+                                       file_name, mode='a')
+
+        return rand_data_4dc, file_base + "*.tiff"
+
+    def test_txyzc(self):
+        expected_volume_tzyxc, globstring = self._prepare_data_tzyxc()
+
+        graph = Graph()
+        op = OpStackLoader(graph=graph)
+        op.globstring.setValue(globstring)
+
+        assert len(op.stack.meta.axistags) == 5
+        assert op.stack.meta.getAxisKeys() == list('tzyxc')
+        assert op.stack.meta.dtype == expected_volume_tzyxc.dtype
+
+        vol_from_stack_tzyxc = op.stack[:].wait()
+        vol_from_stack_tzyxc = vigra.taggedView(vol_from_stack_tzyxc, 'tzyxc')
+
+        assert (vol_from_stack_tzyxc == expected_volume_tzyxc).all(), \
+            "4D Volume with channels from stack did not match expected data."
+
 
 if __name__ == "__main__":
     import sys
