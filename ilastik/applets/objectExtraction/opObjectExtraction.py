@@ -601,12 +601,25 @@ class OpRegionFeatures(Operator):
         # do global features
         logger.debug("computing global features")
         global_features = {}
-        for plugin_name, feature_dict in feature_names.iteritems():
-            if plugin_name == default_features_key:
-                continue
-            plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-            global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_dict, axes)
-        
+        pool = RequestPool()
+
+
+        def compute_for_one_plugin(plugin_name, feature_dict):
+            plugin_inner = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
+            global_features[plugin_name] = plugin_inner.plugin_object.compute_global(image, labels, feature_dict, axes)
+
+        from lazyflow.utility import Timer
+        with Timer() as timer:
+            for plugin_name, feature_dict in feature_names.iteritems():
+                if plugin_name == default_features_key:
+                    continue
+                pool.add(Request(partial(compute_for_one_plugin, plugin_name, feature_dict)))
+                #plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
+                #pool.add(Request(partial(plugin.plugin_object.compute_global, image, labels, feature_dict, axes)))
+                #global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_dict, axes)
+
+            pool.wait()
+            print "global features loop took:", timer.seconds()
         extrafeats = {}
         for feat_key in default_features:
             try:
