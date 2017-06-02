@@ -39,7 +39,7 @@ from lazyflow.graph import OrderedSignal, Operator, OutputSlot, InputSlot
 from lazyflow.roi import roiToSlice, roiFromShape, determineBlockShape
 from lazyflow.utility.bigRequestStreamer import BigRequestStreamer
 from lazyflow.utility.helpers import get_default_axisordering
-from lazyflow.request import Request 
+from lazyflow.request import Request
 
 
 class OpStackLoader(Operator):
@@ -53,10 +53,10 @@ class OpStackLoader(Operator):
 
     :param globstring: A glob string as defined by the glob module. We
         also support the following special extension to globstring
-        syntax: A single string can hold a *list* of globstrings. 
-        The delimiter that separates the globstrings in the list is 
+        syntax: A single string can hold a *list* of globstrings.
+        The delimiter that separates the globstrings in the list is
         OS-specific via os.path.pathsep.
-        
+
         For example, on Linux the pathsep is':', so
 
             '/a/b/c.txt:/d/e/f.txt:../g/i/h.txt'
@@ -93,7 +93,6 @@ class OpStackLoader(Operator):
             logger.error(str(e))
             raise OpStackLoader.FileOpenError(self.fileNameList[0])
 
-
         slice_shape = self.info.getShape()
         X, Y, C = slice_shape
         if self.slices_per_file == 1:
@@ -104,8 +103,8 @@ class OpStackLoader(Operator):
                 sequence_axis = 'z'
             # For stacks of 2D images, we assume xy slices
             if sequence_axis == 'c':
-                shape = (Y, X, C*num_files)
-                axistags = vigra.defaultAxistags('yxc')
+                shape = (C*num_files, Y, X)
+                axistags = vigra.defaultAxistags('cxy')
             else:
                 shape = (num_files, Y, X, C)
                 axistags = vigra.defaultAxistags(sequence_axis + 'yxc')
@@ -117,23 +116,19 @@ class OpStackLoader(Operator):
                 sequence_axis = 't'
 
             if sequence_axis == 'z':
-                stack_order = 'ztyxc'
+                axistags = vigra.defaultAxistags('ztyxc')
             elif sequence_axis == 't':
-                stack_order = 'tzyxc'
+                axistags = vigra.defaultAxistags('tzyxc')
             else:
-                stack_order = 'zyxc'
+                axistags = vigra.defaultAxistags('czyx')
 
             # For stacks of 3D volumes, we assume xyz blocks stacked along
             # sequence_axis
             if sequence_axis == 'c':
-                shape = (num_files, Y, X, self.slices_per_file*C)
+                shape = (num_files*C, self.slices_per_file, Y, X)
             else:
-                T = num_files
-                Z = self.slices_per_file
-                shape = (T, Z, Y, X, C)
-                
-            axistags = vigra.defaultAxistags(stack_order)
-            
+                shape = (num_files, self.slices_per_file, Y, X, C)
+
         self.stack.meta.shape = shape
         self.stack.meta.axistags = axistags
         self.stack.meta.dtype = self.info.getDtype()
@@ -152,47 +147,65 @@ class OpStackLoader(Operator):
             return self._execute_5d( roi, result )
         else:
             assert False, "Unexpected output shape: {}".format( self.stack.meta.shape )
-    
+
     def _execute_3d(self, roi, result):
         traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
-        # roi is in yxc order
+        # roi is in yxc order; stacking over c
         y_start, x_start, c_start = roi.start
         y_stop, x_stop, c_stop = roi.stop
-        
+
         # get C of slice
         C = self.info.getShape()[2]
-        
+
         # Copy each c-slice one at a time.
         for i, fileName in enumerate(self.fileNameList[c_start//C:c_stop//C]):
-            traceLogger.debug( "Reading image: {}".format(fileName) )
-            if self.info.getShape() != vigra.impex.ImageInfo(fileName).getShape():
+            traceLogger.debug("Reading image: {}".format(fileName))
+            file_shape = vigra.impex.ImageInfo(fileName).getShape()
+            if self.info.getShape() != file_shape:
                 raise RuntimeError('not all files have the same shape')
-            if self.slices_per_file != vigra.impex.numberImages(self.fileNameList[0]):
-                raise RuntimeError("Not all files have the same number of slices")
+            images_per_file = vigra.impex.numberImages(self.fileNameList[0])
+            if self.slices_per_file != images_per_file:
+                raise RuntimeError('Not all files have the same number of '
+                                   'slices')
 
             result[:, :, i*C:(i + 1)*C] = \
                 vigra.impex.readImage(fileName)[x_start:x_stop,
                                                 y_start:y_stop,
                                                 :].withAxes(*'yxc')
         return result
-            
+
     def _execute_4d(self, roi, result):
         traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
-        # roi is in zyxc order or tyxc order, depending on SequenceAxis
+        # roi is in zyxc, tyxc or czyx order, depending on SequenceAxis
         z_start, y_start, x_start, c_start = roi.start
         z_stop, y_stop, x_stop, c_stop = roi.stop
 
+        # get C of slice
+        C = self.info.getShape()[2]
+
         # Copy each z-slice one at a time.
         for result_z, fileName in enumerate(self.fileNameList[z_start:z_stop]):
-            traceLogger.debug( "Reading image: {}".format(fileName) )
-            if self.info.getShape() != vigra.impex.ImageInfo(fileName).getShape():
+            traceLogger.debug("Reading image: {}".format(fileName))
+            file_shape = vigra.impex.ImageInfo(fileName).getShape()
+            if self.info.getShape() != file_shape:
                 raise RuntimeError('not all files have the same shape')
-            if self.slices_per_file != vigra.impex.numberImages(self.fileNameList[0]):
-                raise RuntimeError("Not all files have the same number of slices")
+            images_per_file = vigra.impex.numberImages(self.fileNameList[0])
+            if self.slices_per_file != images_per_file:
+                raise RuntimeError('Not all files have the same number of '
+                                   'slices')
 
-            result[result_z,:,:,:] = vigra.impex.readImage(fileName)[x_start:x_stop,
-                                                                     y_start:y_stop,
-                                                                     c_start:c_stop].withAxes( *'yxc' )
+            if self.stack.meta.axistags.channelIndex == 0:
+                # czyx order -> read slice along z (here y)
+                for result_y, y in enumerate(range(y_start, y_stop)):
+                    result[result_z*C:(result_z+1)*C, result_y, ...] = \
+                        vigra.impex.readImage(fileName, index=y)[
+                            c_start:c_stop,
+                            x_start:x_stop].withAxes(*'cyx')
+            else:
+                result[result_z, ...] = vigra.impex.readImage(fileName)[
+                    x_start:x_stop,
+                    y_start:y_stop,
+                    c_start:c_stop].withAxes(*'yxc')
         return result
 
     def _execute_5d(self, roi, result):
@@ -202,13 +215,14 @@ class OpStackLoader(Operator):
         t_stop, z_stop, y_stop, x_stop, c_stop = roi.stop
 
         # Use *enumerated* range to get global t coords and result t coords
-        for result_t, t in enumerate( range( t_start, t_stop ) ):
+        for result_t, t in enumerate(range(t_start, t_stop)):
             file_name = self.fileNameList[t]
-            for result_z, z in enumerate( range( z_start, z_stop ) ):
-                img = vigra.readImage( file_name, index=z )
-                result[result_t, result_z, :, :, :] = img[ x_start:x_stop,
-                                                           y_start:y_stop,
-                                                           c_start:c_stop ].withAxes( *'yxc' )
+            for result_z, z in enumerate(range(z_start, z_stop)):
+                img = vigra.readImage(file_name, index=z)
+                result[result_t, result_z, :, :, :] = \
+                    img[x_start:x_stop,
+                        y_start:y_stop,
+                        c_start:c_stop].withAxes(*'yxc')
         return result
 
     @staticmethod
@@ -219,7 +233,6 @@ class OpStackLoader(Operator):
             s = globString.strip()
             ret += sorted(glob.glob(s))
         return ret
-        
 
 
 class OpStackWriter(Operator):
@@ -244,7 +257,7 @@ class OpStackWriter(Operator):
         export_dir = os.path.split(self.FilepathPattern.value)[0]
         if not os.path.exists(export_dir):
             os.makedirs(export_dir)
-        
+
         # Sliceshape is the same as the input shape, except for the sliced dimension
         tagged_sliceshape = self.Input.meta.getTaggedShape()
         tagged_sliceshape[self._volume_axes[0]] = 1
@@ -298,14 +311,14 @@ class OpStackWriter(Operator):
             "Exported stacks must have exactly 3 non-singleton dimensions (other than the channel dimension).  "\
             "Your stack dimensions are: {}".format( self.Input.meta.getTaggedShape() )
 
-        # Test to make sure the filepath pattern includes slice index field        
+        # Test to make sure the filepath pattern includes slice index field
         filepath_pattern = self.FilepathPattern.value
         assert '123456789' in filepath_pattern.format( slice_index=123456789 ), \
             "Output filepath pattern must contain the '{{slice_index}}' field for formatting.\n"\
             "Your format was: {}".format( filepath_pattern )
 
     # No output slots...
-    def execute(self, slot, subindex, roi, result): pass 
+    def execute(self, slot, subindex, roi, result): pass
     def propagateDirty(self, slot, subindex, roi): pass
 
     def get_nonsingleton_axes(self):
@@ -337,9 +350,9 @@ class OpStackWriter(Operator):
         # If the user didn't provide custom formatting for the slice field,
         #  auto-format to include zero-padding
         if '{slice_index}' in filepattern:
-            filepattern = filepattern.format( slice_index='{' + 'slice_index:0{}'.format(self._max_slice_digits) + '}' )        
+            filepattern = filepattern.format( slice_index='{' + 'slice_index:0{}'.format(self._max_slice_digits) + '}' )
         formatted_path = filepattern.format( slice_index=slice_index )
-        
+
         squeezed_data = slice_data.squeeze()
         squeezed_data = vigra.taggedView(squeezed_data, vigra.defaultAxistags("".join(self._volume_axes[1:])))
         assert len(squeezed_data.shape) == len(self._volume_axes)-1
@@ -377,7 +390,7 @@ class OpStackToH5Writer(Operator):
     def execute(self, slot, subindex, roi, result):
         if not self.opStackLoader.fileNameList:
             raise Exception( "Didn't find any files to combine.  Is the glob string valid?  globstring = {}".format( self.GlobString.value ) )
-        
+
         # Copy the data image-by-image
         stackTags = self.opStackLoader.stack.meta.axistags
         zAxis = stackTags.index('z')
@@ -389,13 +402,13 @@ class OpStackToH5Writer(Operator):
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype
             dtype = dtype.type
-        
+
         index_ = axistags.index('c')
         if index_ >= len(dataShape):
             numChannels = 1
         else:
             numChannels = dataShape[ index_]
-        
+
         # Set up our chunk shape: Aim for a cube that's roughly 300k in size
         dtypeBytes = dtype().nbytes
         cubeDim = math.pow( 300000 // (numChannels * dtypeBytes), (1/3.0) )
@@ -410,20 +423,20 @@ class OpStackToH5Writer(Operator):
 
         # h5py guide to chunking says chunks of 300k or less "work best"
         assert chunkDims['x'] * chunkDims['y'] * chunkDims['z'] * numChannels * dtypeBytes  <= 300000
-        
+
         chunkShape = ()
         for i in range( len(dataShape) ):
             axisKey = axistags[i].key
             # Chunk shape can't be larger than the data shape
             chunkShape += ( min( chunkDims[axisKey], dataShape[i] ), )
-        
+
         # Create the dataset
         internalPath = self.hdf5Path.value
         internalPath = internalPath.replace('\\', '/') # Windows fix
         group = self.hdf5Group.value
         if internalPath in group:
             del group[internalPath]
-        
+
         data = group.create_dataset(internalPath,
                                     #compression='gzip',
                                     #compression_opts=4,
@@ -432,7 +445,7 @@ class OpStackToH5Writer(Operator):
                                     chunks=chunkShape)
         # Now copy each image
         self.progressSignal(0)
-        
+
         for z in range(numImages):
             # Ask for an entire z-slice (exactly one whole image from the stack)
             slicing = [slice(None)] * len(stackTags)
@@ -484,7 +497,7 @@ class OpH5WriterBigDataset(Operator):
 
         self.f = self.inputs["hdf5File"].value
         hdf5Path = self.inputs["hdf5Path"].value
-        
+
         # On windows, there may be backslashes.
         hdf5Path = hdf5Path.replace('\\', '/')
 
@@ -516,7 +529,7 @@ class OpH5WriterBigDataset(Operator):
 
         if 'c' in tagged_maxshape:
             tagged_maxshape['c'] = 1
-        
+
         self.chunkShape = determineBlockShape( list(tagged_maxshape.values()), 512000.0 / dtypeBytes )
 
         if datasetName in list(g.keys()):
@@ -535,7 +548,7 @@ class OpH5WriterBigDataset(Operator):
 
     def execute(self, slot, subindex, rroi, result):
         self.progressSignal(0)
-        
+
         # Save the axistags as a dataset attribute
         self.d.attrs['axistags'] = self.Image.meta.axistags.toJSON()
 
@@ -551,7 +564,7 @@ class OpH5WriterBigDataset(Operator):
         requester = BigRequestStreamer( self.Image, roiFromShape( self.Image.meta.shape ), batchSize=batch_size )
         requester.resultSignal.subscribe( handle_block_result )
         requester.progressSignal.subscribe( self.progressSignal )
-        requester.execute()            
+        requester.execute()
 
         # Be paranoid: Flush right now.
         self.f.file.flush()
@@ -563,7 +576,7 @@ class OpH5WriterBigDataset(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         # The output from this operator isn't generally connected to other operators.
-        # If someone is using it that way, we'll assume that the user wants to know that 
+        # If someone is using it that way, we'll assume that the user wants to know that
         #  the input image has become dirty and may need to be written to disk again.
         self.WriteImage.setDirty(slice(None))
 
@@ -588,4 +601,3 @@ if __name__ == '__main__':
 
     success = opStackToH5.WriteImage.value
     assert success
-
