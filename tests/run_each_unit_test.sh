@@ -24,6 +24,9 @@ SKIP_GUI_TESTS=${SKIP_GUI_TESTS-0}
 
 SKIP_UNTIL=${2-"RUN_ALL"}
 
+FAILURES=0
+BROKEN=()
+
 for f in `find $NOSE_ARG -iname "*test*.py" | grep -v nanshe` 
 do
   if echo $f | grep -q "testPixelClassificationBenchmarking.py"; then
@@ -68,7 +71,24 @@ do
   fi
   
   RETVAL=$?
-  if [[ $RETVAL -ne 0 ]]; then
-    exit $RETVAL
+  if [[ ${RETVAL} -ne 0 ]]; then
+    if [[ ${CONTINUE_ON_FAILURE} -lt 1 ]]; then
+      echo "Encountered a failure, exiting right away:"
+      echo "In order to continue testing set CONTINUE_ON_FAILURE=1"
+      exit ${RETVAL}
+    fi
+    ((FAILURES+=1))
+    BROKEN+=($f)
   fi
 done
+
+
+if [[ ${FAILURES} -ne 0 ]]; then
+  echo "Encountered ${FAILURES} failures in the following files:"
+  for f in ${BROKEN[@]}
+  do
+    echo $f
+  done
+
+  exit ${FAILURES}
+fi
