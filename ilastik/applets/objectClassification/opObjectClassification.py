@@ -765,17 +765,25 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
         export_file.add_columns("table", ids, Mode.List, Default.IlastikId)
 
-        # Object Prediction Labels
+        # Object User and Prediction Labels
         class_names = OrderedDict(enumerate(self.LabelNames.value, start=1))
         predictions = self.Predictions[lane_index]([]).wait()
+        labels = self.LabelInputs[lane_index]([]).wait()
 
         # Predicted classes
         named_predictions = []
+        named_labels = []
         for t, object_id in ids:
-             prediction_label = predictions[t][object_id]
-             prediction_name = class_names[prediction_label]
-             named_predictions.append(prediction_name)
-        export_file.add_columns("table", named_predictions, Mode.List, {"names": ("predicted_class",)})
+            prediction_label = predictions[t][object_id]
+            prediction_name = class_names[prediction_label]
+            named_predictions.append(prediction_name)
+            if object_id>=len(labels[t]) or labels[t][object_id]==0:
+                named_labels.append("0")
+            else:
+                named_labels.append(class_names[labels[t][object_id]])
+
+        export_file.add_columns("table", named_labels, Mode.List, {"names": ("User Label",)})
+        export_file.add_columns("table", named_predictions, Mode.List, {"names": ("Predicted Class",)})
 
         # Class probabilities
         probabilities = self.Probabilities[lane_index]([]).wait()
