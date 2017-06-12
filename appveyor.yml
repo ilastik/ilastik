@@ -1,5 +1,5 @@
 cache:
-  - C:\ilastik.exe
+  - C:\ilastik.exe -> appveyor.yml
 install:
   - ps: >-
       if (-Not (Test-Path "C:\ilastik.exe")){
