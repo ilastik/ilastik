@@ -1,0 +1,37 @@
+clone_folder: c:\projects\lazyflow
+
+cache:
+  - C:\ilastik.exe -> appveyor.yml
+
+install:
+  - ps: >-
+      if (-Not (Test-Path "C:\ilastik.exe")){
+        wget http://files.ilastik.org/ilastik-1.2.2rc4-win64.exe -OutFile C:\ilastik.exe
+      }
+  - c:\ilastik.exe /VERYSILENT /DIR=C:\ilastik
+  - timeout 60
+  - ps: rm -Force -Recurse c:\ilastik\ilastik-meta
+  - cd \
+  - git clone https://github.com/ilastik/ilastik-meta c:\ilastik\ilastik-meta
+  - cd ilastik\ilastik-meta
+  - git submodule update --init --recursive
+  - git submodule foreach "git checkout master"
+  - ps: rm -Force -Recurse c:\ilastik\ilastik-meta\lazyflow
+  - ps: cp -recurse C:\projects\lazyflow c:\ilastik\ilastik-meta\lazyflow
+
+build: off
+
+test_script:
+  - cd \
+  - cd ilastik\ilastik-meta\lazyflow\tests
+  - set Path=C:\ilastik;C:\ilastik\scripts;%Path%
+  - >
+      nosetests
+      --nologcapture
+      --ignore-files=testInterpolatedFeatures.py
+      --with-xunit
+      --xunit-file=nosetests.lazyflow.xml
+      .
+
+# on_finish:
+#  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
