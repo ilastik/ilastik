@@ -7,13 +7,18 @@ ImageView2D { background-color:qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                       stop: 0 #000000, stop: 1 #ffffff); }
 /* Applet bar */
 QToolBox { border: 1px inset gray }
-QToolBox::tab { border:2px outset lightgray }
-
-/* Drawer */
+QToolBox::tab {
+    background-color: white;
+    border-top: 2px solid darkgray;
+    border-bottom: 2px solid darkgray;
+}
 QToolBox::tab:selected {
     font: bold;
+    border-bottom: 0px;
 }
-
+QToolBox::Tab QWidget {
+    #background-color: white;
+}
 /********************************************
 The entries below are now commented out because it is better 
 to defer to the user's system color settings than to hard-code 
