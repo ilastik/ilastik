@@ -410,7 +410,12 @@ class OpDataSelection(Operator):
                 op5.Input.connect(providerSlot)
                 providerSlot = op5.Output
                 self._opReaders.append(op5)
-            
+
+            # make sure that x and y axes are present in the selected axis order
+            if 'x' not in providerSlot.meta.axistags or 'y' not in providerSlot.meta.axistags:
+                raise DatasetConstraintError("DataSelection",
+                                             "Data must always have at leaset the axes x and y for ilastik to work.")
+
             # If the channel axis is not last (or is missing),
             #  make sure the axes are re-ordered so that channel is last.
             if providerSlot.meta.axistags.index('c') != len( providerSlot.meta.axistags )-1:

@@ -463,7 +463,9 @@ class FeatureSelectionDialog(QtGui.QDialog):
             a, data_shape = createDataSource(data[:,:,i], True)
             data_sources.append(a)
         self.editor.dataShape = list(data_shape)
-        if data.shape[2] == 3:
+        if data.shape[2] == 2:
+            new_layer = RGBALayer(data_sources[0], data_sources[1])
+        elif data.shape[2] == 3:
             new_layer = RGBALayer(data_sources[0], data_sources[1], data_sources[2])
         elif data.shape[2] == 4:
             new_layer = RGBALayer(data_sources[0], data_sources[1], data_sources[2], data_sources[3])
