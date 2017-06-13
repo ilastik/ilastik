@@ -27,7 +27,7 @@ import numpy as np
 import sip
 from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QDoubleSpinBox, QVBoxLayout, QMenu, QAction, \
-                        QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QComboBox, QPushButton
+                        QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QComboBox, QPushButton, QCheckBox
 
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
@@ -38,7 +38,6 @@ from lazyflow.request import Request
 from lazyflow.utility import TransposedView
 
 import logging
-from PyQt4.Qt import QCheckBox
 logger = logging.getLogger(__name__)
 
 class WsdtGui(LayerViewerGui):

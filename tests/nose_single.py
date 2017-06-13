@@ -22,27 +22,6 @@ import sys
 import nose
 import threading
 
-def _init_threading_h5py_monkeypatch():
-    """
-    Due to an h5py bug [1], spurious error messages aren't properly 
-    hidden if they occur in any thread other than the main thread.
-    As a workaround, here we monkeypatch threading.Thread.run() to 
-    make sure all threads silence errors from h5py.
-    
-    [1]: https://github.com/h5py/h5py/issues/580
-    See also: https://github.com/ilastik/ilastik/issues/1120
-    """
-    import h5py
-    if map(int, h5py.__version__.split('.')) <= [2,5,0]:
-        import threading
-        run_old = threading.Thread.run
-        def run(*args, **kwargs):
-            h5py._errors.silence_errors()
-            run_old(*args, **kwargs)
-        threading.Thread.run = run
-
-_init_threading_h5py_monkeypatch()
-
 from helpers import mainThreadHelpers
 
 # For some mysterious reason, we need to make sure that volumina.api gets imported 
