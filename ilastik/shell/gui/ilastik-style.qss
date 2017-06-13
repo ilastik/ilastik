@@ -15,9 +15,7 @@ QToolBox::tab {
 QToolBox::tab:selected {
     font: bold;
     border-bottom: 0px;
-}
-QToolBox::Tab QWidget {
-    #background-color: white;
+    background-color: -1;
 }
 /********************************************
 The entries below are now commented out because it is better 
