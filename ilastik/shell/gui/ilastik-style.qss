@@ -9,6 +9,11 @@ ImageView2D { background-color:qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
 QToolBox { border: 1px inset gray }
 QToolBox::tab { border:2px outset lightgray }
 
+/* Drawer */
+QToolBox::tab:selected {
+    font: bold;
+}
+
 /********************************************
 The entries below are now commented out because it is better 
 to defer to the user's system color settings than to hard-code 
