@@ -14,7 +14,7 @@ QToolBox::tab {
 }
 QToolBox::tab:selected {
     font: bold;
-    border-bottom: 0px;
+    border-bottom: 1px solid darkgray;
     background-color: -1;
 }
 /********************************************
