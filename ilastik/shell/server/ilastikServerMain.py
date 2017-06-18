@@ -8,6 +8,7 @@ from __future__ import division, print_function
 from flask import Flask
 from ilastik.shell.server.ilastikServerAPI import ilastikServerAPI
 from ilastik.shell.server.ilastikServer import IlastikServer
+from functools import partial
 
 
 def create_app():
@@ -24,7 +25,14 @@ def create_app():
 def create_interactive_app():
     from threading import Thread
     app = create_app()
-    t = Thread(target=app.run)
+
+    def run_until_stop(some_flask_app):
+        print('Running flask server. navigate to ".../shutdown" to stop.')
+        some_flask_app.run()
+        print('app must have exited')
+
+    t = Thread(target=partial(run_until_stop, app))
+    t.start()
     return (t, app)
 
 
