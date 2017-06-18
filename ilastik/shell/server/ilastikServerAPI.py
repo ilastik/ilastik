@@ -21,13 +21,6 @@ def print_hello():
     return "\n".join(r)
 
 
-@ilastikServerAPI.route('/api/workflow/current_workflow_name')
-def get_current_workflow_name():
-    logger.debug('getting current workflow name')
-    workflow_name = app._ilastikServer.get_current_workflow_name()
-    return jsonify(workflow_name=workflow_name)
-
-
 def has_no_empty_params(rule):
     """http://stackoverflow.com/a/13318415
     """
@@ -36,7 +29,7 @@ def has_no_empty_params(rule):
     return len(defaults) >= len(arguments)
 
 
-@ilastikServerAPI.route('/api/map')
+@ilastikServerAPI.route('/api-map')
 def get_GET_map():
     links = []
     for rule in app.url_map.iter_rules():
@@ -46,14 +39,6 @@ def get_GET_map():
 
     return "<br>".join("<a href={url:s}>{endpoint:s}</a>".format(url=url, endpoint=endpoint)
                        for url, endpoint in links)
-
-
-@ilastikServerAPI.route('/api/new-project', methods=['POST'])
-def new_project():
-    project_name = request.json.get('project_name')
-    project_type = request.json.get('project_type')
-    app._ilastikServer.create_project(project_name, project_type)
-    return jsonify(project_name=project_name, project_type=project_type)
 
 
 def shutdown_server():
