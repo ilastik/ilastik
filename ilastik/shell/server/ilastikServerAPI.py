@@ -25,6 +25,7 @@ def print_hello():
 def get_current_workflow_name():
     logger.debug('getting current workflow name')
     workflow_name = app._ilastikServer.get_current_workflow_name()
+    return jsonify(workflow_name=workflow_name)
 
 
 def has_no_empty_params(rule):
@@ -47,6 +48,12 @@ def get_GET_map():
                        for url, endpoint in links)
 
 
+@ilastikServerAPI.route('/api/new-project', methods=['POST'])
+def new_project():
+    project_name = request.json.get('project_name')
+    project_type = request.json.get('project_type')
+    app._ilastikServer.create_project(project_name, project_type)
+    return jsonify(project_name=project_name, project_type=project_type)
 
 
 def shutdown_server():
