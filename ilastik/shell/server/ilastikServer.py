@@ -1,36 +1,38 @@
-from ilastik.shell.shellAbc import ShellABC
+"""Mediates between ilastikServerShell and ilastikServerAPI"""
+from __future__ import print_function, division
+import logging
+import os
+
+from ilastik.shell.server.ilastikServerShell import ServerShell
+
+logger = logging.getLogger(__name__)
+
+CONFIG = {
+    'projects_path': os.path.expanduser('~/temp/ilastikserver')
+}
 
 
-class ServerShell(object):
-    """
-    For now, this class is a stand-in for the GUI shell (used when running
-    ilastik as a server application).
-    """
-    def workflow(self):
-        raise NotImplementedError
+class IlastikServer(object):
+    def __init__(self):
+        super(IlastikServer, self).__init__()
+        self._server_shell = ServerShell()
 
-    def currentImageIndex(self):
-        raise NotImplementedError
+    def get_current_workflow_name(self):
+        workflow = self._server_shell.workflow
+        if workflow is not None:
+            return workflow.workflowName
+        else:
+            return None
 
-    def createAndLoadNewProject(self, newProjectFilePath, workflow_class):
-        """
-        """
-        raise NotImplementedError
+    def create_project(self, project_name, project_type='pixel_classification'):
+        from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
+        if project_type == 'pixel_classification':
+            self._server_shell.createAndLoadNewProject(
+                os.path.join(
+                    CONFIG['projects_path'],
+                    "{project_name:s}.h5".format(project_name=project_name)),
+                PixelClassificationWorkflow
+            )
+        else:
+            raise ValueError('ProjectType needs to be PixelClassification for now')
 
-    def openProjectFile(self, projectFilePath):
-        """
-        """
-        raise NotImplementedError
-
-    def setAppletEnabled(self, applet, enabled):
-        pass
-
-    def isAppletEnabled(self, applet):
-        return False
-
-    def enableProjectChanges(self, enabled):
-        pass
-
-
-assert issubclass(ServerShell, ShellABC), (
-    "ServerShell does not satisfy the generic shell interface!")
