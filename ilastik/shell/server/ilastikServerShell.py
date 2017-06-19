@@ -54,11 +54,6 @@ class ServerShell(object):
     def enableProjectChanges(self, enabled):
         pass
 
-    def __len__(self):
-        return self.appletBar.count()
-
-    def __getitem__(self, index):
-        return self._applets[index]
 
 
 assert issubclass(ServerShell, ShellABC), (

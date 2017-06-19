@@ -17,7 +17,7 @@ ilastikServerAPI = Blueprint('ilastikServerAPI', __name__)
 def print_hello():
     logger.debug('Reached ilastikServerAPI')
     r = ['<a href=%s>api</a>' % url_for('.get_GET_map')]
-    r.append(str(app._ilastikServer))
+    r.append(str(app._ilastik_server))
     return "\n".join(r)
 
 

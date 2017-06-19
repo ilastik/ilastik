@@ -16,5 +16,5 @@ workflowAPI = Blueprint('workflowAPI', __name__)
 @workflowAPI.route('/current_workflow_name')
 def get_current_workflow_name():
     logger.debug('getting current workflow name')
-    workflow_name = app._ilastikServer.get_current_workflow_name()
+    workflow_name = app._ilastik_server.get_current_workflow_name()
     return jsonify(workflow_name=workflow_name)

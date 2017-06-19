@@ -239,6 +239,19 @@ class SerialSlot(object):
                 subname = self.subname.format(i)
                 self._serialize(subgroup, subname, slot[i])
 
+    def serializeToDict(self, ret_dict, name, slot):
+        """Serializes itself to dictionary
+        """
+        # do something with the types here, for now, populate the whole thing
+        if slot.level == 0:
+            ret_dict[name] = slot.value
+        else:
+            sub_list = []
+            for i, subslot in enumerate(slot):
+                subname = self.subname.format(i)
+                sub_list.append(self.serializeToDict())
+            ret_dict[name] = sub_list
+
     def deserialize(self, group):
         """Performs tasks common to all deserializations.
 
@@ -991,6 +1004,15 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         if nslots == 0:
             return 0
         return divmod(100, nslots)[0]
+
+
+    def serializeToDict(self):
+        """Generate a dictionary representation of the applet state.
+        """
+        ret_dict = {
+            'storageVersion': self.version
+        }
+
 
     def serializeToHdf5(self, hdf5File, projectFilePath):
         """Serialize the current applet state to the given hdf5 file.

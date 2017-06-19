@@ -19,8 +19,8 @@ def create_app():
     """
     # TODO: command line handling
     app = Flask(__name__)
-    ilastikServer = IlastikServer()
-    app._ilastikServer = ilastikServer
+    ilastik_server = IlastikServer()
+    app._ilastik_server = ilastik_server
     app.register_blueprint(ilastikServerAPI)
     app.register_blueprint(appletAPI, url_prefix='/api/applet')
     app.register_blueprint(workflowAPI, url_prefix='/api/workflow')
