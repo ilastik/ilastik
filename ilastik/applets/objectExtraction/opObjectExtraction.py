@@ -602,14 +602,13 @@ class OpRegionFeatures(Operator):
         global_features = {}
         pool = RequestPool()
 
-
         def compute_for_one_plugin(plugin_name, feature_dict):
             plugin_inner = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
             global_features[plugin_name] = plugin_inner.plugin_object.compute_global(image, labels, feature_dict, axes)
 
-            if plugin_name == default_features_key:
-                continue
-            pool.add(Request(partial(compute_for_one_plugin, plugin_name, feature_dict)))
+        for plugin_name, feature_dict in feature_names.items():
+            if plugin_name != default_features_key:
+                pool.add(Request(partial(compute_for_one_plugin, plugin_name, feature_dict)))
 
         pool.wait()
 
