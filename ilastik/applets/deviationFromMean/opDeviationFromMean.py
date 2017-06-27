@@ -77,10 +77,10 @@ class OpDeviationFromMean(Operator):
         result[:] = self.Input[subindex].get(roi).wait() - result
 
         # Scale
-        result[:] *= self.ScalingFactor.value
+        result[:] = result * self.ScalingFactor.value
 
         # Add constant offset
-        result[:] += self.Offset.value
+        result[:] = result + self.Offset.value
         
         return result
 
