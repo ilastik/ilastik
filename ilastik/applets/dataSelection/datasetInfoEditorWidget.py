@@ -289,10 +289,10 @@ class DatasetInfoEditorWidget(QDialog):
         if nickname is None:
             self.nicknameEdit.setText("<multiple>")
         else:
-            self.nicknameEdit.setText( nickname.decode('utf-8') )
+            self.nicknameEdit.setText( nickname )
 
     def _applyNicknameToTempOps(self):
-        newNickname = self.nicknameEdit.text().encode('utf-8')
+        newNickname = self.nicknameEdit.text()
         if "<multiple>" in newNickname:
             return
 
@@ -748,9 +748,9 @@ class DatasetInfoEditorWidget(QDialog):
 
         if showpaths:
             self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
-            self.storageComboBox.addItem( ("Absolute Link: " + absPath).decode(), userData=StorageLocation.AbsoluteLink )
+            self.storageComboBox.addItem( ("Absolute Link: " + absPath), userData=StorageLocation.AbsoluteLink )
             if relPath is not None:
-                self.storageComboBox.addItem( ("Relative Link: " + relPath).decode(), userData=StorageLocation.RelativeLink )
+                self.storageComboBox.addItem( ("Relative Link: " + relPath), userData=StorageLocation.RelativeLink )
         else:
             self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
             self.storageComboBox.addItem( "Absolute Link", userData=StorageLocation.AbsoluteLink )

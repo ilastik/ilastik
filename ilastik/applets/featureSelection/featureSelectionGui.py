@@ -300,7 +300,6 @@ class FeatureSelectionGui(LayerViewerGui):
             options |= QFileDialog.DontUseNativeDialog
 
         filenames, _filter = QFileDialog.getOpenFileNames(self, 'Open Feature Files', '.', options=options)
-        filenames = [fn.encode(sys.getfilesystemencoding()) for fn in filenames]
         
         # Check if file exists
         if not filenames:

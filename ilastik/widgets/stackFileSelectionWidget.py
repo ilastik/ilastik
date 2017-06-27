@@ -142,7 +142,6 @@ class StackFileSelectionWidget(QDialog):
         # Find the directory of the most recently opened image file
         mostRecentStackDirectory = PreferencesManager().get( 'DataSelection', 'recent stack directory' )
         if mostRecentStackDirectory is not None:
-            mostRecentStackDirectory = mostRecentStackDirectory.decode( sys.getfilesystemencoding() )
             defaultDirectory = os.path.split(mostRecentStackDirectory)[0]
         else:
             defaultDirectory = os.path.expanduser('~')
@@ -159,7 +158,7 @@ class StackFileSelectionWidget(QDialog):
             # User cancelled
             return
 
-        PreferencesManager().set('DataSelection', 'recent stack directory', directory.encode(sys.getfilesystemencoding()))
+        PreferencesManager().set('DataSelection', 'recent stack directory', directory)
 
         self.directoryEdit.setText( directory )
         try:
@@ -259,7 +258,6 @@ class StackFileSelectionWidget(QDialog):
         # Find the directory of the most recently opened image file
         mostRecentStackDirectory = PreferencesManager().get( 'DataSelection', 'recent stack directory' )
         if mostRecentStackDirectory is not None:
-            mostRecentStackDirectory = mostRecentStackDirectory.decode( sys.getfilesystemencoding() )
             defaultDirectory = os.path.split(mostRecentStackDirectory)[0]
         else:
             defaultDirectory = os.path.expanduser('~')
@@ -279,8 +277,6 @@ class StackFileSelectionWidget(QDialog):
         fileNames, _filter = QFileDialog.getOpenFileNames( 
                      self, "Select Images for Stack", defaultDirectory, filt, options=options )
         
-        fileNames = [name.encode(sys.getfilesystemencoding()) for name in fileNames]
-
         msg = ''
         if len(fileNames) == 0:
             return

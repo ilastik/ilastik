@@ -197,20 +197,20 @@ class ListModel(QAbstractTableModel):
 
         if role == Qt.EditRole and index.column() == self.ColumnID.Name:
             name = self._elements[index.row()].name
-            return name.decode('utf-8')
+            return name
 
         elif role == Qt.ToolTipRole and index.column() == self.ColumnID.Delete:
             s = "Delete {}".format(self._elements[index.row()].name)
-            return s.decode('utf-8')
+            return s
 
         elif role == Qt.ToolTipRole and index.column() == self.ColumnID.Name:
             suffix = self._getToolTipSuffix(index.row())
             s = "{}\nDouble click to rename {}".format(
                 self._elements[index.row()].name, suffix)
-            return s.decode('utf-8')
+            return s
         elif role == Qt.DisplayRole and index.column() == self.ColumnID.Name:
             name = self._elements[index.row()].name
-            return name.decode('utf-8')
+            return name
 
         if role == Qt.DecorationRole and index.column() == self.ColumnID.Delete:
             if index.row() in self.unremovable_rows: return
@@ -256,7 +256,7 @@ class ListModel(QAbstractTableModel):
         '''
         if role == Qt.EditRole  and index.column() == self.ColumnID.Name:
             row = index.row()
-            self._elements[row].name = value.encode('utf-8')
+            self._elements[row].name = value
             self.dataChanged.emit(index, index)
             return True
 

@@ -1044,7 +1044,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         if not fileName:
             raise RuntimeError("Could not find external data: " + path)
         else:
-            return fileName.encode( sys.getfilesystemencoding() )
+            return fileName
         
     #######################
     # Optional methods    #

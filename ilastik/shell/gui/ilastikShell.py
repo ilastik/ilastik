@@ -675,12 +675,11 @@ class IlastikShell(QMainWindow):
                 defaultPath = os.path.join(os.path.expanduser('~'), filename)
             else:
                 defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
-            statsPath, _filter = QFileDialog.getSaveFileName(
+            stats_path, _filter = QFileDialog.getSaveFileName(
                 self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
                 options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
-            if statsPath:
-                stats_path = statsPath.encode('utf-8')
+            if stats_path:
                 pstats_path = os.path.splitext(stats_path)[0] + '.pstats'
                 PreferencesManager().set('shell', 'recent sorted profile stats', stats_path)
 
@@ -708,12 +707,11 @@ class IlastikShell(QMainWindow):
                 defaultPath = os.path.join(os.path.expanduser('~'), filename)
             else:
                 defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
-            statsPath, _filter = QFileDialog.getSaveFileName(
+            stats_path, _filter = QFileDialog.getSaveFileName(
                 self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
                 options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
-            if statsPath:
-                stats_path = statsPath.encode('utf-8')
+            if stats_path:
                 PreferencesManager().set('shell', 'recent sorted profile stats', stats_path)
 
                 # Export the yappi stats to builtin pstats format, 
@@ -830,12 +828,11 @@ class IlastikShell(QMainWindow):
             else:
                 defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
             
-            htmlPath, _filter = QFileDialog.getSaveFileName(
+            html_path, _filter = QFileDialog.getSaveFileName(
                 self, "Export allocation tracking table", defaultPath, "HTML files (*.html)",
                 options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
-            if htmlPath:
-                html_path = htmlPath.encode('utf-8')
+            if html_path:
                 PreferencesManager().set('shell', 'allocation tracking output html', html_path)
                 self._allocation_tracker.write_html(html_path)
 

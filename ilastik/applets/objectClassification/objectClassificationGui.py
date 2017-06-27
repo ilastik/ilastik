@@ -1137,6 +1137,6 @@ class BadObjectsDialog(QMessageBox):
         parts = []
         for s in (self.text(), self.informativeText(), self.detailedText()):
             if len(s) > 0:
-                parts.append(s.encode( sys.getfilesystemencoding() ))
+                parts.append(s)
         msg = "\n".join(parts)
         logger.warn(msg)

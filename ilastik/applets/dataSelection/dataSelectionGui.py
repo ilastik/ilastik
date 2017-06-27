@@ -383,6 +383,7 @@ class DataSelectionGui(QWidget):
         """
         # Find the directory of the most recently opened image file
         mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
+        mostRecentImageFile = str(mostRecentImageFile)
         if mostRecentImageFile is not None:
             defaultDirectory = os.path.split(mostRecentImageFile)[0]
         else:
@@ -429,8 +430,6 @@ class DataSelectionGui(QWidget):
         else:
             # otherwise, use native dialog of the present platform
             fileNames, _filter = QFileDialog.getOpenFileNames(parent_window, "Select Images", defaultDirectory, filt_all_str)
-        # Convert from QtString to python str
-        fileNames = [fn.encode( sys.getfilesystemencoding() ) for fn in fileNames]
         return fileNames
 
     def _findFirstEmptyLane(self, roleIndex):

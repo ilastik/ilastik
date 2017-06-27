@@ -394,7 +394,7 @@ class DataSelectionSerializer( AppletSerializer ):
         try:
             datasetInfo.nickname = infoGroup['nickname'].value.decode('utf-8')
         except KeyError:
-            datasetInfo.nickname = PathComponents(datasetInfo.filePath).filenameBase.decode('utf-8')
+            datasetInfo.nickname = PathComponents(datasetInfo.filePath).filenameBase
         
         try:
             datasetInfo.fromstack = infoGroup['fromstack'].value

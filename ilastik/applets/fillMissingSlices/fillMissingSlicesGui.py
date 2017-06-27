@@ -99,7 +99,7 @@ class FillMissingSlicesGui(LayerViewerGui):
 
             self.topLevelOperatorView.OverloadDetector.setValue(pkl)
             logger.debug("Loaded detectors from file '{}'".format(fname))
-            self._recentDetectorDir = os.path.dirname( fname.encode( sys.getfilesystemencoding() ))
+            self._recentDetectorDir = os.path.dirname( fname )
 
     def _loadHistogramsButtonPressed(self):
         fname, _filter = QFileDialog.getOpenFileName(
@@ -127,7 +127,7 @@ class FillMissingSlicesGui(LayerViewerGui):
                 f.write(self.topLevelOperatorView.Detector[:].wait())
 
             logger.debug("Exported detectors to file '{}'".format(fname))
-            self._recentExportDir = os.path.dirname( fname.encode( sys.getfilesystemencoding() ))
+            self._recentExportDir = os.path.dirname( fname )
 
     def _trainButtonPressed(self):
         self.topLevelOperatorView.train()

@@ -199,17 +199,17 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         # Name
         if index.column() == DatasetDetailedInfoColumn.Nickname:
-            return datasetInfo.nickname.decode('utf-8' )
+            return datasetInfo.nickname
 
         # Location
         if index.column() == DatasetDetailedInfoColumn.Location:
             if datasetInfo.location == DatasetInfo.Location.FileSystem:
                 if isUrl(datasetInfo.filePath) or os.path.isabs(datasetInfo.filePath):
                     text = "Absolute Link: {}".format( filePathComponents.externalPath )
-                    return text.decode('utf-8')
+                    return text
                 else:
                     text = "Relative Link: {}".format( filePathComponents.externalPath )
-                    return text.decode('utf-8')
+                    return text
             else:
                 return "Project File"
 

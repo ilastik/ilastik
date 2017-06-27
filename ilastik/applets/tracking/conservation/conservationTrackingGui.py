@@ -216,7 +216,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     def _onTimeoutBoxChanged(self, *args):
         inString = str(self._drawer.timeoutBox.text())
         if self._allowedTimeoutInputRegEx.match(inString) is None:
-            self._drawer.timeoutBox.setText(inString.decode("utf8").encode("ascii", "replace")[:-1])
+            self._drawer.timeoutBox.setText(inString[:-1])
 
     def _setRanges(self, *args):
         super(ConservationTrackingGui, self)._setRanges()        

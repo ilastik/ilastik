@@ -642,7 +642,6 @@ class ObjectExtractionGui(LayerViewerGui):
         fname, _filter = QFileDialog.getSaveFileName(self, caption='Export Computed Features', 
                                         filter="Pickled Objects (*.pkl);;All Files (*)")
         
-        fname = fname.encode( sys.getfilesystemencoding() )
         if len(fname)>0: #not cancelled
             with open(fname, 'w') as f:
                 pickle.dump(mainOperator.RegionFeatures(list()).wait(), f, 0)

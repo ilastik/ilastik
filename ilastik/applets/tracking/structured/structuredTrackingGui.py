@@ -295,7 +295,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     def _onTimeoutBoxChanged(self, *args):
         inString = str(self._drawer.timeoutBox.text())
         if self._allowedTimeoutInputRegEx.match(inString) is None:
-            self._drawer.timeoutBox.setText(inString.decode("utf8").encode("ascii", "replace")[:-1])
+            self._drawer.timeoutBox.setText(inString[:-1])
 
     def _onMaxNumObjChanged(self):
         self._maxNumObj = self.topLevelOperatorView.MaxNumObj.value

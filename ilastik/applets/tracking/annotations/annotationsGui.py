@@ -1560,7 +1560,6 @@ class AnnotationsGui(LayerViewerGui):
             options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
         out_fn, _filter = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/mergers.csv", options=options)
-        out_fn = out_fn.encode( sys.getfilesystemencoding() )
         
         if out_fn is None or str(out_fn) == '':            
             return
@@ -1591,7 +1590,6 @@ class AnnotationsGui(LayerViewerGui):
             options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
         directory = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options)
-        directory = directory.encode( sys.getfilesystemencoding() )      
         
         if directory is None or str(directory) == '':            
             return
@@ -1716,7 +1714,6 @@ class AnnotationsGui(LayerViewerGui):
             options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
         directory = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options)
-        directory = directory.encode( sys.getfilesystemencoding() )
         if directory is None or len(str(directory)) == 0:
             return
         
