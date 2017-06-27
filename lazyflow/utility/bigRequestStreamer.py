@@ -120,18 +120,23 @@ class BigRequestStreamer(object):
             def roiGen():
                 block_iter = block_starts.__iter__()
                 while True:
-                    block_start = next(block_iter)
-    
-                    # Use offset blocking
-                    offset_block_start = block_start - self._bigRoi[0]
-                    offset_data_shape = numpy.subtract(self._bigRoi[1], self._bigRoi[0])
-                    offset_block_bounds = getBlockBounds( offset_data_shape, blockshape, offset_block_start )
-                    
-                    # Un-offset
-                    block_bounds = ( offset_block_bounds[0] + self._bigRoi[0],
-                                     offset_block_bounds[1] + self._bigRoi[0] )
-                    logger.debug( "Requesting Roi: {}".format( block_bounds ) )
-                    yield block_bounds
+                    try:
+                        block_start = next(block_iter)
+                    except StopIteration:
+                        # As of Python 3.7, not allowed to let StopIteration exceptions escape a generator
+                        # https://www.python.org/dev/peps/pep-0479
+                        break
+                    else:
+                        # Use offset blocking
+                        offset_block_start = block_start - self._bigRoi[0]
+                        offset_data_shape = numpy.subtract(self._bigRoi[1], self._bigRoi[0])
+                        offset_block_bounds = getBlockBounds( offset_data_shape, blockshape, offset_block_start )
+                        
+                        # Un-offset
+                        block_bounds = ( offset_block_bounds[0] + self._bigRoi[0],
+                                         offset_block_bounds[1] + self._bigRoi[0] )
+                        logger.debug( "Requesting Roi: {}".format( block_bounds ) )
+                        yield block_bounds
             
         else:
             # Absolute blocking.
