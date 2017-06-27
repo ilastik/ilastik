@@ -104,7 +104,7 @@ class ObjectExtractionSerializer(AppletSerializer):
                             selfdepends=False,
                             shrink_to_bb=False,
                             compression_level=1),
-            SerialDictSlot(operator.Features, transform=str),
+            SerialDictSlot(operator.Features),
             SerialObjectFeaturesSlot(operator.BlockwiseRegionFeatures,
                                      operator.RegionFeaturesCacheInput,
                                      operator.RegionFeaturesCleanBlocks,

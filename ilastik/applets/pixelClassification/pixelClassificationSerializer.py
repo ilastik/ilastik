@@ -35,8 +35,7 @@ class PixelClassificationSerializer(AppletSerializer):
         self._serialClassifierSlot =  SerialClassifierSlot(operator.Classifier,
                                                            operator.classifier_cache,
                                                            name="ClassifierForests")
-        slots = [SerialListSlot(operator.LabelNames,
-                                transform=str),
+        slots = [SerialListSlot(operator.LabelNames),
                  SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
                  SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
                  SerialPickledValueSlot(operator.Bookmarks),

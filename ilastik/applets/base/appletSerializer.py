@@ -66,6 +66,7 @@ def slicingToString(slicing):
     """Convert the given slicing into a string of the form
     '[0:1,2:3,4:5]'
 
+    The result is a utf-8 encoded bytes, for easy storage via h5py
     """
     strSlicing = '['
     for s in slicing:
@@ -76,13 +77,16 @@ def slicingToString(slicing):
 
     strSlicing = strSlicing[:-1] # Drop the last comma
     strSlicing += ']'
-    return strSlicing
+    return strSlicing.encode('utf-8')
 
 def stringToSlicing(strSlicing):
     """Parse a string of the form '[0:1,2:3,4:5]' into a slicing (i.e.
     list of slices)
 
     """
+    if isinstance(strSlicing, bytes):
+        strSlicing = strSlicing.decode('utf-8')
+    
     slicing = []
     strSlicing = strSlicing[1:-1] # Drop brackets
     sliceStrings = strSlicing.split(',')
@@ -202,12 +206,15 @@ class SerialSlot(object):
 
     @staticmethod
     def _saveValue(group, name, value):
-        """Seperate so that subclasses can override, if necessary.
+        """Separate so that subclasses can override, if necessary.
 
         For instance, SerialListSlot needs to save an extra attribute
         if the value is an empty list.
 
         """
+        if isinstance(value, str):
+            # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
+            value = value.encode('utf-8')
         group.create_dataset(name, data=value)
 
     def _serialize(self, group, name, slot):
@@ -251,6 +258,9 @@ class SerialSlot(object):
     @staticmethod
     def _getValue(subgroup, slot):
         val = subgroup[()]
+        if isinstance(val, bytes):
+            # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
+            val = val.decode('utf-8')
         slot.setValue(val)
 
     def _deserialize(self, subgroup, slot):
@@ -329,7 +339,15 @@ class SerialListSlot(SerialSlot):
         isempty = (len(value) == 0)
         if isempty:
             value = numpy.empty((1,))
-        sg = group.create_dataset(name, data=list(map(self._store_transform, value)))
+        
+        data = list(map(self._store_transform, value))
+        
+        # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
+        for i in range(len(data)):
+            if isinstance(data[i], str):
+                data[i] = data[i].encode('utf-8')
+
+        sg = group.create_dataset(name, data=data)
         sg.attrs['isEmpty'] = isempty
 
     @timeLogged(logger, logging.DEBUG)
@@ -349,7 +367,13 @@ class SerialListSlot(SerialSlot):
                 # How can this happen, anyway...?
                 return
             else:
-                self.inslot.setValue(self._iterable(list(map(self.transform, subgroup[()]))))
+                data = list(map(self.transform, subgroup[()]))
+                
+                # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
+                for i in range(len(data)):
+                    if isinstance(data[i], bytes):
+                        data[i] = data[i].decode('utf-8')
+                self.inslot.setValue(self._iterable(data))
         self.dirty = False
 
 class SerialBlockSlot(SerialSlot):
@@ -744,8 +768,10 @@ class SerialDictSlot(SerialSlot):
             if isinstance(v, dict):
                 self._saveValue(sg, key, v)
             else:
+                if isinstance(v, str):
+                    # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
+                    v = v.encode('utf-8')
                 sg.create_dataset(str(key), data=v)
-
 
     def _getValueHelper(self, subgroup):
         result = {}
@@ -754,6 +780,10 @@ class SerialDictSlot(SerialSlot):
                 value = self._getValueHelper(subgroup[key])
             else:
                 value = subgroup[key][()]
+                if isinstance(value, bytes):
+                    # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
+                    value = value.decode('utf-8')
+                
             result[self.transform(key)] = value
         return result
 

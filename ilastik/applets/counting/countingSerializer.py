@@ -218,8 +218,7 @@ class CountingSerializer(AppletSerializer):
                                                    operator,
                                                    name='Predictions',
                                                    subname='predictions{:04d}',)
-        slots = [SerialListSlot(operator.LabelNames,
-                                transform=str),
+        slots = [SerialListSlot(operator.LabelNames),
                  SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
                  SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
                  SerialBlockSlot(operator.LabelImages,

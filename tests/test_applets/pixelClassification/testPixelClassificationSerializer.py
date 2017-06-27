@@ -188,7 +188,7 @@ class TestPixelClassificationSerializer(object):
     
         # Create an empty project
         with h5py.File(testProjectName) as testProject:
-            testProject.create_dataset("ilastikVersion", data="1.0.0")
+            testProject.create_dataset("ilastikVersion", data=b"1.0.0")
             
             # Create an operator to work with and give it some input
             g = Graph()
@@ -228,7 +228,8 @@ class TestPixelClassificationSerializer(object):
             assert (operatorToSave.LabelImages[0][...].wait() == operatorToLoad.LabelImages[0][...].wait()).all()
             assert (operatorToSave.LabelImages[0][...].wait() == labeldata[...]).all()
 
-            assert operatorToSave.LabelNames.value == operatorToLoad.LabelNames.value
+            assert operatorToSave.LabelNames.value == operatorToLoad.LabelNames.value, \
+                "{} != {}".format( operatorToSave.LabelNames.value, operatorToLoad.LabelNames.value )
             assert (numpy.array(operatorToSave.LabelColors.value) == numpy.array(operatorToLoad.LabelColors.value)).all()
             assert (numpy.array(operatorToSave.PmapColors.value) == numpy.array(operatorToLoad.PmapColors.value)).all()
         

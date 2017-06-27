@@ -143,7 +143,7 @@ class ProjectManager(object):
 
         projectVersion = "0.5"
         if "ilastikVersion" in list(hdf5File.keys()):
-            projectVersion = hdf5File["ilastikVersion"].value
+            projectVersion = hdf5File["ilastikVersion"].value.decode('utf-8')
         
         # FIXME: version comparison
         if not isVersionCompatible(projectVersion):

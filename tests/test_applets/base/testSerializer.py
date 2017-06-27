@@ -127,7 +127,7 @@ class TestSerializer(unittest.TestCase):
         self.tmpDir = tempfile.mkdtemp()
         self.projectFilePath = os.path.join(self.tmpDir, "tmp_project.ilp")
         self.projectFile = h5py.File(self.projectFilePath)
-        self.projectFile.create_dataset("ilastikVersion", data='1.0.0')
+        self.projectFile.create_dataset("ilastikVersion", data=b'1.0.0')
 
     def tearDown(self):
         self.projectFile.close()
@@ -291,7 +291,7 @@ class TestSerialDictSlot(unittest.TestCase):
         self.tmpDir = tempfile.mkdtemp()
         self.projectFilePath = os.path.join(self.tmpDir, "tmp_project.ilp")
         self.projectFile = h5py.File(self.projectFilePath)
-        self.projectFile.create_dataset("ilastikVersion", data='0.6')
+        self.projectFile.create_dataset("ilastikVersion", data=b'0.6')
 
     def tearDown(self):
         self.projectFile.close()
