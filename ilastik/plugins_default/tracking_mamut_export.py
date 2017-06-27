@@ -6,6 +6,7 @@ from ilastik.plugins import TrackingExportFormatPlugin
 from mamutexport.mamutxmlbuilder import MamutXmlBuilder
 from mamutexport.bigdataviewervolumeexporter import BigDataViewerVolumeExporter
 import vigra
+import h5py
 
 def convertKeyName(key):
     key = key.replace('<', '_')
@@ -54,8 +55,10 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         bigDataViewerFile = filename + '_bdv.xml'
 
         rawImage = rawImageSlot([]).wait()
-        vigra.writeHDF5(rawImage, filename + '_raw.h5', 'exported_data')
-
+        rawImage = np.swapaxes(rawImage, 1, 3)
+        with h5py.File(filename + '_raw.h5', 'w') as f:
+            f.create_dataset('exported_data', data=rawImage)
+        
         bve = BigDataViewerVolumeExporter(filename + '_raw.h5', 'exported_data', rawImage.shape[1:4])
         for t in range(rawImage.shape[0]):
             bve.addTimePoint(t)

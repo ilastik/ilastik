@@ -398,9 +398,11 @@ class DataExportGui(QWidget):
                     
                     # Client hook
                     if self.parentApplet.postprocessCanCheckForExistingFiles():
-                        exportStatus = self.parentApplet.post_process_lane_export(lane_index, checkOverwriteFiles=True)
-                        if exportStatus == False:
-                            if self.showOverwriteQuestion():
+                        exportSuccessful = self.parentApplet.post_process_lane_export(lane_index, checkOverwriteFiles=True)
+                        if not exportSuccessful:
+                            userSelection = [None]
+                            self.showOverwriteQuestion(userSelection)
+                            if userSelection[0]:
                                 self.parentApplet.post_process_lane_export(lane_index, checkOverwriteFiles=False)
                     else:
                         self.parentApplet.post_process_lane_export(lane_index)
@@ -450,13 +452,15 @@ class DataExportGui(QWidget):
         QMessageBox.critical(self, "Failed to export", msg )
 
     @threadRouted
-    def showOverwriteQuestion(self):
+    def showOverwriteQuestion(self, userSelection):
+        assert isinstance(userSelection, list)
         reply = QMessageBox.question(self, 'Warning!',
                                          'This filename already exists. Are you sure you want to overwrite?',
                                          QMessageBox.Yes, QMessageBox.No)
         if reply == QMessageBox.Yes:
-            return True
-        return False
+            userSelection[0] = True
+        else:
+            userSelection[0] = False
 
     def exportResultsForSlot(self, opLane):
         # Make sure all 'on disk' layers are discarded so we aren't using those files any more.

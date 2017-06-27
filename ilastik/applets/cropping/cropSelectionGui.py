@@ -303,10 +303,13 @@ class CropSelectionGui(CroppingGui):
         selectedRow = ncrops-1
         color1 = self._cropControlUi.cropListModel[selectedRow].brushColor()
         color2 = self._cropControlUi.cropListModel[selectedRow].pmapColor()
+        shape = self.editor.dataShape[1:4]
+        starts = [int(0.25 *s) for s in shape]
+        stops = [int(0.75 *s) for s in shape]
         self.topLevelOperatorView.Crops.value[unicode(self._cropControlUi.cropListModel[selectedRow].name)] = {
             unicode("time"): (self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value),
-            unicode("starts"): self.editor.cropModel.get_roi_3d()[0],
-            unicode("stops"): self.editor.cropModel.get_roi_3d()[1],
+            unicode("starts"): starts,
+            unicode("stops"): stops,
             unicode("cropColor"): (color1.red(), color1.green(),color1.blue()),
             unicode("pmapColor"): (color2.red(), color2.green(),color2.blue())
         }

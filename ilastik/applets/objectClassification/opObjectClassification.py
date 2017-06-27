@@ -705,14 +705,6 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
             self.LabelInputs[lane_index].setValue(new_labels_timewise)
         
         logger.info("Label import FINISHED")
-
-
-    def createExportTable(self, lane, roi):
-        numLanes = len(self.SegmentationImages)
-        assert lane < numLanes, \
-            "Can't export features for lane {} (only {} lanes exist)"\
-            .format( lane, numLanes )
-        return self.opPredict[lane].createExportTable(roi)
     
     def addLane(self, laneIndex):
         numLanes = len(self.SegmentationImages)
@@ -774,17 +766,25 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         export_file.add_columns("table", list(range(sum(obj_count))), Mode.List, Default.KnimeId)
         export_file.add_columns("table", ids, Mode.List, Default.IlastikId)
 
-        # Object Prediction Labels
+        # Object User and Prediction Labels
         class_names = OrderedDict(enumerate(self.LabelNames.value, start=1))
         predictions = self.Predictions[lane_index]([]).wait()
+        labels = self.LabelInputs[lane_index]([]).wait()
 
         # Predicted classes
         named_predictions = []
+        named_labels = []
         for t, object_id in ids:
-             prediction_label = predictions[t][object_id]
-             prediction_name = class_names[prediction_label]
-             named_predictions.append(prediction_name)
-        export_file.add_columns("table", named_predictions, Mode.List, {"names": ("predicted_class",)})
+            prediction_label = predictions[t][object_id]
+            prediction_name = class_names[prediction_label]
+            named_predictions.append(prediction_name)
+            if object_id>=len(labels[t]) or labels[t][object_id]==0:
+                named_labels.append("0")
+            else:
+                named_labels.append(class_names[labels[t][object_id]])
+
+        export_file.add_columns("table", named_labels, Mode.List, {"names": ("User Label",)})
+        export_file.add_columns("table", named_predictions, Mode.List, {"names": ("Predicted Class",)})
 
         # Class probabilities
         probabilities = self.Probabilities[lane_index]([]).wait()
@@ -1216,51 +1216,6 @@ class OpObjectPredict(Operator):
         self.Predictions.setDirty(())
         self.Probabilities.setDirty(())
         self.ProbabilityChannels.setDirty(())
-
-    def createExportTable(self, roi):
-        if not self.Predictions.ready() or not self.Features.ready():
-            return None
-        
-        features = self.Features(roi).wait()
-        feature_table = OpObjectExtraction.createExportTable(features)
-        predictions = self.Predictions(roi).wait()
-        probs = self.Probabilities(roi).wait()
-        nobjs = []
-        for t, preds in predictions.items():
-            nobjs.append(preds.shape[0])
-        nobjs_total = sum(nobjs)
-        if nobjs_total==0:
-            logger.info("Prediction not run yet, won't be exported")
-            return feature_table
-        else:
-            assert nobjs_total==feature_table.shape[0]
-            
-            def fill_column(slot_value, column, name, channel=None):
-                start = 0
-                finish = start
-                for t, values in slot_value.items():
-                    #FIXME: remove the first object, it's always background
-                    finish = start + nobjs[t]
-                    if channel is None:
-                        column[name][start:finish] = values[:]
-                    else:
-                        column[name][start:finish] = values[:, channel]
-                    start = finish
-                    
-            pred_column = numpy.zeros(nobjs_total, {'names': ['Prediction'], 'formats': [numpy.dtype(numpy.uint8)]})
-            fill_column(predictions, pred_column, "Prediction")
-            joint_table = rfn.merge_arrays((feature_table, pred_column), flatten = True, usemask = False)
-            nchannels = probs[0].shape[-1]
-            columns = [feature_table, pred_column]
-            for ich in range(nchannels):
-                prob_column = numpy.zeros(nobjs_total, {'names': ['Probability of class %d'%ich], \
-                                                      'formats': [numpy.dtype(numpy.float32)]})
-                fill_column(probs, prob_column, 'Probability of class %d'%ich, ich)
-                columns.append(prob_column)
-                
-            joint_table = rfn.merge_arrays(columns, flatten = True, usemask = False)
-            return joint_table
-
 
 
 class OpRelabelSegmentation(Operator):

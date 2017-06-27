@@ -12,7 +12,7 @@ from ilastik.applets.tracking.conservation.opConservationTracking import OpConse
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
-from hytra.util.progressbar import DefaultProgressVisitor, CommandLineProgressVisitor
+from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgressVisitor
 
 import logging
 logger = logging.getLogger(__name__)
@@ -24,6 +24,19 @@ except ImportError:
         import multiHypoTracking_with_gurobi as mht
     except ImportError:
         logger.warning("Could not find any ILP solver")
+
+try:
+    import hytra
+    WITH_HYTRA = True
+except ImportError as e:
+    WITH_HYTRA = False
+
+if WITH_HYTRA:
+    from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
+else:
+    # Use old PgmLink tracking operator if we can't import Hytra (When OS is Windows)
+    from ilastik.applets.tracking.conservation.opConservationTrackingPgmLink import OpConservationTrackingPgmLink as OpConservationTracking
+    logger.info("Using old conservation tracking workflow (PgmLink)")
 
 class OpStructuredTracking(OpConservationTracking):
     Crops = InputSlot()
@@ -120,15 +133,19 @@ class OpStructuredTracking(OpConservationTracking):
         if not withBatchProcessing:
             gui = self.parent.parent.trackingApplet._gui.currentGui()
 
-        self.progressWindow = progressWindow
-        self.progressVisitor=progressVisitor
+        if WITH_HYTRA:
+            self.progressWindow = progressWindow
+            self.progressVisitor=progressVisitor
+        else:
+            self.progressWindow = None
+            self.progressVisitor=DefaultProgressVisitor()
 
         emptyAnnotations = False
         for crop in list(self.Annotations.value.keys()):
             emptyCrop = self.Annotations.value[crop]["divisions"]=={} and self.Annotations.value[crop]["labels"]=={}
             if emptyCrop and not withBatchProcessing:
                 gui._criticalMessage("Error: Weights can not be calculated because training annotations for crop {} are missing. ".format(crop) +\
-                                  "Go back to Training applet and Save your training for each crop.")
+                                  "Go back to Training applet and train on each crop.")
             emptyAnnotations = emptyAnnotations or emptyCrop
 
         if emptyAnnotations:
@@ -200,8 +217,8 @@ class OpStructuredTracking(OpConservationTracking):
 
                     if not cropKey in list(self.Annotations.value.keys()):
                         if not withBatchProcessing:
-                            gui._criticalMessage("You have not trained or saved your training for " + str(cropKey) + \
-                                              ". \nGo back to the Training applet and save all your training!")
+                            gui._criticalMessage("You have not trained your training for " + str(cropKey) + \
+                                              ". \nGo back to the Training applet and train on all crops!")
                         return [self.DetectionWeight.value, self.DivisionWeight.value, self.TransitionWeight.value, self.AppearanceWeight.value, self.DisappearanceWeight.value]
 
                     crop = self.Annotations.value[cropKey]
@@ -230,7 +247,7 @@ class OpStructuredTracking(OpConservationTracking):
                                         logger.info("Your track count for object {} in time frame {} is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(label,time,trackCount,trackSet,maxObj))
                                         logger.info("Either remove track(s) from this object or train the object count classifier with more labels!")
                                         maxObjOK = False
-                                        raise DatasetConstraintError('Structured Learning', "Your track count for object "+str(label)+" in time frame " +str(time)+ " equals "+str(trackCount)+"=|"+str(trackSet)+"|," + \
+                                        self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', "Your track count for object "+str(label)+" in time frame " +str(time)+ " equals "+str(trackCount)+"=|"+str(trackSet)+"|," + \
                                                 " which is greater than the maximum object number "+str(maxObj)+" defined by object count classifier! " + \
                                                 "Either remove track(s) from this object or train the object count classifier with more labels!")
 
@@ -243,7 +260,7 @@ class OpStructuredTracking(OpConservationTracking):
                                         # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
                                         type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
                                         if type == None:
-                                            raise DatasetConstraintError('Structured Learning', mergeMsgStr)
+                                            self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
 
                                         elif type[0] in ["LAST", "INTERMEDIATE"]:
 
@@ -256,7 +273,7 @@ class OpStructuredTracking(OpConservationTracking):
                                                 logger.info("Your track count for transition ( {},{} ) ---> ( {},{} ) is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(previous_label,time-1,label,time,trackCountIntersection,intersectionSet,maxObj))
                                                 logger.info("Either remove track(s) from these objects or train the object count classifier with more labels!")
                                                 maxObjOK = False
-                                                raise DatasetConstraintError('Structured Learning', "Your track count for transition ("+str(previous_label)+","+str(time-1)+") ---> ("+str(label)+","+str(time)+") is "+str(trackCountIntersection)+"=|"+str(intersectionSet)+"|, " + \
+                                                self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', "Your track count for transition ("+str(previous_label)+","+str(time-1)+") ---> ("+str(label)+","+str(time)+") is "+str(trackCountIntersection)+"=|"+str(intersectionSet)+"|, " + \
                                                         "which is greater than maximum object number "+str(maxObj)+" defined by object count classifier!" + \
                                                         "Either remove track(s) from these objects or train the object count classifier with more labels!")
 
@@ -276,7 +293,7 @@ class OpStructuredTracking(OpConservationTracking):
                                                 break
 
                                     if type == None:
-                                        raise DatasetConstraintError('Structured Learning', mergeMsgStr)
+                                        self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
 
                                     elif type[0] in ["FIRST", "LAST", "INTERMEDIATE", "SINGLETON(FIRST_LAST)"]:
                                         if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
@@ -357,6 +374,7 @@ class OpStructuredTracking(OpConservationTracking):
 
         initialWeights = trackingGraph.weightsListToDict([transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight])
 
+        self.HypothesesGraph.setValue(hypothesesGraph)
         mht.trainWithWeightInitialization(model,gt, initialWeights)
         weightsDict = mht.train(model, gt)
 
@@ -473,10 +491,11 @@ class OpStructuredTracking(OpConservationTracking):
         lastTime = -1
         lastLabel = -1
         for t in range(crop["time"][0],time):
-            for label in labels[t]:
-                if track in labels[t][label]:
-                    lastTime = t
-                    lastLabel = label
+            if t in labels.keys():
+                for label in labels[t]:
+                    if track in labels[t][label]:
+                        lastTime = t
+                        lastLabel = label
         if lastTime == -1:
             type = "FIRST"
         elif lastTime < time-1:

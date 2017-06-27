@@ -51,11 +51,6 @@ from ilastik.applets.base.applet import DatasetConstraintError
 
 # These features are always calculated, but not used for prediction.
 # They are needed by our gui, or by downstream applets.
-#default_features = ['Coord<Minimum>',
-#                    'Coord<Maximum>',
-#                    'RegionCenter',
-#                    'Count',
-#                ]
 default_features = {'Coord<Minimum>':{}, 'Coord<Maximum>':{}, 'RegionCenter': {}, 'Count':{}}
 
 # to distinguish them, they go in their own category with this name
@@ -91,7 +86,7 @@ def max_margin(d, default=(0, 0, 0)):
 def make_bboxes(binary_bbox, margin):
     """Return binary label arrays for an object with margin.
 
-    Helper for feature plugins.
+    Needed to compute features in the object neighborhood
 
     Returns (the object + context, context only)
 
@@ -431,76 +426,6 @@ class OpObjectExtraction(Operator):
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
 
-    @staticmethod
-    def createExportTable(features):
-        ''' This function takes the features as produced by the RegionFeatures slot
-            and transforms them into a flat table, which is later used for exporting
-            object-level data to csv and h5 files. The columns of the table are as follows:
-            (t, object index, feature 1, feature 2, ...). Row-wise object index increases
-            faster than time, so first all objects for time 0 are exported, then for time 1, etc  '''
-
-        ntimes = len(list(features.keys()))
-        nplugins = len(list(features[0].keys()))
-        nchannels = 0
-        nobjects = []
-        dtype_names = []
-        dtype_types = []
-        for t, plugin_name in features.items():
-            feat0 = list(plugin_name.values())[0]
-            feat0_name = list(feat0.keys())[0]
-            feat0_array = list(feat0.values())[0]
-            nobjects.append(feat0_array.shape[0])
-                
-                
-        for plugin_name, plugins in features[0].items():
-            for feature_name, feature_array in plugins.items():
-                feature_channels = feature_array.shape[-1]
-                nchannels += feature_channels
-                if feature_channels==1:
-                    dtype_names.append(plugin_name + ", "+feature_name)
-                    dtype_types.append(feature_array.dtype)
-                else:
-                    for ich in range(feature_channels):
-                        dtype_names.append(plugin_name + ", "+ feature_name+"_ch_%d"%ich)
-                        dtype_types.append(feature_array.dtype)
-                    
-        nchannels += 2 #true channels + time value + explicit object id
-        
-        dtype_names.insert(0, "Time")
-        dtype_names.insert(0, "Object id")
-        
-        # Some versions of numpy can't handle unicode names.
-        # Convert to str.
-        dtype_names = list(map(str, dtype_names))
-        
-        dtype_types.insert(0, numpy.dtype(numpy.uint32).str)
-        dtype_types.insert(0, numpy.dtype(numpy.uint32).str)
-        
-        nobjects_total = sum(nobjects)
-        
-        table = numpy.zeros(nobjects_total, dtype = {'names': dtype_names, 'formats': dtype_types})
-        
-        #table = numpy.zeros(4, dtype = {'names': ['Mean', 'Coord<Maximum>_ch_0'], \
-        #                           'formats': [numpy.dtype(numpy.uint32), numpy.dtype(numpy.uint8)]})
-        
-        
-        start = 0
-        finish = start
-        for itime in range(ntimes):
-            finish = start+nobjects[itime]
-            table["Object id"][start: finish] = numpy.arange(nobjects[itime])
-            table["Time"][start: finish] = itime
-            nfeat = 2
-            for plugin_name, plugins in features[itime].items():
-                for feature_name, feature_array in plugins.items():
-                    nchannels = feature_array.shape[-1]
-                    for ich in range(nchannels):
-                        table[dtype_names[nfeat]][start: finish] = feature_array[:, ich]
-                        nfeat += 1
-            start = finish
-        
-        return table
-        
 
 class OpRegionFeatures(Operator):
     """Produces region features for time-stacked 3d+c volumes
@@ -667,22 +592,27 @@ class OpRegionFeatures(Operator):
         slc3d[axes.c] = 0
 
         labels = labels[slc3d]
-        
-        logger.debug("Computing default features")
 
         #These are the feature names, selected by the user and the default feature names.
         feature_names = deepcopy(self.Features([]).wait())
         feature_names = self._augmentFeatureNames(feature_names)
 
         # do global features
-        logger.debug("computing global features")
+        logger.debug("Computing global and default features")
         global_features = {}
-        for plugin_name, feature_dict in feature_names.items():
+        pool = RequestPool()
+
+
+        def compute_for_one_plugin(plugin_name, feature_dict):
+            plugin_inner = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
+            global_features[plugin_name] = plugin_inner.plugin_object.compute_global(image, labels, feature_dict, axes)
+
             if plugin_name == default_features_key:
                 continue
-            plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-            global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_dict, axes)
-        
+            pool.add(Request(partial(compute_for_one_plugin, plugin_name, feature_dict)))
+
+        pool.wait()
+
         extrafeats = {}
         for feat_key in default_features:
             try:

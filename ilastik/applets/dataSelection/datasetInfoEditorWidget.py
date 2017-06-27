@@ -173,7 +173,8 @@ class DatasetInfoEditorWidget(QDialog):
         if watched in self._autoAppliedWidgets:
             if ( event.type() == QEvent.KeyPress \
                 and ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return) ):
-                self._autoAppliedWidgets[watched]()
+                if self._autoAppliedWidgets[watched]():
+                    self.accept()
                 return True
             if ( event.type() == QEvent.FocusOut ):
                 self._autoAppliedWidgets[watched]()

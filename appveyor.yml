@@ -1,0 +1,31 @@
+clone_folder: c:\projects\ilastik
+
+cache:
+  - C:\ilastik.exe -> appveyor.yml
+install:
+  - ps: >-
+      if (-Not (Test-Path "C:\ilastik.exe")){
+        wget http://files.ilastik.org/ilastik-1.2.2rc4-win64.exe -OutFile C:\ilastik.exe
+      }
+  - c:\ilastik.exe /VERYSILENT /DIR=C:\ilastik
+  - timeout 60
+  - ps: rm -Force -Recurse c:\ilastik\ilastik-meta
+  - cd \
+  - git clone https://github.com/ilastik/ilastik-meta c:\ilastik\ilastik-meta
+  - cd ilastik\ilastik-meta
+  - git submodule update --init --recursive
+  - git submodule foreach "git checkout master"
+  - ps: rm -Force -Recurse c:\ilastik\ilastik-meta\ilastik
+  - ps: cp -recurse C:\projects\ilastik c:\ilastik\ilastik-meta\ilastik
+
+build: off
+
+test_script:
+  - cd \
+  - cd ilastik\ilastik-meta\ilastik\tests
+  - set Path=C:\ilastik;"C:\Program Files\Git\usr\bin";%Path%
+  - set CONTINUE_ON_FAILURE=1
+  - sh run_each_unit_test.sh
+
+# on_finish:
+#  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

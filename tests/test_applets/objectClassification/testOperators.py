@@ -426,13 +426,6 @@ class TestFullOperator(unittest.TestCase):
         self.assertTrue(self.classOp.Predictions.ready(), "Prediction slot of OpObjectClassification wasn't ready.")
         probs = self.classOp.PredictionImages[0][:].wait()
         
-    def testExport(self):
-        table = self.classOp.createExportTable(0, [])
-
-        #print table["Object id"]
-        #print table["Default Features, RegionCenter_ch_1"]
-        #print table["Prediction"]
-        
     def test_unfavorable_conditions(self):
         #TODO write test with not so nice input
         pass

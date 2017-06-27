@@ -31,7 +31,7 @@ from hytra.core.ilastikmergerresolver import IlastikMergerResolver
 from hytra.core.probabilitygenerator import ProbabilityGenerator
 from hytra.core.probabilitygenerator import Traxel
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
-from hytra.util.progressbar import DefaultProgressVisitor, CommandLineProgressVisitor
+from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgressVisitor
 
 import vigra
 
@@ -46,6 +46,13 @@ except ImportError:
         import multiHypoTracking_with_gurobi as mht
     except ImportError:
         logger.warning("Could not find any ILP solver")
+
+try:
+    import hytra
+    WITH_HYTRA = True
+
+except ImportError as e:
+    WITH_HYTRA = False
 
 class OpConservationTracking(Operator):
     LabelImage = InputSlot()
@@ -262,18 +269,31 @@ class OpConservationTracking(Operator):
                                    time_range[-1]+1,
                                    scales)
 
-        hypothesesGraph = IlastikHypothesesGraph(
-            probabilityGenerator=traxelstore,
-            timeRange=(time_range[0],time_range[-1]+1),
-            maxNumObjects=maxObj,
-            numNearestNeighbors=max_nearest_neighbors,
-            fieldOfView=fieldOfView,
-            withDivisions=withDivisions,
-            maxNeighborDistance=maxDist,
-            divisionThreshold=divThreshold,
-            borderAwareWidth=borderAwareWidth,
-            progressVisitor=self.progressVisitor
-        )
+        if WITH_HYTRA:
+            hypothesesGraph = IlastikHypothesesGraph(
+                probabilityGenerator=traxelstore,
+                timeRange=(time_range[0],time_range[-1]+1),
+                maxNumObjects=maxObj,
+                numNearestNeighbors=max_nearest_neighbors,
+                fieldOfView=fieldOfView,
+                withDivisions=withDivisions,
+                maxNeighborDistance=maxDist,
+                divisionThreshold=divThreshold,
+                borderAwareWidth=borderAwareWidth,
+                progressVisitor=self.progressVisitor
+            )
+        else:
+            hypothesesGraph = IlastikHypothesesGraph(
+                probabilityGenerator=traxelstore,
+                timeRange=(time_range[0],time_range[-1]+1),
+                maxNumObjects=maxObj,
+                numNearestNeighbors=max_nearest_neighbors,
+                fieldOfView=fieldOfView,
+                withDivisions=withDivisions,
+                maxNeighborDistance=maxDist,
+                divisionThreshold=divThreshold,
+                borderAwareWidth=borderAwareWidth
+            )
         return hypothesesGraph
     
     def _resolveMergers(self, hypothesesGraph, model):
@@ -341,6 +361,16 @@ class OpConservationTracking(Operator):
             resolvedMergersDict = mergerResolver.run()
         return resolvedMergersDict
 
+    def raiseException(self, progressWindow, str):
+        if progressWindow is not None:
+            progressWindow.onTrackDone()
+        raise Exception (str)
+
+    def raiseDatasetConstraintError(self, progressWindow, titleStr, str):
+        if progressWindow is not None:
+            progressWindow.onTrackDone()
+        raise DatasetConstraintError(titleStr, str)
+
     def track(self,
             time_range,
             x_range,
@@ -382,11 +412,15 @@ class OpConservationTracking(Operator):
         Main conservation tracking function. Runs tracking solver, generates hypotheses graph, and resolves mergers.
         """
 
-        self.progressWindow = progressWindow
-        self.progressVisitor=progressVisitor
+        if WITH_HYTRA:
+            self.progressWindow = progressWindow
+            self.progressVisitor=progressVisitor
+        else:
+            self.progressWindow = None
+            self.progressVisitor = DefaultProgressVisitor()
 
         if not self.Parameters.ready():
-            raise Exception("Parameter slot is not ready")
+            self.raiseException(self.progressWindow, "Parameter slot is not ready")
         
         # it is assumed that the self.Parameters object is changed only at this
         # place (ugly assumption). Therefore we can track any changes in the
@@ -436,13 +470,13 @@ class OpConservationTracking(Operator):
         
         if withClassifierPrior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
-                raise DatasetConstraintError('Tracking', 'Classifier not ready yet. Did you forget to train the Object Count Classifier?')
+                self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'Classifier not ready yet. Did you forget to train the Object Count Classifier?')
             if not self.NumLabels.ready() or self.NumLabels.value < (maxObj + 1):
-                raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
+                self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
                     'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' +\
                     'one training example for each class.')
             if len(self.DetectionProbabilities([0]).wait()[0][0]) < (maxObj + 1):
-                raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
+                self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
                     'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' +\
                     'one training example for each class.')
 
@@ -461,7 +495,7 @@ class OpConservationTracking(Operator):
         detWeight = 10.0 # FIXME: Should we store this weight in the parameters slot?
         weights = trackingGraph.weightsListToDict([transWeight, detWeight, divWeight, appearance_cost, disappearance_cost])
 
-        stepStr = "Tracking solver"
+        stepStr = solverName + " tracking solver"
         self.progressVisitor.showState(stepStr)
         self.progressVisitor.showProgress(0)
 

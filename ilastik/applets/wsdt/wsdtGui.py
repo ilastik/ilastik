@@ -30,7 +30,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtWidgets import QWidget, QLabel, QSpinBox, QDoubleSpinBox, QVBoxLayout, \
                             QHBoxLayout, QSpacerItem, QSizePolicy, QComboBox, QPushButton, \
-                            QMenu, QAction
+                            QMenu, QAction, QCheckBox
 
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
@@ -41,7 +41,6 @@ from lazyflow.request import Request
 from lazyflow.utility import TransposedView
 
 import logging
-from PyQt5.Qt import QCheckBox
 logger = logging.getLogger(__name__)
 
 class WsdtGui(LayerViewerGui):
@@ -116,6 +115,7 @@ class WsdtGui(LayerViewerGui):
         populate_channel_menu()
         op.Input.notifyMetaChanged( populate_channel_menu )
         self.__cleanup_fns.append( partial( op.Input.unregisterMetaChanged, populate_channel_menu ) )
+        channel_button.setToolTip("Boundary channel index in the probability map")
         drawer_layout.addLayout( control_layout( "Input Channel", channel_button ) )
         self.channel_button = channel_button
 
@@ -125,6 +125,7 @@ class WsdtGui(LayerViewerGui):
         threshold_box.setMaximum(1.0)
         threshold_box.setSingleStep(0.1)
         configure_update_handlers( threshold_box.valueChanged, op.Pmin )
+        threshold_box.setToolTip("Boundary probability threshold")
         drawer_layout.addLayout( control_layout( "Threshold", threshold_box ) )
         self.threshold_box = threshold_box
 
@@ -132,7 +133,8 @@ class WsdtGui(LayerViewerGui):
         membrane_size_box.setMinimum(0)
         membrane_size_box.setMaximum(1000000)
         configure_update_handlers( membrane_size_box.valueChanged, op.MinMembraneSize )
-        drawer_layout.addLayout( control_layout( "Min Membrane Size", membrane_size_box ) )
+        membrane_size_box.setToolTip("Size filter for boundary pieces, in pixels")
+        drawer_layout.addLayout( control_layout( "Min Boundary Size", membrane_size_box ) )
         self.membrane_size_box = membrane_size_box
 
         seed_presmoothing_box = QDoubleSpinBox()
@@ -141,35 +143,30 @@ class WsdtGui(LayerViewerGui):
         seed_presmoothing_box.setMaximum(10.0)
         seed_presmoothing_box.setSingleStep(0.1)
         configure_update_handlers( seed_presmoothing_box.valueChanged, op.SigmaMinima )
-        drawer_layout.addLayout( control_layout( "Presmooth before seeds", seed_presmoothing_box ) )
+        seed_presmoothing_box.setToolTip("Smooth the distance transform map with this sigma")
+        drawer_layout.addLayout( control_layout( "Presmooth before Seeds", seed_presmoothing_box ) )
         self.seed_presmoothing_box = seed_presmoothing_box
 
         seed_method_combo = QComboBox()
         seed_method_combo.addItem("Connected")
         seed_method_combo.addItem("Clustered")
         configure_update_handlers( seed_method_combo.currentIndexChanged, op.GroupSeeds )
+        seed_method_combo.setToolTip("Connected: combine directly adjacent pixels into seeds (more superpixels). Clustered: group pixels into seeds by distance heuristic (less superpixels)")
         drawer_layout.addLayout( control_layout( "Seed Labeling", seed_method_combo ) )
         self.seed_method_combo = seed_method_combo
-        
-        watershed_presmoothing_box = QDoubleSpinBox()
-        watershed_presmoothing_box.setDecimals(1)
-        watershed_presmoothing_box.setMinimum(0.0)
-        watershed_presmoothing_box.setMaximum(10.0)
-        watershed_presmoothing_box.setSingleStep(0.1)
-        configure_update_handlers( watershed_presmoothing_box.valueChanged, op.SigmaWeights )
-        drawer_layout.addLayout( control_layout( "Presmooth before watershed", watershed_presmoothing_box ) )
-        self.watershed_presmoothing_box = watershed_presmoothing_box
 
         superpixel_size_box = QSpinBox()
         superpixel_size_box.setMinimum(0)
         superpixel_size_box.setMaximum(1000000)
         configure_update_handlers( superpixel_size_box.valueChanged, op.MinSegmentSize )
+        superpixel_size_box.setToolTip("Minimal size of a superpixel")
         drawer_layout.addLayout( control_layout( "Min Superpixel Size", superpixel_size_box ) )
         self.superpixel_size_box = superpixel_size_box
 
         preserve_pmaps_box = QCheckBox()
         configure_update_handlers( preserve_pmaps_box.toggled, op.PreserveMembranePmaps )
-        drawer_layout.addLayout( control_layout( "Preserve membrane probabilities", preserve_pmaps_box ) )
+        preserve_pmaps_box.setToolTip("Preserve thin structures. Use that option when some of your foreground objects have long and thin parts")
+        drawer_layout.addLayout( control_layout( "Preserve Thin Structures", preserve_pmaps_box ) )
         self.preserve_pmaps_box = preserve_pmaps_box
 
         enable_debug_box = QCheckBox()
@@ -224,7 +221,6 @@ class WsdtGui(LayerViewerGui):
             self.membrane_size_box.setValue( op.MinMembraneSize.value )
             self.superpixel_size_box.setValue( op.MinSegmentSize.value )
             self.seed_presmoothing_box.setValue( op.SigmaMinima.value )
-            self.watershed_presmoothing_box.setValue( op.SigmaWeights.value )
             self.seed_method_combo.setCurrentIndex( int(op.GroupSeeds.value) )
             self.preserve_pmaps_box.setChecked( op.PreserveMembranePmaps.value )
             self.enable_debug_box.setChecked( op.EnableDebugOutputs.value )
@@ -247,7 +243,6 @@ class WsdtGui(LayerViewerGui):
             op.MinMembraneSize.setValue( self.membrane_size_box.value() )
             op.MinSegmentSize.setValue( self.superpixel_size_box.value() )
             op.SigmaMinima.setValue( self.seed_presmoothing_box.value() )
-            op.SigmaWeights.setValue( self.watershed_presmoothing_box.value() )
             op.GroupSeeds.setValue( bool(self.seed_method_combo.currentIndex()) )
             op.PreserveMembranePmaps.setValue( self.preserve_pmaps_box.isChecked() )
             op.EnableDebugOutputs.setValue( self.enable_debug_box.isChecked() )

@@ -1,8 +1,11 @@
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
+import sys
 
-from hytra.util.progressbar import DefaultProgressVisitor
+from PyQt4.QtCore import pyqtSignal, QThread, Qt
+from PyQt4.QtGui import QDialog, QVBoxLayout, QProgressBar, QLabel
 
+from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgressVisitor
+from ilastik.utility.gui.threadRouter import ThreadRouter, threadRouted
 
 class TrackProgress(QThread):
     done = pyqtSignal()
@@ -21,6 +24,7 @@ class TrackProgressDialog(QDialog):
     def __init__(self, parent=None, numStages=1):
         QDialog.__init__(self, parent)
 
+        self.threadRouter = ThreadRouter(self)
         self.currentStep = 0
         self.progress = None
 
@@ -46,6 +50,7 @@ class TrackProgressDialog(QDialog):
 
         self.update()
 
+    @threadRouted
     def __onNewStep(self, description):
         self.currentStep += 1
         self.currentStepProgress.setValue(0)
@@ -53,6 +58,7 @@ class TrackProgressDialog(QDialog):
         self.currentStepLabel.setText(description)
         self.update()
 
+    @threadRouted
     def __onCurrentStepProgressChanged(self, progress):
         timesHundred = round(1000.0*progress)
         timesTen = round(100.0*progress)
@@ -60,6 +66,7 @@ class TrackProgressDialog(QDialog):
             self.currentStepProgress.setValue( timesTen )
             self.update()
 
+    @threadRouted
     def run(self):
         self.trackProgress = TrackProgress(self)
         self.trackProgress.progress.connect(self.__onCurrentStepProgressChanged, Qt.BlockingQueuedConnection)
@@ -67,6 +74,7 @@ class TrackProgressDialog(QDialog):
         self.trackProgress.done.connect(self.onTrackDone)
         self.trackProgress.start()
 
+    @threadRouted
     def onTrackDone(self):
         self.trackProgress.wait() # Join the extractor thread so its safe to immediately destroy the window
         self.finished.emit()

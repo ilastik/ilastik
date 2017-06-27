@@ -107,14 +107,6 @@ class TestOpRegionFeatures(object):
 
         assert np.any(feats[0][NAME]['Count'] != feats[1][NAME]['Count'])
         assert np.any(feats[0][NAME]['RegionCenter'] != feats[1][NAME]['RegionCenter'])
-        
-    def test_table_export(self):
-        opAdapt = OpAdaptTimeListRoi(graph=self.op.graph)
-        opAdapt.Input.connect(self.op.Output)
-
-        feats = opAdapt.Output([0, 1]).wait()
-        print("feature length:", len(feats))
-        OpObjectExtraction.createExportTable(feats)
 
 class TestPlugins(object):
     def setUp(self):

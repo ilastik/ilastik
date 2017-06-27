@@ -24,6 +24,10 @@ from ilastik.plugins import pluginManager
 
 from lazyflow.request.request import Request
 
+from ilastik.utility.gui.progress import TrackProgressDialog
+from ilastik.utility.gui.progress import GuiProgressVisitor
+from ilastik.utility.progress import DefaultProgressVisitor
+
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -211,6 +215,10 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
 
         if WITH_HYTRA:
             self._drawer.exportButton.hide()
+        else:
+            self._drawer.numFramesPerSplitLabel.hide()
+            self._drawer.numFramesPerSplitSpinBox.hide()
+            self._drawer.solverComboBox.setEnabled(False)
 
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
@@ -237,6 +245,30 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         if not self.mainOperator.ObjectFeatures.ready():
             self._criticalMessage("You have to compute object features first.")            
             return
+
+        withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
+        numStages = 6
+        # creating traxel store
+        # generating probabilities
+        # insert energies
+        # convexify costs
+        # solver
+        # compute lineages
+
+        if withMergerResolution:
+            numStages += 1 # merger resolution
+        withTracklets = self._drawer.trackletsBox.isChecked()
+        if withTracklets:
+            numStages += 3 # initializing tracklet graph, finding tracklets, contracting edges in tracklet graph
+
+        if WITH_HYTRA:
+            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+            self.progressWindow.run()
+            self.progressWindow.show()
+            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        else:
+            self.progressWindow = None
+            self.progressVisitor = DefaultProgressVisitor()
 
         def _track():
             self.applet.busy = True
@@ -317,7 +349,9 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     force_build_hypotheses_graph =False,
                     max_nearest_neighbors=self._drawer.maxNearestNeighborsSpinBox.value(),
                     numFramesPerSplit=self._drawer.numFramesPerSplitSpinBox.value(),
-                    solverName=solver
+                    solverName=solver,
+                    progressWindow=self.progressWindow,
+                    progressVisitor=self.progressVisitor
                     )
 
             except Exception as ex:

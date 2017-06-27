@@ -359,16 +359,6 @@ class CroppingGui(LayerViewerGui):
         while self._cropControlUi.cropListModel.rowCount() < numCrops:
             self._addNewCrop()
 
-        # If we have too many rows, remove the rows that aren't in the list of names.
-        if self._cropControlUi.cropListModel.rowCount() > len(names):
-            indices_to_remove = []
-            for i in range(self._cropControlUi.cropListModel.rowCount()):
-                if self._cropControlUi.cropListModel[i].name not in names:
-                    indices_to_remove.append( i )
-        
-            for i in reversed(indices_to_remove):
-                self._cropControlUi.cropListModel.removeRow(i)
-
         # synchronize cropNames
         for i,n in enumerate(names):
             self._cropControlUi.cropListModel[i].name = n
