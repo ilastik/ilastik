@@ -17,5 +17,5 @@ projectAPI = Blueprint('projectAPI', __name__)
 def new_project():
     project_name = request.json.get('project_name')
     project_type = request.json.get('project_type')
-    app._ilastik_server.create_project(project_name, project_type)
+    app._ilastik_api.create_project(project_name, project_type)
     return jsonify(project_name=project_name, project_type=project_type)

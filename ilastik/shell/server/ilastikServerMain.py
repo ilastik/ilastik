@@ -6,11 +6,11 @@
 """
 from __future__ import division, print_function
 from flask import Flask
-from ilastik.shell.server.ilastikServerAPI import ilastikServerAPI
-from ilastik.shell.server.appletAPI import appletAPI
-from ilastik.shell.server.workflowAPI import workflowAPI
-from ilastik.shell.server.projectAPI import projectAPI
-from ilastik.shell.server.ilastikServer import IlastikServer
+from ilastik.shell.server.ilastikHttpAPI import ilastikHttpAPI
+from ilastik.shell.server.appletHttpAPI import appletAPI
+from ilastik.shell.server.workflowHttpAPI import workflowAPI
+from ilastik.shell.server.projectHttpAPI import projectAPI
+from ilastik.shell.server.ilastikAPI import IlastikAPI
 from functools import partial
 
 
@@ -19,9 +19,9 @@ def create_app():
     """
     # TODO: command line handling
     app = Flask(__name__)
-    ilastik_server = IlastikServer()
-    app._ilastik_server = ilastik_server
-    app.register_blueprint(ilastikServerAPI)
+    ilastik_api = IlastikAPI()
+    app._ilastik_api = ilastik_api
+    app.register_blueprint(ilastikHttpAPI)
     app.register_blueprint(appletAPI, url_prefix='/api/applet')
     app.register_blueprint(workflowAPI, url_prefix='/api/workflow')
     app.register_blueprint(projectAPI, url_prefix='/api/project')

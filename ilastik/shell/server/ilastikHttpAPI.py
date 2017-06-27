@@ -10,14 +10,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-ilastikServerAPI = Blueprint('ilastikServerAPI', __name__)
+ilastikHttpAPI = Blueprint('ilastikServerAPI', __name__)
 
 
-@ilastikServerAPI.route('/')
+@ilastikHttpAPI.route('/')
 def print_hello():
-    logger.debug('Reached ilastikServerAPI')
+    logger.debug('Reached ilastikHttpAPI')
     r = ['<a href=%s>api</a>' % url_for('.get_GET_map')]
-    r.append(str(app._ilastik_server))
+    r.append(str(app._ilastik_api))
     return "\n".join(r)
 
 
@@ -29,7 +29,7 @@ def has_no_empty_params(rule):
     return len(defaults) >= len(arguments)
 
 
-@ilastikServerAPI.route('/api-map')
+@ilastikHttpAPI.route('/api-map')
 def get_GET_map():
     links = []
     for rule in app.url_map.iter_rules():
@@ -37,8 +37,9 @@ def get_GET_map():
             url = url_for(rule.endpoint, **(rule.defaults or {}))
             links.append((url, rule.endpoint))
 
-    return "<br>".join("<a href={url:s}>{endpoint:s}</a>".format(url=url, endpoint=endpoint)
-                       for url, endpoint in links)
+    return "<br>".join(
+        "<a href={url:s}>{endpoint:s}</a>".format(url=url, endpoint=endpoint)
+        for url, endpoint in links)
 
 
 def shutdown_server():
@@ -48,7 +49,7 @@ def shutdown_server():
     func()
 
 
-@ilastikServerAPI.route('/shutdown')
+@ilastikHttpAPI.route('/shutdown')
 def shutdown():
     shutdown_server()
     return ('shutting down')

@@ -12,9 +12,9 @@ CONFIG = {
 }
 
 
-class IlastikServer(object):
+class IlastikAPI(object):
     def __init__(self):
-        super(IlastikServer, self).__init__()
+        super(IlastikAPI, self).__init__()
         self._server_shell = ServerShell()
 
     def get_current_workflow_name(self):
@@ -40,7 +40,6 @@ class IlastikServer(object):
         """
         workflow = self._server_shell.workflow
         applet = workflow.applets[applet_index]
-        applet.
 
 
     def create_project(self, project_name, project_type='pixel_classification'):
