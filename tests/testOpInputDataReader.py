@@ -61,7 +61,7 @@ class TestOpInputDataReader(object):
             npyReader.FilePath.setValue(self.testNpyDataFileName)
             cwd = os.path.split(__file__)[0]
             npyReader.WorkingDirectory.setValue( cwd )
-    
+
             # Read the entire NPY file and verify the contents
             npyData = npyReader.Output[:].wait()
             assert npyData.shape == (10,11)
@@ -120,7 +120,7 @@ class TestOpInputDataReader(object):
         with h5py.File(self.testH5FileName) as f:
             f.create_group('volume')
             shape = (1,2,3,4,5)
-            f['volume'].create_dataset('data', 
+            f['volume'].create_dataset('data',
                                        data=numpy.indices(shape).sum(0).astype(numpy.float32),
                                        chunks=True,
                                        compression='gzip' )
@@ -131,7 +131,7 @@ class TestOpInputDataReader(object):
             h5Reader.FilePath.setValue(self.testH5FileName + '/volume/data') # Append internal path
             cwd = os.path.split(__file__)[0]
             h5Reader.WorkingDirectory.setValue( cwd )
-    
+
             # Grab a section of the h5 data
             h5Data = h5Reader.Output[0,0,:,:,:].wait()
             assert h5Data.shape == (1,1,3,4,5)
@@ -141,15 +141,15 @@ class TestOpInputDataReader(object):
                     for m in range(0,shape[4]):
                         assert h5Data[0,0,k,l,m] == k + l + m
 
-        finally:    
-            # Call cleanUp() to close the file that this operator opened        
+        finally:
+            # Call cleanUp() to close the file that this operator opened
             h5Reader.cleanUp()
             assert not h5Reader._file # Whitebox assertion...
 
     def test_h5_stack_single_file(self):
         """Test stack/sequence reading in hdf5-files"""
         shape = (4, 8, 16, 32, 3)
-        data = numpy.random.randint(0, 255, size=shape, dtype=numpy.uint8)
+        data = numpy.random.randint(0, 255, size=shape).astype(numpy.uint8)
         with h5py.File(self.testH5FileName) as f:
             data_group = f.create_group('volumes')
             for index, t_slice in enumerate(data):
@@ -158,18 +158,21 @@ class TestOpInputDataReader(object):
                     data=t_slice)
 
         h5SequenceReader = OpInputDataReader(graph=self.graph)
-
         filenamePlusGlob = "{}/volumes/timepoint-*".format(self.testH5FileName)
-        h5SequenceReader.FilePath.setValue(filenamePlusGlob)
+        try:
+            h5SequenceReader.FilePath.setValue(filenamePlusGlob)
 
-        h5data = h5SequenceReader.Output[:].wait()
-        assert h5data.shape == data.shape
-        numpy.testing.assert_array_equal(h5data, data)
+            h5data = h5SequenceReader.Output[:].wait()
+            assert h5data.shape == data.shape
+            numpy.testing.assert_array_equal(h5data, data)
+        finally:
+            # Call cleanUp() to close the file that this operator opened
+            h5SequenceReader.cleanUp()
 
     def test_h5_stack_multi_file(self):
         """Test stack/sequence reading in hdf5-files"""
         shape = (4, 8, 16, 32, 3)
-        data = numpy.random.randint(0, 255, size=shape, dtype=numpy.uint8)
+        data = numpy.random.randint(0, 255, size=shape).astype(numpy.uint8)
         for index, t_slice in enumerate(data):
             fname = self.testmultiH5FileName.format(index=index)
             with h5py.File(fname) as f:
@@ -182,11 +185,15 @@ class TestOpInputDataReader(object):
 
         globString = self.testmultiH5FileName.replace('02d}', 's}').format(index='*')
         filenamePlusGlob = "{}/volume/data".format(globString)
-        h5SequenceReader.FilePath.setValue(filenamePlusGlob)
+        try:
+            h5SequenceReader.FilePath.setValue(filenamePlusGlob)
 
-        h5data = h5SequenceReader.Output[:].wait()
-        assert h5data.shape == data.shape
-        numpy.testing.assert_array_equal(h5data, data)
+            h5data = h5SequenceReader.Output[:].wait()
+            assert h5data.shape == data.shape
+            numpy.testing.assert_array_equal(h5data, data)
+        finally:
+            # Call cleanUp() to close the file that this operator opened
+            h5SequenceReader.cleanUp()
 
     def test_npy_with_roi(self):
         a = numpy.indices((100,100,200)).astype( numpy.uint8 ).sum(0)
@@ -196,7 +203,7 @@ class TestOpInputDataReader(object):
         try:
             opReader.FilePath.setValue( self.testNpyDataFileName )
             opReader.SubVolumeRoi.setValue( ((10,20,30), (50, 70, 90)) )
-    
+
             all_data = opReader.Output[:].wait()
             assert all_data.shape == ( 40, 50, 60 )
             assert (all_data == a[ 10:50, 20:70, 30:90 ]).all()

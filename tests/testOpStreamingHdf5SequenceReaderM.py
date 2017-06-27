@@ -2,6 +2,7 @@ import unittest
 import contextlib
 import tempfile
 import shutil
+import os
 
 import h5py
 import numpy
@@ -33,29 +34,34 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         op = OpStreamingHdf5SequenceReaderM(graph=self.graph)
 
         with tempdir() as d:
-            for sliceIndex, zSlice in enumerate(data):
-                testDataFileName = '{path}/test-{index:02d}.h5'.format(path=d, index=sliceIndex)
-                # Write the dataset to an hdf5 file
-                # (Note: Don't use vigra to do this, which may reorder the axes)
-                h5File = h5py.File(testDataFileName)
-                h5File.create_group('volume')
+            try:
+                for sliceIndex, zSlice in enumerate(data):
+                    testDataFileName = '{path}/test-{index:02d}.h5'.format(path=d, index=sliceIndex)
+                    # Write the dataset to an hdf5 file
+                    # (Note: Don't use vigra to do this, which may reorder the axes)
+                    h5File = h5py.File(testDataFileName)
+                    try:
+                        h5File.create_group('volume')
 
-                h5File['volume'].create_dataset("subvolume", data=zSlice)
-                # Write the axistags attribute
-                current_path = 'volume/subvolume'
-                h5File[current_path].attrs['axistags'] = axistags.toJSON()
-                h5File.close()
+                        h5File['volume'].create_dataset("subvolume", data=zSlice)
+                        # Write the axistags attribute
+                        current_path = 'volume/subvolume'
+                        h5File[current_path].attrs['axistags'] = axistags.toJSON()
+                    finally:
+                        h5File.close()
 
-            # Read the data with an operator
-            hdf5GlobString = "{path}/test-*.h5/volume/subvolume".format(path=d)
-            op.SequenceAxis.setValue('z')
-            op.GlobString.setValue(hdf5GlobString)
+                # Read the data with an operator
+                hdf5GlobString = "{path}/test-*.h5/volume/subvolume".format(path=d)
+                op.SequenceAxis.setValue('z')
+                op.GlobString.setValue(hdf5GlobString)
 
-            assert op.OutputImage.ready()
-            assert op.OutputImage.meta.axistags == expected_axistags
-            numpy.testing.assert_array_equal(
-                op.OutputImage[5:10, 50:100, 100:150].wait(), data[5:10, 50:100, 100:150]
-            )
+                assert op.OutputImage.ready()
+                assert op.OutputImage.meta.axistags == expected_axistags
+                numpy.testing.assert_array_equal(
+                    op.OutputImage[5:10, 50:100, 100:150].wait(), data[5:10, 50:100, 100:150]
+                )
+            finally:
+                op.cleanUp()
 
     def test_2d_vigra_along_t(self):
         """Test if 2d files generated through vigra are recognized correctly"""
@@ -67,29 +73,34 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         op = OpStreamingHdf5SequenceReaderM(graph=self.graph)
 
         with tempdir() as d:
-            for sliceIndex, tSlice in enumerate(data):
-                testDataFileName = '{path}/test-{index:02d}.h5'.format(path=d, index=sliceIndex)
-                # Write the dataset to an hdf5 file
-                # (Note: Don't use vigra to do this, which may reorder the axes)
-                h5File = h5py.File(testDataFileName)
-                h5File.create_group('volume')
+            try:
+                for sliceIndex, tSlice in enumerate(data):
+                    testDataFileName = '{path}/test-{index:02d}.h5'.format(path=d, index=sliceIndex)
+                    # Write the dataset to an hdf5 file
+                    # (Note: Don't use vigra to do this, which may reorder the axes)
+                    h5File = h5py.File(testDataFileName)
+                    try:
+                        h5File.create_group('volume')
 
-                h5File['volume'].create_dataset("subvolume", data=tSlice)
-                # Write the axistags attribute
-                current_path = 'volume/subvolume'
-                h5File[current_path].attrs['axistags'] = axistags.toJSON()
-                h5File.close()
+                        h5File['volume'].create_dataset("subvolume", data=tSlice)
+                        # Write the axistags attribute
+                        current_path = 'volume/subvolume'
+                        h5File[current_path].attrs['axistags'] = axistags.toJSON()
+                    finally:
+                        h5File.close()
 
-            # Read the data with an operator
-            hdf5GlobString = "{path}/test-*.h5/volume/subvolume".format(path=d)
-            op.SequenceAxis.setValue('t')
-            op.GlobString.setValue(hdf5GlobString)
+                # Read the data with an operator
+                hdf5GlobString = "{path}/test-*.h5/volume/subvolume".format(path=d)
+                op.SequenceAxis.setValue('t')
+                op.GlobString.setValue(hdf5GlobString)
 
-            assert op.OutputImage.ready()
-            assert op.OutputImage.meta.axistags == expected_axistags
-            numpy.testing.assert_array_equal(
-                op.OutputImage[5:10, 50:100, 100:150].wait(), data[5:10, 50:100, 100:150]
-            )
+                assert op.OutputImage.ready()
+                assert op.OutputImage.meta.axistags == expected_axistags
+                numpy.testing.assert_array_equal(
+                    op.OutputImage[5:10, 50:100, 100:150].wait(), data[5:10, 50:100, 100:150]
+                )
+            finally:
+                op.cleanUp()
 
     def test_3d_vigra_along_t(self):
         """Test if 3d volumes generated through vigra are recognized correctly"""
@@ -102,29 +113,34 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         op = OpStreamingHdf5SequenceReaderM(graph=self.graph)
 
         with tempdir() as d:
-            for sliceIndex, tSlice in enumerate(data):
-                testDataFileName = '{path}/test-{index:02d}.h5'.format(path=d, index=sliceIndex)
-                # Write the dataset to an hdf5 file
-                # (Note: Don't use vigra to do this, which may reorder the axes)
-                h5File = h5py.File(testDataFileName)
-                h5File.create_group('volume')
+            try:
+                for sliceIndex, tSlice in enumerate(data):
+                    testDataFileName = '{path}/test-{index:02d}.h5'.format(path=d, index=sliceIndex)
+                    # Write the dataset to an hdf5 file
+                    # (Note: Don't use vigra to do this, which may reorder the axes)
+                    h5File = h5py.File(testDataFileName)
+                    try:
+                        h5File.create_group('volume')
 
-                h5File['volume'].create_dataset("subvolume", data=tSlice)
-                # Write the axistags attribute
-                current_path = 'volume/subvolume'
-                h5File[current_path].attrs['axistags'] = axistags.toJSON()
-                h5File.close()
+                        h5File['volume'].create_dataset("subvolume", data=tSlice)
+                        # Write the axistags attribute
+                        current_path = 'volume/subvolume'
+                        h5File[current_path].attrs['axistags'] = axistags.toJSON()
+                    finally:
+                        h5File.close()
 
-            # Read the data with an operator
-            hdf5GlobString = "{path}/test-*.h5/volume/subvolume".format(path=d)
-            op.SequenceAxis.setValue('t')
-            op.GlobString.setValue(hdf5GlobString)
+                # Read the data with an operator
+                hdf5GlobString = "{path}/test-*.h5/volume/subvolume".format(path=d)
+                op.SequenceAxis.setValue('t')
+                op.GlobString.setValue(hdf5GlobString)
 
-            assert op.OutputImage.ready()
-            assert op.OutputImage.meta.axistags == expected_axistags
-            numpy.testing.assert_array_equal(
-                op.OutputImage[0:2, 5:10, 20:50, 40:70].wait(), data[0:2, 5:10, 20:50, 40:70]
-            )
+                assert op.OutputImage.ready()
+                assert op.OutputImage.meta.axistags == expected_axistags
+                numpy.testing.assert_array_equal(
+                    op.OutputImage[0:2, 5:10, 20:50, 40:70].wait(), data[0:2, 5:10, 20:50, 40:70]
+                )
+            finally:
+                op.cleanUp()
 
     def test_globStringValidity(self):
         """Check whether globStrings are correctly verified"""
@@ -136,7 +152,7 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         with self.assertRaises(OpStreamingHdf5SequenceReaderM.WrongFileTypeError):
             OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
 
-        testGlobString = '/tmp/test.h5/data:/tmp/test.h5/data2'
+        testGlobString = '/tmp/test.h5/data'+os.pathsep+'/tmp/test.h5/data2'
         with self.assertRaises(OpStreamingHdf5SequenceReaderM.SameFileError):
             OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
 
@@ -144,13 +160,13 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         with self.assertRaises(OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
             OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
 
-        testGlobString = '/tmp/test-0.h5/data:/tmp/test-1.h5/data*'
+        testGlobString = '/tmp/test-0.h5/data'+os.pathsep+'/tmp/test-1.h5/data*'
         with self.assertRaises(OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
             OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
 
         validGlobStrings = [
             '/tmp/test-*.h5/data',
-            '/tmp/test-1.h5/data1:/tmp/test-2.h5/data1',
+            '/tmp/test-1.h5/data1'+os.pathsep+'/tmp/test-2.h5/data1',
         ]
 
         for testGlobString in validGlobStrings:
