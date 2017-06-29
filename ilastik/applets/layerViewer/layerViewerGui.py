@@ -574,6 +574,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             # Use an OpReorderAxes adapter to transpose the shape for us.
             op5 = OpReorderAxes( parent=slot.getRealOperator().parent )
             op5.Input.connect( slot )
+            op5.AxisOrder.setValue('txyzc')
             shape = op5.Output.meta.shape
 
             # We just needed the operator to determine the transposed shape.
