@@ -52,4 +52,4 @@ def shutdown_server():
 @ilastikHttpAPI.route('/shutdown')
 def shutdown():
     shutdown_server()
-    return ('shutting down')
+    return jsonify(message='shutting down!')

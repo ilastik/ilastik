@@ -1,21 +1,15 @@
 """Mediates between ilastikServerShell and ilastikServerAPI"""
 from __future__ import print_function, division
 import logging
-import os
 
 import numpy
 
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.shell.server.ilastikServerShell import ServerShell
-from ilastik.shell.projectManager import ProjectManager
 from ilastik.applets.batchProcessing.batchProcessingApplet import BatchProcessingApplet
 import collections
 
 logger = logging.getLogger(__name__)
-
-CONFIG = {
-    'projects_path': os.path.expanduser('~/temp/ilastikserver')
-}
 
 
 class IlastikAPI(object):
@@ -114,8 +108,7 @@ class IlastikAPI(object):
         workflow = self._server_shell.workflow
         return workflow
 
-    @property
-    def applet_names(self):
+    def get_applet_names(self):
         """Convenience property, get the list of applet names
 
         Returns:
