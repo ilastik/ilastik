@@ -40,7 +40,7 @@ from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted 
 from lazyflow.operators.generic import OpSingleChannelSelector
 
-from .opThresholdTwoLevels import ThresholdMethod
+from .opThresholdTwoLevels import ThresholdMethod, _has_graphcut
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -76,7 +76,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         self._drawer.methodComboBox.addItem("Simple")
         self._drawer.methodComboBox.addItem("Hysteresis")
-        self._drawer.methodComboBox.addItem("Graph Cut")
+        if _has_graphcut:
+            self._drawer.methodComboBox.addItem("Graph Cut")
+            
 
         self._sigmaSpinBoxes = { 'x' : self._drawer.sigmaSpinBox_X,
                                  'y' : self._drawer.sigmaSpinBox_Y,

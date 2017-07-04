@@ -36,7 +36,12 @@ from lazyflow.operators.generic import OpConvertDtype, OpPixelOperator
 # local
 from .thresholdingTools import OpAnisotropicGaussianSmoothing5d, select_labels
 from .ipht import threshold_from_cores
-from ._OpGraphCut import segmentGC
+
+try:
+    from ._OpGraphCut import segmentGC
+    _has_graphcut = True
+except ImportError:
+    _has_graphcut = False    
 
 logger = logging.getLogger(__name__)
 
