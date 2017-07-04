@@ -72,7 +72,7 @@ def create_app(config=DefaultConfig):
     ilastik_api = IlastikAPI()
     app._ilastik_api = ilastik_api
     app._ilastik_config = config
-    app.register_blueprint(ilastikHttpAPI)
+    app.register_blueprint(ilastikHttpAPI, url_prefix='/api/ilastik')
     app.register_blueprint(appletAPI, url_prefix='/api/applet')
     app.register_blueprint(workflowAPI, url_prefix='/api/workflow')
     app.register_blueprint(projectAPI, url_prefix='/api/project')

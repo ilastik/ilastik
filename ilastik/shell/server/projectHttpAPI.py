@@ -72,4 +72,14 @@ def load_project(project=None):
     if project is None:
         return jsonify(project_list=get_project_list())
     else:
+        if project not in get_project_list():
+            return jsonify(
+                message='Project could not be found.',
+                status_code=404
+                )
+        app._ilastik_api.load_project_file(
+            os.path.join(
+                app._ilastik_config.projects_path,
+                project
+                ))
         return jsonify(project_loaded=project)

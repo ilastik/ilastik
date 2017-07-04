@@ -18,3 +18,7 @@ def get_current_workflow_name():
     logger.debug('getting current workflow name')
     workflow_name = app._ilastik_api.workflow_name
     return jsonify(workflow_name=workflow_name)
+
+# @workflowAPI.route('/add-input-data', methods='post')
+# def add_input_to_current_workflow():
+#     app._ilastik_api
