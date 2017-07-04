@@ -12,6 +12,7 @@ from ilastik.shell.server.appletHttpAPI import appletAPI
 from ilastik.shell.server.workflowHttpAPI import workflowAPI
 from ilastik.shell.server.projectHttpAPI import projectAPI
 from ilastik.shell.server.ilastikAPI import IlastikAPI
+from ilastik.shell.server.dataHttpAPI import dataAPI
 from functools import partial
 
 import logging
@@ -75,6 +76,7 @@ def create_app(config=DefaultConfig):
     app.register_blueprint(appletAPI, url_prefix='/api/applet')
     app.register_blueprint(workflowAPI, url_prefix='/api/workflow')
     app.register_blueprint(projectAPI, url_prefix='/api/project')
+    app.register_blueprint(dataAPI, url_prefix='/api/data')
     return app
 
 
