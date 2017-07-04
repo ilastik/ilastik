@@ -113,9 +113,8 @@ class TestOpExportSlot(object):
     def testBasic_2d(self):
         data = 255 * numpy.random.random( (50,100) )
         data = data.astype( numpy.uint8 )
-        data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
-        print('datadebug', data)
-
+        data = vigra.taggedView( data, vigra.defaultAxistags('yx') )
+        
         graph = Graph()
 
         opPiper = OpArrayPiper(graph=graph)
@@ -128,7 +127,7 @@ class TestOpExportSlot(object):
         opExport.CoordinateOffset.setValue( (10, 20) )
         
         assert opExport.ExportPath.ready()
-        assert os.path.split(opExport.ExportPath.value)[1] == 'test_export_x10-60_y20-120.png'
+        assert os.path.split(opExport.ExportPath.value)[1] == 'test_export_x20-120_y10-60.png'
         opExport.run_export()
         
         opRead = OpInputDataReader( graph=graph )
@@ -137,7 +136,7 @@ class TestOpExportSlot(object):
             expected_data = data.view(numpy.ndarray)
             read_data = opRead.Output[:].wait()
             
-            # Note: vigra inserts a channel axis, so read_data is xycnos
+            # Note: vigra inserts a channel axis, so read_data is xyc
             assert (read_data[...,0] == expected_data).all(), "Read data didn't match exported data!"
         finally:
             opRead.cleanUp()

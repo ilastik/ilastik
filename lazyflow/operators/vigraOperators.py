@@ -1116,20 +1116,21 @@ class OpImageReader(Operator):
         assert [tag.key for tag in info.getAxisTags()] == ['x', 'y', 'c']
 
         shape_xyc = info.getShape()
+        shape_yxc = (shape_xyc[1], shape_xyc[0], shape_xyc[2])
 
         self.Image.meta.dtype = info.getDtype()
         self.Image.meta.prefer_2d = True
 
         numImages = vigra.impex.numberImages(filename)
         if numImages == 1:
-            # For 2D, we assume xyc order.
-            self.Image.meta.shape = shape_xyc
+            # For 2D, we use order yxc.
+            self.Image.meta.shape = shape_yxc
             v_tags = info.getAxisTags()
-            self.Image.meta.axistags = vigra.AxisTags( [v_tags[k] for k in 'xyc'] )
+            self.Image.meta.axistags = vigra.AxisTags( [v_tags[k] for k in 'yxc'] )
         else:
             # For 3D, we use zyxc
             # Insert z-axis shape
-            shape_zyxc = (numImages, shape_xyc[1], shape_xyc[0], shape_xyc[2])
+            shape_zyxc = (numImages,) + shape_yxc
             self.Image.meta.shape = shape_zyxc
 
             # Insert z tag
@@ -1151,10 +1152,10 @@ class OpImageReader(Operator):
                 assert full_slice.shape == self.Image.meta.shape[1:]
                 result[z_result] = full_slice[roiToSlice( *roi_zyxc[:,1:] )]
         else:
-            full_slice = vigra.impex.readImage(filename)
+            full_slice = vigra.impex.readImage(filename).transpose(1,0,2) # xyc -> yxc
             assert full_slice.shape == self.Image.meta.shape
-            roi_xyc = numpy.array( [rroi.start, rroi.stop] )
-            result[:] = full_slice[roiToSlice( *roi_xyc )]
+            roi_yxc = numpy.array( [rroi.start, rroi.stop] )
+            result[:] = full_slice[roiToSlice( *roi_yxc )]
         return result
 
     def propagateDirty(self, slot, subindex, roi):
