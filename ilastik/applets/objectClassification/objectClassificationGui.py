@@ -1097,7 +1097,7 @@ class LabelAssistDialog(QDialog):
             self.table.setItem(rowNum, 3, item)
         
         # Resize column size to fit dialog size
-        self.table.horizontalHeader().setResizeMode(QHeaderView.Stretch)   
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)   
         
         # Sort by max object area
         self.table.setSortingEnabled(True)                         
