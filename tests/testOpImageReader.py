@@ -43,9 +43,9 @@ class TestOpImageReader_2D(object):
         cls._tmpdir = tempfile.mkdtemp()
         cls._file = os.path.join( cls._tmpdir, 'test_image.tif' )
 
-        cls._shape_xy = (100,200)
-        a = numpy.random.randint(0,255, cls._shape_xy).astype(numpy.uint8)
-        a = vigra.taggedView(a, 'xy')
+        cls._shape_yx = (100,200)
+        a = numpy.random.randint(0,255, cls._shape_yx).astype(numpy.uint8)
+        a = vigra.taggedView(a, 'yx')
         vigra.impex.writeImage(a, cls._file, dtype='NATIVE', mode='w')
         
         cls._testdata = a
@@ -57,8 +57,8 @@ class TestOpImageReader_2D(object):
     def test(self):
         op = OpImageReader(graph=Graph())
         op.Filename.setValue(self._file)
-        assert op.Image.meta.shape == self._shape_xy + (1,), "Wrong output shape: {}".format( op.Image.meta.shape )
-        assert op.Image.meta.getAxisKeys() == list('xyc'), "Wrong output axistags: {}".format( op.Image.meta.axistags )
+        assert op.Image.meta.shape == self._shape_yx + (1,), "Wrong output shape: {}".format( op.Image.meta.shape )
+        assert op.Image.meta.getAxisKeys() == list('yxc'), "Wrong output axistags: {}".format( op.Image.meta.axistags )
         
         assert (op.Image[10:90, 50:60, :].wait() == self._testdata[10:90, 50:60, None].view(numpy.ndarray)).all()
         
