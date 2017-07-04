@@ -40,6 +40,9 @@ DIALOG_FILTERS = {
     "any": "Any (*.*)",
 }
 
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
 
 class ExportObjectInfoDialog(QDialog):
     """
