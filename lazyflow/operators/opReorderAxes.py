@@ -30,7 +30,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 class OpReorderAxes(Operator):
     Input = InputSlot()
-    AxisOrder = InputSlot(value='txyzc') # string: The desired output axis order
+    AxisOrder = InputSlot(value='') # string: The desired output axis order
     Output = OutputSlot()
 
     def setupOutputs(self):
