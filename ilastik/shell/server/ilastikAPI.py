@@ -1,13 +1,17 @@
 """Mediates between ilastikServerShell and ilastikServerAPI"""
 from __future__ import print_function, division
 import logging
+import collections
+import copy
+
 
 import numpy
 
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.shell.server.ilastikServerShell import ServerShell
 from ilastik.applets.batchProcessing.batchProcessingApplet import BatchProcessingApplet
-import collections
+from ilastik.applets.dataSelection.dataSelectionApplet import DataSelectionApplet
+
 
 logger = logging.getLogger(__name__)
 
@@ -142,13 +146,11 @@ class IlastikAPI(object):
         workflow = self._server_shell.workflow
         # should this be the one accessed?
         role_names = workflow.ROLE_NAMES
-        batch_processing_applet = self._batch_applet
-        batch_data_info = batch_processing_applet._get_template_dataset_infos()
+        batch_data_info = self._get_template_dataset_infos()
         return collections.OrderedDict(
             (role_names[k], v) for k, v in batch_data_info.iteritems())
 
-    @property
-    def _batch_applet(self):
+    def get_batch_applet(self):
         """Get the batch applet from the workflow applets
         """
         applets = self.applets
@@ -185,7 +187,7 @@ class IlastikAPI(object):
         data_info = [DatasetInfo(preloaded_array=d) for d in data]
         for dinfo in data_info:
             dinfo.axistags = raw_info.axistags
-        batch_processing_applet = self._batch_applet
+        batch_processing_applet = self.get_batch_applet()
 
         role_data_dict = collections.OrderedDict({'Raw Input': data_info})
         ret_data = batch_processing_applet.run_export(role_data_dict, export_to_array=True)
@@ -194,6 +196,89 @@ class IlastikAPI(object):
         else:
             return ret_data
 
+    def get_applet(self, applet_type):
+        """
+        Args:
+            applet_type (BaseApplet or derived): the actual class one is looking
+              for.
+
+        Returns:
+            Applet
+        """
+        applets = self.applets
+        selected_applet = [applet for applet in applets
+                           if isinstance(applet, applet_type)]
+        assert len(selected_applet) == 1, (
+            "Expected only a single batch processing applet per workflow.")
+        selected_applet = selected_applet[0]
+        return selected_applet
+
+    def get_input_info(self):
+        """Gather information about inputs to the current workflow"""
+        data_selection_applet = self.get_applet(DataSelectionApplet)
+        return data_selection_applet
+
+
+    def add_dataset(self, file_name):
+        """Convenience method to add an image lane with the supplied data
+
+        Args:
+            file_name: path to image file to add.
+
+        TODO: proper check if project is ready to process data.
+        TODO: this only works for pixel classification
+
+        Returns
+            (int) lane index
+        """
+        is_single = False
+        input_axes = None
+        if not isinstance(file_name, collections.Sequence):
+            data = [file_name]
+            is_single = True
+
+        data_selection_applet = self.get_applet(DataSelectionApplet)
+        # add a new lane
+        opDataSelection = data_selection_applet.topLevelOperator
+
+        # configure roles
+        if not is_single:
+            raise NotImplementedError("Didn't have time to do that yet...")
+
+        # HACK: just to get it working with pixel classification quickly
+
+        template_infos = self._get_template_dataset_infos(input_axes)
+
+        n_lanes = len(opDataSelection)
+        opDataSelection.addLane(n_lanes)
+
+        newLaneView = opDataSelection.getLane(n_lanes)
+
+        # Invert dict from [role][batch_index] -> path to a list-of-tuples, indexed by batch_index: 
+        # [ (role-1-path, role-2-path, ...),
+        #   (role-1-path, role-2-path,...) ]
+        # datas_by_batch_index = zip( *role_data_dict.values() )  
+
+        role_input_datas = zip(*collections.OrderedDict({'Raw Input': [data]}))[0]
+
+        for role_index, data_for_role in enumerate(role_input_datas):
+            if not data_for_role:
+                continue
+
+            if isinstance(data_for_role, DatasetInfo):
+                # Caller provided a pre-configured DatasetInfo instead of a just a path
+                info = data_for_role
+            else:
+                # Copy the template info, but override filepath, etc.
+                default_info = DatasetInfo(data_for_role)
+                info = copy.copy(template_infos[role_index])
+                info.filePath = default_info.filePath
+                info.location = default_info.location
+                info.nickname = default_info.nickname
+
+            # Apply to the data selection operator
+            newLaneView.DatasetGroup[role_index].setValue(info)
+
     # --------------------------------------------------------------------------
     # NOT SURE YET:
     def get_applet_information(self, applet_index):
@@ -201,3 +286,39 @@ class IlastikAPI(object):
         """
         workflow = self._server_shell.workflow
         applet = workflow.applets[applet_index]
+
+
+    # --------------------------------------------------------------------------
+    # MIRRORED:
+
+    # From batchprocessing applet
+    def _get_template_dataset_infos(self, input_axes=None):
+        """
+        Sometimes the default settings for an input file are not suitable (e.g. the axistags need to be changed).
+        We assume the LAST non-batch input in the workflow has settings that will work for all batch processing inputs.
+        Here, we get the DatasetInfo objects from that lane and store them as 'templates' to modify for all batch-processing files.
+        """
+        template_infos = {}
+        data_selection_applet = self.get_applet(DataSelectionApplet)
+        # If there isn't an available dataset to use as a template
+        if len(data_selection_applet.topLevelOperator.DatasetGroup) == 0:
+            num_roles = len(data_selection_applet.topLevelOperator.DatasetRoles.value)
+            for role_index in range(num_roles):
+                template_infos[role_index] = DatasetInfo()
+                if input_axes:
+                    template_infos[role_index].axistags = vigra.defaultAxistags(input_axes)
+            return template_infos
+        
+        # Use the LAST non-batch input file as our 'template' for DatasetInfo settings (e.g. axistags)
+        template_lane = len(data_selection_applet.topLevelOperator.DatasetGroup) - 1
+        opDataSelectionTemplateView = data_selection_applet.topLevelOperator.getLane(template_lane)
+
+        for role_index, info_slot in enumerate(opDataSelectionTemplateView.DatasetGroup):
+            if info_slot.ready():
+                template_infos[role_index] = info_slot.value
+            else:
+                template_infos[role_index] = DatasetInfo()
+            if input_axes:
+                # Support the --input_axes arg to override input axis order, same as DataSelection applet.
+                template_infos[role_index].axistags = vigra.defaultAxistags(input_axes)
+        return template_infos
