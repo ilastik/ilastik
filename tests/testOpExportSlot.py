@@ -167,18 +167,12 @@ class TestOpExportSlot(object):
         globstring = globstring.replace('999', '*')
 
         opReader = OpStackLoader( graph=graph )
-        opReorderAxes = OpReorderAxes( graph=graph )
         try:
             opReader.globstring.setValue( globstring )
-    
-            # (The OpStackLoader produces txyzc order.)
-            opReorderAxes.AxisOrder.setValue( 'zyxc' )
-            opReorderAxes.Input.connect( opReader.stack )
             
-            assert opReorderAxes.Output.meta.shape == data.shape, "Exported files were of the wrong shape or number."
-            assert (opReorderAxes.Output[:].wait() == data.view( numpy.ndarray )).all(), "Exported data was not correct"
+            assert opReader.stack.meta.shape == data.shape, "Exported files were of the wrong shape or number."
+            assert (opReader.stack[:].wait() == data.view( numpy.ndarray )).all(), "Exported data was not correct"
         finally:
-            opReorderAxes.cleanUp()
             opReader.cleanUp()
 
     def testBasic_MultipageTiffSequence(self):
