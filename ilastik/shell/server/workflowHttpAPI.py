@@ -1,6 +1,9 @@
 """Defines the external interface for workflow related stuff
 """
 from __future__ import division, print_function
+
+import os
+
 from flask import Blueprint, request, url_for, jsonify
 from flask import current_app as app
 
@@ -19,6 +22,16 @@ def get_current_workflow_name():
     workflow_name = app._ilastik_api.workflow_name
     return jsonify(workflow_name=workflow_name)
 
-@workflowAPI.route('/add-input-data', methods='post')
+
+@workflowAPI.route('/add-input-data', methods=['POST'])
 def add_input_to_current_workflow():
-    app._ilastik_api
+    data_name = str(request.json.get('data_name'))
+    data_path = app._ilastik_config.data_path
+    image_file = os.path.join(data_path, data_name)
+    if not os.path.exists(image_file):
+        ret = jsonify(message='Could not find image file. Is it on the server?')
+        ret.status_code = 404
+        return ret
+
+    app._ilastik_api.add_dataset(image_file)
+    return jsonify(data_loaded=data_name)
