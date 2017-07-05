@@ -146,12 +146,18 @@ class BigRequestStreamer(object):
             def roiGen():
                 block_iter = block_starts.__iter__()
                 while True:
-                    block_start = next(block_iter)
-                    block_bounds = getBlockBounds( outputSlot.meta.shape, blockshape, block_start )
-                    block_intersecting_portion = getIntersection( block_bounds, roi )
-    
-                    logger.debug( "Requesting Roi: {}".format( block_bounds ) )
-                    yield block_intersecting_portion
+                    try:
+                        block_start = next(block_iter)
+                    except StopIteration:
+                        # As of Python 3.7, not allowed to let StopIteration exceptions escape a generator
+                        # https://www.python.org/dev/peps/pep-0479
+                        break
+                    else:
+                        block_bounds = getBlockBounds( outputSlot.meta.shape, blockshape, block_start )
+                        block_intersecting_portion = getIntersection( block_bounds, roi )
+        
+                        logger.debug( "Requesting Roi: {}".format( block_bounds ) )
+                        yield block_intersecting_portion
                 
         self._requestBatch = RoiRequestBatch( self._outputSlot, roiGen(), totalVolume, batchSize, allowParallelResults )
 
