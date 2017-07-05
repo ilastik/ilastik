@@ -78,7 +78,7 @@ class TestOpStackWriter(object):
         opReader = OpStackLoader( graph=self.graph )
         opReader.globstring.setValue( globstring )
 
-        # (The OpStackLoader produces txyzc order.)
+        # (The OpStackLoader might produce different order.)
         opReorderAxes = OpReorderAxes( graph=self.graph )
         opReorderAxes.AxisOrder.setValue( self._axisorder )
         opReorderAxes.Input.connect( opReader.stack )

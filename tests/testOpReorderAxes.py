@@ -58,12 +58,12 @@ class TestOpReorderAxes(unittest.TestCase):
 
     def setUp(self):
         self.array = None
-        self.axis = list('txyzc')
+        self.axis = list('tzyxc')
         self.tests = 20
         graph = Graph()
         self.operator = OpReorderAxes(graph=graph)
 
-    def prepareVolnOp(self, possible_axes='txyzc', num=5):
+    def prepareVolnOp(self, possible_axes='tzyxc', num=5):
         tags = random.sample(possible_axes,random.randint(2,num))
         tagStr = ''
         for s in tags:
@@ -82,76 +82,73 @@ class TestOpReorderAxes(unittest.TestCase):
         opProvider.Input.setValue( self.inArray )
         self.operator.Input.connect( opProvider.Output )
 
-    # fixme: Currently deactivated as there is no default value for opReorderAxis.
-    #        Should be adapted when opReorderAxis gets new default Value.
-    #def test_Full(self):
-    #    for i in range(self.tests):
-    #        self.prepareVolnOp()
-    #        result = self.operator.Output().wait()
-    #        logger.debug('------------------------------------------------------')
-    #        logger.debug( "self.array.shape = " + str(self.array.shape) )
-    #        logger.debug( "type(input) == " + str(type(self.operator.Input.value)) )
-    #        logger.debug( "input.shape == " + str(self.operator.Input.meta.shape) )
-    #        logger.debug( "Input Tags:")
-    #        logger.debug( str( self.operator.Input.meta.axistags ) )
-    #        logger.debug( "Output Tags:" )
-    #        logger.debug( str(self.operator.Output.meta.axistags) )
-    #        logger.debug( "type(result) == " + str(type(result)) )
-    #        logger.debug( "result.shape == " + str(result.shape) )
-    #        logger.debug( '------------------------------------------------------' )
+    def test_Full(self):
+        for i in range(self.tests):
+            self.prepareVolnOp()
+            result = self.operator.Output().wait()
+            logger.debug('------------------------------------------------------')
+            logger.debug( "self.array.shape = " + str(self.array.shape) )
+            logger.debug( "type(input) == " + str(type(self.operator.Input.value)) )
+            logger.debug( "input.shape == " + str(self.operator.Input.meta.shape) )
+            logger.debug( "Input Tags:")
+            logger.debug( str( self.operator.Input.meta.axistags ) )
+            logger.debug( "Output Tags:" )
+            logger.debug( str(self.operator.Output.meta.axistags) )
+            logger.debug( "type(result) == " + str(type(result)) )
+            logger.debug( "result.shape == " + str(result.shape) )
+            logger.debug( '------------------------------------------------------' )
 
-    #        # Check the shape
-    #        assert len(result.shape) == 5
+            # Check the shape
+            assert len(result.shape) == 5
 
-    #        assert not isinstance(result, vigra.VigraArray), \
-    #            "For compatibility with generic code, output should be provided as a plain numpy array."
+            assert not isinstance(result, vigra.VigraArray), \
+                "For compatibility with generic code, output should be provided as a plain numpy array."
 
-    #        # Ensure the result came out in volumina order
-    #        assert self.operator.Output.meta.axistags == vigra.defaultAxistags('txyzc')
+            # Ensure the result came out in default order
+            assert self.operator.Output.meta.axistags == vigra.defaultAxistags('tzyxc')
 
-    #        # Check the data
-    #        vresult = result.view(vigra.VigraArray)
-    #        vresult.axistags = self.operator.Output.meta.axistags
-    #        reorderedInput = self.inArray.withAxes(*[tag.key for tag in vresult.axistags])
-    #        assert numpy.all(vresult == reorderedInput)
-
+            # Check the data
+            vresult = result.view(vigra.VigraArray)
+            vresult.axistags = self.operator.Output.meta.axistags
+            reorderedInput = self.inArray.withAxes(*[tag.key for tag in vresult.axistags])
+            assert numpy.all(vresult == reorderedInput)
     
-    #def test_Roi_default_order(self):
-    #    for i in range(self.tests):
-    #        self.prepareVolnOp()
-    #        shape = self.operator.Output.meta.shape
-    #        roi = [None,None]
-    #        roi[1]=[numpy.random.randint(2,s) if s != 1 else 1 for s in shape]
-    #        roi[0]=[numpy.random.randint(0,roi[1][i]) if s != 1 else 0 for i,s in enumerate(shape)]
-    #        roi[0]=TinyVector(roi[0])
-    #        roi[1]=TinyVector(roi[1])
-    #        result = self.operator.Output(roi[0],roi[1]).wait()
-    #        logger.debug('------------------------------------------------------')
-    #        logger.debug( "self.array.shape = " + str(self.array.shape) )
-    #        logger.debug( "type(input) == " + str(type(self.operator.Input.value)) )
-    #        logger.debug( "input.shape == " + str(self.operator.Input.meta.shape) )
-    #        logger.debug( "Input Tags:")
-    #        logger.debug( str( self.operator.Input.meta.axistags ) )
-    #        logger.debug( "Output Tags:" )
-    #        logger.debug( str(self.operator.Output.meta.axistags) )
-    #        logger.debug( "roi= " + str(roi) )
-    #        logger.debug( "type(result) == " + str(type(result)) )
-    #        logger.debug( "result.shape == " + str(result.shape) )
-    #        logger.debug( '------------------------------------------------------' )
+    def test_Roi_default_order(self):
+        for i in range(self.tests):
+            self.prepareVolnOp()
+            shape = self.operator.Output.meta.shape
+            roi = [None,None]
+            roi[1]=[numpy.random.randint(2,s) if s != 1 else 1 for s in shape]
+            roi[0]=[numpy.random.randint(0,roi[1][i]) if s != 1 else 0 for i,s in enumerate(shape)]
+            roi[0]=TinyVector(roi[0])
+            roi[1]=TinyVector(roi[1])
+            result = self.operator.Output(roi[0],roi[1]).wait()
+            logger.debug('------------------------------------------------------')
+            logger.debug( "self.array.shape = " + str(self.array.shape) )
+            logger.debug( "type(input) == " + str(type(self.operator.Input.value)) )
+            logger.debug( "input.shape == " + str(self.operator.Input.meta.shape) )
+            logger.debug( "Input Tags:")
+            logger.debug( str( self.operator.Input.meta.axistags ) )
+            logger.debug( "Output Tags:" )
+            logger.debug( str(self.operator.Output.meta.axistags) )
+            logger.debug( "roi= " + str(roi) )
+            logger.debug( "type(result) == " + str(type(result)) )
+            logger.debug( "result.shape == " + str(result.shape) )
+            logger.debug( '------------------------------------------------------' )
 
-    #        # Check the shape
-    #        assert len(result.shape) == 5
-    #        assert not isinstance(result, vigra.VigraArray), \
-    #            "For compatibility with generic code, output should be provided as a plain numpy array."
+            # Check the shape
+            assert len(result.shape) == 5
+            assert not isinstance(result, vigra.VigraArray), \
+                "For compatibility with generic code, output should be provided as a plain numpy array."
 
-    #        # Ensure the result came out in volumina order
-    #        assert self.operator.Output.meta.axistags == vigra.defaultAxistags('txyzc')
+            # Ensure the result came out in volumina order
+            assert self.operator.Output.meta.axistags == vigra.defaultAxistags('tzyxc')
 
-    #        # Check the data
-    #        vresult = result.view(vigra.VigraArray)
-    #        vresult.axistags = self.operator.Output.meta.axistags
-    #        reorderedInput = self.inArray.withAxes(*[tag.key for tag in self.operator.Output.meta.axistags])
-    #        assert numpy.all(vresult == reorderedInput[roiToSlice(roi[0], roi[1])])
+            # Check the data
+            vresult = result.view(vigra.VigraArray)
+            vresult.axistags = self.operator.Output.meta.axistags
+            reorderedInput = self.inArray.withAxes(*[tag.key for tag in self.operator.Output.meta.axistags])
+            assert numpy.all(vresult == reorderedInput[roiToSlice(roi[0], roi[1])])
 
     def test_Roi_custom_order(self):
         self._impl_roi_custom_order( 'cztxy' )
