@@ -27,6 +27,7 @@ import lazyflow
 import h5py
 from lazyflow.graph import OperatorWrapper
 from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
+from ilastik.applets.base.applet import DatasetConstraintError
 
 import tempfile
 
@@ -455,6 +456,32 @@ class TestOpDataSelection_Basic_native_3D():
             assert imgData3D.shape == self.imgData3D.shape
             # skip this if image was saved compressed:
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
+
+    def testBasic3DWrongAxes(self):
+        """Test if 3D file with intentionally wrong axes is rejected """
+        for fileName in self.imgFileNames3D:
+            graph = lazyflow.graph.Graph()
+            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader.ProjectFile.setValue(self.projectFile)
+            reader.WorkingDirectory.setValue(os.getcwd())
+            reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
+            info = DatasetInfo()
+            # Will be read from the filesystem since the data won't be found in the project file.
+            info.location = DatasetInfo.Location.ProjectInternal
+            info.filePath = fileName
+            info.internalPath = ""
+            info.invertColors = False
+            info.convertToGrayscale = False
+            info.axistags = vigra.defaultAxistags('tzyc')
+
+            try:
+                reader.Dataset.setValues([info])
+                assert False, "Should have thrown an exception!"
+            except DatasetConstraintError:
+                pass
+            except:
+                assert False, "Should have thrown a DatasetConstraintError!"
 
     def testBasic3Dc(self):
         """Test if 2d 3-channel files are loaded correctly"""
