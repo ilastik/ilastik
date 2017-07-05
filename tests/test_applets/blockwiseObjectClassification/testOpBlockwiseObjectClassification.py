@@ -160,10 +160,12 @@ class TestOpBlockwiseObjectClassification(object):
         # provide 5d input 
         op5Raw = OpReorderAxes( graph=graph )
         op5Raw.Input.setValue( self.test_volume_intensity )
+        op5Raw.AxisOrder.setValue( 'txyzc' )
         self.rawSource = op5Raw
         
         op5Binary = OpReorderAxes( graph=graph )
         op5Binary.Input.setValue( self.test_volume_binary )
+        op5Binary.AxisOrder.setValue( 'txyzc' )
         self.binarySource = op5Binary
         
     def setUpObjExtraction(self):
