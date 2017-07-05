@@ -218,7 +218,6 @@ class IlastikAPI(object):
         data_selection_applet = self.get_applet(DataSelectionApplet)
         return data_selection_applet
 
-
     def add_dataset(self, file_name):
         """Convenience method to add an image lane with the supplied data
 
@@ -233,7 +232,7 @@ class IlastikAPI(object):
         """
         is_single = False
         input_axes = None
-        if not isinstance(file_name, collections.Sequence):
+        if not isinstance(file_name, (list, tuple)):
             data = [file_name]
             is_single = True
 
@@ -259,7 +258,7 @@ class IlastikAPI(object):
         #   (role-1-path, role-2-path,...) ]
         # datas_by_batch_index = zip( *role_data_dict.values() )  
 
-        role_input_datas = zip(*collections.OrderedDict({'Raw Input': [data]}))[0]
+        role_input_datas = zip(*collections.OrderedDict({'Raw Input': data}).values())[0]
 
         for role_index, data_for_role in enumerate(role_input_datas):
             if not data_for_role:
@@ -270,6 +269,7 @@ class IlastikAPI(object):
                 info = data_for_role
             else:
                 # Copy the template info, but override filepath, etc.
+                from IPython.core.debugger import Tracer; Tracer()()
                 default_info = DatasetInfo(data_for_role)
                 info = copy.copy(template_infos[role_index])
                 info.filePath = default_info.filePath
