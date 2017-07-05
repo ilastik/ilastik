@@ -43,12 +43,9 @@ def upload_project():
         # if get, return a list
         return jsonify(project_list=get_project_list())
     elif request.method == 'POST':
-        print('in post')
-        print(request)
         if 'file' not in request.files:
             return redirect(request.url)
     file = request.files['file']
-    print(file)
     # if user does not select file, browser also
     # submit a empty part without filename
     if file.filename == '':
