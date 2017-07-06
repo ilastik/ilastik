@@ -44,6 +44,7 @@ from lazyflow.request import Request, RequestPool
 
 # required lazyflow operators
 from lazyflow.operators.opCompressedCache import OpCompressedCache
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
 # This operator implements an interface to compute Graph Cut segmentations
@@ -72,6 +73,52 @@ class OpGraphCut(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpGraphCut, self).__init__(*args, **kwargs)
+        self.inner = OpGraphCut_tzyxc(parent=self)
+
+        opReorderPrediction = OpReorderAxes(parent=self)
+        opReorderPrediction.Input.connect(self.Prediction)
+        opReorderPrediction.AxisOrder.setValue('tzyxc')
+        self.inner.Prediction.connect(opReorderPrediction.Output)
+
+        self.inner.Beta.connect(self.Beta)
+        
+        self.opReorderCachedOutput = OpReorderAxes(parent=self)
+        self.opReorderCachedOutput.Input.connect(self.inner.CachedOutput)
+        self.CachedOutput.connect(self.opReorderCachedOutput.Output)
+        
+        self.opReorderOutput = OpReorderAxes(parent=self)
+        self.opReorderOutput.Input.connect(self.inner.Output)
+        self.Output.connect(self.opReorderOutput.Output)
+
+    def setupOutputs(self):
+        self.inputAxisOrder = ''.join(self.Prediction.meta.getAxisKeys())
+        self.opReorderCachedOutput.AxisOrder.setValue(self.inputAxisOrder)
+        self.opReorderOutput.AxisOrder.setValue(self.inputAxisOrder)
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "should not get here"
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
+
+
+class OpGraphCut_tzyxc(Operator):
+    name = "OpGraphCut_tzyxc"
+
+    # prediction maps
+    Prediction = InputSlot()
+
+    # graph cut parameter, usually called lambda
+    Beta = InputSlot(value=.2)
+
+    # labeled segmentation image
+    #     i=0: background
+    #     i>0: connected foreground object i
+    Output = OutputSlot()
+    CachedOutput = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super(OpGraphCut_tzyxc, self).__init__(*args, **kwargs)
         self._cache = None
 
     def setupOutputs(self):
