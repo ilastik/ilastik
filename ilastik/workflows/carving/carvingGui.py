@@ -38,12 +38,12 @@ from PyQt5.QtWidgets import QMenu, QMessageBox, QFileDialog
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, PreferencesManager
-from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
 
 from ilastik.widgets.labelListModel import LabelListModel
 try:
     from volumina.view3d.volumeRendering import RenderingManager
     from volumina.view3d.view3d import convertVTPtoOBJ
+    from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
     from vtk import vtkXMLPolyDataWriter, vtkPolyDataWriter
     _have_vtk = True
 except ImportError:
