@@ -543,6 +543,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
             default_axis_order = ilastik.utility.globals.ImportOptions.default_axis_order
             if default_axis_order is not None:
                 import warnings
+                # todo:axisorder: this will apply for other old ilastik projects as well... adapt the formulation.
                 warnings.warn( "Using a strange axis order to import ilastik 0.5 projects: {}".format( default_axis_order ) )
                 datasetInfo.axistags = vigra.defaultAxistags(default_axis_order)
             

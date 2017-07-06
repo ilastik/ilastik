@@ -291,6 +291,7 @@ class OpDataSelection(Operator):
                         For example, if the workflow can handle 2D and 3D, you might pass ['yxc', 'zyxc'].
                         If it only handles exactly 5D, you might pass 'tzyxc', assuming that's how you wrote the
                         workflow.
+                        todo: move toward 'tczyx' standard.
         """
         super(OpDataSelection, self).__init__(*args, **kwargs)
         self.forceAxisOrder = forceAxisOrder
@@ -335,6 +336,7 @@ class OpDataSelection(Operator):
                 if not hasattr(preloaded_array, 'axistags'):
                     axisorder = get_default_axisordering(preloaded_array.shape)
                     preloaded_array = vigra.taggedView(preloaded_array, axisorder)
+
                 opReader = OpArrayPiper(parent=self)
                 opReader.Input.setValue(preloaded_array)
                 providerSlot = opReader.Output
