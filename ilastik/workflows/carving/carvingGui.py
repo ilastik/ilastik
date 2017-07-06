@@ -330,7 +330,6 @@ class CarvingGui(LabelingGui):
             selected = [str(name.text()) for name in dialog.objectNames.selectedItems()]
             dialog.close()
             for objectname in selected: 
-                objectname = str(name.text())
                 self.topLevelOperatorView.loadObject(objectname)
         
         def deleteSelection():
