@@ -16,6 +16,9 @@ from ilastik.applets.dataSelection.dataSelectionApplet import DataSelectionApple
 logger = logging.getLogger(__name__)
 
 
+
+
+
 class IlastikAPI(object):
     """Collection of user-friendly methods for interaction with ilastik
     """
@@ -213,6 +216,71 @@ class IlastikAPI(object):
         selected_applet = selected_applet[0]
         return selected_applet
 
+    @staticmethod
+    def is_volume(slot):
+        """Level 0 slots only! Determines if slot is most likely a volume
+        """
+        try:
+            shape = slot.meta.shape
+        except AttributeError:
+            return False
+
+        if shape is None:
+            return False
+
+        if len(shape) < 2:
+            return False
+
+        return True
+
+    def get_image_slot(self, slot):
+        if slot.level == 0:
+            if self.is_volume(slot):
+                return slot
+            else:
+                return None
+        else:
+            key = slot.name
+            retlist = []
+            for subslot in slot:
+                s = self.get_image_slot(subslot)
+                if s is not None:
+                    retlist.append(s)
+
+            if len(retlist) == 0:
+                return None
+            return {key: retlist}
+
+    def get_applet_output_volumes(self, applet):
+        """Get ouputs for a single applet
+        """
+        tlo = applet.topLevelOperator
+        if tlo is None:
+            return None
+        output_dict = tlo.outputs
+        image_slots = {}
+        for k, slot in output_dict.iteritems():
+            image_slot = self.get_image_slot(slot)
+            if image_slot is not None:
+                image_slots[k] = image_slot
+        return image_slots
+
+    def get_output_volumes(self):
+        """All outputs from all applets"""
+        outs = []
+        for applet in self.applets:
+            outs.append(
+                {
+                    'applet_name': applet.name,
+                    'image_volumes': self.get_applet_output_volumes(applet) or {}
+                }
+            )
+        return outs
+
+    def get_strutured_info(self):
+        output_volumes = self.get_output_volumes
+        workflow = self.workflow_name
+
     def get_input_info(self):
         """Gather information about inputs to the current workflow"""
         data_selection_applet = self.get_applet(DataSelectionApplet)
@@ -253,10 +321,10 @@ class IlastikAPI(object):
 
         newLaneView = opDataSelection.getLane(n_lanes)
 
-        # Invert dict from [role][batch_index] -> path to a list-of-tuples, indexed by batch_index: 
+        # Invert dict from [role][batch_index] -> path to a list-of-tuples, indexed by batch_index:
         # [ (role-1-path, role-2-path, ...),
         #   (role-1-path, role-2-path,...) ]
-        # datas_by_batch_index = zip( *role_data_dict.values() )  
+        # datas_by_batch_index = zip( *role_data_dict.values() )
 
         role_input_datas = zip(*collections.OrderedDict({'Raw Input': data}).values())[0]
 
@@ -308,7 +376,7 @@ class IlastikAPI(object):
                 if input_axes:
                     template_infos[role_index].axistags = vigra.defaultAxistags(input_axes)
             return template_infos
-        
+
         # Use the LAST non-batch input file as our 'template' for DatasetInfo settings (e.g. axistags)
         template_lane = len(data_selection_applet.topLevelOperator.DatasetGroup) - 1
         opDataSelectionTemplateView = data_selection_applet.topLevelOperator.getLane(template_lane)
