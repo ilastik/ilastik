@@ -1,8 +1,8 @@
 from __future__ import print_function, absolute_import, nested_scopes, generators, division, with_statement, unicode_literals
 import sys
 
-from PyQt4.QtCore import pyqtSignal, QThread, Qt
-from PyQt4.QtGui import QDialog, QVBoxLayout, QProgressBar, QLabel
+from PyQt5.QtCore import pyqtSignal, QThread, Qt
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QProgressBar, QLabel
 
 from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgressVisitor
 from ilastik.utility.gui.threadRouter import ThreadRouter, threadRouted

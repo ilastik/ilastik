@@ -10,7 +10,6 @@ import logging
 import sys
 import re
 import traceback
-from volumina.utility import encode_from_qstring
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility import log_exception
 from ilastik.utility.exportingOperator import ExportingGui

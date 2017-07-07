@@ -25,9 +25,9 @@ from functools import partial
 
 import numpy
 
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, QObject, QEvent
-from PyQt4.QtGui import QDialog, QComboBox, QLabel, QHBoxLayout, QVBoxLayout, QFrame
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, QObject, QEvent
+from PyQt5.QtWidgets import QDialog, QComboBox, QLabel, QHBoxLayout, QVBoxLayout, QFrame
 from ilastik.plugins import pluginManager
 
 try:
