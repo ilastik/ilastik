@@ -66,12 +66,13 @@ def create_app(config=DefaultConfig):
     """
     """
     # TODO: command line handling
-    config = IlastikServerConfig()
+
     app = Flask(__name__)
     app.config.from_object(config)
+    ilastik_config = IlastikServerConfig()
     ilastik_api = IlastikAPI()
     app._ilastik_api = ilastik_api
-    app._ilastik_config = config
+    app._ilastik_config = ilastik_config
     app.register_blueprint(ilastikHttpAPI, url_prefix='/api/ilastik')
     app.register_blueprint(appletAPI, url_prefix='/api/applet')
     app.register_blueprint(workflowAPI, url_prefix='/api/workflow')

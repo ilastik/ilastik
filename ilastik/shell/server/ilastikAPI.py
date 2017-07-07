@@ -4,6 +4,7 @@ import logging
 import collections
 import copy
 
+from functools import partial
 
 import numpy
 
@@ -12,27 +13,37 @@ from ilastik.shell.server.ilastikServerShell import ServerShell
 from ilastik.applets.batchProcessing.batchProcessingApplet import BatchProcessingApplet
 from ilastik.applets.dataSelection.dataSelectionApplet import DataSelectionApplet
 
+from lazyflow.graph import OperatorWrapper
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+
 
 logger = logging.getLogger(__name__)
 
+VoxelSourceState = collections.namedtuple(
+    "VoxelSourceState", "name axes shape dtype version")
+
+
 class SlotTracker(object):
     """Copied from voxel_server"""
-    
+
     def __init__(self, image_name_multislot, multislots, forced_axes=None):
         self.image_name_multislot = image_name_multislot
-        self._slot_versions = {} # { dataset_name : { slot_name : [slot, version] } }
-        
+        self._slot_versions = {}  # { dataset_name : { slot_name : [slot, version] } }
+
         self.multislot_names = [s.name for s in multislots]
         if forced_axes is None:
             self.multislots = multislots
         else:
             self.multislots = []
             for multislot in multislots:
-                op = OperatorWrapper(OpReorderAxes, parent=multislot.getRealOperator().parent, broadcastingSlotNames=['AxisOrder'])
+                op = OperatorWrapper(
+                    OpReorderAxes,
+                    parent=multislot.getRealOperator().parent,
+                    broadcastingSlotNames=['AxisOrder'])
                 op.AxisOrder.setValue(forced_axes)
-                op.Input.connect( multislot )
-                self.multislots.append( op.Output )
-    
+                op.Input.connect(multislot)
+                self.multislots.append(op.Output)
+
     def get_dataset_names(self):
         names = []
         for lane_index, name_slot in enumerate(self.image_name_multislot):
@@ -57,10 +68,12 @@ class SlotTracker(object):
             for multislot in self.multislots:
                 slot = multislot[lane_index]
                 # TODO: Unsubscribe to these signals on shutdown...
-                slot.notifyDirty( partial(self._increment_version, dataset_name) )
-                slot.notifyMetaChanged( partial(self._increment_version, dataset_name) )
-            
-            self._slot_versions[dataset_name] = { self.multislot_names[self.multislots.index(multislot)] : [multislot[lane_index], 0] for multislot in self.multislots }
+                slot.notifyDirty(partial(self._increment_version, dataset_name))
+                slot.notifyMetaChanged(partial(self._increment_version, dataset_name))
+
+            self._slot_versions[dataset_name] = {
+                self.multislot_names[self.multislots.index(multislot)]: [multislot[lane_index], 0]
+                for multislot in self.multislots}
 
         return self._slot_versions[dataset_name]
 
@@ -72,17 +85,17 @@ class SlotTracker(object):
         assert False, "Couldn't find slot"
 
     def get_states(self, dataset_name):
-        states = OrderedDict()
+        states = collections.OrderedDict()
         slot_versions = self.get_slot_versions(dataset_name)
         for slot_name, (slot, version) in slot_versions.items():
             axes = ''.join(slot.meta.getAxisKeys())
-            states[slot_name] = VoxelSourceState( slot_name,
-                                                  axes,
-                                                  slot.meta.shape,
-                                                  slot.meta.dtype.__name__,
-                                                  version)
+            states[slot_name] = VoxelSourceState(slot_name,
+                                                 axes,
+                                                 slot.meta.shape,
+                                                 slot.meta.dtype.__name__,
+                                                 version)
         return states
-    
+
     def get_slot(self, dataset_name, slot_name):
         slot_versions = self.get_slot_versions(dataset_name)
         return slot_versions[slot_name][0]
@@ -144,11 +157,14 @@ class IlastikAPI(object):
             return None
 
     def initialize_voxel_server(self):
-        op = self.server_shell.pcApplet.topLevelOperator
+        op = self._server_shell.workflow.pcApplet.topLevelOperator
         multislots = [op.InputImages,
                       op.LabelImages,
                       op.CachedPredictionProbabilities]
-        self.slot_tracker = SlotTracker(image_name_multislot, multislots, forced_axes='tczyx') # for now, force wacky volumina order
+
+        image_name_multislot = self._server_shell.workflow.dataSelectionApplet.topLevelOperator.ImageName
+        # forcing to neuroglancer axisorder
+        self.slot_tracker = SlotTracker(image_name_multislot, multislots, forced_axes='tczyx')
 
     def create_project(self, workflow_type='pixel_classification', project_path=None):
         """Create a new project
@@ -354,9 +370,22 @@ class IlastikAPI(object):
             )
         return outs
 
-    def get_strutured_info(self):
-        output_volumes = self.get_output_volumes
-        workflow = self.workflow_name
+    def get_structured_info(self):
+        if self.slot_tracker is None:
+            self.initialize_voxel_server()
+        dataset_names = self.slot_tracker.get_dataset_names()
+        json_states = []
+        for lane_number, dataset_name in enumerate(dataset_names):
+            states = self.slot_tracker.get_states(dataset_name)
+            lane_states = []
+            for source_name, state in states.iteritems():
+                tmp = collections.OrderedDict(zip(state._fields, state))
+                tmp['lane_number'] = lane_number
+                tmp['dataset_name'] = dataset_name
+                tmp['source_name'] = source_name
+                lane_states.append(tmp)
+            json_states.append(lane_states)
+        return (dataset_names, json_states)
 
     def get_input_info(self):
         """Gather information about inputs to the current workflow"""
@@ -414,7 +443,6 @@ class IlastikAPI(object):
                 info = data_for_role
             else:
                 # Copy the template info, but override filepath, etc.
-                from IPython.core.debugger import Tracer; Tracer()()
                 default_info = DatasetInfo(data_for_role)
                 info = copy.copy(template_infos[role_index])
                 info.filePath = default_info.filePath

@@ -35,3 +35,10 @@ def add_input_to_current_workflow():
 
     app._ilastik_api.add_dataset(image_file)
     return jsonify(data_loaded=data_name)
+
+@workflowAPI.route('/structured-info')
+def get_structured_info():
+    dataset_names, json_states = app._ilastik_api.get_structured_info()
+    resp = jsonify(states=json_states, image_names=dataset_names)
+    resp.status_code = 200
+    return resp
