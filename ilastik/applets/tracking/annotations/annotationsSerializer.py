@@ -30,25 +30,24 @@ class SerialAnnotationsSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             gr = getOrCreateGroup(group, str(i))
-            for cropKey in op.Annotations.value.keys():
-                crop_gr = getOrCreateGroup(gr, str(cropKey))
-
-                labels_gr = getOrCreateGroup(crop_gr, str("labels"))
-                for t in op.Annotations.value[cropKey]["labels"].keys():
+            labels_gr = getOrCreateGroup(gr, str("labels"))
+            if "labels" in op.Annotations.value.keys():
+                for t in op.Annotations.value["labels"].keys():
                     t_gr = getOrCreateGroup(labels_gr, str(t))
-                    for oid in op.Annotations.value[cropKey]["labels"][t].keys():
-                        l = op.Annotations.value[cropKey]["labels"][t][oid]
+                    for oid in op.Annotations.value["labels"][t].keys():
+                        l = op.Annotations.value["labels"][t][oid]
                         dset = list(l)
                         if len(dset) > 0:
                             t_gr.create_dataset(name=str(oid), data=dset)
 
-                divisions_gr = getOrCreateGroup(crop_gr, str("divisions"))
-                dset = []
-                for trackid in op.Annotations.value[cropKey]["divisions"].keys():
-                    (children, t_parent) = op.Annotations.value[cropKey]["divisions"][trackid]
+            divisions_gr = getOrCreateGroup(gr, str("divisions"))
+            dset = []
+            if "divisions" in op.Annotations.value.keys():
+                for trackid in op.Annotations.value["divisions"].keys():
+                    (children, t_parent) = op.Annotations.value["divisions"][trackid]
                     dset.append([trackid, children[0], children[1], t_parent])
-                if len(dset) > 0:
-                    divisions_gr.create_dataset(name=str(i), data=dset)
+            if len(dset) > 0:
+                divisions_gr.create_dataset(name=str(i), data=dset)
         self.dirty = False
 
     def deserialize(self, group):
@@ -62,28 +61,25 @@ class SerialAnnotationsSlot(SerialSlot):
             op = innerops[int(inner)]
             annotations = {}
 
-
-            for cropKey in gr.keys():
-                crop_gr = gr[cropKey]
-                annotations[cropKey] = {}
-
-                labels_gr = crop_gr["labels"]
-                annotations[cropKey]["labels"] = {}
+            if "labels" in gr.keys():
+                labels_gr = gr["labels"]
+                annotations["labels"] = {}
                 for t in labels_gr.keys():
-                    annotations[cropKey]["labels"][int(t)] = {}
+                    annotations["labels"][int(t)] = {}
                     t_gr = labels_gr[str(t)]
                     for oid in t_gr.keys():
-                        annotations[cropKey]["labels"][int(t)][int(oid)] = set(t_gr[oid])
+                        annotations["labels"][int(t)][int(oid)] = set(t_gr[oid])
 
-                divisions_gr = crop_gr["divisions"]
-                annotations[cropKey]["divisions"] = {}
+            if "divisions" in gr.keys():
+                divisions_gr = gr["divisions"]
+                annotations["divisions"] = {}
                 for divKey in divisions_gr.keys():
                     dset = divisions_gr[divKey]
-                    annotations[cropKey]["divisions"] = {}
+                    annotations["divisions"] = {}
                     for row in dset:
-                        annotations[cropKey]["divisions"][row[0]] = ([row[1],row[2]], row[3])
+                        annotations["divisions"][row[0]] = ([row[1],row[2]], row[3])
 
-            op.Annotations.setValue(annotations)
+        op.Annotations.setValue(annotations)
         self.dirty = False
 
 class SerialDivisionsSlot(SerialSlot):

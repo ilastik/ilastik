@@ -36,7 +36,6 @@ else:
     logger.info("Using old conservation tracking workflow (PgmLink)")
 
 class OpStructuredTracking(OpConservationTracking):
-    Crops = InputSlot()
     Labels = InputSlot(stype=Opaque, rtype=List)
     Divisions = InputSlot(stype=Opaque, rtype=List)
     Annotations = InputSlot(stype=Opaque)
@@ -75,7 +74,6 @@ class OpStructuredTracking(OpConservationTracking):
         self.appearanceWeight = 1
         self.disappearanceWeight = 1
 
-        self.Crops.notifyReady(bind(self._updateCropsFromOperator) )
         self.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
         self.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
 
@@ -108,9 +106,6 @@ class OpStructuredTracking(OpConservationTracking):
 
         return result
 
-    def _updateCropsFromOperator(self):
-        self._crops = self.Crops.value
-
     def _runStructuredLearning(self,
             z_range,
             maxObj,
@@ -138,17 +133,15 @@ class OpStructuredTracking(OpConservationTracking):
             self.progressVisitor=DefaultProgressVisitor()
 
         emptyAnnotations = False
-        for crop in self.Annotations.value.keys():
-            emptyCrop = self.Annotations.value[crop]["divisions"]=={} and self.Annotations.value[crop]["labels"]=={}
-            if emptyCrop and not withBatchProcessing:
-                gui._criticalMessage("Error: Weights can not be calculated because training annotations for crop {} are missing. ".format(crop) +\
-                                  "Go back to Training applet and train on each crop.")
-            emptyAnnotations = emptyAnnotations or emptyCrop
+        empty = self.Annotations.value["divisions"]=={} and self.Annotations.value["labels"]=={}
+        if empty and not withBatchProcessing:
+            gui._criticalMessage("Error: Weights can not be calculated because training annotations are missing. " +\
+                              "Go back to Training applet!")
+        emptyAnnotations = emptyAnnotations or empty
 
         if emptyAnnotations:
             return [self.DetectionWeight.value, self.DivisionWeight.value, self.TransitionWeight.value, self.AppearanceWeight.value, self.DisappearanceWeight.value]
 
-        self._updateCropsFromOperator()
         median_obj_size = [0]
 
         from_z = z_range[0]
@@ -203,138 +196,131 @@ class OpStructuredTracking(OpConservationTracking):
 
             logger.info("Structured Learning: Adding Training Annotations to Hypotheses Graph")
 
-            mergeMsgStr = "Your tracking annotations contradict this model assumptions! All tracks must be continuous, tracks of length one are not allowed, and mergers may merge or split but all tracks in a merger appear/disappear together."
+            mergeMsgStr = "Your tracking annotations contradict this model assumptions! All tracks must be continuous; mergers may merge or split but all tracks in a merger appear/disappear together."
             foundAllArcs = True;
             numAllAnnotatedDivisions = 0
 
             self.features = self.ObjectFeatures(range(0,self.LabelImage.meta.shape[0])).wait()
 
-            for cropKey in self.Crops.value.keys():
-                if foundAllArcs:
+            if foundAllArcs:
 
-                    if not cropKey in self.Annotations.value.keys():
-                        if not withBatchProcessing:
-                            gui._criticalMessage("You have not trained your training for " + str(cropKey) + \
-                                              ". \nGo back to the Training applet and train on all crops!")
-                        return [self.DetectionWeight.value, self.DivisionWeight.value, self.TransitionWeight.value, self.AppearanceWeight.value, self.DisappearanceWeight.value]
+                timeRange = [0,self.LabelImage.meta.shape[0]]
 
-                    crop = self.Annotations.value[cropKey]
-                    timeRange = self.Crops.value[cropKey]['time']
+                if "labels" in self.Annotations.value:
 
-                    if "labels" in crop.keys():
+                    labels = self.Annotations.value["labels"]
 
-                        labels = crop["labels"]
+                    for time in labels.keys():
+                        if time in range(timeRange[0],timeRange[1]+1):
 
-                        for time in labels.keys():
-                            if time in range(timeRange[0],timeRange[1]+1):
-
-                                if not foundAllArcs:
-                                    break
-
-                                for label in labels[time].keys():
-
-                                    if not foundAllArcs:
-                                        break
-
-                                    trackSet = labels[time][label]
-                                    center = self.features[time][default_features_key]['RegionCenter'][label]
-                                    trackCount = len(trackSet)
-
-                                    if trackCount > maxObj:
-                                        logger.info("Your track count for object {} in time frame {} is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(label,time,trackCount,trackSet,maxObj))
-                                        logger.info("Either remove track(s) from this object or train the object count classifier with more labels!")
-                                        maxObjOK = False
-                                        self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', "Your track count for object "+str(label)+" in time frame " +str(time)+ " equals "+str(trackCount)+"=|"+str(trackSet)+"|," + \
-                                                " which is greater than the maximum object number "+str(maxObj)+" defined by object count classifier! " + \
-                                                "Either remove track(s) from this object or train the object count classifier with more labels!")
-
-                                    for track in trackSet:
-
-                                        if not foundAllArcs:
-                                            logger.info("[structuredTrackingGui] Increasing max nearest neighbors!")
-                                            break
-
-                                        # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
-                                        type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
-                                        if type == None:
-                                            self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
-
-                                        elif type[0] in ["LAST", "INTERMEDIATE"]:
-
-                                            previous_label = int(type[1])
-                                            previousTrackSet = labels[time-1][previous_label]
-                                            intersectionSet = trackSet.intersection(previousTrackSet)
-                                            trackCountIntersection = len(intersectionSet)
-
-                                            if trackCountIntersection > maxObj:
-                                                logger.info("Your track count for transition ( {},{} ) ---> ( {},{} ) is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(previous_label,time-1,label,time,trackCountIntersection,intersectionSet,maxObj))
-                                                logger.info("Either remove track(s) from these objects or train the object count classifier with more labels!")
-                                                maxObjOK = False
-                                                self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', "Your track count for transition ("+str(previous_label)+","+str(time-1)+") ---> ("+str(label)+","+str(time)+") is "+str(trackCountIntersection)+"=|"+str(intersectionSet)+"|, " + \
-                                                        "which is greater than maximum object number "+str(maxObj)+" defined by object count classifier!" + \
-                                                        "Either remove track(s) from these objects or train the object count classifier with more labels!")
-
-
-                                            sink = (time, int(label))
-                                            foundAllArcs = False
-                                            for edge in hypothesesGraph._graph.in_edges(sink): # an edge is a tuple of source and target nodes
-                                                logger.info("Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label))
-                                                # print "Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label)
-                                                if edge[0][0] == time-1 and edge[0][1] == int(previous_label): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
-                                                    foundAllArcs = True
-                                                    hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = int(trackCountIntersection)
-                                                    break
-                                            if not foundAllArcs:
-                                                logger.info("[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS t:{} id:{}".format(time-1, int(previous_label)))
-                                                # print "[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS t:{} id:{}".format(time-1, int(previous_label))
-                                                break
-
-                                    if type == None:
-                                        self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
-
-                                    elif type[0] in ["FIRST", "LAST", "INTERMEDIATE", "SINGLETON(FIRST_LAST)"]:
-                                        if (time, int(label)) in hypothesesGraph._graph.node.keys():
-                                            hypothesesGraph._graph.node[(time, int(label))]['value'] = trackCount
-                                            logger.info("[structuredTrackingGui] NODE: {} {}".format(time, int(label)))
-                                            # print "[structuredTrackingGui] NODE: {} {} {}".format(time, int(label), int(trackCount))
-                                        else:
-                                            logger.info("[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label)))
-                                            # print "[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label))
-
-                                            foundAllArcs = False
-                                            break
-
-                    if foundAllArcs and "divisions" in crop.keys():
-                        divisions = crop["divisions"]
-
-                        numAllAnnotatedDivisions = numAllAnnotatedDivisions + len(divisions)
-                        for track in divisions.keys():
                             if not foundAllArcs:
                                 break
 
-                            division = divisions[track]
-                            time = int(division[1])
-
-                            parent = int(self.getLabelInCrop(cropKey, time, track))
-
-                            if parent >=0:
-                                children = [int(self.getLabelInCrop(cropKey, time+1, division[0][i])) for i in [0, 1]]
-                                parentNode = (time, parent)
-                                hypothesesGraph._graph.node[parentNode]['divisionValue'] = 1
-                                foundAllArcs = False
-                                for child in children:
-                                    for edge in hypothesesGraph._graph.out_edges(parentNode): # an edge is a tuple of source and target nodes
-                                        if edge[1][0] == time+1 and edge[1][1] == int(child): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
-                                            foundAllArcs = True
-                                            hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = 1
-                                            break
-                                    if not foundAllArcs:
-                                        break
+                            for label in labels[time].keys():
 
                                 if not foundAllArcs:
-                                    logger.info("[structuredTrackingGui] Increasing max nearest neighbors! DIVISION {} {}".format(time, parent))
-                                    # print "[structuredTrackingGui] Increasing max nearest neighbors! DIVISION {} {}".format(time, parent)
                                     break
+
+                                trackSet = labels[time][label]
+                                center = self.features[time][default_features_key]['RegionCenter'][label]
+                                trackCount = len(trackSet)
+
+                                if trackCount > maxObj:
+                                    logger.info("Your track count for object {} in time frame {} is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(label,time,trackCount,trackSet,maxObj))
+                                    logger.info("Either remove track(s) from this object or train the object count classifier with more labels!")
+                                    maxObjOK = False
+                                    self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', "Your track count for object "+str(label)+" in time frame " +str(time)+ " equals "+str(trackCount)+"=|"+str(trackSet)+"|," + \
+                                            " which is greater than the maximum object number "+str(maxObj)+" defined by object count classifier! " + \
+                                            "Either remove track(s) from this object or train the object count classifier with more labels!")
+
+                                for track in trackSet:
+
+                                    if not foundAllArcs:
+                                        logger.info("[structuredTrackingGui] Increasing max nearest neighbors!")
+                                        break
+
+                                    # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
+                                    type = self._type(time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
+                                    print "time, track",time, track, "type",type
+                                    if type == None:
+                                        self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
+
+                                    elif type[0] in ["LAST", "INTERMEDIATE"]:
+
+                                        previous_label = int(type[1])
+                                        previousTrackSet = labels[time-1][previous_label]
+                                        intersectionSet = trackSet.intersection(previousTrackSet)
+                                        trackCountIntersection = len(intersectionSet)
+
+                                        if trackCountIntersection > maxObj:
+                                            logger.info("Your track count for transition ( {},{} ) ---> ( {},{} ) is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(previous_label,time-1,label,time,trackCountIntersection,intersectionSet,maxObj))
+                                            logger.info("Either remove track(s) from these objects or train the object count classifier with more labels!")
+                                            maxObjOK = False
+                                            self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', "Your track count for transition ("+str(previous_label)+","+str(time-1)+") ---> ("+str(label)+","+str(time)+") is "+str(trackCountIntersection)+"=|"+str(intersectionSet)+"|, " + \
+                                                    "which is greater than maximum object number "+str(maxObj)+" defined by object count classifier!" + \
+                                                    "Either remove track(s) from these objects or train the object count classifier with more labels!")
+
+
+                                        sink = (time, int(label))
+                                        foundAllArcs = False
+                                        for edge in hypothesesGraph._graph.in_edges(sink): # an edge is a tuple of source and target nodes
+                                            logger.info("Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label))
+                                            # print "Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label)
+                                            if edge[0][0] == time-1 and edge[0][1] == int(previous_label): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
+                                                foundAllArcs = True
+                                                hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = int(trackCountIntersection)
+                                                break
+                                        if not foundAllArcs:
+                                            logger.info("[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS t:{} id:{}".format(time-1, int(previous_label)))
+                                            # print "[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS t:{} id:{}".format(time-1, int(previous_label))
+                                            break
+
+                                if type == None:
+                                    self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
+
+                                elif type[0] in ["FIRST", "LAST", "INTERMEDIATE", "SINGLETON(FIRST_LAST)"]:
+                                    if (time, int(label)) in hypothesesGraph._graph.node.keys():
+                                        hypothesesGraph._graph.node[(time, int(label))]['value'] = trackCount
+                                        logger.info("[structuredTrackingGui] NODE: {} {}".format(time, int(label)))
+                                        # print "[structuredTrackingGui] NODE: {} {} {}".format(time, int(label), int(trackCount))
+                                    else:
+                                        logger.info("[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label)))
+                                        # print "[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label))
+
+                                        foundAllArcs = False
+                                        break
+
+                if foundAllArcs and "divisions" in self.Annotations.value.keys():
+                    divisions = self.Annotations.value["divisions"]
+
+                    numAllAnnotatedDivisions = numAllAnnotatedDivisions + len(divisions)
+                    for track in divisions.keys():
+                        if not foundAllArcs:
+                            break
+
+                        division = divisions[track]
+                        time = int(division[1])
+
+                        parent = int(self.getLabelTT(time, track))
+
+                        if parent >=0:
+                            children = [int(self.getLabelTT(time+1, division[0][i])) for i in [0, 1]]
+                            parentNode = (time, parent)
+                            hypothesesGraph._graph.node[parentNode]['divisionValue'] = 1
+                            foundAllArcs = False
+                            for child in children:
+                                for edge in hypothesesGraph._graph.out_edges(parentNode): # an edge is a tuple of source and target nodes
+                                    if edge[1][0] == time+1 and edge[1][1] == int(child): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
+                                        foundAllArcs = True
+                                        hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = 1
+                                        break
+                                if not foundAllArcs:
+                                    break
+
+                            if not foundAllArcs:
+                                logger.info("[structuredTrackingGui] Increasing max nearest neighbors! DIVISION {} {}".format(time, parent))
+                                # print "[structuredTrackingGui] Increasing max nearest neighbors! DIVISION {} {}".format(time, parent)
+                                break
         logger.info("max nearest neighbors= {}".format(new_max_nearest_neighbors))
 
         if new_max_nearest_neighbors > maxNearestNeighbors:
@@ -468,14 +454,14 @@ class OpStructuredTracking(OpConservationTracking):
 
         return [self.DetectionWeight.value, self.DivisionWeight.value, self.TransitionWeight.value, self.AppearanceWeight.value, self.DisappearanceWeight.value]
 
-    def getLabelInCrop(self, cropKey, time, track):
-        labels = self.Annotations.value[cropKey]["labels"][time]
+    def getLabelTT(self, time, track):
+        labels = self.Annotations.value["labels"][time]
         for label in labels.keys():
-            if self.Annotations.value[cropKey]["labels"][time][label] == set([track]):
+            if self.Annotations.value["labels"][time][label] == set([track]):
                 return label
         return -1
 
-    def _type(self, cropKey, time, track):
+    def _type(self, time, track):
         # returns [type, previous_label] (if type=="LAST" or "INTERMEDIATE" else [type])
         type = None
         if track == -1:
@@ -483,16 +469,17 @@ class OpStructuredTracking(OpConservationTracking):
         elif time == 0:
             type = "FIRST"
 
-        labels = self.Annotations.value[cropKey]["labels"]
-        crop = self._crops[cropKey]
+        labels = self.Annotations.value["labels"]
         lastTime = -1
         lastLabel = -1
-        for t in range(crop["time"][0],time):
+        maxTime = self.LabelImage.meta.shape[0]
+        for t in range(0,time):
             if t in labels.keys():
                 for label in labels[t]:
                     if track in labels[t][label]:
                         lastTime = t
                         lastLabel = label
+
         if lastTime == -1:
             type = "FIRST"
         elif lastTime < time-1:
@@ -501,7 +488,7 @@ class OpStructuredTracking(OpConservationTracking):
             type =  "INTERMEDIATE"
 
         firstTime = -1
-        for t in range(crop["time"][1],time,-1):
+        for t in range(maxTime,time,-1):
             if t in labels.keys():
                 for label in labels[t]:
                     if track in labels[t][label]:
