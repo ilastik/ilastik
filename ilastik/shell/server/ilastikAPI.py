@@ -159,8 +159,8 @@ class IlastikAPI(object):
     def initialize_voxel_server(self):
         op = self._server_shell.workflow.pcApplet.topLevelOperator
         multislots = [op.InputImages,
-                      op.LabelImages,
-                      op.CachedPredictionProbabilities]
+                      #op.LabelImages,
+                      op.PredictionProbabilities]
 
         image_name_multislot = self._server_shell.workflow.dataSelectionApplet.topLevelOperator.ImageName
         # forcing to neuroglancer axisorder

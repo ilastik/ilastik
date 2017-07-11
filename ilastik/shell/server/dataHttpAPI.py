@@ -43,8 +43,8 @@ def get_voxels(dataset_name, source_name):
     if 'format' in request.json:
         format = str(request.json['format'])
 
-    data = slot(start, stop).wait()
 
+    data = slot(start, stop).wait()
     assert format == 'raw', "only raw for now"
 
     content_type = 'application/octet-stream'
