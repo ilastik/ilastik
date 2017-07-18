@@ -3,6 +3,7 @@ from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorw
 from .vigraRfLazyflowClassifier import VigraRfLazyflowClassifier, VigraRfLazyflowClassifierFactory
 from .parallelVigraRfLazyflowClassifier import ParallelVigraRfLazyflowClassifier, ParallelVigraRfLazyflowClassifierFactory
 from .sklearnLazyflowClassifier import SklearnLazyflowClassifier, SklearnLazyflowClassifierFactory
+from .pytorchLazyflowClassifier import PyTorchLazyflowClassifier, PyTorchLazyflowClassifierFactory
 
 # Testing
 from .vigraRfPixelwiseClassifier import VigraRfPixelwiseClassifier, VigraRfPixelwiseClassifierFactory
