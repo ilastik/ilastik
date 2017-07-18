@@ -140,6 +140,14 @@ class ClassifierSelectionDlg(QDialog):
         classifiers["(debug) Single-threaded Random Forest (VIGRA)"] = VigraRfLazyflowClassifierFactory(100)
         classifiers["(debug) Pixelwise Random Forest (VIGRA)"] = VigraRfPixelwiseClassifierFactory(100)
         
+        # Experimental pytorch prediction
+        try:
+            from lazyflow.classifiers import PyTorchLazyflowClassifierFactory
+
+            classifiers['PyTorch CNN Prediction'] = PyTorchLazyflowClassifierFactory()
+        except ImportError:
+            logger.warn("gui: Could not import pytorch classifier")
+
         return classifiers
         
     def accept(self):
