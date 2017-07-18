@@ -18,7 +18,10 @@ from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwis
 import logging
 logger = logging.getLogger(__name__)
 
-from tiktorch import TikTorch
+try:
+    from tiktorch.wrapper import TikTorch
+except ImportError as e:
+    print(e)
 
 class PyTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
@@ -47,7 +50,7 @@ class PyTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
     def get_halo_shape(self, data_axes='zyxc'):
         # return (z_halo, y_halo, x_halo, 0)
-        return (0,0,0,0)
+        return (30,30,30,0)
 
     @property
     def description(self):
@@ -83,8 +86,8 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         self._filename = filename
     
     def predict_probabilities_pixelwise(self, feature_image, roi, axistags=None):
-        logger.debug('predicting using pytorch network')
-        return self._pytorch_net.forward(feature_image)
+        logger.debug('predicting using pytorch network for image of shape {} and roi {}'.format(feature_image.shape, roi))
+        return self._pytorch_net.forward([feature_image])[0]
     
     @property
     def known_classes(self):
@@ -95,7 +98,7 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         return self._pytorch_net.expected_input_shape()[1]
 
     def get_halo_shape(self, data_axes='zyxc'):
-        return (0,0,0,0)
+        return (30,30,30,0)
 
     def serialize_hdf5(self, h5py_group):
         # TODO: serialize network directly to HDF5!
