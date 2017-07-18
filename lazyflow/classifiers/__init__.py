@@ -3,7 +3,12 @@ from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorw
 from .vigraRfLazyflowClassifier import VigraRfLazyflowClassifier, VigraRfLazyflowClassifierFactory
 from .parallelVigraRfLazyflowClassifier import ParallelVigraRfLazyflowClassifier, ParallelVigraRfLazyflowClassifierFactory
 from .sklearnLazyflowClassifier import SklearnLazyflowClassifier, SklearnLazyflowClassifierFactory
-from .pytorchLazyflowClassifier import PyTorchLazyflowClassifier, PyTorchLazyflowClassifierFactory
+
+try:
+    from .pytorchLazyflowClassifier import PyTorchLazyflowClassifier, PyTorchLazyflowClassifierFactory
+except ImportError:
+    import warnings
+    warnings.warn("init: Could not import pytorch classifier")
 
 # Testing
 from .vigraRfPixelwiseClassifier import VigraRfPixelwiseClassifier, VigraRfPixelwiseClassifierFactory
