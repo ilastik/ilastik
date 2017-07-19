@@ -816,7 +816,7 @@ class TestOpDataSelection_SingleFileH5Stacks():
         finally:
             h5file.close()
 
-        cls.glob_string = '/timeslice_*'
+        cls.glob_string = '{}/timeslice_*'.format(cls.image_file_name)
         # Create a 'project' file and give it some data
         cls.projectFile = h5py.File(cls.projectFileName)
         cls.projectFile.create_group('DataSelection')
@@ -833,6 +833,30 @@ class TestOpDataSelection_SingleFileH5Stacks():
             shutil.rmtree(cls.tmpdir)
         except OSError, e:
             print('Exception caught while deleting temporary files: {}'.format(e))
+
+    def test_load_single_file_with_glob(self):
+        graph = lazyflow.graph.Graph()
+        reader = OperatorWrapper(OpDataSelection, graph=graph)
+        reader.ProjectFile.setValue(self.projectFile)
+        reader.WorkingDirectory.setValue(os.getcwd())
+        reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
+        info = DatasetInfo(filepath=self.glob_string)
+        # Will be read from the filesystem since the data won't be found in the project file.
+        info.location = DatasetInfo.Location.ProjectInternal
+        info.internalPath = ""
+        info.invertColors = False
+        info.convertToGrayscale = False
+
+        reader.Dataset.setValues([info])
+
+        # Read the test files using the data selection operator and verify the contents
+        imgData = reader.Image[0][...].wait()
+
+        # Check raw images
+        assert imgData.shape == self.imgData3Dct.shape
+
+        numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
 
     def test_load_single_file_with_list(self):
         graph = lazyflow.graph.Graph()
