@@ -50,7 +50,11 @@ class PyTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
     def get_halo_shape(self, data_axes='zyxc'):
         # return (z_halo, y_halo, x_halo, 0)
-        return (30,30,30,0)
+        if len(data_axes) == 4:
+            return (32, 32, 32, 0)
+        # FIXME: assuming 'yxc' !
+        elif len(data_axes) == 3:
+            return (32, 32, 0)
 
     @property
     def description(self):
@@ -98,7 +102,11 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         return self._pytorch_net.expected_input_shape()[1]
 
     def get_halo_shape(self, data_axes='zyxc'):
-        return (30,30,30,0)
+        if len(data_axes) == 4:
+            return (32, 32, 32, 0)
+        # FIXME: assuming 'yxc' !
+        elif len(data_axes) == 3:
+            return (32, 32, 0)
 
     def serialize_hdf5(self, h5py_group):
         # TODO: serialize network directly to HDF5!
