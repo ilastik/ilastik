@@ -29,9 +29,10 @@ import ilastik.config
 from .pixelClassification import PixelClassificationWorkflow
 WORKFLOW_CLASSES += [PixelClassificationWorkflow]
 
-from .newAutocontext.newAutocontextWorkflow import AutocontextTwoStage, AutocontextThreeStage, AutocontextFourStage
+from .newAutocontext.newAutocontextWorkflow import AutocontextTwoStage
 WORKFLOW_CLASSES += [AutocontextTwoStage]
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
+    from .newAutocontext.newAutocontextWorkflow import AutocontextThreeStage, AutocontextFourStage
     WORKFLOW_CLASSES += [AutocontextThreeStage, AutocontextFourStage]
 
 try:
