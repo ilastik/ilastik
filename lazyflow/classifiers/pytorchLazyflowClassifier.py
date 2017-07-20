@@ -44,6 +44,7 @@ class PyTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         # TODO: check whether loaded network has the same number of classes as specified in ilastik!
 
         self._loaded_pytorch_net = TikTorch.unserialize(self._filename)
+        logger.info(self.description)
 
         # logger.info("OOB during training: {}".format( oob ))
         return PyTorchLazyflowClassifier(self._loaded_pytorch_net, self._filename)
@@ -61,8 +62,8 @@ class PyTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         if self._loaded_pytorch_net:
             return "pytorch network loaded from {} with expected input shape {} and output shape {}".format(
                 self._filename,
-                self._loaded_pytorch_net.expected_input_shape(),
-                self._loaded_pytorch_net.expected_output_shape())
+                self._loaded_pytorch_net.expected_input_shape,
+                self._loaded_pytorch_net.expected_output_shape)
         else:
             return "pytorch network loading from {} failed".format(self._filename)
 
@@ -95,11 +96,11 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     
     @property
     def known_classes(self):
-        return self._pytorch_net.expected_output_shape()[1]
+        return ["Class {}".format(i) for i in range(self._pytorch_net.expected_output_shape[1])]
 
     @property
     def feature_count(self):
-        return self._pytorch_net.expected_input_shape()[1]
+        return self._pytorch_net.expected_input_shape[1]
 
     def get_halo_shape(self, data_axes='zyxc'):
         if len(data_axes) == 4:
