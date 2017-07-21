@@ -45,7 +45,7 @@ def get_applet_information(applet_index):
     """
     try:
         applet_information = app._ilastik_server.get_applet_information(applet_index)
-    except IndexError, e:
+    except IndexError as e:
         raise IndexOutOfBounds(
             'No applet found at provided index {applet_index}'.format(applet_index=applet_index),
             payload={'error_message': str(e)})

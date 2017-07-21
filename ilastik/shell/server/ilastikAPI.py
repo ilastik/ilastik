@@ -244,7 +244,7 @@ class IlastikAPI(object):
         role_names = workflow.ROLE_NAMES
         batch_data_info = self._get_template_dataset_infos()
         return collections.OrderedDict(
-            (role_names[k], v) for k, v in batch_data_info.iteritems())
+            (role_names[k], v) for k, v in batch_data_info.items())
 
     def get_batch_applet(self):
         """Get the batch applet from the workflow applets
@@ -352,7 +352,7 @@ class IlastikAPI(object):
             return None
         output_dict = tlo.outputs
         image_slots = {}
-        for k, slot in output_dict.iteritems():
+        for k, slot in output_dict.items():
             image_slot = self.get_image_slot(slot)
             if image_slot is not None:
                 image_slots[k] = image_slot
@@ -378,7 +378,7 @@ class IlastikAPI(object):
         for lane_number, dataset_name in enumerate(dataset_names):
             states = self.slot_tracker.get_states(dataset_name)
             lane_states = []
-            for source_name, state in states.iteritems():
+            for source_name, state in states.items():
                 tmp = collections.OrderedDict(zip(state._fields, state))
                 tmp['lane_number'] = lane_number
                 tmp['dataset_name'] = dataset_name

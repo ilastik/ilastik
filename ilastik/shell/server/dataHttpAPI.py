@@ -10,7 +10,10 @@ import zlib
 
 from flask import Blueprint, request, url_for, jsonify, redirect, send_file
 from flask import current_app as app
-import StringIO
+try:
+    from BytesIO import BytesIO
+except ImportError:
+    from io import BytesIO
 
 import logging
 
@@ -49,7 +52,7 @@ def get_voxels(dataset_name, source_name):
 
     content_type = 'application/octet-stream'
     if format == 'raw':
-        stream = StringIO.StringIO(encode_raw(data))
+        stream = BytesIO(encode_raw(data))
         return send_file(stream, mimetype=content_type)
 
     if format == 'npz':
