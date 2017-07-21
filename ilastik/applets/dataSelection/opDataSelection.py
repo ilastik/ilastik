@@ -432,7 +432,21 @@ class OpDataSelection(Operator):
                 op5.Input.connect( providerSlot )
                 providerSlot = op5.Output
                 self._opReaders.append( op5 )
-            
+
+            PRECACHE_ENTIRE_VOLUME = True
+            if PRECACHE_ENTIRE_VOLUME:
+                import logging
+                from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
+
+                data_size_bytes = numpy.prod(providerSlot.meta.shape) * providerSlot.meta.getDtypeBytes()
+                logger = logging.getLogger(__name__)
+                logger.info("** Raw data will be cached in RAM: {:.1f} GB **".format(data_size_bytes / 1e9))
+
+                opCache = OpBlockedArrayCache( parent=self )
+                opCache.Input.connect( providerSlot )
+                self._opReaders.append( opCache )
+                providerSlot = opCache.Output
+
             # Connect our external outputs to the internal operators we chose
             self.Image.connect(providerSlot)
             
