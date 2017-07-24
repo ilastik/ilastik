@@ -371,7 +371,7 @@ class IlastikAPI(object):
         #   (role-1-path, role-2-path,...) ]
         # datas_by_batch_index = zip( *role_data_dict.values() )
 
-        role_input_datas = zip(*collections.OrderedDict({'Raw Input': data}).values())[0]
+        role_input_datas = list(zip(*collections.OrderedDict({'Raw Input': data}).values()))[0]
 
         for role_index, data_for_role in enumerate(role_input_datas):
             if not data_for_role:
