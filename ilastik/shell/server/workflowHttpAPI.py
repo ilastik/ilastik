@@ -4,6 +4,8 @@ from __future__ import division, print_function
 
 import os
 
+from lazyflow.utility.pathHelpers import PathComponents
+
 from flask import Blueprint, request, url_for, jsonify
 from flask import current_app as app
 
@@ -28,7 +30,8 @@ def add_input_to_current_workflow():
     data_name = str(request.json.get('data_name'))
     data_path = app._ilastik_config.data_path
     image_file = os.path.join(data_path, data_name)
-    if not os.path.exists(image_file):
+    pc = PathComponents(image_file)
+    if not os.path.exists(pc.externalPath):
         ret = jsonify(message='Could not find image file. Is it on the server?')
         ret.status_code = 404
         return ret
