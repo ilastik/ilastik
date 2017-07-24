@@ -26,7 +26,10 @@ try:
 except ImportError as e:
     print(e)
 
-PYTORCH_MODEL_FILE_PATH = '/export/home/ilastik/scp_dunet.pytorch'
+
+# FIXME: hard coded file path to a trained and pickled pytorch network!
+# PYTORCH_MODEL_FILE_PATH = '/Users/chaubold/opt/miniconda/envs/ilastik-py3/src/tiktorch/test3.nn'
+PYTORCH_MODEL_FILE_PATH = '/Users/chaubold/opt/miniconda/envs/ilastik-py3/src/tiktorch/dunet-cpu.nn'
 
 class PyTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
@@ -104,7 +107,8 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         logger.info('expected pytorch input shape is {} '.format(self._pytorch_net.expected_input_shape))
         logger.info('expected pytorch output shape is {} '.format(self._pytorch_net.expected_output_shape))
 
-        num_channels = len(self.known_classes)
+        # num_channels = len(self.known_classes)
+        num_channels = 2
         expected_shape = [stop - start for start, stop in zip(roi[0], roi[1])] + [num_channels]
 
         self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_image, axistags=axistags))
@@ -119,19 +123,22 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
                 reordered_feature_image.shape, 
                 self._opReorderAxes.Output.meta.axistags))
          
-        slice_shape = reordered_feature_image.shape[1:] # ignore z axis
+        slice_shape = list(reordered_feature_image.shape[:]) # ignore z axis
+        slice_shape[0] = 1
 
-        if slice_shape != self._pytorch_net.expected_input_shape:
-            logger.info("Expected output shape is {}, but got {}, returning zeros".format(expected_shape, slice_shape))
+        if slice_shape != list(self._pytorch_net.expected_input_shape):
+            logger.info("Expected input shape is {}, but got {}, returning zeros".format(self._pytorch_net.expected_input_shape, slice_shape))
             return np.zeros(expected_shape)
         else:
             result = np.zeros([reordered_feature_image.shape[0], num_channels] + list(reordered_feature_image.shape[2:]))
 
             # we always predict in 2D, per z-slice, so we loop over z
             for z in range(reordered_feature_image.shape[0]):
-                result_slice = self._pytorch_net.forward([reordered_feature_image[z,...]])[0]
+                # logger.warning("Dumping to {}".format('"/Users/chaubold/Desktop/dump.h5"'))
+                # vigra.impex.writeHDF5(reordered_feature_image[z,...], "data", "/Users/chaubold/Desktop/dump.h5")
+                result_slice = self._pytorch_net.forward([reordered_feature_image[z:z+1,...]])[0]
                 logger.info("Resulting slice {} has shape {}".format(z, result_slice.shape))
-                result[z, ...] = result_slice
+                result[z, 0, ...] = result_slice
 
             logger.info("Obtained a predicted block of shape {}".format(result.shape))
             
@@ -173,9 +180,12 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     @classmethod
     def deserialize_hdf5(cls, h5py_group):
         # TODO: load from HDF5 instead of hard coded path!
+
         filename = PYTORCH_MODEL_FILE_PATH
         #filename = h5py_group[cls.HDF5_GROUP_FILENAME]
+        logger.warning("Deserializing from {}".format(filename))
         loaded_pytorch_net = TikTorch.unserialize(filename)
+        loaded_pytorch_net.set('window_size', [512, 512])
 
         return PyTorchLazyflowClassifier(loaded_pytorch_net, filename)
 
