@@ -390,6 +390,7 @@ class IlastikAPI(object):
 
             # Apply to the data selection operator
             newLaneView.DatasetGroup[role_index].setValue(info)
+        workflow = self._server_shell.workflow.connect_lane(n_lanes)
 
     # --------------------------------------------------------------------------
     # NOT SURE YET:
