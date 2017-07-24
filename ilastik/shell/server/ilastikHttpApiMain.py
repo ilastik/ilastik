@@ -58,7 +58,7 @@ class IlastikServerConfig(object):
 
 
 class DefaultConfig(object):
-    DEBUG = True
+    DEBUG = False
     TESTING = False
 
 
