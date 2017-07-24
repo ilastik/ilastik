@@ -26,6 +26,8 @@ try:
 except ImportError as e:
     print(e)
 
+PYTORCH_MODEL_FILE_PATH = '/export/home/ilastik/scp_dunet.pytorch'
+
 class PyTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
                 # You must bump this if any instance members are added/removed/renamed.
@@ -35,17 +37,17 @@ class PyTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         self._kwargs = kwargs
 
         # FIXME: hard coded file path to a trained and pickled pytorch network!
-        self._filename = 'blabla'
+        self._filename = PYTORCH_MODEL_FILE_PATH
         self._loaded_pytorch_net = None
     
     def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
+        self._filename = PYTORCH_MODEL_FILE_PATH
         logger.debug('Loading pytorch network from {}'.format(self._filename))
 
         # Save for future reference
         # known_labels = numpy.sort(vigra.analysis.unique(y))
 
         # TODO: check whether loaded network has the same number of classes as specified in ilastik!
-
         self._loaded_pytorch_net = TikTorch.unserialize(self._filename)
         logger.info(self.description)
 
@@ -109,6 +111,9 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         self._opReorderAxes.AxisOrder.setValue('zcyx')
         reordered_feature_image = self._opReorderAxes.Output([]).wait()
 
+        # normalizing patch
+        reordered_feature_image = (reordered_feature_image - reordered_feature_image.mean()) / (reordered_feature_image.std() + 0.000001)
+
         logger.info(
             'Shape after reordering input is {}, axistags are {}'.format(
                 reordered_feature_image.shape, 
@@ -168,7 +173,8 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     @classmethod
     def deserialize_hdf5(cls, h5py_group):
         # TODO: load from HDF5 instead of hard coded path!
-        filename = h5py_group[cls.HDF5_GROUP_FILENAME]
+        filename = PYTORCH_MODEL_FILE_PATH
+        #filename = h5py_group[cls.HDF5_GROUP_FILENAME]
         loaded_pytorch_net = TikTorch.unserialize(filename)
 
         return PyTorchLazyflowClassifier(loaded_pytorch_net, filename)
