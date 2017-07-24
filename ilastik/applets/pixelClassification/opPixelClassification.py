@@ -572,22 +572,24 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         # Set the blockshapes for each input image separately, depending on which axistags it has.
         axisOrder = [ tag.key for tag in self.FeatureImages.meta.axistags ]
 
+        blocksize = 448
+
         blockDimsX = { 't' : (1,1),
-                       'z' : (256,256),
-                       'y' : (256,256),
+                       'z' : (blocksize,blocksize),
+                       'y' : (blocksize,blocksize),
                        'x' : (1,1),
                        'c' : (100, 100) }
 
         blockDimsY = { 't' : (1,1),
-                       'z' : (256,256),
+                       'z' : (blocksize,blocksize),
                        'y' : (1,1),
-                       'x' : (256,256),
+                       'x' : (blocksize,blocksize),
                        'c' : (100,100) }
 
         blockDimsZ = { 't' : (1,1),
                        'z' : (1,1),
-                       'y' : (256,256),
-                       'x' : (256,256),
+                       'y' : (blocksize,blocksize),
+                       'x' : (blocksize,blocksize),
                        'c' : (100,100) }
 
         blockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )

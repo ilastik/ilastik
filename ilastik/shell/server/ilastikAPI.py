@@ -12,6 +12,7 @@ from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.shell.server.ilastikServerShell import ServerShell
 from ilastik.applets.batchProcessing.batchProcessingApplet import BatchProcessingApplet
 from ilastik.applets.dataSelection.dataSelectionApplet import DataSelectionApplet
+from ilastik.applets.pixelClassification import PixelClassificationApplet
 
 from lazyflow.graph import OperatorWrapper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -201,6 +202,10 @@ class IlastikAPI(object):
           project_file_path (str): path of `.ilp` file
         """
         self._server_shell.openProjectFile(project_file_path)
+        pc_applet = self.get_applet(PixelClassificationApplet)
+        tlo = pc_applet.topLevelOperator
+        tlo.FreezePredictions.setValue(True)
+        tlo.FreezePredictions.setValue(False)
 
     def get_workflow_status(self):
         """Collects information about all applets into a dictionary
