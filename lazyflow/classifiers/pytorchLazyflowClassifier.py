@@ -116,7 +116,7 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         reordered_feature_image = self._opReorderAxes.Output([]).wait()
 
         # normalizing patch
-        reordered_feature_image = (reordered_feature_image - reordered_feature_image.mean()) / (reordered_feature_image.std() + 0.000001)
+        # reordered_feature_image = (reordered_feature_image - reordered_feature_image.mean()) / (reordered_feature_image.std() + 0.000001)
 
         logger.info(
             'Shape after reordering input is {}, axistags are {}'.format(
@@ -152,7 +152,6 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             logger.info("Reordered result to shape {}".format(result.shape))
 
             # FIXME: not needed for real neural net results:
-            result /= 255.0
             logger.info("Stats of result: min={}, max={}, mean={}".format(result.min(), result.max(), result.mean()))
 
             return result
