@@ -29,7 +29,7 @@ except ImportError as e:
 
 # FIXME: hard coded file path to a trained and pickled pytorch network!
 # PYTORCH_MODEL_FILE_PATH = '/Users/chaubold/opt/miniconda/envs/ilastik-py3/src/tiktorch/test3.nn'
-PYTORCH_MODEL_FILE_PATH = '/Users/chaubold/opt/miniconda/envs/ilastik-py3/src/tiktorch/dunet-cpu.nn'
+PYTORCH_MODEL_FILE_PATH = '/export/home/dkutra/Downloads/dunet-cpu.nn'
 
 class PyTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
@@ -90,12 +90,13 @@ assert issubclass(PyTorchLazyflowClassifierFactory, LazyflowPixelwiseClassifierF
 
 class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     HDF5_GROUP_FILENAME = 'pytorch_network_path'
-    HALO_SIZE = 32
+    HALO_SIZE = 224
 
     """
     Adapt the vigra RandomForest class to the interface lazyflow expects.
     """
     def __init__(self, pytorch_net, filename):
+        self.feature_names = []
         self._pytorch_net = pytorch_net
         self._filename = filename
         self._opReorderAxes = OpReorderAxes(graph=Graph())
@@ -174,12 +175,14 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
 
     def serialize_hdf5(self, h5py_group):
         # TODO: serialize network directly to HDF5!
+        print('?>??>?>>?>>>>>>>>>>>>>>>>z')
         h5py_group[self.HDF5_GROUP_FILENAME] = self._filename
+        h5py_group['pickled_type'] = pickle.dumps( type(self), 0 )
 
     @classmethod
     def deserialize_hdf5(cls, h5py_group):
         # TODO: load from HDF5 instead of hard coded path!
-
+        print('SAKLCMSAKLCNSAKNCSAKLCNSAKNCKANSCNKLASNCAKLSNCLSA')
         filename = PYTORCH_MODEL_FILE_PATH
         #filename = h5py_group[cls.HDF5_GROUP_FILENAME]
         logger.warning("Deserializing from {}".format(filename))
