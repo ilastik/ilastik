@@ -95,7 +95,17 @@ def create_interactive_app():
     return (t, app)
 
 
+def _init_logging():
+    from ilastik.ilastik_logging import default_config, DEFAULT_LOGFILE_PATH
+
+    logfile_path = DEFAULT_LOGFILE_PATH
+    process_name = ""
+
+    default_config.init(process_name, default_config.OutputMode.BOTH, logfile_path)
+
+
 def main():
+    _init_logging()
     app = create_app()
     app.run(host='0.0.0.0', port=5000, threaded=True)
 
