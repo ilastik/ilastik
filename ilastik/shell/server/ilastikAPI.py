@@ -360,19 +360,15 @@ class IlastikAPI(object):
         # HACK: just to get it working with pixel classification quickly
 
         template_infos = self._get_template_dataset_infos(input_axes)
-
-        n_lanes = len(opDataSelection)
-        opDataSelection.addLane(n_lanes)
-
-        newLaneView = opDataSelection.getLane(n_lanes)
-
         # Invert dict from [role][batch_index] -> path to a list-of-tuples, indexed by batch_index:
         # [ (role-1-path, role-2-path, ...),
         #   (role-1-path, role-2-path,...) ]
         # datas_by_batch_index = zip( *role_data_dict.values() )
 
         role_input_datas = list(zip(*collections.OrderedDict({'Raw Input': data}).values()))[0]
-
+        existing_lanes = len(opDataSelection.DatasetGroup)
+        opDataSelection.DatasetGroup.resize(existing_lanes + 1)
+        lane_index = existing_lanes
         for role_index, data_for_role in enumerate(role_input_datas):
             if not data_for_role:
                 continue
@@ -389,8 +385,7 @@ class IlastikAPI(object):
                 info.nickname = default_info.nickname
 
             # Apply to the data selection operator
-            newLaneView.DatasetGroup[role_index].setValue(info)
-        workflow = self._server_shell.workflow.connectLane(n_lanes)
+            opDataSelection.DatasetGroup[lane_index][role_index].setValue(info)
 
     # --------------------------------------------------------------------------
     # NOT SURE YET:
