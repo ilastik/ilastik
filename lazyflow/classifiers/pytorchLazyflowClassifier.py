@@ -90,7 +90,8 @@ assert issubclass(PyTorchLazyflowClassifierFactory, LazyflowPixelwiseClassifierF
 
 class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     HDF5_GROUP_FILENAME = 'pytorch_network_path'
-    HALO_SIZE = 224
+    HALO_SIZE = 32
+    BATCH_SIZE = 4
 
     """
     Adapt the vigra RandomForest class to the interface lazyflow expects.
@@ -134,12 +135,18 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             result = np.zeros([reordered_feature_image.shape[0], num_channels] + list(reordered_feature_image.shape[2:]))
 
             # we always predict in 2D, per z-slice, so we loop over z
-            for z in range(reordered_feature_image.shape[0]):
+            for z in range(0, reordered_feature_image.shape[0], self.BATCH_SIZE):
                 # logger.warning("Dumping to {}".format('"/Users/chaubold/Desktop/dump.h5"'))
                 # vigra.impex.writeHDF5(reordered_feature_image[z,...], "data", "/Users/chaubold/Desktop/dump.h5")
-                result_slice = self._pytorch_net.forward([reordered_feature_image[z:z+1,...]])[0]
-                logger.info("Resulting slice {} has shape {}".format(z, result_slice.shape))
-                result[z, 0, ...] = result_slice
+
+                # create batch of desired num slices. Multiple slices can be processed on multiple GPUs!
+                batch = [reordered_feature_image[zi:zi+1,...] for zi in range(z, min(z+self.BATCH_SIZE, reordered_feature_image.shape[0]))]
+
+                result_batch = self._pytorch_net.forward(batch)
+                logger.info("Resulting slices from {} to {} have shape {}".format(z, z+len(batch), result_batch[0].shape))
+
+                for i, zi in enumerate(range(z, z+len(batch))):
+                    result[zi:zi+1, 0, ...] = result_batch[i]
 
             logger.info("Obtained a predicted block of shape {}".format(result.shape))
             
