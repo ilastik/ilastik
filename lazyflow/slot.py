@@ -1526,8 +1526,13 @@ class Slot(object):
                 if self.level > 1:
                     mslot_info += " level={}".format( self.level )
             mslot_info += " ] "
-                
-        return '{}.{} {}: \t{}\n'.format( self.getRealOperator().name, self.name, mslot_info, self.meta )
+
+        if self.getRealOperator() is None:
+            realOpName = 'Unassigned'
+        else:
+            realOpName = self.getRealOperator().name
+
+        return '{}.{} {}: \t{}\n'.format(realOpName, self.name, mslot_info, self.meta)
 
     def __repr__(self):
         return self.__str__()
