@@ -838,7 +838,10 @@ class SerialPickleableSlot(SerialSlot):
         self._default = default
 
     def _saveValue(self, group, name, value):
-        pickled = pickle.dumps( value, 0 )
+        # we pickle to a string and convert to numpy.void,
+        # because HDF5 has some limitations as to which strings it can serialize
+        # (see http://docs.h5py.org/en/latest/strings.html)
+        pickled = numpy.void(pickle.dumps( value, 0 ))
         dset = group.create_dataset(name, data=pickled)
         dset.attrs['version'] = self._version
         self._failed_to_deserialize = False
@@ -857,6 +860,9 @@ class SerialPickleableSlot(SerialSlot):
 
             # Attempt to unpickle
             pickled = dset[()]
+            if isinstance(pickled, numpy.void):
+                # get the numpy.void object from the HDF5 dataset and convert it to bytes
+                pickled = pickled.tobytes()
             value = pickle.loads(pickled)
         except:
             self._failed_to_deserialize = True
