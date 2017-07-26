@@ -377,10 +377,9 @@ class ConservationTrackingWorkflowBase( Workflow ):
         )
 
     def post_process_lane_export(self, lane_index, checkOverwriteFiles=False):
-        # `time` parameter ensures we check only once for files that could be overwritten, pop up
-        # the MessageBox and then don't export (time=0). For the next round we click the export button,
-        # we really want it to export, so time=1. The default parameter is 1, so everything but not 0,
-        # in order to ensure writing out even in headless mode.
+        # `checkOverwriteFiles` parameter ensures we check only once for files that could be overwritten, pop up
+        # the MessageBox and then don't export. For the next round we click the export button,
+        # we really want it to export, so checkOverwriteFiles=False.
         
         # FIXME: This probably only works for the non-blockwise export slot.
         #        We should assert that the user isn't using the blockwise slot.
@@ -410,16 +409,16 @@ class ConservationTrackingWorkflowBase( Workflow ):
 
                 if filename is None or len(str(filename)) == 0:
                     logger.error("Cannot export from plugin with empty output filename")
-                    return
+                    return True
 
                 exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin, checkOverwriteFiles)
                 if not exportStatus:
                     return False
                 logger.info("Export done")
 
-            return
+            return True
 
-        # CSV Table export (only if plugin was not selected)
+        # Legacy CSV Table export (only if plugin was not selected)
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
             self.dataExportApplet.progressSignal.emit(0)
@@ -445,6 +444,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
             parameters['x_range'] = self.prev_x_range
             parameters['y_range'] = self.prev_y_range
             parameters['z_range'] = self.prev_z_range
+
+        return True
 
     def getPartiallyFormattedName(self, lane_index, path_format_string):
         ''' Takes the format string for the output file, fills in the most important placeholders, and returns it '''
