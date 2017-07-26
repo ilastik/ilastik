@@ -815,6 +815,9 @@ class SerialPickleableSlot(SerialSlot):
         try:
             # Attempt to unpickle
             pickled = dset[()]
+            if isinstance(pickled, numpy.void):
+                # get the numpy.void object from the HDF5 dataset and convert it to bytes
+                pickled = pickled.tobytes()
             value = pickle.loads(pickled)
         except Exception as e:
             self._failed_to_deserialize = True
