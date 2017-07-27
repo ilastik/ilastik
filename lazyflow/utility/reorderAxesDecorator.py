@@ -1,6 +1,7 @@
 import functools
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+# from lazyflow.graph import Operator, InputSlot, OutputSlot
+
 
 def reorder_options(internal_axes_order, exceptions=[]):
     assert isinstance(internal_axes_order, str)
@@ -18,8 +19,7 @@ def guard_methods(cls):
     methods = [member for member, member_type in cls.__dict__.items()
                if isinstance(member_type, type(lambda:0)) and
                member != '__getattribute__' and
-               member != '__init__' and 
-               member != 'setupOutputs']
+               member != '__init__']
 
     class_methods = [member for member, member_type in cls.__dict__.items()
                      if isinstance(member_type, classmethod)]
@@ -105,6 +105,7 @@ def reorder(cls):
     # print('metaData', meta)
 
     old_meth = getattr(cls, '__init__')
+
     def guard(fn):
         @functools.wraps(old_meth)
         def wrap(self, *args, **kwargs):
@@ -113,16 +114,18 @@ def reorder(cls):
             self._inner_call = False
             self._reorderedInput = {}
             for name in inputSlots:
+                self._reorderedInput[name] = OpReorderAxes(parent=self)
+                self._reorderedInput[name].AxisOrder.setValue(
+                    self._internal_axes_order)
                 slot = self.__getattribute__(name)
-                reordered = OpReorderAxes(parent=self) 
-                reordered.AxisOrder.setValue(self._internal_axes_order)
-                self._reorderedInput[name] = reordered
                 self._reorderedInput[name].Input.connect(slot)
-                # print('slot here', slot.meta.getAxisKeys())
+
             self._reorderedOutput = {}
             for name in outputSlots:
                 self._reorderedOutput[name] = OpReorderAxes(parent=self)
                 self._reorderedOutput[name].AxisOrder.setValue('tzyxc')
+                slot = self.__getattribute__(name)
+                slot.connect(self._reorderedOutput[name].Output)
 
             return ret
         return wrap
@@ -130,63 +133,42 @@ def reorder(cls):
     setattr(cls, '__init__', guard(old_meth))
 
     # assert self.Input.meta.getAxisKeys() == list('tzyxc')
-    
-    old_meth = getattr(cls, 'setupOutputs')
-    def guard(fn):
-        @functools.wraps(old_meth)
-        def wrap(self):
-            self._inner_call = False
-            for name in outputSlots:
-                slot = self.__getattribute__(name)
-                # print('output here', self._reorderedOutput[name].Output)
-                # print('slot here', slot)
-                slot.connect(self._reorderedOutput[name].Output)
-                # print('done here')
-                # self._reorderedOutput[name].Input.connect()
 
-            self._inner_call = True
-            ret = fn(self)
-            self._inner_call = False
-            return ret
-        return wrap
+    # old_meth = getattr(cls, 'setupOutputs')
 
-    setattr(cls, 'setupOutputs', guard(old_meth))
-
-    old_getattribute = getattr(cls, '__getattribute__')
-    def __getattribute__(self, item):
-        # print('get item', item)
-        if item in inputSlots:
-            print('get input slot', item)
-            if self._inner_call:
-                print('inner call')
-                return self._reorderedInput[item].Output
-
-        if item in outputSlots:
-            print('get output slot', item)
-            if self._inner_call:
-                print('inner call')
-                return self._reorderedOutput[item].Input
-            else:
-                print('outer call')
-        return super(cls, self).__getattribute__(item)
     # def guard(fn):
     #     @functools.wraps(old_meth)
-    #     def wrap(self, arg):
-    #         # self._inner_call = True
-    #         # self._reorderedInput = []
-    #         # for slot in inputSlots:
-    #         #     self._reorderedInput.append(
-    #         #         OpReorderAxes(parent=self)
-    #         #     )
-    #         # for reordered in self._reorderedInput:
-    #         #     reordered.AxisOrder = self._internal_axes_order
-    #         ret = fn(self, arg)
+    #     def wrap(self):
     #         # self._inner_call = False
+    #         # for name in outputSlots:
+    #         #     slot = self.__getattribute__(name)
+    #         #     # slot.connect(self._reorderedOutput[name].Output)
+    #         #     print('slot here', slot)
+    #         #     # print('done here')
+    #         #     # self._reorderedOutput[name].Input.connect()
+
+    #         self._inner_call = True
+    #         ret = fn(self)
+    #         self._inner_call = False
     #         return ret
     #     return wrap
 
-    setattr(cls, '__getattribute__', __getattribute__)   
+    # setattr(cls, 'setupOutputs', guard(old_meth))
 
+    def __getattribute__(self, name):
+        if name in inputSlots:
+            if self._inner_call:
+                print('inner call to {}'.format(name))
+                return self._reorderedInput[name].Output
+
+        if name in outputSlots:
+            if self._inner_call:
+                print('inner call to {}'.format(name))
+                return self._reorderedOutput[name].Input
+
+        return super(cls, self).__getattribute__(name)
+
+    setattr(cls, '__getattribute__', __getattribute__)
 
     return cls
 
