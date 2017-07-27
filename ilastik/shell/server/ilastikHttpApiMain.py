@@ -111,7 +111,7 @@ def _configure_lazyflow_settings():
     from lazyflow.utility import Memory
     from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
-    n_threads = 1
+    n_threads = 0
 
     if n_threads is not None:
         logger.info("Resetting lazyflow thread pool with {} threads.".format( n_threads ))
