@@ -816,7 +816,7 @@ class TestOpDataSelection_SingleFileH5Stacks():
         finally:
             h5file.close()
 
-        cls.glob_string = '{}/timeslice_*'.format(cls.image_file_name)
+        cls.glob_string = '{}/g1/timeslice_*'.format(cls.image_file_name)
         # Create a 'project' file and give it some data
         cls.projectFile = h5py.File(cls.projectFileName)
         cls.projectFile.create_group('DataSelection')
@@ -866,7 +866,6 @@ class TestOpDataSelection_SingleFileH5Stacks():
         reader.ProjectDataGroup.setValue('DataSelection/local_data')
 
         fileNameString = os.path.pathsep.join(self.file_names)
-        print(fileNameString)
         info = DatasetInfo(filepath=fileNameString)
         # Will be read from the filesystem since the data won't be found in the project file.
         info.location = DatasetInfo.Location.ProjectInternal
