@@ -51,7 +51,8 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from opDataSelection import OpDataSelection, DatasetInfo
 from dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from datasetInfoEditorWidget import DatasetInfoEditorWidget
-from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, H5VolumeSelectionDlg
+from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget
+from ilastik.widgets.stackFileSelectionWidget import H5VolumeSelectionDlg
 from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDetailedInfoTableModel
 from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 
