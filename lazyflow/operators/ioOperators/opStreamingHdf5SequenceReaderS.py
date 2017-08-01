@@ -179,11 +179,8 @@ class OpStreamingHdf5SequenceReaderS(Operator):
             the provided h5py.File object
         """
         if not isinstance(hdf5File, h5py.File):
-            f = h5py.File(hdf5File, mode='r')
-            try:
+            with h5py.File(hdf5File, mode='r') as f:
                 ret = OpStreamingHdf5SequenceReaderS.expandGlobStrings(f, globStrings)
-            finally:
-                f.close()
             return ret
 
         ret = []
