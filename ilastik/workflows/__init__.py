@@ -57,6 +57,7 @@ except ImportError as e:
 
 try:
     import tracking.conservation
+    import tracking.conservation.conservationTrackingWorkflow
     WORKFLOW_CLASSES += [tracking.conservation.conservationTrackingWorkflow.ConservationTrackingWorkflowFromBinary,
                          tracking.conservation.conservationTrackingWorkflow.ConservationTrackingWorkflowFromPrediction,
                          tracking.conservation.animalConservationTrackingWorkflow.AnimalConservationTrackingWorkflowFromBinary,
