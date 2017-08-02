@@ -108,14 +108,15 @@ class Hdf5StackingDlg(QDialog):
     """
     def __init__(self, parent=None, list_of_paths=None):
         super(Hdf5StackingDlg, self).__init__(parent)
+        self.setWindowTitle('Select images for stacking')
         if list_of_paths is None:
             list_of_paths = []
 
         self.list_of_paths = list_of_paths
 
         self.radio_group = QButtonGroup(parent=self)
-        label = QLabel("Your HDF5 File contains multiple image volumes.\n"
-                       "Please specify a pattern in order to stack multiple volumes.")
+        label = QLabel("Your HDF5 File contains multiple images.\n"
+                       "Please specify a pattern in order to stack multiple images.")
 
         self.stack_widget = Hdf5StackSelectionWidget(
             parent=self,
