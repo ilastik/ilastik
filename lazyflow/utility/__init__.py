@@ -29,7 +29,8 @@ from orderedSignal import OrderedSignal
 from fileLock import FileLock
 from tracer import Tracer, traceLogged
 from pathHelpers import (
-    PathComponents, getPathVariants, isUrl, make_absolute, mkdir_p, lsHdf5)
+    PathComponents, getPathVariants, isUrl, make_absolute, mkdir_p, globHdf5,
+    globList, lsHdf5)
 from roiRequestBatch import RoiRequestBatch
 from bigRequestStreamer import BigRequestStreamer
 import io_util

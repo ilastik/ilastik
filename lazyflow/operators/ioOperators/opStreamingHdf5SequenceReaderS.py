@@ -170,13 +170,19 @@ class OpStreamingHdf5SequenceReaderS(Operator):
         """Matches a list of globStrings to internal paths of files
 
         Args:
-            hdf5File: h5py.File object
+            hdf5File: h5py.File object, or path(string). If a string is given,
+              the file is opened and closed in this method.
             globStrings: string. glob or path strings delimited by os.pathsep
 
         Returns:
             List of internal paths matching the globstrings that were found in
             the provided h5py.File object
         """
+        if not isinstance(hdf5File, h5py.File):
+            with h5py.File(hdf5File, mode='r') as f:
+                ret = OpStreamingHdf5SequenceReaderS.expandGlobStrings(f, globStrings)
+            return ret
+
         ret = []
         # Parse list into separate globstrings and combine them
         for globString in globStrings.split(os.path.pathsep):
