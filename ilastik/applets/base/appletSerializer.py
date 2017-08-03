@@ -651,11 +651,13 @@ class SerialPickledValueSlot(SerialSlot):
     
     @staticmethod
     def _saveValue(group, name, value):
-        group.create_dataset(name, data=pickle.dumps(value, 0))
+        group.create_dataset(name, data=numpy.void(pickle.dumps(value, 0)))
 
     @staticmethod
     def _getValue(subgroup, slot):
         val = subgroup[()]
+        if isinstance(val, numpy.void):
+            val = val.tobytes()
         slot.setValue(pickle.loads(val))
 
 
