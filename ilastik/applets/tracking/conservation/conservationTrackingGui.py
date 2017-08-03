@@ -260,14 +260,14 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         if withTracklets:
             numStages += 3 # initializing tracklet graph, finding tracklets, contracting edges in tracklet graph
 
-        # if WITH_HYTRA:
-        #     self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
-        #     self.progressWindow.run()
-        #     self.progressWindow.show()
-        #     self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
-        # else:
-        self.progressWindow = None
-        self.progressVisitor = DefaultProgressVisitor()
+        if WITH_HYTRA:
+            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+            self.progressWindow.run()
+            self.progressWindow.show()
+            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        else:
+            self.progressWindow = None
+            self.progressVisitor = DefaultProgressVisitor()
 
         def _track():
             self.applet.busy = True

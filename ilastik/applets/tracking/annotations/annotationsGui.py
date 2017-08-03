@@ -21,7 +21,7 @@
 from __future__ import division
 from builtins import range
 from PyQt5 import uic, QtWidgets, QtCore
-from PyQt5.QtGui import QColor, QPixmap, QIcon
+from PyQt5.QtGui import QColor, QPixmap, QIcon, QTextCursor
 
 import sys
 import os
@@ -39,9 +39,6 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import log_exception
-from ilastik.widgets.cropListView import Crop
-from ilastik.widgets.cropListModel import CropListModel
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.utility import bind
 
 import volumina.colortables as colortables
@@ -79,15 +76,9 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
-        self.editor.cropModel.mouseRelease.connect(bind(self._onSaveAnnotations))
         self._drawer.activeTrackBox.setToolTip("Active track label and colour.")
 
-        self.editor.showCropLines(True)
-        self.editor.cropModel.setEditable (False)
-
         self.editor.posModel.timeChanged.connect(self.updateTime)
-
-        self._cropListViewInit()
 
         self.topLevelOperatorView.Labels.setValue(self.topLevelOperatorView.labels)
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
@@ -108,7 +99,6 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.windowYBox.setVisible(False)
         self._drawer.windowZBox.setVisible(False)
         self._drawer.exportLabel.setVisible(False)
-        self._drawer.cropListView.setVisible(False)
         self._drawer.nextUnlabeledObject.pressed.connect(self.goToNextUnlabeledObject)
         self._drawer.nextUnlabeledDivision.pressed.connect(self.goToNextUnlabeledDivision)
         self._drawer.nextUnlabeledMerger.pressed.connect(self.goToNextUnlabeledMerger)
@@ -139,16 +129,18 @@ class AnnotationsGui(LayerViewerGui):
         self.divFeatures = self.topLevelOperatorView.DivisionProbabilities(list(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0]))).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         labels = self.topLevelOperatorView.labels
         divisions = self.topLevelOperatorView.divisions
-        crop = self.getCurrentCrop()
 
-        time_start = crop["time"][0]
-        time_stop = crop["time"][1]
+        shape = self.topLevelOperatorView.LabelImage.meta.shape
+        time_start = 0
+        time_stop = shape[0]
 
         divisionCandidates = []
         for t in range(time_start, time_stop):
+            stop = list(shape)
+            stop[0] = t+1
             roi = SubRegion(self.topLevelOperatorView.LabelImage,
-                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
-                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+                                start=[t,0,0,0,0],
+                                stop=stop)
             li = self.topLevelOperatorView.LabelImage.get(roi).wait()
             uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
 
@@ -162,7 +154,6 @@ class AnnotationsGui(LayerViewerGui):
                 if not divFlag and ul > 0 and t in range(len(self.divFeatures)) and ul in range(len(self.divFeatures[t])) and \
                                 self.divFeatures[t][ul][1]>self.divisionProbabilityCutOff:
                     divisionCandidates.append([t,ul,self.divFeatures[t][ul][1]])
-
         if divisionCandidates == []:
             self._informationMessage("No more DIVISIONS found for the division probability cut-off {}!".format(self.divisionProbabilityCutOff))
         else:
@@ -185,16 +176,18 @@ class AnnotationsGui(LayerViewerGui):
     def goToNextUnlabeledMerger(self):
         self.mergerFeatures = self.topLevelOperatorView.DetectionProbabilities(list(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0]))).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         labels = self.mainOperator.labels
-        crop = self.getCurrentCrop()
 
-        time_start = crop["time"][0]
-        time_stop = crop["time"][1]
+        shape = self.topLevelOperatorView.LabelImage.meta.shape
+        time_start = 0
+        time_stop = shape[0]
 
         mergerCandidates = []
-        for t in range(time_start, time_stop+1):
+        for t in range(time_start, time_stop):
+            stop = list(shape)
+            stop[0] = t+1
             roi = SubRegion(self.topLevelOperatorView.LabelImage,
-                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
-                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+                                start=[t,0,0,0,0],
+                                stop=stop)
             li = self.topLevelOperatorView.LabelImage.get(roi).wait()
             uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
 
@@ -206,7 +199,7 @@ class AnnotationsGui(LayerViewerGui):
                     if maxValue > self.mergerProbabilityCutOff:
                         mergerIndex = index
                     if mergerIndex >0:
-                        if (not ul in list(labels[t].keys())) or( ul in list(labels[t].keys()) and mergerIndex > len(labels[t][ul])):
+                        if ( t not in labels.keys() or not ul in labels[t].keys()) or( ul in labels[t].keys() and mergerIndex > len(labels[t][ul])):
                             mergerCandidates.append([t,ul,maxValue])
 
         if mergerCandidates == []:
@@ -223,20 +216,22 @@ class AnnotationsGui(LayerViewerGui):
 
     def goToNextUnlabeledObject(self):
         labels = self.mainOperator.labels
-        crop = self.getCurrentCrop()
 
-        time_start = crop["time"][0]
-        time_stop = crop["time"][1]
+        shape = self.topLevelOperatorView.LabelImage.meta.shape
+        time_start = 0
+        time_stop = shape[0]
 
-        for t in range(time_start, time_stop+1):
+        for t in range(time_start, time_stop):
+            stop = list(shape)
+            stop[0] = t+1
             roi = SubRegion(self.topLevelOperatorView.LabelImage,
-                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
-                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+                                start=[t,0,0,0,0],
+                                stop=stop)
             li = self.topLevelOperatorView.LabelImage.get(roi).wait()
             uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
 
             for ul in uniqueLabels:
-                if ul > 0 and not ul in list(labels[t].keys()):
+                if ul > 0 and (t not in labels.keys() or not ul in labels[t].keys()):
                     self._gotoObject(ul, t, keepXYZ=False)
                     return ul, t
 
@@ -246,17 +241,19 @@ class AnnotationsGui(LayerViewerGui):
 
     def goToNextUnlabeledObjectFrame(self):
         labels = self.mainOperator.labels
-        crop = self.getCurrentCrop()
         t = self.editor.posModel.time
 
+        shape = self.topLevelOperatorView.LabelImage.meta.shape
+        stop = list(shape)
+        stop[0] = t+1
         roi = SubRegion(self.topLevelOperatorView.LabelImage,
-                            start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
-                            stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+                            start=[t,0,0,0,0],
+                            stop=stop)
         li = self.topLevelOperatorView.LabelImage.get(roi).wait()
         uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
 
         for ul in uniqueLabels:
-            if ul > 0 and not ul in list(labels[t].keys()):
+            if ul > 0 and (t not in labels.keys() or not ul in labels[t].keys()):
                 self._gotoObject(ul, t, keepXYZ=False)
                 return ul, t
 
@@ -265,11 +262,12 @@ class AnnotationsGui(LayerViewerGui):
         return None, None
 
     def updateTime(self):
-        delta = self.topLevelOperatorView.Crops[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name][0][0] - self.editor.posModel.time
+        maxTime = self.topLevelOperatorView.LabelImage.meta.shape[0]
+        delta = 0 - self.editor.posModel.time
         if delta > 0:
             self.editor.navCtrl.changeTimeRelative(delta)
         else:
-            delta = self.topLevelOperatorView.Crops[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name][0][1] - self.editor.posModel.time
+            delta = maxTime - self.editor.posModel.time
             if delta < 0:
                 self.editor.navCtrl.changeTimeRelative(delta)
 
@@ -315,15 +313,11 @@ class AnnotationsGui(LayerViewerGui):
         
     def __init__(self, parentApplet, topLevelOperatorView):
         self.topLevelOperatorView = topLevelOperatorView
-        self._previousCrop = -1
-        self._currentCrop = -1
-        self._currentCropName = ""
         self.divisionProbabilityCutOff = 0.5
         self.mergerProbabilityCutOff = 1/self.topLevelOperatorView.MaxNumObj.value
 
         super(AnnotationsGui, self).__init__(parentApplet, topLevelOperatorView)
         
-        self.editor.cropModel.setEditable(False)
         self.mainOperator = topLevelOperatorView
         
         self.applet = self.mainOperator.parent.parent.annotationsApplet
@@ -348,7 +342,7 @@ class AnnotationsGui(LayerViewerGui):
         self._initShortcuts()
         self.editor.posModel.timeChanged.connect(self.updateTime)
         try:
-            self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
+            self.editor.navCtrl.changeTimeRelative(0 - self.editor.posModel.time)
         except:
             pass
 
@@ -357,13 +351,9 @@ class AnnotationsGui(LayerViewerGui):
 
         self.__cleanup_fns = []
         self.topLevelOperatorView.Labels.notifyDirty( bind(self._updateLabels) )
-        self.topLevelOperatorView.Crops.notifyDirty( bind(self._cropListViewInit) )
-        self.__cleanup_fns.append( partial( self.topLevelOperatorView.Labels.unregisterDirty, bind(self._updateLabels) ) )
-        self.__cleanup_fns.append( partial( self.topLevelOperatorView.Crops.unregisterDirty, bind(self._cropListViewInit) ) )
-        self._drawer.cropBoxView.currentIndexChanged.connect(self._currentCropBoxChanged)
 
-        self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeButtonsCrop(True)
-        self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeSliderCrop(True)
+        self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeButtons(True)
+        self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeSlider(True)
         self.deleteAllTraining = False
 
     def _onInitializeAnnotations(self):
@@ -383,7 +373,6 @@ class AnnotationsGui(LayerViewerGui):
         self.labelsWithDivisions = {}
         self.divs = []
 
-        self._cropListViewInit()
         roi = {}
         roi["start"]=(0,0,0,0,0)
         roi["stop"]=self.mainOperator.TrackImage.meta.shape
@@ -403,7 +392,6 @@ class AnnotationsGui(LayerViewerGui):
         self._setDirty(self.mainOperator.UntrackedImage, list(range(self.mainOperator.TrackImage.meta.shape[0])))
 
         self.setupLayers()
-        self._onCropSelected(0)
 
     def stopAndCleanUp(self):
         super(AnnotationsGui, self).stopAndCleanUp()
@@ -413,51 +401,6 @@ class AnnotationsGui(LayerViewerGui):
 
     def _updateLabels(self):
         pass
-
-
-    def _cropListViewInit(self):
-        if self.topLevelOperatorView.Crops.value != {}:
-            self._drawer.cropListModel=CropListModel()
-            self._drawer.cropBoxView.clear()
-            crops = self.topLevelOperatorView.Crops.value
-            count = 0
-            for key in sorted(crops):
-                newRow = self._drawer.cropListModel.rowCount()
-
-                pmapColor = QColor(crops[key]["pmapColor"][0],crops[key]["pmapColor"][1],crops[key]["pmapColor"][2])
-                crop = Crop(
-                        key,
-                        [(crops[key]["time"][0],crops[key]["starts"][0],crops[key]["starts"][1],crops[key]["starts"][2]),(crops[key]["time"][1],crops[key]["stops"][0],crops[key]["stops"][1],crops[key]["stops"][2])],
-                        QColor(crops[key]["cropColor"][0],crops[key]["cropColor"][1],crops[key]["cropColor"][2]),
-                        pmapColor=pmapColor
-                )
-
-                self._drawer.cropListModel.insertRow( newRow, crop )
-
-                pm = QPixmap(16,16)
-                pm.fill(QColor(pmapColor))
-                self._drawer.cropBoxView.insertItem(newRow, QIcon(pm), str(key))
-
-                if count == 0:
-                    self._currentCropName = key
-
-                count =+ 1
-
-            self._drawer.cropListView.setModel(self._drawer.cropListModel)
-            self._drawer.cropListView.updateGeometry()
-            self._drawer.cropListView.update()
-            self._drawer.cropListView.allowDelete = False
-            self._drawer.cropListView.selectRow(0)
-            self._drawer.cropBoxView.setCurrentIndex(0)
-            self._onCropSelected(0)
-            self._selectedRow = 0
-            self._previousCrop = -1
-            self._currentCrop = 0
-
-            rawImageSlot = self.topLevelOperatorView.RawImage
-            tagged_shape = rawImageSlot.meta.getTaggedShape()
-            self.editor.posModel.shape5D = [tagged_shape['t'],tagged_shape['x'],tagged_shape['y'],tagged_shape['z'],tagged_shape['c']]
-            self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
 
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.LabelImage:
@@ -485,122 +428,46 @@ class AnnotationsGui(LayerViewerGui):
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
 
     def _onSaveAnnotations(self):
-        self.features = self.topLevelOperatorView.ObjectFeatures(list(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0]))).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
-        for name in list(self.topLevelOperatorView.Crops.value.keys()):
-            crop = self.topLevelOperatorView.Crops.value[name]
+        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        if "divisions" not in self.topLevelOperatorView.Annotations.value.keys():
+            self.topLevelOperatorView.Annotations.value["divisions"] = {}
+        for parentTrack in self.topLevelOperatorView.divisions.keys():
+            time = self.topLevelOperatorView.divisions[parentTrack][1]
+            child1Track = self.topLevelOperatorView.divisions[parentTrack][0][0]
+            child2Track = self.topLevelOperatorView.divisions[parentTrack][0][1]
 
-            if name not in list(self.topLevelOperatorView.Annotations.value.keys()):
-                self.topLevelOperatorView.Annotations.value[name] = {}
-            if "divisions" not in list(self.topLevelOperatorView.Annotations.value[name].keys()):
-                self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
-            for parentTrack in list(self.topLevelOperatorView.divisions.keys()):
-                time = self.topLevelOperatorView.divisions[parentTrack][1]
-                child1Track = self.topLevelOperatorView.divisions[parentTrack][0][0]
-                child2Track = self.topLevelOperatorView.divisions[parentTrack][0][1]
+            parent = self.getLabel(time, parentTrack)
+            child1 = self.getLabel(time+1, child1Track)
+            child2 = self.getLabel(time+1, child2Track)
 
-                parent = self.getLabel(time, parentTrack)
-                child1 = self.getLabel(time+1, child1Track)
-                child2 = self.getLabel(time+1, child2Track)
+            if not (parent and child1 and child2):
+                logger.info("WARNING:Your divisions and labels do not match for time {} and parent track {} with label {}!".format(time,parentTrack,parent))
+                pass
+            else:
+                if parentTrack not in self.topLevelOperatorView.Annotations.value["divisions"].keys():
+                    self.topLevelOperatorView.Annotations.value["divisions"][parentTrack] = {}
+                self.topLevelOperatorView.Annotations.value["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
 
-                if not (parent and child1 and child2):
-                    logger.info("WARNING:Your divisions and labels do not match for time {} and parent track {} with label {}!".format(time,parentTrack,parent))
-                    pass
-                else:
-                    lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
-                    upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
 
-                    lowerChild1 = self.features[time+1][default_features_key]['Coord<Minimum>'][child1]
-                    upperChild1 = self.features[time+1][default_features_key]['Coord<Maximum>'][child1]
+        if "labels" not in self.topLevelOperatorView.Annotations.value.keys():
+            self.topLevelOperatorView.Annotations.value["labels"] = {}
 
-                    lowerChild2 = self.features[time+1][default_features_key]['Coord<Minimum>'][child2]
-                    upperChild2 = self.features[time+1][default_features_key]['Coord<Maximum>'][child2]
+        for time in self.topLevelOperatorView.labels.keys():
+            for label in self.topLevelOperatorView.labels[time].keys():
+                if time not in self.topLevelOperatorView.Annotations.value["labels"].keys():
+                    self.topLevelOperatorView.Annotations.value["labels"][time] = {}
+                self.topLevelOperatorView.Annotations.value["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
 
-                    addAnnotation = False
-                    if len(lowerParent) == 2:
-                        if (crop["time"][0] <= time <= crop["time"][1]) and \
-                            ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1]) and \
-                            ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1]) and \
-                            ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1])):
-                            addAnnotation = True
-                    else:
-                        if (crop["time"][0] <= time <= crop["time"][1]) and \
-                            ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1] and \
-                            crop["starts"][2] <= upperParent[2] and lowerParent[2] <= crop["stops"][2]) and \
-                            ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1] and \
-                            crop["starts"][2] <= upperChild1[2] and lowerChild1[2] <= crop["stops"][2]) and \
-                            ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1] and \
-                            crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
-                            addAnnotation = True
-                    if addAnnotation:
-                        if parentTrack not in list(self.topLevelOperatorView.Annotations.value[name]["divisions"].keys()):
-                            self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
-                        self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
-                    else:
-                        annotations = self.topLevelOperatorView.Annotations.value
-                        if parentTrack in list(annotations[name]["divisions"].keys()):
-                            del annotations[name]["divisions"][parentTrack]
-                        self.topLevelOperatorView.Annotations.setValue(annotations)
+        if self.topLevelOperatorView.Annotations.value["divisions"] == {} and \
+                self.topLevelOperatorView.Annotations.value["labels"] == {}:
+            annotations = self.topLevelOperatorView.Annotations.value
+            del annotations["labels"]
+            del annotations["divisions"]
+            self.topLevelOperatorView.Annotations.setValue(annotations)
 
-            if name not in list(self.topLevelOperatorView.Annotations.value.keys()):
-                self.topLevelOperatorView.Annotations.value[name] = {}
-            if "labels" not in list(self.topLevelOperatorView.Annotations.value[name].keys()):
-                self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
-
-            for time in list(self.topLevelOperatorView.labels.keys()):
-                if crop["time"][0] <= time <= crop["time"][1]:
-                    for label in list(self.topLevelOperatorView.labels[time].keys()):
-                        lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
-                        upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
-
-                        addAnnotation = False
-                        if len(lower) == 2:
-                            if  crop["time"][0] <= time <= crop["time"][1] and \
-                                crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
-                                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
-                                addAnnotation = True
-                        else:
-                            if  crop["time"][0] <= time <= crop["time"][1] and \
-                                crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
-                                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
-                                crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
-                                addAnnotation = True
-
-                        if addAnnotation:
-                            if time not in list(self.topLevelOperatorView.Annotations.value[name]["labels"].keys()):
-                                self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
-                            self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
-                        else:
-                            annotations = self.topLevelOperatorView.Annotations.value
-                            if time in list(annotations[name]["labels"].keys()) and \
-                                    label in list(annotations[name]["labels"][time].keys()):
-                                del annotations[name]["labels"][time][label]
-                            if time in list(annotations[name]["labels"].keys()) and \
-                                    annotations[name]["labels"][time] == {}:
-                                del annotations[name]["labels"][time]
-                            self.topLevelOperatorView.Annotations.setValue(annotations)
-
-        for name in list(self.topLevelOperatorView.Annotations.value.keys()):
-            if self.topLevelOperatorView.Annotations.value[name]["divisions"] == {} and \
-                    self.topLevelOperatorView.Annotations.value[name]["labels"] == {}:
-                annotations = self.topLevelOperatorView.Annotations.value
-                del annotations[name]["labels"]
-                del annotations[name]["divisions"]
-                del annotations[name]
-                self.topLevelOperatorView.Annotations.setValue(annotations)
-
-        for time in list(self.topLevelOperatorView.labels.keys()):
-            for label in list(self.topLevelOperatorView.labels[time].keys()):
-                labelFound = False
-                for name in list(self.topLevelOperatorView.Annotations.value.keys()):
-                    if time in list(self.topLevelOperatorView.Annotations.value[name]["labels"].keys()) and label in list(self.topLevelOperatorView.Annotations.value[name]["labels"][time].keys()):
-                        labelFound = True
-                if not labelFound:
+        for time in self.topLevelOperatorView.labels.keys():
+            for label in self.topLevelOperatorView.labels[time].keys():
+                if time not in self.topLevelOperatorView.Annotations.value["labels"].keys() and label in self.topLevelOperatorView.Annotations.value["labels"][time].keys():
                     del self.topLevelOperatorView.labels[time][label]
 
         self._setDirty(self.mainOperator.Annotations, list(range(self.mainOperator.TrackImage.meta.shape[0])))
@@ -613,56 +480,21 @@ class AnnotationsGui(LayerViewerGui):
                 return label
         return False
 
-    def getCurrentCrop(self):
-        row = self._drawer.cropBoxView.currentIndex()
-        name = self._drawer.cropBoxView.itemText(row)
-        crop = self.topLevelOperatorView.Crops.value[str(name)]
-        return crop
-
-    def _onCropSelected(self, row):
-
-        self._selectedRow = row
-        currentName = str(self._drawer.cropBoxView.itemText(row))
-        self.editor.brushingModel.setDrawnNumber(row+1)
-        brushColor = self._drawer.cropListModel[row].brushColor()
-        self.editor.brushingModel.setBrushColor( brushColor )
-        ce = self.editor.cropModel._crop_extents
-        starts = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["starts"]
-        stops = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["stops"]
-
-        # croppingMarkers.onExtentsChanged works correctly only if called on start OR stop coordinates
-        self.editor.cropModel.set_crop_extents([[starts[0], ce[0][1]],[starts[1], ce[1][1]],[starts[2], ce[2][1]]])
-        self.editor.cropModel.set_crop_extents([[starts[0],stops[0]],[starts[1],stops[1]],[starts[2],stops[2]]])
-        if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
-            cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
-            for i in range(3):
-                self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
-        self.editor.navCtrl.panSlicingViews(cropMidPos,[0,1,2])
-
-        times = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["time"]
-        self.editor.cropModel.set_crop_times(times)
-        self.editor.cropModel.set_scroll_time_outside_crop(False)
-        self.editor.navCtrl.changeTimeRelative(times[0] - self.editor.posModel.time)
-
-        self.editor.cropModel.colorChanged.emit(brushColor)
-        self._currentCrop = row
-        self._currentCropName = currentName
-
     def updateTime(self):
-        crop = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]
-        delta = crop["time"][0] - self.editor.posModel.time
+        maxTime = self.topLevelOperatorView.LabelImage.meta.shape[0]
+        delta = 0 - self.editor.posModel.time
         if delta > 0:
             self.editor.navCtrl.changeTimeRelative(delta)
         else:
-            delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][1] - self.editor.posModel.time
+            delta = maxTime - self.editor.posModel.time
             if delta < 0:
                 self.editor.navCtrl.changeTimeRelative(delta)
 
     def setupLayers( self ):
         layers = []
  
-        self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent        
-        self.ct[255] = QColor(0,0,0,255).rgba() # make -1 black
+        self.ct[0] = QColor(0,0,0,0).rgba()
+        self.ct[255] = QColor(0,0,0,255).rgba()
         self.ct[-1] = QColor(0,0,0,255).rgba()       
         
         if self.topLevelOperatorView.TrackImage.ready():
@@ -906,7 +738,6 @@ class AnnotationsGui(LayerViewerGui):
         self._onSaveAnnotations()
 
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
-        crop = self.getCurrentCrop()
 
         if self.divLock:
             return
@@ -946,8 +777,9 @@ class AnnotationsGui(LayerViewerGui):
         delSubtrackToStart = {}
         setActiveTrack = {}
         runTracking = {}
+        maxTime = self.topLevelOperatorView.LabelImage.meta.shape[0]
         for l in trackids:
-            if activeTrack != self.misdetIdx and t < crop["time"][1]:
+            if activeTrack != self.misdetIdx and t < maxTime:
                 text = "run automatic tracking for object " + str(oid) + " with track label " + str(l)
                 runTracking[text] = l
                 menu.addAction(text)
@@ -961,12 +793,12 @@ class AnnotationsGui(LayerViewerGui):
             menu.addAction(text)
             
             if l != self.misdetIdx:
-                if t < crop["time"][1]:
+                if t < maxTime:
                     text = "remove label " + str(l) + " from here to end"
                     delSubtrackToEnd[text] = l
                     menu.addAction(text)
 
-                if t > crop["time"][0]:
+                if t > maxTime:
                     text = "remove label " + str(l) + " from here to start"
                     delSubtrackToStart[text] = l
                     menu.addAction(text)
@@ -1077,13 +909,6 @@ class AnnotationsGui(LayerViewerGui):
     def _currentActiveTrackChanged(self):
         self.mainOperator.ActiveTrack.setValue(self._getActiveTrack())
 
-    def _currentCropBoxChanged(self):
-        self._currentCrop = self._drawer.cropBoxView.currentIndex()
-        if self._currentCrop >= 0:
-            self._currentCropName = str(self._drawer.cropBoxView.itemText(self._currentCrop))
-            self._drawer.cropListModel.select(self._currentCrop)
-            self._onCropSelected(self._currentCrop)
-
     def _getActiveTrack(self):
         if self._drawer.activeTrackBox.count() > 0:
             return int(self._drawer.activeTrackBox.currentText())
@@ -1165,28 +990,8 @@ class AnnotationsGui(LayerViewerGui):
 
     def _addObjectToTrack(self, activeTrack, oid, t):
 
-        crop = self.getCurrentCrop()
-
-        if t not in list(range(crop["time"][0],crop["time"][1]+1)):
-            return -98
-
-        lower = self.features[t][default_features_key]['Coord<Minimum>'][oid]
-        upper = self.features[t][default_features_key]['Coord<Maximum>'][oid]
-        addAnnotation = False
-        if len(lower) == 2:
-            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
-                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
-                addAnnotation = True
-        else:
-            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
-                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
-                crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
-                addAnnotation = True
-
-        if not addAnnotation:
-            return -99 # info message depends on the caller: rightClick/runAutomaticTracking or leftClick(addObjectToTrack)
-
-        if t not in list(self.mainOperator.labels.keys()):
+        maxTime = self.topLevelOperatorView.LabelImage.meta.shape[0]
+        if t not in self.mainOperator.labels.keys():
             self.mainOperator.labels[t] = {}
         if oid not in list(self.mainOperator.labels[t].keys()):
             self.mainOperator.labels[t][oid] = set()
@@ -1202,8 +1007,8 @@ class AnnotationsGui(LayerViewerGui):
                     if activeTrack not in self.mainOperator.labels[t][oid]:
                         self._informationMessage("Info: There is already an object with this track id in this time step.")
                         return -1
-                    elif t == self.topLevelOperatorView.Crops.value[self._currentCropName]["time"][1]:
-                        self._informationMessage("Info: You have reached the last time frame in this crop.")
+                    elif t == maxTime:
+                        self._informationMessage("Info: You have reached the last time frame.")
                         return -1
                     else:
                         return -2
@@ -1276,17 +1081,7 @@ class AnnotationsGui(LayerViewerGui):
                     break
 
                 res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
-                if res == -98:
-                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop time boundary. " + \
-                                         "Stopping automatic tracking at crop boundary.")
-                    self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
-                    break
-                elif res == -99:
-                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop spatial boundary. " + \
-                                         "Stopping automatic tracking at crop boundary.")
-                    self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
-                    break
-                elif res == -1:
+                if res == -1:
                     self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
                     return
                 
@@ -1827,7 +1622,7 @@ class AnnotationsGui(LayerViewerGui):
     @threadRouted
     def _log(self, prompt):
         self._drawer.logOutput.append(prompt)
-        self._drawer.logOutput.moveCursor(QtGui.QTextCursor.End)
+        self._drawer.logOutput.moveCursor(QTextCursor.End)
         logger.info( prompt )
 
     #
