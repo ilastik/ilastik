@@ -65,7 +65,7 @@ except ImportError as e:
                  "instructions on our website ilastik.org; check dependencies: " + str(e) )
 
 try:
-    from .tracking.structured.structuredTrackingWorkflow import StructuredTrackingWorkflowFromBinary
+    from .tracking.structured.structuredTrackingWorkflow import StructuredTrackingWorkflowFromBinary, StructuredTrackingWorkflowFromPrediction
     WORKFLOW_CLASSES += [StructuredTrackingWorkflowFromBinary, StructuredTrackingWorkflowFromPrediction]    
 except ImportError as e:
     logger.warn( "Failed to import structured learning tracking workflow. For this workflow, see the installation"\
