@@ -800,7 +800,7 @@ class TestOpDataSelection_SingleFileH5Stacks():
         cls.tmpdir = tempfile.mkdtemp()
         cls.projectFileName = os.path.join(cls.tmpdir, 'testProject.ilp')
         # generate some test data 'tczyx'
-        cls.imgData3Dct = numpy.random.randint(0, 256, (10, 3, 8, 7, 6), dtype=numpy.uint8)
+        cls.imgData3Dct = numpy.random.randint(0, 256, (10, 3, 8, 7, 6)).astype(numpy.uint8)
 
         # write a h5-file to directory
         cls.image_file_name = os.path.join(cls.tmpdir, 'multi-h5.h5')
