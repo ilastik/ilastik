@@ -412,12 +412,12 @@ class OpConservationTracking(Operator):
         Main conservation tracking function. Runs tracking solver, generates hypotheses graph, and resolves mergers.
         """
 
-        # if WITH_HYTRA:
-        #     self.progressWindow = progressWindow
-        #     self.progressVisitor=progressVisitor
-        # else:
-        self.progressWindow = None
-        self.progressVisitor = CommandLineProgressVisitor()
+        if WITH_HYTRA:
+            self.progressWindow = progressWindow
+            self.progressVisitor=progressVisitor
+        else:
+            self.progressWindow = None
+            self.progressVisitor = CommandLineProgressVisitor()
 
         if not self.Parameters.ready():
             self.raiseException(self.progressWindow, "Parameter slot is not ready")
