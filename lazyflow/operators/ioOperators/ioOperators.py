@@ -219,7 +219,7 @@ class OpStackWriter(Operator):
             pixels_per_slice = numpy.prod(slice_shape)
             if 'c' in tagged_sliceshape:
                 pixels_per_slice //= tagged_sliceshape['c']
-            
+
             ram_usage_per_slice = pixels_per_slice * ram_usage_per_requested_pixel
 
             # Fudge factor: Reduce RAM usage by a bit
@@ -227,6 +227,12 @@ class OpStackWriter(Operator):
             available_ram *= 0.5
 
             parallel_requests = int(available_ram / ram_usage_per_slice)
+
+            if parallel_requests < 1:
+                raise MemoryError(
+                    'Not enough RAM to export to the selected format. '
+                    'Consider exporting to hdf5 (h5).'
+                )
 
         streamer = BigRequestStreamer( self.Input,
                                        roiFromShape( self.Input.meta.shape ),
