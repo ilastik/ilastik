@@ -88,8 +88,13 @@ class PathComponents(object):
             self._externalPath = parts[0] + ext # /some/path/to/file.h5
             self._internalPath = parts[1].replace('\\', '/') # /with/internal/dataset
 
-            self._internalDirectory = os.path.split(self.internalPath)[0]   # /with/internal
-            self._internalDatasetName = os.path.split(self.internalPath)[1] # dataset
+            if self._internalPath == '':
+                self._internalPath = None
+                self._internalDirectory = None
+                self._internalDatasetName = None
+            else:
+                self._internalDirectory = os.path.split(self.internalPath)[0]   # /with/internal
+                self._internalDatasetName = os.path.split(self.internalPath)[1] # dataset
         else:
             # For non-hdf5 files, use normal path/extension (no internal path)
             (self._externalPath, self._extension) = os.path.splitext(totalPath)
