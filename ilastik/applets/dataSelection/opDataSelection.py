@@ -136,9 +136,13 @@ class DatasetInfo(object):
                     if pathComponents[0].extension in internalPathExts and internalPaths:
                         if len(file_list) == len(internalPaths):
                             # assuming a matching internal paths to external paths
-                            file_list = ['{}/{}'.format(external, internal)
-                                         for external, internal
-                                         in zip(file_list, internalPaths)]
+                            file_list_with_internal = []
+                            for external, internal in zip(file_list, internalPaths):
+                                if internal:
+                                    file_list_with_internal.append('{}/{}'.format(external, internal))
+                                else:
+                                    file_list_with_internal.append(external)
+                            file_list = file_list_with_internal
                         else:
                             # sort of fallback, in case of a mismatch in lengths
                             for i in xrange(len(file_list)):
