@@ -229,6 +229,8 @@ class OpStreamingHdf5SequenceReaderS(Operator):
             raise OpStreamingHdf5SequenceReaderS.WrongFileTypeError(globString)
 
         if len(pathComponents) == 1:
+            if pathComponents[0].internalPath is None:
+                raise OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError(globString)
             if '*' not in pathComponents[0].internalPath:
                 raise OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError(globString)
             if '*' in pathComponents[0].externalPath:
