@@ -110,9 +110,10 @@ Batch Output
    :scale: 100  %
    :alt: Batch Output Top-Level Operator
 
-.. currentmodule:: ilastik.applets.batchIo.batchIoApplet
-.. autoclass:: BatchIoApplet
-   :members:
+.. TODO doesn't work in the original docu as well 
+        .. currentmodule:: ilastik.applets.batchIo.batchIoApplet
+        .. autoclass:: BatchIoApplet
+           :members:
 
 
 Workflow-specific Applets
@@ -174,9 +175,11 @@ with object features can be found in the $ILASTIK/examples directory.
 To get your plugins discovered by ilastik, you have to add their path 
 to the .ilastikrc file in your home directory. The file should look
 as follows:
-    [ilastik]
-    
-    plugin_directories: /path/to/cool_features
+.. code::
+
+        [ilastik]
+            
+        plugin_directories: /path/to/cool_features
 
 The cool_features directory in this case should contain the .py and the .yapsy-plugin files.
 
@@ -201,8 +204,9 @@ The cool_features directory in this case should contain the .py and the .yapsy-p
 .. autoclass:: OpRegionFeatures
    :members:
 
-.. autoclass:: OpRegionFeatures3d
-   :members:
+.. TODO this class isn't existing anymore
+        .. autoclass:: OpRegionFeatures3d
+           :members:
 
 .. autoclass:: OpObjectCenterImage
    :members:

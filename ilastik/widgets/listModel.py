@@ -49,6 +49,20 @@ class ListElement(QObject):
             self._name = n
             self.nameChanged.emit(n)
 
+class ListElementWithNumber(ListElement):
+    """
+    used in watershedLabelingGui.py
+    to see the value/number of the label, with which the label will be drawn
+    """
+    def __init__(self, number, name, parent = None):
+        QObject.__init__(self, parent)
+        self._name       = name
+        self._number     = number
+
+    @property
+    def number(self):
+        return self._number
+
 
 
 class ListModel(QAbstractTableModel):
@@ -219,6 +233,7 @@ class ListModel(QAbstractTableModel):
             if index.row() in self.unremovable_rows: return
 
             row = index.row()
+            #draw the delete icon
             pixmap = QPixmap(_NPIXELS, _NPIXELS)
             pixmap.fill(Qt.transparent)
             painter = QPainter()

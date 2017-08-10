@@ -5,6 +5,7 @@ tests/*.h5
 !tests/data/inputdata/smallVideoSimpleSegmentation.h5
 !tests/data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t.h5
 !tests/data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_export.h5
+session.vim
 
 *.pyc
 *.goutputstream

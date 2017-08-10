@@ -13,13 +13,32 @@ Contents:
 
    overview
    applet_api
+   appletExample
    workflow_design
+   workflowExample
    applet_library
    projectManager
    utilities
    plugin_system
    dependencies
    testing
+   nice2know
+   documentation
+   troubleshooting
+
+.. overview
+   applet_api
+   appletExample
+   workflow_design
+   workflowExample
+   applet_library
+   projectManager
+   utilities
+   plugin_system
+   dependencies
+   testing
+   documentation
+   troubleshooting
 
 
 Indices and tables

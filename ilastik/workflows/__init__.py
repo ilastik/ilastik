@@ -28,6 +28,7 @@ import ilastik.config
 import pixelClassification
 WORKFLOW_CLASSES += [pixelClassification.PixelClassificationWorkflow]
 
+
 import newAutocontext.newAutocontextWorkflow
 WORKFLOW_CLASSES += [newAutocontext.newAutocontextWorkflow.AutocontextTwoStage]
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
@@ -108,3 +109,11 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     import examples.deviationFromMean
     import examples.labeling
     import examples.connectedComponents
+
+
+try:
+    import watershedSegmentation
+    WORKFLOW_CLASSES += [watershedSegmentation.watershedSegmentationWorkflow.WatershedSegmentationWorkflow]
+except ImportError as e:
+    logger.warn("Failed to import 'watershedSegmentation' workflow; check dependencies: " + str(e))
+

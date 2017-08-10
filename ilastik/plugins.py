@@ -98,11 +98,9 @@ class ObjectFeaturesPlugin(IPlugin):
         For every feature in the feature dictionary, fill in its properties,
         such as 'detailtext', which will be displayed in help, or 'displaytext'
         which will be displayed instead of the feature name
-        Args:
-            feature_dict: dictionary of features
 
-        Returns:
-            same dictionary, with additional fields filled for each feature
+        :param feature_dict: dictionary of features
+        :returns: same dictionary, with additional fields filled for each feature
 
         """
         return feature_dict

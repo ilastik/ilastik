@@ -77,6 +77,7 @@ def main():
     # Provide your command-line args here. See examples below.
     
     ## Auto-open an existing project
+    parsed_args.project='/home/andreas/MyProject.ilp'
     #parsed_args.project='/Users/bergs/MyProject.ilp'
     #parsed_args.project='/magnetic/data/multicut-testdata/2d/MyMulticut2D.ilp'
     #parsed_args.project = '/Users/bergs/MyMulticutProject.ilp'
