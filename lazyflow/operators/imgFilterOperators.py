@@ -129,10 +129,10 @@ class OpBaseVigraFilter(Operator):
         nIt = newIterator(origRoi,srcGrid,trgtGrid,timeIndex=timeIndex,channelIndex = channelIndex)
         
         #set up roi to work with vigra filters
-        if timeIndex > channelIndex and timeIndex is not None:
+        if timeIndex is not None and timeIndex > channelIndex:
             origRoi.popDim(timeIndex)
             origRoi.popDim(channelIndex)
-        elif timeIndex < channelIndex and timeIndex is not None:
+        elif timeIndex is not None and timeIndex < channelIndex:
             origRoi.popDim(channelIndex)
             origRoi.popDim(timeIndex)
         else:
