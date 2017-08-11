@@ -1,3 +1,6 @@
+from __future__ import print_function
+
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -34,12 +37,13 @@ from lazyflow.operators.opCache import MemInfoNode
 
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
+from functools import reduce
 
 
 #from lazyflow.request import Request
 #Request.reset_thread_pool(0)
 
-class KeyMaker():
+class KeyMaker(object):
     def __getitem__(self, *args):
         return list(*args)
 make_key = KeyMaker()
@@ -395,7 +399,7 @@ class TestOpBlockedArrayCache(unittest.TestCase):
             ref = r()
             if ref is not None:
                 for i, o in enumerate(gc.get_referrers(ref)):
-                    print "Object", i, ":", type(o), ":", o
+                    print("Object", i, ":", type(o), ":", o)
                 
             assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
         finally:

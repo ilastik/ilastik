@@ -1,3 +1,5 @@
+from __future__ import division
+from builtins import object
 import os
 import psutil
 
@@ -14,9 +16,9 @@ class RamMeasurementContext(object):
         self.ram_increase_mb = None
     
     def __enter__(self):
-        self.ram_mb_at_enter = float(this_process.memory_info().rss) / 1e6
+        self.ram_mb_at_enter = (float(this_process.memory_info().rss) / 1e6)
         return self
     
     def __exit__(self, *args):
-        self.ram_mb_at_exit = float(this_process.memory_info().rss) / 1e6
+        self.ram_mb_at_exit = (float(this_process.memory_info().rss) / 1e6)
         self.ram_increase_mb = self.ram_mb_at_exit - self.ram_mb_at_enter

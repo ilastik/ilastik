@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -56,7 +57,7 @@ class OpMaskedWatershed(Operator):
             assert self.Input.meta.drange is not None, "Masked watershed requires input drange to be specified"
 
         # Cache the prepared input in 8 blocks
-        blockshape = numpy.array( self._opPrepInput.Output.meta.shape ) / 2
+        blockshape = numpy.array( self._opPrepInput.Output.meta.shape ) // 2
         blockshape = numpy.maximum( 1, blockshape )
         self._opPreppedInputCache.blockShape.setValue( tuple(blockshape) )
         

@@ -1,3 +1,10 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import zip
+
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -20,7 +27,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import numpy, copy
-import cPickle as pickle
+import pickle as pickle
 import collections
 import sys
 
@@ -28,6 +35,7 @@ from lazyflow.roi import TinyVector, sliceToRoi, roiToSlice, roiFromShape
 from lazyflow.utility import slicingtools
 
 import logging
+from future.utils import with_metaclass
 logger = logging.getLogger(__name__)
 
 class RoiMeta(type):
@@ -38,13 +46,11 @@ class RoiMeta(type):
     def __new__(cls, name, bases, classDict):
         cls = super(RoiMeta, cls).__new__(cls, name, bases, classDict)
         # Don't register the Roi baseclass itself.
-        if bases[0] != object > 1:
+        if bases[0] != object:
             Roi._registerSubclass(cls)
         return cls
 
-class Roi(object):
-    __metaclass__ = RoiMeta
-
+class Roi(with_metaclass(RoiMeta, object)):
     def __init__(self, slot):
         self.slot = slot
         pass
@@ -63,7 +69,7 @@ class Roi(object):
         The default implementation uses pickle.
         Subclasses may override this and _fromString for more human-friendly string representations.
         """
-        return pickle.dumps(roi)
+        return pickle.dumps(roi, 0)
     
     @staticmethod
     def _fromString(s):
@@ -129,8 +135,8 @@ class SubRegion(Roi):
         self.dim = len(self.start)
 
         for start, stop in zip(self.start, self.stop):
-            assert isinstance(start, (int, long, numpy.integer)), "Roi contains non-integers: {}".format( self )
-            assert isinstance(start, (int, long, numpy.integer)), "Roi contains non-integers: {}".format( self )
+            assert isinstance(start, (int, numpy.integer)), "Roi contains non-integers: {}".format( self )
+            assert isinstance(start, (int, numpy.integer)), "Roi contains non-integers: {}".format( self )
 
 # FIXME: This assertion is good at finding bugs, but it is currently triggered by 
 #        the DataExport applet when the output axis order is changed. 
@@ -240,7 +246,7 @@ class SubRegion(Roi):
     def adjustRoi(self,halo,cIndex=None):
         if type(halo) != list:
             halo = [halo]*len(self.start)
-        notAtStartEgde = map(lambda x,y: True if x<y else False,halo,self.start)
+        notAtStartEgde = list(map(lambda x,y: True if x<y else False,halo,self.start))
         for i in range(len(notAtStartEgde)):
             if notAtStartEgde[i]:
                 self.stop[i] = int(self.stop[i]-self.start[i]+halo[i])
@@ -248,8 +254,6 @@ class SubRegion(Roi):
         return self
 
     def adjustChannel(self,cPerC,cIndex,channelRes):
-        assert sys.version_info.major == 2, "Alert! This function has not been tested "\
-        "under python 3. Please remove this assetion and be wary of any strange behavior you encounter"
         if cPerC != 1 and channelRes == 1:
             start = [self.start[i]//cPerC if i == cIndex else self.start[i] for i in range(len(self.start))]
             stop = [self.stop[i]//cPerC+1 if i==cIndex else self.stop[i] for i in range(len(self.stop))]

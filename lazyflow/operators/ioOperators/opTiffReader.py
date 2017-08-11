@@ -1,3 +1,5 @@
+from __future__ import print_function
+from builtins import map
 import numpy
 
 # Note: tifffile can also be imported from skimage.external.tifffile.tifffile_local,
@@ -6,11 +8,11 @@ import numpy
 #import skimage.external.tifffile.tifffile_local as tifffile
 
 import tifffile
-import _tifffile
-if tifffile.decodelzw != _tifffile.decodelzw:
-    import warnings
-    warnings.warn("tifffile C-extension is not working, probably due to a bug in tifffile._replace_by().\n"
-                  "TIFF decompression will be VERY SLOW.")
+# import tifffile._tifffile
+# if tifffile.decode_lzw != tifffile._tifffile.decode_lzw:
+#     import warnings
+#     warnings.warn("tifffile C-extension is not working, probably due to a bug in tifffile._replace_by().\n"
+#                   "TIFF decompression will be VERY SLOW.")
 
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -122,7 +124,7 @@ class OpTiffReader(Operator):
                 axes = get_default_axisordering(shape)
 
             self.Output.meta.shape = shape
-            self.Output.meta.axistags = vigra.defaultAxistags( axes )
+            self.Output.meta.axistags = vigra.defaultAxistags( str(axes) )
             self.Output.meta.dtype = numpy.dtype(dtype_code).type
             self.Output.meta.ideal_blockshape = ((1,) * len(self._non_page_shape)) + self._page_shape
 
@@ -136,7 +138,7 @@ class OpTiffReader(Operator):
         page_index_roi = roi[:, :-num_page_axes]
         roi_within_page = roi[:, -num_page_axes:]
 
-        logger.debug("Roi: {}".format(map(tuple, roi)))
+        logger.debug("Roi: {}".format(list(map(tuple, roi))))
 
         # Read each page out individually
         page_index_roi_shape = page_index_roi[1] - page_index_roi[0]
@@ -166,10 +168,10 @@ if __name__ == "__main__":
     graph = Graph()
     opReader = OpTiffReader(graph=graph)
     opReader.Filepath.setValue('/groups/flyem/home/bergs/Downloads/Tiff_t4_HOM3_10frames_4slices_28sec.tif')
-    print opReader.Output.meta.axistags
-    print opReader.Output.meta.shape
-    print opReader.Output.meta.dtype
-    print opReader.Output[2:3,2:3,2:3,10:20,20:50].wait().shape
+    print(opReader.Output.meta.axistags)
+    print(opReader.Output.meta.shape)
+    print(opReader.Output.meta.dtype)
+    print(opReader.Output[2:3,2:3,2:3,10:20,20:50].wait().shape)
 
 #     opReader.Filepath.setValue('/magnetic/data/synapse_small.tiff')
 #     print opReader.Output.meta.axistags

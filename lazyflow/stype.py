@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -23,7 +26,7 @@ import numpy, vigra
 import collections
 import warnings
 
-from roi import roiToSlice
+from .roi import roiToSlice
 from lazyflow.utility.helpers import warn_deprecated
 
 import h5py

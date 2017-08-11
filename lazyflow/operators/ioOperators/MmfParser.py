@@ -44,6 +44,9 @@ header is followed by numims image blocks of the following form:
 TODO: handle multichannel data, non 8-bit data
 '''
 
+from builtins import range
+from builtins import object
+
 import struct
 import numpy as np
 

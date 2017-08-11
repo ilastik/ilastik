@@ -1,3 +1,4 @@
+from builtins import map
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -44,7 +45,7 @@ class OpCrosshairMarkers( Operator ):
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown slot: {}".format( slot.name )
         radius = self.CrosshairRadius.value
-        points = map(TinyVector, self.PointList.value)
+        points = list(map(TinyVector, self.PointList.value))
         
         result[:] = 0
         result_view = result.view(vigra.VigraArray)

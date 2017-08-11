@@ -1,3 +1,6 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -80,7 +83,7 @@ def format_attrs(attrs):
     """
     # Use str.format to generate a big format string
     attr_txt = ''
-    for attr in attrs.keys():
+    for attr in list(attrs.keys()):
         attr_name = attr
         # Trailing underscores are added if the attr would otherwise be a python reserved word (e.g. 'class', 'id')
         if attr_name[-1] == '_':
@@ -133,7 +136,7 @@ class TagFormatter(object):
         assert len(args) <= len(self.standard_attrs)
         
         defaults = dict(self.default_attr_values)
-        for key, value in kwargs.items():
+        for key, value in list(kwargs.items()):
             if key in defaults:
                 del defaults[key]
         
@@ -183,7 +186,7 @@ def tagblock(stream, formatter, *args, **kwargs):
     stream.dedent()
     stream.write( '</' + formatter.tag + '>\n' )
 
-from StringIO import StringIO
+from io import StringIO
 class IndentingStringIO(StringIO):
     def __init__(self, *args, **kwargs):
         StringIO.__init__(self, *args, **kwargs)

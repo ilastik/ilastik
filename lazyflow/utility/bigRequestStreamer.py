@@ -1,3 +1,7 @@
+from __future__ import absolute_import
+from __future__ import division
+from builtins import next
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -26,7 +30,7 @@ from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection,
 
 import logging
 import warnings
-from memory import Memory
+from .memory import Memory
 logger = logging.getLogger(__name__)
 
 class BigRequestStreamer(object):
@@ -116,18 +120,23 @@ class BigRequestStreamer(object):
             def roiGen():
                 block_iter = block_starts.__iter__()
                 while True:
-                    block_start = block_iter.next()
-    
-                    # Use offset blocking
-                    offset_block_start = block_start - self._bigRoi[0]
-                    offset_data_shape = numpy.subtract(self._bigRoi[1], self._bigRoi[0])
-                    offset_block_bounds = getBlockBounds( offset_data_shape, blockshape, offset_block_start )
-                    
-                    # Un-offset
-                    block_bounds = ( offset_block_bounds[0] + self._bigRoi[0],
-                                     offset_block_bounds[1] + self._bigRoi[0] )
-                    logger.debug( "Requesting Roi: {}".format( block_bounds ) )
-                    yield block_bounds
+                    try:
+                        block_start = next(block_iter)
+                    except StopIteration:
+                        # As of Python 3.7, not allowed to let StopIteration exceptions escape a generator
+                        # https://www.python.org/dev/peps/pep-0479
+                        break
+                    else:
+                        # Use offset blocking
+                        offset_block_start = block_start - self._bigRoi[0]
+                        offset_data_shape = numpy.subtract(self._bigRoi[1], self._bigRoi[0])
+                        offset_block_bounds = getBlockBounds( offset_data_shape, blockshape, offset_block_start )
+                        
+                        # Un-offset
+                        block_bounds = ( offset_block_bounds[0] + self._bigRoi[0],
+                                         offset_block_bounds[1] + self._bigRoi[0] )
+                        logger.debug( "Requesting Roi: {}".format( block_bounds ) )
+                        yield block_bounds
             
         else:
             # Absolute blocking.
@@ -137,12 +146,18 @@ class BigRequestStreamer(object):
             def roiGen():
                 block_iter = block_starts.__iter__()
                 while True:
-                    block_start = block_iter.next()
-                    block_bounds = getBlockBounds( outputSlot.meta.shape, blockshape, block_start )
-                    block_intersecting_portion = getIntersection( block_bounds, roi )
-    
-                    logger.debug( "Requesting Roi: {}".format( block_bounds ) )
-                    yield block_intersecting_portion
+                    try:
+                        block_start = next(block_iter)
+                    except StopIteration:
+                        # As of Python 3.7, not allowed to let StopIteration exceptions escape a generator
+                        # https://www.python.org/dev/peps/pep-0479
+                        break
+                    else:
+                        block_bounds = getBlockBounds( outputSlot.meta.shape, blockshape, block_start )
+                        block_intersecting_portion = getIntersection( block_bounds, roi )
+        
+                        logger.debug( "Requesting Roi: {}".format( block_bounds ) )
+                        yield block_intersecting_portion
                 
         self._requestBatch = RoiRequestBatch( self._outputSlot, roiGen(), totalVolume, batchSize, allowParallelResults )
 
@@ -161,9 +176,9 @@ class BigRequestStreamer(object):
         available_ram = Memory.getAvailableRamComputation()
         
         # Generally, we don't want to split requests across channels.
-        if 'c' in tagged_shape.keys():
+        if 'c' in list(tagged_shape.keys()):
             num_channels = tagged_shape['c']
-            channel_index = tagged_shape.keys().index('c')
+            channel_index = list(tagged_shape.keys()).index('c')
             input_shape = input_shape[:channel_index] + input_shape[channel_index+1:]
             max_blockshape = max_blockshape[:channel_index] + max_blockshape[channel_index+1:]
             if ideal_blockshape:
@@ -175,7 +190,7 @@ class BigRequestStreamer(object):
         # Generally, we don't want to join time slices
         if 't' in tagged_shape.keys():
             blockshape_time_steps = 1
-            time_index = tagged_shape.keys().index('t')
+            time_index = list(tagged_shape.keys()).index('t')
             input_shape = input_shape[:time_index] + input_shape[time_index+1:]
             max_blockshape = max_blockshape[:time_index] + max_blockshape[time_index+1:]
             if ideal_blockshape:
@@ -197,7 +212,7 @@ class BigRequestStreamer(object):
         ram_usage_per_requested_pixel *= safety_factor
         
         if ideal_blockshape is None:
-            blockshape = determineBlockShape( input_shape, available_ram/(self._num_threads*ram_usage_per_requested_pixel) )
+            blockshape = determineBlockShape( input_shape, (available_ram // (self._num_threads*ram_usage_per_requested_pixel)) )
             blockshape = tuple(numpy.minimum(max_blockshape, blockshape))
             warnings.warn( "Chose an arbitrary request blockshape" )
         else:

@@ -1,3 +1,8 @@
+from __future__ import print_function
+from builtins import object
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -53,7 +58,7 @@ class Tracer(object):
     >>> traceLogger.setLevel(logging.INFO)
     """
     def __init__(self, logger, level=logging.DEBUG, msg='', determine_caller=True, caller_name=''):
-        if type(logger) == str:
+        if isinstance(logger, (str, unicode)):
             self._logger = logging.getLogger(logger)
         else:
             self._logger = logger
@@ -112,9 +117,9 @@ def traceLogged(logger, level=logging.DEBUG, msg='', caller_name=''):
         if caller_name != '':
             name = caller_name
         elif hasattr(func, 'im_func'):
-            name = func.im_func.func_name
+            name = func.__func__.__name__
         else:
-            name = func.func_name
+            name = func.__name__
             
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -134,11 +139,11 @@ if __name__=='__main__':
     
     def func1():
         with Tracer(logger):
-            print "I'm func 1"
+            print("I'm func 1")
 
     @traceLogged(logger)
     def func2():
-        print "I'm func 2"
+        print("I'm func 2")
 
     func1()
     func2()

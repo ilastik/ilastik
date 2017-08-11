@@ -1,3 +1,4 @@
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -69,8 +70,8 @@ class TestSubclassing(object):
     def test(self):
         op = OpSubclass( graph=Graph() )
         
-        assert op.inputs.keys() == ["InputA", "InputB", "InputC", "InputD"]
-        assert op.outputs.keys() == ["OutputA", "OutputB", "OutputC", "OutputD"]
+        assert list(op.inputs.keys()) == ["InputA", "InputB", "InputC", "InputD"]
+        assert list(op.outputs.keys()) == ["OutputA", "OutputB", "OutputC", "OutputD"]
         
         
 

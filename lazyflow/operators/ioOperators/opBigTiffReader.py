@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import pytiff
 import vigra
@@ -78,7 +79,7 @@ if __name__ == "__main__":
     #op.Filepath.setValue('/magnetic/workspace/pytiff/test_data/rgb_sample.tif')
     op.Filepath.setValue('/magnetic/workspace/pytiff/test_data/bigtif_example.tif')
     
-    print op.Output.meta.shape
-    print op.Output.meta.dtype
-    print op.Output.meta.getAxisKeys()
-    print op.Output[:10,:10].wait()
+    print(op.Output.meta.shape)
+    print(op.Output.meta.dtype)
+    print(op.Output.meta.getAxisKeys())
+    print(op.Output[:10,:10].wait())

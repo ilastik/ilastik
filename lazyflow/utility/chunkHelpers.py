@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -51,7 +52,7 @@ def chooseChunkShape(outerShape, desiredChunkSize):
     # y_1 * ... * y_n = desiredChunkSize
     # x_1 * ... * x_n = size
     # f^n = size/desiredChunkSize
-    f = np.power(size/float(desiredChunkSize), 1/float(n))
+    f = np.power((size / float(desiredChunkSize)), (1.0 / float(n)))
     
     y = np.floor(x/f)
     y = np.maximum(y, 1).astype(np.int)

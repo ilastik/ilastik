@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -91,7 +92,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
             tot += mem
             dirty += iOp.fractionOfUsedMemoryDirty()*mem
         if dirty > 0:
-            return tot/float(dirty)
+            return tot / float(dirty)
         else:
             return 0.0
 
@@ -160,7 +161,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
         start,stop=sliceToRoi(key,self.shape)
         roishape=numpy.array(stop)-numpy.array(start)
 
-        max_dist_squared=sys.maxint
+        max_dist_squared=sys.maxsize
         index=0
 
         for i,blockshape in enumerate(self._blockshapes):

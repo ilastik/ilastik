@@ -197,7 +197,7 @@ class OpStreamingHdf5SequenceReaderM(Operator):
             tmp = sorted(glob.glob(components.externalPath))
             external_paths.extend(tmp)
             internal_paths.extend(
-                [components.internalPath for i in xrange(len(tmp))])
+                [components.internalPath for i in range(len(tmp))])
         return external_paths, internal_paths
 
     @staticmethod

@@ -1,3 +1,4 @@
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -71,7 +72,7 @@ class OrderedSignal(object):
         Emit the signal.  Calls each callback in the subscription list, in order, with the specified arguments.
         """
         from lazyflow.request import Request # Late import to work around circular dependency
-        for f, kw in self.callbacks.items():
+        for f, kw in list(self.callbacks.items()):
             try:
                 f(*args, **kw)
             except Request.CancellationException:

@@ -1,3 +1,4 @@
+from builtins import object
 import tempfile
 import shutil
 import contextlib
@@ -116,7 +117,7 @@ class TestOpTiffReader(object):
         compressed_tiff_file = '{}/data/inputdata/compressed_lzw.tiff'.format(basepath)
         # generate checker-board, as in the file
         data = numpy.zeros((10, 20, 3)).astype(numpy.uint8)
-        for i in xrange(data.shape[0]):
+        for i in range(data.shape[0]):
             if i % 2 == 0:
                 data[i, 1::2, :] = 255
             else:

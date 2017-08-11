@@ -29,6 +29,7 @@ Two export formats are supported:
     by copying the necessary files from the original fileset. This is much 
     faster than 'single-hdf5' for large cutout volumes.
 """
+from __future__ import print_function
 
 import os
 import sys
@@ -99,10 +100,10 @@ with BlockwiseFilesetFactory.create(description_path, 'r') as bfs:
 
     if parsed_args.format == 'single-hdf5':
         exportedPath = bfs.exportRoiToHdf5( roi, export_dir, use_view_coordinates )
-        print "Exported data to file: {}".format( exportedPath )
+        print("Exported data to file: {}".format( exportedPath ))
     elif parsed_args.format == 'blockwise-subset':
         exported_description_path = bfs.exportSubset( roi, export_dir, use_view_coordinates )
-        print "Exported data to blockwise subset: {}".format( exported_description_path )
+        print("Exported data to blockwise subset: {}".format( exported_description_path ))
     
 
 

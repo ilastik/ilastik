@@ -1,3 +1,5 @@
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -43,7 +45,7 @@ class TestOpMetadataInjector(object):
         assert op.Output.value == op.Input.value
     
         # Make sure all input metadata was copied to the output
-        assert all( ((k,v) in op.Output.meta.items()) for k,v in op.Input.meta.items())
+        assert all( ((k,v) in list(op.Output.meta.items())) for k,v in list(op.Input.meta.items()))
     
         # Check that the additional metadata was added to the output
         assert op.Output.meta.layertype == 7
@@ -74,7 +76,7 @@ class TestOpOutputProvider(object):
     
         opProvider = OpOutputProvider( data, meta, graph=g )
         assert (opProvider.Output[0:1, 1:2, 0:3, 2:4, 3:5].wait() == data[0:1, 1:2, 0:3, 2:4, 3:5]).all()
-        for k,v in meta.items():
+        for k,v in list(meta.items()):
             if k != '_ready' and k != '_dirty':
                 assert opProvider.Output.meta[k] == v
 

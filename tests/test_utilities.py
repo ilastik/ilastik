@@ -1,3 +1,4 @@
+from __future__ import print_function
 import signal
 import functools
 import threading
@@ -65,6 +66,6 @@ if __name__ == "__main__":
     try:
         long_running_function()
     except TimeoutError as ex:
-        print "Got TimeoutError, as expected"
+        print("Got TimeoutError, as expected")
     else:
         assert False, "Expected to catch a TimeoutError! Why didn't that happen?"

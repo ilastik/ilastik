@@ -1,3 +1,8 @@
+from __future__ import division
+from builtins import next
+from builtins import map
+
+from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -120,7 +125,7 @@ class OpArrayCache(Operator, ManagedCache):
                 continue
             if v == self.DIRTY or v == self.FIXED_DIRTY:
                 totDirty += numpy.prod(sh)
-        return totDirty/float(totAll)
+        return totDirty / float(totAll)
     
     def lastAccessTime(self):
         return super(OpArrayCache, self).lastAccessTime()
@@ -156,7 +161,7 @@ class OpArrayCache(Operator, ManagedCache):
             else:
                 s = item.nbytes
         elif isinstance(item, dict):
-            for key in item.keys():
+            for key in list(item.keys()):
                 try:
                     obj = item[key]
                 except KeyError:
@@ -250,7 +255,7 @@ class OpArrayCache(Operator, ManagedCache):
 
         if self.inputs["blockShape"].ready() and self.inputs["Input"].ready():
             newBShape = self.inputs["blockShape"].value
-            assert numpy.issubdtype(type(newBShape), numpy.integer) or all( map(lambda x: numpy.issubdtype(type(x), numpy.integer), newBShape) )
+            assert numpy.issubdtype(type(newBShape), numpy.integer) or all( [numpy.issubdtype(type(x), numpy.integer) for x in newBShape] )
             if self._origBlockShape != newBShape and self.inputs["Input"].ready():
                 reconfigure = True
             self._origBlockShape = newBShape
@@ -476,7 +481,7 @@ class OpArrayCache(Operator, ManagedCache):
             self.Output._sig_value_changed()
 
         # indicate the finished inprocess state (i.e. CLEAN)
-        if not self._fixed and temp.next() == 0:
+        if not self._fixed and next(temp) == 0:
             with self._lock:
                 blockSet[:] = fastWhere(cond, OpArrayCache.CLEAN, blockSet, numpy.uint8)
                 self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)
@@ -532,7 +537,10 @@ class OpArrayCache(Operator, ManagedCache):
         clean_block_starts *= self._blockShape
             
         inputShape = self.Input.meta.shape
-        clean_block_rois = map( partial( getBlockBounds, inputShape, self._blockShape ),
-                                clean_block_starts )
-        destination[0] = map( partial(map, TinyVector), clean_block_rois )
+        clean_block_rois = list(map( partial( getBlockBounds, inputShape, self._blockShape ),
+                                clean_block_starts ))
+        results = []
+        for cbr in clean_block_rois:
+            results.append( [TinyVector(cbr[0]), TinyVector(cbr[1])] )
+        destination[0] = results
         return destination

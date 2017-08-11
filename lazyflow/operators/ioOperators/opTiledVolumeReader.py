@@ -47,7 +47,7 @@ class OpTiledVolumeReader(Operator):
 
         self.Output.meta.shape = tuple(self.tiled_volume.output_shape)
         self.Output.meta.dtype = self.tiled_volume.description.dtype
-        self.Output.meta.axistags = vigra.defaultAxistags(self.tiled_volume.description.output_axes)
+        self.Output.meta.axistags = vigra.defaultAxistags(str(self.tiled_volume.description.output_axes))
         self.Output.meta.prefer_2d = True
         self.Output.meta.nickname = self.tiled_volume.description.name
 

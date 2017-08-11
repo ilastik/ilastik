@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -37,12 +38,13 @@ from lazyflow.utility import Memory
 
 
 import logging
+from future.utils import with_metaclass
 logger = logging.getLogger(__name__)
 
 default_refresh_interval = 10
 
 
-class CacheMemoryManager(threading.Thread):
+class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
     """
     class for the management of cache memory
 
@@ -71,7 +73,6 @@ class CacheMemoryManager(threading.Thread):
     the interval is measured in seconds. Each change of refresh interval
     triggers cleanup.
     """
-    __metaclass__ = Singleton
 
     totalCacheMemory = OrderedSignal()
 
@@ -190,7 +191,7 @@ class CacheMemoryManager(threading.Thread):
                 cache_pct = total*100.0/cache_memory
             
             logger.debug( "Process memory usage is {:0.2f} GB out of {:0.2f} (caches are {}, {:.1f}% of allowed)"
-                          .format( Memory.getMemoryUsage()/2.**30, Memory.getAvailableRam()/2.**30 , Memory.format(total), cache_pct ) )
+                          .format( Memory.getMemoryUsage() / 2.**30, Memory.getAvailableRam() / 2.**30 , Memory.format(total), cache_pct ) )
 
             if total <= self._max_usage * cache_memory:
                 return

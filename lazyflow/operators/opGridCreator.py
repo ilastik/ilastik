@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,7 +24,7 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 import numpy
 import vigra
-import opGridCreator
+from . import opGridCreator
 from lazyflow.request import RequestLock
 
 def make_grid(shape, patch, grid, offset):

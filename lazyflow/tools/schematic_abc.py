@@ -1,3 +1,4 @@
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -20,6 +21,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from abc import ABCMeta, abstractmethod
+from future.utils import with_metaclass
 
 def _has_attribute( cls, attr ):
     return True if any(attr in B.__dict__ for B in cls.__mro__) else False
@@ -27,9 +29,7 @@ def _has_attribute( cls, attr ):
 def _has_attributes( cls, attrs ):
     return True if all(_has_attribute(cls, a) for a in attrs) else False    
 
-class DrawableABC:
-    __metaclass__ = ABCMeta
-
+class DrawableABC(with_metaclass(ABCMeta, object)):
     @abstractmethod
     def size(self):
         return NotImplemented
@@ -47,9 +47,7 @@ class DrawableABC:
             return True if _has_attributes(C, ['size', 'drawAt']) else False
         return NotImplemented
 
-class ConnectableABC:
-    __metaclass__ = ABCMeta
-
+class ConnectableABC(with_metaclass(ABCMeta, object)):
     @abstractmethod
     def key(self):
         return NotImplemented

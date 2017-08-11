@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -62,14 +63,14 @@ class TestOpSplitRequestsBlockwise(unittest.TestCase):
                     SubRegion(slot, (10, 30, 20), (20, 45, 40))]
 
         for roi in expected:
-            filtered = filter(lambda x: x == roi, self.piper.requests)
+            filtered = [x for x in self.piper.requests if x == roi]
             assert len(filtered) == 1, "missing roi {}".format(roi)
 
         self.piper.requests = []
 
         op.Output[5:14, 32:44, 17:21].wait()
         for roi in expected:
-            filtered = filter(lambda x: x == roi, self.piper.requests)
+            filtered = [x for x in self.piper.requests if x == roi]
             assert len(filtered) == 1, "missing roi {}".format(roi)
 
     def testNoFullBlocks(self):
@@ -88,7 +89,7 @@ class TestOpSplitRequestsBlockwise(unittest.TestCase):
             print(req)
 
         for roi in expected:
-            filtered = filter(lambda x: x == roi, self.piper.requests)
+            filtered = [x for x in self.piper.requests if x == roi]
             assert len(filtered) == 1, "missing roi {}".format(roi)
 
         self.piper.requests = []
@@ -99,7 +100,7 @@ class TestOpSplitRequestsBlockwise(unittest.TestCase):
                     SubRegion(slot, (10, 32, 17), (14, 44, 20)),
                     SubRegion(slot, (10, 32, 20), (14, 44, 21))]
         for roi in expected:
-            filtered = filter(lambda x: x == roi, self.piper.requests)
+            filtered = [x for x in self.piper.requests if x == roi]
             assert len(filtered) == 1, "missing roi {}".format(roi)
 
     def testCorrectData(self):

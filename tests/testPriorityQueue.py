@@ -1,3 +1,6 @@
+from builtins import zip
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #

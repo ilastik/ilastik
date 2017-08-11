@@ -1,13 +1,18 @@
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
 import os
 import tempfile
-import cPickle as pickle
+import pickle as pickle
 
 import numpy
 import scipy.ndimage
 import vigra
 import h5py
 
-from lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
+from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 from lazyflow.utility import Timer
 
 import logging
@@ -186,7 +191,7 @@ class VigraRfAdaptiveMaskPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
         h5py_group['known_labels'] = self._known_labels
         
         # This field is required for all classifiers
-        h5py_group['pickled_type'] = pickle.dumps( type(self) )
+        h5py_group['pickled_type'] = pickle.dumps( type(self), 0 )
 
     @classmethod
     def deserialize_hdf5(cls, h5py_group):

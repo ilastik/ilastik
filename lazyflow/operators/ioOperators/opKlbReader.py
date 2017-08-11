@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -55,10 +56,10 @@ if __name__ == "__main__":
     op = OpKlbReader(graph=Graph())
     op.FilePath.setValue("/tmp/deleteme-2.klb")
     
-    print op.Output.meta.shape
-    print op.Output.meta.getAxisKeys()
-    print op.Output.meta.dtype
+    print(op.Output.meta.shape)
+    print(op.Output.meta.getAxisKeys())
+    print(op.Output.meta.dtype)
     
     a = op.Output[:].wait()
-    print numpy.mean(a)
+    print(numpy.mean(a))
     

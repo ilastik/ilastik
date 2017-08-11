@@ -1,3 +1,6 @@
+from __future__ import print_function
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -105,24 +108,24 @@ features.inputs["Scales"].setValue((1.0,3.0))
 features.inputs["Input"].connect(cache.outputs["Output"])
 features.inputs["Matrix"].setValue(matrix)
 
-print features.Output.meta.axistags
+print(features.Output.meta.axistags)
 
 t1 = time.time()
 for i in range(0,mcount):
     res = numpy.ndarray((1,),numpy.uint8)
 t2 = time.time()
-print "\n\n"
-print "PYTHON NUMPY ALLOC OVERHEAD:    %f seconds for %d iterations" % (t2-t1,mcount)
-print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
+print("\n\n")
+print("PYTHON NUMPY ALLOC OVERHEAD:    %f seconds for %d iterations" % (t2-t1,mcount))
+print("                                %fus latency" % ((t2-t1)*1e6/mcount,))
 
 
 t1 = time.time()
 for i in range(0,mcount):
     res = arr[1:2,1:2,1:2]
 t2 = time.time()
-print "\n\n"
-print "PYTHON NUMPY CALL OVERHEAD:     %f seconds for %d iterations" % (t2-t1,mcount)
-print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
+print("\n\n")
+print("PYTHON NUMPY CALL OVERHEAD:     %f seconds for %d iterations" % (t2-t1,mcount))
+print("                                %fus latency" % ((t2-t1)*1e6/mcount,))
 
 
 c = C((100,100,100),numpy.uint8)
@@ -130,9 +133,9 @@ t1 = time.time()
 for i in range(0,mcount):
     res = c[1:2,1:2,1:2]
 t2 = time.time()
-print "\n\n"
-print "PYTHON DYN DISPATCH OVERHEAD:   %f seconds for %d iterations" % (t2-t1,mcount)
-print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
+print("\n\n")
+print("PYTHON DYN DISPATCH OVERHEAD:   %f seconds for %d iterations" % (t2-t1,mcount))
+print("                                %fus latency" % ((t2-t1)*1e6/mcount,))
 
 a = A()
 b = B()
@@ -144,9 +147,9 @@ b.start()
 a.join()
 b.join()
 t2 = time.time()
-print "\n\n"
-print "PYTHON THREAD SWITCH OVERHEAD:  %f seconds for %d iterations" % (t2-t1,mcount)
-print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
+print("\n\n")
+print("PYTHON THREAD SWITCH OVERHEAD:  %f seconds for %d iterations" % (t2-t1,mcount))
+print("                                %fus latency" % ((t2-t1)*1e6/mcount,))
 
 
 # a = ZmqA()
@@ -168,17 +171,17 @@ t1 = time.time()
 for i in range(0,mcount):
     cache.outputs["Output"][:10,:10,:10,0].wait()
 t2 = time.time()
-print "\n\n"
-print "LAZYFLOW SYNC WAIT CACHE OVERHEAD:    %f seconds for %d iterations" % (t2-t1,mcount)
-print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
+print("\n\n")
+print("LAZYFLOW SYNC WAIT CACHE OVERHEAD:    %f seconds for %d iterations" % (t2-t1,mcount))
+print("                                %fus latency" % ((t2-t1)*1e6/mcount,))
 
 t1 = time.time()
 for i in range(0,mcount):
     piper.outputs["Output"][:100,:100,:10,0].wait()
 t2 = time.time()
-print "\n\n"
-print "LAZYFLOW SYNC WAIT PIPER OVERHEAD:    %f seconds for %d iterations" % (t2-t1,mcount)
-print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
+print("\n\n")
+print("LAZYFLOW SYNC WAIT PIPER OVERHEAD:    %f seconds for %d iterations" % (t2-t1,mcount))
+print("                                %fus latency" % ((t2-t1)*1e6/mcount,))
 
 
 t1 = time.time()
@@ -190,9 +193,9 @@ for i in range(0,mcount):
 for r in requests:
     r.wait()
 t2 = time.time()
-print "\n\n"
-print "LAZYFLOW ASYNC WAIT CACHE OVERHEAD:   %f seconds for %d iterations" % (t2-t1,mcount)
-print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
+print("\n\n")
+print("LAZYFLOW ASYNC WAIT CACHE OVERHEAD:   %f seconds for %d iterations" % (t2-t1,mcount))
+print("                                %fus latency" % ((t2-t1)*1e6/mcount,))
 
 t1 = time.time()
 requests = []
@@ -203,9 +206,9 @@ for i in range(0,mcount):
 for r in requests:
     r.wait()
 t2 = time.time()
-print "\n\n"
-print "LAZYFLOW ASYNC WAIT PIPER OVERHEAD:   %f seconds for %d iterations" % (t2-t1,mcount)
-print "                                %fus latency" % ((t2-t1)*1e6/mcount,)
+print("\n\n")
+print("LAZYFLOW ASYNC WAIT PIPER OVERHEAD:   %f seconds for %d iterations" % (t2-t1,mcount))
+print("                                %fus latency" % ((t2-t1)*1e6/mcount,))
 
 
 
@@ -213,9 +216,9 @@ t1 = time.time()
 for i in range(0,mcountf):
     features.outputs["Output"][:50,:50,:50,:].wait()
 t2 = time.time()
-print "\n\n"
-print "LAZYFLOW SYNC WAIT FEATURES :    %f seconds for %d iterations" % (t2-t1,mcountf)
-print "                                %0.3fms latency" % ((t2-t1)*1e3/mcountf,)
+print("\n\n")
+print("LAZYFLOW SYNC WAIT FEATURES :    %f seconds for %d iterations" % (t2-t1,mcountf))
+print("                                %0.3fms latency" % ((t2-t1)*1e3/mcountf,))
 
 
 t1 = time.time()
@@ -230,9 +233,9 @@ for r in requests:
 for r in requests:
     r.wait()
 t2 = time.time()
-print "\n\n"
-print "LAZYFLOW ASYNC WAIT FEATURES:   %f seconds for %d iterations" % (t2-t1,mcountf)
-print "                                %0.3fms latency" % ((t2-t1)*1e3/mcountf,)
+print("\n\n")
+print("LAZYFLOW ASYNC WAIT FEATURES:   %f seconds for %d iterations" % (t2-t1,mcountf))
+print("                                %0.3fms latency" % ((t2-t1)*1e3/mcountf,))
 
 if doProfile:
     yappi.stop()
@@ -262,9 +265,9 @@ req.submit()
 req.wait()
 
 t2 = time.time()
-print "\n\n"
-print "LAZYFLOW REQUEST WAIT:   %f seconds for %d iterations" % (t2-t1,mcount)
-print "                                %0.3fms latency" % ((t2-t1)*1e3/mcount,)
+print("\n\n")
+print("LAZYFLOW REQUEST WAIT:   %f seconds for %d iterations" % (t2-t1,mcount))
+print("                                %0.3fms latency" % ((t2-t1)*1e3/mcount,))
 
 
 t1 = time.time()
@@ -277,6 +280,6 @@ for i in range(50000):
 pool.wait()
 
 t2 = time.time()
-print "\n\n"
-print "LAZYFLOW POOL WAIT:   %f seconds for %d iterations" % (t2-t1,mcount)
-print "                                %0.3fms latency" % ((t2-t1)*1e3/mcount,)
+print("\n\n")
+print("LAZYFLOW POOL WAIT:   %f seconds for %d iterations" % (t2-t1,mcount))
+print("                                %0.3fms latency" % ((t2-t1)*1e3/mcount,))

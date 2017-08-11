@@ -53,11 +53,11 @@ class OpRESTfulBlockwiseFilesetReader(Operator):
         # Check for errors in the description file
         localDescription = self._blockwiseFileset.compositeDescription.local_description
         axes = localDescription.axes
-        assert False not in map(lambda a: a in 'txyzc', axes), "Unknown axis type.  Known axes: txyzc  Your axes:".format(axes)
+        assert False not in [a in 'txyzc' for a in axes], "Unknown axis type.  Known axes: txyzc  Your axes:".format(axes)
 
         self.Output.meta.shape = tuple(localDescription.view_shape)
         self.Output.meta.dtype = localDescription.dtype
-        self.Output.meta.axistags = vigra.defaultAxistags(localDescription.axes)
+        self.Output.meta.axistags = vigra.defaultAxistags(str(localDescription.axes))
         drange = localDescription.drange
         if drange is not None:
             self.Output.meta.drange = drange

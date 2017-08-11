@@ -1,3 +1,10 @@
+from __future__ import absolute_import
+
+from builtins import range
+from builtins import object
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
 
 from threading import Lock as ThreadLock
 from functools import partial
@@ -13,7 +20,8 @@ from lazyflow.rtype import SubRegion
 from lazyflow.metaDict import MetaDict
 from lazyflow.request import Request, RequestPool
 from lazyflow.operators import OpBlockedArrayCache, OpReorderAxes
-from opLazyConnectedComponents import OpLazyConnectedComponents
+from .opLazyConnectedComponents import OpLazyConnectedComponents
+from future.utils import with_metaclass
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +110,7 @@ class OpLabelVolume(Operator):
 
     def setupOutputs(self):
         method = self.Method.value
-        if not isinstance(method, str):
+        if not isinstance(method, (str, unicode)):
             method = method[0]
 
         if self._opLabel is not None and type(self._opLabel) != self._labelOps[method]:
@@ -176,10 +184,7 @@ class OpLabelVolume(Operator):
 
 
 ## parent class for all connected component labeling implementations
-class OpLabelingABC(Operator):
-    __metaclass__ = ABCMeta
-
-    ## input with axes 'txyzc'
+class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
     Input = InputSlot()
 
     ## background with axes 'txyzc', spatial axes must be singletons

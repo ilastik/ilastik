@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -118,7 +119,7 @@ class OpBlockedSparseLabelArray(Operator, Cache):
         report.type = type(self)
         report.id = id(self)
        
-        for i, (b_ind, block) in enumerate(self._labelers.iteritems()):
+        for i, (b_ind, block) in enumerate(self._labelers.items()):
             start = self._blockShape*self._flatBlockIndices[b_ind]
             stop  = numpy.minimum(start + self._blockShape, self.Output.meta.shape)
            
@@ -129,7 +130,7 @@ class OpBlockedSparseLabelArray(Operator, Cache):
             
     def usedMemory(self):
         tot = 0.0
-        for block in self._labelers.values():
+        for block in list(self._labelers.values()):
             tot += block.usedMemory()
         return tot
 
@@ -170,7 +171,7 @@ class OpBlockedSparseLabelArray(Operator, Cache):
 
         if self.inputs["eraser"].ready():
             self._cacheEraser = self.inputs["eraser"].value
-            for l in self._labelers.values():
+            for l in list(self._labelers.values()):
                 l.inputs['eraser'].setValue(self._cacheEraser)
 
         if self.inputs["blockShape"].ready():
@@ -202,7 +203,7 @@ class OpBlockedSparseLabelArray(Operator, Cache):
 
             # allocate queryArray object
             self._flatBlockIndices =  _blockIndices[:]
-            self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
+            self._flatBlockIndices = self._flatBlockIndices.reshape((self._flatBlockIndices.size // self._flatBlockIndices.shape[-1]),self._flatBlockIndices.shape[-1],)
 
 
         if self.inputs["deleteLabel"].ready():
@@ -210,7 +211,7 @@ class OpBlockedSparseLabelArray(Operator, Cache):
             nonzero_slicelist = self._get_nonzero_blocks()
 
             # Now delete the label from all of them.
-            for l in self._labelers.values():
+            for l in list(self._labelers.values()):
                 l.inputs["deleteLabel"].setValue(self.inputs['deleteLabel'].value)
                 
             # Our internal labelers will mark their outputs as dirty,
@@ -260,7 +261,7 @@ class OpBlockedSparseLabelArray(Operator, Cache):
 
         elif slot.name == "nonzeroValues":
             nzvalues = set()
-            for l in self._labelers.values():
+            for l in list(self._labelers.values()):
                 nzvalues |= set(l._sparseNZ.values())
             result[0] = numpy.array(list(nzvalues))
 
@@ -278,7 +279,7 @@ class OpBlockedSparseLabelArray(Operator, Cache):
 
     def _get_nonzero_blocks(self):
         slicelist = []
-        for b_ind in self._labelers.keys():
+        for b_ind in list(self._labelers.keys()):
             offset = self._blockShape*self._flatBlockIndices[b_ind]
             bigstart = offset
             bigstop = numpy.minimum(offset + self._blockShape, self._cacheShape)

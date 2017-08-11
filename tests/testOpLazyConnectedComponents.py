@@ -1,3 +1,5 @@
+from __future__ import print_function
+from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -155,7 +157,7 @@ class TestOpLazyCC(unittest.TestCase):
 
         out1 = op.Output[:3, :3].wait()
         out2 = op.Output[7:, 7:].wait()
-        print(out1.max(), out2.max())
+        print((out1.max(), out2.max()))
         assert max(out1.max(), out2.max()) == 2
 
     def testConsistency(self):
@@ -203,7 +205,7 @@ class TestOpLazyCC(unittest.TestCase):
                     op.Input.setDirty(slice(None))
                     print(op._isFinal.squeeze())
                     out = op.Output[x:x+3, y:y+3].wait()
-                    print(x, y)
+                    print((x, y))
                     print(out.squeeze())
                     assert out.max() == 1
 
@@ -336,7 +338,7 @@ class TestOpLazyCC(unittest.TestCase):
         op.ChunkShape.setValue((64, 64, 64))
         out1 = np.zeros(op.Output.meta.shape,
                         dtype=op.Output.meta.dtype)
-        for z in reversed(range(500)):
+        for z in reversed(list(range(500))):
             out1[..., z:z+1] = op.Output[..., z:z+1].wait()
         vigra.writeHDF5(out1, '/tmp/data.h5', 'data')
         out2 = vigra.analysis.labelVolumeWithBackground(vol)

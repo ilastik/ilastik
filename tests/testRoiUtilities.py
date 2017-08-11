@@ -1,3 +1,4 @@
+from builtins import object
 import numpy
 from lazyflow.roi import determineBlockShape, getIntersection, enlargeRoiForHalo, TinyVector, nonzero_bounding_box, containing_rois
 

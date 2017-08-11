@@ -20,6 +20,8 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+from builtins import zip
+from builtins import range
 import os
 import math
 import logging
@@ -95,7 +97,7 @@ class OpStackLoader(Operator):
         X, Y, C = slice_shape
         if self.slices_per_file == 1:
             if self.SequenceAxis.ready():
-                sequence_axis = self.SequenceAxis.value
+                sequence_axis = str(self.SequenceAxis.value)
                 assert sequence_axis in 'tz'
             else:
                 sequence_axis = 'z'
@@ -209,7 +211,7 @@ class OpStackWriter(Operator):
         # Sliceshape is the same as the input shape, except for the sliced dimension
         tagged_sliceshape = self.Input.meta.getTaggedShape()
         tagged_sliceshape[self._volume_axes[0]] = 1
-        slice_shape = (tagged_sliceshape.values())
+        slice_shape = (list(tagged_sliceshape.values()))
 
         parallel_requests = 4
 
@@ -226,7 +228,7 @@ class OpStackWriter(Operator):
             available_ram = psutil.virtual_memory().available
             available_ram *= 0.5
 
-            parallel_requests = int(available_ram / ram_usage_per_slice)
+            parallel_requests = int(available_ram // ram_usage_per_slice)
 
             if parallel_requests < 1:
                 raise MemoryError(
@@ -277,9 +279,9 @@ class OpStackWriter(Operator):
         # Find the non-singleton axes.
         # The first non-singleton axis is the step axis.
         # The last 2 non-channel non-singleton axes will be the axes of the slices.
-        tagged_items = tagged_shape.items()
-        filtered_items = filter( lambda (k, v): v > 1, tagged_items )
-        filtered_axes = zip( *filtered_items )[0]
+        tagged_items = list(tagged_shape.items())
+        filtered_items = [k_v for k_v in tagged_items if k_v[1] > 1]
+        filtered_axes = list(zip( *filtered_items ))[0]
         return filtered_axes
 
     def _write_slice(self, roi, slice_data):
@@ -288,7 +290,7 @@ class OpStackWriter(Operator):
         """
         step_axis = self._volume_axes[0]
         input_axes = self.Input.meta.getAxisKeys()
-        tagged_roi = OrderedDict( zip( input_axes, zip( *roi ) ) )
+        tagged_roi = OrderedDict( list(zip( input_axes, list(zip( *roi )) )) )
         # e.g. tagged_roi={ 'x':(0,1), 'y':(3,4), 'z':(10,20) }
         assert tagged_roi[step_axis][1] - tagged_roi[step_axis][0] == 1,\
             "Expected roi to be a single slice."
@@ -346,7 +348,7 @@ class OpStackToH5Writer(Operator):
         numImages = self.opStackLoader.stack.meta.shape[zAxis]
         axistags = self.opStackLoader.stack.meta.axistags
         dtype = self.opStackLoader.stack.meta.dtype
-        if type(dtype) is numpy.dtype:
+        if isinstance(dtype, numpy.dtype):
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype
             dtype = dtype.type
@@ -359,7 +361,7 @@ class OpStackToH5Writer(Operator):
         
         # Set up our chunk shape: Aim for a cube that's roughly 300k in size
         dtypeBytes = dtype().nbytes
-        cubeDim = math.pow( 300000 / (numChannels * dtypeBytes), (1/3.0) )
+        cubeDim = math.pow( 300000 // (numChannels * dtypeBytes), (1/3.0) )
         cubeDim = int(cubeDim)
 
         chunkDims = {}
@@ -399,7 +401,7 @@ class OpStackToH5Writer(Operator):
             slicing = [slice(None)] * len(stackTags)
             slicing[zAxis] = slice(z, z+1)
             data[tuple(slicing)] = self.opStackLoader.stack[slicing].wait()
-            self.progressSignal( z*100 / numImages )
+            self.progressSignal( z*100 // numImages )
 
         data.attrs['axistags'] = axistags.toJSON()
 
@@ -462,7 +464,7 @@ class OpH5WriterBigDataset(Operator):
         self.logger.info( "Data shape: {}".format(dataShape))
 
         dtype = self.Image.meta.dtype
-        if type(dtype) is numpy.dtype:
+        if isinstance(dtype, numpy.dtype):
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype
             dtype = dtype.type
@@ -478,9 +480,9 @@ class OpH5WriterBigDataset(Operator):
         if 'c' in tagged_maxshape:
             tagged_maxshape['c'] = 1
         
-        self.chunkShape = determineBlockShape( tagged_maxshape.values(), 512000.0 / dtypeBytes )
+        self.chunkShape = determineBlockShape( list(tagged_maxshape.values()), 512000.0 / dtypeBytes )
 
-        if datasetName in g.keys():
+        if datasetName in list(g.keys()):
             del g[datasetName]
         kwargs = { 'shape' : dataShape, 'dtype' : dtype,
             'chunks' : self.chunkShape }

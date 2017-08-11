@@ -1,3 +1,13 @@
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import zip
+
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -19,7 +29,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-import cPickle as pickle
+import pickle as pickle
 from itertools import starmap
 
 import numpy
@@ -33,7 +43,7 @@ import iiboost
 from lazyflow.classifiers import LazyflowPixelwiseClassifierFactoryABC, LazyflowPixelwiseClassifierABC
 
 def roi_to_slice(start, stop):
-    return tuple( starmap(slice, zip(start, stop)) )
+    return tuple( starmap(slice, list(zip(start, stop))) )
 
 class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """
@@ -85,7 +95,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
             converted_labels.append( converted )
 
         # Save for future reference
-        flattened_labels = map( numpy.ndarray.flatten, converted_labels )
+        flattened_labels = list(map( numpy.ndarray.flatten, converted_labels ))
         all_labels = numpy.concatenate(flattened_labels)
         known_labels = numpy.sort(vigra.analysis.unique(all_labels))
         if known_labels[0] == 0:
@@ -293,10 +303,10 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     def serialize_hdf5(self, h5py_group):
         h5py_group['known_labels'] = self._known_labels
         h5py_group['feature_count'] = self._feature_count
-        h5py_group['feature_names'] = self._feature_names
+        h5py_group['feature_names'] = [name.encode('utf-8') for name in self._feature_names]
         
         # This field is required for all classifiers
-        h5py_group['pickled_type'] = pickle.dumps( type(self) )
+        h5py_group['pickled_type'] = pickle.dumps( type(self), 0 )
         
         # Just store the string IIBoost gives us
         h5py_group['serialized_model'] = self._model.serialize()
@@ -309,7 +319,7 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
                 
         known_labels = list(h5py_group['known_labels'][:])
         feature_count = h5py_group['feature_count'][()]
-        feature_names = list(h5py_group['feature_names'][:])
+        feature_names = list(map(unicode, h5py_group['feature_names'][:]))
         return IIBoostLazyflowClassifier(model, known_labels, feature_count, feature_names)
 
 # This assertion should pass if lazyflow is available.

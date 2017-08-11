@@ -20,6 +20,12 @@
 #          http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+from builtins import next
+from builtins import map
+
+from builtins import zip
+from builtins import range
+from builtins import object
 import numpy as np
 import vigra
 import h5py
@@ -92,7 +98,7 @@ class _LabelManager(object):
     # or labels.
     @threadsafe
     def register(self):
-        n = self._iterator.next()
+        n = next(self._iterator)
         self._registered.add(n)
         return n
 
@@ -131,7 +137,7 @@ class _LabelManager(object):
     def checkoutLabels(self, chunkIndex, labels, n):
         others = set()
         d = self._managedLabels[chunkIndex]
-        for otherProcess, otherLabels in d.iteritems():
+        for otherProcess, otherLabels in d.items():
             inters = np.intersect1d(labels, otherLabels)
             if inters.size > 0:
                 labels = np.setdiff1d(labels, inters)
@@ -381,7 +387,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
                 if extendingLabels.size > 0:
                     # check if already in queue
                     found = False
-                    for i in xrange(len(chunksToProcess)):
+                    for i in range(len(chunksToProcess)):
                         if chunksToProcess[i][0] == other:
                             extendingLabels = np.union1d(
                                 chunksToProcess[i][1],
@@ -531,7 +537,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
         numLabels = self._numIndices[chunkIndex]
         labels = np.arange(1, numLabels+1, dtype=_LABEL_TYPE) + offset
 
-        labels = np.asarray(map(self._uf.findIndex, labels),
+        labels = np.asarray(list(map(self._uf.findIndex, labels)),
                             dtype=_LABEL_TYPE)
 
         # we got 'numLabels' real labels, and one label '0', so our
@@ -554,7 +560,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
                 continue
 
             if l not in d:
-                nextLabel = labeler.next()
+                nextLabel = next(labeler)
                 d[l] = nextLabel
             newlabels[labels == k] = d[l]
         return newlabels
@@ -582,7 +588,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
         stop_cs = stop // cs
         # add one if division was not even
         stop_cs += np.where(stop % cs, 1, 0)
-        iters = [xrange(start_cs[i], stop_cs[i]) for i in range(5)]
+        iters = [range(start_cs[i], stop_cs[i]) for i in range(5)]
         chunks = list(itertools.product(*iters))
         return chunks
 
@@ -645,7 +651,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
         chunkShape = np.minimum(shape, chunkShape)
         f = lambda i: shape[i]//chunkShape[i] + (1 if shape[i] % chunkShape[i]
                                                  else 0)
-        self._chunkArrayShape = tuple(map(f, range(len(shape))))
+        self._chunkArrayShape = tuple(map(f, list(range(len(shape)))))
         self._chunkShape = np.asarray(chunkShape, dtype=np.int)
         self._shape = shape
 
@@ -711,7 +717,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
             roi = self._chunkIndexToRoi(ind)
             return (roi.start, roi.stop)
 
-        destination[0] = list(map(ind2tup, zip(*finalIndices)))
+        destination[0] = list(map(ind2tup, list(zip(*finalIndices))))
 
     def _executeOutputHdf5(self, roi, destination):
         logger.debug("Servicing request for hdf5 block {}".format(roi))
@@ -809,7 +815,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
 class UnionFindArray(object):
 
     def __init__(self, nextFree=1):
-        self._map = dict(zip(*(xrange(nextFree),)*2))
+        self._map = dict(list(zip(*(list(range(nextFree)),)*2)))
         self._lock = HardLock()
         self._nextFree = nextFree
         self._it = None
@@ -869,7 +875,7 @@ class InfiniteLabelIterator(object):
         self.dtype = dtype
         self.n = n
 
-    def next(self):
+    def __next__(self):
         a = self.dtype(self.n)
         assert a < np.iinfo(self.dtype).max, "Label overflow."
         self.n += 1

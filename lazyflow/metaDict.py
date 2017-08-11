@@ -1,3 +1,4 @@
+from builtins import zip
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -81,7 +82,7 @@ class MetaDict(defaultdict):
     def __eq__(self, other):
         if other is None:
             return False
-        for k in set(self.keys() + other.keys()):
+        for k in set(list(self.keys()) + list(other.keys())):
             if k.startswith('__') or k == 'NOTREADY':
                 continue
             if k not in other or k not in self:
@@ -98,6 +99,11 @@ class MetaDict(defaultdict):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __hash__(self):
+        # This ensures that a given MetaDict can be relocated in a dict/set,
+        # but doesn't ensure that identical MetaDicts hash to the same place.
+        return hash( id(self) )
+
     def assignFrom(self, other):
         """
         Copy all the elements from other into this
@@ -108,7 +114,7 @@ class MetaDict(defaultdict):
         origready = self._ready
         if dirty:
             self.clear()
-            for k, v in other.items():
+            for k, v in list(other.items()):
                 self[k] = copy.copy(v)
         self._dirty = origdirty | dirty
 
@@ -125,7 +131,7 @@ class MetaDict(defaultdict):
         origdirty = self._dirty
         origready = self._ready
         if dirty:
-            for k, v in other.items():
+            for k, v in list(other.items()):
                 self[k] = copy.copy(v)
         self._dirty = origdirty | dirty
 
@@ -141,7 +147,7 @@ class MetaDict(defaultdict):
         assert self.axistags is not None
         assert self.shape is not None
         keys = self.getAxisKeys()
-        return OrderedDict(zip(keys, self.shape))
+        return OrderedDict(list(zip(keys, self.shape)))
 
     def getAxisKeys(self):
         assert self.axistags is not None
@@ -152,7 +158,7 @@ class MetaDict(defaultdict):
         For numpy dtypes only, return the size of the dtype in bytes.
         """
         dtype = self.dtype
-        if type(dtype) is numpy.dtype:
+        if isinstance(dtype, numpy.dtype):
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype
             dtype = dtype.type        
@@ -169,7 +175,7 @@ class MetaDict(defaultdict):
             if key in self:
                 pairs.append( key + ' : ' + repr(self[key]) )
         
-        for key, value in self.items():
+        for key, value in list(self.items()):
             if key not in standard_keys:
                 pairs.append( key + ' : ' + repr(value) )
         

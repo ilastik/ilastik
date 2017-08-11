@@ -1,6 +1,14 @@
 # This file was copied from the motmot ufmf GitHub repository: https://github.com/motmot/ufmf commit c795ffe369b7e58de69d34926388af33ce71b711
 
 from __future__ import division
+from __future__ import absolute_import
+from builtins import range
+from builtins import object
+
+# TODO: Convert this file to use bytes instead of str
+#from builtins import chr
+#
+
 import sys
 import struct, collections
 import warnings
@@ -17,7 +25,7 @@ import time
 
 import math
 
-import FlyMovieFormat as FMF
+from . import FlyMovieFormat as FMF
 
 class UfmfError(Exception):
     pass
@@ -130,7 +138,7 @@ def identify_ufmf_version(filename):
     version_buflen = struct.calcsize(VERSION_FMT)
     version_buf = fd.read( version_buflen )
     had_marker=False
-    if version_buf=='ufmf':
+    if version_buf==b'ufmf':
         version_buf = fd.read( version_buflen )
         had_marker=True
     version, = struct.unpack(VERSION_FMT, version_buf)
@@ -144,9 +152,9 @@ def identify_ufmf_version(filename):
     return version
 
 def _write_dict(fd,save_dict):
-    fd.write('d')
-    fd.write(chr(len(save_dict.keys())))
-    keys = save_dict.keys()
+    fd.write(b'd')
+    fd.write(bytes(chr(len(list(save_dict.keys()))), 'utf-8'))
+    keys = list(save_dict.keys())
     keys.sort() # keep ordering fixed to file remains same if re-indexed
     for key in keys:
         value = save_dict[key]
@@ -159,9 +167,9 @@ def _write_dict(fd,save_dict):
         if isinstance(value,list) or isinstance(value,np.ndarray):
             larr = np.array(value)
             assert larr.ndim==1
-            dtype_char = larr.dtype.char
+            dtype_char = bytes(larr.dtype.char, 'utf-8')
             bytes_per_element = larr.dtype.itemsize
-            b = 'a'+dtype_char+struct.pack('<L',len(larr)*bytes_per_element)
+            b = b'a'+dtype_char+struct.pack('<L',len(larr)*bytes_per_element)
             b += larr.tostring()
             fd.write(b)
             continue
@@ -197,7 +205,7 @@ def _read_array(fd,buf_remaining):
 
 def _read_dict(fd,buf_remaining=None):
     if buf_remaining is None:
-        buf_remaining=''
+        buf_remaining=b''
     x,buf_remaining = _read_min_chars(fd,1,buf_remaining)
     n_keys = ord(x)
     result = {}
@@ -209,9 +217,9 @@ def _read_dict(fd,buf_remaining=None):
         key = x
         x,buf_remaining = _read_min_chars(fd,1,buf_remaining)
         id = x
-        if id=='d':
+        if id==b'd':
             value,buf_remaining = _read_dict(fd,buf_remaining)
-        elif id=='a':
+        elif id==b'a':
             value,buf_remaining = _read_array(fd,buf_remaining)
         else:
             raise ValueError("don't know how to read value with id %s"%(id,))
@@ -389,7 +397,7 @@ class _UFmfV3LowLevelReader(object):
     def __init__(self,fd,version):
         self._fd = fd
         self._version = version
-        self._coding = ''
+        self._coding = b''
 
         self._keyframe2_sz = struct.calcsize(FMT[self._version].KEYFRAME2)
         self._points1_sz =   struct.calcsize(FMT[self._version].POINTS1)
@@ -398,9 +406,9 @@ class _UFmfV3LowLevelReader(object):
     def set_coding(self,coding):
         self._coding = coding.lower()
         # added by KB:
-        if self._coding == 'rgb24':
+        if self._coding == b'rgb24':
             self._bytesperpixel = 3
-        elif self._coding == 'mono8':
+        elif self._coding == b'mono8':
             self._bytesperpixel = 1
         else:
             self._bytesperpixel = 1
@@ -419,10 +427,10 @@ class _UFmfV3LowLevelReader(object):
                               self._fd_read(self._keyframe2_sz))
         dtype_char,width,height,timestamp=intup
 
-        if dtype_char=='B':
+        if dtype_char==b'B':
             dtype=np.uint8
             sz=1
-        elif dtype_char=='f':
+        elif dtype_char==b'f':
             dtype=np.float32
             sz=4
         else:
@@ -432,13 +440,13 @@ class _UFmfV3LowLevelReader(object):
         # read in RGB24 data
         # the data is indexed by column, then row, then color
         # colors are in the order RGB.
-        if self._coding == 'rgb24':
+        if self._coding == b'rgb24':
             read_len = width*height*sz*self._bytesperpixel
             buf = self._fd_read(read_len)
             frame = np.fromstring(buf,dtype=dtype)
             frame.shape = (3,height,width)
             frame = frame.transpose((1,2,0))
-        elif self._coding == 'mono8':
+        elif self._coding == b'mono8':
             read_len = width*height*sz
             buf = self._fd_read(read_len)
             frame = np.fromstring(buf,dtype=dtype)
@@ -466,13 +474,13 @@ class _UFmfV3LowLevelReader(object):
             # read in RGB24 data
             # the data is indexed by column, then row, then color
             # colors are in the order RGB.
-            if self._coding == 'rgb24':
+            if self._coding == b'rgb24':
                 lenbuf = w*h*self._bytesperpixel
                 buf = self._fd_read(lenbuf)
                 im = np.fromstring(buf,dtype=np.uint8)
                 im.shape = (self._bytesperpixel,h,w)
                 im = im.transpose((1,2,0))
-            elif self._coding == 'mono8':
+            elif self._coding == b'mono8':
                 lenbuf = w*h
                 buf = self._fd_read(lenbuf)
                 im = np.fromstring(buf,dtype=np.uint8)
@@ -557,13 +565,13 @@ class _UFmfV4LowLevelReader(_UFmfV3LowLevelReader):
                 # read in RGB24 data
                 # the data is indexed by column, then row, then color
                 # colors are in the order RGB.
-                if self._coding == 'rgb24':
+                if self._coding == b'rgb24':
                     lenbuf = w*h*self._bytesperpixel
                     buf = self._fd_read(lenbuf)
                     im = np.fromstring(buf,dtype=np.uint8)
                     im.shape = (self._bytesperpixel,h,w)
                     im = im.transpose((1,2,0))
-                elif self._coding == 'mono8':
+                elif self._coding == b'mono8':
                     lenbuf = w*h
                     buf = self._fd_read(lenbuf)
                     im = np.fromstring(buf,dtype=np.uint8)
@@ -597,19 +605,19 @@ class _UFmfV3Indexer(object):
         self._create_index()
 
     def get_index(self):
-        result = {'frame':self._index['frame']}
+        result = {b'frame':self._index[b'frame']}
         # remove defaultdict and convert to dict
-        result['keyframe'] = {}
-        for keyframe_type,value in self._index['keyframe'].iteritems():
-            result['keyframe'][keyframe_type] = value
+        result[b'keyframe'] = {}
+        for keyframe_type,value in self._index[b'keyframe'].items():
+            result[b'keyframe'][keyframe_type] = value
         return result
 
     def get_expected_index_chunk_location(self):
         return self._index_chunk_location
 
     def _create_index(self):
-        self._index = {'keyframe':collections.defaultdict(dict),
-                       'frame':dict(timestamp=[],
+        self._index = {b'keyframe':collections.defaultdict(dict),
+                       b'frame':dict(timestamp=[],
                                     loc=[])}
         if self._index_progress:
             import progressbar
@@ -633,39 +641,39 @@ class _UFmfV3Indexer(object):
         if self._index_progress:
             pbar.finish()
         # convert to arrays
-        for keyframe_type in self._index['keyframe'].keys():
-            for key in self._index['keyframe'][keyframe_type].keys():
-                self._index['keyframe'][keyframe_type][key]=np.array(
-                    self._index['keyframe'][keyframe_type][key])
-        for key in self._index['frame'].keys():
-            self._index['frame'][key]=np.array(
-                self._index['frame'][key])
+        for keyframe_type in list(self._index[b'keyframe'].keys()):
+            for key in list(self._index[b'keyframe'][keyframe_type].keys()):
+                self._index[b'keyframe'][keyframe_type][key]=np.array(
+                    self._index[b'keyframe'][keyframe_type][key])
+        for key in list(self._index[b'frame'].keys()):
+            self._index[b'frame'][key]=np.array(
+                self._index[b'frame'][key])
         if self._index_chunk_location is None:
             self._index_chunk_location = self._fd.tell()
 
     def _index_next_chunk(self):
         loc = self._fd.tell()
         chunk_id_str = self.r._fd_read(1,short_OK=True)
-        if chunk_id_str == '':
+        if chunk_id_str == b'':
             return None, None
         chunk_id = ord(chunk_id_str)
         try:
             if chunk_id==KEYFRAME_CHUNK:
                 result = self.r._read_keyframe_chunk()
                 keyframe_type,frame,timestamp=result
-                tmp = self._index['keyframe'][keyframe_type]
+                tmp = self._index[b'keyframe'][keyframe_type]
                 if len(tmp)==0:
-                    tmp['timestamp']=[]
-                    tmp['loc']=[]
-                tmp['timestamp'].append(timestamp)
-                tmp['loc'].append(loc)
+                    tmp[b'timestamp']=[]
+                    tmp[b'loc']=[]
+                tmp[b'timestamp'].append(timestamp)
+                tmp[b'loc'].append(loc)
             elif chunk_id==FRAME_CHUNK:
                 # read frame chunk
                 result = self.r._read_frame_chunk()
                 timestamp,regions = result
-                tmp = self._index['frame']
-                tmp['timestamp'].append(timestamp)
-                tmp['loc'].append(loc)
+                tmp = self._index[b'frame']
+                tmp[b'timestamp'].append(timestamp)
+                tmp[b'loc'].append(loc)
             elif chunk_id==INDEX_DICT_CHUNK:
                 if not self._ignore_preexisting_index:
                     raise PreexistingIndexExists('indexer encountered index',
@@ -742,7 +750,7 @@ class UfmfV3(UfmfBase):
          self._max_width, self._max_height,
          coding_str_len) = intup
 
-        assert ufmf_str=='ufmf'
+        assert ufmf_str==b'ufmf'
         assert expected_version==self._version
         self._coding = self._r._fd_read( coding_str_len )
         self._coding = self._coding.lower()
@@ -777,17 +785,17 @@ class UfmfV3(UfmfBase):
                 if self._version==2 and index_dict_location > 4294967295:
                     raise ValueError('index location will not fit in .ufmf v2 file')
 
-                b = chr(INDEX_DICT_CHUNK)
+                b = bytes(chr(INDEX_DICT_CHUNK), 'utf-8')
                 self._fd.write(b)
                 _write_dict( self._fd, self._index )
                 self._fd.truncate()
                 self._fd.seek(0)
-                buf = struct.pack( FMT[self._version].HEADER, 'ufmf',
+                buf = struct.pack( FMT[self._version].HEADER, b'ufmf',
                                    self._version, index_dict_location,
                                    self._max_width, self._max_height,
                                    len(self._coding) )
                 self._fd.write(buf)
-            except IOError, err:
+            except IOError as err:
                 if raise_write_errors:
                     raise
                 else:
@@ -804,7 +812,7 @@ class UfmfV3(UfmfBase):
             id = buf[:1]
             buf = buf[1:]
             try:
-                assert id=='d' # dictionary
+                assert id==b'd' # dictionary
 
                 self._index,buf_remaining = _read_dict(self._fd, buf_remaining=buf)
                 if len(buf_remaining)!=0:
@@ -818,7 +826,7 @@ class UfmfV3(UfmfBase):
 
     def get_keyframe_for_timestamp(self, keyframe_type, timestamp):
         """return the most recent keyframe before or at the time of timestamp"""
-        ts = self._index['keyframe'][keyframe_type]['timestamp']
+        ts = self._index[b'keyframe'][keyframe_type][b'timestamp']
         cond = timestamp >= ts
         idxs = np.nonzero(cond)[0]
         if len(idxs)==0:
@@ -829,7 +837,10 @@ class UfmfV3(UfmfBase):
 
     def get_number_of_frames(self):
         """return the number of frames"""
-        return len(self._index['frame']['loc'])
+        try:
+            return len(self._index[b'frame'][b'loc'])
+        except KeyError:
+            raise
 
     def get_max_size(self):
         return (self._max_width, self._max_height)
@@ -838,14 +849,14 @@ class UfmfV3(UfmfBase):
         return self._coding
 
     def get_progress(self):
-        locs = self._index['frame']['loc']
+        locs = self._index[b'frame'][b'loc']
         return float(self._next_frame)/len(locs)
 
     def set_next_frame(self,fno):
         self._next_frame = fno
 
     def readframes(self):
-        locs = self._index['frame']['loc']
+        locs = self._index[b'frame'][b'loc']
         while self._next_frame < len(locs):
             loc = locs[self._next_frame]
             self._next_frame += 1
@@ -858,11 +869,11 @@ class UfmfV3(UfmfBase):
     def _get_keyframe_N(self, keyframe_type, N):
         """get Nth keyframe of type keyframe_type"""
         try:
-            tmp = self._index['keyframe'][keyframe_type]
+            tmp = self._index[b'keyframe'][keyframe_type]
         except KeyError:
             raise NoMoreFramesException('no keyframe_type %s'%keyframe_type)
-        loc = tmp['loc'][N]
-        timestamp = tmp['timestamp'][N]
+        loc = tmp[b'loc'][N]
+        timestamp = tmp[b'timestamp'][N]
 
         self._seek(loc+1)
         result = self._r._read_keyframe_chunk()
@@ -876,7 +887,7 @@ class UfmfV3(UfmfBase):
 
     def get_bg_image(self):
         """return the first raw image (for compatability with UfmfV1)"""
-        return self._get_keyframe_N('frame0',0)
+        return self._get_keyframe_N(b'frame0',0)
 
     def close(self):
         if self._file_opened:
@@ -945,7 +956,7 @@ class UfmfV4(UfmfV3):
         # store the new parameters in V4
         self._r.set_params(self._max_width,self._max_height,self._isfixedsize)
 
-        assert ufmf_str=='ufmf'
+        assert ufmf_str==b'ufmf'
         assert expected_version==self._version
         self._coding = self._r._fd_read( coding_str_len )
         self._coding = self._coding.lower()
@@ -983,19 +994,19 @@ class UfmfV4(UfmfV3):
                 if self._version==2 and index_dict_location > 4294967295:
                     raise ValueError('index location will not fit in .ufmf v2 file')
 
-                b = chr(INDEX_DICT_CHUNK)
+                b = bytes(chr(INDEX_DICT_CHUNK), 'utf-8')
                 self._fd.write(b)
                 _write_dict( self._fd, self._index )
                 self._fd.truncate()
                 self._fd.seek(0)
                 # V4: include isfixedsize in buf
-                buf = struct.pack( FMT[self._version].HEADER, 'ufmf',
+                buf = struct.pack( FMT[self._version].HEADER, b'ufmf',
                                    self._version, index_dict_location,
                                    self._max_width, self._max_height,
                                    self._isfixedsize,
                                    len(self._coding) )
                 self._fd.write(buf)
-            except IOError, err:
+            except IOError as err:
                 if raise_write_errors:
                     raise
                 else:
@@ -1012,7 +1023,7 @@ class UfmfV4(UfmfV3):
             id = buf[:1]
             buf = buf[1:]
             try:
-                assert id=='d' # dictionary
+                assert id==b'd' # dictionary
 
                 self._index,buf_remaining = _read_dict(self._fd, buf_remaining=buf)
                 if len(buf_remaining)!=0:
@@ -1038,7 +1049,7 @@ def md5sum_headtail(filename):
 
     try:
         fd.seek(-1000,os.SEEK_END)
-    except IOError,err:
+    except IOError as err:
         # it's OK, we'll just read up to another 1000 bytes
         pass
 
@@ -1067,7 +1078,7 @@ class FlyMovieEmulator(object):
         self._allow_no_such_frame_errors = allow_no_such_frame_errors
         self._timestamps = None
         if isinstance(self._ufmf,UfmfV1):
-            self.format = 'MONO8' # by definition
+            self.format = b'MONO8' # by definition
             self._fno2loc = None
             if self._ufmf.use_conventional_named_mean_fmf:
                 assert white_background==False
@@ -1111,7 +1122,7 @@ class FlyMovieEmulator(object):
             warnings.warn('unsupported argument "allow_partial_frames" ignored')
         try:
             self.seek(fno)
-        except NoSuchFrameError, err:
+        except NoSuchFrameError as err:
             if self._allow_no_such_frame_errors:
                 raise
             else:
@@ -1232,7 +1243,7 @@ class FlyMovieEmulator(object):
 
         if isinstance(self._ufmf,UfmfV3):
             index = self._ufmf.get_index()
-            self._timestamps = index['frame']['timestamp']
+            self._timestamps = index[b'frame'][b'timestamp']
             return
 
         assert isinstance(self._ufmf,UfmfV1)
@@ -1256,7 +1267,7 @@ class FlyMovieEmulator(object):
                     self._timestamps = npz['timestamps']
                     self._fno2loc = npz['fno2loc']
                     return
-        except Exception, err:
+        except Exception as err:
             if int(os.environ.get('UFMF_FORCE_CACHE','0')):
                 raise
             else:
@@ -1286,7 +1297,7 @@ class FlyMovieEmulator(object):
                      my_hash=my_hash,
                      timestamps=timestamps,
                      fno2loc=fno2loc)
-        except Exception,err:
+        except Exception as err:
             if int(os.environ.get('UFMF_FORCE_CACHE','0')):
                 raise
             else:
@@ -1391,7 +1402,7 @@ class UfmfSaverV1(UfmfSaverBase):
             this_str_head = struct.pack(FMT[1].SUBHEADER, xmin, ymin)
 
             str_buf.append( this_str_head + this_str_buf )
-        fullstr = ''.join(str_buf)
+        fullstr = b''.join(str_buf)
         if len(fullstr):
             self.file.write(fullstr)
         self.last_timestamp = timestamp
@@ -1409,7 +1420,7 @@ class UfmfSaverV3(UfmfSaverBase):
         return 3
 
     def __init__(self, file,
-                 coding='MONO8',
+                 coding=b'MONO8',
                  frame0=None,
                  timestamp0=None,
                  max_width=None,
@@ -1429,27 +1440,27 @@ class UfmfSaverV3(UfmfSaverBase):
             raise ValueError('max_width and max_height must be set')
         self.max_width=max_width
         self.max_height=max_height
-        buf = struct.pack( FMT[self.version].HEADER, 'ufmf',
+        buf = struct.pack( FMT[self.version].HEADER, b'ufmf',
                            self.version, 0, self.max_width, self.max_height,
                            len(self.coding) )
         self.file.write(buf)
         self.file.write(coding)
         if xinc_yinc is None:
-            if coding=='MONO8':
+            if coding==b'MONO8':
                 xinc_yinc = (2,2)
-            elif coding.startswith('MONO8:'):
+            elif coding.startswith(b'MONO8:'):
                 # Bayer pattern
                 xinc_yinc = (2,2)
-            elif coding=='YUV422':
+            elif coding==b'YUV422':
                 xinc_yinc = (4,1)
             else:
                 warnings.warn('ufmf xinc_yinc set (2,2) because coding unknown')
                 xinc_yinc = (2,2)
         self.xinc, self.yinc = xinc_yinc
-        self._index = {'keyframe':collections.defaultdict(dict),
-                       'frame':{}}
+        self._index = {b'keyframe':collections.defaultdict(dict),
+                       b'frame':{}}
         if frame0 is not None or timestamp0 is not None:
-            self.add_keyframe('frame0',frame0,timestamp0)
+            self.add_keyframe(b'frame0',frame0,timestamp0)
 
         self.min_bytes = struct.calcsize(FMT[self.version].POINTS2)
 
@@ -1457,10 +1468,10 @@ class UfmfSaverV3(UfmfSaverBase):
         char2 = len(keyframe_type)
         np_image_data = numpy.asarray(image_data)
         if np_image_data.dtype == np.uint8:
-            dtype = 'B'
+            dtype = b'B'
             strides1=1
         elif np_image_data.dtype == np.float32:
-            dtype = 'f'
+            dtype = b'f'
             strides1=4
         else:
             raise ValueError('dtype %s not supported'%image_data.dtype)
@@ -1472,28 +1483,28 @@ class UfmfSaverV3(UfmfSaverBase):
         except:
             logger.warn('np_image_data.strides: {}, width: {}'.format(np_image_data.strides, width) )
             raise
-        b =  chr(KEYFRAME_CHUNK) + chr(char2) + keyframe_type # chunkid, len(type), type
+        b = bytes(chr(KEYFRAME_CHUNK) + chr(char2), 'utf-8') + keyframe_type # chunkid, len(type), type
         b += struct.pack(FMT[self.version].KEYFRAME2,dtype,width,height,timestamp)
         loc = self.file.tell()
-        tmp = self._index['keyframe'][keyframe_type]
+        tmp = self._index[b'keyframe'][keyframe_type]
         if len(tmp)==0:
-            tmp['timestamp']=[]
-            tmp['loc']=[]
-        tmp['timestamp'].append(timestamp)
-        tmp['loc'].append(loc)
+            tmp[b'timestamp']=[]
+            tmp[b'loc']=[]
+        tmp[b'timestamp'].append(timestamp)
+        tmp[b'loc'].append(loc)
         self.file.write(b)
-        self.file.write(buffer(np_image_data))
+        self.file.write(memoryview(np_image_data))
 
     def _add_frame_regions(self,timestamp,regions):
         n_pts = len(regions)
-        b = chr(FRAME_CHUNK) + struct.pack(FMT[self.version].POINTS1, timestamp, n_pts)
+        b = bytes(chr(FRAME_CHUNK), 'utf-8') + struct.pack(FMT[self.version].POINTS1, timestamp, n_pts)
         loc = self.file.tell()
-        tmp = self._index['frame']
+        tmp = self._index[b'frame']
         if len(tmp)==0:
-            tmp['timestamp']=[]
-            tmp['loc']=[]
-        tmp['timestamp'].append(timestamp)
-        tmp['loc'].append(loc)
+            tmp[b'timestamp']=[]
+            tmp[b'loc']=[]
+        tmp[b'timestamp'].append(timestamp)
+        tmp[b'loc'].append(loc)
         self.file.write(b)
         str_buf = []
         for region in regions:
@@ -1503,7 +1514,7 @@ class UfmfSaverV3(UfmfSaverBase):
             assert len(this_str_buf)==w*h
             this_str_head = struct.pack(FMT[self.version].POINTS2, xmin, ymin, w, h)
             str_buf.append( this_str_head + this_str_buf )
-        fullstr = ''.join(str_buf)
+        fullstr = b''.join(str_buf)
         self.file.write(fullstr)
 
     def add_frame(self,origframe,timestamp,point_data):
@@ -1554,14 +1565,14 @@ class UfmfSaverV3(UfmfSaverBase):
         return rects
 
     def close(self):
-        b = chr(INDEX_DICT_CHUNK)
+        b = bytes(chr(INDEX_DICT_CHUNK), 'utf-8')
         self.file.write(b)
         loc = self.file.tell()
         if self.version==2 and loc > 4294967295:
             raise ValueError('index location will not fit in .ufmf v2 file')
         _write_dict(self.file,self._index)
         self.file.seek(0)
-        buf = struct.pack( FMT[self.version].HEADER, 'ufmf',
+        buf = struct.pack( FMT[self.version].HEADER, b'ufmf',
                            self.version, loc,
                            self.max_width, self.max_height,
                            len(self.coding) )
@@ -1581,7 +1592,7 @@ class AutoShrinkUfmfSaverV3(UfmfSaverV3):
         super(AutoShrinkUfmfSaverV3,self).__init__(*args,**kwargs)
     def _add_frame_regions(self,timestamp,regions):
         if len(regions):
-            for kf_type in self._cached_keyframes.keys():
+            for kf_type in list(self._cached_keyframes.keys()):
                 kf_image_data, kf_timestamp = self._cached_keyframes[kf_type]
                 super(AutoShrinkUfmfSaverV3,self).add_keyframe( \
                                           kf_type, kf_image_data, kf_timestamp)

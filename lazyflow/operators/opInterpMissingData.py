@@ -1,3 +1,8 @@
+from __future__ import absolute_import
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -21,7 +26,7 @@
 ###############################################################################
 import logging
 from functools import partial
-import cPickle as pickle
+import pickle as pickle
 import tempfile
 
 
@@ -35,8 +40,8 @@ import numpy as np
 
 import vigra
 
-from opDetectMissingData import *
-from opDetectMissingData import _histogramIntersectionKernel
+from .opDetectMissingData import *
+from .opDetectMissingData import _histogramIntersectionKernel
 
 ############################
 ############################
@@ -110,7 +115,7 @@ class OpInterpMissingData(Operator):
 
         method = self.InterpolationMethod.value
 
-        assert method in self._requiredMargin.keys(), \
+        assert method in list(self._requiredMargin.keys()), \
             "Unknown interpolation method {}".format(method)
 
         z_index = self.InputVolume.meta.axistags.index('z')
@@ -269,8 +274,8 @@ class OpInterpMissingData(Operator):
 
 def _cubic_mat(n=1):
     n = float(n)
-    x = -1/(n+1)
-    y = (n+2)/(n+1)
+    x = -1 / (n+1)
+    y = (n+2) / (n+1)
 
     A = [[1, x, x**2, x**3],
         [1, 0, 0, 0],
@@ -361,7 +366,7 @@ class OpInterpolate(Operator):
 
         method = self.InterpolationMethod.value if method is None else method
         # sanity checks
-        assert method in self._requiredMargin.keys(), \
+        assert method in list(self._requiredMargin.keys()), \
             "Unknown method '{}'".format(method)
 
         assert volume.axistags.index('z') == 0 \

@@ -1,3 +1,4 @@
+from builtins import map
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -79,8 +80,8 @@ class OpDenseLabelArray(Operator):
             #  but slow if the labels are far apart.
             nonzero_coords = numpy.nonzero(self._cache)
             if len(nonzero_coords) > 0 and len(nonzero_coords[0]) > 0:
-                bounding_box_start = numpy.array( map( numpy.min, nonzero_coords ) )
-                bounding_box_stop = 1 + numpy.array( map( numpy.max, nonzero_coords ) )
+                bounding_box_start = numpy.array( list(map( numpy.min, nonzero_coords )) )
+                bounding_box_stop = 1 + numpy.array( list(map( numpy.max, nonzero_coords )) )
                 destination[0] = [roiToSlice( bounding_box_start, bounding_box_stop )]
             else:
                 destination[0] = []

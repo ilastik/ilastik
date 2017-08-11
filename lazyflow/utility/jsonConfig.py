@@ -1,3 +1,9 @@
+from builtins import zip
+from builtins import object
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -57,7 +63,7 @@ class Namespace(object):
         Implemented to support copy.copy()
         """
         super(Namespace, self).__setattr__( '_items', collections.OrderedDict() )
-        self._items.update( state )
+        self._items.update( state['_items'] )
 
     def __eq__(self, other):
         """
@@ -67,7 +73,7 @@ class Namespace(object):
             return False
         
         eq = True
-        for (k1,v1),(k2,v2) in zip( self.__dict__.items(), other.__dict__.items() ):
+        for (k1,v1),(k2,v2) in zip( list(self.__dict__.items()), list(other.__dict__.items()) ):
             eq &= (k1 == k2)
             if eq:
                 b = (v1 == v2)
@@ -82,7 +88,7 @@ class Namespace(object):
         return not self.__eq__(other)
 
     def __str__(self):
-        return "jsonConfig.Namespace: " + str( self._items.items() )
+        return "jsonConfig.Namespace: " + str( list(self._items.items()) )
 
 class AutoEval(object):
     """
@@ -105,7 +111,7 @@ class AutoEval(object):
 
         if type(x) is self._t:
             return x
-        if type(x) is str or type(x) is unicode and self._t is not str:
+        if isinstance(x, (str, unicode)) and (not isinstance(self._t, type) or not issubclass(self._t, (str, unicode))):
             return self._t(eval(x))
         return self._t(x)
 
@@ -227,8 +233,8 @@ class JsonConfigParser( object ):
     
     def __init__( self, fields ):
         self._fields = dict(fields)
-        assert '_schema_name' in fields.keys(), "JsonConfig Schema must have a field called '_schema_name'"
-        assert '_schema_version' in fields.keys(), "JsonConfig Schema must have a field called '_schema_version'"
+        assert '_schema_name' in list(fields.keys()), "JsonConfig Schema must have a field called '_schema_name'"
+        assert '_schema_version' in list(fields.keys()), "JsonConfig Schema must have a field called '_schema_version'"
 
         # Special case for the required schema fields
         self._requiredSchemaName = self._fields['_schema_name']
@@ -255,9 +261,9 @@ class JsonConfigParser( object ):
                 raise
 
             try:
-                # Conver the dict we got into a namespace
+                # Convert the dict we got into a namespace
                 namespace = self._getNamespace(jsonDict)
-            except JsonConfigParser.ParsingError, e:
+            except JsonConfigParser.ParsingError as e:
                 raise type(e)( "Error parsing config file '{f}':\n{msg}".format( f=configFilePath, msg=e.args[0] ) )
 
         return namespace
@@ -280,7 +286,7 @@ class JsonConfigParser( object ):
         """
         try:
             namespace = self._getNamespace(x)
-        except JsonConfigParser.ParsingError, e:
+        except JsonConfigParser.ParsingError as e:
             raise type(e)( "Couldn't parse sub-config:\n{msg}".format( msg=e.args[0] ) )
         return namespace
 
@@ -302,7 +308,7 @@ class JsonConfigParser( object ):
                 fieldType = self._fields[key]
                 try:
                     finalValue = self._transformValue( fieldType, value )
-                except JsonConfigParser.ParsingError, e:
+                except JsonConfigParser.ParsingError as e:
                     raise type(e)( "Error parsing config field '{f}':\n{msg}".format( f=key, msg=e.args[0] ) )
                 else:
                     key = key.replace(' ', '_')
@@ -357,7 +363,7 @@ class JsonConfigParser( object ):
         """
         ordered_dict = collections.OrderedDict()
         for k,v in pairList:
-            if k in ordered_dict.keys() and k in self._fields.keys():
+            if k in list(ordered_dict.keys()) and k in list(self._fields.keys()):
                 raise JsonConfigParser.ParsingError( "Invalid config: Duplicate entries for key: {}".format(k) )
             # Insert the item
             ordered_dict[k] = v

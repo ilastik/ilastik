@@ -1,3 +1,7 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -20,7 +24,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import os
-import httplib
+import http.client
 import json
 import shutil
 import tempfile
@@ -42,11 +46,10 @@ try:
     def get_testrepo_root_uuid():
         connection = DVIDConnection(TEST_DVID_SERVER)
         status, body, error_message = connection.make_request( "/repos/info", ConnectionMethod.GET)
-        assert status == httplib.OK, "Request for /repos/info returned status {}".format( status )
+        assert status == http.client.OK, "Request for /repos/info returned status {}".format( status )
         assert error_message == ""
         repos_info = json.loads(body)
-        test_repos = filter( lambda (uuid, repo_info): repo_info and repo_info['Alias'] == 'testrepo', 
-                             repos_info.items() )
+        test_repos = [uuid_repo_info for uuid_repo_info in list(repos_info.items()) if uuid_repo_info[1] and uuid_repo_info[1]['Alias'] == 'testrepo']
         if test_repos:
             uuid = test_repos[0][0]
             return str(uuid)
@@ -60,10 +63,10 @@ try:
         connection = DVIDConnection(TEST_DVID_SERVER)
         repo_info_uri = "/repo/{uuid}/info".format( uuid=uuid )
         status, body, error_message = connection.make_request( repo_info_uri, ConnectionMethod.GET)
-        assert status == httplib.OK, "Request for {} returned status {}".format(repo_info_uri, status)
+        assert status == http.client.OK, "Request for {} returned status {}".format(repo_info_uri, status)
         assert error_message == ""
         repo_info = json.loads(body)
-        for instance_name in repo_info["DataInstances"].keys():
+        for instance_name in list(repo_info["DataInstances"].keys()):
             status, body, error_message = connection.make_request( "/api/repo/{uuid}/{dataname}?imsure=true"
                                                                    .format( uuid=uuid, dataname=str(instance_name) ),
                                                                    ConnectionMethod.DELETE )            

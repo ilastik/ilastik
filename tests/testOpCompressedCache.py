@@ -1,3 +1,9 @@
+from __future__ import print_function
+from __future__ import division
+
+from builtins import zip
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -383,7 +389,7 @@ class TestOpCompressedCache( object ):
         assert len( results ) == len( threads ), "Didn't get all results."
         
         #logger.debug("Checking data...")
-        for i, data in results.items():
+        for i, data in list(results.items()):
             assert (data == expectedData).all(), "Incorrect output for index {}".format( i )
 
     def testMultiThread_masked(self):
@@ -426,7 +432,7 @@ class TestOpCompressedCache( object ):
         assert len( results ) == len( threads ), "Didn't get all results."
 
         #logger.debug("Checking data...")
-        for i, data in results.items():
+        for i, data in list(results.items()):
             assert (data == expectedData).all() and \
                    (data.mask == expectedData.mask).all() and \
                    ((data.fill_value == expectedData.fill_value) |
@@ -663,7 +669,7 @@ class TestOpCompressedCache( object ):
         assert op.usedMemory() == 0.0,\
             "cache must not be filled at this point"
         op.Output[...].wait()
-        assert op.usedMemory() <= sampleData.nbytes/expected_factor,\
+        assert op.usedMemory() <= (sampleData.nbytes /expected_factor),\
             "Compression of all-zeroes should be better than factor "\
             "{}".format(expected_factor)
 
@@ -759,7 +765,7 @@ class TestOpCompressedCache( object ):
 
         op.Output[...].wait()
         mem = op.usedMemory()
-        keys = map(lambda x: x[0], op.getBlockAccessTimes())
+        keys = [x[0] for x in op.getBlockAccessTimes()]
         key = keys[0]
         op.freeBlock(key)
         assert op.usedMemory() < mem

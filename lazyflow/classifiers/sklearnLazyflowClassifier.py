@@ -1,7 +1,10 @@
-import cPickle as pickle
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+import pickle as pickle
 import numpy
 import vigra
-from lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
+from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 import logging
 logger = logging.getLogger(__name__)
@@ -87,10 +90,10 @@ class SklearnLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         return self._feature_names
 
     def serialize_hdf5(self, h5py_group):
-        h5py_group['pickled_classifier'] = pickle.dumps( self )
+        h5py_group['pickled_classifier'] = pickle.dumps( self, 0 )
 
         # This is a required field for all classifiers
-        h5py_group['pickled_type'] = pickle.dumps( type(self) )
+        h5py_group['pickled_type'] = pickle.dumps( type(self), 0 )
 
     @classmethod
     def deserialize_hdf5(cls, h5py_group):

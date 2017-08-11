@@ -20,8 +20,12 @@
 #           http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+
+from builtins import zip
 import os
-import httplib
+import http.client
 import collections
 import logging
 import warnings
@@ -93,7 +97,7 @@ class OpDvidRoi(Operator):
             node_service = DVIDNodeService(self._hostname, self._uuid)
             roi_blocks_zyx = numpy.array( node_service.get_roi(self._roi_name) )
         except DVIDException as ex:
-            if ex.status == httplib.NOT_FOUND:
+            if ex.status == http.client.NOT_FOUND:
                 raise OpDvidRoi.DatasetReadError("DVIDException: " + ex.message)
             raise
         except ErrMsg as ex:
@@ -145,8 +149,8 @@ class OpDvidRoi(Operator):
             # In headless mode, we allow the users to request regions outside the currently valid regions of the image.
             # For now, the easiest way to allow that is to simply hard-code DVID volumes to have a really large (1M cubed) shape.
             logger.info("Using absurdly large DVID volume extents, to allow out-of-bounds requests.")
-            tagged_shape = collections.OrderedDict( zip(axiskeys, shape) )
-            for k,v in tagged_shape.items():
+            tagged_shape = collections.OrderedDict( list(zip(axiskeys, shape)) )
+            for k,v in list(tagged_shape.items()):
                 if k in 'zyx':
                     tagged_shape[k] = int(1e6)
             shape = tuple(tagged_shape.values())

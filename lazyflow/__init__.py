@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -25,11 +26,12 @@ try:
 except ImportError:
     pass
 
-import utility
-import roi
-import rtype
-import stype
-import operators
-import request
-import graph
-import slot
+from . import utility
+from . import request
+from . import classifiers
+from . import roi
+from . import rtype
+from . import stype
+from . import graph
+from . import slot
+from . import operators

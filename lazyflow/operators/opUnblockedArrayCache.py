@@ -1,3 +1,4 @@
+from builtins import map
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -109,7 +110,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
     def _get_containing_block_roi(self, request_roi):
         # Does this roi happen to fit ENTIRELY within an existing stored block?
         request_roi = self._standardize_roi(*request_roi)
-        outer_rois = containing_rois( self._block_data.keys(), request_roi )
+        outer_rois = containing_rois( list(self._block_data.keys()), request_roi )
         if len(outer_rois) > 0:
             # Standardize roi for usage as dict key
             block_roi = self._standardize_roi( *outer_rois[0] )
@@ -204,7 +205,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
         else:
             # FIXME: This is O(N) for now.
             #        We should speed this up by maintaining a bookkeeping data structure in execute().
-            for block_roi in self._block_data.keys():
+            for block_roi in list(self._block_data.keys()):
                 if getIntersection(block_roi, dirty_roi, assertIntersect=False):
                     self.freeBlock(block_roi)
 
@@ -215,7 +216,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
     ##
     def usedMemory(self):
         total = 0.0
-        for k in self._block_data.keys():
+        for k in list(self._block_data.keys()):
             try:
                 block = self._block_data[k]
                 bytes_per_pixel = numpy.dtype(block.dtype).itemsize

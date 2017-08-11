@@ -1,3 +1,4 @@
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -112,7 +113,7 @@ class TestOpTrainRandomForest(object):
             opTrain.nonzeroLabelBlocks[0].setValue( [[slice(None, None, None)] * 5] )
 
         # Sanity check: Make sure we configured the training operator correctly.
-        readySlots = [ slot.ready() for slot in opTrain.inputs.values() ]
+        readySlots = [ slot.ready() for slot in list(opTrain.inputs.values()) ]
         assert all(readySlots)
  
         # Generate the classifier       

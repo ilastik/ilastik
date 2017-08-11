@@ -1,3 +1,6 @@
+from builtins import next
+from builtins import range
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -99,13 +102,23 @@ class TestThreadPool(object):
                 self.generator = generator
              
             def __call__(self):
-                return self.generator.next()
+                return next(self.generator)
  
         # First time
         g = WrappedGenerator( gen() )
         e.clear()
         self.thread_pool.wake_up( g )
         e.wait()
+ 
+        class TestTask():
+            def __init__(self, f):
+                self._f = f
+            
+            def __lt__(self, other):
+                return id(self._f) < id(other)
+
+            def __call__(self, *args, **kwargs):
+                return self._f(*args, **kwargs)
  
         # Overload the threadpool with work, 
         #  which should encourage random assignment of threads if something is broken
@@ -115,11 +128,11 @@ class TestThreadPool(object):
         def delay4(): time.sleep(0.2)
         def delay5(): time.sleep(0.2)
          
-        self.thread_pool.wake_up( delay1 )
-        self.thread_pool.wake_up( delay2 )
-        self.thread_pool.wake_up( delay3 )
-        self.thread_pool.wake_up( delay4 )
-        self.thread_pool.wake_up( delay5 )
+        self.thread_pool.wake_up( TestTask(delay1) )
+        self.thread_pool.wake_up( TestTask(delay2) )
+        self.thread_pool.wake_up( TestTask(delay3) )
+        self.thread_pool.wake_up( TestTask(delay4) ) 
+        self.thread_pool.wake_up( TestTask(delay5) )
          
         # Second time, same callable
         e.clear()

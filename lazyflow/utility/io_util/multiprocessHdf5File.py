@@ -1,3 +1,9 @@
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import range
+from builtins import object
 import os
 import copy
 import h5py
@@ -140,7 +146,7 @@ class _Dataset(object):
                 
                 # Special case: copy hdf5 dataset attrs into a dict
                 if name == 'attrs':
-                    val = dict(val.items())
+                    val = dict(list(val.items()))
                 return val
 
     def read_direct(self, out_array, slicing):
@@ -171,10 +177,10 @@ class _Group(object):
             return True
 
     def __iter__(self):
-        return self.iterkeys()
+        return iter(self.keys())
     
     def keys(self):
-        return list(self.iterkeys())
+        return list(self.keys())
     
     def iterkeys(self):
         internal_path = self._internal_path
@@ -256,7 +262,7 @@ class MultiProcessHdf5File(_Group):
             
     def close(self):
         with self._lock:
-            readers = self._reader_processes.values()
+            readers = list(self._reader_processes.values())
             self._reader_processes.clear()
             for reader in readers:
                 reader.join()
@@ -369,17 +375,17 @@ if __name__ == "__main__":
         whole_vol = mphf[datapath][:]
         assert (whole_vol == testvol).all()
 
-        print mphf[u'mygroup'].name
-        print mphf[datapath].attrs.keys()
-        print mphf[datapath].shape
-        print mphf[datapath].dtype
-        print 'mygroup' in mphf
-        print '/mygroup/bigdata' in mphf
-        print 'bigdata' in mphf['mygroup']
+        print(mphf[u'mygroup'].name)
+        print(list(mphf[datapath].attrs.keys()))
+        print(mphf[datapath].shape)
+        print(mphf[datapath].dtype)
+        print('mygroup' in mphf)
+        print('/mygroup/bigdata' in mphf)
+        print('bigdata' in mphf['mygroup'])
 
-        print 'root keys are: ', list(mphf.iterkeys())
-        print 'mygroup keys are: ', list(mphf['mygroup'].iterkeys())
-        print 'othergroup keys are: ', list(mphf['othergroup'].iterkeys())
+        print('root keys are: ', list(mphf.keys()))
+        print('mygroup keys are: ', list(mphf['mygroup'].keys()))
+        print('othergroup keys are: ', list(mphf['othergroup'].keys()))
         
         mphf[datapath].read_direct(whole_vol[0], numpy.s_[0])
 
@@ -400,7 +406,7 @@ if __name__ == "__main__":
 
     bigfile_path = '/tmp/big_testfile7.h5'
     if not os.path.exists(bigfile_path):
-        print "generating test file:", bigfile_path
+        print("generating test file:", bigfile_path)
         with h5py.File(bigfile_path, 'w') as f:
             f.create_dataset( 'data', 
                               data=numpy.random.randint(0,255, (100,10000,1000)).astype(numpy.uint8), 
@@ -442,4 +448,4 @@ if __name__ == "__main__":
             
         stop_time = time.time()
 
-        print "Time: {} seconds".format( stop_time - start_time )
+        print("Time: {} seconds".format( stop_time - start_time ))

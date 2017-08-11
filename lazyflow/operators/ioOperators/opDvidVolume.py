@@ -1,3 +1,8 @@
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+
+from builtins import zip
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -20,7 +25,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import os
-import httplib
+import http.client
 import collections
 import logging
 
@@ -64,7 +69,7 @@ class OpDvidVolume(Operator):
             self._default_accessor = VoxelsAccessor( self._hostname, self._uuid, self._dataname, self._query_args )
             self._throttled_accessor = VoxelsAccessor( self._hostname, self._uuid, self._dataname, self._query_args, throttle=True )
         except DVIDException as ex:
-            if ex.status == httplib.NOT_FOUND:
+            if ex.status == http.client.NOT_FOUND:
                 raise OpDvidVolume.DatasetReadError("DVIDException: " + ex.message)
             raise
         except ErrMsg as ex:
@@ -89,8 +94,8 @@ class OpDvidVolume(Operator):
             # In headless mode, we allow the users to request regions outside the currently valid regions of the image.
             # For now, the easiest way to allow that is to simply hard-code DVID volumes to have a really large (1M cubed) shape.
             logger.info("Using absurdly large DVID volume extents, to allow out-of-bounds requests.")
-            tagged_shape = collections.OrderedDict( zip(axiskeys, shape) )
-            for k,v in tagged_shape.items():
+            tagged_shape = collections.OrderedDict( list(zip(axiskeys, shape)) )
+            for k,v in list(tagged_shape.items()):
                 if k in 'xyz':
                     tagged_shape[k] = int(1e6)
             shape = tuple(tagged_shape.values())
@@ -102,7 +107,7 @@ class OpDvidVolume(Operator):
         
         # To avoid requesting extremely large blocks, limit each request to 500MB each.
         # Note that this isn't a hard max: halos, etc. may increase this somewhat.
-        max_pixels = 2**29 / self.Output.meta.dtype().nbytes
+        max_pixels = 2**29 // self.Output.meta.dtype().nbytes
         max_blockshape = determineBlockShape( self.Output.meta.shape, max_pixels )
         self.Output.meta.max_blockshape = max_blockshape
         self.Output.meta.ideal_blockshape = max_blockshape

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -19,46 +20,45 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-from ioOperators import OpStackLoader, OpStackWriter, OpStackToH5Writer, OpH5WriterBigDataset
+from .ioOperators import OpStackLoader, OpStackWriter, OpStackToH5Writer, OpH5WriterBigDataset
 
 # All "Read" operators must come before OpInputDataReader, which uses them.
-from opStreamingMmfReader import OpStreamingMmfReader
-from opStreamingUfmfReader import OpStreamingUfmfReader
-from opRawBinaryFileReader import OpRawBinaryFileReader
-from opNpyFileReader import OpNpyFileReader
-from opStreamingHdf5Reader import OpStreamingHdf5Reader
-from opStreamingHdf5SequenceReaderS import OpStreamingHdf5SequenceReaderS
-from opStreamingHdf5SequenceReaderM import OpStreamingHdf5SequenceReaderM
-from opRESTfulVolumeReader import OpRESTfulVolumeReader
-from opBlockwiseFilesetReader import OpBlockwiseFilesetReader
-from opRESTfulBlockwiseFilesetReader import OpRESTfulBlockwiseFilesetReader
-from opTiledVolumeReader import OpTiledVolumeReader
-from opCachedTiledVolumeReader import OpCachedTiledVolumeReader
-from opKlbReader import OpKlbReader
-from opTiffReader import OpTiffReader
-from opTiffSequenceReader import OpTiffSequenceReader
+from .opStreamingMmfReader import OpStreamingMmfReader
+from .opStreamingUfmfReader import OpStreamingUfmfReader
+from .opRawBinaryFileReader import OpRawBinaryFileReader
+from .opNpyFileReader import OpNpyFileReader
+from .opStreamingHdf5Reader import OpStreamingHdf5Reader
+from .opStreamingHdf5SequenceReaderS import OpStreamingHdf5SequenceReaderS
+from .opStreamingHdf5SequenceReaderM import OpStreamingHdf5SequenceReaderM
+from .opBlockwiseFilesetReader import OpBlockwiseFilesetReader
+from .opRESTfulBlockwiseFilesetReader import OpRESTfulBlockwiseFilesetReader
+from .opTiledVolumeReader import OpTiledVolumeReader
+from .opCachedTiledVolumeReader import OpCachedTiledVolumeReader
+from .opKlbReader import OpKlbReader
+from .opTiffReader import OpTiffReader
+from .opTiffSequenceReader import OpTiffSequenceReader
 
 # Try to import the dvid-related operator.
 # If it fails, that's okay.
 try:
-    from opDvidVolume import OpDvidVolume
-    from opDvidRoi import OpDvidRoi
-    from opExportDvidVolume import OpExportDvidVolume
+    from .opDvidVolume import OpDvidVolume
+    from .opDvidRoi import OpDvidRoi
+    from .opExportDvidVolume import OpExportDvidVolume
 except ImportError as ex:
     # If the exception was not related to libdvid, then re-raise it.
     if 'libdvid' not in ex.args[0]:
         raise
 
-from opInputDataReader import *
+from .opInputDataReader import *
 
-from opNpyWriter import OpNpyWriter
-from opExport2DImage import OpExport2DImage
-from opExportMultipageTiff import OpExportMultipageTiff
-from opExportMultipageTiffSequence import OpExportMultipageTiffSequence
-from opExportToArray import OpExportToArray
-from opExportSlot import OpExportSlot
-from opFormattedDataExport import OpFormattedDataExport
+from .opNpyWriter import OpNpyWriter
+from .opExport2DImage import OpExport2DImage
+from .opExportMultipageTiff import OpExportMultipageTiff
+from .opExportMultipageTiffSequence import OpExportMultipageTiffSequence
+from .opExportToArray import OpExportToArray
+from .opExportSlot import OpExportSlot
+from .opFormattedDataExport import OpFormattedDataExport
 
-from hdf5SerializerKnime import *
-from opExportToKnime import OpExportToKnime
+from .hdf5SerializerKnime import *
+from .opExportToKnime import OpExportToKnime
 

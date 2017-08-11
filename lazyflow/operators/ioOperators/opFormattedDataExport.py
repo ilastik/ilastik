@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import map
+from builtins import zip
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -118,19 +121,19 @@ class OpFormattedDataExport(Operator):
     def setupOutputs(self):
         # Prepare subregion operator
         total_roi = roiFromShape( self.Input.meta.shape )
-        total_roi = map( tuple, total_roi )
+        total_roi = list(map( tuple, total_roi ))
 
         # Default to full roi
         new_start, new_stop = total_roi
 
         if self.RegionStart.ready():
             # RegionStart is permitted to contain 'None' values, which we replace with zeros
-            new_start = map(lambda x: x or 0, self.RegionStart.value)
+            new_start = [x or 0 for x in self.RegionStart.value]
 
         if self.RegionStop.ready():
             # RegionStop is permitted to contain 'None' values, 
             #  which we replace with the full extent of the corresponding axis
-            new_stop = map( lambda (x, extent): x or extent, zip(self.RegionStop.value, total_roi[1]) )
+            new_stop = [x_extent[0] or x_extent[1] for x_extent in zip(self.RegionStop.value, total_roi[1])]
 
         clipped_start = numpy.maximum(0, new_start)
         clipped_stop = numpy.minimum(total_roi[1], new_stop)
@@ -206,10 +209,10 @@ class OpFormattedDataExport(Operator):
             self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in axistags ) )
 
         # Provide the coordinate offset, but only for the axes that are present in the output image
-        tagged_input_offset = collections.defaultdict( lambda: -1, zip(self.Input.meta.getAxisKeys(), new_start ) )
+        tagged_input_offset = collections.defaultdict( lambda: -1, list(zip(self.Input.meta.getAxisKeys(), new_start )) )
         output_axes = self._opReorderAxes.AxisOrder.value
         output_offset = [ tagged_input_offset[axis] for axis in output_axes ]
-        output_offset = tuple( filter( lambda x: x != -1, output_offset ) )
+        output_offset = tuple( [x for x in output_offset if x != -1] )
         self._opExportSlot.CoordinateOffset.setValue( output_offset )
 
         # Obtain values for possible name fields

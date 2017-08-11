@@ -1,3 +1,5 @@
+from builtins import next
+from builtins import range
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
@@ -43,16 +45,16 @@ def test_basic():
     
     def increase_counter():
         time.sleep(0.001)
-        result_counter.next()
+        next(result_counter)
     
     pool = RequestPool()
-    for _ in xrange(500):
+    for _ in range(500):
         pool.add(Request(increase_counter))
     pool.wait()
     
-    assert result_counter.next() == 500, \
+    assert next(result_counter) == 500, \
         "RequestPool has not run all submitted requests: {} out of 500"\
-        .format(result_counter.next() - 1)
+        .format(next(result_counter) - 1)
 
 @fail_after_timeout(5)
 def test_pool_with_failed_requests():
@@ -102,7 +104,7 @@ def _impl_test_pool_results_discarded():
     def workload():
         # In this test, all results are discarded immediately after the 
         #  request exits.  Therefore, AT NO POINT IN TIME, should more than N requests be alive.
-        live_result_refs = filter(lambda w:w() is not None, result_refs)
+        live_result_refs = [w for w in result_refs if w() is not None]
         assert len(live_result_refs) <= Request.global_thread_pool.num_workers, \
             "There should not be more than {} result references alive at one time!"\
             .format( Request.global_thread_pool.num_workers )

@@ -1,3 +1,8 @@
+from __future__ import division
+
+from builtins import zip
+from builtins import map
+from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -86,6 +91,18 @@ class TinyVector(list):
             return TinyVector(x/other for x in self)
 
     def __rdiv__(self, other):
+        if isinstance(other, collections.Iterable):
+            return TinyVector((y/x) for x,y in zip(self,other))
+        else:
+            return TinyVector((other/x) for x in self)
+
+    def __truediv__(self, other):
+        if isinstance(other, collections.Iterable):
+            return TinyVector(x/y for x,y in zip(self,other))
+        else:
+            return TinyVector(x/other for x in self)
+
+    def __rtruediv__(self, other):
         if isinstance(other, collections.Iterable):
             return TinyVector(y/x for x,y in zip(self,other))
         else:
@@ -179,7 +196,7 @@ class TinyVector(list):
         return TinyVector( -x for x in self )
     
     def __abs__(self):
-        return TinyVector( map(abs, self) )
+        return TinyVector( list(map(abs, self)) )
 
     def __pos__(self):
         return TinyVector(self)
@@ -188,15 +205,15 @@ class TinyVector(list):
         return TinyVector(~x for x in self)
     
     def ceil(self):
-        return TinyVector(map(ceil ,self))
+        return TinyVector(list(map(ceil ,self)))
         #return numpy.ceil(numpy.array(self))
 
     def floor(self):
-        return TinyVector(map(floor ,self))
+        return TinyVector(list(map(floor ,self)))
         #return numpy.floor(numpy.array(self))
 
     def _asint(self):
-        return TinyVector(map(lambda x:  x.__int__() ,self))
+        return TinyVector([x.__int__() for x in self])
 
     def insert(self,index, value):
         l = list(self)
@@ -278,10 +295,10 @@ def sliceToRoi(s, shape, extendSingleton = True):
             ROI instance corresponding to slice
     """
     s = expandSlicing(s, shape)
-    start = map(sTrl1, s)
-    stop = map(sTrl2, shape,s)
+    start = list(map(sTrl1, s))
+    stop = list(map(sTrl2, shape,s))
     if extendSingleton:
-        stop = map(sTrl3,start,stop)
+        stop = list(map(sTrl3,start,stop))
     return TinyVector(start), TinyVector(stop)
 
 def roiFromShape(shape):
@@ -341,8 +358,8 @@ def nonzero_bounding_box(data):
     if len(nonzero_coords[0]) == 0:
         block_bounding_box_roi = numpy.array( ([0]*data.ndim, [0]*data.ndim) )
     else:
-        block_bounding_box_roi = numpy.array( [ map( numpy.min, nonzero_coords ),
-                                                map( numpy.max, nonzero_coords ) ] )
+        block_bounding_box_roi = numpy.array( [ list(map( numpy.min, nonzero_coords )),
+                                                list(map( numpy.max, nonzero_coords )) ] )
         block_bounding_box_roi[1,:] += 1
     return block_bounding_box_roi
 
@@ -496,8 +513,8 @@ def getIntersectingBlocks( blockshape, roi, asarray=False ):
     roistop = TinyVector( roi[1] )
     blockshape = TinyVector( blockshape )
     
-    block_index_map_start = roistart / blockshape
-    block_index_map_stop = ( roistop + (blockshape - 1) ) / blockshape # Add (blockshape-1) first as a faster alternative to ceil() 
+    block_index_map_start = roistart // blockshape
+    block_index_map_stop = (( roistop + (blockshape - 1) ) // blockshape) # Add (blockshape-1) first as a faster alternative to ceil() 
     block_index_map_shape = block_index_map_stop - block_index_map_start
     
     num_axes = len(blockshape)
@@ -518,9 +535,9 @@ def getIntersectingBlocks( blockshape, roi, asarray=False ):
 
 def getIntersectingRois(dataset_shape, blockshape, roi, clip_blocks_to_roi=True):
     block_starts = getIntersectingBlocks(blockshape, roi)
-    block_rois = map( partial(getBlockBounds, dataset_shape, blockshape), block_starts )
+    block_rois = list(map( partial(getBlockBounds, dataset_shape, blockshape), block_starts ))
     if clip_blocks_to_roi:
-        block_rois = map( lambda block_roi: getIntersection(block_roi, roi), block_rois )
+        block_rois = [getIntersection(block_roi, roi) for block_roi in block_rois]
     return block_rois
 
 def is_fully_contained( inner_roi, outer_roi ):
@@ -566,7 +583,7 @@ def determineBlockShape( max_shape, target_block_volume ):
     ndims = len( max_shape )
     
     # Attach indexes to remember where each max_shape element came from
-    max_with_index = zip( max_shape, range( len(max_shape) ) )
+    max_with_index = list(zip( max_shape, list(range( len(max_shape))) ))
     
     # Sort from smallest to largest, to ensure that larger dimensions
     #   will pick up the slack that smaller dims can't accommodate.
@@ -575,18 +592,18 @@ def determineBlockShape( max_shape, target_block_volume ):
     volume_so_far = 1
     block_shape = []
     
-    for (m, i), num_remaining_axes in zip(sorted_max, range(ndims, 0, -1)):
+    for (m, i), num_remaining_axes in zip(sorted_max, list(range(ndims, 0, -1))):
         # Make a block_shape that is isometric in the remaining dimensions
         remaining_factor = target_block_volume//volume_so_far
-        block_side = int( pow( remaining_factor, 1.0/num_remaining_axes ) + 0.5 )
+        block_side = int( pow( remaining_factor, (1.0/num_remaining_axes) ) + 0.5 )
         block_side = min( block_side, m )
         block_shape.append( block_side )
         volume_so_far *= block_side        
     
     # Sort block_shape dimensions back to the original axis order
-    index_order = zip( *sorted_max )[1]
-    indexed_block_shape = zip( index_order, block_shape )
-    block_shape = zip( *sorted( indexed_block_shape ) )[1]    
+    index_order = list(zip( *sorted_max ))[1]
+    indexed_block_shape = list(zip( index_order, block_shape ))
+    block_shape = list(zip( *sorted( indexed_block_shape ) ))[1]
     return tuple(block_shape)
 
 def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_usage_per_requested_pixel, num_threads, available_ram ):
@@ -618,7 +635,7 @@ def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_
     ideal_blockshape = numpy.asarray( ideal_blockshape )
 
     target_block_volume_bytes = available_ram // num_threads
-    target_block_volume_pixels = target_block_volume_bytes / ram_usage_per_requested_pixel
+    target_block_volume_pixels = (target_block_volume_bytes // ram_usage_per_requested_pixel)
     
     # Replace 0's in the ideal_blockshape with the corresponding piece of max_blockshape
     complete_ideal_blockshape = numpy.where( ideal_blockshape == 0, max_blockshape, ideal_blockshape )
@@ -660,8 +677,8 @@ def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_
             return surface_area / volume
 
         # Choose the best among the canidates
-        scores = map(normalized_surface_area, candidate_blockshapes)
-        (best_shape, best_score) = min(zip(candidate_blockshapes, scores), key=lambda (shape, score): score )
+        scores = list(map(normalized_surface_area, candidate_blockshapes))
+        (best_shape, best_score) = min(zip(candidate_blockshapes, scores), key=lambda shape_score: shape_score[1] )
         blockshape = best_shape
         
     return tuple(blockshape)
@@ -677,7 +694,7 @@ def slicing_to_string( slicing, max_shape=None ):
                for each slicing field.
     """
     if max_shape:
-        max_digits = map(lambda s: int(log10(s))+1, max_shape)
+        max_digits = [int(log10(s))+1 for s in max_shape]
     else:
         max_digits = [0] * len(slicing)
     slice_strings = []

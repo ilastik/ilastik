@@ -44,6 +44,7 @@ result = operator2.outputs["Output"][:].wait()
 ---
 
 """
+from builtins import object
 
 #Python
 import sys

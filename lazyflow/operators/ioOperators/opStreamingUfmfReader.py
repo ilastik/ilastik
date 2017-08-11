@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+
+from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -28,7 +31,7 @@ import numpy
 import vigra
 import copy
 
-import UfmfParser
+from . import UfmfParser
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import Timer
@@ -69,7 +72,7 @@ class OpStreamingUfmfReader(Operator):
         
         try:
             self.frame, timestamp = self.fmf.get_next_frame()
-        except FMF.NoMoreFramesException, err:
+        except FMF.NoMoreFramesException as err:
             logger.info("Error reading uFMF frame.")
 
         self.Output.meta.dtype = self.frame.dtype.type

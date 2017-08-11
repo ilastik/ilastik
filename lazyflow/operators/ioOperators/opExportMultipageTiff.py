@@ -20,6 +20,13 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+from __future__ import print_function
+#from future import standard_library
+#standard_library.install_aliases()
+from builtins import zip
+from builtins import next
+#
+from builtins import range
 import os
 import collections
 
@@ -101,12 +108,12 @@ class OpExportMultipageTiff(Operator):
         # Start with a batch of images
         reqs = collections.deque()
         for next_request_index in range( min(parallel_requests, num_pages) ):
-            reqs.append( iter_slice_requests.next() )
+            reqs.append( next(iter_slice_requests) )
         
         self.progressSignal(0)
         pages_written = 0
         while reqs:
-            self.progressSignal( 100*next_request_index / num_pages )
+            self.progressSignal( 100*next_request_index // num_pages )
             req = reqs.popleft()
             slice_data = req.wait()
             slice_data = vigra.taggedView(slice_data, self._export_axes)
@@ -114,7 +121,7 @@ class OpExportMultipageTiff(Operator):
             
             # Add a new request to the batch
             if next_request_index < num_pages:
-                reqs.append( iter_slice_requests.next() )
+                reqs.append( next(iter_slice_requests) )
             
             if pages_written == 0:
                 xml_description = OpExportMultipageTiff.generate_ome_xml_description(
@@ -207,8 +214,14 @@ class OpExportMultipageTiff(Operator):
             uuid_tag.set('FileName', filename)
 
         from textwrap import dedent
-        from StringIO import StringIO
-        xml_stream = StringIO()
+        import sys
+        import io
+        xml_stream = io.BytesIO()
+        #if sys.version_info.major == 2:
+        #    xml_stream = io.BytesIO()
+        #else:
+        #    xml_stream = io.StringIO()
+
         comment = ET.Comment(
             ' Warning: this comment is an OME-XML metadata block, which contains crucial '
             'dimensional parameters and other important metadata. Please edit cautiously '
@@ -243,7 +256,7 @@ if __name__ == "__main__":
     opWriter.Input.connect( opReader.Output )
     
     opWriter.run_export()
-    print "DONE."
+    print("DONE.")
 
 
  

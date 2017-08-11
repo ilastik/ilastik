@@ -23,7 +23,11 @@
 import copy
 import logging
 import threading
+
+from builtins import object
 import sys
+if sys.version_info.major >= 3:
+    unicode = str
 
 #SciPy
 import numpy
@@ -112,7 +116,7 @@ class OpMetadataInjector(Operator):
 
         # Inject the additional metadata attributes
         extraMetadata = self.Metadata.value
-        for k,v in extraMetadata.items():
+        for k,v in list(extraMetadata.items()):
             setattr(self.Output.meta, k, v)
 
     def execute(self, slot, subindex, roi, result):
@@ -161,7 +165,7 @@ class OpMetadataMerge(Operator):
 
         # Merge in additional fields, selected from the source connection.
         for key in self.FieldsToClone.value:
-            assert isinstance(key, str), "Metadata field names are expected to be strings"
+            assert isinstance(key, (str, unicode)), "Metadata field names are expected to be strings"
             if key in self.MetadataSource.meta:
                 setattr( self.Output.meta, key, self.MetadataSource.meta[key] )
 
@@ -259,7 +263,7 @@ class OpValueCache(Operator, ObservableCache):
         
         # Optimization: We don't let more than one caller trigger the value to be computed at the same time
         # If some other caller has already requested the value, we'll just wait for the request he already made.
-        class State():
+        class State(object):
             Dirty = 0
             Waiting = 1
             Clean = 2
@@ -432,8 +436,6 @@ class OpDummyData(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
 
     def execute(self, slot, subindex, roi, result):
-        assert sys.version_info.major == 2, "Alert! This function has not been tested "\
-        "under python 3. Please remove this assetion and be wary of any strange behavior you encounter"
         # Replace this entire request with a simple pattern to indicate "not available"
         # The pattern is simply a bunch of diagonal planes.
         pattern = numpy.indices( roi.stop - roi.start ).sum(0)

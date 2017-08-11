@@ -1,3 +1,7 @@
+from builtins import zip
+from builtins import map
+
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -62,8 +66,8 @@ class OpExportSlot(Operator):
     _2d_exts = vigra.impex.listExtensions().split()    
 
     # List all supported formats
-    _2d_formats = map( lambda ext: FormatInfo(ext, ext, 2, 2), _2d_exts)
-    _3d_sequence_formats = map( lambda ext: FormatInfo(ext + ' sequence', ext, 3, 3), _2d_exts)
+    _2d_formats = [FormatInfo(ext, ext, 2, 2) for ext in _2d_exts]
+    _3d_sequence_formats = [FormatInfo(ext + ' sequence', ext, 3, 3) for ext in _2d_exts]
     _3d_volume_formats = [ FormatInfo('multipage tiff', 'tiff', 3, 3) ]
     _4d_sequence_formats = [ FormatInfo('multipage tiff sequence', 'tiff', 4, 4) ]
     nd_format_formats = [ FormatInfo('hdf5', 'h5', 0, 5),
@@ -137,7 +141,7 @@ class OpExportSlot(Operator):
             assert len(roi[0] == len(offset))
             roi += offset
         optional_replacements = {}
-        optional_replacements['roi'] = map(tuple, roi)
+        optional_replacements['roi'] = list(map(tuple, roi))
         for key, (start, stop) in zip( self.Input.meta.getAxisKeys(), roi.transpose() ):
             optional_replacements[key + '_start'] = start
             optional_replacements[key + '_stop'] = stop
@@ -169,7 +173,7 @@ class OpExportSlot(Operator):
         if output_format == 'dvid':
             # dvid requires a channel axis, which must come last.
             # Internally, we transpose it before sending it over the wire
-            if tagged_shape.keys()[-1] != 'c':
+            if list(tagged_shape.keys())[-1] != 'c':
                 return "DVID requires the last axis to be channel."
 
             # Make sure DVID supports this dtype/channel combo.
@@ -463,14 +467,14 @@ class FormatValidity(object):
             #   as it is one of the leading axes (i.e. the files or pages are split across channels).
             # In that case, each page will have a single 'channel' in the exported data,
             #  but we have to "undo" the "s -= 1" step from above.
-            if 'c' in taggedShape.keys()[0:2]:
+            if 'c' in list(taggedShape.keys())[0:2]:
                 c = 1
                 s += 1
         elif 'sequence' in fmt or 'multipage' in fmt:
             # Similarly, for any sequence or multipage tiff, any number of channels is 
             #  permitted as long as it is the first axis (the axis we step across).
             # (See comment above)
-            if 'c' == taggedShape.keys()[0]:
+            if 'c' == list(taggedShape.keys())[0]:
                 c = 1
                 s += 1
 

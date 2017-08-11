@@ -20,10 +20,21 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()
+from builtins import map
+from builtins import zip
+from builtins import range
+
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
+
 import os
 import tempfile
 from functools import partial
-import cPickle as pickle
+import pickle as pickle
 import collections
 
 import numpy
@@ -33,7 +44,7 @@ import random
 
 from lazyflow.utility import Timer
 from lazyflow.request import Request, RequestPool, RequestLock
-from lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
+from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 import logging
 logger = logging.getLogger(__name__)
@@ -91,7 +102,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         tree_counts = numpy.array( [self._num_trees // self._num_forests] * self._num_forests )
         tree_counts[:self._num_trees % self._num_forests] += 1
         assert tree_counts.sum() == self._num_trees
-        tree_counts = map(int, tree_counts)
+        tree_counts = list(map(int, tree_counts))
         tree_counts[:] = (tree_count for tree_count in tree_counts if tree_count != 0)        
 
         # Save for future reference
@@ -109,7 +120,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         if self._label_proportion:
             proportion = self._label_proportion
             row_num = int(proportion*X.shape[0])
-            idx = random.sample(range(X.shape[0]), row_num)
+            idx = random.sample(list(range(X.shape[0])), row_num)
             X = X[idx,:]
             y = y[idx] 
             assert (numpy.unique(y) == known_labels).all(), \
@@ -191,11 +202,11 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
 
         # Forests may have different numbers of trees,
         # so take a weighted average of their importances
-        tree_counts = map(lambda f: f.treeCount(), forests)
+        tree_counts = [f.treeCount() for f in forests]
         weights = numpy.array(tree_counts).astype(float)
         weights /= weights.sum()
 
-        named_importances = collections.OrderedDict( zip( feature_names, numpy.average(importances, weights=weights, axis=0) ) )   
+        named_importances = collections.OrderedDict( list(zip( feature_names, numpy.average(importances, weights=weights, axis=0) )) )   
                  
         importance_table = generate_importance_table( named_importances,
                                                       sort="overall",
@@ -233,20 +244,25 @@ def generate_importance_table(named_importances_dict, sort=None, export_path=Non
     export_path: If provided, the table will also be (over)written to the given file path.
     """
     import csv
-    from StringIO import StringIO
 
     CSV_FORMAT = { 'delimiter' : ',', 'lineterminator' : '\n' }
 
-    feature_name_length = max( map(len, named_importances_dict.keys()) )
+    feature_name_length = max( list(map(len, list(named_importances_dict.keys()))) )
 
     # See vigra/random_forest/rf_visitors.hxx, class VariableImportanceVisitor
-    n_classes = len(named_importances_dict.values()[0]) - 2
+    n_classes = len(list(named_importances_dict.values())[0]) - 2
     columns = [ "{: <{width}}".format("Feature Name", width=feature_name_length) ]
     columns += [ "  Class #{}".format(i) for i in range(n_classes)]
     columns += [ "   Overall" ]
     columns += [ "      Gini" ]
     
-    output = StringIO()
+    import sys
+    import io
+    if sys.version_info.major == 2:
+        output = io.BytesIO()
+    else:
+        output = io.StringIO()
+        
     csv_writer = csv.writer(output, **CSV_FORMAT)
     csv_writer.writerow( columns )
 
@@ -256,16 +272,16 @@ def generate_importance_table(named_importances_dict, sort=None, export_path=Non
         sort_columns.update( { "name" :     0,
                                "overall" : -2,
                                "gini" :    -1 } )
-        assert sort in sort_columns.keys(), "Invalid sort column: '{}'".format(sort)
+        assert sort in list(sort_columns.keys()), "Invalid sort column: '{}'".format(sort)
         sort_column = sort_columns[sort]
-        sorted_importances = sorted( named_importances_dict.items(),
-                                     key=lambda (k,v): v[sort_column] )
+        sorted_importances = sorted( list(named_importances_dict.items()),
+                                     key=lambda k_v: k_v[1][sort_column] )
         named_importances_dict = collections.OrderedDict( sorted_importances )
 
-    for feature_name, importances in named_importances_dict.items():
+    for feature_name, importances in list(named_importances_dict.items()):
         feature_name = "{: <{width}}".format(feature_name, width=feature_name_length)
-        importance_strings = map( lambda x: "{: .07f}".format(x), importances )
-        importance_strings = map( lambda s: "{: >10}".format(s), importance_strings )
+        importance_strings = ["{: .07f}".format(x) for x in importances]
+        importance_strings = ["{: >10}".format(s) for s in importance_strings]
         csv_writer.writerow( [feature_name] + importance_strings )
     
     if export_path:   
@@ -371,14 +387,15 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         h5py_group = parent_group[name]
         h5py_group['known_labels'] = self._known_labels
         if self._feature_names is not None:
-            h5py_group['feature_names'] = list(self._feature_names)
+            feature_names = [name.encode('utf-8') for name in self._feature_names]
+            h5py_group.create_dataset('feature_names', data=feature_names)
         
         # This field is required for all classifiers
-        h5py_group['pickled_type'] = pickle.dumps( type(self) )
+        h5py_group['pickled_type'] = pickle.dumps( type(self), 0 )
         
         if self._named_importances:
-            h5py_group.create_dataset('named_importances_keys', data=self._named_importances.keys())
-            h5py_group.create_dataset('named_importances_values', data=self._named_importances.values())
+            h5py_group.create_dataset('named_importances_keys', data=list(self._named_importances.keys()))
+            h5py_group.create_dataset('named_importances_values', data=list(self._named_importances.values()))
 
         os.remove(cachePath)
         os.rmdir(tmpDir)
@@ -404,10 +421,11 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
             known_labels = list(h5py_group['known_labels'][:])
         except KeyError:
             # Older projects didn't store the labels explicitly.
-            known_labels = range(1, forests[0].labelCount()+1 )
+            known_labels = list(range(1, forests[0].labelCount()+1))
 
         try:
             feature_names = list(h5py_group['feature_names'][:])
+            feature_names = list(map(unicode, feature_names))
         except KeyError:
             # Older projects don't store feature names.
             feature_names = None
@@ -420,9 +438,9 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
             oobs = [-1.0] * len(forests)
 
         try:
-            keys = map(str, h5py_group['named_importances_keys'][:])
+            keys = list(map(str, h5py_group['named_importances_keys'][:]))
             values = h5py_group['named_importances_values'][:]
-            named_importances = collections.OrderedDict(zip(keys, values))
+            named_importances = collections.OrderedDict(list(zip(keys, values)))
         except KeyError:
             named_importances = None
 

@@ -1,3 +1,8 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import zip
+from builtins import map
+from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -29,18 +34,18 @@ import h5py
 import logging
 logger = logging.getLogger(__name__)
 
-import cPickle as pickle
+import pickle as pickle
 
 # The natural thing to do here is to use numpy.vectorize,
 #  but that somehow interacts strangely with pickle.
-#vectorized_pickle_dumps = numpy.vectorize( pickle.dumps, otypes=[str] )
+#vectorized_pickle_dumps = numpy.vectorize( pickle.dumps, otypes=[str], 0 )
 #vectorized_pickle_loads = numpy.vectorize( pickke.loads, otypes=[object] )
 
 def vectorized_pickle_dumps(a):
     out = numpy.ndarray(shape=a.shape, dtype='O')
     for i,x in enumerate(a.flat):
         # Must use protocol 0 to avoid null bytes in the h5py dataset
-        out.flat[i] = pickle.dumps(x)
+        out.flat[i] = pickle.dumps(x, 0)
     return out
 
 def vectorized_pickle_loads(a):
@@ -257,7 +262,7 @@ class BlockwiseFileset(object):
         """
         with self._lock:
             assert not self._closed
-            paths = self._openBlockFiles.keys()
+            paths = list(self._openBlockFiles.keys())
             for path in paths:
                 blockFile = self._openBlockFiles[path]
                 blockFile.close()
@@ -495,13 +500,16 @@ class BlockwiseFileset(object):
                 self._createDatasetInFile( hdf5File, path_parts.internalPath, entire_block_roi )
             dataset = hdf5File[ path_parts.internalPath ]
             data = array_data[ array_slicing ]
-            if data.dtype == object:
+            if data.dtype != object:
+                dataset[ roiToSlice( *block_relative_roi ) ] = data
+            else:
                 # hdf5 can't handle datasets with dtype=object,
                 #  so we have to pickle each item first.
-                dataset[ roiToSlice( *block_relative_roi ) ] = vectorized_pickle_dumps(data)
-            else:
-                dataset[ roiToSlice( *block_relative_roi ) ] = data
-            
+                pickled_data = vectorized_pickle_dumps(data)
+                for index in numpy.ndindex(pickled_data.shape):
+                    block_index = index + numpy.array(block_relative_roi[0])
+                    dataset[tuple(block_index)] = list(pickled_data[index])
+
 
     def _createDatasetInFile(self, hdf5File, datasetName, roi):
         shape = tuple( roi[1] - roi[0] )
@@ -515,7 +523,7 @@ class BlockwiseFileset(object):
         
         dtype=self._description.dtype
         if dtype == object:
-            dtype = h5py.new_vlen(str)
+            dtype = h5py.special_dtype(vlen=numpy.uint8)
         dataset = hdf5File.create_dataset( datasetName,
                                  shape=shape,
                                  dtype=dtype,
@@ -527,7 +535,7 @@ class BlockwiseFileset(object):
         if self._description.drange is not None:
             dataset.attrs['drange'] = self._description.drange
         if _use_vigra:
-            dataset.attrs['axistags'] = vigra.defaultAxistags( self._description.axes ).toJSON()
+            dataset.attrs['axistags'] = vigra.defaultAxistags( str(self._description.axes) ).toJSON()
 
     def _getOpenHdf5Blockfile(self, blockFilePath):
         """
@@ -535,12 +543,12 @@ class BlockwiseFileset(object):
         If we haven't opened the file yet, open it first.
         """
         # Try once without locking
-        if blockFilePath in self._openBlockFiles.keys():
+        if blockFilePath in list(self._openBlockFiles.keys()):
             return self._openBlockFiles[ blockFilePath ]
 
         # Obtain the lock and try again
         with self._lock:
-            if blockFilePath not in self._openBlockFiles.keys():
+            if blockFilePath not in list(self._openBlockFiles.keys()):
                 try:
                     writeLock = FileLock( blockFilePath, timeout=10 )
                     if self.mode == 'a':
@@ -597,7 +605,7 @@ class BlockwiseFileset(object):
         :param use_view_coordinates: If True, assume the roi was given relative to the view start.
                                      Otherwise, assume it was given relative to the on-disk coordinates.
         """
-        roi = map( TinyVector, roi )
+        roi = list(map( TinyVector, roi ))
         if not use_view_coordinates:
             abs_roi = roi
             assert (abs_roi[0] >= self.description.view_origin), \
@@ -630,7 +638,7 @@ class BlockwiseFileset(object):
         # For now, this implementation assumes it can simply copy EVERYTHING in the block directories,
         #  including lock files.  Therefore, we require that the fileset be opened in read-only mode.
         # If that's a problem, change this function to ignore lock files when copying (or purge them afterwards).
-        roi = map( TinyVector, roi )
+        roi = list(map( TinyVector, roi ))
         if not use_view_coordinates:
             abs_roi = roi
             assert (abs_roi[0] >= self.description.view_origin), \

@@ -1,3 +1,12 @@
+from builtins import next
+
+from builtins import range
+from builtins import object
+from future.utils import raise_with_traceback
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -20,7 +29,6 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 #Python
-import sys
 import logging
 import collections
 import itertools
@@ -171,12 +179,12 @@ class Slot(object):
             % (self.operator.name, self.name)
         
         # Check for simple mistakes in parameter order...
-        assert isinstance(name, str)
+        assert isinstance(name, (str, unicode))
         assert isinstance(optional, bool)
         
         if not hasattr(self, "_type"):
             self._type = None
-        if type(stype) is str:
+        if isinstance(stype, (str, unicode)):
             stype = ArrayLike
         self.partners = []
         self.name = name
@@ -236,7 +244,7 @@ class Slot(object):
 
         # Allow slots to be sorted by their order of creation for
         # debug output and diagramming purposes.
-        self._global_slot_id = Slot._global_counter.next()
+        self._global_slot_id = next(Slot._global_counter)
 
 
     ###########################
@@ -838,7 +846,7 @@ class Slot(object):
         if slot.partner is not None:
             return Slot._findUpstreamProblemSlot( slot.partner )
         if slot.getRealOperator() is not None:
-            for inputSlot in slot.getRealOperator().inputs.values():
+            for inputSlot in list(slot.getRealOperator().inputs.values()):
                 if not inputSlot._optional and not inputSlot.ready():
                     return inputSlot
         return "Couldn't find an upstream problem slot."
@@ -1198,7 +1206,7 @@ class Slot(object):
                 self._value = value
                 self.stype.setupMetaForValue(value)
 
-                for k,v in extra_meta.items():
+                for k,v in list(extra_meta.items()):
                     setattr(self.meta, k, v)
                 
                 self.meta._dirty = True
@@ -1275,8 +1283,9 @@ class Slot(object):
                 #  continue unwinding the stack with the first one.
                 self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
                 import traceback
-                traceback.print_exc() 
-                raise exc_info[0], exc_info[1], exc_info[2]
+                traceback.print_exc()
+                exc_type, exc_value, exc_tb = exc_info
+                raise_with_traceback(exc_type(exc_value), exc_tb)
             raise
 
     @property

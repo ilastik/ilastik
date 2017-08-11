@@ -21,6 +21,11 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 #Python
+from __future__ import absolute_import
+from __future__ import division
+from builtins import zip
+
+from builtins import range
 import os
 from collections import deque
 import itertools
@@ -40,9 +45,9 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow import roi
 from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.request import RequestPool
-from operators import OpArrayPiper
+from .operators import OpArrayPiper
 from lazyflow.rtype import SubRegion
-from generic import OpMultiArrayStacker, popFlagsFromTheKey
+from .generic import OpMultiArrayStacker, popFlagsFromTheKey
 
 #Sven's fast filters 
 try:
@@ -176,8 +181,8 @@ class OpPixelFeaturesPresmoothed(Operator):
         for j, scale in enumerate(self.scales):
             if self.matrix[:,j].any():
                 tagged_shape = self.Input.meta.getTaggedShape()
-                spatial_axes_shape = filter( lambda (k,v): k in 'xyz', tagged_shape.items() )
-                spatial_shape = zip( *spatial_axes_shape )[1]
+                spatial_axes_shape = [k_v for k_v in list(tagged_shape.items()) if k_v[0] in 'xyz']
+                spatial_shape = list(zip( *spatial_axes_shape ))[1]
                 
                 if (scale * self.WINDOW_SIZE > numpy.array(spatial_shape)).any():
                     invalid_scales.append( scale )
@@ -222,7 +227,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
                     oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                     oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
-                    featureNameArray[i].append("Gaussian Smoothing (σ=" + str(self.scales[j]) + ")")
+                    featureNameArray[i].append(u"Gaussian Smoothing (σ=" + str(self.scales[j]) + ")")
 
             elif featureId == 'LaplacianOfGaussian':
                 for j in range(dimCol):
@@ -230,7 +235,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                         
                     oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                     oparray[i][j].inputs["scale"].setValue(self.newScales[j])
-                    featureNameArray[i].append("Laplacian of Gaussian (σ=" + str(self.scales[j]) + ")")
+                    featureNameArray[i].append(u"Laplacian of Gaussian (σ=" + str(self.scales[j]) + ")")
 
             elif featureId == 'StructureTensorEigenvalues':
                 for j in range(dimCol):
@@ -245,7 +250,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     #sigma1 = [x*0.5 for x in self.newScales[j]]
                     #oparray[i][j].inputs["outerScale"].setValue(sigma1)
                     oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
-                    featureNameArray[i].append("Structure Tensor Eigenvalues (σ=" + str(self.scales[j]) + ")")
+                    featureNameArray[i].append(u"Structure Tensor Eigenvalues (σ=" + str(self.scales[j]) + ")")
 
             elif featureId == 'HessianOfGaussianEigenvalues':
                 for j in range(dimCol):
@@ -253,7 +258,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     
                     oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                     oparray[i][j].inputs["scale"].setValue(self.newScales[j])
-                    featureNameArray[i].append("Hessian of Gaussian Eigenvalues (σ=" + str(self.scales[j]) + ")")
+                    featureNameArray[i].append(u"Hessian of Gaussian Eigenvalues (σ=" + str(self.scales[j]) + ")")
 
             elif featureId == 'GaussianGradientMagnitude':
                 for j in range(dimCol):
@@ -261,7 +266,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                         
                     oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                     oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
-                    featureNameArray[i].append("Gaussian Gradient Magnitude (σ=" + str(self.scales[j]) + ")")
+                    featureNameArray[i].append(u"Gaussian Gradient Magnitude (σ=" + str(self.scales[j]) + ")")
 
             elif featureId == 'DifferenceOfGaussians':
                 for j in range(dimCol):
@@ -276,7 +281,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     #sigma1 = [x*0.66 for x in self.newScales[j]]
                     #oparray[i][j].inputs["sigma1"].setValue(sigma1)
                     oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
-                    featureNameArray[i].append("Difference of Gaussians (σ=" + str(self.scales[j]) + ")")
+                    featureNameArray[i].append(u"Difference of Gaussians (σ=" + str(self.scales[j]) + ")")
 
         channelCount = 0
         featureCount = 0
@@ -343,7 +348,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             # There is no natural blockshape for spatial dimensions.
             if k in tagged_blockshape:
                 tagged_blockshape[k] = 0
-        output_blockshape = tagged_blockshape.values()
+        output_blockshape = list(tagged_blockshape.values())
 
         ## NOTE:
         ##   Previously, we would pass along the input's ideal_blockshape
@@ -711,8 +716,8 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
         
         tagged_shape = self.Input.meta.getTaggedShape()
         tagged_shape['z'] = tagged_shape['z']*z_scale
-        spatial_axes_shape = filter( lambda (k,v): k in 'xyz', tagged_shape.items() )
-        spatial_shape = zip( *spatial_axes_shape )[1]
+        spatial_axes_shape = [k_v1 for k_v1 in list(tagged_shape.items()) if k_v1[0] in 'xyz']
+        spatial_shape = list(zip( *spatial_axes_shape ))[1]
         
         for j, scale in enumerate(self.scales):
             if self.matrix[:,j].any():
@@ -762,14 +767,14 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                         oparray[i].append(OpGaussianSmoothing(self))
                         oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                         oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
-                        featureNameArray[i].append("Gaussian Smoothing (σ=" + str(self.scales[j]) + ")")
+                        featureNameArray[i].append(u"Gaussian Smoothing (σ=" + str(self.scales[j]) + ")")
 
                 elif featureId == 'LaplacianOfGaussian':
                     for j in range(dimCol):
                         oparray[i].append(OpLaplacianOfGaussian(self))
                         oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                         oparray[i][j].inputs["scale"].setValue(self.newScales[j])
-                        featureNameArray[i].append("Laplacian of Gaussian (σ=" + str(self.scales[j]) + ")")
+                        featureNameArray[i].append(u"Laplacian of Gaussian (σ=" + str(self.scales[j]) + ")")
 
                 elif featureId == 'StructureTensorEigenvalues':
                     for j in range(dimCol):
@@ -780,21 +785,21 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                         #  leave this feature here to preserve backwards compatibility
                         oparray[i][j].inputs["innerScale"].setValue(self.newScales[j])
                         oparray[i][j].inputs["outerScale"].setValue(self.newScales[j]*0.5)
-                        featureNameArray[i].append("Structure Tensor Eigenvalues (σ=" + str(self.scales[j]) + ")")
+                        featureNameArray[i].append(u"Structure Tensor Eigenvalues (σ=" + str(self.scales[j]) + ")")
 
                 elif featureId == 'HessianOfGaussianEigenvalues':
                     for j in range(dimCol):
                         oparray[i].append(OpHessianOfGaussianEigenvalues(self))
                         oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                         oparray[i][j].inputs["scale"].setValue(self.newScales[j])
-                        featureNameArray[i].append("Hessian of Gaussian Eigenvalues (σ=" + str(self.scales[j]) + ")")
+                        featureNameArray[i].append(u"Hessian of Gaussian Eigenvalues (σ=" + str(self.scales[j]) + ")")
 
                 elif featureId == 'GaussianGradientMagnitude':
                     for j in range(dimCol):
                         oparray[i].append(OpGaussianGradientMagnitude(self))
                         oparray[i][j].inputs["Input"].connect(self.source.outputs["Output"])
                         oparray[i][j].inputs["sigma"].setValue(self.newScales[j])
-                        featureNameArray[i].append("Gaussian Gradient Magnitude (σ=" + str(self.scales[j]) + ")")
+                        featureNameArray[i].append(u"Gaussian Gradient Magnitude (σ=" + str(self.scales[j]) + ")")
 
                 elif featureId == 'DifferenceOfGaussians':
                     for j in range(dimCol):
@@ -805,10 +810,10 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                         #  to preserve backwards compatibility
                         oparray[i][j].inputs["sigma0"].setValue(self.newScales[j])
                         oparray[i][j].inputs["sigma1"].setValue(self.newScales[j]*0.66)
-                        featureNameArray[i].append("Difference of Gaussians (σ=" + str(self.scales[j]) + ")")
+                        featureNameArray[i].append(u"Difference of Gaussians (σ=" + str(self.scales[j]) + ")")
 
             #disconnecting all Operators
-            for islot in self.multi.inputs.values():
+            for islot in list(self.multi.inputs.values()):
                 islot.disconnect()
 
             channelCount = 0
@@ -1127,7 +1132,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                                 #call feature computation per slice, only for the original data slices
                                 nz = scaleZ*(oldkey[zaxis].stop-oldkey[zaxis].start)
                                 roiSmootherList = list(roiSmoother)
-                                zrange = range(roiSmootherList[zaxis].start, roiSmootherList[zaxis].stop, scaleZ)
+                                zrange = list(range(roiSmootherList[zaxis].start, roiSmootherList[zaxis].stop, scaleZ))
                                 
                                 for iz, z in enumerate(zrange):
                                     
@@ -1220,17 +1225,17 @@ class OpBaseFilter(OpArrayPiper):
         key = roiToSlice(rroi.start, rroi.stop)
 
         kwparams = {}
-        for islot in self.inputs.values():
+        for islot in list(self.inputs.values()):
             if islot.name != "Input":
                 kwparams[islot.name] = islot.value
 
-        if self.inputs.has_key("sigma"):
+        if "sigma" in self.inputs:
             sigma = self.inputs["sigma"].value
-        elif self.inputs.has_key("scale"):
+        elif "scale" in self.inputs:
             sigma = self.inputs["scale"].value
-        elif self.inputs.has_key("sigma0"):
+        elif "sigma0" in self.inputs:
             sigma = self.inputs["sigma0"].value
-        elif self.inputs.has_key("innerScale"):
+        elif "innerScale" in self.inputs:
             sigma = self.inputs["innerScale"].value
 
         windowSize = 3.5
@@ -1382,7 +1387,7 @@ class OpBaseFilter(OpArrayPiper):
                         vroi = (tuple(writeNewStart._asint()), tuple(writeNewStop._asint()))
                         try:
                             temp = self.vigraFilter(image, roi = vroi, **kwparams)
-                        except Exception, e:
+                        except Exception as e:
                             logger.error( "EXCEPT 2.1 {} {} {} {}".format( self.name, image.shape, vroi, kwparams ) )
                             traceback.print_exc(e)
                             import sys
@@ -1390,7 +1395,7 @@ class OpBaseFilter(OpArrayPiper):
                     else:
                         try:
                             temp = self.vigraFilter(image, **kwparams)
-                        except Exception, e:
+                        except Exception as e:
                             logger.error( "EXCEPT 2.2 {} {} {}".format( self.name, image.shape, kwparams ) )
                             traceback.print_exc(e)
                             import sys
@@ -1485,8 +1490,8 @@ def coherenceOrientationOfStructureTensor(image,sigma0, sigma1, window_size, out
     else:
         res=numpy.ndarray((image.shape[0],image.shape[1],2))
 
-    res[:,:,0]=numpy.sqrt( (i22-i11)**2+4*(i12**2))/(i11-i22)
-    res[:,:,1]=numpy.arctan(2*i12/(i22-i11))/numpy.pi +0.5
+    res[:,:,0]=(numpy.sqrt( (i22-i11)**2+4*(i12**2)) / (i11-i22))
+    res[:,:,1]=(numpy.arctan(2*i12/(i22-i11)) / numpy.pi) +0.5
 
 
     return res
@@ -1701,8 +1706,8 @@ class OpImageReader(Operator):
         if 'z' in self.Image.meta.getAxisKeys():
             # Copy from each image slice into the corresponding slice of the result.
             roi_zyxc = numpy.array( [rroi.start, rroi.stop] )
-            for z_global, z_result in zip( range(*roi_zyxc[:,0]), 
-                                           range(result.shape[0]) ):
+            for z_global, z_result in zip( list(range(*roi_zyxc[:,0])), 
+                                           list(range(result.shape[0])) ):
                 full_slice = vigra.impex.readImage(filename, index=z_global)
                 full_slice = full_slice.transpose(1,0,2) # xyc -> yxc
                 assert full_slice.shape == self.Image.meta.shape[1:]

@@ -1,9 +1,14 @@
+from future import standard_library
+standard_library.install_aliases()
+
+from builtins import zip
+from builtins import object
 import sys
 import os
 import numpy
 import vigra
 from functools import partial
-from StringIO import StringIO
+from io import BytesIO
 
 ## Instead of importing requests and PIL here, 
 ## use late imports (below) so people who don't use TiledVolume don't have to have them
@@ -140,7 +145,7 @@ class TiledVolume(object):
         assert self.description.bounds_zyx.shape == (3,)
         assert self.description.view_shape_zyx.shape == (3,)
 
-        shape_dict = dict( zip('zyx', self.description.view_shape_zyx) )
+        shape_dict = dict( list(zip('zyx', self.description.view_shape_zyx)) )
         self.output_shape = tuple( shape_dict[k] for k in self.description.output_axes )
 
         self._slice_remapping = {}
@@ -158,9 +163,9 @@ class TiledVolume(object):
              roi should be relative to the view
         """
         output_axes = self.description.output_axes
-        roi_transposed = zip(*view_roi)
-        roi_dict = dict( zip(output_axes, roi_transposed) )
-        view_roi = zip( *(roi_dict['z'], roi_dict['y'], roi_dict['x']) )
+        roi_transposed = list(zip(*view_roi))
+        roi_dict = dict( list(zip(output_axes, roi_transposed)) )
+        view_roi = list(zip( *(roi_dict['z'], roi_dict['y'], roi_dict['x']) ))
 
         # First, normalize roi and result to zyx order
         result_out = vigra.taggedView(result_out, output_axes)
@@ -222,8 +227,6 @@ class TiledVolume(object):
                      (Note that the size of the ROI is usually, but not always, the same as tile_blockshape.
                      Near the volume borders, the tile_roi_in may be smaller.)
         """
-        assert sys.version_info.major == 2, "Alert! This function has not been tested "\
-        "under python 3. Please remove this assetion and be wary of any strnage behavior you encounter"
         # Special feature: 
         # Some slices are missing, in which case we provide fake data from a different slice.
         # Overwrite the rest args to pull data from an alternate source tile.
@@ -362,7 +365,7 @@ class TiledVolume(object):
                 TiledVolume.PIL = PIL
             PIL = TiledVolume.PIL
 
-            img = numpy.asarray( PIL.Image.open(StringIO(r.content)) )
+            img = numpy.asarray( PIL.Image.open(BytesIO(r.content)) )
             if self.description.is_rgb:
                 # "Convert" to grayscale -- just take first channel.
                 assert img.ndim == 3
