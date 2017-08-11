@@ -658,7 +658,7 @@ class SerialPickledValueSlot(SerialSlot):
         val = subgroup[()]
         if isinstance(val, numpy.void):
             val = val.tobytes()
-        slot.setValue(pickle.loads(val))
+        slot.setValue(pickle.loads(val, encoding='latin1'))
 
 
 class SerialCountingSlot(SerialSlot):
