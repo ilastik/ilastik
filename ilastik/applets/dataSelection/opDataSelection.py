@@ -147,7 +147,7 @@ class DatasetInfo(object):
                             file_list = file_list_with_internal
                         else:
                             # sort of fallback, in case of a mismatch in lengths
-                            for i in xrange(len(file_list)):
+                            for i in range(len(file_list)):
                                 file_list[i] += '/' + internalPaths[0]
 
             # For stacks, choose nickname based on a common prefix

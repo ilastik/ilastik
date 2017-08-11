@@ -832,7 +832,7 @@ class TestOpDataSelection_SingleFileH5Stacks():
         cls.projectFile.close()
         try:
             shutil.rmtree(cls.tmpdir)
-        except OSError, e:
+        except OSError as e:
             print('Exception caught while deleting temporary files: {}'.format(e))
 
     def test_load_single_file_with_glob(self):
