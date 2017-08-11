@@ -346,7 +346,7 @@ class OpInputDataReader(Operator):
             msg = "Unable to open HDF5 File: {}\n{}".format( externalPath, str(e) )
             raise OpInputDataReader.DatasetReadError( msg )
         else:
-            if internalPath == '':
+            if not internalPath:
                 possible_internal_paths = self._get_hdf5_dataset_names( h5File )
                 if len(possible_internal_paths) == 1:
                     internalPath = possible_internal_paths[0]
