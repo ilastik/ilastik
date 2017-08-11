@@ -33,7 +33,6 @@ from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 from lazyflow.operators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Original
 from lazyflow.operators import OpPixelFeaturesInterpPresmoothed as OpPixelFeaturesPresmoothed_Interpolated
-from lazyflow.operators.imgFilterOperators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Refactored
 from lazyflow.operators import OpReorderAxes, OperatorWrapper
 
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -108,8 +107,6 @@ class OpFeatureSelectionNoCache(Operator):
         if filter_implementation == 'Original':
             self.opPixelFeatures = OpPixelFeaturesPresmoothed_Original(parent=self)
             logger.debug("Using ORIGINAL filters")
-        elif filter_implementation == 'Refactored':
-            self.opPixelFeatures = OpPixelFeaturesPresmoothed_Refactored(parent=self)
         elif filter_implementation == 'Interpolated':
             self.opPixelFeatures = OpPixelFeaturesPresmoothed_Interpolated(parent=self)
             self.opPixelFeatures.InterpolationScaleZ.setValue(2)
