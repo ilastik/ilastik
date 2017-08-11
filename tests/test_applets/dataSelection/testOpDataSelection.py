@@ -795,6 +795,95 @@ class TestOpDataSelection_3DStacks(object):
             numpy.testing.assert_array_equal(imgData3Dc, self.imgData3Dc)
 
 
+class TestOpDataSelection_SingleFileH5Stacks():
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = tempfile.mkdtemp()
+        cls.projectFileName = os.path.join(cls.tmpdir, 'testProject.ilp')
+        # generate some test data 'tczyx'
+        cls.imgData3Dct = numpy.random.randint(0, 256, (10, 3, 8, 7, 6)).astype(numpy.uint8)
+
+        # write a h5-file to directory
+        cls.image_file_name = os.path.join(cls.tmpdir, 'multi-h5.h5')
+
+        h5file = h5py.File(cls.image_file_name)
+        cls.file_names = []
+        try:
+            g1 = h5file.create_group('g1')
+            for t_index, t_slice in enumerate(cls.imgData3Dct):
+                file_name = 'timeslice_{:03d}'.format(t_index)
+                g1.create_dataset(file_name, data=t_slice)
+                cls.file_names.append("{}/g1/{}".format(cls.image_file_name, file_name))
+        finally:
+            h5file.close()
+
+        cls.glob_string = '{}/g1/timeslice_*'.format(cls.image_file_name)
+        # Create a 'project' file and give it some data
+        cls.projectFile = h5py.File(cls.projectFileName)
+        cls.projectFile.create_group('DataSelection')
+        cls.projectFile['DataSelection'].create_group('local_data')
+        # Use the same data as the 3d+c data (above)
+        cls.projectFile['DataSelection/local_data'].create_dataset(
+            'dataset1', data=cls.imgData3Dct)
+        cls.projectFile.flush()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.projectFile.close()
+        try:
+            shutil.rmtree(cls.tmpdir)
+        except OSError, e:
+            print('Exception caught while deleting temporary files: {}'.format(e))
+
+    def test_load_single_file_with_glob(self):
+        graph = lazyflow.graph.Graph()
+        reader = OperatorWrapper(OpDataSelection, graph=graph)
+        reader.ProjectFile.setValue(self.projectFile)
+        reader.WorkingDirectory.setValue(os.getcwd())
+        reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
+        info = DatasetInfo(filepath=self.glob_string)
+        # Will be read from the filesystem since the data won't be found in the project file.
+        info.location = DatasetInfo.Location.ProjectInternal
+        info.internalPath = ""
+        info.invertColors = False
+        info.convertToGrayscale = False
+
+        reader.Dataset.setValues([info])
+
+        # Read the test files using the data selection operator and verify the contents
+        imgData = reader.Image[0][...].wait()
+
+        # Check raw images
+        assert imgData.shape == self.imgData3Dct.shape
+
+        numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
+
+    def test_load_single_file_with_list(self):
+        graph = lazyflow.graph.Graph()
+        reader = OperatorWrapper(OpDataSelection, graph=graph)
+        reader.ProjectFile.setValue(self.projectFile)
+        reader.WorkingDirectory.setValue(os.getcwd())
+        reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
+        fileNameString = os.path.pathsep.join(self.file_names)
+        info = DatasetInfo(filepath=fileNameString)
+        # Will be read from the filesystem since the data won't be found in the project file.
+        info.location = DatasetInfo.Location.ProjectInternal
+        info.internalPath = ""
+        info.invertColors = False
+        info.convertToGrayscale = False
+
+        reader.Dataset.setValues([info])
+
+        # Read the test files using the data selection operator and verify the contents
+        imgData = reader.Image[0][...].wait()
+
+        # Check raw images
+        assert imgData.shape == self.imgData3Dct.shape
+
+        numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
+
 if __name__ == "__main__":
     import nose
     nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE': 1})

@@ -27,7 +27,9 @@ import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.utility.jsonConfig import RoiTuple
-from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
+from lazyflow.operators.ioOperators import (
+    OpStreamingHdf5Reader, OpStreamingHdf5SequenceReaderS, OpInputDataReader
+)
 from lazyflow.operators.valueProviders import OpMetadataInjector
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -106,9 +108,16 @@ class DatasetInfo(object):
                             file_list = [externalPaths[0]]
                             if internalPaths[0] is not None:
                                 if '*' in internalPaths[0]:
-                                    # TODO single hdf5 file stacks
-                                    raise NotImplementedError(
-                                        'Single file h5Stack import is not implemented in the GUI yet.')
+                                    # overwrite internalPaths, will be assembled further down
+                                    glob_string = "{}{}".format(externalPaths[0], internalPaths[0])
+                                    internalPaths = \
+                                        OpStreamingHdf5SequenceReaderS.expandGlobStrings(
+                                            externalPaths[0], glob_string)
+                                    if internalPaths:
+                                        file_list = [externalPaths[0]] * len(internalPaths)
+                                    else:
+                                        file_list = None
+
                     else:
                         assert (not any('*' in ep for ep in externalPaths)), (
                             "Multiple glob paths shouldn't be happening"
@@ -125,9 +134,21 @@ class DatasetInfo(object):
                         OpInputDataReader.npzExts
                     )
                     internalPathExts = [".{}".format(ipx) for ipx in internalPathExts]
-                    if pathComponents[0].extension in internalPathExts and internalPaths[0]:
-                        for i in range(len(file_list)):
-                            file_list[i] += '/' + internalPaths[0]
+
+                    if pathComponents[0].extension in internalPathExts and internalPaths:
+                        if len(file_list) == len(internalPaths):
+                            # assuming a matching internal paths to external paths
+                            file_list_with_internal = []
+                            for external, internal in zip(file_list, internalPaths):
+                                if internal:
+                                    file_list_with_internal.append('{}/{}'.format(external, internal))
+                                else:
+                                    file_list_with_internal.append(external)
+                            file_list = file_list_with_internal
+                        else:
+                            # sort of fallback, in case of a mismatch in lengths
+                            for i in xrange(len(file_list)):
+                                file_list[i] += '/' + internalPaths[0]
 
             # For stacks, choose nickname based on a common prefix
             if file_list:

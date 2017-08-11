@@ -34,6 +34,7 @@ import vigra
 from volumina.utility import PreferencesManager
 
 import ilastik.config
+from ilastik.widgets.hdf5SubvolumeSelectionDialog import Hdf5StackingDlg, H5VolumeSelectionDlg
 
 from lazyflow.operators.ioOperators import (
     OpStackLoader, OpStreamingHdf5SequenceReaderM,
@@ -41,32 +42,6 @@ from lazyflow.operators.ioOperators import (
 )
 from lazyflow.utility import lsHdf5, PathComponents
 import h5py
-
-
-class H5VolumeSelectionDlg(QDialog):
-    """
-    A window to ask the user to choose between multiple HDF5 datasets in a single file.
-    """
-    def __init__(self, datasetNames, parent):
-        super(H5VolumeSelectionDlg, self).__init__(parent)
-        label = QLabel("Your HDF5 File contains multiple image volumes.\n"
-                       "Please select the one you would like to open.")
-
-        self.combo = QComboBox()
-        for name in datasetNames:
-            self.combo.addItem(name)
-
-        buttonbox = QDialogButtonBox(Qt.Horizontal, parent=self)
-        buttonbox.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttonbox.accepted.connect(self.accept)
-        buttonbox.rejected.connect(self.reject)
-
-        layout = QVBoxLayout()
-        layout.addWidget(label)
-        layout.addWidget(self.combo)
-        layout.addWidget(buttonbox)
-
-        self.setLayout(layout)
 
 
 class StackFileSelectionWidget(QDialog):
@@ -237,7 +212,7 @@ class StackFileSelectionWidget(QDialog):
         thus, unclear.
 
         Args:
-            h5_files (list of strings): h5 files to be globbed internally
+            h5Files (list of strings): h5 files to be globbed internally
 
         Returns:
             list of internal paths
@@ -253,6 +228,23 @@ class StackFileSelectionWidget(QDialog):
 
         return list(internal_paths)
 
+    @staticmethod
+    def _findInternalStacks(h5File):
+        """Tries to find common internal path (containing data)
+
+        Method is used, when a directory is selected and the internal path is,
+        thus, unclear.
+
+        Args:
+            h5file (list of strings): h5 files to be globbed internally
+
+        Returns:
+            list of internal stacks
+        """
+        # get all internal paths
+        with h5py.File(h5File, mode='r') as h5:
+            internal_paths = lsHdf5(h5, minShape=2)
+        return [x['name'] for x in internal_paths]
 
     def _selectFiles(self):
         # Find the directory of the most recently opened image file
@@ -281,39 +273,57 @@ class StackFileSelectionWidget(QDialog):
         if len(fileNames) == 0:
             return
 
-        if len(fileNames) == 1:
+        pathComponents = PathComponents(fileNames[0])
+
+        if (len(fileNames) == 1) and (pathComponents.extension not in OpStreamingHdf5SequenceReaderM.H5EXTS):
             msg += 'Cannot create stack: You only chose a single file.  '
-            msg += 'If your stack is contained in a single file (e.g. a multi-page tiff or '
-            msg += 'hdf5 volume), please use the "Add File" button.'
+            msg += 'If your stack is contained in a single file (e.g. a multi-page tiff) '
+            msg += 'please use the "Add File" button.'
             QMessageBox.warning(self, "Invalid selection", msg)
             return None
 
-        pathComponents = PathComponents(fileNames[0])
         directory = pathComponents.externalPath
         PreferencesManager().set('DataSelection', 'recent stack directory', directory)
 
         if pathComponents.extension in OpStreamingHdf5SequenceReaderM.H5EXTS:
-            # check for internal paths!
-            internal_paths = self._findCommonInternal(fileNames)
-            if len(internal_paths) == 0:
-                msg += 'Could not find a unique common internal path in'
-                msg += directory + '\n'
-                QMessageBox.warning(self, "Invalid selection", msg)
-                return None
-            elif len(internal_paths) == 1:
-                fileNames = ['{}/{}'.format(fn, internal_paths[0]) for fn in fileNames]
-            else:
-                # Ask the user which dataset to choose
-                dlg = H5VolumeSelectionDlg(internal_paths, self)
+            if len(fileNames) == 1:
+                # open the dialog for globbing:
+                file_name = fileNames[0]
+                internal_datasets = [decode_to_qstring(x) for x in self._findInternalStacks(file_name)]
+                dlg = Hdf5StackingDlg(parent=self, list_of_paths=internal_datasets)
                 if dlg.exec_() == QDialog.Accepted:
-                    selected_index = dlg.combo.currentIndex()
-                    selected_dataset = str(internal_paths[selected_index])
-                    fileNames = ['{}/{}'.format(fn, selected_dataset)
-                                 for fn in fileNames]
+                    selected_datasets = [encode_from_qstring(x) for x in dlg.get_selected_datasets()]
+                    fileNames = ['{}/{}'.format(file_name, internal_path)
+                                 for internal_path in selected_datasets]
+                    globstring = '{}/{}'.format(file_name, encode_from_qstring(dlg.get_globstring()))
+                    self.patternEdit.setText(decode_to_qstring(globstring))
+                    self._applyPattern()
+                    return None
                 else:
-                    msg = 'No valid internal path selected.'
+                    return None
+            else:
+                # check for internal paths
+                internal_paths = self._findCommonInternal(fileNames)
+
+                if len(internal_paths) == 0:
+                    msg += 'Could not find a unique common internal path in'
+                    msg += directory + '\n'
                     QMessageBox.warning(self, "Invalid selection", msg)
                     return None
+                elif len(internal_paths) == 1:
+                    fileNames = ['{}/{}'.format(fn, internal_paths[0]) for fn in fileNames]
+                else:
+                    # Ask the user which dataset to choose
+                    dlg = H5VolumeSelectionDlg(internal_paths, self)
+                    if dlg.exec_() == QDialog.Accepted:
+                        selected_index = dlg.combo.currentIndex()
+                        selected_dataset = str(internal_paths[selected_index])
+                        fileNames = ['{}/{}'.format(fn, selected_dataset)
+                                     for fn in fileNames]
+                    else:
+                        msg = 'No valid internal path selected.'
+                        QMessageBox.warning(self, "Invalid selection", msg)
+                        return None
 
         self._updateFileList(fileNames)
 
