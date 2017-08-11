@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 class TestAxesOrderPreservation(object):
     dir = tempfile.mkdtemp()
     # os.path.expanduser('~/Desktop/tmp')
-    PROJECT_FILE_BASE = '../../data/inputdata/*.ilp'
+    PROJECT_FILE_BASE = '../../data/*.ilp'
 
     @classmethod
     def setupClass(cls):
