@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,9 +19,10 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QImage
-from PyQt4.QtCore import Qt, pyqtSignal
-from listModel import ListModel,ListElement,_NPIXELS
+from builtins import range
+from PyQt5.QtGui import QColor, QPixmap, QIcon, QImage
+from PyQt5.QtCore import Qt, pyqtSignal, QItemSelectionModel
+from .listModel import ListModel,ListElement,_NPIXELS
 
 
 import logging
@@ -68,7 +70,7 @@ class LabelListModel(ListModel):
     
     icon_cache = {}
         
-    class ColumnID():
+    class ColumnID(object):
         Color  = 0
         Name   = 1
         Delete = 2

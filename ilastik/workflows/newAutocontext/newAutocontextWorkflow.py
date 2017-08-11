@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import sys
 import copy
 import argparse
@@ -120,8 +121,8 @@ class NewAutocontextWorkflowBase(Workflow):
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
 
         self.EXPORT_NAMES = []
-        for stage_index in reversed(range(n_stages)):
-            self.EXPORT_NAMES += map(lambda name: "{} Stage {}".format( name, stage_index+1 ), self.EXPORT_NAMES_PER_STAGE)
+        for stage_index in reversed(list(range(n_stages))):
+            self.EXPORT_NAMES += ["{} Stage {}".format( name, stage_index+1 ) for name in self.EXPORT_NAMES_PER_STAGE]
         
         # And finally, one last item for *all* probabilities from all stages.
         self.EXPORT_NAMES += ["Probabilities All Stages"]
@@ -129,7 +130,7 @@ class NewAutocontextWorkflowBase(Workflow):
 
         # Expose for shell
         self._applets.append(self.dataSelectionApplet)
-        self._applets += itertools.chain(*zip(self.featureSelectionApplets, self.pcApplets))
+        self._applets += itertools.chain(*list(zip(self.featureSelectionApplets, self.pcApplets)))
         self._applets.append(self.dataExportApplet)
         
         self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
@@ -473,7 +474,7 @@ class NewAutocontextWorkflowBase(Workflow):
         """
         Overridden from Workflow base class
         """
-        from PyQt4.QtGui import QMenu
+        from PyQt5.QtWidgets import QMenu
         autocontext_menu = QMenu("Autocontext Utilities")
         distribute_action = autocontext_menu.addAction("Distribute Labels...")
         distribute_action.triggered.connect( self.distribute_labels_from_current_stage )
@@ -487,7 +488,7 @@ class NewAutocontextWorkflowBase(Workflow):
         """
         # Late import.
         # (Don't import PyQt in headless mode.)
-        from PyQt4.QtGui import QMessageBox
+        from PyQt5.QtWidgets import QMessageBox
         current_applet = self._applets[self.shell.currentAppletIndex]
         if current_applet not in self.pcApplets:
             QMessageBox.critical(self.shell, "Wrong page selected", "The currently active page isn't a Training page.")
@@ -546,7 +547,7 @@ class NewAutocontextWorkflowBase(Workflow):
                     opPcLane.opLabelPipeline.opLabelArray.clearLabel(label_value)
 
             # Now redistribute those labels across all lanes
-            for block_roi, block_labels in blockwise_labels.items():
+            for block_roi, block_labels in list(blockwise_labels.items()):
                 nonzero_coords = block_labels.nonzero()
 
                 if partition:
@@ -576,7 +577,7 @@ class NewAutocontextWorkflowBase(Workflow):
     def get_label_distribution_settings(source_stage_index, num_stages):
         # Late import.
         # (Don't import PyQt in headless mode.)
-        from PyQt4.QtGui import QDialog, QVBoxLayout
+        from PyQt5.QtWidgets import QDialog, QVBoxLayout
         class LabelDistributionOptionsDlg( QDialog ):
             """
             A little dialog to let the user specify how the labels should be
@@ -585,8 +586,8 @@ class NewAutocontextWorkflowBase(Workflow):
             def __init__(self, source_stage_index, num_stages, *args, **kwargs):
                 super(LabelDistributionOptionsDlg, self).__init__(*args, **kwargs)
 
-                from PyQt4.QtCore import Qt
-                from PyQt4.QtGui import QGroupBox, QCheckBox, QRadioButton, QDialogButtonBox
+                from PyQt5.QtCore import Qt
+                from PyQt5.QtWidgets import QGroupBox, QCheckBox, QRadioButton, QDialogButtonBox
             
                 self.setWindowTitle("Distributing from Stage {}".format(source_stage_index+1))
 

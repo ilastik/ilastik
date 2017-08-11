@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,26 +20,29 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 import os
+import sys
 import threading
 import h5py
 import numpy
 from functools import partial
 import logging
-from __builtin__ import False
 logger = logging.getLogger(__name__)
 
 #PyQt
-from PyQt4 import uic
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import (
+from PyQt5 import uic
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (
     QDialog, QFileDialog, QMessageBox, QStackedWidget, QWidget
 )
 #lazyflow
 from lazyflow.request import Request
 
 #volumina
-from volumina.utility import PreferencesManager, encode_from_qstring
+from volumina.utility import PreferencesManager
 
 #ilastik
 from ilastik.config import cfg as ilastik_config
@@ -48,13 +52,12 @@ from lazyflow.utility.pathHelpers import getPathVariants, PathComponents
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
 
-from opDataSelection import OpDataSelection, DatasetInfo
-from dataLaneSummaryTableModel import DataLaneSummaryTableModel
-from datasetInfoEditorWidget import DatasetInfoEditorWidget
-from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget
-from ilastik.widgets.stackFileSelectionWidget import H5VolumeSelectionDlg
-from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDetailedInfoTableModel
-from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
+from .opDataSelection import OpDataSelection, DatasetInfo
+from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
+from .datasetInfoEditorWidget import DatasetInfoEditorWidget
+from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, H5VolumeSelectionDlg
+from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDetailedInfoTableModel
+from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 
 try:
     import libdvid
@@ -64,13 +67,13 @@ except:
 
 #===----------------------------------------------------------------------------------------------------------------===
 
-class LocationOptions():
+class LocationOptions(object):
     """ Enum for location menu options """
     Project = 0
     AbsolutePath = 1
     RelativePath = 2
 
-class GuiMode():
+class GuiMode(object):
     Normal = 0
     Batch = 1
 
@@ -105,7 +108,7 @@ class DataSelectionGui(QWidget):
 
     def stopAndCleanUp(self):
         self._cleaning_up = True
-        for editor in self.volumeEditors.values():
+        for editor in list(self.volumeEditors.values()):
             self.viewerStack.removeWidget( editor )
             self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
             editor.stopAndCleanUp()
@@ -169,7 +172,7 @@ class DataSelectionGui(QWidget):
         def handleImageRemove(multislot, index, finalLength):
             # Remove the viewer for this dataset
             datasetSlot = self.topLevelOperator.DatasetGroup[index]
-            if datasetSlot in self.volumeEditors.keys():
+            if datasetSlot in list(self.volumeEditors.keys()):
                 editor = self.volumeEditors[datasetSlot]
                 self.viewerStack.removeWidget( editor )
                 self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
@@ -319,7 +322,7 @@ class DataSelectionGui(QWidget):
         datasetSlot = self.topLevelOperator.DatasetGroup[laneIndex]
 
         # Create if necessary
-        if datasetSlot not in self.volumeEditors.keys():
+        if datasetSlot not in list(self.volumeEditors.keys()):
             class DatasetViewer(LayerViewerGui):
                 def moveToTop(self, roleIndex):
                     opLaneView = self.topLevelOperatorView
@@ -380,6 +383,7 @@ class DataSelectionGui(QWidget):
         """
         # Find the directory of the most recently opened image file
         mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
+        mostRecentImageFile = str(mostRecentImageFile)
         if mostRecentImageFile is not None:
             defaultDirectory = os.path.split(mostRecentImageFile)[0]
         else:
@@ -415,8 +419,8 @@ class DataSelectionGui(QWidget):
             file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
             # do not display file types associated with a filter
             # the line for "Image files" is too long otherwise
-            file_dialog.setFilters([filt_all_str] + filters)
-            file_dialog.setNameFilterDetailsVisible(False)
+            file_dialog.setNameFilters([filt_all_str] + filters)
+            #file_dialog.setNameFilterDetailsVisible(False)
             # select multiple files
             file_dialog.setFileMode(QFileDialog.ExistingFiles)
             file_dialog.setDirectory( defaultDirectory )
@@ -425,9 +429,7 @@ class DataSelectionGui(QWidget):
                 fileNames = file_dialog.selectedFiles()
         else:
             # otherwise, use native dialog of the present platform
-            fileNames = QFileDialog.getOpenFileNames(parent_window, "Select Images", defaultDirectory, filt_all_str)
-        # Convert from QtString to python str
-        fileNames = map(encode_from_qstring, fileNames)
+            fileNames, _filter = QFileDialog.getOpenFileNames(parent_window, "Select Images", defaultDirectory, filt_all_str)
         return fileNames
 
     def _findFirstEmptyLane(self, roleIndex):
@@ -436,7 +438,7 @@ class DataSelectionGui(QWidget):
         # Determine the number of files this role already has
         # Search for the last valid value.
         firstNewLane = 0
-        for laneIndex, slot in reversed(zip(range(len(opTop.DatasetGroup)), opTop.DatasetGroup)):
+        for laneIndex, slot in reversed(list(zip(list(range(len(opTop.DatasetGroup))), opTop.DatasetGroup))):
             if slot[roleIndex].ready():
                 firstNewLane = laneIndex+1
                 break
@@ -595,7 +597,7 @@ class DataSelectionGui(QWidget):
             opTop.DatasetGroup.resize( endingLane+1 )
         
         # Configure each subslot
-        for laneIndex, info in zip(range(startingLane, endingLane+1), infos):
+        for laneIndex, info in zip(list(range(startingLane, endingLane+1)), infos):
             try:
                 self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
             except DatasetConstraintError as ex:
@@ -770,8 +772,8 @@ class DataSelectionGui(QWidget):
             self.topLevelOperator.DatasetGroup[row][roleIndex].disconnect()
 
         # Remove all operators that no longer have any connected slots        
-        laneIndexes = range( len(self.topLevelOperator.DatasetGroup) )
-        for laneIndex, multislot in reversed(zip(laneIndexes, self.topLevelOperator.DatasetGroup)):
+        laneIndexes = list(range( len(self.topLevelOperator.DatasetGroup)))
+        for laneIndex, multislot in reversed(list(zip(laneIndexes, self.topLevelOperator.DatasetGroup))):
             any_ready = False
             for slot in multislot:
                 any_ready |= slot.ready()
@@ -797,12 +799,12 @@ class DataSelectionGui(QWidget):
         recent_hosts = recent_hosts_pref.get()
         if not recent_hosts:
             recent_hosts = ["localhost:8000"]
-        recent_hosts = filter(lambda h: h, recent_hosts) # There used to be a bug where empty strings could be saved. Filter those out.
+        recent_hosts = [h for h in recent_hosts if h] # There used to be a bug where empty strings could be saved. Filter those out.
 
         recent_nodes_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Nodes")
         recent_nodes = recent_nodes_pref.get() or {}
             
-        from dvidDataSelectionBrowser import DvidDataSelectionBrowser
+        from .dvidDataSelectionBrowser import DvidDataSelectionBrowser
         browser = DvidDataSelectionBrowser(recent_hosts, recent_nodes, parent=self)
         if browser.exec_() == DvidDataSelectionBrowser.Rejected:
             return

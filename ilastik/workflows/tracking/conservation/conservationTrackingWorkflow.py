@@ -1,3 +1,4 @@
+from builtins import range
 import os
 from lazyflow.graph import Graph
 from lazyflow.utility import PathComponents, make_absolute, format_known_keys
@@ -78,7 +79,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             opObjectExtraction.FeatureNamesDivision.setValue(feature_dict_division)
                
             selected_features_div = {}
-            for plugin_name in config.selected_features_division.keys():
+            for plugin_name in list(config.selected_features_division.keys()):
                 selected_features_div[plugin_name] = { name: {} for name in config.selected_features_division[plugin_name] }
             # FIXME: do not hard code this
             for name in [ 'SquaredDistances_' + str(i) for i in range(config.n_best_successors) ]:
@@ -97,7 +98,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
                                                                      selectedFeatures=configConservation.selectedFeaturesObjectCount)
 
         selected_features_objectcount = {}
-        for plugin_name in config.selected_features_objectcount.keys():
+        for plugin_name in list(config.selected_features_objectcount.keys()):
             selected_features_objectcount[plugin_name] = { name: {} for name in config.selected_features_objectcount[plugin_name] }
 
         opCellClassification = self.cellClassificationApplet.topLevelOperator 
@@ -305,7 +306,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         maxx = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[1] 
         maxy = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[2] 
         maxz = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[3] 
-        time_enum = range(maxt)
+        time_enum = list(range(maxt))
         x_range = (0, maxx)
         y_range = (0, maxy)
         z_range = (0, maxz)
@@ -376,10 +377,9 @@ class ConservationTrackingWorkflowBase( Workflow ):
         )
 
     def post_process_lane_export(self, lane_index, checkOverwriteFiles=False):
-        # `time` parameter ensures we check only once for files that could be overwritten, pop up
-        # the MessageBox and then don't export (time=0). For the next round we click the export button,
-        # we really want it to export, so time=1. The default parameter is 1, so everything but not 0,
-        # in order to ensure writing out even in headless mode.
+        # `checkOverwriteFiles` parameter ensures we check only once for files that could be overwritten, pop up
+        # the MessageBox and then don't export. For the next round we click the export button,
+        # we really want it to export, so checkOverwriteFiles=False.
         
         # FIXME: This probably only works for the non-blockwise export slot.
         #        We should assert that the user isn't using the blockwise slot.
@@ -409,16 +409,16 @@ class ConservationTrackingWorkflowBase( Workflow ):
 
                 if filename is None or len(str(filename)) == 0:
                     logger.error("Cannot export from plugin with empty output filename")
-                    return
+                    return True
 
                 exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin, checkOverwriteFiles)
                 if not exportStatus:
                     return False
                 logger.info("Export done")
 
-            return
+            return True
 
-        # CSV Table export (only if plugin was not selected)
+        # Legacy CSV Table export (only if plugin was not selected)
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
             self.dataExportApplet.progressSignal.emit(0)
@@ -444,6 +444,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
             parameters['x_range'] = self.prev_x_range
             parameters['y_range'] = self.prev_y_range
             parameters['z_range'] = self.prev_z_range
+
+        return True
 
     def getPartiallyFormattedName(self, lane_index, path_format_string):
         ''' Takes the format string for the output file, fills in the most important placeholders, and returns it '''

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,13 +20,16 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
+from past.utils import old_div
 import os
 import threading
 from functools import partial
 
 import sip
-from PyQt4 import uic
-from PyQt4.QtGui import QApplication, QWidget, QIcon, QHeaderView, QStackedWidget, QTableWidgetItem, QPushButton, QMessageBox
+from PyQt5 import uic
+from PyQt5.QtWidgets import QApplication, QWidget, QHeaderView, QStackedWidget, QTableWidgetItem, QPushButton, QMessageBox
+from PyQt5.QtGui import QIcon
 
 from lazyflow.graph import Slot
 
@@ -34,14 +39,13 @@ from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEve
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
-from opDataExport import get_model_op
-from volumina.utility import decode_to_qstring
+from .opDataExport import get_model_op
 from volumina.widgets.dataExportOptionsDlg import DataExportOptionsDlg
 
 import logging
 logger = logging.getLogger(__name__)
 
-class Column():
+class Column(object):
     """ Enum for table column positions """
     Dataset = 0
     ExportLocation = 1
@@ -72,7 +76,7 @@ class DataExportGui(QWidget):
         pass
 
     def stopAndCleanUp(self):
-        for editor in self.layerViewerGuis.values():
+        for editor in list(self.layerViewerGuis.values()):
             self.viewerStack.removeWidget( editor )
             editor.stopAndCleanUp()
         self.layerViewerGuis.clear()
@@ -139,7 +143,7 @@ class DataExportGui(QWidget):
 
             # Remove the viewer for this dataset
             imageMultiSlot = self.topLevelOperator.Inputs[index]
-            if imageMultiSlot in self.layerViewerGuis.keys():
+            if imageMultiSlot in list(self.layerViewerGuis.keys()):
                 layerViewerGui = self.layerViewerGuis[imageMultiSlot]
                 self.viewerStack.removeWidget( layerViewerGui )
                 self._viewerControlWidgetStack.removeWidget( layerViewerGui.viewerControlWidget() )
@@ -191,7 +195,7 @@ class DataExportGui(QWidget):
         self.batchOutputTableWidget.resizeColumnsToContents()
         self.batchOutputTableWidget.setAlternatingRowColors(True)
         self.batchOutputTableWidget.setShowGrid(False)
-        self.batchOutputTableWidget.horizontalHeader().setResizeMode(0, QHeaderView.Interactive)
+        self.batchOutputTableWidget.horizontalHeader().setSectionResizeMode(0, QHeaderView.Interactive)
         
         self.batchOutputTableWidget.horizontalHeader().resizeSection(Column.Dataset, 200)
         self.batchOutputTableWidget.horizontalHeader().resizeSection(Column.ExportLocation, 250)
@@ -299,8 +303,8 @@ class DataExportGui(QWidget):
             # (It's therefore possible for RawDatasetInfo[row] to be ready() even though it's upstream partner is NOT ready.
             return
                 
-        self.batchOutputTableWidget.setItem( row, Column.Dataset, QTableWidgetItem( decode_to_qstring(nickname, 'utf-8') ) )
-        self.batchOutputTableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( decode_to_qstring(exportPath) ) )
+        self.batchOutputTableWidget.setItem( row, Column.Dataset, QTableWidgetItem( nickname ) )
+        self.batchOutputTableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( exportPath ) )
 
         exportNowButton = QPushButton("Export")
         exportNowButton.setToolTip("Generate individual batch output dataset.")
@@ -372,7 +376,7 @@ class DataExportGui(QWidget):
             self.progressSignal.emit(1)
 
             def signalFileProgress(slotIndex, percent):
-                self.progressSignal.emit( (100*slotIndex + percent) / len(laneViewList) ) 
+                self.progressSignal.emit( old_div((100*slotIndex + percent), len(laneViewList)) ) 
 
             # Client hook
             self.parentApplet.prepare_for_entire_export()
@@ -508,7 +512,7 @@ class DataExportGui(QWidget):
         
         # Create if necessary
         imageMultiSlot = self.topLevelOperator.Inputs[row]
-        if imageMultiSlot not in self.layerViewerGuis.keys():
+        if imageMultiSlot not in list(self.layerViewerGuis.keys()):
             layerViewer = self.createLayerViewer(opLane)
 
             # Maximize the x-y view by default.

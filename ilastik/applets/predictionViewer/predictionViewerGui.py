@@ -18,8 +18,9 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QColor
+from builtins import range
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor
 
 from lazyflow.operators import OpMultiArraySlicer2
 from volumina.api import LazyflowSource, AlphaModulatedLayer
@@ -69,7 +70,7 @@ class PredictionViewerGui( LayerViewerGui ):
         opSlicer.Input.connect( predictionSlot )
         opSlicer.AxisFlag.setValue('c')
 
-        colors = map( lambda c: QColor(*c), colors )
+        colors = [QColor(*c) for c in colors]
         for channel in range( len(colors), len(opSlicer.Slices) ):
             colors.append( PredictionViewerGui.DefaultColors[channel] )
 

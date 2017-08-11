@@ -16,9 +16,11 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#           http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 import numpy as np
 import vigra
 import itertools
@@ -59,7 +61,7 @@ class RegressorC(object):
         return result
     
     def fitcplex(self,X,Yl,tags, boxConstraints = None):
-        import cwrapper.cplex
+        from .cwrapper import cplex
         import ctypes
         c_float_p = ctypes.POINTER(ctypes.c_float)
         c_char_p= ctypes.POINTER(ctypes.c_char)
@@ -100,13 +102,13 @@ class RegressorC(object):
 
         #import sitecustomize
         #sitecustomize.debug_trace()
-        cwrapper.cplex.extlib.fit(X_p, Yl_p, w_p, ctypes.c_int(tags[0]), numRows, numCols, ctypes.c_double(self._C),
+        cplex.extlib.fit(X_p, Yl_p, w_p, ctypes.c_int(tags[0]), numRows, numCols, ctypes.c_double(self._C),
                                 ctypes.c_double(self._epsilon), numConstraints, boxValues_p, boxIndices_p,
                                 boxFeatures_p)#, dens_p)
         #self.dens[np.where(self.dens < 0)] = 0
 
     def fitgurobi(self,X,Yl,tags, boxConstraints = None):
-        import cwrapper.gurobi
+        from .cwrapper import gurobi
         import ctypes
         #extlib.main()
         c_float_p = ctypes.POINTER(ctypes.c_float)
@@ -148,7 +150,7 @@ class RegressorC(object):
 
         #import sitecustomize
         #sitecustomize.debug_trace()
-        cwrapper.gurobi.extlib.fit(X_p, Yl_p, w_p, ctypes.c_int(tags[0]), numRows, numCols, ctypes.c_double(self._C),
+        gurobi.extlib.fit(X_p, Yl_p, w_p, ctypes.c_int(tags[0]), numRows, numCols, ctypes.c_double(self._C),
                                 ctypes.c_double(self._epsilon), numConstraints, boxValues_p, boxIndices_p,
                                 boxFeatures_p)#, dens_p)
         #self.dens[np.where(self.dens < 0)] = 0
@@ -249,10 +251,10 @@ class RegressorGurobi(object):
                 model.addConstr(constr)        
         else:
             for i in range(X.shape[0]):
-		    constr=gu.quicksum([float(X_hat[i,j])*w_vars[j] for j in range(self.Nf+1)]) - u_vars1[i]<=float(Yl[i]) + self._epsilon
-		    model.addConstr(constr )
-		    constr=gu.quicksum([-(float(X_hat[i,j])*w_vars[j])  for j in range(self.Nf+1)]) - u_vars2[i]<=-float(Yl[i]) + self._epsilon
-		    model.addConstr(constr)        
+                constr=gu.quicksum([float(X_hat[i,j])*w_vars[j] for j in range(self.Nf+1)]) - u_vars1[i]<=float(Yl[i]) + self._epsilon
+                model.addConstr(constr )
+                constr=gu.quicksum([-(float(X_hat[i,j])*w_vars[j])  for j in range(self.Nf+1)]) - u_vars2[i]<=-float(Yl[i]) + self._epsilon
+                model.addConstr(constr)        
 
         model.update()
         #model.setParam('OutputFlag', False) 
@@ -418,7 +420,7 @@ class SVR(object):
         if sigma > 0:
             try:
                 dot = vigra.filters.gaussianSmoothing(dot.astype(np.float32).squeeze(), sigma) #TODO: use it later, but this
-            except Exception,e:
+            except Exception as e:
                 logger.error( "HHHHHHHH {} {}".format(dot.shape,dot.dtype) )
                 logger.error(str(e))
                 raise Exception
@@ -724,14 +726,14 @@ if __name__ == "__main__":
     boxConstraints = {"boxValues": boxValues, "boxIndices" : boxIndices, "boxFeatures" :boxFeatures}
     #boxConstraints = None
 
-    print testtags
+    print(testtags)
     numRegressors = 1
     success = Counter.fitPrepared(testimg[testmapping,:], testdot[testmapping], testtags,
                                   boxConstraints = boxConstraints, numRegressors = numRegressors)
-    print Counter._regressor[0].w
+    print(Counter._regressor[0].w)
     #3uccess = Counter.fitPrepared(testimg[indices,:], testdot[indices], testtags[:len(indices)], epsilon = 0.000)
     #print Counter.w, Counter.
-    print "learning finished"
+    print("learning finished")
 
     #conversion step
     #Q = kernelize(B, method = "gaussian")
@@ -746,10 +748,10 @@ if __name__ == "__main__":
     #print Counter.b, Counter.w
     newdot = Counter.predict(backup_image)
 
-    print "prediction"
+    print("prediction")
     #print img
     #print newdot
-    print "sum", np.sum(newdot) / numRegressors
+    print("sum", np.sum(newdot) / numRegressors)
     #try: 
     #    import matplotlib.pyplot as plt
     #    import matplotlib
@@ -790,5 +792,4 @@ if __name__ == "__main__":
     #  print 'x: ', sol[0], 'y: ', sol[1], 'z: ', sol[2]
     #for i in range(numVariables):
     #    m.addVar()
-
 

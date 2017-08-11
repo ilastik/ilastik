@@ -1,6 +1,7 @@
-from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal
-from PyQt4.QtGui import QDialog, QMessageBox
+from builtins import range
+from PyQt5 import uic
+from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QDialog, QMessageBox
 from os.path import split as split_path
 
 
@@ -82,7 +83,7 @@ class ProgressDialog(QDialog):
         self.trigger_popup.emit(level, title, description, args, False)
 
 if __name__ == '__main__':
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
     from time import sleep
     app = QApplication([])
 

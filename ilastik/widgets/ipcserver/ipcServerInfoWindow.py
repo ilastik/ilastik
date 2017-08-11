@@ -1,5 +1,5 @@
-from PyQt4.QtGui import *
-from PyQt4 import uic
+from PyQt5.QtWidgets import QMainWindow
+from PyQt5 import uic
 import os
 
 

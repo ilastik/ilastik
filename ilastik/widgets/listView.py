@@ -18,12 +18,10 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import os
-from PyQt4.QtGui import QTableView, \
-    QAbstractItemView, \
-    QHeaderView,  QStackedWidget, \
-    QLabel, QSizePolicy
-from PyQt4.QtCore import Qt, QString
+from PyQt5.QtWidgets import QTableView, QAbstractItemView, QHeaderView,  QStackedWidget, QLabel, QSizePolicy
+from PyQt5.QtCore import Qt
 
 import logging
 logger = logging.getLogger(__name__)
@@ -53,7 +51,7 @@ class ListView(QStackedWidget):
         self._table.setShowGrid(False)
     
     def resetEmptyMessage(self,pystring):
-        self.emptyMessage.setText(QString(pystring))
+        self.emptyMessage.setText(pystring)
 
     def tableViewCellClicked(self, modelIndex):
         '''
@@ -90,8 +88,8 @@ class ListView(QStackedWidget):
         table.setShowGrid(False)
         table.horizontalHeader().hide()
         table.verticalHeader().hide()
-        #table.horizontalHeader().setResizeMode(1, QHeaderView.Stretch)
-        table.horizontalHeader().setResizeMode(QHeaderView.ResizeToContents)
+        #table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         
         
         table.setSelectionMode(QAbstractItemView.SingleSelection)
@@ -148,7 +146,7 @@ class ListView(QStackedWidget):
         contentH = max(90, contentH) 
         
         h = hHeader.height() + contentH + doubleFrame;
-        from PyQt4.QtCore import QSize
+        from PyQt5.QtCore import QSize
         return QSize(w,h)
 
     def sizeHint(self):

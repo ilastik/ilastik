@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import copy
 import h5py
@@ -35,14 +36,14 @@ def convert_predictions_to_uncertainties( input_path, parsed_export_args ):
             last_progress[0] = progress_percent
             sys.stdout.write( " {}".format(progress_percent) )
     
-    print "Exporting results to : {}".format( opExport.ExportPath.value )    
+    print("Exporting results to : {}".format( opExport.ExportPath.value ))    
     sys.stdout.write("Progress:")
     opExport.progressSignal.subscribe(print_progress)
 
     # Begin export
     opExport.run_export()
     sys.stdout.write("\n")
-    print "DONE."
+    print("DONE.")
     
 def all_dataset_internal_paths(f):
     """
@@ -50,8 +51,7 @@ def all_dataset_internal_paths(f):
     """
     allkeys = []
     f.visit(allkeys.append)
-    dataset_keys = filter(lambda key: isinstance(f[key], h5py.Dataset), 
-                          allkeys)
+    dataset_keys = [key for key in allkeys if isinstance(f[key], h5py.Dataset)]
     return dataset_keys
 
 if __name__ == "__main__":

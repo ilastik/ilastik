@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -38,5 +39,5 @@ class ConnectedComponentsApplet(StandardApplet):
 
     @property
     def singleLaneGuiClass(self):
-        from connectedComponentsGui import ConnectedComponentsGui
+        from .connectedComponentsGui import ConnectedComponentsGui
         return ConnectedComponentsGui

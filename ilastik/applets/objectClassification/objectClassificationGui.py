@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,10 +19,13 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import *
-from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal, QSize, QStringList
-from PyQt4.QtGui import QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QColor, QProgressBar
+from builtins import range
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5 import uic
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal, QSize
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QFileDialog, QTableWidget, QTableWidgetItem, QGridLayout, QProgressBar
 from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
@@ -31,6 +35,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
 import os
+import sys
 import copy
 import vigra
 
@@ -55,7 +60,6 @@ import volumina.colortables as colortables
 from volumina.api import \
     LazyflowSource, GrayscaleLayer, ColortableLayer, AlphaModulatedLayer, \
     ClickableColortableLayer, LazyflowSinkSource
-from volumina.utility import encode_from_qstring
 
 from volumina.interpreter import ClickInterpreter
 from volumina.utility import ShortcutManager
@@ -189,7 +193,7 @@ class ObjectClassificationGui(LabelingGui):
         nfeatures = 0
         
         if already_selected is not None:
-            for plugin_features in already_selected.itervalues():
+            for plugin_features in already_selected.values():
                 nfeatures += len(plugin_features)
         self.labelingDrawerUi.featuresSubset.setText("{} features selected,\nsome may have multiple channels".format(nfeatures))
 
@@ -225,14 +229,16 @@ class ObjectClassificationGui(LabelingGui):
         return [m]
 
     def exportLabelInfo(self):
-        file_path = QFileDialog.getSaveFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")
-        topLevelOp = self.topLevelOperatorView.viewed_operator()
-        topLevelOp.exportLabelInfo(file_path)
+        file_path, _filter = QFileDialog.getSaveFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")
+        if file_path:
+            topLevelOp = self.topLevelOperatorView.viewed_operator()
+            topLevelOp.exportLabelInfo(file_path)
 
     def importLabelInfo(self):
-        file_path = QFileDialog.getOpenFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")        
-        topLevelOp = self.topLevelOperatorView.viewed_operator()
-        topLevelOp.importLabelInfo(file_path)
+        file_path, _filter = QFileDialog.getOpenFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")
+        if file_path:
+            topLevelOp = self.topLevelOperatorView.viewed_operator()
+            topLevelOp.importLabelInfo(file_path)
 
     @property
     def labelMode(self):
@@ -329,14 +335,14 @@ class ObjectClassificationGui(LabelingGui):
         for pluginInfo in plugins:
             availableFeatures = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
             if len(availableFeatures) > 0:
-                if pluginInfo.name in self.applet._selectedFeatures.keys(): 
-                    assert pluginInfo.name in computedFeatures.keys(), 'Object Classification: {} not found in available (computed) object features'.format(pluginInfo.name)
+                if pluginInfo.name in list(self.applet._selectedFeatures.keys()): 
+                    assert pluginInfo.name in list(computedFeatures.keys()), 'Object Classification: {} not found in available (computed) object features'.format(pluginInfo.name)
 
                 if not pluginInfo.name in selectedFeatures and pluginInfo.name in self.applet._selectedFeatures:
                         selectedFeatures[pluginInfo.name]=dict()
 
-                        for feature in self.applet._selectedFeatures[pluginInfo.name].keys():
-                            if feature in availableFeatures.keys():
+                        for feature in list(self.applet._selectedFeatures[pluginInfo.name].keys()):
+                            if feature in list(availableFeatures.keys()):
                                 selectedFeatures[pluginInfo.name][feature] = availableFeatures[feature]
 
         dlg = FeatureSubSelectionDialog(computedFeatures,
@@ -348,7 +354,7 @@ class ObjectClassificationGui(LabelingGui):
 
             mainOperator.SelectedFeatures.setValue(dlg.selectedFeatures)
             nfeatures = 0
-            for plugin_features in dlg.selectedFeatures.itervalues():
+            for plugin_features in dlg.selectedFeatures.values():
                 nfeatures += len(plugin_features)
             self.labelingDrawerUi.featuresSubset.setText("{} features selected,\nsome may have multiple channels".format(nfeatures))
         mainOperator.ComputedFeatureNames.setDirty(())
@@ -426,7 +432,7 @@ class ObjectClassificationGui(LabelingGui):
 
     def _onLabelChanged(self, parentFun, mapf, slot):
         parentFun()
-        new = map(mapf, self.labelListData)
+        new = list(map(mapf, self.labelListData))
         old = slot.value
         slot.setValue(_listReplace(old, new))
 
@@ -861,8 +867,8 @@ class ObjectClassificationGui(LabelingGui):
             temp = None
         if temp is not None:
             new_labels, old_labels_lost, new_labels_lost = temp
-            labels_lost = dict(old_labels_lost.items() + new_labels_lost.items())
-            if sum(len(v) for v in labels_lost.itervalues()) > 0:
+            labels_lost = dict(list(old_labels_lost.items()) + list(new_labels_lost.items()))
+            if sum(len(v) for v in labels_lost.values()) > 0:
                 self.warnLost(labels_lost)
 
     @threadRouted
@@ -881,7 +887,7 @@ class ObjectClassificationGui(LabelingGui):
 
         _sep = "\t"
         cases = []
-        for k, val in labels_lost.iteritems():
+        for k, val in labels_lost.items():
             if len(val) > 0:
                 msg = messages.get(k, default_message)
                 axis = _sep.join(["X", "Y", "Z"])
@@ -1057,7 +1063,7 @@ class LabelAssistDialog(QDialog):
         self.progressBar.hide()
         self.computeButton.setEnabled(True)
                 
-        for time, feature in features.iteritems():
+        for time, feature in features.items():
             # Insert row
             rowNum = self.table.rowCount()
             self.table.insertRow(self.table.rowCount())
@@ -1091,7 +1097,7 @@ class LabelAssistDialog(QDialog):
             self.table.setItem(rowNum, 3, item)
         
         # Resize column size to fit dialog size
-        self.table.horizontalHeader().setResizeMode(QHeaderView.Stretch)   
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)   
         
         # Sort by max object area
         self.table.setSortingEnabled(True)                         
@@ -1131,6 +1137,6 @@ class BadObjectsDialog(QMessageBox):
         parts = []
         for s in (self.text(), self.informativeText(), self.detailedText()):
             if len(s) > 0:
-                parts.append(encode_from_qstring(s))
+                parts.append(s)
         msg = "\n".join(parts)
         logger.warn(msg)

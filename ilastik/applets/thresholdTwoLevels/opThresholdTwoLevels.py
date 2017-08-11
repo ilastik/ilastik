@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,6 +20,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
+from past.utils import old_div
 import logging
 
 import numpy as np
@@ -30,9 +34,14 @@ from lazyflow.operators.generic import OpConvertDtype, OpPixelOperator
 
 
 # local
-from thresholdingTools import OpAnisotropicGaussianSmoothing5d, select_labels
-from ipht import threshold_from_cores
-from _OpGraphCut import segmentGC
+from .thresholdingTools import OpAnisotropicGaussianSmoothing5d, select_labels
+from .ipht import threshold_from_cores
+
+try:
+    from ._OpGraphCut import segmentGC
+    _has_graphcut = True
+except ImportError:
+    _has_graphcut = False    
 
 logger = logging.getLogger(__name__)
 
@@ -302,8 +311,8 @@ class OpLabeledThreshold(Operator):
         above_threshold_mask = (data_zyx >= ft)
         below_threshold_mask = ~above_threshold_mask
 
-        data_zyx[below_threshold_mask] *= 0.5/ft
-        data_zyx[above_threshold_mask] = 0.5 + (data_zyx[above_threshold_mask] - ft)/(1-ft)
+        data_zyx[below_threshold_mask] *= old_div(0.5,ft)
+        data_zyx[above_threshold_mask] = 0.5 + old_div((data_zyx[above_threshold_mask] - ft),(1-ft))
         
         binary_seg_zyx = segmentGC( data_zyx, beta ).astype(np.uint8)
         del data_zyx

@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,7 +21,7 @@
 ###############################################################################
 import threading
 from functools import partial, wraps
-from PyQt4.QtCore import QObject, pyqtSignal, Qt
+from PyQt5.QtCore import QObject, pyqtSignal, Qt
 
 class ThreadRouter(QObject):
     """
@@ -90,7 +91,7 @@ threadRouted = threadRoutedWithRouter(None)
 
 if __name__ == "__main__":
     import time
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
 
     class TestObject(QObject):
         
@@ -101,16 +102,16 @@ if __name__ == "__main__":
         @threadRouted
         def printThreadId(self):
             time.sleep(0.5)
-            print "thread id = ", threading.current_thread().ident
+            print("thread id = ", threading.current_thread().ident)
 
     app = QApplication([])
     
     o = TestObject()
     
     def test():
-        print "thread id = ", threading.current_thread().ident
+        print("thread id = ", threading.current_thread().ident)
         o.printThreadId()
-        print "Finished."
+        print("Finished.")
     
     th = threading.Thread(target=test)
     th.start()

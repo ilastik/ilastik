@@ -1,9 +1,11 @@
+from __future__ import print_function
 import socket
 import logging
 
 import numpy
-from PyQt4.QtCore import Qt, QEvent
-from PyQt4.QtGui import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox, QMouseEvent
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtGui import QMouseEvent
+from PyQt5.QtWidgets import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox
 
 from libdvid import DVIDException, ErrMsg, DVIDNodeService
 from libdvid.voxels import VoxelsAccessor, VoxelsMetadata, DVID_BLOCK_WIDTH
@@ -59,7 +61,7 @@ class DvidDataSelectionBrowser(ContentsBrowser):
         and event.type() == QEvent.MouseButtonPress \
         and event.button() == Qt.RightButton:
             item = self._repo_treewidget.itemAt(event.pos())
-            repo_uuid, dataname, typename = item.data(0, Qt.UserRole).toPyObject()
+            repo_uuid, dataname, typename = item.data(0, Qt.UserRole)
             is_roi = (typename == 'roi')
             is_voxels = (typename in ['labelblk', 'uint8blk'])
             if (is_voxels or is_roi) \
@@ -134,14 +136,14 @@ if __name__ == "__main__":
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    from PyQt4.QtGui import QApplication    
+    from PyQt5.QtWidgets import QApplication    
     app = QApplication([])
     browser = DvidDataSelectionBrowser(["localhost:8000", "emdata2:7000"],
                                        default_nodes={ "localhost:8000" : '57c4c6a0740d4509a02da6b9453204cb'},
                                        mode="select_existing")
 
     if browser.exec_() == DvidDataSelectionBrowser.Accepted:
-        print "The dialog was accepted with result: ", browser.get_selection()
-        print "And subvolume: ", browser.get_subvolume_roi()
+        print("The dialog was accepted with result: ", browser.get_selection())
+        print("And subvolume: ", browser.get_subvolume_roi())
     else:
-        print "The dialog was rejected."
+        print("The dialog was rejected.")

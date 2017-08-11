@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import math
 
 from lazyflow.graph import InputSlot, OutputSlot
@@ -92,7 +95,7 @@ class OpStructuredTracking(OpConservationTracking):
         self._ndim = 2 if self.LabelImage.meta.shape[3] == 1 else 3
 
         for t in range(self.LabelImage.meta.shape[0]):
-            if t not in self.labels.keys():
+            if t not in list(self.labels.keys()):
                 self.labels[t]={}
 
     def execute(self, slot, subindex, roi, result):
@@ -138,7 +141,7 @@ class OpStructuredTracking(OpConservationTracking):
             self.progressVisitor=DefaultProgressVisitor()
 
         emptyAnnotations = False
-        for crop in self.Annotations.value.keys():
+        for crop in list(self.Annotations.value.keys()):
             emptyCrop = self.Annotations.value[crop]["divisions"]=={} and self.Annotations.value[crop]["labels"]=={}
             if emptyCrop and not withBatchProcessing:
                 gui._criticalMessage("Error: Weights can not be calculated because training annotations for crop {} are missing. ".format(crop) +\
@@ -192,7 +195,7 @@ class OpStructuredTracking(OpConservationTracking):
             new_max_nearest_neighbors += 1
             logger.info("new_max_nearest_neighbors: {}".format(new_max_nearest_neighbors))
 
-            time_range = range (0,self.LabelImage.meta.shape[0])
+            time_range = list(range(0,self.LabelImage.meta.shape[0]))
 
             parameters['max_nearest_neighbors'] = new_max_nearest_neighbors
             self.Parameters.setValue(parameters, check_changed=False)
@@ -207,12 +210,12 @@ class OpStructuredTracking(OpConservationTracking):
             foundAllArcs = True;
             numAllAnnotatedDivisions = 0
 
-            self.features = self.ObjectFeatures(range(0,self.LabelImage.meta.shape[0])).wait()
+            self.features = self.ObjectFeatures(list(range(0,self.LabelImage.meta.shape[0]))).wait()
 
-            for cropKey in self.Crops.value.keys():
+            for cropKey in list(self.Crops.value.keys()):
                 if foundAllArcs:
 
-                    if not cropKey in self.Annotations.value.keys():
+                    if not cropKey in list(self.Annotations.value.keys()):
                         if not withBatchProcessing:
                             gui._criticalMessage("You have not trained your training for " + str(cropKey) + \
                                               ". \nGo back to the Training applet and train on all crops!")
@@ -221,17 +224,17 @@ class OpStructuredTracking(OpConservationTracking):
                     crop = self.Annotations.value[cropKey]
                     timeRange = self.Crops.value[cropKey]['time']
 
-                    if "labels" in crop.keys():
+                    if "labels" in list(crop.keys()):
 
                         labels = crop["labels"]
 
-                        for time in labels.keys():
+                        for time in list(labels.keys()):
                             if time in range(timeRange[0],timeRange[1]+1):
 
                                 if not foundAllArcs:
                                     break
 
-                                for label in labels[time].keys():
+                                for label in list(labels[time].keys()):
 
                                     if not foundAllArcs:
                                         break
@@ -293,7 +296,7 @@ class OpStructuredTracking(OpConservationTracking):
                                         self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
 
                                     elif type[0] in ["FIRST", "LAST", "INTERMEDIATE", "SINGLETON(FIRST_LAST)"]:
-                                        if (time, int(label)) in hypothesesGraph._graph.node.keys():
+                                        if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
                                             hypothesesGraph._graph.node[(time, int(label))]['value'] = trackCount
                                             logger.info("[structuredTrackingGui] NODE: {} {}".format(time, int(label)))
                                             # print "[structuredTrackingGui] NODE: {} {} {}".format(time, int(label), int(trackCount))
@@ -304,11 +307,11 @@ class OpStructuredTracking(OpConservationTracking):
                                             foundAllArcs = False
                                             break
 
-                    if foundAllArcs and "divisions" in crop.keys():
+                    if foundAllArcs and "divisions" in list(crop.keys()):
                         divisions = crop["divisions"]
 
                         numAllAnnotatedDivisions = numAllAnnotatedDivisions + len(divisions)
-                        for track in divisions.keys():
+                        for track in list(divisions.keys()):
                             if not foundAllArcs:
                                 break
 
@@ -390,11 +393,11 @@ class OpStructuredTracking(OpConservationTracking):
         norm = math.sqrt(norm)
 
         if norm > 0.0000001:
-            self.TransitionWeight.setValue(weights[0]/norm)
-            self.DetectionWeight.setValue(weights[1]/norm)
-            self.DivisionWeight.setValue(weights[2]/norm)
-            self.AppearanceWeight.setValue(weights[3]/norm)
-            self.DisappearanceWeight.setValue(weights[4]/norm)
+            self.TransitionWeight.setValue(old_div(weights[0],norm))
+            self.DetectionWeight.setValue(old_div(weights[1],norm))
+            self.DivisionWeight.setValue(old_div(weights[2],norm))
+            self.AppearanceWeight.setValue(old_div(weights[3],norm))
+            self.DisappearanceWeight.setValue(old_div(weights[4],norm))
 
         if not withBatchProcessing:
             gui._drawer.detWeightBox.setValue(self.DetectionWeight.value)
@@ -434,11 +437,11 @@ class OpStructuredTracking(OpConservationTracking):
             norm = math.sqrt(norm)
 
             if norm > 0.0000001:
-                self.TransitionWeight.setValue(weights[0]/norm)
-                self.DetectionWeight.setValue(weights[1]/norm)
-                self.DivisionWeight.setValue(weights[2]/norm)
-                self.AppearanceWeight.setValue(weights[3]/norm)
-                self.DisappearanceWeight.setValue(weights[4]/norm)
+                self.TransitionWeight.setValue(old_div(weights[0],norm))
+                self.DetectionWeight.setValue(old_div(weights[1],norm))
+                self.DivisionWeight.setValue(old_div(weights[2],norm))
+                self.AppearanceWeight.setValue(old_div(weights[3],norm))
+                self.DisappearanceWeight.setValue(old_div(weights[4],norm))
 
             if not withBatchProcessing:
                 gui._drawer.detWeightBox.setValue(self.DetectionWeight.value)
@@ -470,7 +473,7 @@ class OpStructuredTracking(OpConservationTracking):
 
     def getLabelInCrop(self, cropKey, time, track):
         labels = self.Annotations.value[cropKey]["labels"][time]
-        for label in labels.keys():
+        for label in list(labels.keys()):
             if self.Annotations.value[cropKey]["labels"][time][label] == set([track]):
                 return label
         return -1
@@ -502,7 +505,7 @@ class OpStructuredTracking(OpConservationTracking):
 
         firstTime = -1
         for t in range(crop["time"][1],time,-1):
-            if t in labels.keys():
+            if t in list(labels.keys()):
                 for label in labels[t]:
                     if track in labels[t][label]:
                         firstTime = t
@@ -520,13 +523,13 @@ class OpStructuredTracking(OpConservationTracking):
                 return [type]
 
     def getLabel(self, time, track, labels):
-        for label in labels[time].keys():
+        for label in list(labels[time].keys()):
             if labels[time][label] == set([track]):
                 return label
         return False
 
     def getLabelT(self, track, labelsT):
-        for label in labelsT.keys():
+        for label in list(labelsT.keys()):
             if labelsT[label] == set([track]):
                 return label
         return False
@@ -553,21 +556,21 @@ class OpStructuredTracking(OpConservationTracking):
         labels = annotations['labels']
         divisions = annotations['divisions']
 
-        for t in labels.keys():
+        for t in list(labels.keys()):
             for obj in labels[t]:
                 trackSet = labels[t][obj]
-                if (not -1 in trackSet) and str(obj) in traxelToUuidMap[str(t)].keys():
+                if (not -1 in trackSet) and str(obj) in list(traxelToUuidMap[str(t)].keys()):
                     traxelgraph._graph.node[(t,obj)]['value'] = len(trackSet)
 
-        for t in labels.keys():
+        for t in list(labels.keys()):
             if t < max(labels.keys()):
-                for source in labels[t].keys():
-                    if (misdetectionLabel not in labels[t][source]) and t+1 in labels.keys():
-                        for dest in labels[t+1].keys():
+                for source in list(labels[t].keys()):
+                    if (misdetectionLabel not in labels[t][source]) and t+1 in list(labels.keys()):
+                        for dest in list(labels[t+1].keys()):
                             if (misdetectionLabel not in labels[t+1][dest]):
                                 intersectSet = labels[t][source].intersection(labels[t+1][dest])
                                 lenIntersectSet = len(intersectSet)
-                                assert ((t,source) in traxelgraph._graph.edge.keys() and (t+1,dest) in traxelgraph._graph.edge[(t,source)].keys(),
+                                assert ((t,source) in list(traxelgraph._graph.edge.keys()) and (t+1,dest) in list(traxelgraph._graph.edge[(t,source)].keys()),
                                         "Annotated arc that you are setting 'value' of is NOT in the hypotheses graph. " + \
                                         "Your two objects have either very dissimilar features or they are spatially distant. " + \
                                         "Increase maxNearestNeighbors in your project or force the addition of this arc by changing the code here :)" + \
@@ -575,7 +578,7 @@ class OpStructuredTracking(OpConservationTracking):
                                 if lenIntersectSet > 0:
                                     traxelgraph._graph.edge[(t,source)][(t+1,dest)]['value'] = lenIntersectSet
 
-        for parentTrack in divisions.keys():
+        for parentTrack in list(divisions.keys()):
             t = divisions[parentTrack][1]
             childrenTracks = divisions[parentTrack][0]
             parent = self.getLabelT(parentTrack,labels[t])

@@ -18,10 +18,11 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import os
 import sys
 import numpy
-from PyQt4.QtGui import QApplication
+from PyQt5.QtWidgets import QApplication
 from tests.helpers import ShellGuiTestCaseBase
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from lazyflow.operators import OpPixelFeaturesPresmoothed

@@ -19,6 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
+from builtins import range
+from builtins import filter
 import os
 import re
 import logging
@@ -27,9 +29,10 @@ from functools import partial
 
 # Third-party
 import numpy
-from PyQt4 import uic
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QIcon, QColor, QApplication, QMessageBox, QAction
+from PyQt5 import uic
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QIcon
+from PyQt5.QtWidgets import QApplication, QMessageBox, QAction
 
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer
@@ -51,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 #===----------------------------------------------------------------------------------------------------------------===
 
-class Tool():
+class Tool(object):
     """Enumerate the types of toolbar buttons."""
     Navigation = 0 # Arrow
     Paint      = 1
@@ -445,7 +448,7 @@ class LabelingGui(LayerViewerGui):
         Implement the GUI's response to the user selecting a new tool.
         """
         # Uncheck all the other buttons
-        for tool, button in self.toolButtons.items():
+        for tool, button in list(self.toolButtons.items()):
             if tool != toolId:
                 button.setChecked(False)
 
@@ -777,7 +780,7 @@ class LabelingGui(LayerViewerGui):
     def getLayer(self, name):
         """find a layer by name"""
         try:
-            labellayer = itertools.ifilter(lambda l: l.name == name, self.layerstack).next()
+            labellayer = next(filter(lambda l: l.name == name, self.layerstack))
         except StopIteration:
             return None
         else:

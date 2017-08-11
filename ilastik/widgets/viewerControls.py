@@ -22,8 +22,8 @@
 import os
 
 # Third-party
-from PyQt4 import uic
-from PyQt4.QtGui import QWidget
+from PyQt5 import uic
+from PyQt5.QtWidgets import QWidget
 
 from volumina.widgets.exportHelper import get_settings_and_export_layer
 

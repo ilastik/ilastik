@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,8 +21,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opBlockwiseObjectClassification import OpBlockwiseObjectClassification
-from blockwiseObjectClassificationSerializer import BlockwiseObjectClassificationSerializer
+from .opBlockwiseObjectClassification import OpBlockwiseObjectClassification
+from .blockwiseObjectClassificationSerializer import BlockwiseObjectClassificationSerializer
 
 class BlockwiseObjectClassificationApplet(StandardApplet):
     def __init__(self,
@@ -43,7 +44,7 @@ class BlockwiseObjectClassificationApplet(StandardApplet):
     
     @property
     def singleLaneGuiClass(self):
-        from blockwiseObjectClassificationGui import BlockwiseObjectClassificationGui
+        from .blockwiseObjectClassificationGui import BlockwiseObjectClassificationGui
         return BlockwiseObjectClassificationGui
 
     @property

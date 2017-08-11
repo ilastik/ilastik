@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import copy
 import numpy
 import vigra
@@ -122,7 +125,7 @@ class OpIIBoostFeatureSelection(Operator):
                  "IIBoost Pixel Classification: Feature Selection",
                  "This classifier handles only 3D data. Your input data has a time dimension, which is not allowed.")
 
-        if not set('xyz').issubset(tagged_shape.keys()):
+        if not set('xyz').issubset(list(tagged_shape.keys())):
             raise DatasetConstraintError(
                  "IIBoost Pixel Classification: Feature Selection",
                  "This classifier handles only 3D data. Your input data does not have all three spatial dimensions (xyz).")
@@ -242,7 +245,7 @@ class OpHessianEigenvectors( Operator ):
         z_tag = self.Input.meta.axistags['z']
         self.z_anisotropy_factor = 1.0
         if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
-            self.z_anisotropy_factor = z_tag.resolution / x_tag.resolution
+            self.z_anisotropy_factor = old_div(z_tag.resolution, x_tag.resolution)
             logger.debug( "Anisotropy factor: {}/{} = {}".format( z_tag.resolution, x_tag.resolution, self.z_anisotropy_factor ) )
     
     def execute(self, slot, subindex, roi, result):

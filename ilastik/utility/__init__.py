@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,10 +19,10 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from simpleSignal import SimpleSignal
-from bind import bind
-from multiLaneOperator import MultiLaneOperatorABC
-from operatorSubView import OperatorSubView
-from opMultiLaneWrapper import OpMultiLaneWrapper
-from log_exception import log_exception
-from autocleaned_tempdir import autocleaned_tempdir
+from .simpleSignal import SimpleSignal
+from .bind import bind
+from .multiLaneOperator import MultiLaneOperatorABC
+from .operatorSubView import OperatorSubView
+from .opMultiLaneWrapper import OpMultiLaneWrapper
+from .log_exception import log_exception
+from .autocleaned_tempdir import autocleaned_tempdir

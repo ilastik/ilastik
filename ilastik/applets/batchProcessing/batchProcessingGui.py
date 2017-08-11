@@ -18,14 +18,15 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import os
 import logging
 from collections import OrderedDict
 from functools import partial
 logger = logging.getLogger(__name__)
 
-from PyQt4.QtCore import QTimer
-from PyQt4.QtGui import QApplication, QWidget, QTabWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
                         QLabel, QSpacerItem, QSizePolicy, QListWidget, QMessageBox
 
 from lazyflow.request import Request

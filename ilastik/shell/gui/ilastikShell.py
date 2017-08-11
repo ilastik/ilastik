@@ -19,8 +19,12 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from __future__ import absolute_import
 # Standard
-from Queue import Queue
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
+from queue import Queue
 import re
 import os
 import time
@@ -34,12 +38,14 @@ import threading
 import numpy
 
 # PyQt
-from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, Qt, QUrl, QTimer
-from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication, \
-    QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
-    QProgressBar, QInputDialog, QIcon, QFont, QToolButton, QVBoxLayout, \
-    QHBoxLayout, QSizePolicy, QDesktopServices, QLabel, QDialog, QSpinBox, QDialogButtonBox
+from PyQt5 import uic
+from PyQt5.QtCore import pyqtSignal, QObject, Qt, QUrl, QTimer
+from PyQt5.QtGui import QKeySequence, QIcon, QFont, QDesktopServices
+from PyQt5.QtWidgets import QMainWindow, QWidget, QMenu, QApplication, \
+                            QStackedWidget, qApp, QFileDialog, QMessageBox, \
+                            QProgressBar, QInputDialog, QToolButton, QVBoxLayout, \
+                            QHBoxLayout, QSizePolicy, QLabel, QDialog, QSpinBox, \
+                            QDialogButtonBox
 
 # lazyflow
 from ilastik.widgets.ipcserver.tcpServerInfoWidget import TCPServerInfoWidget
@@ -52,8 +58,7 @@ from lazyflow.utility import timeLogged, isUrl
 from lazyflow.request import Request
 
 # volumina
-from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, \
-    encode_from_qstring
+from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager
 
 # ilastik
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
@@ -64,7 +69,7 @@ from ilastik.applets.base.appletGuiInterface import AppletGuiInterface, VolumeVi
 from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.config import cfg as ilastik_config
-from iconMgr import ilastikIcons
+from .iconMgr import ilastikIcons
 from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
@@ -233,7 +238,7 @@ class ProgressDisplayManager(QObject):
     def handleAppletProgressImpl(self, index, percentage, cancelled):
         # No need for locking; this function is always run from the GUI thread
         if cancelled:
-            if index in self.appletPercentages.keys():
+            if index in list(self.appletPercentages.keys()):
                 del self.appletPercentages[index]
         else:
             # Take max (never go back down)
@@ -247,10 +252,10 @@ class ProgressDisplayManager(QObject):
 
         numActive = len(self.appletPercentages)
         if numActive > 0:
-            totalPercentage = numpy.sum(self.appletPercentages.values()) // numActive
+            totalPercentage = numpy.sum(list(self.appletPercentages.values())) // numActive
 
         # If any applet gave -1, put progress bar in "busy indicator" mode
-        if (TinyVector(self.appletPercentages.values()) == -1).any():
+        if (TinyVector(list(self.appletPercentages.values())) == -1).any():
             self.progressBar.setMaximum(0)
         else:
             self.progressBar.setMaximum(100)
@@ -670,12 +675,11 @@ class IlastikShell(QMainWindow):
                 defaultPath = os.path.join(os.path.expanduser('~'), filename)
             else:
                 defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
-            statsPath = QFileDialog.getSaveFileName(
+            stats_path, _filter = QFileDialog.getSaveFileName(
                 self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
                 options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
-            if not statsPath.isNull():
-                stats_path = encode_from_qstring(statsPath)
+            if stats_path:
                 pstats_path = os.path.splitext(stats_path)[0] + '.pstats'
                 PreferencesManager().set('shell', 'recent sorted profile stats', stats_path)
 
@@ -703,12 +707,11 @@ class IlastikShell(QMainWindow):
                 defaultPath = os.path.join(os.path.expanduser('~'), filename)
             else:
                 defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
-            statsPath = QFileDialog.getSaveFileName(
+            stats_path, _filter = QFileDialog.getSaveFileName(
                 self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
                 options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
-            if not statsPath.isNull():
-                stats_path = encode_from_qstring(statsPath)
+            if stats_path:
                 PreferencesManager().set('shell', 'recent sorted profile stats', stats_path)
 
                 # Export the yappi stats to builtin pstats format, 
@@ -825,12 +828,11 @@ class IlastikShell(QMainWindow):
             else:
                 defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
             
-            htmlPath = QFileDialog.getSaveFileName(
+            html_path, _filter = QFileDialog.getSaveFileName(
                 self, "Export allocation tracking table", defaultPath, "HTML files (*.html)",
                 options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
-            if not htmlPath.isNull():
-                html_path = encode_from_qstring(htmlPath)
+            if html_path:
                 PreferencesManager().set('shell', 'allocation tracking output html', html_path)
                 self._allocation_tracker.write_html(html_path)
 
@@ -900,12 +902,11 @@ class IlastikShell(QMainWindow):
         else:
             defaultPath = os.path.join(os.path.split(recentPath)[0], op.name + '.svg')
 
-        svgPath = QFileDialog.getSaveFileName(
+        svgPath, _filter = QFileDialog.getSaveFileName(
             self, "Save operator diagram", defaultPath, "Inkscape Files (*.svg)",
             options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
-        if not svgPath.isNull():
-            svgPath = encode_from_qstring(svgPath)
+        if svgPath:
             PreferencesManager().set('shell', 'recent debug diagram', svgPath)
             lazyflow.tools.schematic.generateSvgFileForOperator(svgPath, op, detail)
             QDesktopServices.openUrl(QUrl.fromLocalFile(svgPath))
@@ -939,7 +940,7 @@ class IlastikShell(QMainWindow):
             if readOnly:
                 windowTitle += " [Read Only]"
 
-        self.setWindowTitle(decode_to_qstring(windowTitle))
+        self.setWindowTitle(windowTitle)
 
         # Enable/Disable menu items
         projectIsOpen = self.projectManager is not None and not self.projectManager.closed
@@ -1195,14 +1196,14 @@ class IlastikShell(QMainWindow):
         self._clearStackedWidget(self.viewerControlStack)
 
         # Remove all drawers
-        for i in reversed(range(self.appletBar.count())):
+        for i in reversed(list(range(self.appletBar.count()))):
             widget = self.appletBar.widget(i)
             widget.hide()
             widget.setParent(None)
             self.appletBar.removeItem(i)
 
     def _clearStackedWidget(self, stackedWidget):
-        for i in reversed(range(stackedWidget.count())):
+        for i in reversed(list(range(stackedWidget.count()))):
             lastWidget = stackedWidget.widget(i)
             stackedWidget.removeWidget(lastWidget)
 
@@ -1262,12 +1263,11 @@ class IlastikShell(QMainWindow):
                 # For testing, it's easier if we don't record the overwrite confirmation
                 options |= QFileDialog.DontConfirmOverwrite
 
-            projectFilePath = QFileDialog.getSaveFileName(self, caption, defaultPath,
+            projectFilePath, _filter = QFileDialog.getSaveFileName(self, caption, defaultPath,
                                                           "Ilastik project files (*.ilp)", options=options)
             # If the user cancelled, stop now
-            if projectFilePath.isEmpty():
+            if not projectFilePath:
                 return None
-            projectFilePath = encode_from_qstring(projectFilePath)
             fileSelected = True
 
             # Add extension if necessary
@@ -1325,7 +1325,7 @@ class IlastikShell(QMainWindow):
         recent_hosts = recent_hosts_pref.get()
         if not recent_hosts:
             recent_hosts = ["localhost:8000"]
-        recent_hosts = filter(lambda h: h, recent_hosts) # There used to be a bug where empty strings could be saved. Filter those out.
+        recent_hosts = [h for h in recent_hosts if h] # There used to be a bug where empty strings could be saved. Filter those out.
 
         recent_nodes_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Nodes")
         recent_nodes = recent_nodes_pref.get() or {}
@@ -1369,14 +1369,14 @@ class IlastikShell(QMainWindow):
         if ilastik_config.getboolean("ilastik", "debug"):
             options = QFileDialog.Options(QFileDialog.DontUseNativeDialog)
 
-        projectFilePath = QFileDialog.getOpenFileName(
+        projectFilePath, _filter = QFileDialog.getOpenFileName(
             self, "Open Ilastik Project", defaultDirectory, "Ilastik project files (*.ilp)", options=options)
 
         # If the user canceled, stop now
-        if projectFilePath.isNull():
+        if not projectFilePath:
             return None
 
-        return encode_from_qstring(projectFilePath)
+        return projectFilePath
 
     def onOpenProjectActionTriggered(self):
         logger.debug("Open Project action triggered")
@@ -1409,7 +1409,7 @@ class IlastikShell(QMainWindow):
 
         try:
             hdf5File, workflow_class, readOnly = ProjectManager.openProjectFile(projectFilePath, force_readonly)
-        except ProjectManager.ProjectVersionError, e:
+        except ProjectManager.ProjectVersionError as e:
             QMessageBox.warning(self, "Old Project",
                                 "Could not load old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")
         except ProjectManager.FileMissingError:
@@ -1444,9 +1444,9 @@ class IlastikShell(QMainWindow):
         #  load them so that the workflow can be instantiated with the same settings 
         #  that were used when the project was first created. 
         project_creation_args = []
-        if "workflow_cmdline_args" in hdf5File.keys():
+        if "workflow_cmdline_args" in list(hdf5File.keys()):
             if len(hdf5File["workflow_cmdline_args"]) > 0:
-                project_creation_args = map(str, hdf5File["workflow_cmdline_args"][...])
+                project_creation_args = list(map(str, hdf5File["workflow_cmdline_args"][...]))
 
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
@@ -1455,7 +1455,7 @@ class IlastikShell(QMainWindow):
                                                  workflow_cmdline_args=self._workflow_cmdline_args,
                                                  project_creation_args=project_creation_args)
 
-        except Exception, e:
+        except Exception as e:
             msg = "Could not load project file.\n" + str(e)
             log_exception(logger, msg)
             QMessageBox.warning(self, "Failed to Load", msg)
@@ -1516,8 +1516,8 @@ class IlastikShell(QMainWindow):
                 PreferencesManager().set('shell', 'recently opened', projectFilePath)
 
                 #be friendly to user: if this file has not specified a default workflow, do it now
-                if not "workflowName" in hdf5File.keys() and not readOnly:
-                    hdf5File.create_dataset("workflowName", data=workflowName)
+                if not "workflowName" in list(hdf5File.keys()) and not readOnly:
+                    hdf5File.create_dataset("workflowName", data=workflowName.encode('utf-8'))
 
                 #switch away from the startup screen to show the loaded project
                 self.mainStackedWidget.setCurrentIndex(1)
@@ -1533,7 +1533,7 @@ class IlastikShell(QMainWindow):
                 # Enable all the applet controls
                 self.enableWorkflow = True
 
-                if "currentApplet" in hdf5File.keys():
+                if "currentApplet" in list(hdf5File.keys()):
                     appletName = hdf5File["currentApplet"].value
                     self.setSelectedAppletDrawer(appletName)
                 else:
@@ -1548,7 +1548,7 @@ class IlastikShell(QMainWindow):
 
             projectFile = self.projectManager.currentProjectFile
             if not self.projectManager.closed and projectFile is not None and not self.projectManager.currentProjectIsReadOnly:
-                if "currentApplet" in projectFile.keys():
+                if "currentApplet" in list(projectFile.keys()):
                     del projectFile["currentApplet"]
                 self.projectManager.currentProjectFile.create_dataset("currentApplet", data=self.currentAppletIndex)
 
@@ -1607,7 +1607,7 @@ class IlastikShell(QMainWindow):
             self.setAllAppletsEnabled(False)
             try:
                 self.projectManager.saveProject()
-            except ProjectManager.SaveError, err:
+            except ProjectManager.SaveError as err:
                 self.thunkEventHandler.post(partial(QMessageBox.warning, self, "Error Attempting Save", str(err)))
 
             # First, re-enable all applets
@@ -1647,7 +1647,7 @@ class IlastikShell(QMainWindow):
 
                 try:
                     self.projectManager.saveProjectAs(newPath)
-                except ProjectManager.SaveError, err:
+                except ProjectManager.SaveError as err:
                     self.thunkEventHandler.post(partial(QMessageBox.warning, self, "Error Attempting Save", str(err)))
                 self.updateShellProjectDisplay()
 
@@ -1670,7 +1670,7 @@ class IlastikShell(QMainWindow):
         if snapshotPath is not None:
             try:
                 self.projectManager.saveProjectSnapshot(snapshotPath)
-            except ProjectManager.SaveError, err:
+            except ProjectManager.SaveError as err:
                 QMessageBox.warning(self, "Error Attempting Save Snapshot", str(err))
 
     def closeEvent(self, closeEvent):

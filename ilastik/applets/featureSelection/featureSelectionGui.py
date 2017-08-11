@@ -20,7 +20,9 @@
 ###############################################################################
 # Python
 from __future__ import division
+from builtins import range
 import os
+import sys
 from functools import partial
 import logging
 logger = logging.getLogger(__name__)
@@ -30,9 +32,10 @@ import numpy
 import h5py
 
 # PyQt
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QApplication, QAbstractItemView, QFileDialog, QMessageBox, QCursor
-from PyQt4 import uic
+from PyQt5 import uic
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QCursor
+from PyQt5.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QMessageBox
 
 # lazyflow
 from lazyflow.operators.generic import OpSubRegion
@@ -46,7 +49,6 @@ from volumina.widgets.layercontextmenu import layercontextmenu
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.utility import bind
-from volumina.utility import encode_from_qstring
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 
@@ -162,7 +164,7 @@ class FeatureSelectionGui(LayerViewerGui):
                     layerListWidget.item(0).setSelected(True)
 
         def handleRemovedLayers(parent, start, end):
-            for i in reversed(range(start, end+1)):
+            for i in reversed(list(range(start, end+1))):
                 layerListWidget.takeItem(i)
         
         self.layerstack.dataChanged.connect(handleLayerStackDataChanged)
@@ -297,8 +299,7 @@ class FeatureSelectionGui(LayerViewerGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
-        filenames = QFileDialog.getOpenFileNames(self, 'Open Feature Files', '.', options=options)
-        filenames = map(encode_from_qstring, filenames)
+        filenames, _filter = QFileDialog.getOpenFileNames(self, 'Open Feature Files', '.', options=options)
         
         # Check if file exists
         if not filenames:
@@ -384,7 +385,6 @@ class FeatureSelectionGui(LayerViewerGui):
                 self.parentApplet.busy = True
                 self.parentApplet.appletStateUpdateRequested.emit()
                 QApplication.instance().setOverrideCursor( QCursor(Qt.WaitCursor) )
-                QApplication.instance().processEvents()
                 
                 try:
                     opFeatureSelection.SelectionMatrix.setValue( featureMatrix )

@@ -18,11 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage
-from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal
-
-# unicode support
-from volumina.utility import encode_from_qstring, decode_to_qstring
+from PyQt5.QtGui import QColor, QPixmap, QIcon, QPainter, QPen, QImage
+from PyQt5.QtCore import QObject, QAbstractTableModel, QItemSelectionModel, Qt, QModelIndex, pyqtSignal
 
 import logging
 logger = logging.getLogger(__name__)
@@ -56,7 +53,7 @@ class ListModel(QAbstractTableModel):
     elementSelected = pyqtSignal(int)
 
 
-    class ColumnID():
+    class ColumnID(object):
         '''
         Define how many column the model holds and their type
 
@@ -200,20 +197,20 @@ class ListModel(QAbstractTableModel):
 
         if role == Qt.EditRole and index.column() == self.ColumnID.Name:
             name = self._elements[index.row()].name
-            return decode_to_qstring(name, 'utf-8')
+            return name
 
         elif role == Qt.ToolTipRole and index.column() == self.ColumnID.Delete:
             s = "Delete {}".format(self._elements[index.row()].name)
-            return decode_to_qstring(s, 'utf-8')
+            return s
 
         elif role == Qt.ToolTipRole and index.column() == self.ColumnID.Name:
             suffix = self._getToolTipSuffix(index.row())
             s = "{}\nDouble click to rename {}".format(
                 self._elements[index.row()].name, suffix)
-            return decode_to_qstring(s, 'utf-8')
+            return s
         elif role == Qt.DisplayRole and index.column() == self.ColumnID.Name:
             name = self._elements[index.row()].name
-            return decode_to_qstring(name, 'utf-8')
+            return name
 
         if role == Qt.DecorationRole and index.column() == self.ColumnID.Delete:
             if index.row() in self.unremovable_rows: return
@@ -259,9 +256,7 @@ class ListModel(QAbstractTableModel):
         '''
         if role == Qt.EditRole  and index.column() == self.ColumnID.Name:
             row = index.row()
-            # value is a user provided QVariant, possibly with unicode
-            # characters in it. internally, we keep a str
-            self._elements[row].name = encode_from_qstring(value.toString(), 'utf-8')
+            self._elements[row].name = value
             self.dataChanged.emit(index, index)
             return True
 

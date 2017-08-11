@@ -1,3 +1,6 @@
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,6 +22,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
+from past.utils import old_div
 import os
 import logging
 from collections import OrderedDict
@@ -26,11 +30,14 @@ from functools import partial
 
 # Third-party
 import numpy
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, pyqtSlot, QVariant, pyqtRemoveInputHook, pyqtRestoreInputHook, QStringList, QString, QSize
-from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, \
-    QListWidgetItem, QApplication, QCursor, QAction, QComboBox, QTreeWidget, QTreeWidgetItem, QWidget, QSizePolicy, \
-    QPushButton, QLineEdit, QDialog
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, pyqtSlot, pyqtRemoveInputHook, pyqtRestoreInputHook, QSize
+from PyQt5.QtWidgets import QMessageBox, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem, \
+    QApplication, QAction, QPushButton, QLineEdit, QDialog, QComboBox, QTreeWidget, QTreeWidgetItem, \
+    QWidget, QSizePolicy, QMenu
+from PyQt5.QtGui import QColor, QIcon, QCursor
+    
+    
 
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
@@ -52,7 +59,7 @@ from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5V
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
 
 # import IPython
-from FeatureSelectionDialog import FeatureSelectionDialog
+from .FeatureSelectionDialog import FeatureSelectionDialog
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -79,9 +86,9 @@ class ClassifierSelectionDlg(QDialog):
         classifier_listwidget.setSelectionMode( QListWidget.SingleSelection )
 
         classifier_factories = self._get_available_classifier_factories()
-        for name, classifier_factory in classifier_factories.items():
+        for name, classifier_factory in list(classifier_factories.items()):
             item = QListWidgetItem( name )
-            item.setData( Qt.UserRole, QVariant(classifier_factory) )
+            item.setData( Qt.UserRole, classifier_factory )
             classifier_listwidget.addItem(item)
 
         buttonbox = QDialogButtonBox( Qt.Horizontal, parent=self )
@@ -138,7 +145,7 @@ class ClassifierSelectionDlg(QDialog):
     def accept(self):
         # Configure the operator with the newly selected classifier factory
         selected_item = self._classifier_listwidget.selectedItems()[0]
-        selected_factory = selected_item.data(Qt.UserRole).toPyObject()
+        selected_factory = selected_item.data(Qt.UserRole)
         self._op.ClassifierFactory.setValue( selected_factory )
 
         # Close the dlg
@@ -195,11 +202,11 @@ class BookmarksWindow(QDialog):
         axes = axes[:-1] # drop channel
         axes = sorted(axes)
         assert len(axes) == len(coord)
-        tagged_coord = dict(zip(axes, coord))
-        tagged_location = OrderedDict(zip('txyzc', (0,0,0,0,0)))
+        tagged_coord = dict(list(zip(axes, coord)))
+        tagged_location = OrderedDict(list(zip('txyzc', (0,0,0,0,0))))
         tagged_location.update(tagged_coord)
-        t = tagged_location.values()[0]
-        coord3d = tagged_location.values()[1:4]
+        t = list(tagged_location.values())[0]
+        coord3d = list(tagged_location.values())[1:4]
         
         self.parent().editor.posModel.time = t
         self.parent().editor.navCtrl.panSlicingViews( coord3d, [0,1,2] )
@@ -229,7 +236,7 @@ class BookmarksWindow(QDialog):
 
     def add_bookmark(self):
         coord_txyzc = self.parent().editor.posModel.slicingPos5D
-        tagged_coord_txyzc = dict( zip('txyzc', coord_txyzc) )
+        tagged_coord_txyzc = dict( list(zip('txyzc', coord_txyzc)) )
         axes = self.topLevelOperatorView.InputImages.meta.getAxisKeys()
         axes = axes[:-1] # drop channel
         axes = sorted(axes)
@@ -247,10 +254,10 @@ class BookmarksWindow(QDialog):
         lane_index = self.topLevelOperatorView.current_view_index()
         lane_nickname = self.topLevelOperatorView.InputImages.meta.nickname or "Lane {}".format(lane_index)
         bookmarks = self.topLevelOperatorView.Bookmarks.value
-        group_item = QTreeWidgetItem( self.bookmark_tree, QStringList(lane_nickname) )
+        group_item = QTreeWidgetItem( self.bookmark_tree, [lane_nickname] )
 
         for coord, notes in bookmarks:
-            item = QTreeWidgetItem( group_item, QStringList() )
+            item = QTreeWidgetItem( group_item, [] )
             item.setText(0, str(coord))
             item.setData(0, Qt.UserRole, (coord, notes))
             item.setText(1, notes)
@@ -301,7 +308,7 @@ class PixelClassificationGui(LabelingGui):
             else:
                 defaultDirectory = os.path.expanduser('~')
             fileNames = DataSelectionGui.getImageFileNamesToOpen(self, defaultDirectory)
-            fileNames = map(str, fileNames)
+            fileNames = list(map(str, fileNames))
             
             # For now, we require a single hdf5 file
             if len(fileNames) > 1:
@@ -360,7 +367,7 @@ class PixelClassificationGui(LabelingGui):
                 order = "".join( self.topLevelOperatorView.InputImages.meta.getAxisKeys() )
                 line = order[:-1].upper() + ": "
                 line += slicing_to_string( slicing[:-1], input_shape )
-                print line
+                print(line)
 
         labels_submenu = QMenu("Labels")
         self.labels_submenu = labels_submenu # Must retain this reference or else it gets auto-deleted.
@@ -864,7 +871,7 @@ class PixelClassificationGui(LabelingGui):
 
     def _onLabelChanged(self, parentFun, mapf, slot):
         parentFun()
-        new = map(mapf, self.labelListData)
+        new = list(map(mapf, self.labelListData))
         old = slot.value
         slot.setValue(_listReplace(old, new))
 
@@ -933,7 +940,7 @@ class PixelClassificationGui(LabelingGui):
             self._renderMgr.setup(shape)
 
         layernames = set(layer.name for layer in self.layerstack)
-        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.iteritems()
+        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.items()
                                 if k in layernames)
 
         newvolume = numpy.zeros(shape, dtype=numpy.uint8)
@@ -958,5 +965,5 @@ class PixelClassificationGui(LabelingGui):
             except KeyError:
                 continue
             color = layer.tintColor
-            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+            color = (old_div(color.red(), 255.0), old_div(color.green(), 255.0), old_div(color.blue(), 255.0))
             self._renderMgr.setColor(label, color)

@@ -63,9 +63,9 @@ def threshold_from_cores(img, core_labels, final_threshold, out=None):
     inverted_threshold = -1*img.dtype.type(final_threshold) + img_max
 
     # Make sure arrays have matching axes
-    inverted_img = inverted_img.withAxes(core_labels.axistags.keys())
+    inverted_img = inverted_img.withAxes(list(core_labels.axistags.keys()))
     if out is not None:
-        out = out.withAxes(core_labels.axistags.keys())
+        out = out.withAxes(list(core_labels.axistags.keys()))
     
     # The 'low threshold' is actually a watershed operation.    
     watershed_labels, max_label = vigra.analysis.watershedsNew( inverted_img,

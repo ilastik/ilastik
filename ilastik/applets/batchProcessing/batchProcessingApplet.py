@@ -1,4 +1,6 @@
 from __future__ import division
+from __future__ import absolute_import
+from builtins import range
 import copy
 import weakref
 import argparse
@@ -30,7 +32,7 @@ class BatchProcessingApplet( Applet ):
 
     def getMultiLaneGui(self):
         if self._gui is None:
-            from batchProcessingGui import BatchProcessingGui
+            from .batchProcessingGui import BatchProcessingGui
             self._gui = BatchProcessingGui(self)
         return self._gui
 
@@ -96,7 +98,7 @@ class BatchProcessingApplet( Applet ):
             # Invert dict from [role][batch_index] -> path to a list-of-tuples, indexed by batch_index: 
             # [ (role-1-path, role-2-path, ...),
             #   (role-1-path, role-2-path,...) ]
-            datas_by_batch_index = zip( *role_data_dict.values() )
+            datas_by_batch_index = list(zip( *list(role_data_dict.values()) ))
 
             # Call customization hook
             self.dataExportApplet.prepare_for_entire_export()

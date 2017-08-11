@@ -1,5 +1,8 @@
+from __future__ import print_function
+from __future__ import division
+from past.utils import old_div
 import warnings
-from itertools import imap, izip
+
 import numpy as np
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -199,7 +202,7 @@ class OpEdgeLabelDisagreementDict(Operator):
         conflicts = np.where(edge_labels_from_nodes != edge_labels_from_probabilities)
         conflict_edge_ids = edge_ids[conflicts]
         conflict_labels = edge_labels_from_nodes[conflicts]
-        result[0] = dict(izip(imap(tuple, conflict_edge_ids), conflict_labels))
+        result[0] = dict(zip(map(tuple, conflict_edge_ids), conflict_labels))
 
     def propagateDirty(self, slot, subindex, roi):
         self.EdgeLabelDisagreementDict.setDirty()
@@ -302,7 +305,7 @@ def compute_edge_weights( edge_ids, edge_probabilities, beta ):
     p1 = np.clip(p1, 0.001, 0.999)
     p0 = 1.0 - p1 # P(Edge=NOT CUT)
 
-    edge_weights = np.log(p0/p1) + np.log( (1-beta)/(beta) )
+    edge_weights = np.log(old_div(p0,p1)) + np.log( old_div((1-beta),(beta)) )
 
     # See note special behavior, above
     edges_touching_zero = edge_ids[:,0] == 0
@@ -453,4 +456,4 @@ if __name__ == "__main__":
 
     assert seg.min() == 0
 
-    print "DONE."
+    print("DONE.")

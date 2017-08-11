@@ -18,8 +18,10 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QColor, QPushButton
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QPushButton
+from PyQt5.QtGui import QColor
+
 
 from volumina.api import LazyflowSource, ColortableLayer, AlphaModulatedLayer
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui

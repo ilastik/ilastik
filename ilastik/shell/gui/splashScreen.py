@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,8 +20,9 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
-from PyQt4.QtGui import  QSplashScreen, QPixmap 
-from PyQt4.QtCore import Qt
+from PyQt5.QtWidgets import  QSplashScreen 
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt
 
 import ilastik
 
@@ -34,6 +36,6 @@ def showSplashScreen():
     splashScreen.show()
 
 def hideSplashScreen():
-    import startShellGui
+    from . import startShellGui
     global splashScreen
     splashScreen.finish(startShellGui.shell)

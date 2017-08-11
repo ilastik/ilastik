@@ -1,3 +1,5 @@
+from __future__ import division
+from past.utils import old_div
 import sys
 import json
 import logging
@@ -129,7 +131,7 @@ def bb_to_slicing(start, stop):
     
         >>> assert bb_to_slicing([1,2,3], [4,5,6]) == np.s_[1:4, 2:5, 3:6]
     """
-    return tuple( starmap( slice, zip(start, stop) ) )
+    return tuple( starmap( slice, list(zip(start, stop)) ) )
 
 # In vigra, 0.0 means 'automatically determined' (Toufiq uses 0.0)
 # In ilastik, we use 2.0 for all filters (except the pre-smoothing step)
@@ -223,7 +225,7 @@ def difference_of_gaussians(input_data, scale, out, roi):
 @define_filter(is_vector_valued=True)
 def structure_tensor_eigenvalues(input_data, scale, out, roi):
     inner_scale = scale
-    outer_scale = scale / 2.0
+    outer_scale = old_div(scale, 2.0)
 
     # FIXME: vigra seems to have a problem with non-contiguous arrays (in the channel dimension)
     #        For now, we must provide a our own output array, which is always contiguous.
@@ -333,7 +335,7 @@ def get_filter_channel_ranges( filter_spec_list, ndim ):
             num_output_channels = 1
         output_channel_steps.append( output_channel_steps[-1] + num_output_channels )
 
-    filter_channel_ranges = zip( output_channel_steps[:-1], output_channel_steps[1:] )
+    filter_channel_ranges = list(zip( output_channel_steps[:-1], output_channel_steps[1:] ))
     return filter_channel_ranges
     
 

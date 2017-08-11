@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -25,9 +27,10 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 import os, sys
 
 import numpy as np
-from PyQt4.QtCore import QObject, QRectF, QTime, Qt
-from PyQt4.QtGui import QColor, QApplication, QSplitter, QPushButton, \
-                        QVBoxLayout, QWidget, QHBoxLayout, QMainWindow, qApp
+from PyQt5.QtCore import QObject, QRectF, QTime, Qt
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QApplication, QSplitter, QPushButton, \
+                            QVBoxLayout, QWidget, QHBoxLayout, QMainWindow, qApp
 
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from volumina.pixelpipeline.datasources import LazyflowSource, ConstantSource
@@ -42,12 +45,12 @@ from volumina.pixelpipeline.datasources import ArraySource, LazyflowSinkSource
 
 
 
-from labelListView import LabelListView, Label
-from labelListModel import LabelListModel
+from .labelListView import LabelListView, Label
+from .labelListModel import LabelListModel
 
-from PyQt4 import QtCore, QtGui, uic
+from PyQt5 import QtCore, QtWidgets, uic
 
-from featureDlg import *
+from .featureDlg import *
 
 import  numpy
 
@@ -84,7 +87,7 @@ class Main(QMainWindow):
         self.layerstack.append(layer1)
         
         shape=readerNew.outputs["Output"].meta.shape
-        print shape
+        print(shape)
         self.editor = VolumeEditor(shape, self.layerstack)  
         #self.editor.setDrawingEnabled(False)
         

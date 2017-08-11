@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,18 +21,17 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 #SciPy
+from builtins import range
+from past.utils import old_div
 import numpy
 
 #PyQt
-from PyQt4.QtCore import QTimer, Qt
-from PyQt4.QtGui import QDialog, QVBoxLayout, QTreeWidget, QTreeWidgetItem
+from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QTreeWidget, QTreeWidgetItem
 
 #lazyflow
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 from lazyflow.operators.opCache import MemInfoNode
-
-#volumina
-from volumina.utility.qstring_codec import encode_from_qstring
 
 import warnings
 
@@ -76,7 +77,7 @@ class TreeNode(QTreeWidgetItem):
     def _makeTreeWidgetItemData(self, report):
         l = []
         l.append("%r" % report.name)
-        l.append("%1.1f MB" % (report.usedMemory/1024**2.0))
+        l.append("%1.1f MB" % (old_div(report.usedMemory,1024**2.0)))
         if report.roi is not None:
             l.append("%r\n%r" % (list(report.roi[0]), list(report.roi[1])))
         else:
@@ -123,7 +124,7 @@ class TreeNode(QTreeWidgetItem):
 
     @staticmethod
     def extract_numeric_size(txt):
-        split = encode_from_qstring(txt.toString()).split()
+        split = txt.split()
         if len(split) == 0:
             return 0.0
         else:
@@ -179,7 +180,7 @@ class MemUsageDialog(QDialog):
 
 
 if __name__ == "__main__":
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
     import pickle
 
     app = QApplication([])
@@ -189,7 +190,7 @@ if __name__ == "__main__":
 
     dlg = MemUsageDialog(update=False)
 
-    print reports
+    print(reports)
 
     dlg._showReports(reports)
     dlg.show()

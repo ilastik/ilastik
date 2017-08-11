@@ -20,6 +20,7 @@
 ###############################################################################
 #Python
 from __future__ import division
+from builtins import range
 from copy import copy, deepcopy
 import collections
 from functools import partial
@@ -70,8 +71,8 @@ def max_margin(d, default=(0, 0, 0)):
 
     """
     margin = default
-    for features in d.itervalues():
-        for params in features.itervalues():
+    for features in d.values():
+        for params in features.values():
             try:
                 pmargin = params['margin']
                 if not isinstance(pmargin, collections.Iterable):
@@ -196,10 +197,10 @@ class OpAdaptTimeListRoi(Operator):
 
         # Special case: An empty roi list means "request everything"
         if len(roi) == 0:
-            roi = range(taggedShape['t'])
+            roi = list(range(taggedShape['t']))
 
         taggedShape['t'] = 1
-        timeIndex = taggedShape.keys().index('t')
+        timeIndex = list(taggedShape.keys()).index('t')
 
         # Get time ranges with consecutive numbers
         time_ranges = [list(g) for _, g in groupby(roi, key=lambda n, c=count(): n - next(c))]
@@ -219,7 +220,7 @@ class OpAdaptTimeListRoi(Operator):
     def propagateDirty(self, slot, subindex, roi):
         assert slot == self.Input
         timeIndex = self.Input.meta.axistags.index('t')
-        self.Output.setDirty(List(self.Output, range(roi.start[timeIndex], roi.stop[timeIndex])))
+        self.Output.setDirty(List(self.Output, list(range(roi.start[timeIndex], roi.stop[timeIndex]))))
 
 class OpObjectCenterImage(Operator):
     """Produceds an image with a cross in the center of each connected
@@ -405,7 +406,7 @@ class OpObjectExtraction(Operator):
         self._opLabelVolume._opLabel._cache.Input.connect(self.LabelImageCacheInput)
                 
         taggedShape = self.RawImage.meta.getTaggedShape()
-        for k in taggedShape.keys():
+        for k in list(taggedShape.keys()):
             if k == 't' or k == 'c':
                 taggedShape[k] = 1
             # else:
@@ -501,8 +502,8 @@ class OpRegionFeatures(Operator):
             labelVolume = vigra.taggedView(labelVolume, axistags=self.LabelVolume.meta.axistags)
     
             # Convert to 4D (preserve axis order)
-            axes4d = self.RawVolume.meta.getTaggedShape().keys()
-            axes4d = filter(lambda k: k in 'xyzc', axes4d)
+            axes4d = list(self.RawVolume.meta.getTaggedShape().keys())
+            axes4d = [k for k in axes4d if k in 'xyzc']
             rawVolume = rawVolume.withAxes(*axes4d)
             labelVolume = labelVolume.withAxes(*axes4d)
             acc = self._extract(rawVolume, labelVolume)
@@ -512,7 +513,7 @@ class OpRegionFeatures(Operator):
 
         # loop over requested time slices
         pool = RequestPool()
-        for res_t_ind, t in enumerate(xrange(roi.start[t_ind], roi.stop[t_ind])):
+        for res_t_ind, t in enumerate(range(roi.start[t_ind], roi.stop[t_ind])):
             pool.add( Request( partial(compute_features_for_time_slice, res_t_ind, t) ) )
         
         pool.wait()
@@ -562,11 +563,11 @@ class OpRegionFeatures(Operator):
         all_default_props = plugin.plugin_object.fill_properties(default_features) #fill in display name and such
         feature_names_with_default[default_features_key] = all_default_props
 
-        if not "Standard Object Features" in feature_names.keys():
+        if not "Standard Object Features" in list(feature_names.keys()):
             # The user has not selected any standard features. Add them now
             feature_names_with_default["Standard Object Features"] = {}
 
-        for default_feature_name, default_feature_props in default_features.iteritems():
+        for default_feature_name, default_feature_props in default_features.items():
             if default_feature_name not in feature_names_with_default["Standard Object Features"]:
                 # this feature has not been selected by the user, add it now.
                 feature_names_with_default["Standard Object Features"][default_feature_name] = all_default_props[default_feature_name]
@@ -601,15 +602,13 @@ class OpRegionFeatures(Operator):
         global_features = {}
         pool = RequestPool()
 
-
         def compute_for_one_plugin(plugin_name, feature_dict):
             plugin_inner = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
             global_features[plugin_name] = plugin_inner.plugin_object.compute_global(image, labels, feature_dict, axes)
 
-        for plugin_name, feature_dict in feature_names.iteritems():
-            if plugin_name == default_features_key:
-                continue
-            pool.add(Request(partial(compute_for_one_plugin, plugin_name, feature_dict)))
+        for plugin_name, feature_dict in feature_names.items():
+            if plugin_name != default_features_key:
+                pool.add(Request(partial(compute_for_one_plugin, plugin_name, feature_dict)))
 
         pool.wait()
 
@@ -630,7 +629,7 @@ class OpRegionFeatures(Operator):
             extrafeats[feat_key] = feature
 
         extrafeats = dict((k.replace(' ', ''), v)
-                          for k, v in extrafeats.iteritems())
+                          for k, v in extrafeats.items())
         
         mincoords = extrafeats["Coord<Minimum>"].astype(int)
         maxcoords = extrafeats["Coord<Maximum>"].astype(int)
@@ -646,9 +645,9 @@ class OpRegionFeatures(Operator):
         local_features = collections.defaultdict(lambda: collections.defaultdict(list))
         margin = max_margin(feature_names)
         has_local_features = {}
-        for plugin_name, feature_dict in feature_names.iteritems():
+        for plugin_name, feature_dict in feature_names.items():
             has_local_features[plugin_name] = False
-            for features in feature_dict.itervalues():
+            for features in feature_dict.values():
                 if 'margin' in features:
                     has_local_features[plugin_name] = True
                     break
@@ -662,7 +661,7 @@ class OpRegionFeatures(Operator):
                 rawbbox = self.compute_rawbbox(image, extent, axes)
                 #it's i+1 here, because the background has label 0
                 binary_bbox = numpy.where(labels[tuple(extent)] == i+1, 1, 0).astype(numpy.bool)
-                for plugin_name, feature_dict in feature_names.iteritems():
+                for plugin_name, feature_dict in feature_names.items():
                     if not has_local_features[plugin_name]:
                         continue
                     plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
@@ -671,8 +670,8 @@ class OpRegionFeatures(Operator):
 
         logger.debug("computing done, removing failures")
         # remove local features that failed
-        for pname, pfeats in local_features.iteritems():
-            for key in pfeats.keys():
+        for pname, pfeats in local_features.items():
+            for key in list(pfeats.keys()):
                 value = pfeats[key]
                 try:
                     pfeats[key] = numpy.vstack(list(v.reshape(1, -1) for v in value))
@@ -687,12 +686,12 @@ class OpRegionFeatures(Operator):
         for name in plugin_names:
             d1 = global_features.get(name, {})
             d2 = local_features.get(name, {})
-            all_features[name] = dict(d1.items() + d2.items())
+            all_features[name] = dict(list(d1.items()) + list(d2.items()))
         all_features[default_features_key]=extrafeats
 
         # reshape all features
-        for pfeats in all_features.itervalues():
-            for key, value in pfeats.iteritems():
+        for pfeats in all_features.values():
+            for key, value in pfeats.items():
                 if value.shape[0] != nobj:
                     raise Exception('feature {} does not have enough rows, {} instead of {}'.format(key, value.shape[0], nobj))
 
@@ -714,9 +713,9 @@ class OpRegionFeatures(Operator):
         if slot is self.Features:
             self.Output.setDirty(slice(None))
         else:
-            axes = self.RawVolume.meta.getTaggedShape().keys()
-            dirtyStart = collections.OrderedDict(zip(axes, roi.start))
-            dirtyStop = collections.OrderedDict(zip(axes, roi.stop))
+            axes = list(self.RawVolume.meta.getTaggedShape().keys())
+            dirtyStart = collections.OrderedDict(list(zip(axes, roi.start)))
+            dirtyStop = collections.OrderedDict(list(zip(axes, roi.stop)))
 
             # Remove the spatial and channel dims (keep t, if present)
             del dirtyStart['x']
@@ -729,4 +728,4 @@ class OpRegionFeatures(Operator):
             del dirtyStop['z']
             del dirtyStop['c']
 
-            self.Output.setDirty(dirtyStart.values(), dirtyStop.values())
+            self.Output.setDirty(list(dirtyStart.values()), list(dirtyStop.values()))

@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,12 +20,14 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
-from PyQt4.QtGui import QTableView, QHeaderView, QMenu, QAction, QWidget, \
-        QHBoxLayout, QPushButton, QIcon, QItemDelegate
+from past.utils import old_div
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QAction, QWidget, \
+                            QHBoxLayout, QPushButton, QItemDelegate
 
-from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
-from addFileButton import AddFileButton, FILEPATH
+from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
+from .addFileButton import AddFileButton, FILEPATH
 
 from functools import partial
 
@@ -102,7 +106,7 @@ class ButtonOverlay(QPushButton):
         row_height = view.rowHeight(ind)
 
         self.setGeometry(self.xoffset + column_width - self.width,
-                row_y_offset + self.yoffset + (row_height - self.height)/2,
+                row_y_offset + self.yoffset + old_div((row_height - self.height),2),
                 self.width, self.height)
         self.setVisible(True)
         self.current_row = ind
@@ -188,10 +192,6 @@ class DatasetDetailedInfoTableView(QTableView):
         self.resizeColumnsToContents()
         self.setAlternatingRowColors(True)
         self.setShowGrid(False)
-        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.Nickname, QHeaderView.Interactive)
-        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.Location, QHeaderView.Interactive)
-        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
-        self.horizontalHeader().setResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
 
         self.setItemDelegateForColumn(0, AddButtonDelegate(self))
         
@@ -274,12 +274,9 @@ class DatasetDetailedInfoTableView(QTableView):
         widget = QWidget()
         layout = QHBoxLayout(widget)
         self._addButton = button = AddFileButton(widget, new=True)
-        button.addFilesRequested.connect(
-                partial(self.addFilesRequested.emit, -1))
-        button.addStackRequested.connect(
-                partial(self.addStackRequested.emit, -1))
-        button.addRemoteVolumeRequested.connect(
-                partial(self.addRemoteVolumeRequested.emit, -1))
+        button.addFilesRequested.connect( partial(self.addFilesRequested.emit, -1) )
+        button.addStackRequested.connect( partial(self.addStackRequested.emit, -1) )
+        button.addRemoteVolumeRequested.connect( partial(self.addRemoteVolumeRequested.emit, -1) )
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(button)
         layout.addStretch()
@@ -291,6 +288,12 @@ class DatasetDetailedInfoTableView(QTableView):
         # the "Add..." button spans last row
         self.setSpan(lastRow, 0, 1, model.columnCount())
 
+        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.Nickname, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.Location, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.InternalID, QHeaderView.Interactive)
+        self.horizontalHeader().setSectionResizeMode(DatasetDetailedInfoColumn.AxisOrder, QHeaderView.Interactive)
+
+
     def setEnabled(self, status):
         """
         Set status of the add button shown on the last row.
@@ -301,7 +304,7 @@ class DatasetDetailedInfoTableView(QTableView):
         """
         self._addButton.setEnabled(status)
 
-    def dataChanged(self, topLeft, bottomRight):
+    def dataChanged(self, topLeft, bottomRight, roles):
         self.dataLaneSelected.emit( self.selectedLanes )
 
     def selectionChanged(self, selected, deselected):
@@ -398,8 +401,8 @@ class DatasetDetailedInfoTableView(QTableView):
 
     def dropEvent(self, dropEvent):
         urls = dropEvent.mimeData().urls()
-        filepaths = map( QUrl.toLocalFile, urls )
-        filepaths = map( str, filepaths )
+        filepaths = list(map( QUrl.toLocalFile, urls ))
+        filepaths = list(map( str, filepaths ))
         self.addFilesRequestedDrop.emit( filepaths )
     
     def scrollContentsBy(self, dx, dy):

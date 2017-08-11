@@ -18,9 +18,10 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import numpy
 
-from PyQt4.QtGui import QColor
+from PyQt5.QtGui import QColor
 
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import ColortableLayer

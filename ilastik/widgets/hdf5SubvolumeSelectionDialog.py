@@ -18,12 +18,12 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import (
+from PyQt5.QtWidgets import (
     QDialogButtonBox, QButtonGroup, QComboBox, QDialog, QLabel, QLineEdit,
     QTextEdit, QVBoxLayout, QWidget
 )
 
-from PyQt4.QtCore import Qt
+from PyQt5.QtCore import Qt
 
 from lazyflow.utility import globList
 
@@ -78,7 +78,6 @@ class Hdf5StackSelectionWidget(QWidget):
         layout.addWidget(info_label)
         layout.addWidget(self.info_text)
         layout.addWidget(self.n_label)
-        layout.setMargin(0)
         self.setLayout(layout)
 
         # connect the signals
@@ -145,7 +144,7 @@ class Hdf5StackingDlg(QDialog):
 
 
 if __name__ == "__main__":
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
 
     app = QApplication([])
     w = Hdf5StackingDlg(list_of_paths=['a/1', 'a/2', 'a/3', 'b/1', 'b/2'])

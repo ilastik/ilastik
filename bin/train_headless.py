@@ -29,6 +29,8 @@ Note: This script does not make any attempt to be efficient with RAM usage.
       (The entire label volume is loaded at once.)  As a result, each image volume you 
       train with must be significantly smaller than the available RAM on your machine.
 """
+from __future__ import print_function
+from builtins import range
 import os
 
 def main():
@@ -57,7 +59,7 @@ def main():
                                    [parsed_args.label_data],
                                    feature_selections,
                                    classifier_factory )
-    print "DONE."
+    print("DONE.")
 
 # Don't touch these constants!
 ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
@@ -183,7 +185,7 @@ def generate_trained_project_file( new_project_path,
             opReader.WorkingDirectory.setValue( cwd )
             opReader.FilePath.setValue( label_data_path )
             
-            print "Reading label volume: {}".format( label_data_path )
+            print("Reading label volume: {}".format( label_data_path ))
             label_volume = opReader.Output[:].wait()
         finally:
             opReader.cleanUp()
@@ -197,12 +199,12 @@ def generate_trained_project_file( new_project_path,
         # Auto-calculate the max label value
         max_label_class = max(max_label_class, label_volume.max())
             
-        print "Applying label volume to lane #{}".format(lane)
+        print("Applying label volume to lane #{}".format(lane))
         entire_volume_slicing = roiToSlice(*roiFromShape(label_volume.shape))
         opPixelClassification.LabelInputs[lane][entire_volume_slicing] = label_volume
 
     assert max_label_class > 1, "Not enough label classes were found in your label data."
-    label_names = map(str, range(max_label_class))
+    label_names = list(map(str, list(range(max_label_class))))
     opPixelClassification.LabelNames.setValue(label_names)
     
     ##

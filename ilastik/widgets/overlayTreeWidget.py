@@ -18,13 +18,14 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QTreeWidgetItem, QTreeWidget, QTreeWidgetItemIterator
-from PyQt4.QtCore import pyqtSignal, Qt, QEvent, SIGNAL
+from builtins import range
+from PyQt5.QtWidgets import QTreeWidgetItem, QTreeWidget, QTreeWidgetItemIterator
+from PyQt5.QtCore import pyqtSignal, Qt, QEvent
 
 class OverlayTreeWidgetIter(QTreeWidgetItemIterator):
     def __init__(self, *args):
         QTreeWidgetItemIterator.__init__(self, *args)
-    def next(self):
+    def __next__(self):
         self.__iadd__(1)
         value = self.value()
         if value:
@@ -63,7 +64,7 @@ class OverlayTreeWidget(QTreeWidget):
     def addOverlaysToTreeWidget(self, overlayDict, forbiddenOverlays, preSelectedOverlays, singleOverlaySelection):
         self.singleOverlaySelection = singleOverlaySelection
         testItem = QTreeWidgetItem("a")
-        for keys in overlayDict.keys():
+        for keys in list(overlayDict.keys()):
             if overlayDict[keys] in forbiddenOverlays:
                 continue
             else:
@@ -130,7 +131,7 @@ class OverlayTreeWidget(QTreeWidget):
             if self.singleOverlaySelection == True and currentItem.checkState(column) == Qt.Checked:
                 if it.value() != currentItem:
                     it.value().setCheckState(0, Qt.Unchecked)
-            it.next()
+            next(it)
 
                                 
     def createSelectedItemList(self):
@@ -138,7 +139,7 @@ class OverlayTreeWidget(QTreeWidget):
         it = OverlayTreeWidgetIter(self, QTreeWidgetItemIterator.Checked)
         while (it.value()):
             selectedItemList.append(it.value().item)
-            it.next()
+            next(it)
         return selectedItemList
 
 
@@ -152,12 +153,12 @@ class OverlayTreeWidget(QTreeWidget):
                     
     def event(self, event):
         if (event.type()==QEvent.KeyPress) and (event.key()==Qt.Key_Space):
-            self.emit(SIGNAL("spacePressed"))
+            self.spacePressed.emit()
             return True
         return QTreeWidget.event(self, event)
     
 
-class OverlayEntry:
+class OverlayEntry(object):
     def __init__(self, name):
         self.name = name
 
@@ -166,7 +167,7 @@ if __name__ == "__main__":
     #make the program quit on Ctrl+C
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    from PyQt4.QtGui import *
+    from PyQt5.QtWidgets import *
         
     app = QApplication(sys.argv)
     

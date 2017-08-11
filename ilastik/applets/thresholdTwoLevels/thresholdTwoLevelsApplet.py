@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,8 +21,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opThresholdTwoLevels import OpThresholdTwoLevels
-from thresholdTwoLevelsSerializer import ThresholdTwoLevelsSerializer
+from .opThresholdTwoLevels import OpThresholdTwoLevels
+from .thresholdTwoLevelsSerializer import ThresholdTwoLevelsSerializer
 
 class ThresholdTwoLevelsApplet( StandardApplet ):
     """
@@ -49,7 +50,7 @@ class ThresholdTwoLevelsApplet( StandardApplet ):
     
     @property
     def singleLaneGuiClass(self):
-        from thresholdTwoLevelsGui import ThresholdTwoLevelsGui
+        from .thresholdTwoLevelsGui import ThresholdTwoLevelsGui
         return ThresholdTwoLevelsGui
 
     @property

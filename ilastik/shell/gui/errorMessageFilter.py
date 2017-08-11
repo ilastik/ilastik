@@ -20,9 +20,9 @@
 ###############################################################################
 import copy
 
-from PyQt4 import QtCore
-from PyQt4.QtCore import QObject, QTimer
-from PyQt4.QtGui import QMessageBox
+from PyQt5 import QtCore
+from PyQt5.QtCore import QObject, QTimer
+from PyQt5.QtWidgets import QMessageBox
 
 class ErrorMessageFilter(QObject):
     """
@@ -37,7 +37,7 @@ class ErrorMessageFilter(QObject):
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
         self.timer.setInterval(1000)
-        self.connect(self.timer, QtCore.SIGNAL("timeout()"), self.timeout)
+        self.timer.timeout.connect( self.timeout )
         
     def showErrorMessage(self, caption, text):
         if not self.timer.isActive():
@@ -48,7 +48,7 @@ class ErrorMessageFilter(QObject):
         # Must copy now because the eventloop is allowed to run during QMessageBox.critical, below.
         # That is, self.messages might change while the loop is executing (not allowed).
         messages = copy.copy(self.messages)
-        for caption, text in messages.iteritems():
+        for caption, text in messages.items():
             QMessageBox.critical(self.parent(), caption, text)
         self.messages = {}
         

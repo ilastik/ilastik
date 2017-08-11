@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,13 +20,14 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
-from PyQt4.QtGui import QColor, QMessageBox, QFileDialog
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QMessageBox, QFileDialog
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
 
 from volumina.api import LazyflowSource, ColortableLayer
 from volumina import colortables
-from countingGui import countingColorTable
+from .countingGui import countingColorTable
 
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
@@ -61,7 +63,7 @@ class CountingDataExportGui( DataExportGui ):
         super(CountingDataExportGui, self).stopAndCleanUp()
 
     def select_csv_export_location(self):
-        csv_export_path = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
+        csv_export_path, _filter = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
         if csv_export_path:
             self.topLevelOperator.CsvFilepath.setValue( str(csv_export_path) )
             

@@ -18,11 +18,12 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import os
 import sys
 import tempfile
 import numpy
-from PyQt4.QtGui import QApplication
+from PyQt5.QtWidgets import QApplication
 from volumina.layer import AlphaModulatedLayer
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 

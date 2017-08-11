@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,13 +19,13 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage, QDialog,QColorDialog,QGraphicsTextItem
-from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal,QString,QVariant
-from listModel import ListModel,ListElement,_NPIXELS
+from PyQt5 import uic
+from PyQt5.QtGui import QColor, QPixmap, QIcon, QPainter, QPen, QImage
+from PyQt5.QtWidgets import QDialog, QColorDialog, QGraphicsTextItem
+from PyQt5.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal, QItemSelectionModel
+from .listModel import ListModel, ListElement, _NPIXELS
 #from labelListModel import LabelListModel
 import logging
-from PyQt4.uic.Compiler.qtproxies import QtGui
-from PyQt4 import uic
 import os
 logger = logging.getLogger(__name__)
 
@@ -183,7 +184,7 @@ class BoxListModel(ListModel):
     boxRemoved = pyqtSignal(int)
     signalSaveAllBoxesToCSV = pyqtSignal(str)
 
-    class ColumnID():
+    class ColumnID(object):
         Color   = 0
         Name    = 1
         Text    = 2
@@ -233,7 +234,7 @@ class BoxListModel(ListModel):
                 color=QColor(Qt.red)
 
                 color.setAlphaF(0.5)
-                return QVariant(color)
+                return color
 
         if role == Qt.DisplayRole and index.column() == self.ColumnID.Text:
             row = index.row()
@@ -327,10 +328,10 @@ class BoxListModel(ListModel):
 
         if index.column()==self.ColumnID.Fix:
             try:
-                value=float(value.toString())
+                value=float(value)
                 self._elements[index.row()].isFixed=True
                 row=index.row()
-                self._elements[row].fixvalue=QString("%.1f"%value)
+                self._elements[row].fixvalue="%.1f"%value
                 self.dataChanged.emit(index,index)
                 return True
             except:

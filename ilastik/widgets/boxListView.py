@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,16 +22,16 @@
 import os
 import logging
 
-from PyQt4.QtGui import QTableView, QColorDialog, \
-    QAbstractItemView, QVBoxLayout, QPushButton, \
-    QColor, QWidget, QHeaderView, QDialog, QStackedWidget, \
-    QLabel, QSizePolicy,QItemSelectionModel, \
-    QMenu, QAction
-from PyQt4 import QtGui
-from PyQt4.QtCore import Qt, QString,QModelIndex, pyqtSignal
-from PyQt4 import uic
-from labelListModel import LabelListModel, Label
-from listView import ListView
+from PyQt5.QtWidgets import QTableView, QColorDialog, \
+                            QAbstractItemView, QVBoxLayout, QPushButton, \
+                            QWidget, QHeaderView, QDialog, QStackedWidget, \
+                            QLabel, QSizePolicy, QMenu, QAction
+from PyQt5.QtGui import QColor
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import Qt, QModelIndex, pyqtSignal, QItemSelectionModel
+from PyQt5 import uic
+from .labelListModel import LabelListModel, Label
+from .listView import ListView
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +152,7 @@ class BoxListView(ListView):
 
 
     def resetEmptyMessage(self,pystring):
-        self.emptyMessage.setText(QString(pystring))
+        self.emptyMessage.setText(pystring)
 
 
     def tableViewCellDoubleClicked(self, modelIndex):
@@ -175,7 +176,7 @@ class BoxListView(ListView):
                                                      self._colorDialog.getLineWidth(),
                                                      self._colorDialog.getFontColor())
         names=["color","fontsize","linewidth",'fontcolor']
-        d=dict(zip(names,prop))
+        d=dict(list(zip(names,prop)))
 
         modelIndex=self._colorDialog.getModelIndex()
         self._table.model().setData(modelIndex,d)
@@ -238,7 +239,7 @@ class BoxListView(ListView):
 
         def saveCSVList():
             import os
-            filename = QtGui.QFileDialog.getSaveFileName(None, 'Save Boxes to txt', os.path.expanduser("~"), ".txt")
+            filename, _filter = QtWidgets.QFileDialog.getSaveFileName(None, 'Save Boxes to txt', os.path.expanduser("~"), ".txt")
             filename=str(filename)
 
 
@@ -287,10 +288,10 @@ class BoxListView(ListView):
 
 
 if __name__=="__main__":
-    from boxListModel import BoxListModel,BoxLabel
+    from .boxListModel import BoxListModel,BoxLabel
     import numpy
     import sys
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
 
     app = QApplication(sys.argv)
 
@@ -312,7 +313,7 @@ if __name__=="__main__":
 
     def addRandomLabel():
         import numpy as np
-        dens=QString("%.1f"%np.random.rand())
+        dens="%.1f"%np.random.rand()
         ll= BoxLabel("BoxLabel {}".format(model.rowCount() + 1),
                               QColor(numpy.random.randint(0, 255),
                                      numpy.random.randint(0, 255),

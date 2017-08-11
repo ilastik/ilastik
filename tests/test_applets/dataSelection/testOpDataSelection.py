@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -32,7 +33,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 import tempfile
 
 
-class TestOpDataSelection_Basic2D():
+class TestOpDataSelection_Basic2D(object):
 
     @classmethod
     def setupClass(cls):
@@ -83,7 +84,7 @@ class TestOpDataSelection_Basic2D():
                     tmpFileName,
                 )
                 cls.imgFileNames2D.append(tmpFileName)
-            except RuntimeError, e:
+            except RuntimeError as e:
                 msg = str(e).replace('\n', '')
                 print(
                     "Couldn't write temp 2D image file using vigra with `{}` "
@@ -124,7 +125,7 @@ class TestOpDataSelection_Basic2D():
                     tmpFileName,
                 )
                 cls.imgFileNames2Dc.append(tmpFileName)
-            except RuntimeError, e:
+            except RuntimeError as e:
                 msg = str(e).replace('\n', '')
                 print(
                     "Couldn't write temp 2D+c image file using vigra with `{}` "
@@ -144,7 +145,7 @@ class TestOpDataSelection_Basic2D():
         cls.projectFile.close()
         try:
             shutil.rmtree(cls.tmpdir)
-        except OSError, e:
+        except OSError as e:
             print('Exception caught while deleting temporary files: {}'.format(e))
 
     def testBasic2D(self):
@@ -346,7 +347,7 @@ class TestOpDataSelection_Basic2D():
         assert (projectInternalData == self.imgData2Dc).all()
 
 
-class TestOpDataSelection_Basic_native_3D():
+class TestOpDataSelection_Basic_native_3D(object):
     """Test related to loading file types that support 3D"""
     @classmethod
     def setupClass(cls):
@@ -425,7 +426,7 @@ class TestOpDataSelection_Basic_native_3D():
         cls.projectFile.close()
         try:
             shutil.rmtree(cls.tmpdir)
-        except OSError, e:
+        except OSError as e:
             print('Exception caught while deleting temporary files: {}'.format(e))
 
     def testBasic3D(self):
@@ -540,7 +541,7 @@ class TestOpDataSelection_Basic_native_3D():
         assert (projectInternalData == self.imgData3Dc).all()
 
 
-class TestOpDataSelection_3DStacks():
+class TestOpDataSelection_3DStacks(object):
 
     @classmethod
     def setupClass(cls):
@@ -601,7 +602,7 @@ class TestOpDataSelection_3DStacks():
                         tmpFileName,
                     )
                     cls.imgFileLists2D[extension].append(tmpFileName)
-                except RuntimeError, e:
+                except RuntimeError as e:
                     cls.removedExtensions.append(extension)
                     msg = str(e).replace('\n', '')
                     print(
@@ -661,7 +662,7 @@ class TestOpDataSelection_3DStacks():
                         vimgData2Dc,
                         tmpFileName,
                     )
-                except RuntimeError, e:
+                except RuntimeError as e:
                     cls.removedExtensions.append(extension)
                     msg = str(e).replace('\n', '')
                     print(
@@ -695,7 +696,7 @@ class TestOpDataSelection_3DStacks():
         cls.projectFile.close()
         try:
             shutil.rmtree(cls.tmpdir)
-        except OSError, e:
+        except OSError as e:
             print('Exception caught while deleting temporary files: {}'.format(e))
 
     def testBasic3DstackFromGlobString(self):
@@ -731,7 +732,7 @@ class TestOpDataSelection_3DStacks():
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
     def testBasic3DstacksFromFileList(self):
-        for ext, fileNames in self.imgFileLists2D.items():
+        for ext, fileNames in list(self.imgFileLists2D.items()):
             fileNameString = os.path.pathsep.join(fileNames)
             graph = lazyflow.graph.Graph()
             reader = OperatorWrapper(OpDataSelection, graph=graph)
@@ -831,7 +832,7 @@ class TestOpDataSelection_SingleFileH5Stacks():
         cls.projectFile.close()
         try:
             shutil.rmtree(cls.tmpdir)
-        except OSError, e:
+        except OSError as e:
             print('Exception caught while deleting temporary files: {}'.format(e))
 
     def test_load_single_file_with_glob(self):

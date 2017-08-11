@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,6 +20,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
+from past.utils import old_div
 import sys
 import nose
 import threading
@@ -26,13 +30,14 @@ import atexit
 import platform
 from functools import partial
 
-from PyQt4.QtCore import Qt, QEvent, QPoint, QTimer
-from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, qApp
+from PyQt5.QtCore import Qt, QEvent, QPoint, QTimer
+from PyQt5.QtGui import QPixmap, QMouseEvent
+from PyQt5.QtWidgets import QApplication, qApp
 
 import ilastik.config
 from ilastik.shell.gui.startShellGui import launchShell
 from ilastik.utility.gui.threadRouter import ThreadRouter
-from mainThreadHelpers import wait_for_main_func, run_in_main_thread
+from .mainThreadHelpers import wait_for_main_func, run_in_main_thread
 
 from ilastik.ilastik_logging import default_config
 default_config.init(output_mode=default_config.OutputMode.CONSOLE)
@@ -153,10 +158,10 @@ class ShellGuiTestCaseBase(object):
         def impl():
             try:
                 func()
-            except AssertionError, e:
+            except AssertionError as e:
                 traceback.print_exc()
                 errors.append(e)
-            except Exception, e:
+            except Exception as e:
                 traceback.print_exc()
                 errors.append(e)
             testFinished.set()
@@ -202,20 +207,20 @@ class ShellGuiTestCaseBase(object):
         Example:
             self.getPixelColor(myview, (10,10), 'myview.png')
         """
-        img = QPixmap.grabWidget(imgView).toImage()
+        img = imgView.grab().toImage()
 
         if debugFileName is not None:
             img.save(debugFileName)
 
         point = QPoint(*coordinates)
         if relativeToCenter:
-            centerPoint = imgView.rect().bottomRight() / 2
+            centerPoint = QPoint(img.size().width(), img.size().height()) / 2
             point += centerPoint
 
         return img.pixel(point)
 
     def moveMouseFromCenter(self, imgView, coords ,modifier =Qt.NoModifier ):
-        centerPoint = imgView.rect().bottomRight() / 2
+        centerPoint = old_div(imgView.rect().bottomRight(), 2)
         point = QPoint(*coords) + centerPoint
         move = QMouseEvent( QEvent.MouseMove, point, Qt.NoButton, Qt.NoButton, modifier  )
         QApplication.sendEvent(imgView, move )
@@ -230,7 +235,7 @@ class ShellGuiTestCaseBase(object):
 
 
 
-        centerPoint = imgView.rect().bottomRight() / 2
+        centerPoint = old_div(imgView.rect().bottomRight(), 2)
 
         startPoint = QPoint(*start) + centerPoint
         endPoint = QPoint(*end) + centerPoint
@@ -249,7 +254,7 @@ class ShellGuiTestCaseBase(object):
         # Move to end in several steps
         #numSteps = numSteps
         for i in range(numSteps):
-            nextPoint = startPoint + (endPoint - startPoint) * ( float(i) / numSteps )
+            nextPoint = startPoint + (endPoint - startPoint) * ( old_div(float(i), numSteps) )
             move = QMouseEvent( QEvent.MouseMove, nextPoint, Qt.NoButton, Qt.NoButton, modifier )
             QApplication.sendEvent(imgView.viewport(), move )
 

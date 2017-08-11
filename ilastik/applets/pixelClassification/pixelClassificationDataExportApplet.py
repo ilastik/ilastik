@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,7 +19,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from opPixelClassificationDataExport import OpPixelClassificationDataExport
+from .opPixelClassificationDataExport import OpPixelClassificationDataExport
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 
@@ -51,7 +52,7 @@ class PixelClassificationDataExportApplet( DataExportApplet ):
     def getMultiLaneGui(self):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
-            from pixelClassificationDataExportGui import PixelClassificationDataExportGui
+            from .pixelClassificationDataExportGui import PixelClassificationDataExportGui
             self._gui = PixelClassificationDataExportGui( self, self.topLevelOperator )
         return self._gui
 

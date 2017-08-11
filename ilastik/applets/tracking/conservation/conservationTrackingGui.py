@@ -1,11 +1,15 @@
-from PyQt4 import uic, QtGui, Qt
+from __future__ import division
+from builtins import range
+from past.utils import old_div
+from PyQt5 import uic, QtWidgets
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 import os
 import logging
 import sys
 import re
 import traceback
-from PyQt4.QtCore import pyqtSignal
-from volumina.utility import encode_from_qstring
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility import log_exception
 from ilastik.utility.exportingOperator import ExportingGui
@@ -55,7 +59,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     @threadRouted
     def _setMergerLegend(self, labels, selection):
         param = self.topLevelOperatorView.Parameters.value
-        if 'withMergerResolution' in param.keys():
+        if 'withMergerResolution' in list(param.keys()):
             if param['withMergerResolution']:
                 selection = 1
         elif self._drawer.mergerResolutionBox.isChecked():
@@ -77,52 +81,52 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         
         parameters = self.topLevelOperatorView.Parameters.value        
-        if 'maxDist' in parameters.keys():
+        if 'maxDist' in list(parameters.keys()):
             self._drawer.maxDistBox.setValue(parameters['maxDist'])
-        if 'maxObj' in parameters.keys():
+        if 'maxObj' in list(parameters.keys()):
             self._drawer.maxObjectsBox.setValue(parameters['maxObj'])
-        if 'divThreshold' in parameters.keys():
+        if 'divThreshold' in list(parameters.keys()):
             self._drawer.divThreshBox.setValue(parameters['divThreshold'])
-        if 'avgSize' in parameters.keys():
+        if 'avgSize' in list(parameters.keys()):
             self._drawer.avgSizeBox.setValue(parameters['avgSize'][0])
-        if 'withTracklets' in parameters.keys():
+        if 'withTracklets' in list(parameters.keys()):
             self._drawer.trackletsBox.setChecked(parameters['withTracklets'])
-        if 'sizeDependent' in parameters.keys():
+        if 'sizeDependent' in list(parameters.keys()):
             self._drawer.sizeDepBox.setChecked(parameters['sizeDependent'])
-        if 'divWeight' in parameters.keys():
+        if 'divWeight' in list(parameters.keys()):
             self._drawer.divWeightBox.setValue(parameters['divWeight'])
-        if 'transWeight' in parameters.keys():
+        if 'transWeight' in list(parameters.keys()):
             self._drawer.transWeightBox.setValue(parameters['transWeight'])
-        if 'withDivisions' in parameters.keys():
+        if 'withDivisions' in list(parameters.keys()):
             self._drawer.divisionsBox.setChecked(parameters['withDivisions'])
-        if 'withOpticalCorrection' in parameters.keys():
+        if 'withOpticalCorrection' in list(parameters.keys()):
             self._drawer.opticalBox.setChecked(parameters['withOpticalCorrection'])
-        if 'withClassifierPrior' in parameters.keys():
+        if 'withClassifierPrior' in list(parameters.keys()):
             self._drawer.classifierPriorBox.setChecked(parameters['withClassifierPrior'])
-        if 'withMergerResolution' in parameters.keys():
+        if 'withMergerResolution' in list(parameters.keys()):
             self._drawer.mergerResolutionBox.setChecked(parameters['withMergerResolution'])
-        if 'borderAwareWidth' in parameters.keys():
+        if 'borderAwareWidth' in list(parameters.keys()):
             self._drawer.bordWidthBox.setValue(parameters['borderAwareWidth'])
-        if 'cplex_timeout' in parameters.keys():
+        if 'cplex_timeout' in list(parameters.keys()):
             self._drawer.timeoutBox.setText(str(parameters['cplex_timeout']))
-        if 'appearanceCost' in parameters.keys():
+        if 'appearanceCost' in list(parameters.keys()):
             self._drawer.appearanceBox.setValue(parameters['appearanceCost'])
-        if 'disappearanceCost' in parameters.keys():
+        if 'disappearanceCost' in list(parameters.keys()):
             self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
-        if 'max_nearest_neighbors' in parameters.keys():
+        if 'max_nearest_neighbors' in list(parameters.keys()):
             self._drawer.maxNearestNeighborsSpinBox.setValue(parameters['max_nearest_neighbors'])
-        if 'numFramesPerSplit' in parameters.keys():
+        if 'numFramesPerSplit' in list(parameters.keys()):
             self._drawer.numFramesPerSplitSpinBox.setValue(parameters['numFramesPerSplit'])
 
         # solver: use stored value only if that solver is available
         self._drawer.solverComboBox.clear()
         availableSolvers = self.getAvailableTrackingSolverTypes()
         self._drawer.solverComboBox.addItems(availableSolvers)
-        if 'solver' in parameters.keys() and parameters['solver'] in availableSolvers:
+        if 'solver' in list(parameters.keys()) and parameters['solver'] in availableSolvers:
             self._drawer.solverComboBox.setCurrentIndex(availableSolvers.index(parameters['solver']))
 
         # Hide division GUI widgets
-        if 'withAnimalTracking' in parameters.keys() and parameters['withAnimalTracking'] == True:
+        if 'withAnimalTracking' in list(parameters.keys()) and parameters['withAnimalTracking'] == True:
             self._drawer.label_5.hide()
             self._drawer.divThreshBox.hide()
             self._drawer.divisionsBox.hide()
@@ -219,7 +223,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     def _onTimeoutBoxChanged(self, *args):
         inString = str(self._drawer.timeoutBox.text())
         if self._allowedTimeoutInputRegEx.match(inString) is None:
-            self._drawer.timeoutBox.setText(inString.decode("utf8").encode("ascii", "replace")[:-1])
+            self._drawer.timeoutBox.setText(inString[:-1])
 
     def _setRanges(self, *args):
         super(ConservationTrackingGui, self)._setRanges()        
@@ -230,7 +234,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         maxBorder = min(maxx, maxy)
         if maxz != 0:
             maxBorder = min(maxBorder, maxz)
-        self._drawer.bordWidthBox.setRange(0, maxBorder/2)
+        self._drawer.bordWidthBox.setRange(0, old_div(maxBorder,2))
         
         
     def _onMaxObjectsBoxChanged(self):
@@ -256,14 +260,14 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         if withTracklets:
             numStages += 3 # initializing tracklet graph, finding tracklets, contracting edges in tracklet graph
 
-        if WITH_HYTRA:
-            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
-            self.progressWindow.run()
-            self.progressWindow.show()
-            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
-        else:
-            self.progressWindow = None
-            self.progressVisitor = DefaultProgressVisitor()
+        # if WITH_HYTRA:
+        #     self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+        #     self.progressWindow.run()
+        #     self.progressWindow.show()
+        #     self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        # else:
+        self.progressWindow = None
+        self.progressVisitor = DefaultProgressVisitor()
 
         def _track():
             self.applet.busy = True
@@ -283,7 +287,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             from_size = self._drawer.from_size.value()
             to_size = self._drawer.to_size.value()        
             
-            self.time_range =  range(from_t, to_t + 1)
+            self.time_range =  list(range(from_t, to_t + 1))
             avgSize = [self._drawer.avgSizeBox.value()]
 
             cplex_timeout = None
@@ -382,8 +386,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
 
     def menus(self):
         menus = super( ConservationTrackingGui, self ).menus()
+        m = QtWidgets.QMenu("&Export", self.volumeEditorWidget)
         
-        m = QtGui.QMenu("&Export", self.volumeEditorWidget)
         m.addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
 
         menus.append(m)

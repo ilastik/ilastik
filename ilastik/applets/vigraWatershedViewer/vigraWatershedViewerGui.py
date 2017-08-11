@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,10 +20,12 @@
 #		   http://ilastik.org/license.html
 ##############################################################################
 
+from past.utils import old_div
 import sip
-from PyQt4 import uic
-from PyQt4.QtCore import pyqtSlot
-from PyQt4.QtGui import QShortcut, QKeySequence
+from PyQt5 import uic
+from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtWidgets import QShortcut
+from PyQt5.QtGui import QKeySequence
 
 import os
 import time
@@ -273,14 +276,14 @@ class VigraWatershedViewerGui(LayerViewerGui):
         """
         totalVolume = 0
         totalCount = 0
-        for (start, stop), maxLabel in  self.topLevelOperatorView.opWatershed.maxLabels.items():
+        for (start, stop), maxLabel in  list(self.topLevelOperatorView.opWatershed.maxLabels.items()):
             blockshape = numpy.subtract(stop, start)
             vol = numpy.prod(blockshape)
             totalVolume += vol
             
             totalCount += maxLabel
         
-        vol_caption = "Refresh Volume: {} megavox".format( totalVolume / float(1000 * 1000) )
+        vol_caption = "Refresh Volume: {} megavox".format( old_div(totalVolume, float(1000 * 1000)) )
         count_caption = "Supervoxel Count: {}".format( totalCount )
         if totalVolume != 0:
             density_caption = "Density: {} supervox/megavox".format( totalCount * float(1000 * 1000) / totalVolume )

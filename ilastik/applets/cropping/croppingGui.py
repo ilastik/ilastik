@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
+from builtins import range
 import os
 import re
 import logging
@@ -27,9 +28,10 @@ from functools import partial
 
 # Third-party
 import numpy
-from PyQt4 import uic
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence, QApplication
+from PyQt5 import uic
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QShortcut, QApplication
+from PyQt5.QtGui import QIcon, QColor, QKeySequence
 
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer
@@ -47,7 +49,7 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 # Loggers
 logger = logging.getLogger(__name__)
 
-class Tool():
+class Tool(object):
     """Enumerate the types of toolbar buttons."""
     Navigation = 0 # Arrow
     Paint      = 1
@@ -309,7 +311,7 @@ class CroppingGui(LayerViewerGui):
          """
          # Uncheck all the other buttons
          if self.toolButtons != None:
-             for tool, button in self.toolButtons.items():
+             for tool, button in list(self.toolButtons.items()):
                  if tool != toolId:
                      button.setChecked(False)
 
@@ -526,7 +528,7 @@ class CroppingGui(LayerViewerGui):
     def getLayer(self, name):
         """find a layer by name"""
         try:
-            croplayer = itertools.ifilter(lambda l: l.name == name, self.layerstack).next()
+            croplayer = next(filter(lambda l: l.name == name, self.layerstack))
         except StopIteration:
             return None
         else:

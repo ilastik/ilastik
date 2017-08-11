@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,6 +22,7 @@
 
 
 # basic python modules
+from builtins import range
 import functools
 import logging
 logger = logging.getLogger(__name__)
@@ -38,7 +40,7 @@ from lazyflow.rtype import SubRegion
 from lazyflow.stype import Opaque
 from lazyflow.request import Request, RequestPool
 
-from _OpGraphCut import segmentGC, OpGraphCut
+from ._OpGraphCut import segmentGC, OpGraphCut
 
 
 ## segment predictions with pre-thresholding

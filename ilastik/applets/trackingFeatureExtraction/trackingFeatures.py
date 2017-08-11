@@ -19,6 +19,7 @@
 #                  http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from builtins import range
 import numpy as np
 import math
 import vigra
@@ -176,8 +177,8 @@ class FeatureManager( object ):
         ''' returns the squared distances to the objects in the neighborhood of com_curr, optionally with size filter '''
         squaredDistances = []
 
-        for label_next in coms_next.keys():
-            assert label_next in sizes_next.keys()
+        for label_next in list(coms_next.keys()):
+            assert label_next in list(sizes_next.keys())
             if size_filter != None and sizes_next[label_next] >= size_filter:
                 dist = np.linalg.norm(coms_next[label_next] - com_cur * self.scales)                
                 squaredDistances.append([label_next,dist])
@@ -209,11 +210,11 @@ class FeatureManager( object ):
                 continue
             
             if len(name_split) != 2:                
-                raise Exception, 'tracking features consist of an operator and a feature name only, given name={}'.format(name_split) 
+                raise Exception('tracking features consist of an operator and a feature name only, given name={}'.format(name_split)) 
             feat_dim = len(feats_cur[name_split[1]][0])
             feat_classes[name] = self.feature_mappings[name_split[0]](name_split[1], delim=self.delim, ndim=self.ndim, feat_dim=feat_dim)
 
-            shape = (feats_cur.values()[0].shape[0],feat_classes[name].dim())
+            shape = (list(feats_cur.values())[0].shape[0],feat_classes[name].dim())
             result[name] = np.ones(shape) * feat_classes[name].default_value
 
             vigra_feat_names.add(name_split[1])
@@ -221,7 +222,7 @@ class FeatureManager( object ):
 
         for idx in range(self.n_best):
             name = 'SquaredDistances_' + str(idx)
-            result[name] = np.ones((feats_cur.values()[0].shape[0], 1)) * self.squared_distance_default
+            result[name] = np.ones((list(feats_cur.values())[0].shape[0], 1)) * self.squared_distance_default
 
         for label_cur, com_cur in enumerate(feats_cur[self.com_name_cur]):
             if label_cur == 0:
@@ -267,7 +268,7 @@ class FeatureManager( object ):
                 result[name][label_cur] = sq_dist_label[idx][1]
 
             # add all other features
-            for name, feat_class in feat_classes.items():
+            for name, feat_class in list(feat_classes.items()):
                 if feat_class.feats_name == 'SquaredDistances':
                     f_next = sq_dist_label[0:2,1]
                     f_cur = None

@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,6 +20,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from past.utils import old_div
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2, OpMultiArrayMerger, OpPixelOperator
@@ -94,7 +97,7 @@ class OpVigraWatershedViewer(Operator):
             if len(arrays) == 0:
                 return 0
             else:
-                return sum(arrays) / float(len(arrays))
+                return old_div(sum(arrays), float(len(arrays)))
         self.opAverage.MergingFunction.setValue( average )
         self.opAverage.Inputs.connect( self.opChannelSlicer.Slices )
 
@@ -196,7 +199,7 @@ if __name__ == "__main__":
     from lazyflow.graph import Graph
     from lazyflow.utility import Timer
 
-    print "Reading data..."    
+    print("Reading data...")    
     prediction_path = '/tmp/STACKED_prediction.h5'
     with h5py.File( prediction_path, 'r' ) as prediction_file:
         data = prediction_file['volume/predictions'][:] #[0:50,0:50,0:50,:]
@@ -219,16 +222,16 @@ if __name__ == "__main__":
     
     assert op.WatershedLabels.ready()
     
-    print "Computing watershed..."
+    print("Computing watershed...")
     with Timer() as timer:
         watershed_labels = op.opWatershed.Output[:].wait()
-    print "Computing watershed took {} seconds".format( timer.seconds() )
+    print("Computing watershed took {} seconds".format( timer.seconds() ))
     
-    print "Saving watershed..."
+    print("Saving watershed...")
     with h5py.File('/tmp/watershed_output.h5', 'w') as output_file:
         output_file.create_dataset('watershed_labels', data=watershed_labels)
     
-    print "DONE."
+    print("DONE.")
 
 
 

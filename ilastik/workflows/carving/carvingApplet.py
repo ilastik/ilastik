@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,8 +22,8 @@
 from ilastik.applets.labeling.labelingApplet import LabelingApplet
 
 from ilastik.utility import OpMultiLaneWrapper
-from opCarving import OpCarving
-from carvingSerializer import CarvingSerializer
+from .opCarving import OpCarving
+from .carvingSerializer import CarvingSerializer
 
 class CarvingApplet(LabelingApplet):
     
@@ -59,5 +60,5 @@ class CarvingApplet(LabelingApplet):
     
     @property
     def singleLaneGuiClass(self):
-        from carvingGui import CarvingGui
+        from .carvingGui import CarvingGui
         return CarvingGui

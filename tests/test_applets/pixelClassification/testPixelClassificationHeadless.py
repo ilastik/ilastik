@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import print_function
 import os
 import sys
 import imp
@@ -52,7 +53,14 @@ class TestPixelClassificationHeadless(object):
 
     @classmethod
     def setupClass(cls):
-        print 'starting setup...'
+        print('looking for ilastik.py...')
+        # Load the ilastik startup script as a module.
+        # Do it here in setupClass to ensure that it isn't loaded more than once.
+        ilastik_entry_file_path = os.path.join( os.path.split( os.path.realpath(ilastik.__file__) )[0], "../ilastik.py" )
+        if not os.path.exists( ilastik_entry_file_path ):
+            raise RuntimeError("Couldn't find ilastik.py startup script: {}".format( ilastik_entry_file_path ))
+            
+        print('starting setup...')
         cls.original_cwd = os.getcwd()
         os.chdir(cls.data_dir)
 
@@ -64,13 +72,6 @@ class TestPixelClassificationHeadless(object):
 
         cls.create_new_tst_project()
 
-        print 'looking for ilastik.py...'
-        # Load the ilastik startup script as a module.
-        # Do it here in setupClass to ensure that it isn't loaded more than once.
-        ilastik_entry_file_path = os.path.join( os.path.split( os.path.realpath(ilastik.__file__) )[0], "../ilastik.py" )
-        if not os.path.exists( ilastik_entry_file_path ):
-            raise RuntimeError("Couldn't find ilastik.py startup script: {}".format( ilastik_entry_file_path ))
-            
         cls.ilastik_startup = imp.load_source( 'ilastik_startup', ilastik_entry_file_path )
 
     @classmethod

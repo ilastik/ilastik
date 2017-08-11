@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ##############################################################################
+from builtins import range
 from functools import partial
 from contextlib import contextmanager
 import threading
@@ -25,9 +26,11 @@ import threading
 import numpy as np
 
 import sip
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QDoubleSpinBox, QVBoxLayout, QMenu, QAction, \
-                        QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QComboBox, QPushButton, QCheckBox
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QPen
+from PyQt5.QtWidgets import QWidget, QLabel, QSpinBox, QDoubleSpinBox, QVBoxLayout, \
+                            QHBoxLayout, QSpacerItem, QSizePolicy, QComboBox, QPushButton, \
+                            QMenu, QAction, QCheckBox
 
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
@@ -287,9 +290,9 @@ class WsdtGui(LayerViewerGui):
 
         # Debug layers
         if op.debug_results:
-            for name, compressed_array in op.debug_results.items():
+            for name, compressed_array in list(op.debug_results.items()):
                 axiskeys = op.Superpixels.meta.getAxisKeys()[:-1] # debug images don't have a channel axis
-                permutation = map(lambda key: axiskeys.index(key) if key in axiskeys else None, 'txyzc')
+                permutation = [axiskeys.index(key) if key in axiskeys else None for key in 'txyzc']
                 arraysource = ArraySource( TransposedView(compressed_array, permutation) )
                 if compressed_array.dtype == np.uint32:
                     layer = ColortableLayer(arraysource, self._sp_colortable)

@@ -29,6 +29,11 @@ BROKEN=()
 
 for f in `find $NOSE_ARG -iname "*test*.py" | grep -v nanshe` 
 do
+  if echo $f | grep -q "shellGuiTestCaseBase.py"; then
+      # This isn't a test case, it's a helper file
+      continue
+  fi
+
   if echo $f | grep -q "testPixelClassificationBenchmarking.py"; then
       echo "Skipping $f because is takes too long"
       continue
@@ -65,6 +70,8 @@ do
   echo "Running $f"
   if echo $f | grep -iq "gui"; then
       # We assume that GUI tests have been set up to be run via 'if name == main' sections.
+      python $f
+  elif echo $f | grep -q "testPixelClassificationHeadless.py"; then
       python $f
   else
       python $TESTS_DIR/nose_single.py --nologcapture $f

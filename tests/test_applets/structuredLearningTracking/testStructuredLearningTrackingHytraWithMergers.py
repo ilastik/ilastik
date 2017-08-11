@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -180,7 +181,7 @@ class TestStructuredLearningTrackingHeadless(object):
 
             # Check for expected number of lines
             logger.info("Number of rows in the csv file: {}".format(data.shape[0]))
-            print "Number of rows in the csv file: {}".format(data.shape[0])
+            print("Number of rows in the csv file: {}".format(data.shape[0]))
             assert data.shape[0] == self.EXPECTED_NUM_LINES_TRACKING, 'Number of rows in the csv file differs from expected'
 
             # Check that the csv file contains the default fields.

@@ -18,16 +18,16 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 import os.path
 import sys
 
-from PyQt4.QtGui import QWidget, QProgressDialog, \
-    QMessageBox, QFileDialog
-from PyQt4.QtCore import Qt, QString, QVariant, pyqtSignal, QObject, QDir
+from PyQt5.QtWidgets import QWidget, QProgressDialog, QMessageBox, QFileDialog
+from PyQt5.QtCore import Qt, pyqtSignal, QObject, QDir
 
-import PyQt4
+import PyQt5
 
 import logging
 from lazyflow.operators.opInterpMissingData import logger as remoteLogger
@@ -38,10 +38,6 @@ loggerName = __name__
 logger = logging.getLogger(loggerName)
 logger.setLevel(logging.DEBUG)
 
-
-def qstring2str(s):
-    assert type(s) == QString
-    return unicode(s.toUtf8(), "utf-8").encode(sys.getfilesystemencoding())
 
 
 class FillMissingSlicesGui(LayerViewerGui):
@@ -58,7 +54,7 @@ class FillMissingSlicesGui(LayerViewerGui):
         """
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
-        self._drawer = PyQt4.uic.loadUi(localDir+"/drawer.ui")
+        self._drawer = PyQt5.uic.loadUi(localDir+"/drawer.ui")
 
         self._drawer.loadDetectorButton.clicked.connect(
             self._loadDetectorButtonPressed)
@@ -74,12 +70,12 @@ class FillMissingSlicesGui(LayerViewerGui):
             self._patchSizeComboBoxActivated)
 
         for s in self._standardPatchSizes:
-            self._drawer.patchSizeComboBox.addItem(QString(str(s)), userData=s)
+            self._drawer.patchSizeComboBox.addItem(str(s), userData=s)
 
         self._drawer.haloSizeComboBox.activated.connect(
             self._haloSizeComboBoxActivated)
         for s in self._standardHaloSizes:
-            self._drawer.haloSizeComboBox.addItem(QString(str(s)), userData=s)
+            self._drawer.haloSizeComboBox.addItem(str(s), userData=s)
 
         self.patchSizeChanged(update=True)
         self.haloSizeChanged(update=True)
@@ -90,7 +86,7 @@ class FillMissingSlicesGui(LayerViewerGui):
             self.haloSizeChanged, update=True)
 
     def _loadDetectorButtonPressed(self):
-        fname = QFileDialog.getOpenFileName(
+        fname, _filter = QFileDialog.getOpenFileName(
             self, caption='Open Detector File',
             filter="Pickled Objects (*.pkl);;All Files (*)",
             directory=self._recentDetectorDir)
@@ -103,10 +99,10 @@ class FillMissingSlicesGui(LayerViewerGui):
 
             self.topLevelOperatorView.OverloadDetector.setValue(pkl)
             logger.debug("Loaded detectors from file '{}'".format(fname))
-            self._recentDetectorDir = os.path.dirname(qstring2str(fname))
+            self._recentDetectorDir = os.path.dirname( fname )
 
     def _loadHistogramsButtonPressed(self):
-        fname = QFileDialog.getOpenFileName(
+        fname, _filter = QFileDialog.getOpenFileName(
             self, caption='Open Histogram File',
             filter="HDF5 Files (*.h5 *.hdf5);;All Files (*)",
             directory=QDir.homePath())
@@ -122,7 +118,7 @@ class FillMissingSlicesGui(LayerViewerGui):
                 fname, histos.shape))
 
     def _exportDetectorButtonPressed(self):
-        fname = QFileDialog.getSaveFileName(
+        fname, _filter = QFileDialog.getSaveFileName(
             self, caption='Export Trained Detector',
             filter="Pickled Objects (*.pkl);;All Files (*)",
             directory=self._recentExportDir)
@@ -131,23 +127,17 @@ class FillMissingSlicesGui(LayerViewerGui):
                 f.write(self.topLevelOperatorView.Detector[:].wait())
 
             logger.debug("Exported detectors to file '{}'".format(fname))
-            self._recentExportDir = os.path.dirname(qstring2str(fname))
+            self._recentExportDir = os.path.dirname( fname )
 
     def _trainButtonPressed(self):
         self.topLevelOperatorView.train()
 
     def _patchSizeComboBoxActivated(self, i):
-        (desiredPatchSize, ok) = \
-            self._drawer.patchSizeComboBox.itemData(i).toInt()
-        if not ok:
-            return
+        desiredPatchSize = self._drawer.patchSizeComboBox.itemData(i)
         self.topLevelOperatorView.PatchSize.setValue(desiredPatchSize)
 
     def _haloSizeComboBoxActivated(self, i):
-        (desiredHaloSize, ok) = \
-            self._drawer.haloSizeComboBox.itemData(i).toInt()
-        if not ok:
-            return
+        desiredHaloSize = self._drawer.haloSizeComboBox.itemData(i)
         self.topLevelOperatorView.HaloSize.setValue(desiredHaloSize)
 
     @staticmethod
@@ -157,11 +147,10 @@ class FillMissingSlicesGui(LayerViewerGui):
         if i < 0:
             j = 0
             for i in range(cb.count()):
-                qvar = cb.itemData(i)
-                (k, ok) = qvar.toInt()
-                if ok and k == n:
+                k = cb.itemData(i)
+                if k == n:
                     return i
-                elif ok and k > n:
+                elif k > n:
                     j = i
                     break
                 else:

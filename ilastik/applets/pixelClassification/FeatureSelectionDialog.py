@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+from builtins import range
 __author__ = 'fabian'
 
 import numpy
 # import scipy
-from PyQt4 import QtCore, QtGui
-from PyQt4.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtGui import QCursor
+from PyQt5.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
 
 from volumina.widgets import layerwidget
 from volumina import volumeEditorWidget
@@ -82,7 +85,7 @@ class FeatureSelectionResult(object):
 
 
 
-class FeatureSelectionDialog(QtGui.QDialog):
+class FeatureSelectionDialog(QtWidgets.QDialog):
     def __init__(self, current_opFeatureSelection, current_opPixelClassification):
         '''
 
@@ -251,7 +254,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         self._initialized_all_features_segmentation_layer = False
         self._initialized_current_features_segmentation_layer = False
         self._initialized_feature_matrix = False
-        self.all_feature_sets_combo_box.resetInputContext()
+        #self.all_feature_sets_combo_box.resetInputContext()
         self._selected_feature_set_id = None
 
     def _init_gui(self):
@@ -272,12 +275,12 @@ class FeatureSelectionDialog(QtGui.QDialog):
             ###################
             # This section constructs the GUI elements that are displayed on the left side of the window
             ###################
-            left_side_panel = QtGui.QListWidget()
-            left_side_layout = QtGui.QVBoxLayout()
-            method_label = QtGui.QLabel("Feature Selection Method")
+            left_side_panel = QtWidgets.QListWidget()
+            left_side_layout = QtWidgets.QVBoxLayout()
+            method_label = QtWidgets.QLabel("Feature Selection Method")
 
             # combo box for selecting desired feature selection method
-            self.select_method_cbox = QtGui.QComboBox()
+            self.select_method_cbox = QtWidgets.QComboBox()
             self.select_method_cbox.addItem("Gini Importance (quick & dirty)")
             self.select_method_cbox.addItem("Filter Method (recommended)")
             self.select_method_cbox.addItem("Wrapper Method (slow but good)")
@@ -287,12 +290,12 @@ class FeatureSelectionDialog(QtGui.QDialog):
             # number of selected features
             # create a widget containing 2 child widgets in a horizontal layout
             # child widgets: QLabel for text and QSpinBox for selecting an integer value for number of features
-            self.number_of_features_selection_widget = QtGui.QWidget()
+            self.number_of_features_selection_widget = QtWidgets.QWidget()
 
-            text_number_of_feat = QtGui.QLabel("Number of Features (0=auto)")
-            self.number_of_feat_box = QtGui.QSpinBox()
+            text_number_of_feat = QtWidgets.QLabel("Number of Features (0=auto)")
+            self.number_of_feat_box = QtWidgets.QSpinBox()
 
-            number_of_features_selection_layout = QtGui.QHBoxLayout()
+            number_of_features_selection_layout = QtWidgets.QHBoxLayout()
             number_of_features_selection_layout.addWidget(text_number_of_feat)
             number_of_features_selection_layout.addWidget(self.number_of_feat_box)
 
@@ -302,25 +305,25 @@ class FeatureSelectionDialog(QtGui.QDialog):
             # regularization parameter for wrapper
             # create a widget containing 2 child widgets in a horizontal layout
             # child widgets: QLabel for text and QDoubleSpinBox for selecting a float value for c (parameter)
-            self.c_widget = QtGui.QWidget()
+            self.c_widget = QtWidgets.QWidget()
 
-            text_c_widget = QtGui.QLabel("Set Size Penalty") # not a good text
-            self.spinbox_c_widget = QtGui.QDoubleSpinBox()
+            text_c_widget = QtWidgets.QLabel("Set Size Penalty") # not a good text
+            self.spinbox_c_widget = QtWidgets.QDoubleSpinBox()
             # may have to set increment to 0.01
             self.spinbox_c_widget.setSingleStep(0.03)
 
-            c_widget_layout = QtGui.QHBoxLayout()
+            c_widget_layout = QtWidgets.QHBoxLayout()
             c_widget_layout.addWidget(text_c_widget)
             c_widget_layout.addWidget(self.spinbox_c_widget)
 
             self.c_widget.setLayout(c_widget_layout)
 
             # run button
-            self.run_button = QtGui.QPushButton("Run Feature Selection")
+            self.run_button = QtWidgets.QPushButton("Run Feature Selection")
 
 
             # text box with explanations
-            text_box = QtGui.QTextEdit()
+            text_box = QtWidgets.QTextEdit()
             text_box.setReadOnly(True)
             text_box.setText("<html><b>1) Choose the feature selection method</b><br>" +
                              "- Gini Importance: inaccurate but fast<br>" +
@@ -359,8 +362,8 @@ class FeatureSelectionDialog(QtGui.QDialog):
             # The three widgets create above (left_side_panel, viewer, layerWidget) are now collected into one single
             # widget (centralWidget)
             ###################
-            upper_widget_layout = QtGui.QHBoxLayout()
-            upper_widget = QtGui.QWidget()
+            upper_widget_layout = QtWidgets.QHBoxLayout()
+            upper_widget = QtWidgets.QWidget()
 
             upper_widget_layout.addWidget(left_side_panel)
             upper_widget_layout.addWidget(self.viewer)
@@ -377,15 +380,15 @@ class FeatureSelectionDialog(QtGui.QDialog):
             # Add 2 buttons and a combo box to the bottom (combo box is used to select feature set, one button for accepting
             # the new set, one for canceling)
             ###################
-            self.all_feature_sets_combo_box = QtGui.QComboBox()
+            self.all_feature_sets_combo_box = QtWidgets.QComboBox()
             self.all_feature_sets_combo_box.resize(500, 100)
-            self.select_set_button = QtGui.QPushButton("Select Feature Set")
-            self.cancel_button = QtGui.QPushButton("Cancel")
-            show_features_of_selected_set = QtGui.QPushButton("Show Feature Names")
+            self.select_set_button = QtWidgets.QPushButton("Select Feature Set")
+            self.cancel_button = QtWidgets.QPushButton("Cancel")
+            show_features_of_selected_set = QtWidgets.QPushButton("Show Feature Names")
             show_features_of_selected_set.clicked.connect(self._show_feature_name_dialog)
 
-            bottom_widget = QtGui.QWidget()
-            bottom_layout = QtGui.QHBoxLayout()
+            bottom_widget = QtWidgets.QWidget()
+            bottom_layout = QtWidgets.QHBoxLayout()
             # bottom_layout.addWidget(self.current_status_label)
             #bottom_layout.addStretch(1)
             bottom_layout.addWidget(self.all_feature_sets_combo_box)
@@ -402,11 +405,11 @@ class FeatureSelectionDialog(QtGui.QDialog):
             bottom_widget.setLayout(bottom_layout)
 
 
-            central_widget_layout = QtGui.QVBoxLayout()
+            central_widget_layout = QtWidgets.QVBoxLayout()
             central_widget_layout.addWidget(upper_widget)
             central_widget_layout.addWidget(bottom_widget)
 
-            central_widget = QtGui.QWidget()
+            central_widget = QtWidgets.QWidget()
             central_widget.setLayout(central_widget_layout)
 
             self.setLayout(central_widget_layout)
@@ -415,16 +418,16 @@ class FeatureSelectionDialog(QtGui.QDialog):
             self._gui_initialized = True
 
     def _show_feature_name_dialog(self):
-        dialog = QtGui.QDialog()
+        dialog = QtWidgets.QDialog()
         dialog.resize(350, 650)
 
-        ok_button = QtGui.QPushButton("ok")
+        ok_button = QtWidgets.QPushButton("ok")
         ok_button.clicked.connect(dialog.accept)
 
-        text_edit = QtGui.QTextEdit()
+        text_edit = QtWidgets.QTextEdit()
         text_edit.setReadOnly(True)
 
-        layout = QtGui.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         layout.addWidget(text_edit)
         layout.addWidget(ok_button)
 
@@ -594,7 +597,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         do_transpose = axisOrder.index('x') > axisOrder.index('y')
 
         # we need to reset the 'c' axis because it only has length 1 for segmentation
-        if 'c' not in bbox.keys():
+        if 'c' not in list(bbox.keys()):
             axisOrder += ['c']
 
         bbox['c'] = [0, 1]
@@ -628,7 +631,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         :param feat:
         :return:
         '''
-        import opSimplePixelClassification
+        from . import opSimplePixelClassification
         from lazyflow import graph
         from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 
@@ -754,7 +757,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         return n_select_opt
 
     def _run_selection(self):
-        QtGui.QApplication.instance().setOverrideCursor( QtGui.QCursor(QtCore.Qt.WaitCursor) )
+        QtWidgets.QApplication.instance().setOverrideCursor( QCursor(QtCore.Qt.WaitCursor) )
         '''
         runs the feature selection based on the selected parameters and selection method. Adds a segmentation layer
         showing the segmentation result achieved with the selected set
@@ -880,28 +883,28 @@ class FeatureSelectionDialog(QtGui.QDialog):
         self.opFeatureSelection.SelectionMatrix.setValue(user_defined_matrix)
         self.opFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
         self.opFeatureSelection.setupOutputs()
-        QtGui.QApplication.instance().restoreOverrideCursor()
+        QtWidgets.QApplication.instance().restoreOverrideCursor()
 
 
 ## Start Qt event loop unless running in interactive mode.
 if __name__ == '__main__':
     #import sys
     #if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-    #    QtGui.QApplication.instance().exec_()
-    app = QtGui.QApplication([])
-    win = QtGui.QMainWindow()
+    #    QtWidgets.QApplication.instance().exec_()
+    app = QtWidgets.QApplication([])
+    win = QtWidgets.QMainWindow()
     win.resize(800, 800)
 
     feat_dial = FeatureSelectionDialog()
-    button = QtGui.QPushButton("open feature selection dialog")
+    button = QtWidgets.QPushButton("open feature selection dialog")
     button.clicked.connect(feat_dial.show)
 
-    central_widget = QtGui.QWidget()
-    layout2 = QtGui.QHBoxLayout()
+    central_widget = QtWidgets.QWidget()
+    layout2 = QtWidgets.QHBoxLayout()
     layout2.addWidget(button)
 
     central_widget.setLayout(layout2)
     win.setCentralWidget(central_widget)
 
     win.show()
-    QtGui.QApplication.instance().exec_()
+    QtWidgets.QApplication.instance().exec_()

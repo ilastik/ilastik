@@ -1,3 +1,4 @@
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,6 +19,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
+from past.utils import old_div
 import os
 import numpy
 import h5py
@@ -81,7 +84,7 @@ class OpMockPixelClassifier(Operator):
         self.classifier_cache = OpValueCache(graph=self.graph, parent=self)
         self.classifier_cache.Input.connect( self.opClassifier.Classifier )
         
-        p1 = numpy.indices(self.dataShape).sum(0) / 207.0
+        p1 = old_div(numpy.indices(self.dataShape).sum(0), 207.0)
         p2 = 1 - p1
 
         self.predictionData = numpy.concatenate((p1,p2), axis=4)
@@ -185,7 +188,7 @@ class TestPixelClassificationSerializer(object):
     
         # Create an empty project
         with h5py.File(testProjectName) as testProject:
-            testProject.create_dataset("ilastikVersion", data="1.0.0")
+            testProject.create_dataset("ilastikVersion", data=b"1.0.0")
             
             # Create an operator to work with and give it some input
             g = Graph()
@@ -225,7 +228,8 @@ class TestPixelClassificationSerializer(object):
             assert (operatorToSave.LabelImages[0][...].wait() == operatorToLoad.LabelImages[0][...].wait()).all()
             assert (operatorToSave.LabelImages[0][...].wait() == labeldata[...]).all()
 
-            assert operatorToSave.LabelNames.value == operatorToLoad.LabelNames.value
+            assert operatorToSave.LabelNames.value == operatorToLoad.LabelNames.value, \
+                "{} != {}".format( operatorToSave.LabelNames.value, operatorToLoad.LabelNames.value )
             assert (numpy.array(operatorToSave.LabelColors.value) == numpy.array(operatorToLoad.LabelColors.value)).all()
             assert (numpy.array(operatorToSave.PmapColors.value) == numpy.array(operatorToLoad.PmapColors.value)).all()
         

@@ -1,3 +1,4 @@
+from builtins import range
 import os
 import numpy as np
 import h5py
@@ -33,9 +34,9 @@ else:
             # convert to ndarray for better indexing
             dis = np.asarray(dis)
             app = np.asarray(app)
-            div = np.asarray([[k, v[0], v[1]] for k,v in activeDivisions.iteritems()])
+            div = np.asarray([[k, v[0], v[1]] for k,v in activeDivisions.items()])
             mov = np.asarray(activeLinks)
-            mer = np.asarray([[k,v] for k,v in mergers.iteritems()])
+            mer = np.asarray([[k,v] for k,v in mergers.items()])
             mul = np.asarray(mul)
     
             with h5py.File(fn, 'w') as dest_file:

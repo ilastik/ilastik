@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
@@ -19,7 +20,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from opDataSelection import OpDataSelection, DatasetInfo
+from builtins import range
+from .opDataSelection import OpDataSelection, DatasetInfo
 from lazyflow.operators.ioOperators import OpStackLoader, OpH5WriterBigDataset
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
@@ -51,8 +53,8 @@ class DataSelectionSerializer( AppletSerializer ):
     The model operator for this serializer is the ``OpMultiLaneDataSelectionGroup``
     """
     # Constants    
-    LocationStrings = { DatasetInfo.Location.FileSystem      : 'FileSystem',
-                        DatasetInfo.Location.ProjectInternal : 'ProjectInternal' }
+    LocationStrings = { DatasetInfo.Location.FileSystem      : u'FileSystem',
+                        DatasetInfo.Location.ProjectInternal : u'ProjectInternal' }
 
     def __init__(self, topLevelOperator, projectFileGroupName):
         super( DataSelectionSerializer, self ).__init__(projectFileGroupName)
@@ -97,7 +99,7 @@ class DataSelectionSerializer( AppletSerializer ):
                 info = slot.value
                 # If this dataset should be stored in the project, but it isn't there yet
                 if  info.location == DatasetInfo.Location.ProjectInternal \
-                and info.datasetId not in localDataGroup.keys():
+                and info.datasetId not in list(localDataGroup.keys()):
                     # Obtain the data from the corresponding output and store it to the project.
                     dataSlot = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex]
 
@@ -115,7 +117,7 @@ class DataSelectionSerializer( AppletSerializer ):
                         opWriter.cleanUp()
     
                     # Add axistags and drange attributes, in case someone uses this dataset outside ilastik
-                    localDataGroup[info.datasetId].attrs['axistags'] = dataSlot.meta.axistags.toJSON()
+                    localDataGroup[info.datasetId].attrs['axistags'] = dataSlot.meta.axistags.toJSON().encode('utf-8')
                     if dataSlot.meta.drange is not None:
                         localDataGroup[info.datasetId].attrs['drange'] = dataSlot.meta.drange
     
@@ -133,7 +135,7 @@ class DataSelectionSerializer( AppletSerializer ):
                     localDatasetIds.add( slot.value.datasetId )
         
         # Delete any datasets in the project that aren't needed any more
-        for datasetName in localDataGroup.keys():
+        for datasetName in list(localDataGroup.keys()):
             if datasetName not in localDatasetIds:
                 del localDataGroup[datasetName]
 
@@ -146,13 +148,14 @@ class DataSelectionSerializer( AppletSerializer ):
                 self.topLevelOperator.DatasetGroup[0][0].setValue(firstInfo, check_changed=False)
 
         deleteIfPresent(topGroup, 'Role Names')
-        topGroup.create_dataset('Role Names', data=self.topLevelOperator.DatasetRoles.value)
+        role_names = [name.encode('utf-8') for name in self.topLevelOperator.DatasetRoles.value]
+        topGroup.create_dataset('Role Names', data=role_names)
 
         # Access the info group
         infoDir = getOrCreateGroup(topGroup, 'infos')
         
         # Delete all infos
-        for infoName in infoDir.keys():
+        for infoName in list(infoDir.keys()):
             del infoDir[infoName]
                 
         # Rebuild the list of infos
@@ -166,13 +169,13 @@ class DataSelectionSerializer( AppletSerializer ):
                 if slot.ready():
                     datasetInfo = slot.value
                     locationString = self.LocationStrings[datasetInfo.location]
-                    infoGroup.create_dataset('location', data=locationString)
-                    infoGroup.create_dataset('filePath', data=datasetInfo.filePath)
-                    infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
+                    infoGroup.create_dataset('location', data=locationString.encode('utf-8'))
+                    infoGroup.create_dataset('filePath', data=datasetInfo.filePath.encode('utf-8'))
+                    infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId.encode('utf-8'))
                     infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
-                    infoGroup.create_dataset('nickname', data=datasetInfo.nickname)
+                    infoGroup.create_dataset('nickname', data=datasetInfo.nickname.encode('utf-8'))
                     infoGroup.create_dataset('fromstack', data=datasetInfo.fromstack)
-                    infoGroup.create_dataset('display_mode', data=datasetInfo.display_mode)
+                    infoGroup.create_dataset('display_mode', data=datasetInfo.display_mode.encode('utf-8'))
                     if datasetInfo.drange is not None:
                         infoGroup.create_dataset('drange', data=datasetInfo.drange)
 
@@ -180,8 +183,8 @@ class DataSelectionSerializer( AppletSerializer ):
                     #  which is what the image looks like before 'forceAxisOrder' is applied, 
                     #  and before 'c' is automatically appended
                     axistags = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex].meta.axistags
-                    infoGroup.create_dataset('axistags', data=axistags.toJSON())
-                    axisorder = "".join(tag.key for tag in axistags)
+                    infoGroup.create_dataset('axistags', data=axistags.toJSON().encode('utf-8'))
+                    axisorder = "".join(tag.key for tag in axistags).encode('utf-8')
                     infoGroup.create_dataset('axisorder', data=axisorder)
                     if datasetInfo.subvolume_roi is not None:
                         infoGroup.create_dataset('subvolume_roi', data=datasetInfo.subvolume_roi)
@@ -366,12 +369,12 @@ class DataSelectionSerializer( AppletSerializer ):
         datasetInfo = DatasetInfo()
 
         # Make a reverse-lookup of the location storage strings
-        LocationLookup = { v:k for k,v in self.LocationStrings.items() }
-        datasetInfo.location = LocationLookup[ str(infoGroup['location'].value) ]
+        LocationLookup = { v:k for k,v in list(self.LocationStrings.items()) }
+        datasetInfo.location = LocationLookup[ infoGroup['location'].value.decode('utf-8') ]
         
         # Write to the 'private' members to avoid resetting the dataset id
-        datasetInfo._filePath = infoGroup['filePath'].value
-        datasetInfo._datasetId = infoGroup['datasetId'].value
+        datasetInfo._filePath = infoGroup['filePath'].value.decode('utf-8')
+        datasetInfo._datasetId = infoGroup['datasetId'].value.decode('utf-8')
 
         try:
             datasetInfo.allowLabels = infoGroup['allowLabels'].value
@@ -384,12 +387,12 @@ class DataSelectionSerializer( AppletSerializer ):
             pass
         
         try:
-            datasetInfo.display_mode = infoGroup['display_mode'].value
+            datasetInfo.display_mode = infoGroup['display_mode'].value.decode('utf-8')
         except KeyError:
             pass
         
         try:
-            datasetInfo.nickname = infoGroup['nickname'].value
+            datasetInfo.nickname = infoGroup['nickname'].value.decode('utf-8')
         except KeyError:
             datasetInfo.nickname = PathComponents(datasetInfo.filePath).filenameBase
         
@@ -401,18 +404,18 @@ class DataSelectionSerializer( AppletSerializer ):
                                       and ( ('?' in datasetInfo._filePath) or (os.path.pathsep in datasetInfo._filePath) ) )
 
         try:
-            tags = vigra.AxisTags.fromJSON( infoGroup['axistags'].value )
+            tags = vigra.AxisTags.fromJSON( infoGroup['axistags'].value.decode('utf-8') )
             datasetInfo.axistags = tags
         except KeyError:
             # Old projects just have an 'axisorder' field instead of full axistags
             try:
-                axisorder = infoGroup['axisorder'].value
+                axisorder = infoGroup['axisorder'].value.decode('utf-8')
                 datasetInfo.axistags = vigra.defaultAxistags(axisorder)
             except KeyError:
                 pass
         
         try:
-            start, stop = map( tuple, infoGroup['subvolume_roi'].value )
+            start, stop = list(map( tuple, infoGroup['subvolume_roi'].value ))
             datasetInfo.subvolume_roi = (start, stop)
         except KeyError:
             pass
@@ -420,7 +423,7 @@ class DataSelectionSerializer( AppletSerializer ):
         # If the data is supposed to be in the project,
         #  check for it now.
         if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
-            if not datasetInfo.datasetId in localDataGroup.keys():
+            if not datasetInfo.datasetId in list(localDataGroup.keys()):
                 raise RuntimeError("Corrupt project file.  Could not find data for " + infoGroup.name)
 
         dirty = False

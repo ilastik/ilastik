@@ -19,9 +19,11 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
+from builtins import range
 import os
 from functools import partial
 import logging
+from future.utils import with_metaclass
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
@@ -29,9 +31,10 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 import numpy
 
 #PyQt
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import *
-from PyQt4 import uic
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5 import uic
 
 import vigra
 
@@ -69,7 +72,7 @@ class LayerViewerGuiMetaclass(type(QWidget)):
         instance._after_init()
         return instance
 
-class LayerViewerGui(QWidget):
+class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     """
     Implements an applet GUI whose central widget is a VolumeEditor
     and whose layer controls simply contains a layer list widget.
@@ -78,7 +81,6 @@ class LayerViewerGui(QWidget):
     Provides: Central widget (viewer), View Menu, and Layer controls
     Provides an EMPTY applet drawer widget.  Subclasses should replace it with their own applet drawer.
     """
-    __metaclass__ = LayerViewerGuiMetaclass
     
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -135,7 +137,7 @@ class LayerViewerGui(QWidget):
 
         observedSlots = []
 
-        for slot in topLevelOperatorView.inputs.values() + topLevelOperatorView.outputs.values():
+        for slot in list(topLevelOperatorView.inputs.values()) + list(topLevelOperatorView.outputs.values()):
             if slot.level == 0 or slot.level == 1:
                 observedSlots.append(slot)
         
@@ -385,7 +387,7 @@ class LayerViewerGui(QWidget):
         
         layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource)
         normalize = cls._should_normalize_display(slot)
-        for i in xrange(4):
+        for i in range(4):
             if [redSource,greenSource,blueSource,alphaSource][i]:
                 layer.set_range(i, slot.meta.drange)
                 layer.set_normalize(i, normalize)
@@ -423,7 +425,7 @@ class LayerViewerGui(QWidget):
         newGuiLayers = self.setupLayers()
         
         for layer in newGuiLayers:
-            assert not filter( lambda l: l is layer, self.layerstack ), \
+            assert not [l for l in self.layerstack if l is layer], \
                 "You are attempting to re-use a layer ({}).  " \
                 "Your setupOutputs() function may not re-use layer objects.  " \
                 "The layerstack retains ownership of the layers you provide and " \
@@ -461,7 +463,7 @@ class LayerViewerGui(QWidget):
             if oldLayer.name not in newNames:
                 needDelete = True
             else:
-                newLayer = filter(lambda l: l.name == oldLayer.name, newGuiLayers)[0]
+                newLayer = list(filter(lambda l: l.name == oldLayer.name, newGuiLayers))[0]
                 needDelete = newLayer.isDifferentEnough(oldLayer)
                 
             if needDelete:
@@ -510,7 +512,7 @@ class LayerViewerGui(QWidget):
         return newDataShape
 
     def getLayerByName(self, name):
-        matches = filter(lambda l: l.name == name, list(self.layerstack))
+        matches = [l for l in list(self.layerstack) if l.name == name]
         if not matches:
             return None
         if len(matches) == 1:
@@ -556,7 +558,7 @@ class LayerViewerGui(QWidget):
                 for i in range(3):
                     self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
 
-        except Exception, e:
+        except Exception as e:
             logger.warn("Failed to navigate to position (%s): %s" % (pos, e))
         return
     

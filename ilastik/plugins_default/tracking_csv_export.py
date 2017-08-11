@@ -1,3 +1,4 @@
+from builtins import range
 import os.path
 import numpy as np
 from ilastik.plugins import TrackingExportFormatPlugin
@@ -36,21 +37,21 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
                 formats.append('%f')
 
         # check which features are present and construct table of the appropriate size
-        frame, _ = graph.nodes_iter().next()
+        frame, _ = next(graph.nodes_iter())
 
         # the feature categories can contain 'Default features' and 'Standard Object Features',
         # which actually reference the same features. Hence we block all of the one group from the other to prevent duplicates.
-        categories = features[frame].keys()
+        categories = list(features[frame].keys())
         blockedFeatures = dict([(c, []) for c in categories])
         defaultFeatStr = 'Default features'
         standardObjFeatStr = 'Standard Object Features'
 
         if defaultFeatStr in categories and standardObjFeatStr in categories:
-            for feature in features[frame][defaultFeatStr].keys():
+            for feature in list(features[frame][defaultFeatStr].keys()):
                 blockedFeatures[standardObjFeatStr].append(feature)
 
         for category in categories:
-            for feature in features[frame][category].keys():
+            for feature in list(features[frame][category].keys()):
                 if feature not in excludedFeatures and feature not in blockedFeatures[category]:
                     featureName = self._getFeatureNameTranslation(category, feature).replace(' ', '_')
                     if (np.asarray(features[frame][category][feature])).ndim == 2:
@@ -96,7 +97,7 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
             colIdx = 6
 
             for category in categories:
-                for feature in features[frame][category].keys():
+                for feature in list(features[frame][category].keys()):
 
                     if feature not in excludedFeatures and feature not in blockedFeatures[category]:
                         if (np.asarray(features[frame][category][feature])).ndim == 2:

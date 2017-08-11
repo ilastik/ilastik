@@ -19,13 +19,15 @@
 #                  http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from PyQt4 import uic
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt5 import uic
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 import os.path
 import re
 from operator import mul
+from functools import reduce
 
 FILE_TYPES = ["h5", "csv"]
 REQ_MSG = " (REQUIRED)"
@@ -38,6 +40,9 @@ DIALOG_FILTERS = {
     "any": "Any (*.*)",
 }
 
+import sys
+if sys.version_info.major >= 3:
+    unicode = str
 
 class ExportObjectInfoDialog(QDialog):
     """
@@ -155,7 +160,7 @@ class ExportObjectInfoDialog(QDialog):
             return
         if parent is None:
             parent = self.ui.featureView
-        for entry, child in features.iteritems():
+        for entry, child in features.items():
             item = QTreeWidgetItem(parent)
             try:
                 #if it's the feature name, show the human version of the text
@@ -227,10 +232,10 @@ class ExportObjectInfoDialog(QDialog):
 
     # slot is called from button.click
     def choose_path(self):
-        filters = ";;".join(DIALOG_FILTERS.values())
+        filters = ";;".join(list(DIALOG_FILTERS.values()))
         current_extension = FILE_TYPES[self.ui.fileFormat.currentIndex()]
         current_filter = DIALOG_FILTERS[current_extension]
-        path = QFileDialog.getSaveFileName(self.parent(), "Save File", self.ui.exportPath.text(), filters,
+        path, _filter = QFileDialog.getSaveFileName(self.parent(), "Save File", self.ui.exportPath.text(), filters,
                                            current_filter)
         path = unicode(path)
         if path != "":

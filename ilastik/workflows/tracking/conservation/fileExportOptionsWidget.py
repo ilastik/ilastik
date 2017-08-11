@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   volumina: volume slicing and editing library
 #
@@ -21,11 +22,9 @@
 ###############################################################################
 import os
 
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, QEvent
-from PyQt4.QtGui import QWidget, QFileDialog
-
-from volumina.utility import encode_from_qstring, decode_to_qstring
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtWidgets import QWidget, QFileDialog
 
 class FileExportOptionsWidget(QWidget):
     
@@ -43,7 +42,6 @@ class FileExportOptionsWidget(QWidget):
                ( event.type() == QEvent.KeyPress and \
                  ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return) ):
                 newpath = self.filepathEdit.text()
-                newpath = encode_from_qstring(newpath)
                 self._filepathSlot.setValue( newpath )
         return False
 
@@ -61,7 +59,7 @@ class FileExportOptionsWidget(QWidget):
         if self._filepathSlot.ready():
             file_path = self._filepathSlot.value
             file_path = os.path.splitext(file_path)[0]
-            self.filepathEdit.setText( decode_to_qstring(file_path) )
+            self.filepathEdit.setText( file_path )
             
             # Re-configure the slot in case we changed the extension
             self._filepathSlot.setValue( file_path )
@@ -76,12 +74,12 @@ class FileExportOptionsWidget(QWidget):
         if not dlg.exec_():
             return
         
-        exportPath = encode_from_qstring( dlg.selectedFiles()[0] )
+        exportPath = dlg.selectedFiles()[0]
         self._filepathSlot.setValue( exportPath )
-        self.filepathEdit.setText( decode_to_qstring(exportPath) )
+        self.filepathEdit.setText( exportPath )
 
 if __name__ == "__main__":
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
     from lazyflow.graph import Graph
     from lazyflow.operators.ioOperators import OpNpyWriter
 
@@ -93,6 +91,6 @@ if __name__ == "__main__":
     w.show()
     app.exec_()
 
-    print "Selected Filepath: {}".format( op.Filepath.value )
+    print("Selected Filepath: {}".format( op.Filepath.value ))
 
 

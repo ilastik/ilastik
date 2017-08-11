@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,18 +19,16 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtCore import Qt, QAbstractItemModel, QModelIndex
-
-from volumina.utility import decode_to_qstring
+from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 
 from lazyflow.utility import PathComponents
 from ilastik.utility import bind
-from opDataSelection import DatasetInfo
+from .opDataSelection import DatasetInfo
 
-class LaneColumn():
+class LaneColumn(object):
     NumColumns = 0
 
-class DatasetInfoColumn():
+class DatasetInfoColumn(object):
     Name = 0
     NumColumns = 1
 
@@ -171,7 +170,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         if datasetInfoIndex == DatasetInfoColumn.Name:
             if datasetInfo.nickname is not None and datasetInfo.nickname != "":
                 return datasetInfo.nickname
-            return decode_to_qstring( PathComponents( datasetInfo.filePath ).filename )
+            return PathComponents( datasetInfo.filePath ).filename
 
         if datasetInfoIndex == DatasetInfoColumn.Location:
             LocationNames = { DatasetInfo.Location.FileSystem : "External File",

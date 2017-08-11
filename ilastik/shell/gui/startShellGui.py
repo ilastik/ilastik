@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -26,10 +27,10 @@ import platform
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-from PyQt4.QtGui import QApplication
-from PyQt4.QtCore import Qt, QTimer
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import Qt, QTimer
 
-import splashScreen
+from . import splashScreen
 import ilastik.config
 shell = None
 
@@ -73,7 +74,7 @@ def _applyStyleSheet(app):
     Apply application-wide style-sheet rules.
     """
     styleSheetPath = os.path.join( os.path.split(__file__)[0], 'ilastik-style.qss' )
-    with file( styleSheetPath, 'r' ) as f:
+    with open( styleSheetPath, 'r' ) as f:
         styleSheetText = f.read()
         app.setStyleSheet(styleSheetText)
 

@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,13 +20,14 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QDialog
 import sys        
 import os
-from PyQt4 import uic
-import qimage2ndarray
 import numpy
-import preView
+from . import preView
+
+from PyQt5 import uic
+from PyQt5.QtWidgets import QDialog
+import qimage2ndarray
 
 class FeatureDlg(QDialog):
     def __init__(self, parent=None):
@@ -84,8 +87,8 @@ if __name__ == "__main__":
     #make the program quit on Ctrl+C
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    from PyQt4.QtGui import QApplication
-    from featureTableWidget import FeatureEntry
+    from PyQt5.QtWidgets import QApplication
+    from .featureTableWidget import FeatureEntry
     
     app = QApplication(sys.argv)
     
@@ -99,10 +102,15 @@ if __name__ == "__main__":
     ex = FeatureDlg()
     ex.createFeatureTable([("Color", [FeatureEntry("Banananananaana")]), ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])],
                           [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0],
-                          2.0)
+                          3.5)
     ex.setWindowTitle("FeatureTest")
     ex.setImageToPreView(None)
-    ex.exec_()
     
-    app.exec_()
+    def handle_accepted():
+        print("ACCEPTED")
+        print(ex.selectedFeatureBoolMatrix)
+    ex.accepted.connect(handle_accepted)
+    ex.exec_()
+    print("DONE")
+    #app.exec_()
     

@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -25,12 +27,12 @@
 #===============================================================================
 
 
-from PyQt4 import QtCore,QtGui
-from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint, pyqtSlot
-from PyQt4.QtGui import QRubberBand,QBrush,QColor,QMouseEvent
-from PyQt4.QtCore import Qt,QTimer,SIGNAL, QPointF
-from PyQt4.QtGui import QGraphicsRectItem,QGraphicsItem, QPen,QFont
-from PyQt4.QtGui import QApplication
+from builtins import range
+from past.utils import old_div
+from PyQt5 import QtCore
+from PyQt5.QtCore import Qt, QTimer, QPointF, QRectF, QObject, QRect, QSize, pyqtSignal, QEvent, QPoint, pyqtSlot
+from PyQt5.QtGui import QPen, QFont, QBrush, QColor, QMouseEvent
+from PyQt5.QtWidgets import QApplication, QGraphicsItem, QGraphicsRectItem, QGraphicsTextItem, QRubberBand, QStylePainter
 
 
 from volumina.pixelpipeline.datasources import LazyflowSource
@@ -58,7 +60,7 @@ logger = logging.getLogger(__name__)
 DELAY=10 #In millisec,delay in updating the text in the handles, needed because lazy flow cannot stay back the
          #user shuffling the boxes
 
-class Tool():
+class Tool(object):
 
     Navigation = 0 # Arrow
     Paint      = 1
@@ -74,7 +76,7 @@ class ResizeHandle(QGraphicsRectItem):
     def __init__(self, rect, constrainAxis, parent):
         size = 5
         self._rect=rect
-        super(ResizeHandle, self).__init__(-size/2, -size/2, 2*size, 2*size, parent)
+        super(ResizeHandle, self).__init__(old_div(-size,2), old_div(-size,2), 2*size, 2*size, parent)
 
         #self._offset = offset
         self._constrainAxis = constrainAxis
@@ -84,7 +86,7 @@ class ResizeHandle(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
         self.setAcceptedMouseButtons(Qt.LeftButton | Qt.RightButton)
         self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable);
-        self.setFlag(QtGui.QGraphicsItem.ItemSendsGeometryChanges ,True)
+        self.setFlag(QGraphicsItem.ItemSendsGeometryChanges ,True)
         self._updateColor()
 
     def resetOffset(self,constrainAxis,rect=None):
@@ -95,15 +97,15 @@ class ResizeHandle(QGraphicsRectItem):
 
         if constrainAxis == 0:
             if  rect.bottom()>0:
-                self._offset = ((rect.left()+rect.right())/2.0, rect.bottom() )
+                self._offset = (old_div((rect.left()+rect.right()),2.0), rect.bottom() )
             else:
-                self._offset = ((rect.left()+rect.right())/2.0, rect.top() )
+                self._offset = (old_div((rect.left()+rect.right()),2.0), rect.top() )
 
         elif constrainAxis == 1:
             if rect.right()>0:
-                self._offset = (rect.right(),(rect.top()+rect.bottom())/2.0 )
+                self._offset = (rect.right(),old_div((rect.top()+rect.bottom()),2.0) )
             else:
-                self._offset = (rect.left(),(rect.top()+rect.bottom())/2.0 )
+                self._offset = (rect.left(),old_div((rect.top()+rect.bottom()),2.0) )
 
 
             #self._offset = ( sel, self.shape[0] )
@@ -121,9 +123,9 @@ class ResizeHandle(QGraphicsRectItem):
             self.parentItem()._editor:
             if hasattr(self.parentItem()._editor.eventSwitch.interpreter, "acceptBoxManipulation"):
                 if self._constrainAxis == 0:
-                    QtGui.QApplication.setOverrideCursor(QtCore.Qt.SplitVCursor)
+                    QApplication.setOverrideCursor(Qt.SplitVCursor)
                 else:
-                    QtGui.QApplication.setOverrideCursor(QtCore.Qt.SplitHCursor)
+                    QApplication.setOverrideCursor(Qt.SplitHCursor)
                 
 
             
@@ -132,7 +134,7 @@ class ResizeHandle(QGraphicsRectItem):
         super(ResizeHandle, self).hoverLeaveEvent(event)
         self._hoverOver = False
         self._updateColor()
-        QtGui.QApplication.restoreOverrideCursor()
+        QApplication.restoreOverrideCursor()
 
 
     def mouseMoveEvent(self, event):
@@ -145,16 +147,16 @@ class ResizeHandle(QGraphicsRectItem):
         if self._constrainAxis == 0:
 
 
-            if (rect.left()+rect.right())/2.0<0:
+            if old_div((rect.left()+rect.right()),2.0)<0:
                 flip=True
-            newPoint=QPointF((rect.left()+rect.right())/2.0,self.pos().y())
+            newPoint=QPointF(old_div((rect.left()+rect.right()),2.0),self.pos().y())
             self.setPos(newPoint)
             self.parentItem().setNewSize(axes[self._constrainAxis],self.pos().y(),flip)
         else:
 
-            if (rect.top()+rect.bottom())/2.0<0:
+            if old_div((rect.top()+rect.bottom()),2.0)<0:
                 flip=True
-            self.setPos(QPointF(self.pos().x(),(rect.top()+rect.bottom())/2.0))
+            self.setPos(QPointF(self.pos().x(),old_div((rect.top()+rect.bottom()),2.0)))
             self.parentItem().setNewSize(axes[self._constrainAxis],self.pos().x(),flip=flip)
 
     def _updateColor(self):
@@ -175,7 +177,7 @@ class ResizeHandle(QGraphicsRectItem):
         """
 
         if change==QGraphicsRectItem.ItemPositionChange:
-            newPos=value.toPointF() #new position in rectangle coordinates
+            newPos=value #new position in rectangle coordinates
             nPosScene=self.parentItem().mapToScene(newPos)
             rect=self.parentItem().scene().sceneRect()
             if not rect.contains(nPosScene):
@@ -213,9 +215,10 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         
         self._editor = editor
 
-        QGraphicsRectItem.__init__(self,0,0,w,h,scene=scene,parent=parent)
+        QGraphicsRectItem.__init__(self,0,0,w,h,parent=parent)
         self.Signaller=QGraphicsResizableRectSignaller(parent=parent)
 
+        scene.addItem(self)
 
         #Default Appearence Properties
         self._fontColor=QColor(255, 255, 255)
@@ -297,26 +300,26 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     @pyqtSlot()
     def _setupTextItem(self):
         #Set up the text
-        self.textItem=QtGui.QGraphicsTextItem(QtCore.QString(""),parent=self)
+        self.textItem=QGraphicsTextItem("",parent=self)
         textItem=self.textItem
         font=QFont()
         font.setPointSize(self._fontSize)
         textItem.setFont(font)
-        textItem.setPos(QtCore.QPointF(0,0)) #upper left corner relative to the father
+        textItem.setPos(QPointF(0,0)) #upper left corner relative to the father
 
         textItem.setDefaultTextColor(self._fontColor)
 
         if self._dbg:
             #another text item only for debug
-            self.textItemBottom=QtGui.QGraphicsTextItem(QtCore.QString(""),parent=self)
-            self.textItemBottom.setPos(QtCore.QPointF(self.width,self.height))
+            self.textItemBottom=QGraphicsTextItem("",parent=self)
+            self.textItemBottom.setPos(QPointF(self.width,self.height))
             self.textItemBottom.setDefaultTextColor(QColor(255, 255, 255))
 
             self._updateTextBottom("shape " +str(self.shape))
 
     @pyqtSlot(str)
     def _updateTextBottom(self,string):
-        self.textItemBottom.setPlainText(QtCore.QString(string))
+        self.textItemBottom.setPlainText(string)
 
     def setNewSize(self, constrainAxis, size, flip=False):
 
@@ -331,7 +334,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             w=-w
         if flip and constrainAxis ==1:
             h=-h
-        newrect=QtCore.QRectF(0, 0, w, h).normalized()
+        newrect=QRectF(0, 0, w, h).normalized()
         self.setRect(newrect)
         self.width=self.rect().width()
         self.height=self.rect().height()
@@ -342,10 +345,10 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         b=0
         if w<=0: a=w
         if h<=0: b=h
-        self.textItem.setPos(QtCore.QPointF(a,b))
+        self.textItem.setPos(QPointF(a,b))
 
         if self._dbg:
-            self.textItemBottom.setPos(QtCore.QPointF(self.width,self.height))
+            self.textItemBottom.setPos(QPointF(self.width,self.height))
 
         for el in self._resizeHandles:
             #print "shape = %s , left = %s , right = %s , top = %s , bottm , %s "%(self.shape,self.rect().left(),self.rect().right(),self.rect().top(),self.rect().bottom())
@@ -358,7 +361,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def hoverEnterEvent(self, event):
         event.setAccepted(True)
         self._hovering = True
-        #elf.setCursor(QtCore.Qt.BlankCursor)
+        #elf.setCursor(Qt.BlankCursor)
         #self.radius = self.radius # modified radius b/c _hovering
         self.updateColor()
         self.setSelected(True)
@@ -384,7 +387,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             self._resizeHandles.append( h )
 
     def moveHandles(self):
-        for h, constrAxes in zip(self._resizeHandles, range(2)):
+        for h, constrAxes in zip(self._resizeHandles, list(range(2))):
             h.resetOffset(constrAxes, self.rect())
 
 
@@ -410,7 +413,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def updateColor(self):
         color = self.hoverColor if (self._hovering or self.isSelected())  else self._normalColor
         self.setPen(QPen(color,self._lineWidth))
-        self.setBrush(QBrush(color, QtCore.Qt.NoBrush))
+        self.setBrush(QBrush(color, Qt.NoBrush))
 
     def dataPos(self):
         dataPos = self.scenePos()
@@ -432,7 +435,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     def mousePressEvent(self,event):
         modifiers=QApplication.queryKeyboardModifiers()
         if modifiers == Qt.ControlModifier:
-            QApplication.setOverrideCursor(QtCore.Qt.ClosedHandCursor)
+            QApplication.setOverrideCursor(Qt.ClosedHandCursor)
 
     def mouseMoveEvent(self,event):
         pos=self.dataPos()
@@ -458,7 +461,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     @pyqtSlot(str)
     def updateText(self,string):
 
-        self.textItem.setPlainText(QtCore.QString(string))
+        self.textItem.setPlainText(string)
 
 
     def mouseReleaseEvent(self, event):
@@ -474,7 +477,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
     
     def itemChange(self, change,value):
         if change==QGraphicsRectItem.ItemPositionChange:
-            newPos=value.toPointF() #new position in scene coordinates
+            newPos=value #new position in scene coordinates
             rect=self.scene().sceneRect()
             topLeftRectCoords=self.rect().topLeft()
             bottomRightRectCoords=self.rect().bottomRight()
@@ -521,7 +524,7 @@ class RedRubberBand(QRubberBand):
 #         self.setPalette(palette)
 
     def paintEvent(self,pe):
-        painter=QtGui.QStylePainter(self)
+        painter=QStylePainter(self)
         pen=QPen(QColor("red"),4)
         painter.setPen(pen)
         painter.drawRect(pe.rect())
@@ -601,9 +604,8 @@ class CoupledRectangleElement(object):
             self._rectItem.updateText("%.1f"%(value))
 
             if self.boxLabel!=None:
-                from PyQt4.QtCore import QString
-                self.boxLabel.density=QString("%.1f"%value)
-        except Exception,e:
+                self.boxLabel.density = "%.1f" % value
+        except Exception as e:
             import warnings
             warnings.warn("Warning: invalid subregion", RuntimeWarning)
 
@@ -809,7 +811,7 @@ class BoxInterpreter(QObject):
 
         #Rectangles under the current point
         items=watched.scene().items(QPointF(*pos[1:3]))
-        items=filter(lambda el: isinstance(el, QGraphicsResizableRect),items)
+        items=[el for el in items if isinstance(el, QGraphicsResizableRect)]
 
 
         #Keyboard interaction
@@ -828,7 +830,7 @@ class BoxInterpreter(QObject):
                     #items[0].setZero()
 
             if event.key()==Qt.Key_Control :
-                QApplication.setOverrideCursor(QtCore.Qt.OpenHandCursor)
+                QApplication.setOverrideCursor(Qt.OpenHandCursor)
 
             # #Delete element
             # if event.key()==Qt.Key_Delete:
@@ -846,7 +848,7 @@ class BoxInterpreter(QObject):
                 self.rubberBand.setGeometry(QRect(self.origin, QSize()))
 
                 itemsall=watched.scene().items(QPointF(*pos[1:3]))
-                itemsall =filter(lambda el: isinstance(el, ResizeHandle), itemsall)
+                itemsall =[el for el in itemsall if isinstance(el, ResizeHandle)]
 
 #                 if len(itemsall)==0: #show rubber band only if there is no rubbber band
 #                     self.rubberBand.show()
@@ -988,7 +990,7 @@ class BoxController(QObject):
         for box, rect in zip(self.boxListModel._elements, self._currentBoxesList):
             if rect._rectItem.scene() and box.isFixed:
                 boxes["rois"].append([rect.getStart(), rect.getStop()])
-                boxes["values"].append(float(box._fixvalue.toDouble()[0]))
+                boxes["values"].append(float(box._fixvalue))
 
         self.fixedBoxesChanged.emit(boxes)
 
@@ -1007,14 +1009,14 @@ class BoxController(QObject):
     def itemsAtPos(self,pos5D):
         pos5D=pos5D[1:3]
         items=self.scene.items(QPointF(*pos5D))
-        items=filter(lambda el: isinstance(el, ResizeHandle),items)
+        items=[el for el in items if isinstance(el, ResizeHandle)]
         return items
 
     def onChangedPos(self,pos,gpos):
         pos=pos[1:3]
         items=self.scene.items(QPointF(*pos))
         #print items
-        items=filter(lambda el: isinstance(el, QGraphicsResizableRect),items)
+        items=[el for el in items if isinstance(el, QGraphicsResizableRect)]
 
         self.itemsAtpos=items
 
@@ -1061,12 +1063,12 @@ class BoxController(QObject):
         seed=42
         self._RandomColorGenerator=RandomColorGenerator(seed)
 
-        self._RandomColorGenerator.next() #discard black red and green
-        self._RandomColorGenerator.next()
-        self._RandomColorGenerator.next()
+        next(self._RandomColorGenerator) #discard black red and green
+        next(self._RandomColorGenerator)
+        next(self._RandomColorGenerator)
 
     def _getNextBoxColor(self):
-        color=self._RandomColorGenerator.next()
+        color=next(self._RandomColorGenerator)
         return color
 
 
@@ -1100,7 +1102,7 @@ class BoxController(QObject):
 
 
 
-        except IOError,e:
+        except IOError as e:
             logger.error( e )
             raise IOError
 
@@ -1112,8 +1114,8 @@ import numpy as np
 import colorsys
 
 def _createDefault16ColorColorTable():
-    from PyQt4.QtGui import QColor
-    from PyQt4.QtCore import Qt
+    from PyQt5.QtGui import QColor
+    from PyQt5.QtCore import Qt
     colors = []
     # Transparent for the zero label
     colors.append(QColor(0,0,0,0))
@@ -1157,7 +1159,7 @@ def RandomColorGenerator(seed=42):
 # FOR DEBUG PURPOSES ---------
 #===============================================================================
 
-# class MyGraphicsView(QtGui.QGraphicsView):
+# class MyGraphicsView(QtWidgets.QGraphicsView):
 #     #useful class for debug
 #     def __init__ (self,parent=None):
 #         super (MyGraphicsView, self).__init__ (parent)
@@ -1171,7 +1173,7 @@ def RandomColorGenerator(seed=42):
 #
 # def create_qt_default_env():
 #     #useful for debug
-#     from PyQt4.QtGui import QGraphicsScene,QGraphicsView,QApplication
+#     from PyQt5.QtWidgets import QGraphicsScene,QGraphicsView,QApplication
 #     # 1 make the application
 #     app=QApplication([])
 #     # 2 then we need a main window to display stuff
@@ -1240,7 +1242,7 @@ if __name__=="__main__":
     # image then we show a one on the top left corner
     #===========================================================================
     from ilastik.widgets.boxListView import BoxListView
-    from PyQt4.QtGui import QWidget
+    from PyQt5.QtWidgets import QWidget
     app = QApplication([])
 
     boxListModel=BoxListModel()
@@ -1280,7 +1282,7 @@ if __name__=="__main__":
 
     do()
 
-    cron.connect(cron, SIGNAL('timeout()'), do)
+    cron.timeout.connect(do)
     ds = LazyflowSource( op.Output )
     layer = ColortableLayer(ds,jet())
 
@@ -1288,7 +1290,7 @@ if __name__=="__main__":
 
     mainwin.layerstack.append(layer)
     mainwin.dataShape=(1,h,w,1,1)
-    print mainwin.centralWidget()
+    print(mainwin.centralWidget())
 
 
     BoxContr=BoxController(mainwin.editor,op.Output,boxListModel)

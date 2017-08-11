@@ -19,9 +19,11 @@
 #                 http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from PyQt4 import uic, QtGui, QtCore
-from PyQt4.QtGui import QColor, QPixmap, QIcon
+from builtins import range
+from PyQt5 import uic, QtWidgets, QtCore
+from PyQt5.QtGui import QColor, QPixmap, QIcon
 
+import sys
 import os
 import numpy
 import vigra
@@ -48,8 +50,6 @@ from volumina.utility import ShortcutManager
 
 from ilastik.config import cfg as ilastik_config
 
-from volumina.utility import encode_from_qstring
-    
 
 class AnnotationsGui(LayerViewerGui):
 
@@ -136,7 +136,7 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.nextUnlabeledMerger.setVisible(flag)
 
     def goToNextUnlabeledDivision(self):
-        self.divFeatures = self.topLevelOperatorView.DivisionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        self.divFeatures = self.topLevelOperatorView.DivisionProbabilities(list(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0]))).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         labels = self.topLevelOperatorView.labels
         divisions = self.topLevelOperatorView.divisions
         crop = self.getCurrentCrop()
@@ -154,10 +154,10 @@ class AnnotationsGui(LayerViewerGui):
 
             for ul in uniqueLabels:
                 divFlag = False
-                if ul in labels[t].keys():
+                if ul in list(labels[t].keys()):
                     trackIDs = list(labels[t][ul])
                     for trackID in trackIDs:
-                        if trackID in divisions.keys():
+                        if trackID in list(divisions.keys()):
                             divFlag = True
                 if not divFlag and ul > 0 and t in range(len(self.divFeatures)) and ul in range(len(self.divFeatures[t])) and \
                                 self.divFeatures[t][ul][1]>self.divisionProbabilityCutOff:
@@ -172,7 +172,7 @@ class AnnotationsGui(LayerViewerGui):
             ul = divisionCandidates[minIndex][1]
             self._gotoObject(ul,t, keepXYZ=False)
 
-            if ul in labels[t].keys() and len(labels[t][ul]) > 0:
+            if ul in list(labels[t].keys()) and len(labels[t][ul]) > 0:
                 for track in labels[t][ul]:
                     for i in range(self._drawer.activeTrackBox.count()):
                         if int(self._drawer.activeTrackBox.itemText(i)) == track:
@@ -183,7 +183,7 @@ class AnnotationsGui(LayerViewerGui):
         return None, None
 
     def goToNextUnlabeledMerger(self):
-        self.mergerFeatures = self.topLevelOperatorView.DetectionProbabilities(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        self.mergerFeatures = self.topLevelOperatorView.DetectionProbabilities(list(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0]))).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         labels = self.mainOperator.labels
         crop = self.getCurrentCrop()
 
@@ -206,7 +206,7 @@ class AnnotationsGui(LayerViewerGui):
                     if maxValue > self.mergerProbabilityCutOff:
                         mergerIndex = index
                     if mergerIndex >0:
-                        if (not ul in labels[t].keys()) or( ul in labels[t].keys() and mergerIndex > len(labels[t][ul])):
+                        if (not ul in list(labels[t].keys())) or( ul in list(labels[t].keys()) and mergerIndex > len(labels[t][ul])):
                             mergerCandidates.append([t,ul,maxValue])
 
         if mergerCandidates == []:
@@ -236,7 +236,7 @@ class AnnotationsGui(LayerViewerGui):
             uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
 
             for ul in uniqueLabels:
-                if ul > 0 and not ul in labels[t].keys():
+                if ul > 0 and not ul in list(labels[t].keys()):
                     self._gotoObject(ul, t, keepXYZ=False)
                     return ul, t
 
@@ -256,7 +256,7 @@ class AnnotationsGui(LayerViewerGui):
         uniqueLabels = list(numpy.sort(vigra.analysis.unique(li)))
 
         for ul in uniqueLabels:
-            if ul > 0 and not ul in labels[t].keys():
+            if ul > 0 and not ul in list(labels[t].keys()):
                 self._gotoObject(ul, t, keepXYZ=False)
                 return ul, t
 
@@ -345,10 +345,6 @@ class AnnotationsGui(LayerViewerGui):
                 self._drawer.windowZBox.setValue(1)
                 self._drawer.windowZBox.setEnabled(False)
         
-        self.connect( self, QtCore.SIGNAL('postCriticalMessage(QString)'), self.postCriticalMessage)
-        self.connect( self, QtCore.SIGNAL('postInformationMessage(QString)'), self.postInformationMessage)
-        self.connect( self, QtCore.SIGNAL('postQuestionMessage(QString)'), self.postQuestionMessage)
-
         self._initShortcuts()
         self.editor.posModel.timeChanged.connect(self.updateTime)
         try:
@@ -356,7 +352,7 @@ class AnnotationsGui(LayerViewerGui):
         except:
             pass
 
-        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        self.features = self.topLevelOperatorView.ObjectFeatures(list(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0]))).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         self._initAnnotations()
 
         self.__cleanup_fns = []
@@ -400,11 +396,11 @@ class AnnotationsGui(LayerViewerGui):
 
         self._reset()
 
-        self._setDirty(self.mainOperator.LabelImage, range(self.mainOperator.TrackImage.meta.shape[0]))
-        self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
-        self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
-        self._setDirty(self.mainOperator.TrackImage, range(self.mainOperator.TrackImage.meta.shape[0]))
-        self._setDirty(self.mainOperator.UntrackedImage, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.LabelImage, list(range(self.mainOperator.TrackImage.meta.shape[0])))
+        self._setDirty(self.mainOperator.Labels, list(range(self.mainOperator.TrackImage.meta.shape[0])))
+        self._setDirty(self.mainOperator.Divisions, list(range(self.mainOperator.TrackImage.meta.shape[0])))
+        self._setDirty(self.mainOperator.TrackImage, list(range(self.mainOperator.TrackImage.meta.shape[0])))
+        self._setDirty(self.mainOperator.UntrackedImage, list(range(self.mainOperator.TrackImage.meta.shape[0])))
 
         self.setupLayers()
         self._onCropSelected(0)
@@ -489,15 +485,15 @@ class AnnotationsGui(LayerViewerGui):
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
 
     def _onSaveAnnotations(self):
-        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
-        for name in self.topLevelOperatorView.Crops.value.keys():
+        self.features = self.topLevelOperatorView.ObjectFeatures(list(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0]))).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        for name in list(self.topLevelOperatorView.Crops.value.keys()):
             crop = self.topLevelOperatorView.Crops.value[name]
 
-            if name not in self.topLevelOperatorView.Annotations.value.keys():
+            if name not in list(self.topLevelOperatorView.Annotations.value.keys()):
                 self.topLevelOperatorView.Annotations.value[name] = {}
-            if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
+            if "divisions" not in list(self.topLevelOperatorView.Annotations.value[name].keys()):
                 self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
-            for parentTrack in self.topLevelOperatorView.divisions.keys():
+            for parentTrack in list(self.topLevelOperatorView.divisions.keys()):
                 time = self.topLevelOperatorView.divisions[parentTrack][1]
                 child1Track = self.topLevelOperatorView.divisions[parentTrack][0][0]
                 child2Track = self.topLevelOperatorView.divisions[parentTrack][0][1]
@@ -542,23 +538,23 @@ class AnnotationsGui(LayerViewerGui):
                             crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
                             addAnnotation = True
                     if addAnnotation:
-                        if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
+                        if parentTrack not in list(self.topLevelOperatorView.Annotations.value[name]["divisions"].keys()):
                             self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
                         self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
                     else:
                         annotations = self.topLevelOperatorView.Annotations.value
-                        if parentTrack in annotations[name]["divisions"].keys():
+                        if parentTrack in list(annotations[name]["divisions"].keys()):
                             del annotations[name]["divisions"][parentTrack]
                         self.topLevelOperatorView.Annotations.setValue(annotations)
 
-            if name not in self.topLevelOperatorView.Annotations.value.keys():
+            if name not in list(self.topLevelOperatorView.Annotations.value.keys()):
                 self.topLevelOperatorView.Annotations.value[name] = {}
-            if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
+            if "labels" not in list(self.topLevelOperatorView.Annotations.value[name].keys()):
                 self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
 
-            for time in self.topLevelOperatorView.labels.keys():
+            for time in list(self.topLevelOperatorView.labels.keys()):
                 if crop["time"][0] <= time <= crop["time"][1]:
-                    for label in self.topLevelOperatorView.labels[time].keys():
+                    for label in list(self.topLevelOperatorView.labels[time].keys()):
                         lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
                         upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
 
@@ -576,20 +572,20 @@ class AnnotationsGui(LayerViewerGui):
                                 addAnnotation = True
 
                         if addAnnotation:
-                            if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
+                            if time not in list(self.topLevelOperatorView.Annotations.value[name]["labels"].keys()):
                                 self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
                             self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
                         else:
                             annotations = self.topLevelOperatorView.Annotations.value
-                            if time in annotations[name]["labels"].keys() and \
-                                    label in annotations[name]["labels"][time].keys():
+                            if time in list(annotations[name]["labels"].keys()) and \
+                                    label in list(annotations[name]["labels"][time].keys()):
                                 del annotations[name]["labels"][time][label]
-                            if time in annotations[name]["labels"].keys() and \
+                            if time in list(annotations[name]["labels"].keys()) and \
                                     annotations[name]["labels"][time] == {}:
                                 del annotations[name]["labels"][time]
                             self.topLevelOperatorView.Annotations.setValue(annotations)
 
-        for name in self.topLevelOperatorView.Annotations.value.keys():
+        for name in list(self.topLevelOperatorView.Annotations.value.keys()):
             if self.topLevelOperatorView.Annotations.value[name]["divisions"] == {} and \
                     self.topLevelOperatorView.Annotations.value[name]["labels"] == {}:
                 annotations = self.topLevelOperatorView.Annotations.value
@@ -598,21 +594,21 @@ class AnnotationsGui(LayerViewerGui):
                 del annotations[name]
                 self.topLevelOperatorView.Annotations.setValue(annotations)
 
-        for time in self.topLevelOperatorView.labels.keys():
-            for label in self.topLevelOperatorView.labels[time].keys():
+        for time in list(self.topLevelOperatorView.labels.keys()):
+            for label in list(self.topLevelOperatorView.labels[time].keys()):
                 labelFound = False
-                for name in self.topLevelOperatorView.Annotations.value.keys():
-                    if time in self.topLevelOperatorView.Annotations.value[name]["labels"].keys() and label in self.topLevelOperatorView.Annotations.value[name]["labels"][time].keys():
+                for name in list(self.topLevelOperatorView.Annotations.value.keys()):
+                    if time in list(self.topLevelOperatorView.Annotations.value[name]["labels"].keys()) and label in list(self.topLevelOperatorView.Annotations.value[name]["labels"][time].keys()):
                         labelFound = True
                 if not labelFound:
                     del self.topLevelOperatorView.labels[time][label]
 
-        self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
-        self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
-        self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.Annotations, list(range(self.mainOperator.TrackImage.meta.shape[0])))
+        self._setDirty(self.mainOperator.Labels, list(range(self.mainOperator.TrackImage.meta.shape[0])))
+        self._setDirty(self.mainOperator.Divisions, list(range(self.mainOperator.TrackImage.meta.shape[0])))
 
     def getLabel(self, time, track):
-        for label in self.mainOperator.labels[time].keys():
+        for label in list(self.mainOperator.labels[time].keys()):
             if self.mainOperator.labels[time][label] == set([track]):
                 return label
         return False
@@ -746,13 +742,13 @@ class AnnotationsGui(LayerViewerGui):
 
     @threadRouted
     def _addDivisionToListWidget(self, trackid, child1, child2, t_parent):
-        divItem = QtGui.QListWidgetItem("%d: %d, %d" % (trackid, child1, child2))
+        divItem = QtWidgets.QListWidgetItem("%d: %d, %d" % (trackid, child1, child2))
         divItem.setBackground(QColor(self.ct[trackid]))
         divItem.setCheckState(False)
         self._drawer.divisionsList.addItem(divItem)
-        if t_parent not in self.labelsWithDivisions.keys():
+        if t_parent not in list(self.labelsWithDivisions.keys()):
             self.labelsWithDivisions[t_parent] = []
-        if t_parent+1 not in self.labelsWithDivisions.keys():
+        if t_parent+1 not in list(self.labelsWithDivisions.keys()):
             self.labelsWithDivisions[t_parent+1] = []
         self.labelsWithDivisions[t_parent].append(trackid)
         self.labelsWithDivisions[t_parent+1].append(child1)
@@ -762,7 +758,7 @@ class AnnotationsGui(LayerViewerGui):
     def _setDivisionsList(self):
         self._drawer.divisionsList.clear()
 
-        for trackid in self.mainOperator.divisions.keys():
+        for trackid in list(self.mainOperator.divisions.keys()):
             self._addDivisionToListWidget(trackid, self.mainOperator.divisions[trackid][0][0], self.mainOperator.divisions[trackid][0][1],
                                           self.mainOperator.divisions[trackid][-1])
         # set all items checked
@@ -776,8 +772,8 @@ class AnnotationsGui(LayerViewerGui):
         activeTrackBox.clear()
 
         allTracks = set()
-        for t in self.mainOperator.labels.keys():            
-            for oid in self.mainOperator.labels[t].keys():
+        for t in list(self.mainOperator.labels.keys()):            
+            for oid in list(self.mainOperator.labels[t].keys()):
                 for tr in list(self.mainOperator.labels[t][oid]):
                     allTracks.add(tr)        
         
@@ -923,7 +919,7 @@ class AnnotationsGui(LayerViewerGui):
         activeTrack = self._getActiveTrack()
         
         trackids = []
-        if t in self.mainOperator.labels.keys() and oid in self.mainOperator.labels[t].keys():
+        if t in list(self.mainOperator.labels.keys()) and oid in list(self.mainOperator.labels[t].keys()):
             for l in self.mainOperator.labels[t][oid]:
                 trackids.append(l)
         
@@ -934,9 +930,9 @@ class AnnotationsGui(LayerViewerGui):
             title += " contains track id " + str(trackids[0]) + "."
         else:
             title += " contains track ids " + str(trackids) + "."
-        menu = QtGui.QMenu( self )
+        menu = QtWidgets.QMenu( self )
         
-        menuTitle = QtGui.QAction(title, menu)
+        menuTitle = QtWidgets.QAction(title, menu)
         font = menuTitle.font()
         font.setItalic(True)
         font.setBold(True)
@@ -980,7 +976,7 @@ class AnnotationsGui(LayerViewerGui):
         delDivision = {}
         if activeTrack != self.misdetIdx:
             for trackid in trackids:
-                if trackid in self.mainOperator.divisions.keys() and self.mainOperator.divisions[trackid][1] == t:
+                if trackid in list(self.mainOperator.divisions.keys()) and self.mainOperator.divisions[trackid][1] == t:
                     text = "remove division event from label " + str(trackid)
                     delDivision[text] = trackid
                     menu.addSeparator()
@@ -991,43 +987,43 @@ class AnnotationsGui(LayerViewerGui):
             return
 
         selection = str(action.text())
-        if selection in delLabel.keys():
+        if selection in list(delLabel.keys()):
             self._delLabel(t, oid, delLabel[selection])
             
             self._setDirty(self.mainOperator.TrackImage, [t])
             self._setDirty(self.mainOperator.UntrackedImage, [t])
             self._setDirty(self.mainOperator.Labels, [t])
 
-        elif selection in delSubtrackToEnd.keys():
+        elif selection in list(delSubtrackToEnd.keys()):
             track2remove = delSubtrackToEnd[selection]
             maxt = self.mainOperator.LabelImage.meta.shape[0]
             for time in range(t,maxt):
-                for oid in self.mainOperator.labels[time].keys():
+                for oid in list(self.mainOperator.labels[time].keys()):
                     if track2remove in self.mainOperator.labels[time][oid]:
                         self._delLabel(time, oid, track2remove)
             
-            self._setDirty(self.mainOperator.TrackImage, range(t,maxt))
-            self._setDirty(self.mainOperator.UntrackedImage, range(t, maxt))
-            self._setDirty(self.mainOperator.Labels, range(t,maxt))
+            self._setDirty(self.mainOperator.TrackImage, list(range(t,maxt)))
+            self._setDirty(self.mainOperator.UntrackedImage, list(range(t, maxt)))
+            self._setDirty(self.mainOperator.Labels, list(range(t,maxt)))
 
-        elif selection in delSubtrackToStart.keys():
+        elif selection in list(delSubtrackToStart.keys()):
             track2remove = delSubtrackToStart[selection]
             for time in range(0,t+1):
-                for oid in self.mainOperator.labels[time].keys():
+                for oid in list(self.mainOperator.labels[time].keys()):
                     if track2remove in self.mainOperator.labels[time][oid]:
                         self._delLabel(time, oid, track2remove)
             
-            self._setDirty(self.mainOperator.TrackImage, range(0,t+1))
-            self._setDirty(self.mainOperator.UntrackedImage, range(0,t+1))
-            self._setDirty(self.mainOperator.Labels, range(0,t+1))
+            self._setDirty(self.mainOperator.TrackImage, list(range(0,t+1)))
+            self._setDirty(self.mainOperator.UntrackedImage, list(range(0,t+1)))
+            self._setDirty(self.mainOperator.Labels, list(range(0,t+1)))
             
-        elif selection in runTracking.keys():
+        elif selection in list(runTracking.keys()):
             self._runSubtracking(position5d, oid, runTracking[selection])
         
-        elif selection in delDivision.keys():
+        elif selection in list(delDivision.keys()):
             self._delDivisionEvent(delDivision[selection])
 
-        elif selection in setActiveTrack.keys():
+        elif selection in list(setActiveTrack.keys()):
             for i in range(self._drawer.activeTrackBox.count()):
                 if int(self._drawer.activeTrackBox.itemText(i)) == setActiveTrack[selection]:
                     self._drawer.activeTrackBox.setCurrentIndex(i)
@@ -1041,7 +1037,7 @@ class AnnotationsGui(LayerViewerGui):
         oid = self._getObject(self.mainOperator.LabelImage, position5d)
         trackids = []
         t = position5d[0]
-        if t in self.mainOperator.labels.keys() and oid in self.mainOperator.labels[t].keys():
+        if t in list(self.mainOperator.labels.keys()) and oid in list(self.mainOperator.labels[t].keys()):
             for l in self.mainOperator.labels[t][oid]:
                 trackids.append(l)
 
@@ -1120,7 +1116,7 @@ class AnnotationsGui(LayerViewerGui):
         self._addNewTrack()
     
     def _delLabel(self, t, oid, track2remove, errorMessage=True):
-        if t in self.labelsWithDivisions.keys() and track2remove in self.labelsWithDivisions[t] and errorMessage:
+        if t in list(self.labelsWithDivisions.keys()) and track2remove in self.labelsWithDivisions[t] and errorMessage:
             self._criticalMessage("Error: Cannot remove label " + str(track2remove) +
                                        " at t=" + str(t) + ", since it is involved in a division event." + 
                                        " Remove division event first by right clicking on the parent.")
@@ -1149,8 +1145,8 @@ class AnnotationsGui(LayerViewerGui):
 
         affectedT = []
         success = True
-        for t in self.mainOperator.labels.keys():
-            for oid in self.mainOperator.labels[t].keys():
+        for t in list(self.mainOperator.labels.keys()):
+            for oid in list(self.mainOperator.labels[t].keys()):
                 if track2remove in self.mainOperator.labels[t][oid]:
                     if self._delLabel(t,oid,track2remove):                    
                         affectedT.append(t)
@@ -1171,7 +1167,7 @@ class AnnotationsGui(LayerViewerGui):
 
         crop = self.getCurrentCrop()
 
-        if t not in range(crop["time"][0],crop["time"][1]+1):
+        if t not in list(range(crop["time"][0],crop["time"][1]+1)):
             return -98
 
         lower = self.features[t][default_features_key]['Coord<Minimum>'][oid]
@@ -1190,9 +1186,9 @@ class AnnotationsGui(LayerViewerGui):
         if not addAnnotation:
             return -99 # info message depends on the caller: rightClick/runAutomaticTracking or leftClick(addObjectToTrack)
 
-        if t not in self.mainOperator.labels.keys():
+        if t not in list(self.mainOperator.labels.keys()):
             self.mainOperator.labels[t] = {}
-        if oid not in self.mainOperator.labels[t].keys():
+        if oid not in list(self.mainOperator.labels[t].keys()):
             self.mainOperator.labels[t][oid] = set()
         if activeTrack == self.misdetIdx:
             if len(self.mainOperator.labels[t][oid]) > 0:
@@ -1201,7 +1197,7 @@ class AnnotationsGui(LayerViewerGui):
                 self._onMarkMisdetectionPressed()
                 return -1
         else:
-            for tracklist in self.mainOperator.labels[t].values():
+            for tracklist in list(self.mainOperator.labels[t].values()):
                 if activeTrack in tracklist:
                     if activeTrack not in self.mainOperator.labels[t][oid]:
                         self._informationMessage("Info: There is already an object with this track id in this time step.")
@@ -1300,9 +1296,9 @@ class AnnotationsGui(LayerViewerGui):
             if t_end == self.mainOperator.LabelImage.meta.shape[0] - 1:
                 self._log('tracking reached last time step.')
                 
-            self._setDirty(self.mainOperator.TrackImage, range(t_start, max(t_start+1,t_end-1)))
-            self._setDirty(self.mainOperator.UntrackedImage, range(t_start, max(t_start+1,t_end-1)))
-            self._setDirty(self.mainOperator.Labels, range(t_start, max(t_start+1,t_end-1)))
+            self._setDirty(self.mainOperator.TrackImage, list(range(t_start, max(t_start+1,t_end-1))))
+            self._setDirty(self.mainOperator.UntrackedImage, list(range(t_start, max(t_start+1,t_end-1))))
+            self._setDirty(self.mainOperator.Labels, list(range(t_start, max(t_start+1,t_end-1))))
 
             if t_end > 0:
                 self._setPosModel(time=t_end)
@@ -1365,7 +1361,7 @@ class AnnotationsGui(LayerViewerGui):
         t = self.mainOperator.divisions[parent][1]        
                 
         found = False
-        for oid in self.mainOperator.labels[t].keys():
+        for oid in list(self.mainOperator.labels[t].keys()):
             if parent in self.mainOperator.labels[t][oid]:
                 found = True
                 break
@@ -1430,7 +1426,7 @@ class AnnotationsGui(LayerViewerGui):
         apps = {}
         disapps = {}
         multiMoves = {}
-        for t in oid2tids.keys():
+        for t in list(oid2tids.keys()):
             moves[t] = []
             divs[t] = []
             mergers[t] = []
@@ -1441,7 +1437,7 @@ class AnnotationsGui(LayerViewerGui):
         t_start = time_range[0]
         
         tracks_starting_in_div = {}
-        for d in divisions.keys():
+        for d in list(divisions.keys()):
             [tid_child1, tid_child2], t_div = divisions[d]
             tracks_starting_in_div[tid_child1] = t_div + 1
             tracks_starting_in_div[tid_child2] = t_div + 1
@@ -1452,19 +1448,19 @@ class AnnotationsGui(LayerViewerGui):
             
             for t in sorted(oid2tids.keys()):  
                 oid_cur = None                
-                for o in oid2tids[t].keys():
+                for o in list(oid2tids[t].keys()):
                     if tid in oid2tids[t][o]:
                         oid_cur = o
                         break
                        
                 if (oid_prev is not None) and (oid_cur is None): # track ends
-                    if tid in divisions.keys(): # division
+                    if tid in list(divisions.keys()): # division
                         [tid_child1, tid_child2], t_div = divisions[tid]
                         
                         if t == t_div+1:                    
                             oid_child1 = None
                             oid_child2 = None
-                            for o in oid2tids[t].keys():
+                            for o in list(oid2tids[t].keys()):
                                 if tid_child1 in oid2tids[t][o]:
                                     oid_child1 = o
                                     if oid_child2:
@@ -1476,8 +1472,8 @@ class AnnotationsGui(LayerViewerGui):
                                           
                             if (oid_child1 is not None) and (oid_child2 is not None):
                                 # check if both children can be found in the current frame                            
-                                child1_exists = (oid_child1 in oid2tids[t].keys())
-                                child2_exists = (oid_child2 in oid2tids[t].keys())
+                                child1_exists = (oid_child1 in list(oid2tids[t].keys()))
+                                child2_exists = (oid_child2 in list(oid2tids[t].keys()))
                                 if child1_exists and child2_exists:
                                     self._appendUnique(divs[t], (oid_prev,oid_child1,oid_child2,0.))
                                 elif child1_exists:
@@ -1491,7 +1487,7 @@ class AnnotationsGui(LayerViewerGui):
                     # do not break, maybe the track starts somewhere else again (due to the size/fov filter)
                 
                 elif (oid_prev is None) and (t != t_start) and (oid_cur is not None): # track starts
-                    if tid in tracks_starting_in_div.keys() and tracks_starting_in_div[tid] != t:
+                    if tid in list(tracks_starting_in_div.keys()) and tracks_starting_in_div[tid] != t:
                         self._appendUnique(apps[t], (oid_cur, 0.))
                 
                 elif (oid_prev is not None) and (oid_cur is not None): # move
@@ -1502,8 +1498,8 @@ class AnnotationsGui(LayerViewerGui):
                         oid_multiprev = None
                         
                         found = False            
-                        for tt in reversed(range(t)):
-                            for o in oid2tids[tt].keys():
+                        for tt in reversed(list(range(t))):
+                            for o in list(oid2tids[tt].keys()):
                                 if (tid in oid2tids[tt][o]) and (len(oid2tids[tt][o]) == 1):
                                     found = True
                                     oid_multiprev = o
@@ -1518,12 +1514,12 @@ class AnnotationsGui(LayerViewerGui):
                 oid_prev = oid_cur
         
         merger_sizes = {}
-        for t in oid2tids.keys():
-            for oid in oid2tids[t].keys():
+        for t in list(oid2tids.keys()):
+            for oid in list(oid2tids[t].keys()):
                 if len(oid2tids[t][oid]) > 1:
                     mergers[t].append((oid, len(oid2tids[t][oid]), 0.))                    
                     m_size = len(oid2tids[t][oid])
-                    if m_size not in merger_sizes.keys():
+                    if m_size not in list(merger_sizes.keys()):
                         merger_sizes[m_size] = 0
                     merger_sizes[m_size] += 1
         
@@ -1532,11 +1528,11 @@ class AnnotationsGui(LayerViewerGui):
         return oid2tids, disapps, apps, divs, moves, mergers, multiMoves
         
     def _onExportDivisionsButtonPressed(self):
-        options = QtGui.QFileDialog.Options()
+        options = QtWidgets.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
-            options |= QtGui.QFileDialog.DontUseNativeDialog
+            options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
-        out_fn = encode_from_qstring(QtGui.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/divisions.csv", options=options))
+        out_fn, _filter = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/divisions.csv", options=options)
         
         if out_fn is None or str(out_fn) == '':            
             return
@@ -1550,7 +1546,7 @@ class AnnotationsGui(LayerViewerGui):
             with open(out_fn, 'w') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
                 writer.writerow(['timestep_parent','track_id_parent','track_id_child1','track_id_child2'])
-                for tid in self.mainOperator.divisions.keys():
+                for tid in list(self.mainOperator.divisions.keys()):
                     children, t_parent = self.mainOperator.divisions[tid]
                     writer.writerow([t_parent, tid, children[0], children[1]])
                 
@@ -1559,11 +1555,11 @@ class AnnotationsGui(LayerViewerGui):
             self.applet.appletStateUpdateRequested.emit()  
     
     def _onExportMergersButtonPressed(self):        
-        options = QtGui.QFileDialog.Options()
+        options = QtWidgets.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
-            options |= QtGui.QFileDialog.DontUseNativeDialog
+            options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
-        out_fn = encode_from_qstring(QtGui.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/mergers.csv", options=options))
+        out_fn, _filter = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Mergers',os.path.expanduser("~") + "/mergers.csv", options=options)
         
         if out_fn is None or str(out_fn) == '':            
             return
@@ -1577,8 +1573,8 @@ class AnnotationsGui(LayerViewerGui):
             with open(out_fn, 'w') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
                 writer.writerow(['timestep','object_id','track_ids'])
-                for t in self.mainOperator.labels.keys():
-                    for oid in self.mainOperator.labels[t].keys():
+                for t in list(self.mainOperator.labels.keys()):
+                    for oid in list(self.mainOperator.labels[t].keys()):
                         if len(self.mainOperator.labels[t][oid]) > 1:
                             writer.writerow([t,oid,";".join(list(str(x) for x in self.mainOperator.labels[t][oid]))])
                 
@@ -1589,11 +1585,11 @@ class AnnotationsGui(LayerViewerGui):
             
     def _onExportButtonPressed(self):
         import h5py        
-        options = QtGui.QFileDialog.Options()
+        options = QtWidgets.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
-            options |= QtGui.QFileDialog.DontUseNativeDialog
+            options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
-        directory = encode_from_qstring(QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))      
+        directory = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options)
         
         if directory is None or str(directory) == '':            
             return
@@ -1607,7 +1603,7 @@ class AnnotationsGui(LayerViewerGui):
             self.applet.appletStateUpdateRequested.emit()    
             oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
             
-            num_files = float(len(oid2tids.keys()))
+            num_files = float(len(list(oid2tids.keys())))
             
             for t in sorted(oid2tids.keys()):
                 fn =  directory + "/" + str(t).zfill(5)  + ".h5"
@@ -1628,7 +1624,7 @@ class AnnotationsGui(LayerViewerGui):
                 try:
                     with h5py.File(fn, 'w-') as f_curr:
                         # delete old label image
-                        if "segmentation" in f_curr.keys():
+                        if "segmentation" in list(f_curr.keys()):
                             del f_curr["segmentation"]
                         
                         seg = f_curr.create_group("segmentation")            
@@ -1637,13 +1633,13 @@ class AnnotationsGui(LayerViewerGui):
                         
                         oids_meta = numpy.sort(vigra.analysis.unique(labelImage)).astype(numpy.uint32)[1:]  
                         ones = numpy.ones(oids_meta.shape, dtype=numpy.uint8)
-                        if 'objects' in f_curr.keys(): del f_curr['objects']
+                        if 'objects' in list(f_curr.keys()): del f_curr['objects']
                         f_meta = f_curr.create_group('objects').create_group('meta')
                         f_meta.create_dataset('id', data=oids_meta, compression=1)
                         f_meta.create_dataset('valid', data=ones, compression=1)
         
                         # delete old tracking
-                        if "tracking" in f_curr.keys():
+                        if "tracking" in list(f_curr.keys()):
                             del f_curr["tracking"]
             
                         tg = f_curr.create_group("tracking")            
@@ -1713,11 +1709,11 @@ class AnnotationsGui(LayerViewerGui):
     def _onExportTifButtonPressed(self):
         import vigra        
         
-        options = QtGui.QFileDialog.Options()
+        options = QtWidgets.QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
-            options |= QtGui.QFileDialog.DontUseNativeDialog
+            options |= QtWidgets.QFileDialog.DontUseNativeDialog
 
-        directory = encode_from_qstring(QtGui.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options))    
+        directory = QtWidgets.QFileDialog.getExistingDirectory(self, 'Select Directory',os.path.expanduser("~"), options=options)
         if directory is None or len(str(directory)) == 0:
             return
         
@@ -1729,7 +1725,7 @@ class AnnotationsGui(LayerViewerGui):
             self.applet.appletStateUpdateRequested.emit()
             divisions = self.mainOperator.divisions
             inverseDivisions = {}
-            for k, vals in divisions.items():
+            for k, vals in list(divisions.items()):
                 for v in vals[0]:
                     inverseDivisions[v] = k
             replace = {}
@@ -1748,9 +1744,9 @@ class AnnotationsGui(LayerViewerGui):
             for tid in tids:
                 replace[tid] = [tid] # identity
                 
-            for tid in inverseDivisions.keys():
+            for tid in list(inverseDivisions.keys()):
                 rootTid = inverseDivisions[tid]
-                while rootTid in inverseDivisions.keys():
+                while rootTid in list(inverseDivisions.keys()):
                     rootTid = inverseDivisions[rootTid]
                 replace[tid] = [rootTid]
                     
@@ -1816,7 +1812,7 @@ class AnnotationsGui(LayerViewerGui):
             return
         
         found = False
-        for oid in self.mainOperator.labels[t].keys():
+        for oid in list(self.mainOperator.labels[t].keys()):
             if tid in self.mainOperator.labels[t][oid]:
                 found = True
                 break
@@ -1834,33 +1830,39 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.logOutput.moveCursor(QtGui.QTextCursor.End)
         logger.info( prompt )
 
+    #
+    # These functions used to be pass-throughs to a signal,
+    # but I don't see why that's necessary.
+    # (They are always called from the main thread.)
+    # So now we just call each target function directly.
+    #
     def _criticalMessage(self, prompt):
-        self.emit( QtCore.SIGNAL('postCriticalMessage(QString)'), prompt)
+        self.postCriticalMessage(prompt)
 
     def _questionMessage(self, prompt):
-        self.emit( QtCore.SIGNAL('postQuestionMessage(QString)'), prompt)
+        self.postQuestionMessage(prompt)
 
     def _informationMessage(self, prompt):
-        self.emit( QtCore.SIGNAL('postInformationMessage(QString)'), prompt)
+        self.postInformationMessage(prompt)
 
     @threadRouted
     def postCriticalMessage(self, prompt):
-        QtGui.QMessageBox.critical(self, "Error", prompt, QtGui.QMessageBox.Ok)
+        QtWidgets.QMessageBox.critical(self, "Error", prompt, QtWidgets.QMessageBox.Ok)
         
     @threadRouted
     def postQuestionMessage(self, prompt):
-        qBox = QtGui.QMessageBox()
+        qBox = QtWidgets.QMessageBox()
         qBox.setWindowTitle("Confirm")
         qBox.setText(prompt)
-        qBox.setStandardButtons( QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel)
-        qBox.setDefaultButton( QtGui.QMessageBox.Cancel )
+        qBox.setStandardButtons( QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+        qBox.setDefaultButton( QtWidgets.QMessageBox.Cancel )
         retVal = qBox.exec_()
-        if retVal == QtGui.QMessageBox.Ok:
+        if retVal == QtWidgets.QMessageBox.Ok:
             self.deleteAllTraining = True
 
     @threadRouted
     def postInformationMessage(self, prompt):
-        QtGui.QMessageBox.information(self, "Info", prompt, QtGui.QMessageBox.Ok)
+        QtWidgets.QMessageBox.information(self, "Info", prompt, QtWidgets.QMessageBox.Ok)
 
     @threadRouted
     def _enableButtons(self, exceptButtons=None, enable=True):

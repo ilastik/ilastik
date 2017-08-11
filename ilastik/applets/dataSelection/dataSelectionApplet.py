@@ -19,6 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from __future__ import absolute_import
+from builtins import range
 import os
 import glob
 import argparse
@@ -29,8 +31,8 @@ logger = logging.getLogger(__name__)
 import vigra
 from lazyflow.utility import PathComponents, isUrl, make_absolute
 from ilastik.applets.base.applet import Applet
-from opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
-from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
+from .opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
+from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
 
 class DataSelectionApplet( Applet ):
     """
@@ -61,7 +63,7 @@ class DataSelectionApplet( Applet ):
     #
     def getMultiLaneGui( self ):
         if self._gui is None:
-            from dataSelectionGui import DataSelectionGui, GuiMode
+            from .dataSelectionGui import DataSelectionGui, GuiMode
             guiMode = { True: GuiMode.Batch, False: GuiMode.Normal }[self._batchDataGui]
             self._gui = DataSelectionGui( self,
                                           self.topLevelOperator,
@@ -121,12 +123,12 @@ class DataSelectionApplet( Applet ):
         if parsed_args.unspecified_input_files:
             # We allow the file list to go to the 'default' role, 
             # but only if no other roles were explicitly configured.
-            arg_names = map(cls._role_name_to_arg_name, role_names)
+            arg_names = list(map(cls._role_name_to_arg_name, role_names))
             for arg_name in arg_names:
                 if getattr(parsed_args, arg_name):
                     # FIXME: This error message could be more helpful.
-                    role_args = map( cls._role_name_to_arg_name, role_names )
-                    role_args = map( lambda s: '--' + s, role_args )
+                    role_args = list(map( cls._role_name_to_arg_name, role_names ))
+                    role_args = ['--' + s for s in role_args]
                     role_args_str = ", ".join( role_args )
                     raise Exception("Invalid command line arguments: All roles must be configured explicitly.\n"
                                     "Use the following flags to specify which files are matched with which inputs:\n"
@@ -206,7 +208,7 @@ class DataSelectionApplet( Applet ):
         role_names = self.topLevelOperator.DatasetRoles.value
         role_paths = self.role_paths_from_parsed_args(parsed_args, role_names)
 
-        for role_index, input_paths in role_paths.items():
+        for role_index, input_paths in list(role_paths.items()):
             # If the user doesn't want image stacks to be copied into the project file,
             #  we generate hdf5 volumes in a temporary directory and use those files instead.        
             if parsed_args.preconvert_stacks:
@@ -215,7 +217,7 @@ class DataSelectionApplet( Applet ):
 
             input_infos = [DatasetInfo(p) if p else None for p in input_paths]
             if parsed_args.input_axes:
-                for info in filter(None, input_infos):
+                for info in [_f for _f in input_infos if _f]:
                     info.axistags = vigra.defaultAxistags(parsed_args.input_axes)
 
             opDataSelection = self.topLevelOperator
@@ -266,7 +268,7 @@ class DataSelectionApplet( Applet ):
             files = sorted([k.replace('\\', '/') for k in glob.glob( path )])
             for f in files:
                 sha.update(f)
-                sha.update(pickle.dumps(os.stat(f).st_mtime))
+                sha.update(pickle.dumps(os.stat(f).st_mtime, 0))
             stackFile = sha.hexdigest() + '.h5'
             stackPath = os.path.join( stackVolumeCacheDir, stackFile ).replace('\\', '/')
             

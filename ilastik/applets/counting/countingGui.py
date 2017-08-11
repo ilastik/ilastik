@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -27,9 +28,11 @@ import importlib
 
 # Third-party
 import numpy
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon, QApplication, QAction
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, pyqtSlot, QObject, QRect, QSize, pyqtSignal, QEvent, QPoint
+from PyQt5.QtGui import QBrush, QColor, QKeySequence, QIcon, QPen, qRed, QPalette
+from PyQt5.QtWidgets import QMessageBox, QShortcut, QPushButton, QWidget, QApplication, QAction, \
+                            QRubberBand, QRubberBand, QGraphicsColorizeEffect, QStylePainter
 
 # HCI
 from lazyflow.utility import traceLogged
@@ -50,7 +53,6 @@ from ilastik.applets.base.applet import ShellRequest
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter
 from ilastik.applets.base.appletSerializer import SerialListSlot
-from PyQt4 import QtGui
 
 
 try:
@@ -71,13 +73,10 @@ def _listReplace(old, new):
 
 
 
-from PyQt4.QtCore import QObject, QRect, QSize, pyqtSignal, QEvent, QPoint,QString,QVariant
-from PyQt4.QtGui import QRubberBand,QRubberBand,qRed,QPalette,QBrush,QColor,QGraphicsColorizeEffect,\
-        QStylePainter, QPen
 
-from countingGuiBoxesInterface import BoxController,BoxInterpreter,Tool
+from .countingGuiBoxesInterface import BoxController,BoxInterpreter,Tool
 
-class CallToGui:
+class CallToGui(object):
     def __init__(self,opslot,setfun):
         '''
         Helper class which registers a simple callback between an operator and a gui
@@ -171,7 +170,7 @@ class CountingGui(LabelingGui):
             self.render = True
             self._renderedLayers = {} # (layer name, label number)
             self._renderMgr = RenderingManager( self.editor.view3d )
-        except Exception,e:
+        except Exception as e:
             self.render = False
 
 
@@ -179,7 +178,7 @@ class CountingGui(LabelingGui):
         #personal debugging code
         try:
             from sitecustomize import Shortcuts
-        except Exception,e:
+        except Exception as e:
             self.labelingDrawerUi.DebugButton.setVisible(False)
 
         self._initShortcuts()
@@ -348,11 +347,11 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.MaxDepthBox.setKeyboardTracking(False)
 
         for option in self.op.options:
-            if "req" in option.keys():
+            if "req" in list(option.keys()):
                 try:
                     for req in option["req"]:
                         importlib.import_module(req)
-                except Exception,e:
+                except Exception as e:
                     continue
             #values=[v for k,v in option.items() if k not in ["gui", "req"]]
             self.labelingDrawerUi.SVROptions.addItem(option["method"], (option,))
@@ -407,7 +406,7 @@ class CountingGui(LabelingGui):
 
     def _hideParameters(self):
         _ind = self.labelingDrawerUi.SVROptions.currentIndex()
-        option = self.labelingDrawerUi.SVROptions.itemData(_ind).toPyObject()[0]
+        option = self.labelingDrawerUi.SVROptions.itemData(_ind)[0]
         if "svr" not in option["gui"]:
             self.labelingDrawerUi.gridLayout_2.setVisible(False)
         else:
@@ -460,7 +459,7 @@ class CountingGui(LabelingGui):
 
     def _updateSVROptions(self):
         index = self.labelingDrawerUi.SVROptions.currentIndex()
-        option = self.labelingDrawerUi.SVROptions.itemData(index).toPyObject()[0]
+        option = self.labelingDrawerUi.SVROptions.itemData(index)[0]
         self.op.opTrain.SelectedOption.setValue(option["method"])
 
         self._hideFixable(option)
@@ -513,7 +512,7 @@ class CountingGui(LabelingGui):
                 self.boxController.addNewBox(roi[0], roi[1])
                 #boxIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.Fix)
                 #iconIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.FixIcon)
-                #self.boxController.boxListModel.setData(boxIndex,QVariant(val))
+                #self.boxController.boxListModel.setData(boxIndex,val)
                 boxCounter = boxCounter + 1
 
 
@@ -527,7 +526,7 @@ class CountingGui(LabelingGui):
                 self.boxController.addNewBox(roi[0], roi[1])
                 boxIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.Fix)
                 iconIndex = self.boxController.boxListModel.index(boxCounter, self.boxController.boxListModel.ColumnID.FixIcon)
-                self.boxController.boxListModel.setData(boxIndex,QVariant(val))
+                self.boxController.boxListModel.setData(boxIndex,val)
                 boxCounter = boxCounter + 1
         
         op.fixClassifier.setValue(fix)
@@ -656,7 +655,7 @@ class CountingGui(LabelingGui):
                  'LabelPreview': (self.op.LabelPreview, 1.0), 
                  'Uncertainty' : (self.op.UncertaintyEstimate, 1.0) }
 
-        for name, (slot, opacity) in slots.items():
+        for name, (slot, opacity) in list(slots.items()):
             if slot.ready():
                 from volumina import colortables
                 layer = ColortableLayer(LazyflowSource(slot), colorTable = countingColorTable, normalize =
@@ -912,7 +911,7 @@ class CountingGui(LabelingGui):
 
     def _onLabelChanged(self, parentFun, mapf, slot):
         parentFun()
-        new = map(mapf, self.labelListData)
+        new = list(map(mapf, self.labelListData))
         old = slot.value
         slot.setValue(_listReplace(old, new))
 
@@ -971,7 +970,7 @@ class CountingGui(LabelingGui):
             self._renderMgr.setup(shape)
 
         layernames = set(layer.name for layer in self.layerstack)
-        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.iteritems()
+        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.items()
                                 if k in layernames)
 
         newvolume = numpy.zeros(shape, dtype=numpy.uint8)
@@ -1027,7 +1026,7 @@ class CountingGui(LabelingGui):
     def _onBoxChanged(self,parentFun, mapf):
 
         parentFun()
-        new = map(mapf, self.labelListData)
+        new = list(map(mapf, self.labelListData))
 
 
     def _changeInteractionMode( self, toolId ):
@@ -1040,7 +1039,7 @@ class CountingGui(LabelingGui):
 
 
         # Uncheck all the other buttons
-        for tool, button in self.toolButtons.items():
+        for tool, button in list(self.toolButtons.items()):
             if tool != toolId:
                 button.setChecked(False)
 

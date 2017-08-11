@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,5 +19,5 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from dataSelectionApplet import OpMultiLaneDataSelectionGroup, DataSelectionApplet
-from opDataSelection import OpDataSelectionGroup, DatasetInfo
+from .dataSelectionApplet import OpMultiLaneDataSelectionGroup, DataSelectionApplet
+from .opDataSelection import OpDataSelectionGroup, DatasetInfo

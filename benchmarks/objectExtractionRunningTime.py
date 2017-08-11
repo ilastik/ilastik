@@ -1,3 +1,4 @@
+from __future__ import print_function
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,6 +19,7 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import os
 import numpy as np
 import vigra
@@ -93,7 +95,7 @@ def cleanup_value(val, nObjects, isGlobal):
     return val
 
 def cleanup(d, nObjects, features):
-    result = dict((cleanup_key(k), cleanup_value(v, nObjects, "Global" in k)) for k, v in d.iteritems())
+    result = dict((cleanup_key(k), cleanup_value(v, nObjects, "Global" in k)) for k, v in d.items())
     newkeys = set(result.keys()) & set(features)
     return dict((k, result[k]) for k in newkeys)
 
@@ -145,7 +147,7 @@ class OpObjectFeaturesSimplified(Operator):
     def execute(self, slot, subindex, roi, result):
         t_ind = self.RawVol.meta.axistags.index('t')
         
-        for res_t_ind, t in enumerate(xrange(roi.start[t_ind], roi.stop[t_ind])):
+        for res_t_ind, t in enumerate(range(roi.start[t_ind], roi.stop[t_ind])):
             result[res_t_ind] = self._computeFeatures(t_ind, t)
     
     def propagateDirty(self, slot, subindex):
@@ -234,26 +236,26 @@ class ObjectExtractionTimeComparison(object):
 #         del binaryVol
     
         # Profile object extraction simplified
-        print "\nStarting object extraction simplified (single-thread, without cache)"
+        print("\nStarting object extraction simplified (single-thread, without cache)")
              
         with Timer() as timerObjectFeaturesSimp:
             featsObjectFeaturesSimp = self.opObjectFeaturesSimp.Features([]).wait()
                  
-        print "Simplified object extraction took: {} seconds".format(timerObjectFeaturesSimp.seconds())     
+        print("Simplified object extraction took: {} seconds".format(timerObjectFeaturesSimp.seconds()))     
         
         # Profile object extraction optimized
-        print "\nStarting object extraction (multi-thread, without cache)"
+        print("\nStarting object extraction (multi-thread, without cache)")
           
         with Timer() as timerObjectExtraction:
             featsObjectExtraction = self.opObjectExtraction.RegionFeatures([]).wait()
               
-        print "Object extraction took: {} seconds".format(timerObjectExtraction.seconds()) 
+        print("Object extraction took: {} seconds".format(timerObjectExtraction.seconds())) 
     
         # Profile for basic multi-threaded feature computation 
         # just a multi-threaded loop that labels volumes and extract object features directly (No operators, no plugin system, no overhead, just a loop)
-        featsBasicFeatureComp = dict.fromkeys( range(self.op5Raw.Output.meta.shape[0]), None)
+        featsBasicFeatureComp = dict.fromkeys( list(range(self.op5Raw.Output.meta.shape[0])), None)
             
-        print "\nStarting basic multi-threaded feature computation"
+        print("\nStarting basic multi-threaded feature computation")
         pool = RequestPool()    
         for t in range(0, self.op5Raw.Output.meta.shape[0], 1):
             pool.add( Request( partial(self._computeObjectFeatures, t, featsBasicFeatureComp) ) )
@@ -261,7 +263,7 @@ class ObjectExtractionTimeComparison(object):
         with Timer() as timerBasicFeatureComp:
             pool.wait()
                  
-        print "Basic multi-threaded feature extraction took: {} seconds".format( timerBasicFeatureComp.seconds() )                 
+        print("Basic multi-threaded feature extraction took: {} seconds".format( timerBasicFeatureComp.seconds() ))                 
 
     
     # Compute object features for single frame        

@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 import numpy
 import vigra
 np = numpy
@@ -42,8 +43,9 @@ import unittest
 ## for testing ThresholdOneLevel
 class Generator1(unittest.TestCase):
 
-    def generateData(self, (nz, ny, nx)):
+    def generateData(self, xxx_todo_changeme):
 
+        (nz, ny, nx) = xxx_todo_changeme
         clusters = []
 
         #cluster of 4 points

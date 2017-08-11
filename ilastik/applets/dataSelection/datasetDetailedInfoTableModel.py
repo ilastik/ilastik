@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,18 +21,16 @@
 ###############################################################################
 import os
 
-from PyQt4.QtCore import Qt, QAbstractItemModel, QModelIndex
-
-from volumina.utility import decode_to_qstring
+from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 
 from lazyflow.utility import PathComponents, isUrl
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from opDataSelection import DatasetInfo
+from .opDataSelection import DatasetInfo
 
-from dataLaneSummaryTableModel import rowOfButtonsProxy
+from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
-class DatasetDetailedInfoColumn():
+class DatasetDetailedInfoColumn(object):
     Nickname = 0
     Location = 1
     InternalID = 2
@@ -200,17 +199,17 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         # Name
         if index.column() == DatasetDetailedInfoColumn.Nickname:
-            return decode_to_qstring( datasetInfo.nickname, 'utf-8' )
+            return datasetInfo.nickname
 
         # Location
         if index.column() == DatasetDetailedInfoColumn.Location:
             if datasetInfo.location == DatasetInfo.Location.FileSystem:
                 if isUrl(datasetInfo.filePath) or os.path.isabs(datasetInfo.filePath):
                     text = "Absolute Link: {}".format( filePathComponents.externalPath )
-                    return decode_to_qstring(text)
+                    return text
                 else:
                     text = "Relative Link: {}".format( filePathComponents.externalPath )
-                    return decode_to_qstring(text)
+                    return text
             else:
                 return "Project File"
 

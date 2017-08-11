@@ -63,7 +63,8 @@ class FeatureSelectionSerializer(AppletSerializer):
         
         topGroup.create_dataset('Scales', data=self.topLevelOperator.Scales.value)
         
-        topGroup.create_dataset('FeatureIds', data=self.topLevelOperator.FeatureIds.value)
+        feature_ids = list(map(lambda s: s.encode('utf-8'), self.topLevelOperator.FeatureIds.value))
+        topGroup.create_dataset('FeatureIds', data=feature_ids)
         
         if self.topLevelOperator.SelectionMatrix.ready():
             topGroup.create_dataset('SelectionMatrix', data=self.topLevelOperator.SelectionMatrix.value)
@@ -73,6 +74,7 @@ class FeatureSelectionSerializer(AppletSerializer):
             for slot in self.topLevelOperator.FeatureListFilename:
                 fnames.append(slot.value)
             if fnames:
+                fnames = map(lambda s: s.encode('utf-8'), fnames)
                 topGroup.create_dataset('FeatureListFilename', data=fnames)
             
         self._dirty = False
@@ -81,10 +83,9 @@ class FeatureSelectionSerializer(AppletSerializer):
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         try:
             scales = topGroup['Scales'].value
-            featureIds = topGroup['FeatureIds'].value
-            
             scales = list( map(float, scales) )
-            featureIds = list( map(str, featureIds) )
+
+            featureIds = numpy.asarray(list(map(lambda s: s.decode('utf-8'), topGroup['FeatureIds'].value)))
         except KeyError:
             pass
         else:
@@ -98,7 +99,7 @@ class FeatureSelectionSerializer(AppletSerializer):
             if 'FeatureListFilename' in topGroup:
                 filenames = topGroup['FeatureListFilename'][:]
                 for slot, filename in zip(self.topLevelOperator.FeatureListFilename, filenames):
-                    slot.setValue(filename)
+                    slot.setValue( filename.decode('utf-8') )
                 
                 # Create a dummy SelectionMatrix, just so the operator knows it is configured
                 # This is a little hacky.  We should really make SelectionMatrix optional, 
@@ -208,7 +209,7 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
 
             newFeatureIds = self.topLevelOperator.FeatureIds.value
             # For each feature, determine which group's settings to take
-            for featureId, featureGroupIndex in featureToGroup.items():
+            for featureId, featureGroupIndex in list(featureToGroup.items()):
                 newRow = newFeatureIds.index(featureId)
                 # Copy the whole row of selections from the feature group
                 pipeLineSelectedFeatureMatrix[newRow] = userFriendlyFeatureMatrix[featureGroupIndex]

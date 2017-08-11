@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -24,14 +25,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 #PyQt
-from PyQt4 import uic
-from PyQt4.QtGui import QMainWindow, QIcon, QMessageBox
+from PyQt5 import uic
+from PyQt5.QtWidgets import QMainWindow, QMessageBox
+from PyQt5.QtGui import QIcon
 
 #ilastik
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from preprocessingViewerGui import PreprocessingViewerGui
+from .preprocessingViewerGui import PreprocessingViewerGui
 
 class PreprocessingGui(QMainWindow):
     def __init__(self, parentApplet, topLevelOperatorView):
@@ -116,7 +118,7 @@ class PreprocessingGui(QMainWindow):
         self.topLevelOperatorView.Sigma.setValue(self.drawer.sigmaSpin.value())
 
     def handleWatershedSourceChange(self, index):
-        data = self.drawer.watershedSourceCombo.itemData(index).toString()
+        data = self.drawer.watershedSourceCombo.itemData(index)
         self.topLevelOperatorView.WatershedSource.setValue( str(data) )
 
     def handleInvertWatershedSourceChange(self, checked):

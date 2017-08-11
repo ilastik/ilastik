@@ -102,18 +102,18 @@ class ProjectManager(object):
         if 'mode' in h5_file_kwargs:
             raise ValueError("ProjectManager.createBlankProjectFile(): 'mode' is not allowed as a h5py.File kwarg")
         h5File = h5py.File(projectFilePath, mode="w", **h5_file_kwargs)
-        h5File.create_dataset("ilastikVersion", data=ilastik.__version__)
-        h5File.create_dataset("time", data = time.ctime())
+        h5File.create_dataset("ilastikVersion", data=ilastik.__version__.encode('utf-8'))
+        h5File.create_dataset("time", data = time.ctime().encode('utf-8'))
         if workflow_class is not None:
-            h5File.create_dataset("workflowName", data=workflow_class.__name__)
+            h5File.create_dataset("workflowName", data=workflow_class.__name__.encode('utf-8'))
         if workflow_cmdline_args is not None and len(workflow_cmdline_args) > 0:
-            h5File.create_dataset("workflow_cmdline_args", data=workflow_cmdline_args)
+            h5File.create_dataset("workflow_cmdline_args", data=workflow_cmdline_args.encode('utf-8'))
         
         return h5File
 
     @classmethod
     def getWorkflowName(self, projectFile):
-        return str( projectFile['workflowName'][()] )
+        return str( projectFile['workflowName'][()].decode('utf-8') )
 
     @classmethod
     def openProjectFile(cls, projectFilePath, forceReadOnly=False):
@@ -142,8 +142,8 @@ class ProjectManager(object):
         readOnly = (hdf5File.mode == 'r')
 
         projectVersion = "0.5"
-        if "ilastikVersion" in hdf5File.keys():
-            projectVersion = hdf5File["ilastikVersion"].value
+        if "ilastikVersion" in list(hdf5File.keys()):
+            projectVersion = hdf5File["ilastikVersion"].value.decode('utf-8')
         
         # FIXME: version comparison
         if not isVersionCompatible(projectVersion):
@@ -151,9 +151,9 @@ class ProjectManager(object):
             raise ProjectManager.ProjectVersionError(projectVersion, ilastik.__version__)
         
         workflow_class = None
-        if "workflowName" in hdf5File.keys():
+        if "workflowName" in list(hdf5File.keys()):
             #if workflow is found in file, take it
-            workflowName = hdf5File["workflowName"].value
+            workflowName = hdf5File["workflowName"].value.decode('utf-8')
             workflow_class = getWorkflowFromName(workflowName)
         
         return (hdf5File, workflow_class, readOnly)
@@ -174,7 +174,7 @@ class ProjectManager(object):
                 project_key = keys[0]
             else:
                 # Try to find a key that looks like a project file.
-                possible_project_keys = filter(lambda s: s.endswith('.ilp'), keys)
+                possible_project_keys = [s for s in keys if s.endswith('.ilp')]
                 if len(possible_project_keys) == 1:
                     project_key = possible_project_keys[0]
                 else:
@@ -232,7 +232,7 @@ class ProjectManager(object):
         """
         try:
             self._closeCurrentProject()
-        except Exception,e:
+        except Exception as e:
             log_exception( logger )
             raise e
 
@@ -280,16 +280,16 @@ class ProjectManager(object):
             #save the current workflow as standard workflow
             if "workflowName" in self.currentProjectFile:
                 del self.currentProjectFile["workflowName"]
-            self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName)
+            self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName.encode('utf-8'))
 
-        except Exception, err:
+        except Exception as err:
             log_exception( logger, "Project Save Action failed due to the exception shown above." )
             raise ProjectManager.SaveError( str(err) )
         finally:
             # save current time
             if "time" in self.currentProjectFile:
                 del self.currentProjectFile["time"]
-            self.currentProjectFile.create_dataset("time", data = time.ctime())
+            self.currentProjectFile.create_dataset("time", data = time.ctime().encode('utf-8'))
             # Flush any changes we made to disk, but don't close the file.
             self.currentProjectFile.flush()
             
@@ -311,7 +311,7 @@ class ProjectManager(object):
 
             # Start by copying the current project state into the file
             # This should be faster than serializing everything from scratch
-            for key in self.currentProjectFile.keys():
+            for key in list(self.currentProjectFile.keys()):
                 snapshotFile.copy(self.currentProjectFile[key], key)
 
             try:
@@ -324,14 +324,14 @@ class ProjectManager(object):
                             # Use a COPY of the serializer, so the original serializer doesn't forget it's dirty state
                             serializerCopy = copy.copy(serializer)
                             serializerCopy.serializeToHdf5(snapshotFile, snapshotPath)
-            except Exception, err:
+            except Exception as err:
                 log_exception( logger, "Project Save Snapshot Action failed due to the exception printed above." )
                 raise ProjectManager.SaveError(str(err))
             finally:
                 # save current time
                 if "time" in snapshotFile:
                     del snapshotFile["time"]
-                snapshotFile.create_dataset("time", data = time.ctime())
+                snapshotFile.create_dataset("time", data = time.ctime().encode('utf-8'))
 
                 # Flush any changes we made to disk, but don't close the file.
                 snapshotFile.flush()
@@ -362,7 +362,7 @@ class ProjectManager(object):
         oldPath = self.currentProjectPath
         try:
             os.rename( oldPath, newPath )
-        except OSError, err:
+        except OSError as err:
             msg = 'Could not rename your project file to:\n'
             msg += newPath + '\n'
             msg += 'One common cause for this is that the new location is on a different disk.\n'
@@ -376,7 +376,7 @@ class ProjectManager(object):
         
         # Copy the contents of the current project file to a newly-created file (with the old name)
         with h5py.File(oldPath, 'a') as oldFile:
-            for key in self.currentProjectFile.keys():
+            for key in list(self.currentProjectFile.keys()):
                 oldFile.copy(self.currentProjectFile[key], key)
         
         for aplt in self._applets:

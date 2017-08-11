@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -22,7 +23,11 @@ import sys
 import nose
 import threading
 
-from helpers import mainThreadHelpers
+# Make sure the ilastik repo 'tests' package is first on sys.path
+from os.path import split, normpath
+ilastik_repo = normpath(split(__file__)[0] + '/..')
+sys.path.insert(0, ilastik_repo)
+from tests.helpers import mainThreadHelpers
 
 # For some mysterious reason, we need to make sure that volumina.api gets imported 
 #  from the main thread before nose imports it from a separate thread.

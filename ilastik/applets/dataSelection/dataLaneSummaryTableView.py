@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,12 +19,13 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from builtins import range
 from functools import partial
-from PyQt4.QtCore import pyqtSignal, Qt
-from PyQt4.QtGui import QTableView, QHeaderView, QItemSelection, QItemSelectionModel, QMenu, QPushButton, QAction
+from PyQt5.QtCore import pyqtSignal, Qt, QItemSelection, QItemSelectionModel
+from PyQt5.QtWidgets import QTableView, QHeaderView, QMenu, QPushButton, QAction
 
-from dataLaneSummaryTableModel import DataLaneSummaryTableModel, LaneColumn, DatasetInfoColumn
-from addFileButton import AddFileButton
+from .dataLaneSummaryTableModel import DataLaneSummaryTableModel, LaneColumn, DatasetInfoColumn
+from .addFileButton import AddFileButton
 
 class DataLaneSummaryTableView(QTableView):
     dataLaneSelected = pyqtSignal(int) # Signature: (laneIndex)

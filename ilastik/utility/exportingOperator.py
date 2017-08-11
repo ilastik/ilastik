@@ -1,3 +1,4 @@
+from builtins import range
 import logging
 from ilastik.utility.exportFile import ProgressPrinter
 from ilastik.utility import log_exception
@@ -33,7 +34,7 @@ class ExportingOperator(object):
 
         self.save_export_progress_dialog(None)
         if not show_gui:
-            progress_display = ProgressPrinter("Export Progress", xrange(100, -1, -5), 2)
+            progress_display = ProgressPrinter("Export Progress", range(100, -1, -5), 2)
             gui = None
         else:
             from ilastik.widgets.progressDialog import ProgressDialog

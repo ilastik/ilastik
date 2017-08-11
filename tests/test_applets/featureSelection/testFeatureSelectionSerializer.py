@@ -39,7 +39,7 @@ class TestFeatureSelectionSerializer(object):
     
         # Create an empty project
         with h5py.File(testProjectName, 'w') as testProject:
-            testProject.create_dataset("ilastikVersion", data="1.0.0")
+            testProject.create_dataset("ilastikVersion", data=b"1.0.0")
             
             # Create an operator to work with and give it some input
             graph = Graph()
@@ -65,8 +65,10 @@ class TestFeatureSelectionSerializer(object):
             serializer.serializeToHdf5(testProject, testProjectName)
 
         with h5py.File(testProjectName, 'r') as testProject:
+            file_feature_ids = numpy.asarray(list(map(lambda s: s.decode('utf-8'), testProject['FeatureSelections/FeatureIds'].value)))
+            
             assert (testProject['FeatureSelections/Scales'].value == scales).all()
-            assert (testProject['FeatureSelections/FeatureIds'].value == featureIds).all()
+            assert (file_feature_ids == featureIds).all()
             assert (testProject['FeatureSelections/SelectionMatrix'].value == selectionMatrix).all()
         
             # Deserialize into a fresh operator

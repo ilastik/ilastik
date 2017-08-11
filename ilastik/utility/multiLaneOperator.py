@@ -19,11 +19,12 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from abc import ABCMeta, abstractmethod
+from future.utils import with_metaclass
 
 def _has_attribute( cls, attr ):
     return True if any(attr in B.__dict__ for B in cls.__mro__) else False
 
-class MultiLaneOperatorABC(object):
+class MultiLaneOperatorABC(with_metaclass(ABCMeta, object)):
     """
     This abstract base class specifies the interface to which all top-level applet operators must adhere.
     The distinguishing characteristic of a top-level operator is the fact that they must be capable of 
@@ -34,8 +35,6 @@ class MultiLaneOperatorABC(object):
     .. note:: Most applets can simply inherit from the :py:class:`StandardApplet <ilastik.applets.base.standardApplet.StandardApplet>` base class, 
               which will automatically adapt single-lane top-level operators to satisfy this interface. 
     """
-
-    __metaclass__ = ABCMeta
 
     @abstractmethod
     def addLane(self, laneIndex):

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -23,7 +24,7 @@ import h5py
 import numpy
 import os
 
-from watershed_segmentor import WatershedSegmentor
+from .watershed_segmentor import WatershedSegmentor
 
 class PreprocessingSerializer( AppletSerializer ):
     def __init__(self, preprocessingTopLevelOperator, *args, **kwargs):
@@ -53,7 +54,7 @@ class PreprocessingSerializer( AppletSerializer ):
                 preproc.create_dataset("filter",data= opPre.initialFilter)
                 ws_source = str(opPre.WatershedSource.value)
                 assert isinstance( ws_source, str ), "WatershedSource was {}, but it should be a string.".format( ws_source )
-                preproc.create_dataset("watershed_source", data=ws_source)                 
+                preproc.create_dataset("watershed_source", data=ws_source.encode('utf-8'))
                 preproc.create_dataset("invert_watershed_source", data=opPre.InvertWatershedSource.value)
                 
                 preprocgraph = getOrCreateGroup(preproc, "graph")
@@ -63,22 +64,22 @@ class PreprocessingSerializer( AppletSerializer ):
             
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath,headless = False):
         
-        assert "sigma" in topGroup.keys()
-        assert "filter" in topGroup.keys()
+        assert "sigma" in list(topGroup.keys())
+        assert "filter" in list(topGroup.keys())
         
         sigma = topGroup["sigma"].value
         sfilter = topGroup["filter"].value
         try:
-            watershed_source = str(topGroup["watershed_source"].value)
+            watershed_source = str(topGroup["watershed_source"].value.decode('utf-8'))
             invert_watershed_source = bool(topGroup["invert_watershed_source"].value)
         except KeyError:
             watershed_source = None
             invert_watershed_source = False
         
-        if "graph" in topGroup.keys():
+        if "graph" in list(topGroup.keys()):
             graphgroup = topGroup["graph"]
         else:
-            assert "graphfile" in topGroup.keys()
+            assert "graphfile" in list(topGroup.keys())
             #feature: load preprocessed graph from file
             filePath = topGroup["graphfile"].value
             if not os.path.exists(filePath):

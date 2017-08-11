@@ -1,3 +1,4 @@
+from builtins import range
 import os.path
 import random
 import numpy as np
@@ -79,8 +80,8 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                 radius = 2*features[frame]['Standard Object Features']['RegionRadii'][label, 0]
                 
                 featureDict = {}
-                for category in features[frame].keys():
-                    for key in features[frame][category].keys():
+                for category in list(features[frame].keys()):
+                    for key in list(features[frame][category].keys()):
 
                         if firstPass:
                             feature_string = key
@@ -95,7 +96,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                             if (np.asarray(features[frame][category][key])).ndim == 2:
                                 if key != 'Histogram':
                                     #print key, np.asarray(features[key]).shape
-                                    for column in xrange((np.asarray(features[frame][category][key])).shape[1]):
+                                    for column in range((np.asarray(features[frame][category][key])).shape[1]):
                                         builder.addFeatureName(feature_string + '_' + str(column), feature_string, shortname + '_' + str(column), isInt)
                             else:
                                 #print "ELSE", key, np.asarray(features[key]).shape
@@ -108,7 +109,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                                 if (np.asarray(features[frame][category][key])).ndim == 1:
                                     featureDict[convertKeyName(key)] = features[frame][category][key][label]
                                 if (np.asarray(features[frame][category][key])).ndim == 2:
-                                    for j in xrange((np.asarray(features[frame][category][key])).shape[1]):
+                                    for j in range((np.asarray(features[frame][category][key])).shape[1]):
                                         try:
                                             exists = features[frame][category][key][label, 0]
                                         except IndexError:

@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from builtins import range
 import sys
 import os
 import warnings
@@ -490,9 +491,9 @@ class ObjectClassificationWorkflow(Workflow):
         mask[objectwise_predictions != POSITIVE_LABEL] = False
 
         filtered_features = {}
-        for feature_group, feature_dict in region_features_dict.items():
+        for feature_group, feature_dict in list(region_features_dict.items()):
             filtered_group = filtered_features[feature_group] = {}
-            for feature_name, feature_array in feature_dict.items():
+            for feature_name, feature_array in list(feature_dict.items()):
                 filtered_group[feature_name] = feature_array[mask]
 
         # SECOND, translate from block-local coordinates to global (file) coordinates.

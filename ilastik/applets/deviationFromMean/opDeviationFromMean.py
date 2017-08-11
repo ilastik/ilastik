@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
+from __future__ import print_function
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 import numpy
 from ilastik.utility import MultiLaneOperatorABC, OperatorSubView
@@ -76,10 +77,10 @@ class OpDeviationFromMean(Operator):
         result[:] = self.Input[subindex].get(roi).wait() - result
 
         # Scale
-        result[:] *= self.ScalingFactor.value
+        result[:] = result * self.ScalingFactor.value
 
         # Add constant offset
-        result[:] += self.Offset.value
+        result[:] = result + self.Offset.value
         
         return result
 
@@ -138,8 +139,8 @@ if __name__ == "__main__":
     op.Input[2].setValue( twos )
     
     expected = offset + scalingFactor * (ones - (zeros + ones + twos) // len(op.Input)) 
-    print "expected:", expected
+    print("expected:", expected)
 
     output = op.Output[1][:].wait()
-    print "output:",output
+    print("output:",output)
     assert ( output == expected).all()

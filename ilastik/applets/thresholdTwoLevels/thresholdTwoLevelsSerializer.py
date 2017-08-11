@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,7 +20,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, SerialBlockSlot
-from opThresholdTwoLevels import ThresholdMethod
+from .opThresholdTwoLevels import ThresholdMethod
 
 class ThresholdTwoLevelsSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
@@ -52,14 +53,14 @@ class ThresholdTwoLevelsSerializer(AppletSerializer):
         # We used to store a separate threshold value for the 'simple' threshold parameter,
         # but now we re-use the 'low threshold' slot for both 'simple' and 'hysteresis' modes.
         method = self.operator.CurOperator.value
-        if method == ThresholdMethod.SIMPLE and 'SingleThreshold' in topGroup.keys():
+        if method == ThresholdMethod.SIMPLE and 'SingleThreshold' in list(topGroup.keys()):
             threshold = topGroup['SingleThreshold'].value
             self.operator.LowThreshold.setValue(threshold)
 
         # We used to always compute cores from the same channel as the 'final' threshold input.
         # If the user has an old project file, make sure channels are matching by default.
         if method in (ThresholdMethod.HYSTERESIS, ThresholdMethod.IPHT) \
-        and 'Channel' in topGroup.keys() \
-        and 'CoreChannel' not in topGroup.keys():
+        and 'Channel' in list(topGroup.keys()) \
+        and 'CoreChannel' not in list(topGroup.keys()):
             channel = topGroup['Channel'].value
             self.operator.CoreChannel.setValue(channel)

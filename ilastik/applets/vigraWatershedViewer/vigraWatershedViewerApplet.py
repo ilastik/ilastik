@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,8 +21,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opVigraWatershedViewer import OpVigraWatershedViewer
-from vigraWatershedViewerSerializer import VigraWatershedViewerSerializer
+from .opVigraWatershedViewer import OpVigraWatershedViewer
+from .vigraWatershedViewerSerializer import VigraWatershedViewerSerializer
 
 class VigraWatershedViewerApplet( StandardApplet ):
     """
@@ -41,7 +42,7 @@ class VigraWatershedViewerApplet( StandardApplet ):
     
     @property
     def singleLaneGuiClass(self):
-        from vigraWatershedViewerGui import VigraWatershedViewerGui
+        from .vigraWatershedViewerGui import VigraWatershedViewerGui
         return VigraWatershedViewerGui
 
     @property

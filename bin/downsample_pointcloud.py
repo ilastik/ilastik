@@ -1,3 +1,5 @@
+from __future__ import division
+from past.utils import old_div
 import sys
 import os
 import csv
@@ -55,7 +57,7 @@ def downsample_pointcloud( pointcloud_csv_filepath,
         logger.debug("Normalizing with max: {}".format( normalize_with_max ))
         max_px = density_volume_zyx.max()
         if max_px > 0:
-            density_volume_zyx[:] *= normalize_with_max / max_px
+            density_volume_zyx[:] *= old_div(normalize_with_max, max_px)
     
     if output_dtype:
         logger.debug("Converting to dtype: {}".format( str(output_dtype().dtype) ))
@@ -111,7 +113,7 @@ def density_volume_from_pointcloud( pointcloud_csv_filepath,
         "Your pointcloud data file does not contain all expected columns.\n"\
         "Expected columns: {},\n"\
         "Your file's columns: {}"\
-        .format( POINTCLOUD_COLUMNS, pointcloud_data.dtype.fields.keys() )
+        .format( POINTCLOUD_COLUMNS, list(pointcloud_data.dtype.fields.keys()) )
 
     # Determine offset if not provided.
     if not offset_xyz:
@@ -144,7 +146,7 @@ def density_volume_from_pointcloud( pointcloud_csv_filepath,
         scaled_volume_shape_xyz = volume_shape_xyz
     else:
         logger.debug("Dividing by scale: {}".format( scale_xyz ))
-        scaled_volume_shape_xyz = (numpy.array(volume_shape_xyz) + scale_xyz-1) / scale_xyz
+        scaled_volume_shape_xyz = old_div((numpy.array(volume_shape_xyz) + scale_xyz-1), scale_xyz)
         
         # Scale coordinates, too.
         for axis, axis_scale in zip('xyz', scale_xyz):
@@ -227,7 +229,7 @@ def array_from_csv( pointcloud_csv_filepath,
     logger.debug("Loading data from csv file: {}".format( pointcloud_csv_filepath ))
     with open(pointcloud_csv_filepath, 'r') as f_in:
         csv_reader = csv.reader(f_in, **csv_format)
-        column_names = csv_reader.next()
+        column_names = next(csv_reader)
 
         # If user provided only a single dtype, it is the default type.
         if isinstance(column_dtypes, dict):
@@ -244,7 +246,7 @@ def array_from_csv( pointcloud_csv_filepath,
                 column_dtypes[column_name] = default_column_dtype
 
         dtype_list = [column_dtypes[column_name] for column_name in column_names]
-        row_dtype = zip( column_names, dtype_list )
+        row_dtype = list(zip( column_names, dtype_list ))
         csv_array_data = numpy.ndarray( shape=(num_points,), dtype=row_dtype )
     
         for row_index, row_data in enumerate(csv_reader):

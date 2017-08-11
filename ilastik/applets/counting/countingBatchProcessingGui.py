@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QPushButton, QFileDialog
+from PyQt5.QtWidgets import QPushButton, QFileDialog
 from ilastik.applets.batchProcessing.batchProcessingGui import BatchProcessingGui
 
 class CountingBatchProcessingGui(BatchProcessingGui):
@@ -14,7 +14,7 @@ class CountingBatchProcessingGui(BatchProcessingGui):
         self._drawer.layout().insertWidget(1, self.select_csv_path_button)
 
     def select_csv_location(self):
-        self.csv_export_path = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
+        self.csv_export_path, _filter = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
 
     def run_export(self):
         """

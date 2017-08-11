@@ -1,18 +1,19 @@
+from __future__ import division
+from past.utils import old_div
 import collections
 
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QDialog, QPushButton, QWidget, QLabel, QTableWidget, QTableWidgetItem, QGridLayout, QColor
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QDialog, QPushButton, QWidget, QLabel, QTableWidget, QTableWidgetItem, QGridLayout
+from PyQt5.QtGui import QColor
 import re
 
 # Overload QTableWidgetItem class to allow comparisons of float instead of strings
 class QTableWidgetItemWithFloatSorting(QTableWidgetItem):
     def __lt__(self, other):
         if ( isinstance(other, QTableWidgetItem) ):
-            my_value, my_ok = self.data(Qt.EditRole).toFloat()
-            other_value, other_ok = other.data(Qt.EditRole).toFloat()
-
-            if ( my_ok and other_ok ):
-                return my_value < other_value
+            my_value = self.data(Qt.EditRole)
+            other_value = other.data(Qt.EditRole)
+            return my_value < other_value
 
         return super(QTableWidgetItemWithFloatSorting, self).__lt__(other)
 
@@ -29,14 +30,14 @@ class VariableImportanceDialog(QDialog):
                
         if named_importances:
             # Show variable importance table
-            rows = len(named_importances.items())
+            rows = len(list(named_importances.items()))
             columns = 5
             table = QTableWidget(rows, columns)   
             table.setHorizontalHeaderLabels(['Variable Name', 'Class #0', 'Class #1', 'Overall', 'Gini'])
             table.verticalHeader().setVisible(False)      
             
-            importances_mins = map(min, zip(*named_importances.values()))
-            importances_maxs = map(max, zip(*named_importances.values()))
+            importances_mins = list(map(min, list(zip(*list(named_importances.values())))))
+            importances_maxs = list(map(max, list(zip(*list(named_importances.values())))))
             
             for i, (variable, importances) in enumerate(named_importances.items()):     
                 # Remove non-ASCII characters to get rid of the sigma character in the variable names.
@@ -52,7 +53,7 @@ class VariableImportanceDialog(QDialog):
                     imin = importances_mins[j]
                     imax = importances_maxs[j]
                     range = importances_maxs[j] - importances_mins[j]
-                    color = int( 255 - ( (val-imin) * 200) / range )    
+                    color = int( 255 - old_div(( (val-imin) * 200), range) )    
 
                     # Load items as strings
                     item = QTableWidgetItemWithFloatSorting(str("{: .05f}".format(importance)))
@@ -85,7 +86,7 @@ class VariableImportanceDialog(QDialog):
         self.setLayout(layout)
 
 if __name__ == "__main__":
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
     
     named_importances = { 'feature_1' : [1.2,4.3,3.1,4.8], 'feature_2' : [7.4,3.4,5.5,5.9], 'feature_3' : [1,2,3.5,5.2] , 'feature_4' : [1.9,9.1,2.5,7.1] , 'feature_5' : [6.4,2.0,8.5,1.1]  }
 

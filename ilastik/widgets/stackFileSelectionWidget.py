@@ -19,14 +19,14 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
+import sys
 import glob
 from functools import partial
 
-from PyQt4 import uic
-from PyQt4.QtCore import Qt, QEvent
-from PyQt4.QtGui import (
-    QDialogButtonBox, QComboBox, QDialog, QFileDialog, QLabel,
-    QMessageBox, QVBoxLayout
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtWidgets import (
+    QDialogButtonBox, QComboBox, QDialog, QFileDialog, QLabel, QMessageBox, QVBoxLayout
 )
 
 import vigra
@@ -35,7 +35,6 @@ from volumina.utility import PreferencesManager
 
 import ilastik.config
 from ilastik.widgets.hdf5SubvolumeSelectionDialog import Hdf5StackingDlg, H5VolumeSelectionDlg
-from volumina.utility import encode_from_qstring, decode_to_qstring
 
 from lazyflow.operators.ioOperators import (
     OpStackLoader, OpStreamingHdf5SequenceReaderM,
@@ -130,20 +129,19 @@ class StackFileSelectionWidget(QDialog):
         directory = QFileDialog.getExistingDirectory( 
                      self, "Image Stack Directory", defaultDirectory, options=options )
 
-        if directory.isNull():
+        if not directory:
             # User cancelled
             return
 
-        directory = encode_from_qstring( directory )
         PreferencesManager().set('DataSelection', 'recent stack directory', directory)
 
-        self.directoryEdit.setText( decode_to_qstring(directory) )
+        self.directoryEdit.setText( directory )
         try:
             globstring = self._getGlobString(directory)
-        except StackFileSelectionWidget.DetermineStackError, e:
+        except StackFileSelectionWidget.DetermineStackError as e:
             QMessageBox.warning(self, "Invalid selection", str(e))
         if globstring:
-            self.patternEdit.setText(decode_to_qstring(globstring))
+            self.patternEdit.setText( globstring )
             self._applyPattern()
 
     def _getGlobString(self, directory):
@@ -268,11 +266,9 @@ class StackFileSelectionWidget(QDialog):
         options = QFileDialog.Options()
         if ilastik.config.cfg.getboolean("ilastik", "debug"):
             options |=  QFileDialog.DontUseNativeDialog
-        fileNames = QFileDialog.getOpenFileNames( 
+        fileNames, _filter = QFileDialog.getOpenFileNames( 
                      self, "Select Images for Stack", defaultDirectory, filt, options=options )
         
-        fileNames = map(encode_from_qstring, fileNames)
-
         msg = ''
         if len(fileNames) == 0:
             return
@@ -332,7 +328,7 @@ class StackFileSelectionWidget(QDialog):
         self._updateFileList(fileNames)
 
     def _applyPattern(self):
-        globStrings = encode_from_qstring(self.patternEdit.text())
+        globStrings = self.patternEdit.text()
         H5EXTS = OpStreamingHdf5SequenceReaderM.H5EXTS
         filenames = []
         # see if some glob strings include HDF5 files
@@ -382,7 +378,7 @@ class StackFileSelectionWidget(QDialog):
         self.fileListWidget.clear()
         
         for f in self.selectedFiles:
-            self.fileListWidget.addItem(decode_to_qstring(f))
+            self.fileListWidget.addItem(f)
 
     def eventFilter(self, watched, event):
         if watched == self.patternEdit:
@@ -398,7 +394,7 @@ class StackFileSelectionWidget(QDialog):
         return False
 
 if __name__ == "__main__":
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
     
     app = QApplication([])
     w = StackFileSelectionWidget(None)

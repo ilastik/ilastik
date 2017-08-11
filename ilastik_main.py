@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 import os
 
@@ -81,11 +82,11 @@ def main( parsed_args, workflow_cmdline_args=[], init_logging=True ):
     if ilastik_config.getboolean("ilastik", "debug"):
         message = 'Starting ilastik in debug mode from "%s".' % ilastik_dir
         logger.info(message)
-        print message     # always print the startup message
+        print(message)     # always print the startup message
     else:
         message = 'Starting ilastik from "%s".' % ilastik_dir
         logger.info(message)
-        print message     # always print the startup message
+        print(message)     # always print the startup message
     
     # Headless launch
     if parsed_args.headless:
@@ -302,7 +303,7 @@ def _prepare_test_recording_and_playback( parsed_args ):
         eventcapture_mode = 'record'
     elif parsed_args.playback_script is not None:
         # Only import GUI modules in non-headless mode.
-        from PyQt4.QtGui import QApplication
+        from PyQt5.QtWidgets import QApplication
         eventcapture_mode = 'playback'
         # See EventRecordingApp.create_app() for details
         playback_args['playback_script'] = parsed_args.playback_script

@@ -24,9 +24,10 @@ import threading
 
 import numpy as np
 
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QComboBox, QVBoxLayout, \
-                        QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QPushButton, QIcon
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor, QPen, QIcon
+from PyQt5.QtWidgets import QWidget, QLabel, QDoubleSpinBox, QComboBox, QVBoxLayout, \
+                            QHBoxLayout, QSpacerItem, QSizePolicy, QPushButton
 
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource
@@ -182,7 +183,7 @@ class MulticutGuiMixin(object):
                 return
             edge_probs = op.EdgeProbabilitiesDict.value
             new_pens = {}
-            for id_pair, probability in edge_probs.items():
+            for id_pair, probability in list(edge_probs.items()):
                 new_pens[id_pair] = self.probability_pen_table[int(probability * 100)]
             self.__apply_new_probability_edges(new_pens)
 
@@ -223,7 +224,7 @@ class MulticutGuiMixin(object):
             
             edge_disagreements = op.EdgeLabelDisagreementDict.value            
             new_pens = {}
-            for id_pair, disagreement_label in edge_disagreements.items():
+            for id_pair, disagreement_label in list(edge_disagreements.items()):
                 new_pens[id_pair] = self.disagreement_pen_table[disagreement_label]
             self.__apply_disagreement_edges(new_pens)
 

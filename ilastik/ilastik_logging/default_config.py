@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -21,12 +22,12 @@
 import os
 import logging.config
 import warnings
-import loggingHelpers
+from . import loggingHelpers
 from ilastik.config import cfg as ilastik_config
 
 DEFAULT_LOGFILE_PATH = os.path.expanduser("~/ilastik_log.txt")
 
-class OutputMode:
+class OutputMode(object):
     CONSOLE = 0
     LOGFILE = 1
     BOTH = 2
@@ -140,7 +141,7 @@ def get_default_config( prefix="",
             # This logger captures warnings module warnings
             "py.warnings":                             {  "level":"WARN", "handlers":warnings_module_handlers, "propagate": False },
 
-            "PyQt4": {"level":"INFO"},
+            "PyQt5": {"level":"INFO"},
             
             # The requests module spits out a lot of INFO messages by default.
             "requests": {"level":"WARN"},
@@ -265,7 +266,7 @@ def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, l
     # Custom format for warnings
     def simple_warning_format(message, category, filename, lineno, line=None):
         filename = os.path.split(filename)[1]
-        return filename + "(" + str(lineno) + "): " + category.__name__ + ": " + message[0]
+        return filename + "(" + str(lineno) + "): " + category.__name__ + ": " + message.args[0]
 
     warnings.formatwarning = simple_warning_format
     
