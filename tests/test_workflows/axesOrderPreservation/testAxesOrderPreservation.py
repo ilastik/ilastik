@@ -66,7 +66,7 @@ class TestAxesOrderPreservation(object):
         options.append((['2d', '2d3c'], ['yxc', 'xyc']))
         # + ['ycx', 'xcy', 'cyx', 'cxy']
 
-        # options.append((['5t2d1c', '5t2d2c'], ['tyxc', 'txyc']))
+        options.append((['5t2d1c', '5t2d2c'], ['tyxc', 'txyc']))
         options.append((['5t3d2c'], ['tzyxc']))
 
         # options = cyx_options
