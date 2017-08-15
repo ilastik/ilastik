@@ -262,6 +262,105 @@ class TestAxesOrderPreservation(object):
 
         assert numpy.array_equal(result, compare)
 
+    def test_tracking_with_learning(self):
+        options = []
+        # mini test example to get the tests running:
+        options.append((['5t2d1c'], ['_wBin'],  # + '_wPred'
+                        ['tyxc']))
+        # test configurations
+        # options.append((['5t2d1c', '5t2d2c'], ['_wPred', '_wBin'],
+        #                 ['tyxc', 'txyc', 'xytc']))
+        # options.append((['5t3d2c'], ['_wPred', '_wBin'], ['tzyxc', 'xztyc']))
+
+        for combination in options:
+            for dims, variant, order in itertools.product(*combination):
+                yield self._test_tracking_with_learning, dims, variant, order
+
+    @timeLogged(logger)
+    def _test_tracking_with_learning(self, dims, variant, input_axes):
+        # NOTE: In this test, cmd-line args to nosetests will also end up
+        #       getting "parsed" by ilastik. That shouldn't be an issue, since
+        #       the pixel classification workflow ignores unrecognized options.
+        #       See if __name__ == __main__ section, below.
+        project_file = self.PROJECT_FILE_BASE.replace(
+            '*', 'TrackingwLearning' + dims + variant)
+
+        if not os.path.exists(project_file):
+            raise IOError('project file "{}" not found'.format(
+                project_file))
+
+        args = []
+        args.append("--headless")
+        args.append("--project=" + project_file)
+
+        # Batch export options
+        # If we were actually launching from the command line, 'png sequence'
+        # would be in quotes...
+        # args.append('--output_format=png sequence')
+        args.append("--export_source=Tracking-Result")
+        args.append(
+            "--output_filename_format=" + self.dir + "/{nickname}_result" +
+            variant)
+        args.append(
+            "--output_format=hdf5")
+        args.append("--export_dtype=uint8")
+        # args.append("--output_axis_order=" + input_axes)
+
+        args.append("--pipeline_result_drange=(0,255)")
+        args.append("--export_drange=(0,255)")
+
+        # Input args
+        args.append("--input_axes={}".format(input_axes))
+        input_source_path1 = '../../data/inputdata/{}.h5'.format(dims)
+        input_path1 = self.create_input(input_source_path1, input_axes)
+        args.append("--raw_data=" + input_path1)
+        if 'wPred' in variant:
+            input_source_path2 = '../../data/inputdata/{}_Probabilities.h5' \
+                                 .format(dims)
+            input_path2 = self.create_input(input_source_path2, input_axes)
+            args.append("--prediction_maps=" + input_path2)
+        elif 'wBin' in variant:
+            input_source_path2 = '../../data/inputdata/{}_Binary ' \
+                                 'Segmentation.h5'.format(dims)
+            input_path2 = self.create_input(input_source_path2, input_axes)
+            args.append("--binary_image=" + input_path2)
+        else:
+            raise NotImplementedError('variant {} unknown'.format(variant))
+
+        print('args', args)
+        # Clear the existing commandline args so it looks like we're starting
+        # fresh.
+        sys.argv = ['ilastik.py']
+        sys.argv += args
+
+        # Start up the ilastik.py entry script as if we had launched it from
+        # the command line
+        # This will execute the batch mode script
+        self.ilastik_startup.main()
+
+        output_path = input_path1.replace('.', '_result{}.'.format(variant))
+
+        opReaderResult = OpInputDataReader(graph=Graph())
+        opReaderResult.FilePath.setValue(output_path)
+        result = opReaderResult.Output[:].wait()
+
+        compare_name = '../../data/inputdata/{}_Tracking-Result.h5/' \
+                       'exported_data'.format(dims + variant)
+        compare_name = os.path.abspath(compare_name)
+        opReaderCompare = OpInputDataReader(graph=Graph())
+        opReaderCompare.FilePath.setValue(compare_name)
+        opReorderCompare = OpReorderAxes(parent=opReaderCompare)
+        opReorderCompare.Input.connect(opReaderCompare.Output)
+
+        # todo: should use input_axes here, but the workflow always gives out
+        #       txyzc (this is copied from the test for object classification.
+        #       This might be different for tracking!)
+        # opReorderCompare.AxisOrder.setValue(input_axes)
+        opReorderCompare.AxisOrder.setValue('txyzc')
+        compare = opReorderCompare.Output[:].wait()
+
+        assert numpy.array_equal(result, compare)
+
 
 if __name__ == "__main__":
     # make the program quit on Ctrl+C
