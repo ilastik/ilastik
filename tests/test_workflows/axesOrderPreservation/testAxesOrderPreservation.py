@@ -61,20 +61,6 @@ class TestAxesOrderPreservation(object):
         cls.ilastik_startup = imp.load_source(
             'ilastik_startup', ilastik_entry_file_path)
 
-    def test_pixel_classification(self):
-        options = []
-        options.append((['2d', '2d3c'], ['yxc', 'xyc']))
-        # + ['ycx', 'xcy', 'cyx', 'cxy']
-
-        options.append((['5t2d1c', '5t2d2c'], ['tyxc', 'txyc']))
-        options.append((['5t3d2c'], ['tzyxc']))
-
-        # options = cyx_options
-        for combination in options:
-            for testcase, order in itertools.product(*combination):
-                print('testcase/order', testcase, order)
-                yield self._test_pixel_classification, testcase, order
-
     @classmethod
     def create_input(cls, filepath, input_axes):
         """
@@ -84,22 +70,34 @@ class TestAxesOrderPreservation(object):
         print('basename', basename)
         graph = Graph()
         reader = OpInputDataReader(graph=graph)
+        assert os.path.exists(filepath), '{} not found'.format(filepath)
         reader.FilePath.setValue(os.path.abspath(filepath))
         print('reader axes', reader.Output.meta)
-
-        # print('output reader', reader.Output[:].wait().shape)
 
         writer = OpFormattedDataExport(parent=reader)
         writer.OutputAxisOrder.setValue(input_axes)
         writer.Input.connect(reader.Output)
         writer.OutputFilenameFormat.setValue(os.path.join(
             cls.dir, basename.split('.')[0] + '_' + input_axes))
-        # writer.OutputFormat.setValue(output_format)
         writer.TransactionSlot.setValue(True)
         input_path = writer.ExportPath.value
         writer.run_export()
 
         return input_path
+
+    def test_pixel_classification(self):
+        options = []
+        options.append((['2d', '2d3c'], ['yxc', 'xyc']))
+        # + ['ycx', 'xcy', 'cyx', 'cxy']
+
+        options.append((['5t2d1c', '5t2d2c'], ['tyxc', 'txyc', 'xytc']))
+        options.append((['5t3d2c'], ['tzyxc', 'ztxyc', 'xyztc']))
+
+        # options = cyx_options
+        for combination in options:
+            for testcase, order in itertools.product(*combination):
+                print('testcase/order', testcase, order)
+                yield self._test_pixel_classification, testcase, order
 
     @timeLogged(logger)
     def _test_pixel_classification(self, testcase, input_axes):
@@ -164,6 +162,102 @@ class TestAxesOrderPreservation(object):
         opReorderCompare.Input.connect(opReaderCompare.Output)
         opReorderCompare.AxisOrder.setValue(input_axes)
 
+        compare = opReorderCompare.Output[:].wait()
+
+        assert numpy.array_equal(result, compare)
+
+    def test_object_classification(self):
+        options = []
+        options.append((['2d', '2d3c'], ['_wPred', '_wSeg'], ['yxc', 'xyc']))
+        # + ['ycx', 'xcy', 'cyx', 'cxy']
+
+        options.append((['5t2d1c', '5t2d2c'], ['_wPred', '_wSeg'],
+                        ['tyxc', 'txyc', 'xytc']))
+        options.append((['5t3d2c'], ['_wPred', '_wSeg'], ['tzyxc', 'xztyc']))
+
+        for combination in options:
+            for dims, variant, order in itertools.product(*combination):
+                yield self._test_object_classification, dims, variant, order
+
+    @timeLogged(logger)
+    def _test_object_classification(self, dims, variant, input_axes):
+        # NOTE: In this test, cmd-line args to nosetests will also end up
+        #       getting "parsed" by ilastik. That shouldn't be an issue, since
+        #       the pixel classification workflow ignores unrecognized options.
+        #       See if __name__ == __main__ section, below.
+        project_file = self.PROJECT_FILE_BASE.replace(
+            '*', 'ObjectClassification' + dims + variant)
+
+        if not os.path.exists(project_file):
+            raise IOError('project file "{}" not found'.format(
+                project_file))
+
+        args = []
+        args.append("--headless")
+        args.append("--project=" + project_file)
+
+        # Batch export options
+        # If we were actually launching from the command line, 'png sequence'
+        # would be in quotes...
+        # args.append('--output_format=png sequence')
+        args.append("--export_source=Object Predictions")
+        args.append(
+            "--output_filename_format=" + self.dir + "/{nickname}_result" +
+            variant)
+        args.append(
+            "--output_format=hdf5")
+        args.append("--export_dtype=uint8")
+        # args.append("--output_axis_order=" + input_axes)
+
+        args.append("--pipeline_result_drange=(0,255)")
+        args.append("--export_drange=(0,255)")
+
+        # Input args
+        args.append("--input_axes={}".format(input_axes))
+        input_source_path1 = '../../data/inputdata/{}.h5'.format(dims)
+        input_path1 = self.create_input(input_source_path1, input_axes)
+        args.append("--raw_data=" + input_path1)
+        if 'wPred' in variant:
+            input_source_path2 = '../../data/inputdata/{}_Probabilities.h5' \
+                                 .format(dims)
+            input_path2 = self.create_input(input_source_path2, input_axes)
+            args.append("--prediction_maps=" + input_path2)
+        elif 'wSeg' in variant:
+            input_source_path2 = '../../data/inputdata/{}_Binary ' \
+                                 'Segmentation.h5'.format(dims)
+            input_path2 = self.create_input(input_source_path2, input_axes)
+            args.append("--segmentation_image=" + input_path2)
+        else:
+            raise NotImplementedError('variant {} unknown'.format(variant))
+
+        print('args', args)
+        # Clear the existing commandline args so it looks like we're starting
+        # fresh.
+        sys.argv = ['ilastik.py']
+        sys.argv += args
+
+        # Start up the ilastik.py entry script as if we had launched it from
+        # the command line
+        # This will execute the batch mode script
+        self.ilastik_startup.main()
+
+        output_path = input_path1.replace('.', '_result{}.'.format(variant))
+
+        opReaderResult = OpInputDataReader(graph=Graph())
+        opReaderResult.FilePath.setValue(output_path)
+        result = opReaderResult.Output[:].wait()
+
+        compare_name = '../../data/inputdata/{}_Object Predictions.h5/' \
+                       'exported_data'.format(dims + variant)
+        compare_name = os.path.abspath(compare_name)
+        opReaderCompare = OpInputDataReader(graph=Graph())
+        opReaderCompare.FilePath.setValue(compare_name)
+        opReorderCompare = OpReorderAxes(parent=opReaderCompare)
+        opReorderCompare.Input.connect(opReaderCompare.Output)
+
+        # should use input_axes here, but the workflow always gives out txyzc
+        # opReorderCompare.AxisOrder.setValue(input_axes)
+        opReorderCompare.AxisOrder.setValue('txyzc')
         compare = opReorderCompare.Output[:].wait()
 
         assert numpy.array_equal(result, compare)
