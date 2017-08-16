@@ -27,7 +27,7 @@ SKIP_UNTIL=${2-"RUN_ALL"}
 FAILURES=0
 BROKEN=()
 
-for f in `find $NOSE_ARG -iname "*test*.py" | grep -v nanshe` 
+for f in `find $NOSE_ARG -iname "*test*.py"` 
 do
   if echo $f | grep -q "shellGuiTestCaseBase.py"; then
       # This isn't a test case, it's a helper file
