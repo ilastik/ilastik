@@ -271,7 +271,7 @@ class CountingGui(LabelingGui):
         self.boxController.fixedBoxesChanged.connect(self._handleBoxConstraints)
         self.boxController.viewBoxesChanged.connect(self._changeViewBoxes)
         
-        self.op.LabelPreviewer.Sigma.setValue(self.op.opTrain.Sigma.value)
+        self.op.LabelPreviewer.sigma.setValue(self.op.opTrain.Sigma.value)
         self.op.opTrain.fixClassifier.setValue(False)
         self.op.Density.notifyDirty(self._normalizePrediction)
 
@@ -434,7 +434,8 @@ class CountingGui(LabelingGui):
         #2 * the maximal value of a gaussian filter, to allow some leeway for overlapping
         self.op.opTrain.Sigma.setValue(sigma)
         self.op.opUpperBound.Sigma.setValue(sigma)
-        self.op.LabelPreviewer.Sigma.setValue(sigma)
+        self.op.LabelPreviewer.sigma.setValue(sigma)
+
         #    self._changedSigma = False
         self._normalizeLayers()
 

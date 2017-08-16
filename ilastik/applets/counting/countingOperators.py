@@ -38,8 +38,7 @@ from lazyflow.operators import OpPixelOperator
 from ilastik.applets.counting.countingsvr import SVR
 
 
-
-from lazyflow.operators.imgFilterOperators import OpGaussianSmoothing
+from lazyflow.operators.vigraOperators import OpGaussianSmoothing
 
 
 class OpLabelPreviewer(OpGaussianSmoothing):
@@ -173,7 +172,7 @@ class OpTrainCounter(Operator):
         for i,labels in enumerate(self.inputs["ForegroundLabels"]):
             if labels.meta.shape is not None:
                 opGaussian = OpGaussianSmoothing(parent = self, graph = self.graph)
-                opGaussian.Sigma.setValue(self.Sigma.value)
+                opGaussian.sigma.setValue(self.Sigma.value)
                 opGaussian.Input.connect(self.ForegroundLabels[i])
                 blocks = self.inputs["nonzeroLabelBlocks"][i][0].wait()
                 
