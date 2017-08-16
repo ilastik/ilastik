@@ -27,6 +27,8 @@ import numpy
 import os
 import sys
 import tempfile
+import warnings
+import zipfile
 
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpInputDataReader
@@ -42,13 +44,19 @@ logger = logging.getLogger(__name__)
 class TestAxesOrderPreservation(object):
     dir = tempfile.mkdtemp()
     # os.path.expanduser('~/Desktop/tmp')
-    PROJECT_FILE_BASE = '../../data/*.ilp'
+    PROJECT_FILE_BASE = os.path.join('..', '..', 'data')
 
     @classmethod
     def setupClass(cls):
         print('starting setup...')
         print('unzipping project files...')
-        # todo
+        projects = zipfile.ZipFile(os.path.join(cls.PROJECT_FILE_BASE,
+                                                'test_projects.zip'),
+                                   mode='r')
+        projects.extractall(path=cls.PROJECT_FILE_BASE)
+        cls.unzipped_project_files = projects.namelist()
+        cls.untested_projects = list(cls.unzipped_project_files)
+        print('unzipped projects: ' + ', '.join(cls.unzipped_project_files))
         print('looking for ilastik.py...')
         # Load the ilastik startup script as a module.
         # Do it here in setupClass to ensure that it isn't loaded more than
@@ -62,6 +70,21 @@ class TestAxesOrderPreservation(object):
 
         cls.ilastik_startup = imp.load_source(
             'ilastik_startup', ilastik_entry_file_path)
+
+    @classmethod
+    def teardownClass(cls):
+        # Clean up: Delete all unzipped test projects
+        for f in cls.unzipped_project_files:
+            file = os.path.join(cls.PROJECT_FILE_BASE, f)
+            try:
+                os.remove(file)
+            except Exception as e:
+                print('Failed to remove file {} due to the error: {}'
+                      .format(file, e))
+
+        if cls.untested_projects:
+            warnings.warn('untested projects detected: {}'.format(
+                ', '.join(cls.untested_projects)))
 
     @classmethod
     def create_input(cls, filepath, input_axes):
@@ -91,6 +114,7 @@ class TestAxesOrderPreservation(object):
         options.append((['2d', '2d3c'], ['yxc', 'xyc']))
         # + ['ycx', 'xcy', 'cyx', 'cxy']
 
+        options.append((['3d', '3d1c', '3d2c'], ['zyxc']))
         options.append((['5t2d1c', '5t2d2c'], ['tyxc', 'txyc', 'xytc']))
         options.append((['5t3d2c'], ['tzyxc', 'ztxyc', 'xyztc']))
 
@@ -106,8 +130,13 @@ class TestAxesOrderPreservation(object):
         #       getting "parsed" by ilastik. That shouldn't be an issue, since
         #       the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
-        project_file = self.PROJECT_FILE_BASE.replace(
-            '*', 'PixelClassification' + testcase)
+        project = 'PixelClassification' + testcase + '.ilp'
+        try:
+            self.untested_projects.remove(project)
+        except ValueError:
+            pass
+
+        project_file = os.path.join(self.PROJECT_FILE_BASE, project)
 
         if not os.path.exists(project_file):
             raise IOError('project file "{}" not found'.format(
@@ -134,7 +163,8 @@ class TestAxesOrderPreservation(object):
 
         # Input args
         args.append("--input_axes={}".format(input_axes))
-        input_source_path = '../../data/inputdata/{}.h5'.format(testcase)
+        input_source_path = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                         '{}.h5'.format(testcase))
         input_path = self.create_input(input_source_path, input_axes)
         args.append(input_path)
 
@@ -154,8 +184,9 @@ class TestAxesOrderPreservation(object):
         opReaderResult.FilePath.setValue(output_path)
         result = opReaderResult.Output[:].wait()
 
-        compare_name = '../../data/inputdata/{}_Simple Segmentation.h5/' \
-                       'exported_data'.format(testcase)
+        compare_name = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                    '{}_Simple Segmentation.h5/exported_data'
+                                    .format(testcase))
         compare_name = os.path.abspath(compare_name)
         opReaderCompare = OpInputDataReader(graph=Graph())
         opReaderCompare.FilePath.setValue(compare_name)
@@ -182,8 +213,13 @@ class TestAxesOrderPreservation(object):
 
     @timeLogged(logger)
     def _test_object_classification(self, dims, variant, input_axes):
-        project_file = self.PROJECT_FILE_BASE.replace(
-            '*', 'ObjectClassification' + dims + variant)
+        project = 'ObjectClassification' + dims + variant + '.ilp'
+        try:
+            self.untested_projects.remove(project)
+        except ValueError:
+            pass
+
+        project_file = os.path.join(self.PROJECT_FILE_BASE, project)
 
         if not os.path.exists(project_file):
             raise IOError('project file "{}" not found'.format(
@@ -211,17 +247,22 @@ class TestAxesOrderPreservation(object):
 
         # Input args
         args.append("--input_axes={}".format(input_axes))
-        input_source_path1 = '../../data/inputdata/{}.h5'.format(dims)
+        input_source_path1 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                          '{}.h5'.format(dims))
         input_path1 = self.create_input(input_source_path1, input_axes)
         args.append("--raw_data=" + input_path1)
         if 'wPred' in variant:
-            input_source_path2 = '../../data/inputdata/{}_Probabilities.h5' \
-                                 .format(dims)
+            input_source_path2 = os.path.join(self.PROJECT_FILE_BASE,
+                                              'inputdata',
+                                              '{}_Probabilities.h5'
+                                              .format(dims))
             input_path2 = self.create_input(input_source_path2, input_axes)
             args.append("--prediction_maps=" + input_path2)
         elif 'wSeg' in variant:
-            input_source_path2 = '../../data/inputdata/{}_Binary ' \
-                                 'Segmentation.h5'.format(dims)
+            input_source_path2 = os.path.join(self.PROJECT_FILE_BASE,
+                                              'inputdata',
+                                              '{}_Binary Segmentation.h5'
+                                              .format(dims))
             input_path2 = self.create_input(input_source_path2, input_axes)
             args.append("--segmentation_image=" + input_path2)
         else:
@@ -244,8 +285,9 @@ class TestAxesOrderPreservation(object):
         opReaderResult.FilePath.setValue(output_path)
         result = opReaderResult.Output[:].wait()
 
-        compare_name = '../../data/inputdata/{}_Object Predictions.h5/' \
-                       'exported_data'.format(dims + variant)
+        compare_name = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                    '{}_Object Predictions.h5/exported_data'
+                                    .format(dims + variant))
         compare_name = os.path.abspath(compare_name)
         opReaderCompare = OpInputDataReader(graph=Graph())
         opReaderCompare.FilePath.setValue(compare_name)
@@ -260,6 +302,7 @@ class TestAxesOrderPreservation(object):
         assert numpy.array_equal(result, compare)
 
     def test_tracking_with_learning(self):
+        return
         options = []
         # mini test example to get the tests running:
         options.append((['5t2d1c'], ['_wBin'],  # + '_wPred'
@@ -275,8 +318,13 @@ class TestAxesOrderPreservation(object):
 
     @timeLogged(logger)
     def _test_tracking_with_learning(self, dims, variant, input_axes):
-        project_file = self.PROJECT_FILE_BASE.replace(
-            '*', 'TrackingwLearning' + dims + variant)
+        project = 'TrackingwLearning' + dims + variant + '.ilp'
+        try:
+            self.untested_projects.remove(project)
+        except ValueError:
+            pass
+
+        project_file = os.path.join(self.PROJECT_FILE_BASE, project)
 
         if not os.path.exists(project_file):
             raise IOError('project file "{}" not found'.format(
@@ -304,17 +352,20 @@ class TestAxesOrderPreservation(object):
 
         # Input args
         args.append("--input_axes={}".format(input_axes))
-        input_source_path1 = '../../data/inputdata/{}.h5'.format(dims)
+        input_source_path1 = os.path.join(self.PROJECT_BASE, 'inputdata',
+                                          '{}.h5'.format(dims))
         input_path1 = self.create_input(input_source_path1, input_axes)
         args.append("--raw_data=" + input_path1)
         if 'wPred' in variant:
-            input_source_path2 = '../../data/inputdata/{}_Probabilities.h5' \
-                                 .format(dims)
+            input_source_path2 = os.path.join(self.PROJECT_BASE, 'inputdata',
+                                              '{}_Probabilities.h5'
+                                              .format(dims))
             input_path2 = self.create_input(input_source_path2, input_axes)
             args.append("--prediction_maps=" + input_path2)
         elif 'wBin' in variant:
-            input_source_path2 = '../../data/inputdata/{}_Binary ' \
-                                 'Segmentation.h5'.format(dims)
+            input_source_path2 = os.path.join(self.PROJECT_BASE, 'inputdata',
+                                              '{}_Binary Segmentation.h5'
+                                              .format(dims))
             input_path2 = self.create_input(input_source_path2, input_axes)
             args.append("--binary_image=" + input_path2)
         else:
@@ -337,8 +388,9 @@ class TestAxesOrderPreservation(object):
         opReaderResult.FilePath.setValue(output_path)
         result = opReaderResult.Output[:].wait()
 
-        compare_name = '../../data/inputdata/{}_Tracking-Result.h5/' \
-                       'exported_data'.format(dims + variant)
+        compare_name = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                    '{}_Tracking-Result.h5/exported_data'
+                                    .format(dims + variant))
         compare_name = os.path.abspath(compare_name)
         opReaderCompare = OpInputDataReader(graph=Graph())
         opReaderCompare.FilePath.setValue(compare_name)
@@ -367,8 +419,13 @@ class TestAxesOrderPreservation(object):
 
     @timeLogged(logger)
     def _test_boundarybased_segmentation_with_multicut(self, dims, input_axes):
-        project_file = self.PROJECT_FILE_BASE.replace(
-            '*', 'Boundary-basedSegmentationwMulticut' + dims)
+        project = 'Boundary-basedSegmentationwMulticut' + dims + '.ilp'
+        try:
+            self.untested_projects.remove(project)
+        except ValueError:
+            pass
+
+        project_file = os.path.join(self.PROJECT_FILE_BASE, project)
 
         if not os.path.exists(project_file):
             raise IOError('project file "{}" not found'.format(
@@ -395,11 +452,12 @@ class TestAxesOrderPreservation(object):
 
         # Input args
         args.append("--input_axes={}".format(input_axes))
-        input_source_path1 = '../../data/inputdata/{}.h5'.format(dims)
+        input_source_path1 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                          '{}.h5'.format(dims))
         input_path1 = self.create_input(input_source_path1, input_axes)
         args.append("--raw_data=" + input_path1)
-        input_source_path2 = '../../data/inputdata/{}_Probabilities.h5' \
-                             .format(dims)
+        input_source_path2 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                          '{}_Probabilities.h5'.format(dims))
         input_path2 = self.create_input(input_source_path2, input_axes)
         args.append("--probabilities=" + input_path2)
 
@@ -420,8 +478,9 @@ class TestAxesOrderPreservation(object):
         opReaderResult.FilePath.setValue(output_path)
         result = opReaderResult.Output[:].wait()
 
-        compare_name = '../../data/inputdata/{}_Multicut Segmentation.h5/' \
-                       'exported_data'.format(dims)
+        compare_name = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                    '{}_Multicut Segmentation.h5/exported_data'
+                                    .format(dims))
         compare_name = os.path.abspath(compare_name)
         opReaderCompare = OpInputDataReader(graph=Graph())
         opReaderCompare.FilePath.setValue(compare_name)
@@ -432,6 +491,82 @@ class TestAxesOrderPreservation(object):
         #       zyxc
         # opReorderCompare.AxisOrder.setValue(input_axes)
         opReorderCompare.AxisOrder.setValue('zyxc')
+        compare = opReorderCompare.Output[:].wait()
+
+        assert numpy.array_equal(result, compare)
+
+    def test_counting(self):
+        options = []
+        options.append((['2d3c'], ['yxc', 'xyc']))  # , 'xcy'
+
+        for combination in options:
+            for dims, order in itertools.product(*combination):
+                yield self._test_counting, dims, order
+
+    @timeLogged(logger)
+    def _test_counting(self, dims, input_axes):
+        project = 'CellDensityCounting' + dims + '.ilp'
+        try:
+            self.untested_projects.remove(project)
+        except ValueError:
+            pass
+
+        project_file = os.path.join(self.PROJECT_FILE_BASE, project)
+
+        if not os.path.exists(project_file):
+            raise IOError('project file "{}" not found'.format(
+                project_file))
+
+        args = []
+        args.append("--headless")
+        args.append("--project=" + project_file)
+
+        # Batch export options
+        # If we were actually launching from the command line, 'png sequence'
+        # would be in quotes...
+        # args.append('--output_format=png sequence')
+        args.append("--export_source=Probabilities")
+        args.append(
+            "--output_filename_format=" + self.dir + "/{nickname}_result")
+        args.append(
+            "--output_format=hdf5")
+        args.append("--export_dtype=float32")
+        args.append("--pipeline_result_drange=(0,1)")
+        args.append("--export_drange=(0,1)")
+
+        # Input args
+        args.append("--input_axes={}".format(input_axes))
+        input_source_path1 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                          '{}.h5'.format(dims))
+        input_path1 = self.create_input(input_source_path1, input_axes)
+        args.append("--raw_data=" + input_path1)
+
+        # Clear the existing commandline args so it looks like we're starting
+        # fresh.
+        sys.argv = ['ilastik.py']
+        sys.argv += args
+
+        # Start up the ilastik.py entry script as if we had launched it from
+        # the command line
+        # This will execute the batch mode script
+        self.ilastik_startup.main()
+
+        output_path = input_path1.replace('.', '_result.')
+
+        opReaderResult = OpInputDataReader(graph=Graph())
+        opReaderResult.FilePath.setValue(output_path)
+        result = opReaderResult.Output[:].wait()
+
+        compare_name = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                    '{}_count_Probabilities.h5/exported_data'
+                                    .format(dims))
+        compare_name = os.path.abspath(compare_name)
+        opReaderCompare = OpInputDataReader(graph=Graph())
+        opReaderCompare.FilePath.setValue(compare_name)
+        opReorderCompare = OpReorderAxes(parent=opReaderCompare)
+        opReorderCompare.Input.connect(opReaderCompare.Output)
+
+        opReorderCompare.AxisOrder.setValue(input_axes)
         compare = opReorderCompare.Output[:].wait()
 
         assert numpy.array_equal(result, compare)
