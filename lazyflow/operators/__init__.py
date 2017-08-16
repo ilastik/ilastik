@@ -58,11 +58,8 @@ from .opCompressedUserLabelArray import OpCompressedUserLabelArray
 from .opLabelImage import OpLabelImage
 from .opCachedLabelImage import OpCachedLabelImage
 from .opInterpMissingData import OpInterpMissingData
-from .opMaskedWatershed import OpMaskedWatershed
-from .opSelectLabel import OpSelectLabel
 from .opReorderAxes import OpReorderAxes
 from .opLabelVolume import OpLabelVolume
-from .opResize import OpResize
 from .opRelabelConsecutive import OpRelabelConsecutive
 
 ops = list(itersubclasses(Operator))
