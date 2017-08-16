@@ -35,7 +35,7 @@ from lazyflow.request import Request, RequestPool
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List, SubRegion
 from lazyflow.roi import roiToSlice, sliceToRoi
-from lazyflow.operators import OpLabelVolume, OpCompressedCache
+from lazyflow.operators import OpLabelVolume, OpCompressedCache, OpBlockedArrayCache
 from itertools import groupby, count
 
 import logging
