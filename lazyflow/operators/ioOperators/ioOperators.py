@@ -416,13 +416,13 @@ class OpH5WriterBigDataset(Operator):
     name = "H5 File Writer BigDataset"
     category = "Output"
 
-    inputSlots = [InputSlot("hdf5File"), # Must be an already-open hdf5File (or group) for writing to
-                  InputSlot("hdf5Path", stype = "string"),
-                  InputSlot("Image"),
-                  InputSlot("CompressionEnabled", value=False), # h5py uses single-threaded gzip comression, which really slows down export.
-                  InputSlot("BatchSize", optional=True)]
+    hdf5File = InputSlot() # Must be an already-open hdf5File (or group) for writing to
+    hdf5Path = InputSlot()
+    Image = InputSlot()
+    CompressionEnabled = InputSlot(value=False) # h5py uses single-threaded gzip comression, which really slows down export.
+    BatchSize = InputSlot(optional=True)
 
-    outputSlots = [OutputSlot("WriteImage")]
+    WriteImage = OutputSlot()
 
     loggingName = __name__ + ".OpH5WriterBigDataset"
     logger = logging.getLogger(loggingName)

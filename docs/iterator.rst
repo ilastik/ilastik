@@ -138,7 +138,9 @@ To illustrate how the iterator is used we consider this example:
 .. code-block:: python
 
 	class OpStructureTensorEigenvaluesSummedChannels(OpBaseVigraFilter):
-    		inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype="float"), InputSlot("Sigma2", stype="float")]
+            Input = InputSlot()
+            Sigma = InputSlot()
+            Sigma2 = InputSlot()
     		name = "StructureTensorEigenvalues"
     
     		def __init__(self, *args, **kwargs):
@@ -249,8 +251,10 @@ Let us take a second example:
 .. code-block:: python
 
 	class OpStructureTensorEigenvalues(OpBaseVigraFilter):
-   		inputSlots = [InputSlot("Input"), InputSlot("Sigma", stype="float"), InputSlot("Sigma2", stype="float")]
-    		name = "StructureTensorEigenvalues"
+            Input = InputSlot()
+            Sigma = InputSlot(value=1.0)
+            Sigma2 = InputSlot(value=1.0)
+            name = "StructureTensorEigenvalues"
     
     		def __init__(self, *args, **kwargs):
         		super(OpStructureTensorEigenvalues, self).__init__(*args, **kwargs)

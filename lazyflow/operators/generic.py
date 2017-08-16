@@ -177,8 +177,10 @@ class OpMultiArraySlicer2(Operator):
 
 
 class OpMultiArrayStacker(Operator):
-    inputSlots = [InputSlot("Images", level=1), InputSlot("AxisFlag"), InputSlot("AxisIndex", optional=True)]
-    outputSlots = [OutputSlot("Output")]
+    Images = InputSlot(level=1)
+    AxisFlag = InputSlot()
+    AxisIndex = InputSlot(optional=True)
+    Output = OutputSlot()
 
     name = "Multi Array Stacker"
     description = "Stack inputs on any axis, including the ones which are not there yet"
@@ -333,8 +335,9 @@ class OpSingleChannelSelector(Operator):
     name = "SingleChannelSelector"
     description = "Select One channel from a Multichannel Image"
 
-    inputSlots = [InputSlot("Input"),InputSlot("Index",stype='integer')]
-    outputSlots = [OutputSlot("Output")]
+    Input = InputSlot()
+    Index = InputSlot()
+    Output = OutputSlot()
 
     def setupOutputs(self):
         
@@ -447,8 +450,9 @@ class OpSubRegion(Operator):
             self.Output.setDirty( *output_dirty_roi )
 
 class OpMultiArrayMerger(Operator):
-    inputSlots = [InputSlot("Inputs", level=1),InputSlot('MergingFunction')]
-    outputSlots = [OutputSlot("Output")]
+    Inputs = InputSlot(level=1)
+    MergingFunction = InputSlot()
+    Output = OutputSlot()
 
     name = "Merge Multi Arrays based on a variadic merging function"
     category = "Misc"
@@ -550,8 +554,9 @@ class OpPixelOperator(Operator):
     name = "OpPixelOperator"
     description = "simple pixel operations"
 
-    inputSlots = [InputSlot("Input"), InputSlot("Function")]
-    outputSlots = [OutputSlot("Output")]
+    Input = InputSlot()
+    Function = InputSlot()
+    Output = OutputSlot()
 
     def setupOutputs(self):
         self.function = self.inputs["Function"].value

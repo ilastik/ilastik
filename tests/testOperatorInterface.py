@@ -82,7 +82,7 @@ class OpTesting5ToMulti(graph.Operator):
     inputSlots = []
     for i in range(5):
         inputSlots.append(graph.InputSlot("Input%.1d"%(i), optional = True))
-    outputSlots = [graph.OutputSlot("Outputs", level=1)]
+    Outputs = graph.OutputSlot(level=1)
 
     def setupOutputs(self):
         length = 0

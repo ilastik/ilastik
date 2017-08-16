@@ -30,8 +30,8 @@ import lazyflow.roi
 
 class OpRoiTest(Operator):
 
-    inputSlots = [InputSlot("input")]
-    outputSlots = [OutputSlot("output")]
+    input = InputSlot()
+    output = OutputSlot()
 
     def setupOutputs(self):
 

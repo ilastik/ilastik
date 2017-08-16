@@ -71,7 +71,10 @@ def zfill_num(n, stop):
     return str(n).zfill(len(str(stop - 1)))
 
 def makeOpXToMulti(n):
-    """A factory for creating OpXToMulti classes."""
+    """
+    DEPRECATED
+    A factory for creating OpXToMulti classes.
+    """
     assert n > 0
 
     class OpXToMulti(Operator):
@@ -79,14 +82,15 @@ def makeOpXToMulti(n):
         name = "{} Element to Multislot".format(n)
 
         if n == 1:
-            inputSlots = [InputSlot('Input')]
+            Input = InputSlot()
         else:
             names = list("Input{}".format(zfill_num(i, n))
                          for i in range(n))
+            
             inputSlots = list(InputSlot(name, optional=True)
                                    for name in names)
 
-        outputSlots = [OutputSlot("Outputs", level=1)]
+        Outputs = OutputSlot(level=1)
 
         def _sorted_inputs(self, filterReady=False):
             """Returns self.inputs.values() sorted by keys.
@@ -129,21 +133,17 @@ def makeOpXToMulti(n):
 
     return OpXToMulti
 
-Op1ToMulti = makeOpXToMulti(1)
-Op5ToMulti = makeOpXToMulti(5)
-Op50ToMulti = makeOpXToMulti(50)
-
 class OpPixelFeaturesPresmoothed(Operator):
     name="OpPixelFeaturesPresmoothed"
     category = "Vigra filter"
 
-    inputSlots = [InputSlot("Input"),
-                  InputSlot("Matrix"),
-                  InputSlot("Scales"),
-                  InputSlot("FeatureIds")] # The selection of features to compute
+    Input = InputSlot()
+    Matrix = InputSlot()
+    Scales = InputSlot()
+    FeatureIds = InputSlot()
 
-    outputSlots = [OutputSlot("Output"),        # The entire block of features as a single image (many channels)
-                   OutputSlot("Features", level=1)] # Each feature image listed separately, with feature name provided in metadata
+    Output = OutputSlot() # The entire block of features as a single image (many channels)
+    Features = OutputSlot(level=1) # Each feature image listed separately, with feature name provided in metadata
 
     # Specify a default set & order for the features we compute
     DefaultFeatureIds = [ 'GaussianSmoothing',
@@ -667,16 +667,15 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
     name="OpPixelFeaturesPresmoothed"
     category = "Vigra filter"
 
+    Input = InputSlot()
+    Matrix = InputSlot()
+    Scales = InputSlot()
+    FeatureIds = InputSlot()
+    InterpolationScaleZ = InputSlot()
+
+    Output = OutputSlot() # The entire block of features as a single image (many channels)
+    Features = OutputSlot(level=1) # Each feature image listed separately, with feature name provided in metadata
     
-    inputSlots = [InputSlot("Input"),
-                  InputSlot("Matrix"),
-                  InputSlot("Scales"),
-                  InputSlot("FeatureIds"),
-                  InputSlot("InterpolationScaleZ")] # The selection of features to compute
-
-    outputSlots = [OutputSlot("Output"),        # The entire block of features as a single image (many channels)
-                   OutputSlot("Features", level=1)] # Each feature image listed separately, with feature name provided in metadata
-
     # Specify a default set & order for the features we compute
     DefaultFeatureIds = [ 'GaussianSmoothing',
                           'LaplacianOfGaussian',
@@ -1205,8 +1204,9 @@ def getAllExceptAxis(ndim,index,slicer):
     return tuple(res)
 
 class OpBaseFilter(OpArrayPiper):
-    inputSlots = [InputSlot("Input"), InputSlot("sigma", stype = "float")]
-    outputSlots = [OutputSlot("Output")]
+    Input = InputSlot()
+    sigma = InputSlot()
+    Output = OutputSlot()
 
     name = "OpBaseFilter"
     category = "Vigra filter"
@@ -1504,7 +1504,9 @@ class OpDifferenceOfGaussians(OpBaseFilter):
     def resultingChannels(self):
         return 1
     
-    inputSlots = [InputSlot("Input"), InputSlot("sigma0", stype = "float"), InputSlot("sigma1", stype = "float")]
+    Input = InputSlot()
+    sigma0 = InputSlot()
+    sigma1 = InputSlot()
     
     if WITH_FAST_FILTERS:
         name = "DifferenceOfGaussiansFF"
@@ -1550,7 +1552,8 @@ class OpHessianOfGaussianEigenvalues(OpBaseFilter):
         temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
         return temp
     
-    inputSlots = [InputSlot("Input"), InputSlot("scale", stype = "float")]
+    Input = InputSlot()
+    scale = InputSlot()
     
     if WITH_FAST_FILTERS:
         name = "HessianOfGaussianEigenvaluesFF"
@@ -1574,7 +1577,9 @@ class OpStructureTensorEigenvalues(OpBaseFilter):
         temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
         return temp
     
-    inputSlots = [InputSlot("Input"), InputSlot("innerScale", stype = "float"),InputSlot("outerScale", stype = "float")]
+    Input = InputSlot()
+    innerScale = InputSlot()
+    outerScale = InputSlot()
     
     if WITH_FAST_FILTERS:
         name = "StructureTensorEigenvaluesFF"
@@ -1598,7 +1603,8 @@ class OpHessianOfGaussianEigenvaluesFirst(OpBaseFilter):
     supportsWindow = True
     supportsRoi = True
 
-    inputSlots = [InputSlot("Input"), InputSlot("scale", stype = "float")]
+    Input = InputSlot()
+    scale = InputSlot()
 
     def resultingChannels(self):
         return 1
@@ -1645,7 +1651,8 @@ class OpLaplacianOfGaussian(OpBaseFilter):
     def resultingChannels(self):
         return 1
     
-    inputSlots = [InputSlot("Input"), InputSlot("scale", stype = "float")]
+    Input = InputSlot()
+    scale = InputSlot()
     
     if WITH_FAST_FILTERS:
         name = "LaplacianOfGaussianFF"
@@ -1723,4 +1730,11 @@ class OpImageReader(Operator):
             self.Image.setDirty()
         else:
             assert False, "Unknown dirty input slot."
+
+##
+## DEPRECATED. DO NOT USE
+##
+Op1ToMulti = makeOpXToMulti(1)
+Op5ToMulti = makeOpXToMulti(5)
+Op50ToMulti = makeOpXToMulti(50)
 
