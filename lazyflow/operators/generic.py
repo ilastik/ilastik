@@ -40,53 +40,13 @@ from lazyflow import roi
 from lazyflow.roi import roiToSlice, sliceToRoi, TinyVector, getIntersection
 from lazyflow.request import RequestPool
 
-def axisTagObjectFromFlag(flag):
 
-    if flag in ['x','y','z']:
-        type=vigra.AxisType.Space
-    elif flag=='c':
-        type=vigra.AxisType.Channel
-    elif flag=='t':
-        type=vigra.AxisType.Time
-    else:
-        print("Requested flag", str(flag))
-        raise
-
-    return vigra.AxisTags(vigra.AxisInfo(flag,type))
-
-
-def axisType(flag):
-    if flag in ['x','y','z']:
-        return vigra.AxisType.Space
-    elif flag=='c':
-        return vigra.AxisType.Channels
-
-    elif flag=='t':
-        return vigra.AxisType.Time
-    else:
-        raise
-
-
+# Utility functions
 def axisTagsToString(axistags):
     res=[]
     for axistag in axistags:
         res.append(axistag.key)
     return res
-
-
-def getSubKeyWithFlags(key,axistags,axisflags):
-    assert len(axistags)==len(key)
-    assert len(axisflags)<=len(key)
-
-    d=dict(list(zip(axisTagsToString(axistags),key)))
-
-    newKey=[]
-    for flag in axisflags:
-        slice=d[flag]
-        newKey.append(slice)
-
-    return tuple(newKey)
-
 
 def popFlagsFromTheKey(key,axistags,flags):
     d=dict(list(zip(axisTagsToString(axistags),key)))
@@ -100,102 +60,6 @@ def popFlagsFromTheKey(key,axistags,flags):
     return newKey
 
 
-class OpMultiArraySlicer(Operator):
-    """
-    Produces a list of image slices along the given axis.
-    Same as the slicer operator below, but reduces the dimensionality of the data.
-    The sliced axis is discarded in the output image shape.
-    """
-    inputSlots = [InputSlot("Input"),InputSlot('AxisFlag')]
-    outputSlots = [OutputSlot("Slices",level=1)]
-
-    name = "Multi Array Slicer"
-    category = "Misc"
-
-    def setupOutputs(self):
-        flag=self.inputs["AxisFlag"].value
-
-        indexAxis=self.inputs["Input"].meta.axistags.index(flag)
-        outshape=list(self.inputs["Input"].meta.shape)
-        n=outshape.pop(indexAxis)
-        outshape=tuple(outshape)
-        
-        if self.Input.meta.ideal_blockshape:
-            ideal_blockshape = list( self.Input.meta.ideal_blockshape )
-            ideal_blockshape.pop(indexAxis)
-            ideal_blockshape = tuple(ideal_blockshape)
-
-        if self.Input.meta.max_blockshape:
-            max_blockshape = list( self.Input.meta.max_blockshape )
-            max_blockshape.pop(indexAxis)
-            max_blockshape = tuple(max_blockshape)
-        
-        outaxistags=copy.copy(self.inputs["Input"].meta.axistags)
-        del outaxistags[flag]
-
-        self.outputs["Slices"].resize(n)
-
-        for o in self.outputs["Slices"]:
-            # Output metadata is a modified copy of the input's metadata
-            o.meta.assignFrom( self.Input.meta )
-            o.meta.axistags = outaxistags
-            o.meta.shape = outshape
-            if self.Input.meta.drange is not None:
-                o.meta.drange = self.Input.meta.drange
-
-            if self.Input.meta.ideal_blockshape:
-                o.meta.ideal_blockshape = ideal_blockshape
-
-            if self.Input.meta.max_blockshape:
-                o.meta.max_blockshape = max_blockshape
-
-    def execute(self, slot, subindex, rroi, result):
-        key = roiToSlice(rroi.start, rroi.stop)
-        index = subindex[0]
-        #print "SLICER: key", key, "indexes[0]", indexes[0], "result", result.shape
-        start,stop=roi.sliceToRoi(key,self.outputs["Slices"][index].meta.shape)
-
-        start=list(start)
-        stop=list(stop)
-
-        flag=self.inputs["AxisFlag"].value
-        indexAxis=self.inputs["Input"].meta.axistags.index(flag)
-
-        start.insert(indexAxis,index)
-        stop.insert(indexAxis,index)
-
-        newKey=roi.roiToSlice(numpy.array(start),numpy.array(stop))
-
-        ttt = self.inputs["Input"][newKey].wait()
-
-        writeKey = [slice(None, None, None) for k in key]
-        writeKey.insert(indexAxis, 0)
-        writeKey = tuple(writeKey)
-
-        return ttt[writeKey ]#+ (0,)]
-
-    def propagateDirty(self, slot, subindex, roi):
-        if slot == self.AxisFlag:
-            for i,s in enumerate(self.Slices):
-                s.setDirty( slice(None) )
-        elif slot == self.Input:
-            key = roi.toSlice()
-            reducedKey = list(key)
-            inputTags = self.Input.meta.axistags
-            flag = self.AxisFlag.value
-            axisSlice = reducedKey.pop( inputTags.index(flag) )
-            
-            axisStart, axisStop = axisSlice.start, axisSlice.stop
-            if axisStart is None:
-                axisStart = 0
-            if axisStop is None:
-                axisStop = len( self.Slices )
-    
-            for i in range(axisStart, axisStop):
-                self.Slices[i].setDirty( reducedKey )
-        else:
-            assert False, "Unknown dirty input slot"
-        
 
 class OpMultiArraySlicer2(Operator):
     """
@@ -345,7 +209,7 @@ class OpMultiArrayStacker(Operator):
                         axisindex = self.AxisIndex.value
                     else:
                         axisindex = len( outTagKeys )
-                    self.outputs["Output"].meta.axistags.insert(axisindex, vigra.AxisInfo(flag, axisType(flag)))
+                    self.outputs["Output"].meta.axistags.insert(axisindex, vigra.defaultAxistags(flag)[0])
 
                 old_c = c
                 if flag in inTagKeys:
