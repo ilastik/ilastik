@@ -47,6 +47,8 @@ class TestAxesOrderPreservation(object):
     @classmethod
     def setupClass(cls):
         print('starting setup...')
+        print('unzipping project files...')
+        # todo
         print('looking for ilastik.py...')
         # Load the ilastik startup script as a module.
         # Do it here in setupClass to ensure that it isn't loaded more than
@@ -67,12 +69,11 @@ class TestAxesOrderPreservation(object):
             creates an file from the data at 'filepath' that has 'input_axes'
         """
         basename = os.path.basename(filepath)
-        print('basename', basename)
         graph = Graph()
         reader = OpInputDataReader(graph=graph)
         assert os.path.exists(filepath), '{} not found'.format(filepath)
-        reader.FilePath.setValue(os.path.abspath(filepath))
-        print('reader axes', reader.Output.meta)
+        reader.FilePath.setValue(os.path.abspath(filepath) + '/data')
+        # print('reader axes', reader.Output.meta)
 
         writer = OpFormattedDataExport(parent=reader)
         writer.OutputAxisOrder.setValue(input_axes)
