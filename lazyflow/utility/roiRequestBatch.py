@@ -48,13 +48,13 @@ class RoiRequestBatch( object ):
     >>> import sys
     >>> import vigra
     >>> from lazyflow.graph import Graph
-    >>> from lazyflow.operators.operators import OpArrayCache
+    >>> from lazyflow.operators import OpBlockedArrayCache
 
     >>> # Example data
     >>> data = numpy.indices( (100,100) ).sum(0)
     >>> data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
 
-    >>> op = OpArrayCache( graph=Graph() )
+    >>> op = OpBlockedArrayCache( graph=Graph() )
     >>> op.Input.setValue( data )
 
     >>> # Create a list of rois to iterate through.

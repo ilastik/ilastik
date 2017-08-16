@@ -32,71 +32,63 @@ from lazyflow.utility.helpers import itersubclasses
 # necessary because we used a factory
 from .vigraOperators import Op1ToMulti, Op5ToMulti, Op50ToMulti
 
-try:
-    if modules != None:
-        pass
-except:
-    modules = []
-    from . import generic
-    from . import vigraOperators
-    from . import classifierOperators
-    from . import valueProviders
-    from . import operators
-    
-    ops = itersubclasses(Operator)
-    logger.debug("Loading default Operators...")
-    loaded = ""
-    for i, o in enumerate(ops):
-        loaded += o.__name__ + ' '
+from . import generic
+from . import vigraOperators
+from . import classifierOperators
+from . import valueProviders
+from . import operators
+
+ops = itersubclasses(Operator)
+logger.debug("Loading default Operators...")
+loaded = ""
+for i, o in enumerate(ops):
+    loaded += o.__name__ + ' '
+    globals()[o.__name__] = o
+loaded += os.linesep
+logger.debug(loaded)
+
+from .opSimpleStacker import OpSimpleStacker
+from .opBlockedArrayCache import OpBlockedArrayCache
+from .opVigraWatershed import OpVigraWatershed
+from .opVigraLabelVolume import OpVigraLabelVolume
+from .opFilterLabels import OpFilterLabels
+from .opObjectFeatures import OpObjectFeatures
+from .opCompressedCache import OpCompressedCache
+from .opCompressedUserLabelArray import OpCompressedUserLabelArray
+from .opLabelImage import OpLabelImage
+from .opCachedLabelImage import OpCachedLabelImage
+from .opInterpMissingData import OpInterpMissingData
+from .opMaskedWatershed import OpMaskedWatershed
+from .opSelectLabel import OpSelectLabel
+from .opReorderAxes import OpReorderAxes
+from .opLabelVolume import OpLabelVolume
+from .opResize import OpResize
+from .opRelabelConsecutive import OpRelabelConsecutive
+
+ops = list(itersubclasses(Operator))
+'''
+dirs = lazyflow.graph.CONFIG.get("Operators","directories", lazyflow.graph.CONFIG_DIR + "operators")
+dirs = dirs.split(",")
+for d in dirs:
+    print "Loading Operators from ", d,"..."
+    d = os.path.expanduser(d.strip())
+    sys.path.append(d)
+    files = os.listdir(d)
+    for f in files:
+        if os.path.isfile(d + "/" + f) and f[-3:] == ".py":
+            try:
+                print "  Processing file", f
+                module = __import__(f[:-2])
+            except Exception, e:
+                traceback.print_exc(file=sys.stdout)
+                pass
+
+    ops2 = list(itersubclasses(Operator))
+
+    newOps = list(set(list(ops2)).difference(set(list(ops))))
+
+    for o in newOps:
+        print "    Adding", o.__name__
         globals()[o.__name__] = o
-    loaded += os.linesep
-    logger.debug(loaded)
-
-    from .opSimpleStacker import OpSimpleStacker
-    from .opBlockedArrayCache import OpBlockedArrayCache
-    from .opVigraWatershed import OpVigraWatershed
-    from .opVigraLabelVolume import OpVigraLabelVolume
-    from .opFilterLabels import OpFilterLabels
-    from .opColorizeLabels import OpColorizeLabels
-    from .opObjectFeatures import OpObjectFeatures
-    from .opCompressedCache import OpCompressedCache
-    from .opCompressedUserLabelArray import OpCompressedUserLabelArray
-    from .opLabelImage import OpLabelImage
-    from .opCachedLabelImage import OpCachedLabelImage
-    from .opInterpMissingData import OpInterpMissingData
-    from .opCrosshairMarkers import OpCrosshairMarkers
-    from .opMaskedWatershed import OpMaskedWatershed
-    from .opSelectLabel import OpSelectLabel
-    from .opMaskedSelect import OpMaskedSelect
-    from .opReorderAxes import OpReorderAxes
-    from .opLabelVolume import OpLabelVolume
-    from .opResize import OpResize
-    from .opRelabelConsecutive import OpRelabelConsecutive
-
-    ops = list(itersubclasses(Operator))
     '''
-    dirs = lazyflow.graph.CONFIG.get("Operators","directories", lazyflow.graph.CONFIG_DIR + "operators")
-    dirs = dirs.split(",")
-    for d in dirs:
-        print "Loading Operators from ", d,"..."
-        d = os.path.expanduser(d.strip())
-        sys.path.append(d)
-        files = os.listdir(d)
-        for f in files:
-            if os.path.isfile(d + "/" + f) and f[-3:] == ".py":
-                try:
-                    print "  Processing file", f
-                    module = __import__(f[:-2])
-                except Exception, e:
-                    traceback.print_exc(file=sys.stdout)
-                    pass
-
-        ops2 = list(itersubclasses(Operator))
-
-        newOps = list(set(list(ops2)).difference(set(list(ops))))
-
-        for o in newOps:
-            print "    Adding", o.__name__
-            globals()[o.__name__] = o
-        '''
-    #sys.stdout.write(os.linesep)
+#sys.stdout.write(os.linesep)

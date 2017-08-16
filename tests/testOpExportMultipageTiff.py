@@ -30,7 +30,7 @@ import vigra
 
 import lazyflow.graph
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.operators import OpArrayCache
+from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.ioOperators import OpExportMultipageTiff
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
@@ -60,8 +60,8 @@ class TestOpMultipageTiff(object):
         opSource = OpArrayPiper(graph=self.graph)
         opSource.Input.setValue( self.testData )
         
-        opData = OpArrayCache( graph=self.graph )
-        opData.blockShape.setValue( self.testData.shape )
+        opData = OpBlockedArrayCache( graph=self.graph )
+        opData.BlockShape.setValue( self.testData.shape )
         opData.Input.connect( opSource.Output )
         
         filepath = os.path.join( self._tmpdir, 'multipage.tiff' )

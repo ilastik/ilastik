@@ -28,7 +28,7 @@ from functools import partial
 import numpy
 import vigra
 import lazyflow.graph
-from lazyflow.operators.operators import OpArrayCache
+from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import OpMetadataInjector, OpOutputProvider, OpMetadataSelector, OpValueCache, OpMetadataMerge, OpZeroDefault 
 
 class TestOpMetadataInjector(object):
@@ -258,7 +258,7 @@ class TestOpZeroDefault(object):
         data = numpy.indices( (100,100), dtype=numpy.uint8 ).sum(0)
         data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
         
-        opDataProvider = OpArrayCache( graph=graph )
+        opDataProvider = OpBlockedArrayCache( graph=graph )
         opDataProvider.Input.setValue( data )
         
         op = OpZeroDefault( graph=graph )

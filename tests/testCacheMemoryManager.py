@@ -41,7 +41,6 @@ from lazyflow.utility import Memory
 from lazyflow.operators.cacheMemoryManager\
     import default_refresh_interval
 from lazyflow.operators.opCache import Cache
-from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opSplitRequestsBlockwise\
     import OpSplitRequestsBlockwise
@@ -134,7 +133,7 @@ class TestCacheMemoryManager(unittest.TestCase):
 
         g = Graph()
         pipe = OpArrayPiperWithAccessCount(graph=g)
-        cache = OpArrayCache(graph=g)
+        cache = OpBlockedArrayCache(graph=g)
 
         mgr = CacheMemoryManager()
 
@@ -145,7 +144,7 @@ class TestCacheMemoryManager(unittest.TestCase):
         mgr.setRefreshInterval(.01)
         mgr.enable()
 
-        cache.blockShape.setValue((k,)*5)
+        cache.BlockShape.setValue((k,)*5)
         cache.Input.connect(pipe.Output)
         pipe.Input.setValue(vol)
 

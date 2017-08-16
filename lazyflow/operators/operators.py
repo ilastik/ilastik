@@ -34,7 +34,6 @@ from lazyflow import request
 from lazyflow.utility import Tracer
 
 #various cache operators
-from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
