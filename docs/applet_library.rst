@@ -146,17 +146,6 @@ Pixel Classification
 .. autoclass:: PixelClassificationApplet
    :members:
 
-Watershed Viewer
-----------------
-
-.. figure:: images/VigraWatershedViewer-Top-Level-Operator.svg
-   :scale: 100  %
-   :alt: Watershed Viewer Top-Level Operator
-
-.. currentmodule:: ilastik.applets.vigraWatershedViewer.vigraWatershedViewerApplet
-.. autoclass:: VigraWatershedViewerApplet
-   :members:
-
 Object Extraction
 -----------------
 

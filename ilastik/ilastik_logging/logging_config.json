@@ -20,7 +20,6 @@
         "lazyflow.operators":                                       { "level":"INFO" },
         "lazyflow.operators.ioOperators":                           { "level":"INFO" },
         "lazyflow.operators.ioOperators.opRESTfulVolumeReader":     { "level":"INFO" },
-        "lazyflow.operators.opVigraWatershed":                      { "level":"INFO" },
         "lazyflow.operators.opFeatureMatrixCache":                  { "level":"INFO" },
         "lazyflow.operators.opConcatenateFeatureMatrices":          { "level":"INFO" },
         

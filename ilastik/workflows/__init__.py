@@ -97,7 +97,6 @@ WORKFLOW_CLASSES += [DataConversionWorkflow]
 
 # Examples
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
-    from . import vigraWatershed
     from . import wsdt
     from .examples import layerViewer
     from .examples import thresholdMasking
