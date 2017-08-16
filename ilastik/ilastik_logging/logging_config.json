@@ -24,7 +24,6 @@
         "lazyflow.operators.opFeatureMatrixCache":                  { "level":"INFO" },
         "lazyflow.operators.opConcatenateFeatureMatrices":          { "level":"INFO" },
         
-        "lazyflow.operators.opArrayCache.OpArrayCache":                           { "level":"INFO" },
         "lazyflow.operators.opBlockedArrayCache.OpBlockedArrayCache":             { "level":"INFO" },
         "lazyflow.operators.opSlicedBlockedArrayCache.OpSlicedBlockedArrayCache": { "level":"INFO" },
         "lazyflow.operators.opCompressedCache.OpCompressedCache":                 { "level":"INFO" },
@@ -36,7 +35,6 @@
         "volumina.pixelpipeline.imagesources.GrayscaleImageSource":  { "level": "INFO" },
         "volumina.pixelpipeline.imagesources.GrayscaleImageRequest": { "level": "INFO" },
         
-        "lazyflow.operators.opArrayCache.OpArrayCache":                { "level":"INFO" },
         "lazyflow.operators.cacheMemoryManager.CacheMemoryManager":  { "level":"INFO" },
         "lazyflow.operators.vigraOperators":                        { "level":"INFO" },
         "lazyflow.operators.ioOperators.ioOperators.OpH5WriterBigDataset":  	{ "level":"INFO" },

@@ -32,7 +32,7 @@ import vigra
 #lazyflow
 from lazyflow.roi import roiFromShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpArrayCache
+from lazyflow.operators import OpBlockedArrayCache
 
 from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -304,11 +304,11 @@ class OpPreprocessing(Operator):
         self._opFilterNormalize = OpNormalize255( parent=self )
         self._opFilterNormalize.Input.connect( self._opFilter.Output )
         
-        self._opFilterCache = OpArrayCache( parent=self )
+        self._opFilterCache = OpBlockedArrayCache( parent=self )
         
         self._opWatershed = OpSimpleWatershed( parent=self )
         
-        self._opWatershedCache = OpArrayCache( parent=self )
+        self._opWatershedCache = OpBlockedArrayCache( parent=self )
         
         self._opOverlayFilter = OpFilter( parent=self )
         self._opOverlayFilter.Input.connect( self.OverlayData )
@@ -328,7 +328,7 @@ class OpPreprocessing(Operator):
         self._opMstProvider.Image.connect( self._opFilterCache.Output )
         self._opMstProvider.LabelImage.connect( self._opWatershedCache.Output )
 
-        self._opWatershedSourceCache = OpArrayCache( parent=self )
+        self._opWatershedSourceCache = OpBlockedArrayCache( parent=self )
 
         #self.PreprocessedData.connect( self._opMstProvider.MST )
         
@@ -368,7 +368,7 @@ class OpPreprocessing(Operator):
         self.PreprocessedData.meta.shape = (1,)
         self.PreprocessedData.meta.dtype = object
 
-        self._opFilterCache.blockShape.setValue( self.InputData.meta.shape )
+        self._opFilterCache.BlockShape.setValue( self.InputData.meta.shape )
         self._opFilterCache.Input.connect( self._opFilterNormalize.Output )
 
         # If the user's boundaries are dark, then invert the special watershed sources
@@ -392,12 +392,12 @@ class OpPreprocessing(Operator):
         else:
             assert False, "Unknown Watershed source option: {}".format( ws_source )
 
-        self._opWatershedSourceCache.blockShape.setValue( self.InputData.meta.shape )
+        self._opWatershedSourceCache.BlockShape.setValue( self.InputData.meta.shape )
         self._opWatershedSourceCache.Input.connect( self._opWatershed.Input )
 
         self.WatershedSourceImage.connect( self._opWatershedSourceCache.Output )
 
-        self._opWatershedCache.blockShape.setValue( self._opWatershed.Output.meta.shape )
+        self._opWatershedCache.BlockShape.setValue( self._opWatershed.Output.meta.shape )
         self._opWatershedCache.Input.connect( self._opWatershed.Output )
 
 

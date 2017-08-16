@@ -34,7 +34,7 @@ import vigra
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpValueCache, \
-                               OpArrayCache, OpMultiArraySlicer2, \
+                               OpBlockedArrayCache, OpMultiArraySlicer2, \
                                OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator, \
                                OpReorderAxes
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
@@ -566,20 +566,20 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.PredictionProbabilities.connect( self.predict.PMaps )
 
         # Prediction cache for the GUI
-        self.prediction_cache_gui = OpArrayCache( parent=self )
+        self.prediction_cache_gui = OpBlockedArrayCache( parent=self )
         self.prediction_cache_gui.name = "prediction_cache_gui"
         self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.prediction_cache_gui.inputs["Input"].connect( self.predict.PMaps )
-        self.prediction_cache_gui.blockShape.setValue(128)
+        self.prediction_cache_gui.BlockShape.setValue(128)
         
         ## Also provide each prediction channel as a separate layer (for the GUI)
         self.opUncertaintyEstimator = OpEnsembleMargin( parent=self )
         self.opUncertaintyEstimator.Input.connect( self.prediction_cache_gui.Output )
 
         ## Cache the uncertainty so we get zeros for uncomputed points
-        self.opUncertaintyCache = OpArrayCache( parent=self )
+        self.opUncertaintyCache = OpBlockedArrayCache( parent=self )
         self.opUncertaintyCache.name = "opUncertaintyCache"
-        self.opUncertaintyCache.blockShape.setValue(128)
+        self.opUncertaintyCache.BlockShape.setValue(128)
         self.opUncertaintyCache.Input.connect( self.opUncertaintyEstimator.Output )
         self.opUncertaintyCache.fixAtCurrent.connect( self.FreezePredictions )
         self.UncertaintyEstimate.connect( self.opUncertaintyCache.Output )

@@ -60,13 +60,13 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_workflow, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         self.stored_classifier = None
 
         # Create a graph to be shared by all operators
         graph = Graph()
 
-        super(EdgeTrainingWithMulticutWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_workflow, graph=graph, *args, **kwargs)
+        super(EdgeTrainingWithMulticutWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
         self._applets = []
 
         # -- DataSelection applet

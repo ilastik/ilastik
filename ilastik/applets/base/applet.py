@@ -39,6 +39,7 @@ class Applet( with_metaclass(ABCMeta, object) ):
             
         :param name: The applet's name, which will appear as the applet drawer title.
         :param syncWithImageIndex: If True, the shell/workflow will add an image lane to this applet for each image in the interactive workflow. 
+        :param interactive: If False, the applet controls won't be shown in the applet bar GUI.
         """
         self.name = name
         self.syncWithImageIndex = syncWithImageIndex

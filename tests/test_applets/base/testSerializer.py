@@ -27,7 +27,6 @@ import shutil
 import tempfile
 from lazyflow.graph import Graph, Operator, InputSlot, Slot, OperatorWrapper
 from lazyflow.operators import OpCompressedUserLabelArray
-from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 
 from ilastik.applets.base.appletSerializer import \
