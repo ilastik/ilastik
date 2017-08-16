@@ -181,10 +181,6 @@ class TestAxesOrderPreservation(object):
 
     @timeLogged(logger)
     def _test_object_classification(self, dims, variant, input_axes):
-        # NOTE: In this test, cmd-line args to nosetests will also end up
-        #       getting "parsed" by ilastik. That shouldn't be an issue, since
-        #       the pixel classification workflow ignores unrecognized options.
-        #       See if __name__ == __main__ section, below.
         project_file = self.PROJECT_FILE_BASE.replace(
             '*', 'ObjectClassification' + dims + variant)
 
@@ -278,10 +274,6 @@ class TestAxesOrderPreservation(object):
 
     @timeLogged(logger)
     def _test_tracking_with_learning(self, dims, variant, input_axes):
-        # NOTE: In this test, cmd-line args to nosetests will also end up
-        #       getting "parsed" by ilastik. That shouldn't be an issue, since
-        #       the pixel classification workflow ignores unrecognized options.
-        #       See if __name__ == __main__ section, below.
         project_file = self.PROJECT_FILE_BASE.replace(
             '*', 'TrackingwLearning' + dims + variant)
 
@@ -373,12 +365,7 @@ class TestAxesOrderPreservation(object):
                     dims, order
 
     @timeLogged(logger)
-    def _test_boundarybased_segmentation_with_multicut(
-            self, dims, input_axes):
-        # NOTE: In this test, cmd-line args to nosetests will also end up
-        #       getting "parsed" by ilastik. That shouldn't be an issue, since
-        #       the pixel classification workflow ignores unrecognized options.
-        #       See if __name__ == __main__ section, below.
+    def _test_boundarybased_segmentation_with_multicut(self, dims, input_axes):
         project_file = self.PROJECT_FILE_BASE.replace(
             '*', 'Boundary-basedSegmentationwMulticut' + dims)
 
