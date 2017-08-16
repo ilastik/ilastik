@@ -1272,8 +1272,7 @@ class OpBaseFilter(OpArrayPiper):
             else:
                 subshape[at2.index('z')-1]=sourceArray.shape[zAxis]
         
-        newStart, newStop = roi.enlargeRoiForHalo(start, stop, subshape, 0.7, window = windowSize)
-        
+        newStart, newStop = roi.enlargeRoiForHalo(start, stop, subshape, largestSigma, window = windowSize)
         readKey = roi.roiToSlice(newStart, newStop)
 
         writeNewStart = start - newStart
