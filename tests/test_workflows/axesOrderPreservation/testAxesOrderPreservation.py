@@ -361,6 +361,93 @@ class TestAxesOrderPreservation(object):
 
         assert numpy.array_equal(result, compare)
 
+    def test_boundarybased_segmentation_with_multicut(self):
+        options = []
+        options.append((['3d'], ['zcyx', 'xycz', 'yxcz']))
+        options.append((['3d1c'], ['zyxc', 'xyzc', 'cxzy']))
+        options.append((['3d2c'], ['zyxc', 'xyzc', 'czxy']))
+
+        for combination in options:
+            for dims, order in itertools.product(*combination):
+                yield self._test_boundarybased_segmentation_with_multicut, \
+                    dims, order
+
+    @timeLogged(logger)
+    def _test_boundarybased_segmentation_with_multicut(
+            self, dims, input_axes):
+        # NOTE: In this test, cmd-line args to nosetests will also end up
+        #       getting "parsed" by ilastik. That shouldn't be an issue, since
+        #       the pixel classification workflow ignores unrecognized options.
+        #       See if __name__ == __main__ section, below.
+        project_file = self.PROJECT_FILE_BASE.replace(
+            '*', 'Boundary-basedSegmentationwMulticut' + dims)
+
+        if not os.path.exists(project_file):
+            raise IOError('project file "{}" not found'.format(
+                project_file))
+
+        args = []
+        args.append("--headless")
+        args.append("--project=" + project_file)
+
+        # Batch export options
+        # If we were actually launching from the command line, 'png sequence'
+        # would be in quotes...
+        # args.append('--output_format=png sequence')
+        args.append("--export_source=Multicut Segmentation")
+        args.append(
+            "--output_filename_format=" + self.dir + "/{nickname}_result")
+        args.append(
+            "--output_format=hdf5")
+        args.append("--export_dtype=uint8")
+        # args.append("--output_axis_order=" + input_axes)
+
+        args.append("--pipeline_result_drange=(0,255)")
+        args.append("--export_drange=(0,255)")
+
+        # Input args
+        args.append("--input_axes={}".format(input_axes))
+        input_source_path1 = '../../data/inputdata/{}.h5'.format(dims)
+        input_path1 = self.create_input(input_source_path1, input_axes)
+        args.append("--raw_data=" + input_path1)
+        input_source_path2 = '../../data/inputdata/{}_Probabilities.h5' \
+                             .format(dims)
+        input_path2 = self.create_input(input_source_path2, input_axes)
+        args.append("--probabilities=" + input_path2)
+
+        print('args', args)
+        # Clear the existing commandline args so it looks like we're starting
+        # fresh.
+        sys.argv = ['ilastik.py']
+        sys.argv += args
+
+        # Start up the ilastik.py entry script as if we had launched it from
+        # the command line
+        # This will execute the batch mode script
+        self.ilastik_startup.main()
+
+        output_path = input_path1.replace('.', '_result.')
+
+        opReaderResult = OpInputDataReader(graph=Graph())
+        opReaderResult.FilePath.setValue(output_path)
+        result = opReaderResult.Output[:].wait()
+
+        compare_name = '../../data/inputdata/{}_Multicut Segmentation.h5/' \
+                       'exported_data'.format(dims)
+        compare_name = os.path.abspath(compare_name)
+        opReaderCompare = OpInputDataReader(graph=Graph())
+        opReaderCompare.FilePath.setValue(compare_name)
+        opReorderCompare = OpReorderAxes(parent=opReaderCompare)
+        opReorderCompare.Input.connect(opReaderCompare.Output)
+
+        # todo: should use input_axes here, but the workflow always gives out
+        #       zyxc
+        # opReorderCompare.AxisOrder.setValue(input_axes)
+        opReorderCompare.AxisOrder.setValue('zyxc')
+        compare = opReorderCompare.Output[:].wait()
+
+        assert numpy.array_equal(result, compare)
+
 
 if __name__ == "__main__":
     # make the program quit on Ctrl+C
