@@ -1203,10 +1203,18 @@ def getAllExceptAxis(ndim,index,slicer):
     res[index] = slicer
     return tuple(res)
 
-class OpBaseFilter(OpArrayPiper):
+class OpBaseFilter(Operator):
     Input = InputSlot()
-    sigma = InputSlot()
     Output = OutputSlot()
+
+    # Subclasses have some subset of these slots:
+    # 
+    # sigma = InputSlot()
+    # sigma0 = InputSlot()
+    # sigma1 = InputSlot()
+    # scale = InputSlot()
+    # innerScale = InputSlot()
+    # outerScale = InputSlot()
 
     name = "OpBaseFilter"
     category = "Vigra filter"
@@ -1452,6 +1460,27 @@ class OpBaseFilter(OpArrayPiper):
     def resultingChannels(self):
         raise RuntimeError('resultingChannels() not implemented')
 
+    ##
+    ## FIXME: This propagateDirty() function doesn't properly
+    ##        expand the halo according to the sigma and window!
+    ##
+    def propagateDirty(self, slot, subindex, roi):
+        key = roi.toSlice()
+        # Check for proper name because subclasses may define extra inputs.
+        # (but decline to override notifyDirty)
+        if slot is self.Input:
+            self.Output.setDirty(key)
+        else:
+            # If some input we don't know about is dirty (i.e. we are subclassed by an operator with extra inputs),
+            # then mark the entire output dirty.  This is the correct behavior for e.g. 'sigma' inputs.
+            self.Output.setDirty(slice(None))
+
+    def setInSlot(self, slot, subindex, roi, value):
+        # Forward to output
+        assert subindex == ()
+        assert slot == self.Input
+        key = roi.toSlice()
+        self.Output[key] = value
 
 #difference of Gaussians
 def differenceOfGausssians(image,sigma0, sigma1,window_size, roi, out = None):
@@ -1504,7 +1533,6 @@ class OpDifferenceOfGaussians(OpBaseFilter):
     def resultingChannels(self):
         return 1
     
-    Input = InputSlot()
     sigma0 = InputSlot()
     sigma1 = InputSlot()
     
@@ -1529,6 +1557,8 @@ class OpGaussianSmoothing(OpBaseFilter):
     
     def resultingChannels(self):
         return 1
+
+    sigma = InputSlot()
     
     if WITH_FAST_FILTERS:
         name = "GaussianSmoothingFF"
@@ -1552,7 +1582,6 @@ class OpHessianOfGaussianEigenvalues(OpBaseFilter):
         temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
         return temp
     
-    Input = InputSlot()
     scale = InputSlot()
     
     if WITH_FAST_FILTERS:
@@ -1577,7 +1606,6 @@ class OpStructureTensorEigenvalues(OpBaseFilter):
         temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
         return temp
     
-    Input = InputSlot()
     innerScale = InputSlot()
     outerScale = InputSlot()
     
@@ -1603,7 +1631,6 @@ class OpHessianOfGaussianEigenvaluesFirst(OpBaseFilter):
     supportsWindow = True
     supportsRoi = True
 
-    Input = InputSlot()
     scale = InputSlot()
 
     def resultingChannels(self):
@@ -1618,6 +1645,8 @@ class OpHessianOfGaussian(OpBaseFilter):
     supportsRoi = True
     supportsOut = True
 
+    sigma = InputSlot()
+
     def resultingChannels(self):
         temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) // 2
         return temp
@@ -1629,6 +1658,8 @@ class OpGaussianGradientMagnitude(OpBaseFilter):
     
     def resultingChannels(self):
         return 1
+
+    sigma = InputSlot()
     
     if WITH_FAST_FILTERS:
         name = "GaussianGradientMagnitudeFF"
@@ -1651,7 +1682,6 @@ class OpLaplacianOfGaussian(OpBaseFilter):
     def resultingChannels(self):
         return 1
     
-    Input = InputSlot()
     scale = InputSlot()
     
     if WITH_FAST_FILTERS:
