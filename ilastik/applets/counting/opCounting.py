@@ -56,8 +56,8 @@ class OpVolumeOperator(Operator):
     description = "Do Operations involving the whole volume"
     inputSlots = [InputSlot("Input"), InputSlot("Function")]
     outputSlots = [OutputSlot("Output")]
-    DefaultBlockSize = 128
-    blockShape = InputSlot(value = DefaultBlockSize)
+    DefaultBlockSize = (128, 128, None)
+    blockShape = InputSlot(value=DefaultBlockSize)
 
     def setupOutputs(self):
         testInput = numpy.ones((3,3))
@@ -570,8 +570,8 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.prediction_cache_gui.name = "prediction_cache_gui"
         self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.prediction_cache_gui.inputs["Input"].connect( self.predict.PMaps )
-        self.prediction_cache_gui.BlockShape.setValue(128)
-        
+        self.prediction_cache_gui.BlockShape.setValue((128, 128, None))
+
         ## Also provide each prediction channel as a separate layer (for the GUI)
         self.opUncertaintyEstimator = OpEnsembleMargin( parent=self )
         self.opUncertaintyEstimator.Input.connect( self.prediction_cache_gui.Output )
@@ -579,11 +579,11 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         ## Cache the uncertainty so we get zeros for uncomputed points
         self.opUncertaintyCache = OpBlockedArrayCache( parent=self )
         self.opUncertaintyCache.name = "opUncertaintyCache"
-        self.opUncertaintyCache.BlockShape.setValue(128)
+        self.opUncertaintyCache.BlockShape.setValue((128, 128, None))
         self.opUncertaintyCache.Input.connect( self.opUncertaintyEstimator.Output )
         self.opUncertaintyCache.fixAtCurrent.connect( self.FreezePredictions )
         self.UncertaintyEstimate.connect( self.opUncertaintyCache.Output )
-        
+
         self.meaner = OpMean(parent = self)
         self.meaner.Input.connect(self.prediction_cache_gui.Output)
 
