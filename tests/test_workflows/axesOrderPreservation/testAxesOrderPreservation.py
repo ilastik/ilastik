@@ -95,7 +95,7 @@ class TestAxesOrderPreservation(object):
         graph = Graph()
         reader = OpInputDataReader(graph=graph)
         assert os.path.exists(filepath), '{} not found'.format(filepath)
-        reader.FilePath.setValue(os.path.abspath(filepath) + '/data')
+        reader.FilePath.setValue(os.path.abspath(filepath))
         # print('reader axes', reader.Output.meta)
 
         writer = OpFormattedDataExport(parent=reader)
@@ -121,7 +121,6 @@ class TestAxesOrderPreservation(object):
         # options = cyx_options
         for combination in options:
             for testcase, order in itertools.product(*combination):
-                print('testcase/order', testcase, order)
                 yield self._test_pixel_classification, testcase, order
 
     @timeLogged(logger)
@@ -371,7 +370,6 @@ class TestAxesOrderPreservation(object):
         else:
             raise NotImplementedError('variant {} unknown'.format(variant))
 
-        print('args', args)
         # Clear the existing commandline args so it looks like we're starting
         # fresh.
         sys.argv = ['ilastik.py']
@@ -419,7 +417,13 @@ class TestAxesOrderPreservation(object):
 
     @timeLogged(logger)
     def _test_boundarybased_segmentation_with_multicut(self, dims, input_axes):
-        project = 'Boundary-basedSegmentationwMulticut' + dims + '.ilp'
+        if sys.platform == 'win32':
+            platform = 'win'
+        else:
+            platform = 'unix'
+
+        project = 'Boundary-basedSegmentationwMulticut' + dims + '_' + \
+                  platform + '.ilp'
         try:
             self.untested_projects.remove(project)
         except ValueError:
@@ -479,8 +483,8 @@ class TestAxesOrderPreservation(object):
         result = opReaderResult.Output[:].wait()
 
         compare_name = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
-                                    '{}_Multicut Segmentation.h5/exported_data'
-                                    .format(dims))
+                                    '{}_{}_Multicut Segmentation.h5/'
+                                    'exported_data'.format(dims, platform))
         compare_name = os.path.abspath(compare_name)
         opReaderCompare = OpInputDataReader(graph=Graph())
         opReaderCompare.FilePath.setValue(compare_name)
