@@ -38,7 +38,7 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.utility.timer import timeLogged
 
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.DEBUG)
 
 
 class TestAxesOrderPreservation(object):
@@ -195,7 +195,7 @@ class TestAxesOrderPreservation(object):
 
         compare = opReorderCompare.Output[:].wait()
 
-        assert numpy.array_equal(result, compare)
+        assert numpy.allclose(result, compare)
 
     def test_object_classification(self):
         options = []
@@ -298,7 +298,7 @@ class TestAxesOrderPreservation(object):
         opReorderCompare.AxisOrder.setValue('txyzc')
         compare = opReorderCompare.Output[:].wait()
 
-        assert numpy.array_equal(result, compare)
+        assert numpy.allclose(result, compare)
 
     def test_tracking_with_learning(self):
         return
@@ -402,7 +402,7 @@ class TestAxesOrderPreservation(object):
         opReorderCompare.AxisOrder.setValue('txyzc')
         compare = opReorderCompare.Output[:].wait()
 
-        assert numpy.array_equal(result, compare)
+        assert numpy.allclose(result, compare)
 
     def test_boundarybased_segmentation_with_multicut(self):
         options = []
@@ -497,7 +497,7 @@ class TestAxesOrderPreservation(object):
         opReorderCompare.AxisOrder.setValue('zyxc')
         compare = opReorderCompare.Output[:].wait()
 
-        assert numpy.array_equal(result, compare)
+        assert numpy.allclose(result, compare)
 
     def test_counting(self):
         options = []
@@ -573,7 +573,7 @@ class TestAxesOrderPreservation(object):
         opReorderCompare.AxisOrder.setValue(input_axes)
         compare = opReorderCompare.Output[:].wait()
 
-        assert numpy.array_equal(result, compare)
+        assert numpy.allclose(result, compare)
 
 
 if __name__ == "__main__":
