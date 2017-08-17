@@ -285,7 +285,11 @@ class OpBlockwiseObjectClassification( Operator ):
 
         raw_ruprp = self.RawImage.meta.ram_usage_per_requested_pixel
         binary_ruprp = self.BinaryImage.meta.ram_usage_per_requested_pixel
-        prediction_ruprp = max( raw_ruprp, binary_ruprp )
+        try:
+            prediction_ruprp = max( raw_ruprp, binary_ruprp )
+        except Exception:
+            prediction_ruprp = None
+            
         self.PredictionImage.meta.ram_usage_per_requested_pixel = prediction_ruprp
 
         self.ProbabilityChannelImage.meta.assignFrom( self.RawImage.meta )
