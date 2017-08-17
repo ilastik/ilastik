@@ -32,7 +32,7 @@ dependencies:
       fi
 
     # Replace packaged source with full git repo
-    # - rm -rf ${TEST_ENV_PREFIX}/ilastik-meta
+    - rm -rf ${TEST_ENV_PREFIX}/ilastik-meta
     - git clone http://github.com/ilastik/ilastik-meta ${TEST_ENV_PREFIX}/ilastik-meta
     - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule init
     - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule update --recursive
