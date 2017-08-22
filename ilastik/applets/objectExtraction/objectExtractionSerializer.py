@@ -61,7 +61,8 @@ class SerialObjectFeaturesSlot(SerialSlot):
                 region_features_arr = self.slot[i]( *roi ).wait()
                 assert region_features_arr.shape == (1,)
                 region_features = region_features_arr[0]
-                roi_grp = subgroup.create_group(name=str(roi))
+                roi_string = str([[r.start for r in roi], [r.stop for r in roi]])
+                roi_grp = subgroup.create_group(name=str(roi_string))
                 logger.debug('Saving region features into group: "{}"'.format( roi_grp.name ))
                 for key, val in region_features.items():
                     plugin_group = getOrCreateGroup(roi_grp, key)
