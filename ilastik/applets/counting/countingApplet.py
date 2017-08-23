@@ -38,7 +38,7 @@ class CountingApplet(StandardApplet):
         self._serializableItems = [CountingSerializer(self._topLevelOperator, projectFileGroupName)]   # Legacy (v0.5) importer
         self.predictionSerializer = self._serializableItems[0]
 
-        self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal.emit)
+        self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
 
     @property
     def topLevelOperator(self):
