@@ -268,7 +268,7 @@ class ProjectManager(object):
         for aplt in self._applets:
             for ser in aplt.dataSerializers:
                 if ser.isDirty():
-                    aplt.progressSignal.emit(0)
+                    aplt.progressSignal(0)
         try:
             # Applet serializable items are given the whole file (root group) for now
             for aplt in self._applets:
@@ -294,7 +294,7 @@ class ProjectManager(object):
             self.currentProjectFile.flush()
             
             for applet in self._applets:
-                applet.progressSignal.emit(100)
+                applet.progressSignal(100)
 
     def saveProjectSnapshot(self, snapshotPath):
         """
@@ -307,7 +307,7 @@ class ProjectManager(object):
             for aplt in self._applets:
                 for ser in aplt.dataSerializers:
                     if ser.isDirty():
-                        aplt.progressSignal.emit(0)
+                        aplt.progressSignal(0)
 
             # Start by copying the current project state into the file
             # This should be faster than serializing everything from scratch
@@ -337,7 +337,7 @@ class ProjectManager(object):
                 snapshotFile.flush()
                 
                 for applet in self._applets:
-                    applet.progressSignal.emit(100)
+                    applet.progressSignal(100)
                     
     def saveProjectAs(self, newPath):
         """
@@ -415,7 +415,7 @@ class ProjectManager(object):
         # Minor GUI nicety: Pre-activate the progress signals for all applets so
         #  the progress manager treats these tasks as a group instead of several sequential jobs.
         for aplt in self._applets:
-            aplt.progressSignal.emit(0)
+            aplt.progressSignal(0)
 
         # Save this as the current project
         self.currentProjectFile = hdf5File
@@ -452,8 +452,8 @@ class ProjectManager(object):
         finally:
             gc.enable()
             for aplt in self._applets:
-                aplt.progressSignal.emit(100)
-                
+                aplt.progressSignal(100)
+
 
     def _takeSnapshotAndLoadIt(self, newPath):
         """

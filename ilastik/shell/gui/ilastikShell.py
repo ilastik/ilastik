@@ -217,19 +217,19 @@ class ProgressDisplayManager(QObject):
         self.progressBar.hide()
 
     def _removeApplet(self, index, app):
-        app.progressSignal.disconnectAll()
+        app.progressSignal.clean()
         for serializer in app.dataSerializers:
-            serializer.progressSignal.disconnectAll()
+            serializer.progressSignal.clean()
 
     def _addApplet(self, index, app):
         # Subscribe to progress updates from this applet,
         # and include the applet index in the signal parameters.
-        app.progressSignal.connect(bind(self.handleAppletProgress, index))
+        app.progressSignal.subscribe(bind(self.handleAppletProgress, index))
 
         # Also subscribe to this applet's serializer progress updates.
         # (Progress will always come from either the serializer or the applet itself; not both at once.)
         for serializer in app.dataSerializers:
-            serializer.progressSignal.connect(bind(self.handleAppletProgress, index))
+            serializer.progressSignal.subscribe(bind(self.handleAppletProgress, index))
 
     def handleAppletProgress(self, index, percentage, cancelled=False):
         # Forward the signal to the handler via our qt signal, which provides a queued connection.
@@ -1183,14 +1183,14 @@ class IlastikShell(QMainWindow):
         self._controlCmds.append([])
 
         # Set up handling of shell requests from this applet
-        app.shellRequestSignal.connect(partial(self.handleShellRequest, applet_index))
+        app.shellRequestSignal.subscribe(partial(self.handleShellRequest, applet_index))
 
         return applet_index
 
     def removeAllAppletWidgets(self):
         for app in self._applets:
-            app.shellRequestSignal.disconnectAll()
-            app.progressSignal.disconnectAll()
+            app.shellRequestSignal.clean()
+            app.progressSignal.clean()
 
         self._clearStackedWidget(self.appletStack)
         self._clearStackedWidget(self.viewerControlStack)
