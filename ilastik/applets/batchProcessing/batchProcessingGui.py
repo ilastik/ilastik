@@ -171,7 +171,7 @@ class BatchProcessingGui( QTabWidget ):
         self.export_req = export_req
 
         self.parentApplet.busy = True
-        self.parentApplet.appletStateUpdateRequested.emit()
+        self.parentApplet.appletStateUpdateRequested()
         self.cancel_button.setVisible(True)
         self.run_button.setEnabled(False)
 
@@ -192,7 +192,7 @@ class BatchProcessingGui( QTabWidget ):
     @threadRouted
     def handle_batch_processing_finished(self, *args):
         self.parentApplet.busy = False
-        self.parentApplet.appletStateUpdateRequested.emit()
+        self.parentApplet.appletStateUpdateRequested()
         self.export_req = None
         self.cancel_button.setVisible(False)
         self.run_button.setEnabled(True)

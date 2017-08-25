@@ -485,7 +485,7 @@ class DataSelectionGui(QWidget):
             workflow.handleNewLanesAdded()
 
         # Notify the workflow that something that could affect applet readyness has occurred.
-        self.parentApplet.appletStateUpdateRequested.emit()
+        self.parentApplet.appletStateUpdateRequested()
 
         self.updateInternalPathVisiblity()
 
@@ -734,7 +734,7 @@ class DataSelectionGui(QWidget):
 
         def importStack():
             self.parentApplet.busy = True
-            self.parentApplet.appletStateUpdateRequested.emit()
+            self.parentApplet.appletStateUpdateRequested()
 
             # Serializer will update the operator for us, which will propagate to the GUI.
             try:
@@ -751,7 +751,7 @@ class DataSelectionGui(QWidget):
                         self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
             finally:
                 self.parentApplet.busy = False
-                self.parentApplet.appletStateUpdateRequested.emit()
+                self.parentApplet.appletStateUpdateRequested()
 
         req = Request( importStack )
         req.notify_finished( lambda result: self.showDataset(laneIndex, roleIndex) )
@@ -781,12 +781,12 @@ class DataSelectionGui(QWidget):
                 self.topLevelOperator.DatasetGroup.removeSlot( laneIndex, len(self.topLevelOperator.DatasetGroup)-1 )
 
         # Notify the workflow that something that could affect applet readyness has occurred.
-        self.parentApplet.appletStateUpdateRequested.emit()
+        self.parentApplet.appletStateUpdateRequested()
 
     def editDatasetInfo(self, roleIndex, laneIndexes):
         editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, laneIndexes, show_axis_details=self.show_axis_details)
         editorDlg.exec_()
-        self.parentApplet.appletStateUpdateRequested.emit()
+        self.parentApplet.appletStateUpdateRequested()
 
     def updateInternalPathVisiblity(self):
         for view in self._detailViewerWidgets:
