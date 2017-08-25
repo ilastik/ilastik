@@ -333,7 +333,7 @@ class FeatureSelectionGui(LayerViewerGui):
         # Notify the workflow that some applets may have changed state now.
         # (For example, the downstream pixel classification applet can 
         #  be used now that there are features selected)
-        self.parentApplet.appletStateUpdateRequested.emit()
+        self.parentApplet.appletStateUpdateRequested()
 
     def onFeatureButtonClicked(self):
         # Remove all pre-computed feature files
@@ -383,7 +383,7 @@ class FeatureSelectionGui(LayerViewerGui):
             if featureMatrix.any():
                 # Disable gui
                 self.parentApplet.busy = True
-                self.parentApplet.appletStateUpdateRequested.emit()
+                self.parentApplet.appletStateUpdateRequested()
                 QApplication.instance().setOverrideCursor( QCursor(Qt.WaitCursor) )
                 
                 try:
@@ -399,7 +399,7 @@ class FeatureSelectionGui(LayerViewerGui):
                 # Re-enable gui
                 QApplication.instance().restoreOverrideCursor()
                 self.parentApplet.busy = False
-                self.parentApplet.appletStateUpdateRequested.emit()
+                self.parentApplet.appletStateUpdateRequested()
             else:
                 # Not valid to give a matrix with no features selected.
                 # Disconnect.
@@ -408,7 +408,7 @@ class FeatureSelectionGui(LayerViewerGui):
                 # Notify the workflow that some applets may have changed state now.
                 # (For example, the downstream pixel classification applet can 
                 #  be used now that there are features selected)
-                self.parentApplet.appletStateUpdateRequested.emit()
+                self.parentApplet.appletStateUpdateRequested()
 
     def onFeaturesSelectionsChanged(self):
         """

@@ -261,7 +261,7 @@ class EdgeTrainingGui(LayerViewerGui):
         req = Request(_impl).submit()
 
         # Now that we've trained the classifier, the workflow may wish to enable downstream applets.
-        self.parentApplet.appletStateUpdateRequested.emit()
+        self.parentApplet.appletStateUpdateRequested()
 
     @threadRouted
     def apply_new_probability_edges(self, new_pens):
