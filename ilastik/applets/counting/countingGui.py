@@ -746,7 +746,7 @@ class CountingGui(LabelingGui):
             self.handleShowPredictionsClicked()
 
         # If we're changing modes, enable/disable our controls and other applets accordingly
-        self.parentApplet.appletStateUpdateRequested.emit()
+        self.parentApplet.appletStateUpdateRequested()
 
 
     @traceLogged(traceLogger)
@@ -872,12 +872,12 @@ class CountingGui(LabelingGui):
 #                # First, do a regular save.
 #                # During a regular save, predictions are not saved to the project file.
 #                # (It takes too much time if the user only needs the classifier.)
-#                self.shellRequestSignal.emit( ShellRequest.RequestSave )
+#                self.shellRequestSignal(ShellRequest.RequestSave)
 #
 #                # Enable prediction storage and ask the shell to save the project again.
 #                # (This way the second save will occupy the whole progress bar.)
 #                self.predictionSerializer.predictionStorageEnabled = True
-#                self.shellRequestSignal.emit( ShellRequest.RequestSave )
+#                self.shellRequestSignal(ShellRequest.RequestSave)
 #                self.predictionSerializer.predictionStorageEnabled = False
 #
 #                # Restore original states (must use events for UI calls)
