@@ -84,7 +84,7 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
         
         def _track():
             self.applet.busy = True
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
             
             app = self._drawer.appSpinBox.value()
             dis = self._drawer.disSpinBox.value()
@@ -135,25 +135,25 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
                 return
 
         def _handle_finished(*args):
-            self.applet.progressSignal.emit(100)
+            self.applet.progressSignal(100)
             self._drawer.TrackButton.setEnabled(True)
             self._drawer.exportButton.setEnabled(True)
             self._drawer.exportTifButton.setEnabled(True)
             self._setLayerVisible("Objects", False) 
             self.applet.busy = False            
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
             
         def _handle_failure( exc, exc_info ):
-            self.applet.progressSignal.emit(100)
+            self.applet.progressSignal(100)
             msg = "Exception raised during tracking.  See traceback above.\n"
             log_exception( logger, msg, exc_info )    
             self._drawer.TrackButton.setEnabled(True)
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
         
         self._drawer.TrackButton.setEnabled(False)        
-        self.applet.progressSignal.emit(0)
-        self.applet.progressSignal.emit(-1)
+        self.applet.progressSignal(0)
+        self.applet.progressSignal(-1)
         req = Request( _track )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )

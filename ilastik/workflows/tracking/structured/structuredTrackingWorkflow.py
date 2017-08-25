@@ -526,7 +526,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         from lazyflow.utility import PathComponents, make_absolute, format_known_keys
 
         if settings:
-            self.dataExportTrackingApplet.progressSignal.emit(-1)
+            self.dataExportTrackingApplet.progressSignal(-1)
             raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
 
             project_path = self.shell.projectManager.currentProjectPath
@@ -553,7 +553,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
                         show_gui=False)
 
             req.wait()
-            self.dataExportTrackingApplet.progressSignal.emit(100)
+            self.dataExportTrackingApplet.progressSignal(100)
 
     def getPartiallyFormattedName(self, lane_index, path_format_string):
         ''' Takes the format string for the output file, fills in the most important placeholders, and returns it '''
