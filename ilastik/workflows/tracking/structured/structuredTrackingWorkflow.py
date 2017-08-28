@@ -476,16 +476,13 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self.result = runLearningAndTracking(withMergerResolution=parameters['withMergerResolution'])
 
     def post_process_lane_export(self, lane_index, checkOverwriteFiles=False):
-        # FIXME: This probably only works for the non-blockwise export slot.
-        #        We should assert that the user isn't using the blockwise slot.
-
         # Plugin export if selected
         logger.info("Export source is: " + self.dataExportTrackingApplet.topLevelOperator.SelectedExportSource.value)
 
         print("in post_process_lane_export")
-        if self.dataExportTrackingApplet.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName:
+        if self.dataExportApplet.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName:
             logger.info("Export source plugin selected!")
-            selectedPlugin = self.dataExportTrackingApplet.topLevelOperator.SelectedPlugin.value
+            selectedPlugin = self.dataExportApplet.topLevelOperator.SelectedPlugin.value
 
             exportPluginInfo = pluginManager.getPluginByName(selectedPlugin, category="TrackingExportFormats")
             if exportPluginInfo is None:
@@ -493,7 +490,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
             else:
                 exportPlugin = exportPluginInfo.plugin_object
                 logger.info("Exporting tracking result using %s" % selectedPlugin)
-                name_format = self.dataExportTrackingApplet.topLevelOperator.getLane(lane_index).OutputFilenameFormat.value
+                name_format = self.dataExportApplet.topLevelOperator.getLane(lane_index).OutputFilenameFormat.value
                 partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
 
                 if exportPlugin.exportsToFile:
@@ -505,48 +502,19 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
                 if filename is None or len(str(filename)) == 0:
                     logger.error("Cannot export from plugin with empty output filename")
-                    return
+                    return True
 
+                self.dataExportTrackingApplet.progressSignal.emit(-1)
                 exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin, checkOverwriteFiles)
+                self.dataExportTrackingApplet.progressSignal.emit(100)
+
                 if not exportStatus:
                     return False
                 logger.info("Export done")
 
-            return
+            return True
 
-        # CSV Table export (only if plugin was not selected)
-        settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
-        from lazyflow.utility import PathComponents, make_absolute, format_known_keys
-
-        if settings:
-            self.dataExportTrackingApplet.progressSignal.emit(-1)
-            raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
-
-            project_path = self.shell.projectManager.currentProjectPath
-            project_dir = os.path.dirname(project_path)
-            dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
-            abs_dataset_dir = make_absolute(dataset_dir, cwd=project_dir)
-
-            known_keys = {}
-            known_keys['dataset_dir'] = abs_dataset_dir
-            nickname = raw_dataset_info.nickname.replace('*', '')
-            if os.path.pathsep in nickname:
-                nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
-            known_keys['nickname'] = nickname
-
-            # use partial formatting to fill in non-coordinate name fields
-            name_format = settings['file path']
-            partially_formatted_name = format_known_keys( name_format, known_keys )
-            settings['file path'] = partially_formatted_name
-
-            req = self.trackingApplet.topLevelOperator.getLane(lane_index).export_object_data(
-                        lane_index,
-                        # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
-                        #        That's not a huge deal, because there's still a progress bar for the overall export.
-                        show_gui=False)
-
-            req.wait()
-            self.dataExportTrackingApplet.progressSignal.emit(100)
+        return True
 
     def getPartiallyFormattedName(self, lane_index, path_format_string):
         ''' Takes the format string for the output file, fills in the most important placeholders, and returns it '''

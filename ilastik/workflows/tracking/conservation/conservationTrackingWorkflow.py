@@ -126,9 +126,9 @@ class ConservationTrackingWorkflowBase( Workflow ):
 
 
         # configure export settings
-        settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}
-        selected_features = ['Count', 'RegionCenter', 'RegionRadii', 'RegionAxes']                  
-        opTracking.ExportSettings.setValue( (settings, selected_features) )
+        # settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}
+        # selected_features = ['Count', 'RegionCenter', 'RegionRadii', 'RegionAxes']                  
+        # opTracking.ExportSettings.setValue( (settings, selected_features) )
         
         self._applets = []                
         self._applets.append(self.dataSelectionApplet)
@@ -376,9 +376,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
         # the MessageBox and then don't export. For the next round we click the export button,
         # we really want it to export, so checkOverwriteFiles=False.
         
-        # FIXME: This probably only works for the non-blockwise export slot.
-        #        We should assert that the user isn't using the blockwise slot.
-
         # Plugin export if selected
         logger.info("Export source is: " + self.dataExportApplet.topLevelOperator.SelectedExportSource.value)
 
@@ -406,39 +403,15 @@ class ConservationTrackingWorkflowBase( Workflow ):
                     logger.error("Cannot export from plugin with empty output filename")
                     return True
 
+                self.dataExportTrackingApplet.progressSignal.emit(-1)
                 exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin, checkOverwriteFiles)
+                self.dataExportTrackingApplet.progressSignal.emit(100)
+
                 if not exportStatus:
                     return False
                 logger.info("Export done")
 
             return True
-
-        # Legacy CSV Table export (only if plugin was not selected)
-        settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
-        if settings:
-            self.dataExportApplet.progressSignal.emit(0)
-            name_format = settings['file path']
-            partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
-            settings['file path'] = partially_formatted_name
-
-            req = self.trackingApplet.topLevelOperator.getLane(lane_index).export_object_data(
-                        lane_index, 
-                        # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
-                        #        That's not a huge deal, because there's still a progress bar for the overall export.
-                        show_gui=False)
-
-            req.wait()
-            self.dataExportApplet.progressSignal.emit(100)
-
-            # Restore option to bypass cache to false
-            self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(False)
-            
-            # Restore state of axis ranges
-            parameters = self.trackingApplet.topLevelOperator.Parameters.value
-            parameters['time_range'] = self.prev_time_range
-            parameters['x_range'] = self.prev_x_range
-            parameters['y_range'] = self.prev_y_range
-            parameters['z_range'] = self.prev_z_range
 
         return True
 
