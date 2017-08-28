@@ -116,7 +116,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
                                      "check that images were specified in the (batch) input applet and try again." )
             return
 
-        settingsDlg = PluginExportOptionsDlg(self, opExportModelOp)
+        settingsDlg = PluginExportOptionsDlg(self)
         if settingsDlg.exec_() == PluginExportOptionsDlg.Accepted:
             # Copy the settings from our 'model op' into the real op
             setting_slots = [ opExportModelOp.RegionStart,

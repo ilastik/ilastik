@@ -29,7 +29,6 @@ from PyQt5 import uic
 from PyQt5.QtCore import Qt, QObject, QEvent
 from PyQt5.QtWidgets import QDialog, QComboBox, QLabel, QHBoxLayout, QVBoxLayout, QFrame, QFileDialog
 from ilastik.plugins import pluginManager
-from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 
 try:
     from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -63,10 +62,6 @@ class PluginExportOptionsDlg(QDialog):
             self._topLevelOp = parent.topLevelOperator
         else:
             self._topLevelOp = topLevelOp
-
-        assert isinstance( self._topLevelOp, OpTrackingBaseDataExport ), \
-            "Cannot use {} as an export operator.  "\
-            "It doesn't match the required interface".format( type(self._topLevelOp) )
 
         self.pluginName = self._topLevelOp.SelectedPlugin.value
         
@@ -194,6 +189,7 @@ if __name__ == "__main__":
     import vigra
     from PyQt5.QtWidgets import QApplication
     from lazyflow.graph import Graph
+    from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 
     data = numpy.zeros( (10,20,30,3), dtype=numpy.float32 )
     data = vigra.taggedView(data, 'xyzc')
