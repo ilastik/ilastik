@@ -29,7 +29,7 @@ import volumina.colortables as colortables
 from volumina.api import LazyflowSource, ColortableLayer
 
 
-from ilastik.workflows.tracking.conservation.pluginExportOptionsDlg import PluginExportOptionsDlg
+from ilastik.applets.tracking.base.pluginExportOptionsDlg import PluginExportOptionsDlg
 from ilastik.applets.dataExport.opDataExport import get_model_op
 
 
