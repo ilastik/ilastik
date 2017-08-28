@@ -426,37 +426,6 @@ class TrackingBaseGui( LayerViewerGui ):
         req.submit()
 
 
-    def _onLineageFileNameButton(self):
-        options = QFileDialog.Options()
-        if ilastik_config.getboolean("ilastik", "debug"):
-            options |= QFileDialog.DontUseNativeDialog
-        fn, _filter = QFileDialog.getSaveFileName(self, 'Save Lineage Trees', os.getenv('HOME'), options=options)
-        if fn is None:
-            logger.info( "cancelled." )
-            return
-        self._drawer.lineageFileNameEdit.setText(str(fn))
-
-
-    def _onLineageTreeButtonPressed(self):
-        fn = self._drawer.lineageFileNameEdit.text()
-
-        width = self._drawer.widthBox.value()
-        height = self._drawer.heightBox.value()
-        if width == 0:
-            width = None
-        if height == 0:
-            height = None
-        circular = self._drawer.circularBox.isChecked()
-        withAppearing = self._drawer.withAppearingBox.isChecked()
-
-        from_t = self._drawer.lineageFromBox.value()
-        to_t = self._drawer.lineageToBox.value()
-
-        logger.info( "Computing Lineage Trees..." )
-        self._createLineageTrees(str(fn), width=width, height=height, circular=circular, withAppearing=withAppearing, from_t=from_t, to_t=to_t)
-        logger.info( 'Lineage Trees saved.' )
-
-
     def _onTrackButtonPressed( self ):
         raise NotImplementedError
 
