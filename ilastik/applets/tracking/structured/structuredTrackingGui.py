@@ -595,12 +595,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         req.notify_finished( _handle_finished )
         req.submit()
 
-    def menus(self):
-        m = QtWidgets.QMenu("&Export", self.volumeEditorWidget)
-        m.addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
-
-        return [m]
-
     def get_raw_shape(self):
         return self.topLevelOperatorView.RawImage.meta.shape
 
