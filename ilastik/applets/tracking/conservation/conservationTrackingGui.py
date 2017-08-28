@@ -358,16 +358,6 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         req.notify_finished( _handle_finished )
         req.submit()
 
-    def menus(self):
-        menus = super( ConservationTrackingGui, self ).menus()
-        m = QtWidgets.QMenu("&Export", self.volumeEditorWidget)
-        
-        m.addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
-
-        menus.append(m)
-
-        return menus
-
     def get_raw_shape(self):
         return self.topLevelOperatorView.RawImage.meta.shape
 
