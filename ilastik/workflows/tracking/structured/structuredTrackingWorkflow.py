@@ -480,9 +480,9 @@ class StructuredTrackingWorkflowBase( Workflow ):
         logger.info("Export source is: " + self.dataExportTrackingApplet.topLevelOperator.SelectedExportSource.value)
 
         print("in post_process_lane_export")
-        if self.dataExportApplet.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName:
+        if self.dataExportTrackingApplet.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName:
             logger.info("Export source plugin selected!")
-            selectedPlugin = self.dataExportApplet.topLevelOperator.SelectedPlugin.value
+            selectedPlugin = self.dataExportTrackingApplet.topLevelOperator.SelectedPlugin.value
 
             exportPluginInfo = pluginManager.getPluginByName(selectedPlugin, category="TrackingExportFormats")
             if exportPluginInfo is None:
@@ -490,7 +490,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
             else:
                 exportPlugin = exportPluginInfo.plugin_object
                 logger.info("Exporting tracking result using %s" % selectedPlugin)
-                name_format = self.dataExportApplet.topLevelOperator.getLane(lane_index).OutputFilenameFormat.value
+                name_format = self.dataExportTrackingApplet.topLevelOperator.getLane(lane_index).OutputFilenameFormat.value
                 partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
 
                 if exportPlugin.exportsToFile:
