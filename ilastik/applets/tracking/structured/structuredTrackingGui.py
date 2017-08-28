@@ -29,28 +29,17 @@ from ilastik.utility.progress import DefaultProgressVisitor
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-try:
-    import hytra
-    WITH_HYTRA = True
-except ImportError as e:
-    WITH_HYTRA = False
+import hytra
 
-if WITH_HYTRA:
-    # Import solvers for HyTra
-    import dpct
+# Import solvers for HyTra
+import dpct
+try:
+    import multiHypoTracking_with_cplex as mht
+except ImportError:
     try:
-        import multiHypoTracking_with_cplex as mht
+        import multiHypoTracking_with_gurobi as mht
     except ImportError:
-        try:
-            import multiHypoTracking_with_gurobi as mht
-        except ImportError:
-            logger.warning("Could not find any ILP solver")
-else:
-    # Try to import pgmlink for backward compatibility with old pipeline
-    try:
-        import pgmlink
-    except:
-        import pgmlinkNoIlpSolver as pgmlink
+        logger.warning("Could not find any ILP solver")
 
 class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     
@@ -261,28 +250,18 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     @staticmethod
     def getAvailableTrackingSolverTypes():
         solvers = []
-        if WITH_HYTRA:
-            try:
-                if dpct:
-                    solvers.append('Flow-based')
-            except Exception as e:
-                logger.info(str(e))
+        try:
+            if dpct:
+                solvers.append('Flow-based')
+        except Exception as e:
+            logger.info(str(e))
 
-            try:
-                if mht:
-                    solvers.append('ILP')
-            except Exception as e:
-                logger.info(str(e))
+        try:
+            if mht:
+                solvers.append('ILP')
+        except Exception as e:
+            logger.info(str(e))
 
-        else:
-            if hasattr(pgmlink.ConsTrackingSolverType, "CplexSolver"):
-                solvers.append("ILP")
-
-            if hasattr(pgmlink.ConsTrackingSolverType, "DynProgSolver"):
-                solvers.append("Magnusson")
-
-            if hasattr(pgmlink.ConsTrackingSolverType, "FlowSolver"):
-                solvers.append("Flow-based")
         return solvers
 
     def _onOnesButtonPressed(self):
@@ -432,15 +411,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         # insert energies
         # structured learning
 
-        if WITH_HYTRA:
-            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
-            self.progressWindow.run()
-            self.progressWindow.show()
-            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
-        else:
-            self.progressWindow = None
-            self.progressVisitor = DefaultProgressVisitor()
-
+        self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+        self.progressWindow.run()
+        self.progressWindow.show()
+        self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
+        
         def _learn():
             self.applet.busy = True
             self.applet.appletStateUpdateRequested.emit()
@@ -504,14 +479,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         if withTracklets:
             numStages += 3 # initializing tracklet graph, finding tracklets, contracting edges in tracklet graph
 
-        if WITH_HYTRA:
-            self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
-            self.progressWindow.run()
-            self.progressWindow.show()
-            self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
-        else:
-            self.progressWindow = None
-            self.progressVisitor = DefaultProgressVisitor()
+        self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
+        self.progressWindow.run()
+        self.progressWindow.show()
+        self.progressVisitor = GuiProgressVisitor(progressWindow=self.progressWindow)
 
         def _track():
             self.applet.busy = True
@@ -754,6 +725,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             color = hypothesesGraph.getLineageId(time, obj)
             track = hypothesesGraph.getTrackId(time, obj)
 
+        tracks = None
         children = None
         parents = None
 

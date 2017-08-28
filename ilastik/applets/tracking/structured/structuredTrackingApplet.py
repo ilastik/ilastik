@@ -4,19 +4,8 @@ from ilastik.applets.tracking.structured.structuredTrackingSerializer import Str
 import logging
 logger = logging.getLogger(__name__)
 
-try:
-    import hytra
-    WITH_HYTRA = True
-except ImportError as e:
-    WITH_HYTRA = False
-
-if WITH_HYTRA:
-    from ilastik.applets.tracking.structured.opStructuredTracking import OpStructuredTracking
-else:
-    # Use old PgmLink tracking operator if we can't import Hytra (When OS is Windows)
-    from ilastik.applets.tracking.structured.opStructuredTrackingPgmlink import OpStructuredTrackingPgmlink as OpStructuredTracking
-    logger.info("Using old conservation tracking workflow (PgmLink)")
-
+import hytra
+from ilastik.applets.tracking.structured.opStructuredTracking import OpStructuredTracking
 
 
 class StructuredTrackingApplet( StandardApplet ):

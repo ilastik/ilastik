@@ -38,6 +38,7 @@ import vigra
 import logging
 logger = logging.getLogger(__name__)
 
+import hytra
 import dpct
 try:
     import multiHypoTracking_with_cplex as mht
@@ -46,13 +47,6 @@ except ImportError:
         import multiHypoTracking_with_gurobi as mht
     except ImportError:
         logger.warning("Could not find any ILP solver")
-
-try:
-    import hytra
-    WITH_HYTRA = True
-
-except ImportError as e:
-    WITH_HYTRA = False
 
 class OpConservationTracking(Operator):
     LabelImage = InputSlot()
@@ -269,31 +263,18 @@ class OpConservationTracking(Operator):
                                    time_range[-1]+1,
                                    scales)
 
-        if WITH_HYTRA:
-            hypothesesGraph = IlastikHypothesesGraph(
-                probabilityGenerator=traxelstore,
-                timeRange=(time_range[0],time_range[-1]+1),
-                maxNumObjects=maxObj,
-                numNearestNeighbors=max_nearest_neighbors,
-                fieldOfView=fieldOfView,
-                withDivisions=withDivisions,
-                maxNeighborDistance=maxDist,
-                divisionThreshold=divThreshold,
-                borderAwareWidth=borderAwareWidth,
-                progressVisitor=self.progressVisitor
-            )
-        else:
-            hypothesesGraph = IlastikHypothesesGraph(
-                probabilityGenerator=traxelstore,
-                timeRange=(time_range[0],time_range[-1]+1),
-                maxNumObjects=maxObj,
-                numNearestNeighbors=max_nearest_neighbors,
-                fieldOfView=fieldOfView,
-                withDivisions=withDivisions,
-                maxNeighborDistance=maxDist,
-                divisionThreshold=divThreshold,
-                borderAwareWidth=borderAwareWidth
-            )
+        hypothesesGraph = IlastikHypothesesGraph(
+            probabilityGenerator=traxelstore,
+            timeRange=(time_range[0],time_range[-1]+1),
+            maxNumObjects=maxObj,
+            numNearestNeighbors=max_nearest_neighbors,
+            fieldOfView=fieldOfView,
+            withDivisions=withDivisions,
+            maxNeighborDistance=maxDist,
+            divisionThreshold=divThreshold,
+            borderAwareWidth=borderAwareWidth,
+            progressVisitor=self.progressVisitor
+        )
         return hypothesesGraph
     
     def _resolveMergers(self, hypothesesGraph, model):
@@ -412,13 +393,9 @@ class OpConservationTracking(Operator):
         Main conservation tracking function. Runs tracking solver, generates hypotheses graph, and resolves mergers.
         """
 
-        if WITH_HYTRA:
-            self.progressWindow = progressWindow
-            self.progressVisitor=progressVisitor
-        else:
-            self.progressWindow = None
-            self.progressVisitor = CommandLineProgressVisitor()
-
+        self.progressWindow = progressWindow
+        self.progressVisitor=progressVisitor
+    
         if not self.Parameters.ready():
             self.raiseException(self.progressWindow, "Parameter slot is not ready")
         

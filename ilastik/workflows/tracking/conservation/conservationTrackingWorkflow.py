@@ -124,11 +124,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
         self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
 
-        # table only export is just available for the pgmlink backend, hytra uses the CSV plugin instead
-        try:
-            import hytra
-        except ImportError:
-            self.dataExportApplet.includeTableOnlyOption() # Export table only, without volumes
 
         # configure export settings
         settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}

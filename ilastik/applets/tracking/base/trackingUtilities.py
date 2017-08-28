@@ -66,51 +66,6 @@ def write_dict_value(dic, key, value):
         dic[key] = value
     return dic
 
-def get_events(eventsVector):
-    events = {}
-    for t in range(len(eventsVector)):
-        events[str(t)] = get_events_at(eventsVector, t)
-    return events
-
-def get_events_at(eventsVector, t):  
-    try:
-        import pgmlink
-    except:
-        import pgmlinkNoIlpSolver as pgmlink
-
-    dis = []
-    app = []
-    div = []
-    mov = []
-    res = {}
-    merger = []
-                
-    for event in eventsVector[t]:
-        if event.type == pgmlink.EventType.Appearance:
-            app.append((event.traxel_ids[0], event.energy))
-        if event.type == pgmlink.EventType.Disappearance:
-            dis.append((event.traxel_ids[0], event.energy))
-        if event.type == pgmlink.EventType.Division:
-            div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
-        if event.type == pgmlink.EventType.Move:
-            mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
-        if hasattr(pgmlink.EventType, "Merger") and event.type == pgmlink.EventType.Merger:                    
-            merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
-        if hasattr(pgmlink.EventType, "ResolvedTo") and event.type == pgmlink.EventType.ResolvedTo:
-            res[event.traxel_ids[0]] = np.asarray(list(event.traxel_ids[1:]) + [event.energy, ])
-
-    # convert to ndarray for better indexing
-    events_at = {}
-    write_dict_value(events_at, "dis", np.asarray(dis))
-    write_dict_value(events_at, "app", np.asarray(app))
-    write_dict_value(events_at, "div", np.asarray(div))
-    write_dict_value(events_at, "mov", np.asarray(mov))
-    write_dict_value(events_at, "merger", np.asarray(merger))
-    write_dict_value(events_at, "res", res)
-
-    return events_at
-
-
 def write_events(events_at, directory, t, labelImage):
         fn =  directory + "/" + str(t).zfill(5)  + ".h5"
         

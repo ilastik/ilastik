@@ -30,28 +30,17 @@ from ilastik.utility.progress import DefaultProgressVisitor
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-try:
-    import hytra
-    WITH_HYTRA = True
-except ImportError as e:
-    WITH_HYTRA = False
+import hytra
 
-if WITH_HYTRA:
-    # Import solvers for HyTra
-    import dpct
+# Import solvers for HyTra
+import dpct
+try:
+    import multiHypoTracking_with_cplex as mht
+except ImportError:
     try:
-        import multiHypoTracking_with_cplex as mht
+        import multiHypoTracking_with_gurobi as mht
     except ImportError:
-        try:
-            import multiHypoTracking_with_gurobi as mht
-        except ImportError:
-            logger.warning("Could not find any ILP solver")
-else:
-    # Try to import pgmlink for backward compatibility with old pipeline        
-    try:
-        import pgmlink
-    except:
-        import pgmlinkNoIlpSolver as pgmlink
+        logger.warning("Could not find any ILP solver")
 
 class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     
@@ -138,28 +127,18 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     @staticmethod
     def getAvailableTrackingSolverTypes():
         solvers = []
-        if WITH_HYTRA:
-            try:
-                if dpct:
-                    solvers.append('Flow-based')
-            except Exception as e:
-                logger.info(str(e))
-                
-            try:
-                if mht:
-                    solvers.append('ILP')
-            except Exception as e:
-                logger.info(str(e))
-                
-        else:
-            if hasattr(pgmlink.ConsTrackingSolverType, "CplexSolver"):
-                solvers.append("ILP")
-    
-            if hasattr(pgmlink.ConsTrackingSolverType, "DynProgSolver"):
-                solvers.append("Magnusson")
-    
-            if hasattr(pgmlink.ConsTrackingSolverType, "FlowSolver"):
-                solvers.append("Flow-based")
+        try:
+            if dpct:
+                solvers.append('Flow-based')
+        except Exception as e:
+            logger.info(str(e))
+            
+        try:
+            if mht:
+                solvers.append('ILP')
+        except Exception as e:
+            logger.info(str(e))
+
         return solvers
 
     def initAppletDrawerUi(self):
@@ -212,12 +191,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
         self._drawer.mergerResolutionBox.stateChanged.connect(self._onMaxObjectsBoxChanged)
 
-        if WITH_HYTRA:
-            self._drawer.exportButton.hide()
-        else:
-            self._drawer.numFramesPerSplitLabel.hide()
-            self._drawer.numFramesPerSplitSpinBox.hide()
-            self._drawer.solverComboBox.setEnabled(False)
+        self._drawer.exportButton.hide()
 
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
@@ -432,38 +406,16 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             return
         
         # Get color and track from hypotheses graph (which is a slot in the new operator)
-        # TODO: Remove pgmlink section after old operator is phased out
-        if WITH_HYTRA:
-            hypothesesGraph = self.mainOperator.HypothesesGraph.value
-    
-            if hypothesesGraph == None:
-                color = None
-                track = None
-            else:
-                color = hypothesesGraph.getLineageId(time, obj)
-                track = hypothesesGraph.getTrackId(time, obj)
-        else:
-            try:
-                extra = self.mainOperator.extra_track_ids
-            except (IndexError, KeyError):
-                extra = {}
-    
-            # if this is a resolved merger, find which of the merged IDs we actually clicked on
-            if time in extra and obj in extra[time]:
-                colors = [self.mainOperator.label2color[time][t] for t in extra[time][obj]]
-                tracks = [self.mainOperator.track_id[time][t] for t in extra[time][obj]]
-                selected_track = self.get_color(position5d)
-                idx = colors.index(selected_track)
-                color = colors[idx]
-                track = tracks[idx]
-            else:
-                try:
-                    color = self.mainOperator.label2color[time][obj]
-                    track = [self.mainOperator.track_id[time][obj]][0]
-                except (IndexError, KeyError):
-                    color = None
-                    track = []
+        hypothesesGraph = self.mainOperator.HypothesesGraph.value
 
+        if hypothesesGraph == None:
+            color = None
+            track = None
+        else:
+            color = hypothesesGraph.getLineageId(time, obj)
+            track = hypothesesGraph.getTrackId(time, obj)
+
+        tracks = None
         children = None 
         parents = None
 
