@@ -74,12 +74,21 @@ class OpVolumeOperator(Operator):
     def execute(self, slot, subindex, roi, result):
         with self._lock:
             if self.cache is None:
-                fullBlockShape = numpy.array([self.blockShape.value for i in self.Input.meta.shape])
-                fun = self.inputs["Function"].value
+                shape = self.Input.meta.shape
+                # self.blockshape has None in the last dimension to indicate that it should not be
+                # handled block-wise. None is replaced with the image shape in the respective axis.
+                fullBlockShape = []
+                for u, v in zip(self.blockShape.value, shape):
+                    if u is not None:
+                        fullBlockShape.append(u)
+                    else:
+                        fullBlockShape.append(v)
+                fullBlockShape = numpy.array(fullBlockShape, dtype=numpy.float64)
+
                 #data = self.inputs["Input"][:].wait()
                 #split up requests into blocks
-                shape = self.Input.meta.shape
-                numBlocks = numpy.ceil(old_div(shape,(1.0*fullBlockShape))).astype("int")
+
+                numBlocks = numpy.ceil(shape / fullBlockShape).astype("int")
                 blockCache = numpy.ndarray(shape = numpy.prod(numBlocks), dtype=self.Output.meta.dtype)
                 pool = RequestPool()
                 #blocks holds the different roi keys for each of the blocks
@@ -91,11 +100,12 @@ class OpVolumeOperator(Operator):
                     stop = numpy.min(numpy.vstack((stop, shape)), axis=0)
                     blockKey = roiToSlice(start, stop)
                     blockKeys.append(blockKey)
-                
+
+                fun = self.inputs["Function"].value
                 def predict_block(i):
                     data = self.Input[blockKeys[i]].wait()
                     blockCache[i] = fun(data)
-                    
+
                 for i,f in enumerate(blockCache):
                     req = pool.request(partial(predict_block,i))
 
