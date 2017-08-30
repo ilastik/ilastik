@@ -316,7 +316,7 @@ class DataSelectionApplet( Applet ):
                     totalProgress[0] = progress
                     logger.info( "Importing stack: {}%".format( totalProgress[0] ) )
             serializer = self.dataSerializers[0]
-            serializer.progressSignal.connect( handleStackImportProgress )
+            serializer.progressSignal.subscribe(handleStackImportProgress)
             serializer.importStackAsLocalDataset( datasetInfo )
         
         opDataSelection.DatasetGroup[lane][role].setValue( datasetInfo )

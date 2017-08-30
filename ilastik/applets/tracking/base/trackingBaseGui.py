@@ -306,11 +306,11 @@ class TrackingBaseGui( LayerViewerGui ):
             return
 
         def _handle_progress(x):
-            self.applet.progressSignal.emit(x)
+            self.applet.progressSignal(x)
 
         def _export():
             self.applet.busy = True
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
 
             if hasattr(self.mainOperator,"RelabeledImage"):
                 labelImageSlot = self.mainOperator.RelabeledImage
@@ -351,20 +351,20 @@ class TrackingBaseGui( LayerViewerGui ):
 
         def _handle_finished(*args):
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
             self._drawer.exportButton.setEnabled(True)
-            self.applet.progressSignal.emit(100)
+            self.applet.progressSignal(100)
 
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
             msg = "Exception raised during export.  See traceback above.\n"
             log_exception( logger, msg, exc_info=exc_info )
-            self.applet.progressSignal.emit(100)
+            self.applet.progressSignal(100)
             self._drawer.exportButton.setEnabled(True)
 
         self._drawer.exportButton.setEnabled(False)
-        self.applet.progressSignal.emit(0)
+        self.applet.progressSignal(0)
         req = Request( _export )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
@@ -388,7 +388,7 @@ class TrackingBaseGui( LayerViewerGui ):
         lshape = list(self.mainOperator.LabelImage.meta.shape)
 
         def _handle_progress(x):
-            self.applet.progressSignal.emit(x)
+            self.applet.progressSignal(x)
 
         def _export():
             num_files = float(len(label2color))
@@ -410,16 +410,16 @@ class TrackingBaseGui( LayerViewerGui ):
 
         def _handle_finished(*args):
             self._drawer.exportTifButton.setEnabled(True)
-            self.applet.progressSignal.emit(100)
+            self.applet.progressSignal(100)
 
         def _handle_failure( exc, exc_info ):
             msg = "Exception raised during export.  See traceback above.\n"
             log_exception( logger, msg, exc_info )
-            self.applet.progressSignal.emit(100)
+            self.applet.progressSignal(100)
             self._drawer.exportTifButton.setEnabled(True)
 
         self._drawer.exportTifButton.setEnabled(False)
-        self.applet.progressSignal.emit(0)
+        self.applet.progressSignal(0)
         req = Request( _export )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )

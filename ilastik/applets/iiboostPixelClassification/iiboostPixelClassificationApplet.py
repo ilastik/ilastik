@@ -37,7 +37,7 @@ class IIBoostPixelClassificationApplet( StandardApplet ):
                self._topLevelOperator.classifier_cache.Output.value is None:
                 # When the classifier is deleted (e.g. because the number of features has changed,
                 #  then notify the workflow. (Export applet should be disabled.)
-                self.appletStateUpdateRequested.emit()
+                self.appletStateUpdateRequested()
         self._topLevelOperator.classifier_cache.Output.notifyDirty( on_classifier_changed )
         
         super(IIBoostPixelClassificationApplet, self).__init__( "Synapse Detection" )
@@ -53,8 +53,8 @@ class IIBoostPixelClassificationApplet( StandardApplet ):
         #  directly to the applet's overall progress signal, because it's the only thing we report progress for at the moment.
         # If we start reporting progress for multiple tasks that might occur simultaneously,
         #  we'll need to aggregate the progress updates.
-        self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal.emit)
-    
+        self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
+
     @property
     def topLevelOperator(self):
         return self._topLevelOperator

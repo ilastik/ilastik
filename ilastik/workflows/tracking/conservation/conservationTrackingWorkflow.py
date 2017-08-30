@@ -421,7 +421,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         # Legacy CSV Table export (only if plugin was not selected)
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
-            self.dataExportApplet.progressSignal.emit(0)
+            self.dataExportApplet.progressSignal(0)
             name_format = settings['file path']
             partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
             settings['file path'] = partially_formatted_name
@@ -433,7 +433,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
                         show_gui=False)
 
             req.wait()
-            self.dataExportApplet.progressSignal.emit(100)
+            self.dataExportApplet.progressSignal(100)
 
             # Restore option to bypass cache to false
             self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(False)

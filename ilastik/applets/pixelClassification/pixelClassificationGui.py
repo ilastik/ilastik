@@ -786,7 +786,7 @@ class PixelClassificationGui(LabelingGui):
         # Notify the workflow that some applets may have changed state now.
         # (For example, the downstream pixel classification applet can 
         #  be used now that there are features selected)
-        self.parentApplet.appletStateUpdateRequested.emit()
+        self.parentApplet.appletStateUpdateRequested()
 
     @pyqtSlot()
     def handleShowPredictionsClicked(self):

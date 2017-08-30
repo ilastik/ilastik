@@ -200,8 +200,8 @@ class DataSelectionSerializer( AppletSerializer ):
                      Note: info.filePath must be a str which lists the stack files, delimited with os.path.pathsep
                      Note: info will be MODIFIED by this function.  Use the modified info when assigning it to a dataset.
         """
-        self.progressSignal.emit(0)
-        
+        self.progressSignal(0)
+
         projectFileHdf5 = self.topLevelOperator.ProjectFile.value
 
         globstring = info.filePath
@@ -270,13 +270,13 @@ class DataSelectionSerializer( AppletSerializer ):
             opWriter.Image.connect( data_slot )
                 
             # Forward progress from the writer directly to our applet                
-            opWriter.progressSignal.subscribe( self.progressSignal.emit )
+            opWriter.progressSignal.subscribe(self.progressSignal)
 
             success = opWriter.WriteImage.value
         finally:
             opWriter.cleanUp()
             opLoader.cleanUp()
-            self.progressSignal.emit(100)
+            self.progressSignal(100)
 
         return success
 

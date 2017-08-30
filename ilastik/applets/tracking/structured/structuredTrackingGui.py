@@ -443,7 +443,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         def _learn():
             self.applet.busy = True
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
             try:
                 self.topLevelOperatorView._runStructuredLearning(
                     (self._drawer.from_z.value(),self._drawer.to_z.value()),
@@ -468,11 +468,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         def _handle_finished(*args):
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
 
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during learning.  See traceback above.\n")
 
@@ -515,7 +515,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         def _track():
             self.applet.busy = True
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
             maxDist = self._drawer.maxDistBox.value()
             maxObj = self._drawer.maxObjectsBox.value()        
             divThreshold = self._drawer.divThreshBox.value()
@@ -603,7 +603,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         
         def _handle_finished(*args):
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
             self._drawer.TrackButton.setEnabled(True)
             self._drawer.exportButton.setEnabled(True)
             self._drawer.exportTifButton.setEnabled(True)
@@ -611,7 +611,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
             traceback.print_exception(*exc_info)
             sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
             self._drawer.TrackButton.setEnabled(True)
