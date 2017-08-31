@@ -221,7 +221,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._maxNumObj = self.topLevelOperatorView.MaxNumObj.value
         self._drawer.maxObjectsBox.setValue(self.topLevelOperatorView.MaxNumObj.value)
         self._onMaxObjectsBoxChanged()
-        self._drawer.maxObjectsBox.setReadOnly(True)
+        self._drawer.maxObjectsBox.setReadOnly(False)
 
         self.topLevelOperatorView.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
         self.topLevelOperatorView.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
@@ -245,7 +245,23 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         if 'solver' in parameters.keys() and parameters['solver'] in availableSolvers:
             self._drawer.solverComboBox.setCurrentIndex(availableSolvers.index(parameters['solver']))
 
+        # listen on the main operator's NumLabels slot for changes, and adjust the max value of the "maxNumObjects" box
+        self.topLevelOperatorView.NumLabels.notifyDirty(self._updateMaxObjectsBoxMaxValue)
+        self._updateMaxObjectsBoxMaxValue()
+
         return self._drawer
+
+    @threadRouted
+    def _updateMaxObjectsBoxMaxValue(self, *args, **kwargs):
+        if self.topLevelOperatorView.NumLabels.ready():
+            if self.topLevelOperatorView.NumLabels.value > 1:
+                self._drawer.maxObjectsBox.setMaximum(self.topLevelOperatorView.NumLabels.value - 1)
+                self._drawer.maxObjectsBox.setValue(self.topLevelOperatorView.NumLabels.value - 1)
+                self._drawer.TrackButton.setEnabled(True)
+            else:
+                self._drawer.maxObjectsBox.setMaximum(0)
+                self._drawer.maxObjectsBox.setValue(0)
+                self._drawer.TrackButton.setEnabled(False)
 
     @staticmethod
     def getAvailableTrackingSolverTypes():

@@ -114,6 +114,10 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         if 'solver' in list(parameters.keys()) and parameters['solver'] in availableSolvers:
             self._drawer.solverComboBox.setCurrentIndex(availableSolvers.index(parameters['solver']))
 
+        # listen on the main operator's NumLabels slot for changes, and adjust the max value of the "maxNumObjects" box
+        self.topLevelOperatorView.NumLabels.notifyDirty(self._updateMaxObjectsBoxMaxValue)
+        self._updateMaxObjectsBoxMaxValue()
+
         # Hide division GUI widgets
         if 'withAnimalTracking' in list(parameters.keys()) and parameters['withAnimalTracking'] == True:
             self._drawer.label_5.hide()
@@ -123,6 +127,18 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.label_6.hide()       
         
         return self._drawer
+
+    @threadRouted
+    def _updateMaxObjectsBoxMaxValue(self, *args, **kwargs):
+        if self.topLevelOperatorView.NumLabels.ready():
+            if self.topLevelOperatorView.NumLabels.value > 1:
+                self._drawer.maxObjectsBox.setMaximum(self.topLevelOperatorView.NumLabels.value - 1)
+                self._drawer.maxObjectsBox.setValue(self.topLevelOperatorView.NumLabels.value - 1)
+                self._drawer.TrackButton.setEnabled(True)
+            else:
+                self._drawer.maxObjectsBox.setMaximum(0)
+                self._drawer.maxObjectsBox.setValue(0)
+                self._drawer.TrackButton.setEnabled(False)
 
     @staticmethod
     def getAvailableTrackingSolverTypes():
@@ -192,6 +208,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.mergerResolutionBox.stateChanged.connect(self._onMaxObjectsBoxChanged)
 
         self._drawer.exportButton.hide()
+
+
 
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):

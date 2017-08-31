@@ -121,7 +121,7 @@ class OpConservationTracking(Operator):
 
         self.result = None
 
-        # gui progress
+        # progress bar
         self.progressWindow = None
         self.progressVisitor=DefaultProgressVisitor()
 
@@ -534,11 +534,7 @@ class OpConservationTracking(Operator):
         elif inputSlot is self.ResolvedMergers:
             pass
         elif inputSlot == self.NumLabels:
-            if self.parent.parent.trackingApplet._gui \
-                    and self.parent.parent.trackingApplet._gui.currentGui() \
-                    and self.NumLabels.ready() \
-                    and self.NumLabels.value > 1:
-                self.parent.parent.trackingApplet._gui.currentGui()._drawer.maxObjectsBox.setValue(self.NumLabels.value-1)
+            pass
 
     def _labelMergers(self, volume, time, offset):
         """
