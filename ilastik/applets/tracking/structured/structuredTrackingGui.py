@@ -229,7 +229,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.operator.labels = self.operator.Labels.value
         self.topLevelOperatorView._updateCropsFromOperator()
 
-        self._drawer.exportButton.setVisible(True)
+        self._drawer.exportButton.setVisible(False)
         self._drawer.exportTifButton.setVisible(False)
 
         self.topLevelOperatorView._detectionWeight = self._detectionWeight
