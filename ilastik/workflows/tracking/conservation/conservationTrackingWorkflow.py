@@ -6,7 +6,6 @@ from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
 from ilastik.applets.tracking.conservation.conservationTrackingApplet import ConservationTrackingApplet
 from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
-#from ilastik.applets.opticalTranslation.opticalTranslationApplet import OpticalTranslationApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
@@ -62,9 +61,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         if not self.fromBinary:
             self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self, 
                                                                   "Threshold and Size Filter", 
-                                                                  "ThresholdTwoLevels" )        
-        if self.withOptTrans:
-            self.opticalTranslationApplet = OpticalTranslationApplet(workflow=self)
+                                                                  "ThresholdTwoLevels" )
                                                                    
         self.objectExtractionApplet = TrackingFeatureExtractionApplet(workflow=self, interactive=False,
                                                                       name="Object Feature Computation")                                                                     
@@ -134,8 +131,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self._applets.append(self.dataSelectionApplet)
         if not self.fromBinary:
             self._applets.append(self.thresholdTwoLevelsApplet)
-        if self.withOptTrans:
-            self._applets.append(self.opticalTranslationApplet)
         self._applets.append(self.objectExtractionApplet)
 
         if self.divisionDetectionApplet:
@@ -159,7 +154,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             self._batch_input_args = None
 
         if unused_args:
-            logger.warn("Unused command-line args: {}".format( unused_args ))
+            logger.warning("Unused command-line args: {}".format( unused_args ))
         
     @property
     def applets(self):
@@ -216,8 +211,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         if not self.fromBinary:
             opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
-        if self.withOptTrans:
-            opOptTranslation = self.opticalTranslationApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction.setDefaultFeatures(configConservation.allFeaturesObjectCount)
 
@@ -245,17 +238,11 @@ class ConservationTrackingWorkflowBase( Workflow ):
         op5Binary = OpReorderAxes(parent=self)         
         op5Binary.AxisOrder.setValue("txyzc")
         op5Binary.Input.connect(binarySrc)
-        
-        if self.withOptTrans:
-            opOptTranslation.RawImage.connect(op5Raw.Output)
-            opOptTranslation.BinaryImage.connect(op5Binary.Output)
-        
+
         # # Connect operators ##       
         opObjExtraction.RawImage.connect(op5Raw.Output)
         opObjExtraction.BinaryImage.connect(op5Binary.Output)
-        if self.withOptTrans:
-            opObjExtraction.TranslationVectors.connect(opOptTranslation.TranslationVectors)
-        
+
         if self.divisionDetectionApplet:            
             opDivDetection.BinaryImages.connect( op5Binary.Output )
             opDivDetection.RawImages.connect( op5Raw.Output )        
