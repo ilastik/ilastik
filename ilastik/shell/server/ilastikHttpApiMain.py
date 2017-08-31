@@ -15,10 +15,29 @@ from ilastik.shell.server.ilastikAPI import IlastikAPI
 from ilastik.shell.server.dataHttpAPI import dataAPI
 from functools import partial
 
+from argparse import ArgumentParser
 import logging
 
 
 logger = logging.getLogger(__name__)
+
+
+def parse_args():
+    p = ArgumentParser(
+        description="",
+        usage="",
+        epilog="",
+    )
+
+    p.add_argument(
+        '--n-threads',
+        default=8,
+        type=int,
+        help=('Set to 0 when using deep nets!'),
+    )
+
+    args = p.parse_args()
+    return args
 
 
 class IlastikServerConfig(object):
@@ -95,7 +114,6 @@ def create_interactive_app():
     return (t, app)
 
 
-
 def _init_logging():
     from ilastik.ilastik_logging import default_config, DEFAULT_LOGFILE_PATH
 
@@ -105,25 +123,24 @@ def _init_logging():
     default_config.init(process_name, default_config.OutputMode.BOTH, logfile_path)
 
 
-def _configure_lazyflow_settings():
+def _configure_lazyflow_settings(n_threads=None):
     import lazyflow
     import lazyflow.request
     from lazyflow.utility import Memory
     from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
-
-    n_threads = 0
 
     if n_threads is not None:
         logger.info("Resetting lazyflow thread pool with {} threads.".format( n_threads ))
         lazyflow.request.Request.reset_thread_pool(n_threads)
 
 
-
 def main():
-    _configure_lazyflow_settings()
+    args = parse_args()
+    _configure_lazyflow_settings(n_threads=args.n_threads)
     _init_logging()
     app = create_app()
     app.run(host='0.0.0.0', port=5000, threaded=True)
+
 
 if __name__ == '__main__':
     main()
