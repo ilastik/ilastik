@@ -69,7 +69,7 @@ class OpConservationTracking(Operator):
  
     # Use a slot for storing the export settings in the project file.
     # just here so that old projects still load!
-    ExportSettings = InputSlot()
+    ExportSettings = InputSlot(value={})
 
     DivisionProbabilities = InputSlot(optional=True, stype=Opaque, rtype=List)
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
