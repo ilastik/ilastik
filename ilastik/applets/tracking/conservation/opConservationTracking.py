@@ -509,7 +509,7 @@ class OpConservationTracking(Operator):
 
         if self.progressWindow is not None:
             self.progressWindow.onTrackDone()
-
+        self.progressVisitor.showProgress(1.0)
         # Uncomment to export a hypothese graph diagram
         #logger.info("Exporting hypotheses graph diagram")
         #from hytra.util.hypothesesgraphdiagram import HypothesesGraphDiagram
