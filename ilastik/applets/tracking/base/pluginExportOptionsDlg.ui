@@ -106,44 +106,50 @@
        <height>50</height>
       </size>
      </property>
-     <widget class="QLabel" name="label_2">
+     <widget class="QWidget" name="">
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>4</y>
-        <width>25</width>
-        <height>21</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>File:</string>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="fileSelectButton">
-      <property name="geometry">
-       <rect>
-        <x>512</x>
         <y>0</y>
-        <width>92</width>
-        <height>32</height>
+        <width>711</width>
+        <height>41</height>
        </rect>
       </property>
-      <property name="text">
-       <string>Select...</string>
-      </property>
-     </widget>
-     <widget class="QLineEdit" name="filepathEdit">
-      <property name="geometry">
-       <rect>
-        <x>35</x>
-        <y>4</y>
-        <width>473</width>
-        <height>21</height>
-       </rect>
-      </property>
-      <property name="readOnly">
-       <bool>false</bool>
-      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>File:      </string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="filepathEdit">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>24</height>
+          </size>
+         </property>
+         <property name="baseSize">
+          <size>
+           <width>0</width>
+           <height>24</height>
+          </size>
+         </property>
+         <property name="readOnly">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="fileSelectButton">
+         <property name="text">
+          <string>Select...</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </widget>
    </item>
