@@ -110,7 +110,7 @@ class OpThresholdTwoLevels(Operator):
             if drange is None or (drange[0] == 0.0 and drange[1] == 1.0):
                 return a
             a[:] -= drange[0]
-            a[:] /= ( drange[1] - drange[0] )
+            a[:] = a[:]/float(( drange[1] - drange[0] ))
             return a
         self.opNormalizeProbabilities.Input.connect( self.opConvertProbabilities.Output )
         self.opNormalizeProbabilities.Function.setValue( normalize_inplace )

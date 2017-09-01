@@ -936,10 +936,11 @@ class ObjectClassificationGui(LabelingGui):
 class QTableWidgetItemWithFloatSorting(QTableWidgetItem):
     def __lt__(self, other):
         if ( isinstance(other, QTableWidgetItem) ):
-            my_value, my_ok = self.data(Qt.EditRole).toFloat()
-            other_value, other_ok = other.data(Qt.EditRole).toFloat()
 
-            if ( my_ok and other_ok ):
+            my_value = float(self.data(Qt.EditRole))
+            other_value = float(other.data(Qt.EditRole))
+
+            if ( my_value is not None and other_value is not None ):
                 return my_value < other_value
 
         return super(QTableWidgetItemWithFloatSorting, self).__lt__(other)
@@ -1101,7 +1102,7 @@ class LabelAssistDialog(QDialog):
         
         # Sort by max object area
         self.table.setSortingEnabled(True)                         
-        self.table.sortByColumn(1) 
+        self.table.sortByColumn(1, Qt.DescendingOrder)
         
 
     def _captureDoubleClick(self):
