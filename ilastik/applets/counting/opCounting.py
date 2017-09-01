@@ -51,11 +51,15 @@ from ilastik.utility import OpMultiLaneWrapper
 import threading
 from ilastik.applets.base.applet import DatasetConstraintError
 
+
 class OpVolumeOperator(Operator):
     name = "OpVolumeOperator"
     description = "Do Operations involving the whole volume"
-    inputSlots = [InputSlot("Input"), InputSlot("Function")]
-    outputSlots = [OutputSlot("Output")]
+
+    Input = InputSlot()
+    Function = InputSlot()
+    Output = OutputSlot()
+
     DefaultBlockSize = (128, 128, None)
     blockShape = InputSlot(value=DefaultBlockSize)
 
@@ -111,11 +115,14 @@ class OpVolumeOperator(Operator):
             self.outputs["Output"].setDirty( slice(None) )
         self.cache = None
 
+
 class OpUpperBound(Operator):
     name = "OpUpperBound"
     description = "Calculate the upper bound of the data for correct normalization of the output"
-    inputSlots = [InputSlot("Sigma", stype = "float", value=2.0)]
-    outputSlots = [OutputSlot("UpperBound")]
+
+    Sigma = InputSlot(stype="float", value=2.0)
+
+    UpperBound = OutputSlot()
 
     def setupOutputs(self):
         self.UpperBound.meta.dtype = numpy.float32
@@ -159,16 +166,17 @@ class OpMean(Operator):
         key = roi.toSlice()
         self.Output.setDirty( key[:-1] )
 
+
 class OpBoxViewer( Operator ):
     name = "OpBoxViewer"
     description = "DummyOperator to serialize view-boxes"
 
-    inputSlots = [
-        #InputSlot("Images", level=1),
-        InputSlot("rois", level = 1, stype="list", value=[] )]
+    # Images = InputSlot(level=1),
+    Rois = InputSlot(level=1, stype="list", value=[])
 
     def propagateDirty(self, slot, subindex, roi):
         pass
+
 
 class OpCounting( Operator ):
     """
