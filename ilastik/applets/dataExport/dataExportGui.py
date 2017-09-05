@@ -365,18 +365,18 @@ class DataExportGui(QWidget):
             # Set the busy flag so the workflow knows not to allow 
             #  upstream changes or shell changes while we're exporting
             self.parentApplet.busy = True
-            self.parentApplet.appletStateUpdateRequested.emit()
-            
+            self.parentApplet.appletStateUpdateRequested()
+
             # Disable our own gui
             QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self.drawer, False) ) )
             QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self, False) ) )
             
             # Start with 1% so the progress bar shows up
-            self.progressSignal.emit(0)
-            self.progressSignal.emit(1)
+            self.progressSignal(0)
+            self.progressSignal(1)
 
             def signalFileProgress(slotIndex, percent):
-                self.progressSignal.emit( old_div((100*slotIndex + percent), len(laneViewList)) ) 
+                self.progressSignal(old_div((100 * slotIndex + percent), len(laneViewList)))
 
             # Client hook
             self.parentApplet.prepare_for_entire_export()
@@ -387,7 +387,7 @@ class DataExportGui(QWidget):
 
                 # If the operator provides a progress signal, use it.
                 slotProgressSignal = opLaneView.progressSignal
-                slotProgressSignal.subscribe( partial(signalFileProgress, i) )
+                slotProgressSignal.subscribe(partial(signalFileProgress, i))
 
                 try:
                     # Client hook
@@ -418,23 +418,23 @@ class DataExportGui(QWidget):
                     log_exception( logger, msg )
                     self.showExportError(msg)
 
-                # We're finished with this file. 
-                self.progressSignal.emit( 100*(i+1)/float(len(laneViewList)) )
+                # We're finished with this file.
+                self.progressSignal(100 * (i + 1) / float(len(laneViewList)))
 
             # Client hook
             self.parentApplet.post_process_entire_export()
                 
             # Ensure the shell knows we're really done.
-            self.progressSignal.emit(100)
+            self.progressSignal(100)
         except:
             # Cancel our progress.
-            self.progressSignal.emit(0, True)
+            self.progressSignal(0, True)
             raise
         finally:
             # We're not busy any more.  Tell the workflow.
             self.parentApplet.busy = False
-            self.parentApplet.appletStateUpdateRequested.emit()
-            
+            self.parentApplet.appletStateUpdateRequested()
+
             # Re-enable our own gui
             QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self.drawer, True) ) )
             QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self, True) ) )

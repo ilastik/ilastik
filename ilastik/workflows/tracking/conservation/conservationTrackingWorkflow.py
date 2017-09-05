@@ -390,16 +390,15 @@ class ConservationTrackingWorkflowBase( Workflow ):
                     logger.error("Cannot export from plugin with empty output filename")
                     return True
 
-                self.dataExportApplet.progressSignal.emit(-1)
+                self.dataExportApplet.progressSignal(-1)
                 exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin, checkOverwriteFiles)
-                self.dataExportApplet.progressSignal.emit(100)
+                self.dataExportApplet.progressSignal(100)
 
                 if not exportStatus:
                     return False
                 logger.info("Export done")
 
             return True
-
         return True
 
     def getPartiallyFormattedName(self, lane_index, path_format_string):

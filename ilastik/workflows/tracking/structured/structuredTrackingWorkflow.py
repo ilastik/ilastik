@@ -504,9 +504,9 @@ class StructuredTrackingWorkflowBase( Workflow ):
                     logger.error("Cannot export from plugin with empty output filename")
                     return True
 
-                self.dataExportTrackingApplet.progressSignal.emit(-1)
+                self.dataExportTrackingApplet.progressSignal(-1)
                 exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin, checkOverwriteFiles)
-                self.dataExportTrackingApplet.progressSignal.emit(100)
+                self.dataExportTrackingApplet.progressSignal(100)
 
                 if not exportStatus:
                     return False

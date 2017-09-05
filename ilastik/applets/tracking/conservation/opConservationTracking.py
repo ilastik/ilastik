@@ -336,7 +336,7 @@ class OpConservationTracking(Operator):
                 if coordinatesForIds:
                     mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, maxObjectId, timestep)   
                 
-            self.parent.parent.trackingApplet.progressSignal.emit(100)
+            self.parent.parent.trackingApplet.progressSignal(100)
 
             # Compute object features, re-run flow solver, update model and result, and get merger dictionary
             resolvedMergersDict = mergerResolver.run()
@@ -865,7 +865,7 @@ class OpConservationTracking(Operator):
 
             total_count += count
 
-        self.parent.parent.trackingApplet.progressSignal.emit(100)
+        self.parent.parent.trackingApplet.progressSignal(100)
         self.FilteredLabels.setValue(filtered_labels, check_changed=True)
 
         return traxelstore

@@ -19,7 +19,6 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from .simpleSignal import SimpleSignal
 from .bind import bind
 from .multiLaneOperator import MultiLaneOperatorABC
 from .operatorSubView import OperatorSubView

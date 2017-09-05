@@ -89,8 +89,8 @@ class BatchProcessingApplet( Applet ):
         """
         results = []
 
-        
-        self.progressSignal.emit(0)
+
+        self.progressSignal(0)
         try:
             assert isinstance(role_data_dict, OrderedDict)
 
@@ -115,7 +115,7 @@ class BatchProcessingApplet( Applet ):
                     
                     def emit_progress(dataset_percent):
                         overall_progress = (batch_dataset_index + dataset_percent/100.0)/len(datas_by_batch_index)
-                        self.progressSignal.emit(100*overall_progress)
+                        self.progressSignal(100 * overall_progress)
 
                     # Now use the new lane to export the batch results for the current file.
                     result = self._run_export_with_empty_batch_lane( role_input_datas,
@@ -143,7 +143,7 @@ class BatchProcessingApplet( Applet ):
 
             return results
         finally:
-            self.progressSignal.emit(100)
+            self.progressSignal(100)
 
     def _get_template_dataset_infos(self, input_axes=None):
         """

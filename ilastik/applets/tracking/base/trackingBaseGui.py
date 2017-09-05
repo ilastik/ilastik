@@ -290,6 +290,7 @@ class TrackingBaseGui( LayerViewerGui ):
         self._drawer.to_y.valueChanged.connect(self._setRanges)
         self._drawer.to_z.valueChanged.connect(self._setRanges)
 
+
     def _onTrackButtonPressed( self ):
         raise NotImplementedError
 

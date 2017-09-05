@@ -190,11 +190,11 @@ class ExportingGui(object):
 
     def unlock_gui(self, *_):
         self.gui_applet.busy = False
-        self.gui_applet.appletStateUpdateRequested.emit()
+        self.gui_applet.appletStateUpdateRequested()
 
     def lock_gui(self):
         self.gui_applet.busy = True
-        self.gui_applet.appletStateUpdateRequested.emit()
+        self.gui_applet.appletStateUpdateRequested()
 
     def get_export_dialog_title(self):
         raise NotImplementedError

@@ -218,7 +218,7 @@ class OpMstSegmentorProvider(Operator):
         assert slot == self.MST, "Invalid output slot: {}".format(slot.name)
 
         #first thing, show the user that we are waiting for computations to finish
-        self.applet.progressSignal.emit(-1)
+        self.applet.progressSignal(-1)
         try:
             volume_feat = self.Image( *roiFromShape( self.Image.meta.shape ) ).wait()
             labelVolume = self.LabelImage( *roiFromShape( self.LabelImage.meta.shape ) ).wait()
@@ -227,7 +227,7 @@ class OpMstSegmentorProvider(Operator):
             def updateProgressBar(x):
                 #send signal iff progress is significant
                 if x-self.applet.progress>1 or x==100:
-                    self.applet.progressSignal.emit(x)
+                    self.applet.progressSignal(x)
                     self.applet.progress = x
 
            #mst= MSTSegmentor(labelVolume[0,...,0],
@@ -247,7 +247,7 @@ class OpMstSegmentorProvider(Operator):
             return result
 
         finally:
-            self.applet.progressSignal.emit(100)
+            self.applet.progressSignal(100)
 
     def propagateDirty(self, slot, subindex, roi):
         self.MST.setDirty(slice(None))

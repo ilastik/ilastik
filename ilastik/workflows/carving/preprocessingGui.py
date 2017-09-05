@@ -133,7 +133,7 @@ class PreprocessingGui(QMainWindow):
         self.setWriteprotect()
         r = self.topLevelOperatorView.PreprocessedData[:]
         r.notify_failed(self.onFailed)
-        r.notify_finished( bind(self.parentApplet.appletStateUpdateRequested.emit) )
+        r.notify_finished( bind(self.parentApplet.appletStateUpdateRequested) )
         r.submit()
         
     def handleWriterprotectStateChanged(self):
