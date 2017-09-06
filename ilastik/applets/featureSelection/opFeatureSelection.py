@@ -31,8 +31,7 @@ import h5py
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
-from lazyflow.operators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Original
-from lazyflow.operators import OpPixelFeaturesInterpPresmoothed as OpPixelFeaturesPresmoothed_Interpolated
+from lazyflow.operators import OpPixelFeaturesPresmoothed
 from lazyflow.operators import OpReorderAxes, OperatorWrapper
 
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -96,23 +95,11 @@ class OpFeatureSelectionNoCache(Operator):
 
     FeatureLayers = OutputSlot(level=1) # For the GUI, we also provide each feature as a separate slot in this multislot
 
-    # For ease of development and testing, the underlying feature computation implementation 
-    #  can be switched via a constructor argument.  These are the possible choices.
-    FilterImplementations = ['Original', 'Refactored', 'Interpolated']
-    
-    def __init__(self, filter_implementation, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super(OpFeatureSelectionNoCache, self).__init__(*args, **kwargs)
 
         # Create the operator that actually generates the features
-        if filter_implementation == 'Original':
-            self.opPixelFeatures = OpPixelFeaturesPresmoothed_Original(parent=self)
-            logger.debug("Using ORIGINAL filters")
-        elif filter_implementation == 'Interpolated':
-            self.opPixelFeatures = OpPixelFeaturesPresmoothed_Interpolated(parent=self)
-            self.opPixelFeatures.InterpolationScaleZ.setValue(2)
-            logger.debug("Using INTERPOLATED filters")
-        else:
-            raise RuntimeError("Unknown filter implementation option: {}".format( filter_implementation ))
+        self.opPixelFeatures = OpPixelFeaturesPresmoothed(parent=self)
 
         # Connect our internal operators to our external inputs 
         self.opPixelFeatures.Scales.connect( self.Scales )
