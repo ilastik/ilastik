@@ -40,11 +40,11 @@ class TestOpFeatureSelection(object):
         numpy.save(self.filePath, data)
     
         graph = Graph()
-        
+
         # Define operators
-        opFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, graph=graph )
+        opFeatures = OperatorWrapper(OpFeatureSelection, graph=graph)
         opReader = OpInputDataReader(graph=graph)
-        
+
         # Set input data
         opReader.FilePath.setValue( self.filePath )
         
@@ -114,7 +114,7 @@ class TestOpFeatureSelection(object):
         data2d = numpy.random.random((2,100,100,1,3))
         data2d = vigra.taggedView(data2d, axistags='txyzc')
         # Define operators
-        opFeatures = OpFeatureSelection('Original', graph=graph)
+        opFeatures = OpFeatureSelection(graph=graph)
         opFeatures.Scales.connect(self.opFeatures.Scales[0])
         opFeatures.FeatureIds.connect(self.opFeatures.FeatureIds[0])
         opFeatures.SelectionMatrix.connect(self.opFeatures.SelectionMatrix[0])

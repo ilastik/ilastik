@@ -53,7 +53,7 @@ class IIBoostPixelClassificationWorkflow(PixelClassificationWorkflow):
         """
         Overridden from the base PixelClassificationWorkflow
         """
-        return IIBoostFeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
+        return IIBoostFeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
 
     def createPixelClassificationApplet(self):
         """
