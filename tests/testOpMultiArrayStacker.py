@@ -187,6 +187,7 @@ def testMinimalRequest():
     for index, op in enumerate(ops):
         assert len(op.requested_rois) == 0 or index in range(3,5), "Stacker requested more data than it needed."
 
+
 def testFullAllocate():
 
     nx = 5
@@ -217,15 +218,17 @@ def testFullAllocate():
     stack2 = vigra.VigraArray((nx-1, ny, nz, nc), axistags=vigra.defaultAxistags('xyzc'))
     stack2[...] = numpy.random.rand(nx-1, ny, nz, nc)
 
-    opMulti = Op5ToMulti(graph=g)
-    opMulti.inputs["Input0"].setValue(stack)
-    opMulti.inputs["Input1"].setValue(stack2)
-
-    #print "OPMULTI: ", len(opMulti.outputs["Outputs"])
-
     stackerX2 = OpMultiArrayStacker(graph=g)
 
-    stackerX2.inputs["Images"].connect(opMulti.outputs["Outputs"])
+    stackerX2.Images.resize(2)
+
+    ap1 = operators.OpArrayPiper(graph=g)
+    ap2 = operators.OpArrayPiper(graph=g)
+    ap1.Input.setValue(stack)
+    ap2.Input.setValue(stack2)
+    stackerX2.Images[0].connect(ap1.Output)
+    stackerX2.Images[1].connect(ap2.Output)
+
     stackerX2.inputs["AxisFlag"].setValue('x')
     stackerX2.inputs["AxisIndex"].setValue(0)
 
@@ -264,14 +267,15 @@ def testFullAllocate():
     stack3 = vigra.VigraArray((nx, ny, nz, nc-1), axistags=vigra.defaultAxistags('xyzc'))
     stack3[...] = numpy.random.rand(nx, ny, nz, nc-1)
 
-    opMulti = Op5ToMulti(graph=g)
-    opMulti.inputs["Input0"].setValue(stack)
-    opMulti.inputs["Input1"].setValue(stack3)
+    ap3 = operators.OpArrayPiper(graph=g)
+    ap3.Input.setValue(stack3)
 
     stackerC2 = OpMultiArrayStacker(graph=g)
     stackerC2.inputs["AxisFlag"].setValue('c')
     stackerC2.inputs["AxisIndex"].setValue(3)
-    stackerC2.inputs["Images"].connect(opMulti.outputs["Outputs"])
+    stackerC2.Images.resize(2)
+    stackerC2.Images[0].connect(ap1.Output)
+    stackerC2.Images[1].connect(ap3.Output)
 
     newdata = stackerC2.outputs["Output"][:].wait()
     bothstacks = numpy.concatenate((stack, stack3), axis=3)
