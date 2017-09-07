@@ -70,69 +70,6 @@ def zfill_num(n, stop):
     """
     return str(n).zfill(len(str(stop - 1)))
 
-def makeOpXToMulti(n):
-    """
-    DEPRECATED
-    A factory for creating OpXToMulti classes.
-    """
-    assert n > 0
-
-    class OpXToMulti(Operator):
-        category = "Misc"
-        name = "{} Element to Multislot".format(n)
-
-        if n == 1:
-            Input = InputSlot()
-        else:
-            names = list("Input{}".format(zfill_num(i, n))
-                         for i in range(n))
-            
-            inputSlots = list(InputSlot(name, optional=True)
-                                   for name in names)
-
-        Outputs = OutputSlot(level=1)
-
-        def _sorted_inputs(self, filterReady=False):
-            """Returns self.inputs.values() sorted by keys.
-
-               :param filterReady: only return slots that are ready.
-
-            """
-            keys = sorted(self.inputs.keys())
-            slots = list(self.inputs[k] for k in keys)
-            if filterReady:
-                slots = list(s for s in slots if s.ready())
-            return slots
-
-        def _do_assignfrom(self, inslots):
-            for inslot, outslot in zip(inslots, self.outputs['Outputs']):
-                outslot.meta.assignFrom(inslot.meta)
-
-        def setupOutputs(self):
-            inslots = self._sorted_inputs(filterReady=True)
-            self.outputs["Outputs"].resize(len(inslots))
-            self._do_assignfrom(inslots)
-
-        def execute(self, slot, subindex, roi, result):
-            key = roiToSlice(roi.start, roi.stop)
-            index = subindex[0]
-            inslots = self._sorted_inputs(filterReady=True)
-            if index < len(inslots):
-                return inslots[index][key].wait()
-
-        def propagateDirty(self, islot, subindex, roi):
-            inslots = self._sorted_inputs(filterReady=True)
-            index = inslots.index(islot)
-            self.outputs["Outputs"][index].setDirty(roi)
-            readyslots = list(s for s in inslots[:index] if s.ready())
-            self._do_assignfrom(readyslots)
-
-        def setInSlot(self, slot, subindex, roi, value):
-            # Nothing to do here: All inputs are directly connected to an input slot.
-            pass
-
-    return OpXToMulti
-
 
 class OpPixelFeaturesPresmoothed(Operator):
     name="OpPixelFeaturesPresmoothed"
@@ -1226,11 +1163,3 @@ class OpImageReader(Operator):
             self.Image.setDirty()
         else:
             assert False, "Unknown dirty input slot."
-
-##
-## DEPRECATED. DO NOT USE
-##
-Op1ToMulti = makeOpXToMulti(1)
-Op5ToMulti = makeOpXToMulti(5)
-Op50ToMulti = makeOpXToMulti(50)
-
