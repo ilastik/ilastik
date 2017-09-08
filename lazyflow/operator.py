@@ -84,16 +84,19 @@ class OperatorMetaClass(ABCMeta):
     def __new__(cls, name, bases, classDict):
         cls = super(OperatorMetaClass, cls).__new__(cls, name, bases, classDict)
 
+        # this allows for definition of input-/ output-slots the following way:
+        #    inputSlots = [InputSlot("MySlot"), InputSlot("MySlot2")]
+        # This was the original type of slot definition but should not be invoked
+        # by users for their workflow.
+        # For OperatorSubview, however, this is essential
         setattr(cls, "inputSlots", list(cls.inputSlots))
         setattr(cls, "outputSlots", list(cls.outputSlots))
 
+        # Slots in operators should be defined in the "fancy" syntax (see below).
         # Support fancy syntax.
         # If the user typed this in his class definition:
         #    MySlot = InputSlot()
         #    MySlot2 = InputSlot()
-        #
-        # Make it equivalent to this:
-        #    inputSlots = [ InputSlot("MySlot"), InputSlot("MySlot2") ]
 
         for k, v in list(cls.__dict__.items()):
             if isinstance(v, InputSlot):

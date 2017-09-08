@@ -21,7 +21,6 @@ from builtins import object
 #		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper
-from lazyflow.operators import Op5ToMulti
 import numpy
 import copy
 
