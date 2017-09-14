@@ -517,7 +517,6 @@ class OpPredictionPipelineNoCache(Operator):
     FeatureImages = InputSlot()
     MaxLabel = InputSlot()
     Classifier = InputSlot()
-    FreezePredictions = InputSlot()
     PredictionsFromDisk = InputSlot( optional=True )
     
     HeadlessPredictionProbabilities = OutputSlot() # drange is 0.0 to 1.0
@@ -561,13 +560,14 @@ class OpPredictionPipelineNoCache(Operator):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass
 
+
 class OpPredictionPipeline(OpPredictionPipelineNoCache):
     """
     This operator extends the cacheless prediction pipeline above with additional outputs for the GUI.
     (It uses caches for these outputs, and has an extra input for cached features.)
-    """        
+    """
     CachedFeatureImages = InputSlot()
-
+    FreezePredictions = InputSlot()
     PredictionProbabilities = OutputSlot()
     CachedPredictionProbabilities = OutputSlot()
     UncertaintyEstimate = OutputSlot()
