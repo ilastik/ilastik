@@ -258,18 +258,15 @@ class CountingGui(LabelingGui):
 
         self.boxController.fixedBoxesChanged.connect(self._handleBoxConstraints)
         self.boxController.viewBoxesChanged.connect(self._changeViewBoxes)
-        
+
         self.op.LabelPreviewer.sigma.setValue(self.op.opTrain.Sigma.value)
         self.op.opTrain.fixClassifier.setValue(False)
-        self.op.Density.notifyDirty(self._normalizePrediction)
 
+        # TODO: check if defer makes sense here!
+        self.op.Density.notifyDirty(self._normalizePrediction, defer=True)
+        self.op.LabelImages.notifyDirty(self._normalizeLayers, defer=True)
 
         self._updateSVROptions()
-
-
-     
-
-
 
     def _connectUIParameters(self):
 
@@ -428,12 +425,12 @@ class CountingGui(LabelingGui):
         #    self._changedSigma = False
         self._normalizeLayers()
 
-    def _normalizeLayers(self):
+    def _normalizeLayers(self, *args):
         upperBound = self.op.UpperBound.value
         self.upperBound = upperBound
 
         if hasattr(self, "labelPreviewLayer"):
-            self.labelPreviewLayer.set_normalize(0,(0,upperBound))
+            self.labelPreviewLayer.set_normalize(0, (0, upperBound))
         return
 
 
@@ -442,7 +439,6 @@ class CountingGui(LabelingGui):
             self.predictionLayer.set_normalize(0,(0,self.upperBound))
         if hasattr(self, "uncertaintyLayer") and hasattr(self, "upperBound"):
             self.uncertaintyLayer.set_normalize(0,(0,self.upperBound))
-
 
     def _updateEpsilon(self):
         self.op.opTrain.Epsilon.setValue(self.labelingDrawerUi.EpsilonBox.value())
