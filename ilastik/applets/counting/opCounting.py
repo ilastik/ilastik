@@ -264,15 +264,18 @@ class OpCounting( Operator ):
                 
         self.BoxLabelImages.connect( self.opLabelPipeline.BoxOutput)
 
-        self.GetFore= OpMultiLaneWrapper(OpPixelOperator,parent = self)
-        def conv(arr):
-            numpy.place(arr, arr ==2, 0)
-            return arr.astype(numpy.float)
-        self.GetFore.Function.setValue(conv)
-        self.GetFore.Input.connect(self.opLabelPipeline.Output)
+        self.opExtractForegroundLabels = OpMultiLaneWrapper(OpPixelOperator, parent=self)
 
-        self.LabelPreviewer = OpMultiLaneWrapper(OpLabelPreviewer, parent = self)
-        self.LabelPreviewer.Input.connect(self.GetFore.Output)
+        # Set background-labels (annotations) to zero...
+        def conv(arr):
+            numpy.place(arr, arr == 2, 0)
+            return arr.astype(numpy.float)
+
+        self.opExtractForegroundLabels.Function.setValue(conv)
+        self.opExtractForegroundLabels.Input.connect(self.opLabelPipeline.Output)
+
+        self.LabelPreviewer = OpMultiLaneWrapper(OpLabelPreviewer, parent=self)
+        self.LabelPreviewer.Input.connect(self.opExtractForegroundLabels.Output)
 
         self.LabelPreview.connect(self.LabelPreviewer.Output)
 
@@ -284,7 +287,7 @@ class OpCounting( Operator ):
         self.boxViewer = OpBoxViewer( parent = self, graph=self.graph )
 
         self.opTrain = OpTrainCounter( parent=self, graph=self.graph )
-        self.opTrain.inputs['ForegroundLabels'].connect( self.GetFore.Output)
+        self.opTrain.inputs['ForegroundLabels'].connect( self.opExtractForegroundLabels.Output)
         self.opTrain.inputs['BackgroundLabels'].connect( self.opLabelPipeline.Output)
         self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
