@@ -36,11 +36,11 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpValueCache, \
                                OpBlockedArrayCache, OpMultiArraySlicer2, \
                                OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator, \
-                               OpReorderAxes
+                               OpReorderAxes, OpCompressedUserLabelArray
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 
 from lazyflow.request import Request, RequestPool
-from lazyflow.roi     import roiToSlice, sliceToRoi
+from lazyflow.roi import roiToSlice, sliceToRoi, determineBlockShape
                                
 from ilastik.applets.counting.countingOperators import OpTrainCounter, OpPredictCounter, OpLabelPreviewer
 
@@ -126,6 +126,8 @@ class OpVolumeOperator(Operator):
         self.cache = None
 
 
+# FIXME: this operator does _not_ calculate anything related to data - just
+# for a hypothetical one pixel gaussian
 class OpUpperBound(Operator):
     name = "OpUpperBound"
     description = "Calculate the upper bound of the data for correct normalization of the output"
@@ -255,9 +257,13 @@ class OpCounting( Operator ):
         self.BoxLabelInputs.connect( self.InputImages )
 
         # Hook up Labeling Pipeline
-        self.opLabelPipeline = OpMultiLaneWrapper( OpLabelPipeline, parent=self )
-        self.opLabelPipeline.RawImage.connect( self.InputImages )
-        self.opLabelPipeline.LabelInput.connect( self.LabelInputs )
+        self.opLabelPipeline = OpMultiLaneWrapper(
+            OpLabelPipeline,
+            parent=self,
+            broadcastingSlotNames=['DeleteLabel'],  # Labels are never deleted...
+        )
+        self.opLabelPipeline.RawImage.connect(self.InputImages)
+        self.opLabelPipeline.LabelInput.connect(self.LabelInputs)
         self.opLabelPipeline.BoxLabelInput.connect( self.BoxLabelInputs )
         self.LabelImages.connect( self.opLabelPipeline.Output )
         self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
@@ -461,44 +467,60 @@ class OpCounting( Operator ):
                  "All input images must have the same number of channels.  "\
                  "Your new image has {} channel(s), but your other images have {} channel(s)."\
                  .format( thisLaneTaggedShape['c'], validShape['c'] ) )
-        
-        
 
-class OpLabelPipeline( Operator ):
+
+class OpLabelPipeline(Operator):
+    # Inputs:
     RawImage = InputSlot()
     LabelInput = InputSlot()
-    BoxLabelInput = InputSlot() 
+    BoxLabelInput = InputSlot()
+
+    # Initialize the delete input to -1, which means "no label".
+    # Now changing this input to a positive value will cause label deletions.
+    # (The deleteLabel input is monitored for changes.)
+    DeleteLabel = InputSlot(value=-1)
+
+    # Outputs:
     Output = OutputSlot()
     nonzeroBlocks = OutputSlot()
     MaxLabel = OutputSlot()
     BoxOutput = OutputSlot()
-    
-    def __init__(self, *args, **kwargs):
-        super( OpLabelPipeline, self ).__init__( *args, **kwargs )        
-        self.opLabelArray = OpDenseLabelArray( parent=self )
-        self.opLabelArray.MetaInput.connect( self.RawImage )
-        self.opLabelArray.LabelSinkInput.connect( self.LabelInput )
-        self.opLabelArray.EraserLabelValue.setValue(100)
 
-        self.opBoxArray = OpDenseLabelArray( parent = self)
-        self.opBoxArray.MetaInput.connect( self.RawImage )
-        self.opBoxArray.LabelSinkInput.connect( self.BoxLabelInput )
+    def __init__(self, *args, **kwargs):
+        super(OpLabelPipeline, self).__init__(*args, **kwargs)
+        self.opLabelArray = OpCompressedUserLabelArray(parent=self)
+        self.opLabelArray.Input.connect(self.LabelInput)
+        self.opLabelArray.eraser.setValue(100)
+
+        self.opBoxArray = OpDenseLabelArray(parent=self)
+        self.opBoxArray.MetaInput.connect(self.RawImage)
+        self.opBoxArray.LabelSinkInput.connect(self.BoxLabelInput)
         self.opBoxArray.EraserLabelValue.setValue(100)
 
-        # Initialize the delete input to -1, which means "no label".
-        # Now changing this input to a positive value will cause label deletions.
-        # (The deleteLabel input is monitored for changes.)
-        self.opLabelArray.DeleteLabel.setValue(-1)
+        self.opLabelArray.deleteLabel.connect(self.DeleteLabel)
 
         # Connect external outputs to their internal sources
-        self.Output.connect( self.opLabelArray.Output )
-        self.nonzeroBlocks.connect( self.opLabelArray.NonzeroBlocks )
-        self.MaxLabel.connect( self.opLabelArray.MaxLabelValue )
-        self.BoxOutput.connect( self.opBoxArray.Output )
-    
-
+        self.Output.connect(self.opLabelArray.Output)
+        self.nonzeroBlocks.connect(self.opLabelArray.nonzeroBlocks)
+        # self.MaxLabel.connect( self.opLabelArray.MaxLabelValue )
+        self.BoxOutput.connect(self.opBoxArray.Output)
 
     def setupOutputs(self):
+        """Copied that from opPixelClassification.py
+
+        opLabelArray is OpCompressedUserLabelArray -> needs to be configured:
+          - blockShape needs to be set!
+        """
+        tagged_shape = self.RawImage.meta.getTaggedShape()
+        # labels are created for one channel (i.e. the label) and only in the
+        # current time slice, so we can set both c and t to 1
+        tagged_shape['c'] = 1
+        if 't' in tagged_shape:
+            tagged_shape['t'] = 1
+
+        # Aim for blocks that are roughly 20px
+        block_shape = determineBlockShape(list(tagged_shape.values()), 40**3)
+        self.opLabelArray.blockShape.setValue(block_shape)
         pass
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -511,7 +533,8 @@ class OpLabelPipeline( Operator ):
 
     def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
-        pass    
+        pass
+
 
 class OpPredictionPipelineNoCache(Operator):
     """

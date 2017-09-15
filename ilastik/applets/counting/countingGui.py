@@ -127,8 +127,8 @@ class CountingGui(LabelingGui):
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
         labelSlots.labelOutput = topLevelOperatorView.LabelImages
-        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.EraserLabelValue
-        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.DeleteLabel
+        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
+        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
         labelSlots.labelNames = topLevelOperatorView.LabelNames
 
@@ -413,6 +413,7 @@ class CountingGui(LabelingGui):
     #    self.op.opTrain.UnderMult.setValue(self.labelingDrawerUi.UnderBox.value())
     def _updateC(self):
         self.op.opTrain.C.setValue(self.labelingDrawerUi.CBox.value())
+
     def _updateSigma(self):
         #if self._changedSigma:
 
@@ -620,25 +621,20 @@ class CountingGui(LabelingGui):
         # Base class provides the label layer.
         layers = super(CountingGui, self).setupLayers()
 
-        # Add each of the predictions
-        labels = self.labelListData
-
-
-
-        slots = { 'Prediction' : (self.op.Density, 0.5), 
-                 'LabelPreview': (self.op.LabelPreview, 1.0), 
-                 'Uncertainty' : (self.op.UncertaintyEstimate, 1.0) }
+        slots = {'Prediction': (self.op.Density, 0.5),
+                 'LabelPreview': (self.op.LabelPreview, 1.0),
+                 'Uncertainty': (self.op.UncertaintyEstimate, 1.0)}
 
         for name, (slot, opacity) in list(slots.items()):
             if slot.ready():
-                from volumina import colortables
-                layer = ColortableLayer(LazyflowSource(slot), colorTable = countingColorTable, normalize =
-                                       (0,self.upperBound))
+                layer = ColortableLayer(
+                    LazyflowSource(slot),
+                    colorTable=countingColorTable,
+                    normalize=(0, self.upperBound))
                 layer.name = name
                 layer.opacity = opacity
                 layer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
                 layers.append(layer)
-
 
         #Set LabelPreview-layer to True
 
@@ -650,10 +646,8 @@ class CountingGui(LabelingGui):
         boxlabellayer.visibleChanged.connect(self.boxController.changeBoxesVisibility)
         boxlabellayer.opacityChanged.connect(self.boxController.changeBoxesOpacity)
 
-
         layers.append(boxlabellayer)
         self.boxlabelsrc = boxlabelsrc
-
 
         inputDataSlot = self.topLevelOperatorView.InputImages
         if inputDataSlot.ready():
