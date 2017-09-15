@@ -492,10 +492,9 @@ class OpLabelPipeline(Operator):
         self.opLabelArray.Input.connect(self.LabelInput)
         self.opLabelArray.eraser.setValue(100)
 
-        self.opBoxArray = OpDenseLabelArray(parent=self)
-        self.opBoxArray.MetaInput.connect(self.RawImage)
-        self.opBoxArray.LabelSinkInput.connect(self.BoxLabelInput)
-        self.opBoxArray.EraserLabelValue.setValue(100)
+        self.opBoxArray = OpCompressedUserLabelArray(parent=self)
+        self.opBoxArray.Input.connect(self.BoxLabelInput)
+        self.opBoxArray.eraser.setValue(100)
 
         self.opLabelArray.deleteLabel.connect(self.DeleteLabel)
 
@@ -518,10 +517,11 @@ class OpLabelPipeline(Operator):
         if 't' in tagged_shape:
             tagged_shape['t'] = 1
 
-        # Aim for blocks that are roughly 20px
-        block_shape = determineBlockShape(list(tagged_shape.values()), 40**3)
+        # Aim for blocks with roughly the same size as in pixel classification,
+        # taking into account that counting will be 2d: 40 ** 3 = 256 ** 2
+        block_shape = determineBlockShape(list(tagged_shape.values()), 256 ** 2)
         self.opLabelArray.blockShape.setValue(block_shape)
-        pass
+        self.opBoxArray.blockShape.setValue(block_shape)
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
