@@ -18,10 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, \
-    SerialHdf5BlockSlot, SerialPickleableSlot, SerialPickledValueSlot
-
-import hytra
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, SerialPickledValueSlot
 
 class StructuredTrackingSerializer(AppletSerializer):
 
@@ -31,6 +28,7 @@ class StructuredTrackingSerializer(AppletSerializer):
                       SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
                       SerialPickledValueSlot(topLevelOperator.ExportSettings),
                       SerialPickledValueSlot(topLevelOperator.HypothesesGraph),
+                      SerialPickledValueSlot(topLevelOperator.LearningHypothesesGraph),
                       SerialPickledValueSlot(topLevelOperator.ResolvedMergers),
                       SerialSlot(topLevelOperator.DivisionWeight),
                       SerialSlot(topLevelOperator.DetectionWeight),

@@ -133,9 +133,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         return self._drawer
 
     def initAppletDrawerUi(self):
-        self._previousCrop = -1
-        self._currentCrop = -1
-        self._currentCropName = ""
         self._maxNearestNeighbors = 1
 
         super(StructuredTrackingGui, self).initAppletDrawerUi()
@@ -227,7 +224,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.topLevelOperatorView.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
 
         self.operator.labels = self.operator.Labels.value
-        self.topLevelOperatorView._updateCropsFromOperator()
 
         self._drawer.exportButton.setVisible(False)
         self._drawer.exportTifButton.setVisible(False)
