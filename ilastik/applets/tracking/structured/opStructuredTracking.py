@@ -32,6 +32,7 @@ class OpStructuredTracking(OpConservationTracking):
     Divisions = InputSlot(stype=Opaque, rtype=List)
     Annotations = InputSlot(stype=Opaque)
     MaxNumObj = InputSlot()
+    LearningHypothesesGraph = InputSlot(value={})
 
     DivisionWeight = OutputSlot()
     DetectionWeight = OutputSlot()
@@ -198,13 +199,13 @@ class OpStructuredTracking(OpConservationTracking):
 
                     labels = self.Annotations.value["labels"]
 
-                    for time in labels.keys():
+                    for time in list(labels.keys()):
                         if time in range(timeRange[0],timeRange[1]+1):
 
                             if not foundAllArcs:
                                 break
 
-                            for label in labels[time].keys():
+                            for label in list(labels[time].keys()):
 
                                 if not foundAllArcs:
                                     break
@@ -251,7 +252,7 @@ class OpStructuredTracking(OpConservationTracking):
 
                                         sink = (time, int(label))
                                         foundAllArcs = False
-                                        for edge in hypothesesGraph._graph.in_edges(sink): # an edge is a tuple of source and target nodes
+                                        for edge in list(hypothesesGraph._graph.in_edges(sink)): # an edge is a tuple of source and target nodes
                                             logger.info("Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label))
                                             # print "Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label)
                                             if edge[0][0] == time-1 and edge[0][1] == int(previous_label): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
@@ -267,7 +268,7 @@ class OpStructuredTracking(OpConservationTracking):
                                     self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
 
                                 elif type[0] in ["FIRST", "LAST", "INTERMEDIATE", "SINGLETON(FIRST_LAST)"]:
-                                    if (time, int(label)) in hypothesesGraph._graph.node.keys():
+                                    if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
                                         hypothesesGraph._graph.node[(time, int(label))]['value'] = trackCount
                                         logger.info("[structuredTrackingGui] NODE: {} {}".format(time, int(label)))
                                         # print "[structuredTrackingGui] NODE: {} {} {}".format(time, int(label), int(trackCount))
@@ -278,11 +279,11 @@ class OpStructuredTracking(OpConservationTracking):
                                         foundAllArcs = False
                                         break
 
-                if foundAllArcs and "divisions" in self.Annotations.value.keys():
+                if foundAllArcs and "divisions" in list(self.Annotations.value.keys()):
                     divisions = self.Annotations.value["divisions"]
 
                     numAllAnnotatedDivisions = numAllAnnotatedDivisions + len(divisions)
-                    for track in divisions.keys():
+                    for track in list(divisions.keys()):
                         if not foundAllArcs:
                             break
 
@@ -345,7 +346,7 @@ class OpStructuredTracking(OpConservationTracking):
 
         initialWeights = trackingGraph.weightsListToDict([transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight])
 
-        self.HypothesesGraph.setValue(hypothesesGraph)
+        self.LearningHypothesesGraph.setValue(hypothesesGraph)
         mht.trainWithWeightInitialization(model,gt, initialWeights)
         weightsDict = mht.train(model, gt)
 
@@ -444,7 +445,7 @@ class OpStructuredTracking(OpConservationTracking):
 
     def getLabelTT(self, time, track):
         labels = self.Annotations.value["labels"][time]
-        for label in labels.keys():
+        for label in list(labels.keys()):
             if self.Annotations.value["labels"][time][label] == set([track]):
                 return label
         return -1
@@ -462,7 +463,7 @@ class OpStructuredTracking(OpConservationTracking):
         lastLabel = -1
         maxTime = self.LabelImage.meta.shape[0]
         for t in range(0,time):
-            if t in labels.keys():
+            if t in list(labels.keys()):
                 for label in labels[t]:
                     if track in labels[t][label]:
                         lastTime = t
@@ -477,7 +478,7 @@ class OpStructuredTracking(OpConservationTracking):
 
         firstTime = -1
         for t in range(maxTime,time,-1):
-            if t in labels.keys():
+            if t in list(labels.keys()):
                 for label in labels[t]:
                     if track in labels[t][label]:
                         firstTime = t
@@ -535,7 +536,7 @@ class OpStructuredTracking(OpConservationTracking):
                     traxelgraph._graph.node[(t,obj)]['value'] = len(trackSet)
 
         for t in list(labels.keys()):
-            if t < max(labels.keys()):
+            if t < max(list(labels.keys())):
                 for source in list(labels[t].keys()):
                     if (misdetectionLabel not in labels[t][source]) and t+1 in list(labels.keys()):
                         for dest in list(labels[t+1].keys()):
