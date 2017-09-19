@@ -382,16 +382,12 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
             self.result = runLearningAndTracking(withMergerResolution=False)
 
-            hypothesesGraph = self.trackingApplet.topLevelOperator[lane_index].HypothesesGraph.value
-            #hypothesesGraph.insertEnergies()
+            hypothesesGraph = self.trackingApplet.topLevelOperator[lane_index].LearningHypothesesGraph.value
             hypothesesGraph.insertSolution(self.result)
             hypothesesGraph.computeLineage()
             solution = hypothesesGraph.getSolutionDictionary()
             annotations = self.trackingApplet.topLevelOperator[lane_index].Annotations.value
 
-            # assuming one crop == the whole dataset
-            key = list(annotations.keys())[0]
-            annotations = annotations[key]
             self.trackingApplet.topLevelOperator[lane_index].insertAnnotationsToHypothesesGraph(hypothesesGraph,annotations,misdetectionLabel=-1)
             hypothesesGraph.computeLineage()
             solutionFromAnnotations = hypothesesGraph.getSolutionDictionary()
