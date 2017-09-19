@@ -27,8 +27,8 @@ class IIBoostFeatureSelectionApplet( FeatureSelectionApplet ):
     This applet is a subclass of the standard feature selection applet from the pixel classification workflow,
     except it uses a variant of the top-level operator which adds channels needed for the IIBoost classifier.  
     """
-    def __init__( self, workflow, guiName, projectFileGroupName, filter_implementation='Original' ):
-        super(IIBoostFeatureSelectionApplet, self).__init__(workflow, guiName, projectFileGroupName, filter_implementation='Original')
+    def __init__(self, workflow, guiName, projectFileGroupName):
+        super(IIBoostFeatureSelectionApplet, self).__init__(workflow, guiName, projectFileGroupName)
 
     @property
     def singleLaneOperatorClass(self):

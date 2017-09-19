@@ -1,0 +1,9 @@
+[Core]
+Name = JSON
+Module = tracking_json_export
+
+[Documentation]
+Author = Carsten Haubold
+Version = 0.1
+Website = ilastik.org
+Description = JSON export for use of some tracking analysis tools developed by the ilastik tracking guys. <br> <br> <b>Usage: </b> Select the folder in which two files will be exported: <ul> <li> The tracking <b>hypotheses graph</b> will have the suffix and extension <i> _graph.json </i>. </li> <li> The tracking <b>result</b> with suffix and extension <i> _result.json </i>. </li> </ul> <br><br> Both contain <i>segmentationHypotheses</i> (or <i>detections</i>), <i>linkingHypotheses</i>, and possibly <i>divisions</i>. Each detection is assigned a globally unique <i>id</i>, and in the graph there is a <i>traxelToUniqueId</i> mapping from timestep and object ID inside ilastik to those unique ids. The graph also contains the costs of different configurations of every detection, division, and link. The result assigns a state to each of them.

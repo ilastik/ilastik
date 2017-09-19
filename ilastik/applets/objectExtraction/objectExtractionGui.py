@@ -588,7 +588,7 @@ class ObjectExtractionGui(LayerViewerGui):
 
         def _handle_all_finished(*args):
             self._lock.acquire()
-            self.applet.progressSignal.emit(100)
+            self.applet.progressSignal(100)
             self.topLevelOperatorView._opRegFeats.fixed = True
             feats = self.topLevelOperatorView.RegionFeatures[0].wait()
             nfeatures = 0
@@ -610,11 +610,11 @@ class ObjectExtractionGui(LayerViewerGui):
                 logger.error('Object Extraction: failed.')
                 success = False
 
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
             self._lock.release()
 
-        self.applet.progressSignal.emit(0)
-        self.applet.progressSignal.emit(-1)
+        self.applet.progressSignal(0)
+        self.applet.progressSignal(-1)
 
         reqs = []
         self.already_done = 0

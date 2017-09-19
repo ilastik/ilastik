@@ -34,7 +34,7 @@ import vigra
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpValueCache, \
-                               OpArrayCache, OpMultiArraySlicer2, \
+                               OpBlockedArrayCache, OpMultiArraySlicer2, \
                                OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator, \
                                OpReorderAxes
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
@@ -51,13 +51,17 @@ from ilastik.utility import OpMultiLaneWrapper
 import threading
 from ilastik.applets.base.applet import DatasetConstraintError
 
+
 class OpVolumeOperator(Operator):
     name = "OpVolumeOperator"
     description = "Do Operations involving the whole volume"
-    inputSlots = [InputSlot("Input"), InputSlot("Function")]
-    outputSlots = [OutputSlot("Output")]
-    DefaultBlockSize = 128
-    blockShape = InputSlot(value = DefaultBlockSize)
+
+    Input = InputSlot()
+    Function = InputSlot()
+    Output = OutputSlot()
+
+    DefaultBlockSize = (128, 128, None)
+    blockShape = InputSlot(value=DefaultBlockSize)
 
     def setupOutputs(self):
         testInput = numpy.ones((3,3))
@@ -74,12 +78,21 @@ class OpVolumeOperator(Operator):
     def execute(self, slot, subindex, roi, result):
         with self._lock:
             if self.cache is None:
-                fullBlockShape = numpy.array([self.blockShape.value for i in self.Input.meta.shape])
-                fun = self.inputs["Function"].value
+                shape = self.Input.meta.shape
+                # self.blockshape has None in the last dimension to indicate that it should not be
+                # handled block-wise. None is replaced with the image shape in the respective axis.
+                fullBlockShape = []
+                for u, v in zip(self.blockShape.value, shape):
+                    if u is not None:
+                        fullBlockShape.append(u)
+                    else:
+                        fullBlockShape.append(v)
+                fullBlockShape = numpy.array(fullBlockShape, dtype=numpy.float64)
+
                 #data = self.inputs["Input"][:].wait()
                 #split up requests into blocks
-                shape = self.Input.meta.shape
-                numBlocks = numpy.ceil(old_div(shape,(1.0*fullBlockShape))).astype("int")
+
+                numBlocks = numpy.ceil(shape / fullBlockShape).astype("int")
                 blockCache = numpy.ndarray(shape = numpy.prod(numBlocks), dtype=self.Output.meta.dtype)
                 pool = RequestPool()
                 #blocks holds the different roi keys for each of the blocks
@@ -91,11 +104,12 @@ class OpVolumeOperator(Operator):
                     stop = numpy.min(numpy.vstack((stop, shape)), axis=0)
                     blockKey = roiToSlice(start, stop)
                     blockKeys.append(blockKey)
-                
+
+                fun = self.inputs["Function"].value
                 def predict_block(i):
                     data = self.Input[blockKeys[i]].wait()
                     blockCache[i] = fun(data)
-                    
+
                 for i,f in enumerate(blockCache):
                     req = pool.request(partial(predict_block,i))
 
@@ -111,11 +125,14 @@ class OpVolumeOperator(Operator):
             self.outputs["Output"].setDirty( slice(None) )
         self.cache = None
 
+
 class OpUpperBound(Operator):
     name = "OpUpperBound"
     description = "Calculate the upper bound of the data for correct normalization of the output"
-    inputSlots = [InputSlot("Sigma", stype = "float", value=2.0)]
-    outputSlots = [OutputSlot("UpperBound")]
+
+    Sigma = InputSlot(stype="float", value=2.0)
+
+    UpperBound = OutputSlot()
 
     def setupOutputs(self):
         self.UpperBound.meta.dtype = numpy.float32
@@ -159,16 +176,17 @@ class OpMean(Operator):
         key = roi.toSlice()
         self.Output.setDirty( key[:-1] )
 
+
 class OpBoxViewer( Operator ):
     name = "OpBoxViewer"
     description = "DummyOperator to serialize view-boxes"
 
-    inputSlots = [
-        #InputSlot("Images", level=1),
-        InputSlot("rois", level = 1, stype="list", value=[] )]
+    # Images = InputSlot(level=1),
+    Rois = InputSlot(level=1, stype="list", value=[])
 
     def propagateDirty(self, slot, subindex, roi):
         pass
+
 
 class OpCounting( Operator ):
     """
@@ -566,24 +584,24 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.PredictionProbabilities.connect( self.predict.PMaps )
 
         # Prediction cache for the GUI
-        self.prediction_cache_gui = OpArrayCache( parent=self )
+        self.prediction_cache_gui = OpBlockedArrayCache( parent=self )
         self.prediction_cache_gui.name = "prediction_cache_gui"
         self.prediction_cache_gui.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.prediction_cache_gui.inputs["Input"].connect( self.predict.PMaps )
-        self.prediction_cache_gui.blockShape.setValue(128)
-        
+        self.prediction_cache_gui.BlockShape.setValue((128, 128, None))
+
         ## Also provide each prediction channel as a separate layer (for the GUI)
         self.opUncertaintyEstimator = OpEnsembleMargin( parent=self )
         self.opUncertaintyEstimator.Input.connect( self.prediction_cache_gui.Output )
 
         ## Cache the uncertainty so we get zeros for uncomputed points
-        self.opUncertaintyCache = OpArrayCache( parent=self )
+        self.opUncertaintyCache = OpBlockedArrayCache( parent=self )
         self.opUncertaintyCache.name = "opUncertaintyCache"
-        self.opUncertaintyCache.blockShape.setValue(128)
+        self.opUncertaintyCache.BlockShape.setValue((128, 128, None))
         self.opUncertaintyCache.Input.connect( self.opUncertaintyEstimator.Output )
         self.opUncertaintyCache.fixAtCurrent.connect( self.FreezePredictions )
         self.UncertaintyEstimate.connect( self.opUncertaintyCache.Output )
-        
+
         self.meaner = OpMean(parent = self)
         self.meaner.Input.connect(self.prediction_cache_gui.Output)
 

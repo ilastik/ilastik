@@ -38,23 +38,19 @@ from lazyflow.operators import OpPixelOperator
 from ilastik.applets.counting.countingsvr import SVR
 
 
-
-from lazyflow.operators.imgFilterOperators import OpGaussianSmoothing
+from lazyflow.operators.vigraOperators import OpGaussianSmoothing
 
 
 class OpLabelPreviewer(OpGaussianSmoothing):
     name = "LabelPreviewer"
 
+
 class OpLabelPreviewerRefactored(Operator):
 
     name = "LabelPreviewer"
 
-    inputSlots = [InputSlot("Images", level=1)]
-    outputSlots = [OutputSlot("Output", level=1)]
-
-
-
-
+    Images = InputSlot(level=1)
+    Output = OutputSlot(level=1)
 
 
 def checkOption(reqlist):
@@ -66,28 +62,30 @@ def checkOption(reqlist):
     return True
 
 
-
 class OpTrainCounter(Operator):
     name = "TrainCounter"
     description = "Train a random forest on multiple images"
     category = "Learning"
 
-    inputSlots = [InputSlot("Images", level=1),
-                  InputSlot("ForegroundLabels", level=1), 
-                  InputSlot("BackgroundLabels", level=1),
-                  InputSlot("fixClassifier", stype="bool"),
-                  InputSlot("nonzeroLabelBlocks", level=1),
-                  InputSlot("Sigma", stype = "float", value=2.0), 
-                  InputSlot("Epsilon",  stype = "float"), 
-                  InputSlot("C",  stype = "float"), 
-                  InputSlot("SelectedOption", stype = "object"),
-                  InputSlot("Ntrees", stype = "int"), #RF parameter
-                  InputSlot("MaxDepth", stype = "object"), #RF parameter, None means grow until purity
-                  InputSlot("BoxConstraintRois", level = 1, stype = "list", value = []),
-                  InputSlot("BoxConstraintValues", level = 1, stype = "list", value = []),
-                  InputSlot("UpperBound")
-                 ]
-    outputSlots = [OutputSlot("Classifier")]
+    # Definition of inputs:
+    Images = InputSlot(level=1)
+    ForegroundLabels = InputSlot(level=1)
+    BackgroundLabels = InputSlot(level=1)
+    nonzeroLabelBlocks = InputSlot(level=1)
+
+    fixClassifier = InputSlot(stype="bool")
+    Sigma = InputSlot(stype="float", value=2.0)
+    Epsilon = InputSlot(stype="float")
+    C = InputSlot(stype="float")
+    SelectedOption = InputSlot(stype="object")
+    Ntrees = InputSlot(stype="int")  # RF parameter
+    MaxDepth = InputSlot(stype="object")  # RF parameter, None means grow until purity
+    BoxConstraintRois = InputSlot(level=1, stype="list", value=[])
+    BoxConstraintValues = InputSlot(level=1, stype="list", value=[])
+    UpperBound = InputSlot()
+
+    # Definition of the outputs:
+    Classifier = OutputSlot()
     options = SVR.options
     availableOptions = [checkOption(option["req"]) for option in SVR.options]
     numRegressors = 4
@@ -173,7 +171,7 @@ class OpTrainCounter(Operator):
         for i,labels in enumerate(self.inputs["ForegroundLabels"]):
             if labels.meta.shape is not None:
                 opGaussian = OpGaussianSmoothing(parent = self, graph = self.graph)
-                opGaussian.Sigma.setValue(self.Sigma.value)
+                opGaussian.sigma.setValue(self.Sigma.value)
                 opGaussian.Input.connect(self.ForegroundLabels[i])
                 blocks = self.inputs["nonzeroLabelBlocks"][i][0].wait()
                 
@@ -363,14 +361,18 @@ if not any(OpTrainCounter.availableOptions):
     raise ImportError("None of the implemented methods are available")
 
 
-
 class OpPredictCounter(Operator):
     name = "PredictCounter"
     description = "Predict on multiple images"
     category = "Learning"
 
-    inputSlots = [InputSlot("Image"),InputSlot("Classifier"),InputSlot("LabelsCount",stype='integer')]
-    outputSlots = [OutputSlot("PMaps")]
+    # Definition of inputs:
+    Image = InputSlot()
+    Classifier = InputSlot()
+    LabelsCount = InputSlot(stype='integer')
+
+    # Definition of outputs:
+    PMaps = OutputSlot()
 
     def setupOutputs(self):
         nlabels=self.inputs["LabelsCount"].value

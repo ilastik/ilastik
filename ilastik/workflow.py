@@ -208,8 +208,8 @@ class Workflow( Operator ):
         self.imageNameListSlot.notifyRemove( self._removeImageLane )
         
         for applet in self.applets:
-            applet.appletStateUpdateRequested.connect( self.handleAppletStateUpdateRequested )
-            applet.sendMessageToServer.connect( self.handleSendMessageToServer )
+            applet.appletStateUpdateRequested.subscribe( self.handleAppletStateUpdateRequested )
+            applet.sendMessageToServer.subscribe( self.handleSendMessageToServer )
         
     def _createNewImageLane(self, multislot, index, *args):
         """

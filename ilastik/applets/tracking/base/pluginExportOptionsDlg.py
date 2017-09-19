@@ -27,7 +27,7 @@ import numpy
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, QObject, QEvent
-from PyQt5.QtWidgets import QDialog, QComboBox, QLabel, QHBoxLayout, QVBoxLayout, QFrame
+from PyQt5.QtWidgets import QDialog, QComboBox, QLabel, QHBoxLayout, QVBoxLayout, QFrame, QFileDialog
 from ilastik.plugins import pluginManager
 
 try:
@@ -36,65 +36,13 @@ try:
 except:
     _has_lazyflow = False
 
-#**************************************************************************
-# Model operator interface ABC
-#**************************************************************************
-if _has_lazyflow:
-    class ExportOperatorABC(Operator):
-        """
-        The export dialog is designed to work with any operator that satisfies this ABC interface.
-        """
-        # Operator.__metaclass__ already inherits ABCMeta
-        # __metaclass__ = ABCMeta
-        
-        # The original image, which we'll transform and export.
-        Input = InputSlot()
-    
-        # See OpFormattedDataExport for details
-        TransactionSlot = InputSlot()
-    
-        # Subregion params
-        RegionStart = InputSlot(optional=True)
-        RegionStop = InputSlot(optional=True)
-    
-        # Normalization params    
-        InputMin = InputSlot(optional=True)
-        InputMax = InputSlot(optional=True)
-        ExportMin = InputSlot(optional=True)
-        ExportMax = InputSlot(optional=True)
-    
-        ExportDtype = InputSlot(optional=True)
-        OutputAxisOrder = InputSlot(optional=True)
-        
-        # File settings
-        OutputFilenameFormat = InputSlot(value='RESULTS_{roi}') # A format string allowing {roi}, {x_start}, {x_stop}, etc.
-        OutputInternalPath = InputSlot(value='exported_data')
-        OutputFormat = InputSlot(value='hdf5')
-    
-        ConvertedImage = OutputSlot() # Preprocessed image, BEFORE axis reordering
-        ImageToExport = OutputSlot() # Preview of the pre-processed image that will be exported
-        ExportPath = OutputSlot() # Location of the saved file after export is complete.
-        FormatSelectionErrorMsg = OutputSlot()
-    
-        @classmethod
-        def __subclasshook__(cls, C):
-            # Must have all the required input and output slots.
-            if cls is ExportOperatorABC:
-                for slot in cls.inputSlots:
-                    if not hasattr(C, slot.name) or not isinstance(getattr(C, slot.name), InputSlot):
-                        return False
-                for slot in cls.outputSlots:
-                    if not hasattr(C, slot.name) or not isinstance(getattr(C, slot.name), OutputSlot):
-                        return False
-                return True
-            return NotImplemented
 
 #**************************************************************************
 # DataExportOptionsDlg
 #**************************************************************************
 class PluginExportOptionsDlg(QDialog):
     
-    def __init__(self, parent, opDataExport):
+    def __init__(self, parent, topLevelOp=None):
         """
         Constructor.
         
@@ -108,15 +56,18 @@ class PluginExportOptionsDlg(QDialog):
         super( PluginExportOptionsDlg, self ).__init__(parent)
         uic.loadUi( os.path.splitext(__file__)[0] + '.ui', self )
 
-        self._opDataExport = opDataExport
-        assert isinstance( opDataExport, ExportOperatorABC ), \
-            "Cannot use {} as an export operator.  "\
-            "It doesn't match the required interface".format( type(opDataExport) )
+        assert parent is not None or topLevelOp is not None, "Need either a parent widget or a top level operator!"
 
-        self.pluginName = parent.topLevelOperator.SelectedPlugin.value
+        if topLevelOp is None:
+            self._topLevelOp = parent.topLevelOperator
+        else:
+            self._topLevelOp = topLevelOp
+
+        self.pluginName = self._topLevelOp.SelectedPlugin.value
+        
         # Connect the 'transaction slot'.
         # All slot changes will occur immediately
-        opDataExport.TransactionSlot.setValue(True)
+        self._topLevelOp.TransactionSlot.setValue(True)
 
         # connect the Ok cancel buttons
         self.buttonBox.accepted.connect(self.accept)
@@ -124,19 +75,21 @@ class PluginExportOptionsDlg(QDialog):
 
         # Init child widgets
         self._initMetaInfoText()
-        self._initFileOptionsWidget()
+        self._initFileOptions()
 
         # See self.eventFilter()
+        self.filepathEdit.installEventFilter(self)
         self.installEventFilter(self)
 
         # plugin was selected if this dialog was opened
-        parent.pluginWasSelected = True
+        if parent is not None:
+            parent.pluginWasSelected = True
 
         # Plugin Dropdown
-        availableExportPlugins = self._getAvailablePlugins()
+        availableExportPlugins = self.getAvailablePlugins()
         def onSelectedExportPluginChanged(pluginText):
-            parent.topLevelOperator.SelectedPlugin.setValue(pluginText)
-            self.pluginName = parent.topLevelOperator.SelectedPlugin.value
+            self._topLevelOp.SelectedPlugin.setValue(pluginText)
+            self.pluginName = self._topLevelOp.SelectedPlugin.value
             self._initMetaInfoText()
 
         self.pluginDropdown = self.comboBox
@@ -146,13 +99,14 @@ class PluginExportOptionsDlg(QDialog):
         try:
             # select the combo box entry that represents the value from SelectedPlugin,
             # which triggers displaying the appropriate description (because of the connect above)
-            selectedIndex = availableExportPlugins.index(parent.topLevelOperator.SelectedPlugin.value)
+            selectedIndex = availableExportPlugins.index(self._topLevelOp.SelectedPlugin.value)
             self.pluginDropdown.setCurrentIndex(selectedIndex)
         except ValueError:
             pass
             # some unknown value was selected before, we ignore that case and simply go with the default selection then
 
-    def _getAvailablePlugins(self):
+    @classmethod
+    def getAvailablePlugins(cls):
         '''
         Checks whether any plugins are found and whether we use the hytra backend.
         Returns the list of available plugins
@@ -168,13 +122,21 @@ class PluginExportOptionsDlg(QDialog):
             return []
 
     def eventFilter(self, watched, event):
-        # Ignore 'enter' keypress events, since the user may just be entering settings.
-        # The user must manually click the 'OK' button to close the dialog.
-        if watched == self and \
+        # Apply the new path if the user presses 
+        #  'enter' or clicks outside the filepathe editbox
+        if watched == self.filepathEdit:
+            if event.type() == QEvent.FocusOut or \
+               ( event.type() == QEvent.KeyPress and \
+                 ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return) ):
+                newpath = self.filepathEdit.text()
+                self._filepathSlot.setValue( newpath )
+                return True
+        elif watched == self and \
            event.type() == QEvent.KeyPress and \
            ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
             return True
         return False
+
 
     #**************************************************************************
     # Meta-info (display only)
@@ -185,30 +147,64 @@ class PluginExportOptionsDlg(QDialog):
         self.metaInfoTextEdit.setHtml(plugin.description)
 
     #**************************************************************************
-    # File format and options
+    # File path selection and options
     #**************************************************************************
-    def _initFileOptionsWidget(self):
-        opDataExport = self._opDataExport
-        self.exportFileOptionsWidget.initSlot( opDataExport.OutputFilenameFormat, '' )
+    def _initFileOptions(self):
+        self._filepathSlot = self._topLevelOp.OutputFilenameFormat
+        self.fileSelectButton.clicked.connect( self._browseForFilepath )
+
+        self._file_filter = ''
+
+    def showEvent(self, event):
+        super(PluginExportOptionsDlg, self).showEvent(event)
+        self.updateFromSlot()
+        
+    def updateFromSlot(self):
+        if self._filepathSlot.ready():
+            file_path = self._filepathSlot.value
+            file_path = os.path.splitext(file_path)[0]
+            self.filepathEdit.setText( file_path )
+            
+            # Re-configure the slot in case we changed the extension
+            self._filepathSlot.setValue( file_path )
+    
+    def _browseForFilepath(self):
+        starting_dir = os.path.expanduser("~")
+        if self._filepathSlot.ready():
+            starting_dir = os.path.split(self._filepathSlot.value)[-1]
+        
+        dlg = QFileDialog( self, "Export Location", starting_dir, self._file_filter )
+        dlg.setAcceptMode(QFileDialog.AcceptSave)
+        if not dlg.exec_():
+            return
+        
+        exportPath = dlg.selectedFiles()[0]
+        self._filepathSlot.setValue( exportPath )
+        self.filepathEdit.setText( exportPath )
 
 #**************************************************************************
 # Quick debug
 #**************************************************************************
 if __name__ == "__main__":
     import vigra
-    from PyQt4.QtGui import QApplication
+    from PyQt5.QtWidgets import QApplication
     from lazyflow.graph import Graph
-    from lazyflow.operators.ioOperators import OpFormattedDataExport
+    from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 
     data = numpy.zeros( (10,20,30,3), dtype=numpy.float32 )
     data = vigra.taggedView(data, 'xyzc')
 
-    op = OpFormattedDataExport( graph=Graph() )
-    op.Input.setValue( data )
-    op.TransactionSlot.setValue(True)
+    availablePlugins = PluginExportOptionsDlg.getAvailablePlugins()
 
+    g = Graph()
+    op = OpTrackingBaseDataExport(graph=g)
+    # op.Input.setValue(data)
+    op.SelectedPlugin.setValue(availablePlugins[0])
+    op.SelectedExportSource.setValue(OpTrackingBaseDataExport.PluginOnlyName)
+    op.TransactionSlot.setValue(True)
+    
     app = QApplication([])
-    w = DataExportOptionsDlg(None, op)
+    w = PluginExportOptionsDlg(None, topLevelOp=op)
     w.show()
     
     app.exec_()

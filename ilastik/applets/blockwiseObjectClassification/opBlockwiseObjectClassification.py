@@ -29,7 +29,7 @@ import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.request import RequestLock, RequestPool
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, roiToSlice, TinyVector
-from lazyflow.operators import OpSubRegion, OpMultiArrayStacker, OpArrayCache
+from lazyflow.operators import OpSubRegion, OpMultiArrayStacker, OpBlockedArrayCache
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 
@@ -131,7 +131,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opPredictionImage.Features.connect( self._opExtract.RegionFeatures )
         self._opPredictionImage.ObjectMap.connect( self._opPredict.Predictions )
 
-        self._opPredictionCache = OpArrayCache( parent=self )
+        self._opPredictionCache = OpBlockedArrayCache( parent=self )
         self._opPredictionCache.Input.connect( self._opPredictionImage.Output )
         
         self._opProbabilityChannelsToImage = OpMultiRelabelSegmentation( parent=self )
@@ -143,7 +143,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opProbabilityChannelStacker.Images.connect( self._opProbabilityChannelsToImage.Output )
         self._opProbabilityChannelStacker.AxisFlag.setValue('c')
         
-        self._opProbabilityCache = OpArrayCache( parent=self )
+        self._opProbabilityCache = OpBlockedArrayCache( parent=self )
         self._opProbabilityCache.Input.connect( self._opProbabilityChannelStacker.Output )
 
     def setupOutputs(self):
@@ -175,8 +175,8 @@ class OpSingleBlockObjectPrediction( Operator ):
         self.ProbabilityChannelImage.meta.shape = tuple(probability_shape)
 
         # Cache the entire block
-        self._opPredictionCache.blockShape.setValue( self._opPredictionCache.Input.meta.shape )
-        self._opProbabilityCache.blockShape.setValue( self._opProbabilityCache.Input.meta.shape )
+        self._opPredictionCache.BlockShape.setValue( self._opPredictionCache.Input.meta.shape )
+        self._opProbabilityCache.BlockShape.setValue( self._opProbabilityCache.Input.meta.shape )
 
         # Forward dirty regions to our own output
         self._opPredictionImage.Output.notifyDirty( self._handleDirtyPrediction )
@@ -285,7 +285,11 @@ class OpBlockwiseObjectClassification( Operator ):
 
         raw_ruprp = self.RawImage.meta.ram_usage_per_requested_pixel
         binary_ruprp = self.BinaryImage.meta.ram_usage_per_requested_pixel
-        prediction_ruprp = max( raw_ruprp, binary_ruprp )
+        try:
+            prediction_ruprp = max( raw_ruprp, binary_ruprp )
+        except Exception:
+            prediction_ruprp = None
+            
         self.PredictionImage.meta.ram_usage_per_requested_pixel = prediction_ruprp
 
         self.ProbabilityChannelImage.meta.assignFrom( self.RawImage.meta )

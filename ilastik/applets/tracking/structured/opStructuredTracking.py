@@ -17,6 +17,7 @@ from ilastik.utility.progress import DefaultProgressVisitor, CommandLineProgress
 import logging
 logger = logging.getLogger(__name__)
 
+from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
 try:
     import multiHypoTracking_with_cplex as mht
 except ImportError:
@@ -25,18 +26,6 @@ except ImportError:
     except ImportError:
         logger.warning("Could not find any ILP solver")
 
-try:
-    import hytra
-    WITH_HYTRA = True
-except ImportError as e:
-    WITH_HYTRA = False
-
-if WITH_HYTRA:
-    from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
-else:
-    # Use old PgmLink tracking operator if we can't import Hytra (When OS is Windows)
-    from ilastik.applets.tracking.conservation.opConservationTrackingPgmLink import OpConservationTrackingPgmLink as OpConservationTracking
-    logger.info("Using old conservation tracking workflow (PgmLink)")
 
 class OpStructuredTracking(OpConservationTracking):
     Labels = InputSlot(stype=Opaque, rtype=List)
@@ -128,13 +117,9 @@ class OpStructuredTracking(OpConservationTracking):
         if not withBatchProcessing:
             gui = self.parent.parent.trackingApplet._gui.currentGui()
 
-        if WITH_HYTRA:
-            self.progressWindow = progressWindow
-            self.progressVisitor=progressVisitor
-        else:
-            self.progressWindow = None
-            self.progressVisitor=DefaultProgressVisitor()
-
+        self.progressWindow = progressWindow
+        self.progressVisitor=progressVisitor
+        
         emptyAnnotations = False
         empty = self.Annotations.value["divisions"]=={} and self.Annotations.value["labels"]=={}
         if empty and not withBatchProcessing:

@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 from abc import ABCMeta
 
 from ilastik.config import cfg as ilastik_config
-from ilastik.utility.simpleSignal import SimpleSignal
+from lazyflow.utility.orderedSignal import OrderedSignal
 from ilastik.utility.maybe import maybe
 import os
 import sys
@@ -658,7 +658,7 @@ class SerialPickledValueSlot(SerialSlot):
         val = subgroup[()]
         if isinstance(val, numpy.void):
             val = val.tobytes()
-        slot.setValue(pickle.loads(val))
+        slot.setValue(pickle.loads(val, encoding='latin1'))
 
 
 class SerialCountingSlot(SerialSlot):
@@ -785,7 +785,7 @@ class SerialDictSlot(SerialSlot):
                 if isinstance(value, bytes):
                     # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
                     value = value.decode('utf-8')
-                
+
             result[self.transform(key)] = value
         return result
 
@@ -925,7 +925,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         :param slots: a list of SerialSlots
 
         """
-        self.progressSignal = SimpleSignal() # Signature: emit(percentComplete)
+        self.progressSignal = OrderedSignal()  # Signature: __call__(percentComplete)
         self.base_initialized = True
         self.topGroupName = topGroupName
         self.serialSlots = maybe(slots, [])
@@ -999,7 +999,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
 
         progress = 0
-        self.progressSignal.emit(progress)
+        self.progressSignal(progress)
 
         # Set the version
         key = 'StorageVersion'
@@ -1011,12 +1011,12 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
             for ss in self.serialSlots:
                 ss.serialize(topGroup)
                 progress += inc
-                self.progressSignal.emit(progress)
+                self.progressSignal(progress)
 
             # Call the subclass to do remaining work, if any
             self._serializeToHdf5(topGroup, hdf5File, projectFilePath)
         finally:
-            self.progressSignal.emit(100)
+            self.progressSignal(100)
 
     def deserializeFromHdf5(self, hdf5File, projectFilePath, headless = False):
         """Read the the current applet state from the given hdf5File
@@ -1036,7 +1036,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
             (in headless mode corrupted files cannot be fixed via the GUI)
         
         """
-        self.progressSignal.emit(0)
+        self.progressSignal(0)
 
         # If the top group isn't there, call initWithoutTopGroup
         try:
@@ -1051,7 +1051,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
                 inc = self.progressIncrement()
                 for ss in self.serialSlots:
                     ss.deserialize(topGroup)
-                    self.progressSignal.emit(inc)
+                    self.progressSignal(inc)
 
                 # Call the subclass to do remaining work
                 if self.caresOfHeadless:
@@ -1061,8 +1061,8 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
             else:
                 self.initWithoutTopGroup(hdf5File, projectFilePath)
         finally:
-            self.progressSignal.emit(100)
-    
+            self.progressSignal(100)
+
     def repairFile(self,path,filt = None):
         """get new path to lost file"""
         
@@ -1071,10 +1071,10 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         text = "The file at {} could not be found any more. Do you want to search for it at another directory?".format(path)
         logger.info(text)
         c = QMessageBox.critical(None, "update external data",text, QMessageBox.Ok | QMessageBox.Cancel)
-        
+
         if c == QMessageBox.Cancel:
             raise RuntimeError("Could not find external data: " + path)
-        
+
         options = QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
             options |=  QFileDialog.DontUseNativeDialog
@@ -1083,18 +1083,18 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
             raise RuntimeError("Could not find external data: " + path)
         else:
             return fileName
-        
+
     #######################
     # Optional methods    #
     #######################
-    
+
     def initWithoutTopGroup(self, hdf5File, projectFilePath):
         """Optional override for subclasses. Called when there is no
         top group to deserialize.
 
         """
         pass
-    
+
     def updateWorkingDirectory(self,newdir,olddir):
         """Optional override for subclasses. Called when the
         working directory is changed and relative paths have

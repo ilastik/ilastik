@@ -6,7 +6,7 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
-from lazyflow.operators import OpArrayCache
+from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.roi import roiToSlice
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction    ,\
     default_features_key, OpAdaptTimeListRoi
@@ -329,7 +329,7 @@ class OpCachedDivisionFeatures(Operator):
         self._opDivisionFeatures.RegionFeaturesVigra.connect(self.RegionFeaturesVigra)
 
         # Hook up the cache.
-        self._opCache = OpArrayCache(parent=self)
+        self._opCache = OpBlockedArrayCache(parent=self)
         self._opCache.name = "OpCachedDivisionFeatures._opCache"
         self._opCache.Input.connect(self._opDivisionFeatures.BlockwiseDivisionFeatures)
 
@@ -349,7 +349,7 @@ class OpCachedDivisionFeatures(Operator):
         
         # Every value in the region features output is cached separately as it's own "block"
         blockshape = (1,) * len(self._opDivisionFeatures.BlockwiseDivisionFeatures.meta.shape)
-        self._opCache.blockShape.setValue(blockshape)
+        self._opCache.BlockShape.setValue(blockshape)
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.CacheInput

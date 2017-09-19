@@ -35,7 +35,7 @@ from lazyflow.request import Request, RequestPool
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List, SubRegion
 from lazyflow.roi import roiToSlice, sliceToRoi
-from lazyflow.operators import OpLabelVolume, OpCompressedCache, OpArrayCache
+from lazyflow.operators import OpLabelVolume, OpCompressedCache, OpBlockedArrayCache
 from itertools import groupby, count
 
 import logging
@@ -125,9 +125,9 @@ class OpCachedRegionFeatures(Operator):
     #
     # RawImage -----   blockshape=(t,)=(1,)
     #               \                        \
-    # LabelImage ----> OpRegionFeatures ----> OpArrayCache --> Output
-    #                                                     \
-    #                                                      --> CleanBlocks
+    # LabelImage ----> OpRegionFeatures ----> OpBlockedArrayCache --> Output
+    #                                                            \
+    #                                                             --> CleanBlocks
 
     def __init__(self, *args, **kwargs):
         super(OpCachedRegionFeatures, self).__init__(*args, **kwargs)
@@ -139,7 +139,7 @@ class OpCachedRegionFeatures(Operator):
         self._opRegionFeatures.Features.connect(self.Features)
 
         # Hook up the cache.
-        self._opCache = OpArrayCache(parent=self)
+        self._opCache = OpBlockedArrayCache(parent=self)
         self._opCache.name = "OpCachedRegionFeatures._opCache"
         self._opCache.Input.connect(self._opRegionFeatures.Output)
 
@@ -163,7 +163,7 @@ class OpCachedRegionFeatures(Operator):
 
         # Every value in the regionfeatures output is cached seperately as it's own "block"
         blockshape = (1,) * len(self._opRegionFeatures.Output.meta.shape)
-        self._opCache.blockShape.setValue(blockshape)
+        self._opCache.BlockShape.setValue(blockshape)
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.CacheInput

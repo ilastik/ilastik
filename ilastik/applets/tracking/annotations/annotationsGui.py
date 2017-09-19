@@ -1101,11 +1101,11 @@ class AnnotationsGui(LayerViewerGui):
         def _handle_finished(*args):
             self._enableButtons(enable=True)
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()
-            
+            self.applet.appletStateUpdateRequested()
+
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
             msg = "Exception raised during tracking.  See traceback above.\n"
             log_exception( logger, msg, exc_info )
         
@@ -1114,7 +1114,7 @@ class AnnotationsGui(LayerViewerGui):
                 self._drawer.activeTrackBox.setCurrentIndex(i)
 
         self.applet.busy = True
-        self.applet.appletStateUpdateRequested.emit()
+        self.applet.appletStateUpdateRequested()
         self._enableButtons(enable=False)
         req = Request( _subtracking )
         req.notify_failed( _handle_failure )
@@ -1335,8 +1335,8 @@ class AnnotationsGui(LayerViewerGui):
             out_fn += ".csv"
         
         self.applet.busy = True
-        self.applet.appletStateUpdateRequested.emit()
-        try:            
+        self.applet.appletStateUpdateRequested()
+        try:
             import csv
             with open(out_fn, 'w') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
@@ -1347,7 +1347,7 @@ class AnnotationsGui(LayerViewerGui):
                 
         finally:
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()  
+            self.applet.appletStateUpdateRequested()
     
     def _onExportMergersButtonPressed(self):        
         options = QtWidgets.QFileDialog.Options()
@@ -1362,8 +1362,8 @@ class AnnotationsGui(LayerViewerGui):
             out_fn += ".csv"
         
         self.applet.busy = True
-        self.applet.appletStateUpdateRequested.emit()
-        try:            
+        self.applet.appletStateUpdateRequested()
+        try:
             import csv
             with open(out_fn, 'w') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
@@ -1375,9 +1375,8 @@ class AnnotationsGui(LayerViewerGui):
                 
         finally:
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()            
-            
-            
+            self.applet.appletStateUpdateRequested()
+
     def _onExportButtonPressed(self):
         import h5py        
         options = QtWidgets.QFileDialog.Options()
@@ -1391,11 +1390,11 @@ class AnnotationsGui(LayerViewerGui):
         directory = str(directory)
         
         def _handle_progress(x):       
-            self.applet.progressSignal.emit(x)
+            self.applet.progressSignal(x)
             
         def _export():
             self.applet.busy = True
-            self.applet.appletStateUpdateRequested.emit()    
+            self.applet.appletStateUpdateRequested()
             oid2tids, disapps, apps, divs, moves, mergers, multiMoves = self._getEvents()
             
             num_files = float(len(list(oid2tids.keys())))
@@ -1484,18 +1483,18 @@ class AnnotationsGui(LayerViewerGui):
             self._log("-> tracking successfully exported")
         
         def _handle_finished(*args):            
-            self.applet.progressSignal.emit(100)
+            self.applet.progressSignal(100)
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()
-               
+            self.applet.appletStateUpdateRequested()
+
         def _handle_failure( exc, exc_info ):
             msg = "Exception raised during export.  See traceback above.\n"
             log_exception( logger, msg, exc_info )
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()
-            self.applet.progressSignal.emit(100)
-        
-        self.applet.progressSignal.emit(0)  
+            self.applet.appletStateUpdateRequested()
+            self.applet.progressSignal(100)
+
+        self.applet.progressSignal(0)
         req = Request( _export )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
@@ -1513,11 +1512,11 @@ class AnnotationsGui(LayerViewerGui):
             return
         
         def _handle_progress(x):       
-            self.applet.progressSignal.emit(x)
+            self.applet.progressSignal(x)
             
         def _export():
             self.applet.busy = True
-            self.applet.appletStateUpdateRequested.emit()
+            self.applet.appletStateUpdateRequested()
             divisions = self.mainOperator.divisions
             inverseDivisions = {}
             for k, vals in list(divisions.items()):
@@ -1560,20 +1559,20 @@ class AnnotationsGui(LayerViewerGui):
             
                 _handle_progress(t/num_files * 100)
             self._log("-> tracking successfully exported")
-        
+
         def _handle_finished(*args):
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()
-            self.applet.progressSignal.emit(100)
-               
+            self.applet.appletStateUpdateRequested()
+            self.applet.progressSignal(100)
+
         def _handle_failure( exc, exc_info ):
             msg = "Exception raised during export.  See traceback above.\n"
             log_exception( logger, msg, exc_info )
             self.applet.busy = False
-            self.applet.appletStateUpdateRequested.emit()
-            self.applet.progressSignal.emit(100)       
-                
-        self.applet.progressSignal.emit(0)
+            self.applet.appletStateUpdateRequested()
+            self.applet.progressSignal(100)
+
+        self.applet.progressSignal(0)
         req = Request( _export )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )

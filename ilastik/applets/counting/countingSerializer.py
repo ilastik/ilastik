@@ -24,11 +24,12 @@ from ilastik.applets.base.appletSerializer import \
     AppletSerializer, deleteIfPresent, SerialSlot, SerialCountingSlot, \
     SerialBlockSlot, SerialListSlot
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpH5WriterBigDataset
+from lazyflow.utility.orderedSignal import OrderedSignal
 import threading
-from ilastik.utility.simpleSignal import SimpleSignal
 
 import logging
 logger = logging.getLogger(__name__)
+
 
 class SerialPredictionSlot(SerialSlot):
 
@@ -39,7 +40,7 @@ class SerialPredictionSlot(SerialSlot):
             slot, inslot, name, subname, default, depends, selfdepends
         )
         self.operator = operator
-        self.progressSignal = SimpleSignal() # Signature: emit(percentComplete)
+        self.progressSignal = OrderedSignal()
 
         self._predictionStorageEnabled = False
         self._predictionStorageRequest = None
@@ -120,7 +121,7 @@ class SerialPredictionSlot(SerialSlot):
                     # Stop sending progress if we were cancelled
                     if self.predictionStorageEnabled:
                         curprogress = progress + percent * (increment / 100.0)
-                        self.progressSignal.emit(curprogress)
+                        self.progressSignal(curprogress)
                 opWriter.progressSignal.subscribe(handleProgress)
 
                 # Create the request
@@ -187,7 +188,7 @@ class SerialBoxSlot(SerialSlot):
             slot, inslot, name, subname, default, depends, selfdepends
         )
         self.operator = operator
-        self.progressSignal = SimpleSignal() # Signature: emit(percentComplete)
+        self.progressSignal = OrderedSignal()  # Signature: __call__(percentComplete)
 
     def _serialize(self, group, name, multislot):
         #create subgroups, one for every imagelane
@@ -247,7 +248,7 @@ class CountingSerializer(AppletSerializer):
         super(CountingSerializer, self).__init__(projectFileGroupName,
                                                             slots=slots)
 
-        self.predictionSlot.progressSignal.connect(self.progressSignal.emit)
+        self.predictionSlot.progressSignal.subscribe(self.progressSignal)
 
     @property
     def predictionStorageEnabled(self):
@@ -265,11 +266,12 @@ class CountingSerializer(AppletSerializer):
         serialSlots = set(self.serialSlots)
         serialSlots -= set([self.predictionSlot])
         result = any(list(ss.dirty for ss in serialSlots))
-        
+
         # Check the prediction slot, but only if prediction storage is enabled
         result |= (self.predictionSlot.dirty and self.predictionSlot.predictionStorageEnabled)
-        
+
         return result
+
 
 class Ilastik05ImportDeserializer(AppletSerializer):
     """

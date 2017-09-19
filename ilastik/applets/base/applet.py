@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.utility.simpleSignal import SimpleSignal
+from lazyflow.utility.orderedSignal import OrderedSignal
 from abc import ABCMeta, abstractproperty, abstractmethod
 from future.utils import with_metaclass
 
@@ -36,9 +36,10 @@ class Applet( with_metaclass(ABCMeta, object) ):
         Constructor.
         Subclasses must call this base implementation in their own ``__init__`` methods.
         If they fail to do so, the shell raises an exception.
-            
+
         :param name: The applet's name, which will appear as the applet drawer title.
         :param syncWithImageIndex: If True, the shell/workflow will add an image lane to this applet for each image in the interactive workflow. 
+        :param interactive: If False, the applet controls won't be shown in the applet bar GUI.
         """
         self.name = name
         self.syncWithImageIndex = syncWithImageIndex
@@ -47,30 +48,30 @@ class Applet( with_metaclass(ABCMeta, object) ):
 
         #: Progress signal.
         #: When the applet is doing something time-consuming, this signal tells the shell to show a progress bar.
-        #: Signature: ``emit(percentComplete, canceled=false)``
-        #: 
+        #: Signature: ``__call__(percentComplete, canceled=False)``
+        #:
         #: .. note:: To update the progress bar correctly, the shell expects that progress updates always 
         #:           begin with at least one zero update and end with at least one 100 update.
-        #:           That is: 
-        #:           ``self.progressSignal.emit(0)`` ... more updates ... ``self.progressSignal.emit(100)``
-        self.progressSignal = SimpleSignal()
+        #:           That is:
+        #:           ``self.progressSignal(0)`` ... more updates ... ``self.progressSignal(100)``
+        self.progressSignal = OrderedSignal()
 
         #: Shell request signal is used to trigger certain shell actions.
-        #: Signature: ``emit(request)``
+        #: Signature: ``__call__(request)``
         #:  where ``request`` is an integer corresponding to the action the shell should take.  
         #: The allowable actions are enumerated in the :py:class:`ShellRequest` class.
-        #: Example invocation: ``self.shellRequest.emit(ShellRequest.RequestSave)``
-        self.shellRequestSignal = SimpleSignal()
+        #: Example invocation: ``self.shellRequest(ShellRequest.RequestSave)``
+        self.shellRequestSignal = OrderedSignal()
 
         #: This signal informs the workflow that something has changed that might
         #:  affect the usability of various applets in the workflow.
         #: Signature: ``emit()``
-        self.appletStateUpdateRequested = SimpleSignal()
-        
+        self.appletStateUpdateRequested = OrderedSignal()
+
         #: This signal tells the shell to send the dict 'data' to the (TCP) server 
         #: 'name' (if connected)
-        #: Signature: ``emit(servername, data)``
-        self.sendMessageToServer = SimpleSignal()
+        #: Signature: ``__call__(servername, data)``
+        self.sendMessageToServer = OrderedSignal()
 
         self._base_initialized = True
 

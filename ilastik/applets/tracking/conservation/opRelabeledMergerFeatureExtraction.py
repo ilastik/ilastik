@@ -6,7 +6,6 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion, List
-from lazyflow.operators import OpArrayCache
 from lazyflow.roi import roiToSlice
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures,\
     default_features_key, OpAdaptTimeListRoi

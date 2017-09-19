@@ -27,7 +27,6 @@ import numpy
 import vigra
 
 import logging
-from lazyflow.operators import opArrayCache
 logger = logging.getLogger(__name__)
 
 #Qt
