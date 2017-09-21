@@ -1,27 +1,8 @@
-###############################################################################
-#   ilastik: interactive learning and segmentation toolkit
-#
-#       Copyright (C) 2011-2014, the ilastik developers
-#                                <team@ilastik.org>
-#
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
-#
-# In addition, as a special exception, the copyright holders of
-# ilastik give you permission to combine ilastik with applets,
-# workflows and plugins which are not covered under the GNU
-# General Public License.
-#
-# See the LICENSE file for details. License information is also available
-# on the ilastik web site at:
-#		   http://ilastik.org/license.html
-###############################################################################
 from ilastik.plugins import ObjectFeaturesPlugin
 import vigra
 import numpy
 import logging
+# from ilastik.plugins_default.vigra_objfeats_convex_hull import VigraConvexHullObjFeats
 
 logger = logging.getLogger(__name__)
 
@@ -46,14 +27,16 @@ def cleanup(d, nObjects, features):
     newkeys = set(result.keys()) & set(features)
     return dict((k, result[k]) for k in newkeys)
 
-class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
+class VigraConvexHullObjFeats3D(ObjectFeaturesPlugin):
     local_preffix = "Convex Hull " #note the space at the end, it's important
     
     ndim = None
     
     def availableFeatures(self, image, labels):
 
-        if image.ndim == 2:
+        print (image.ndim)
+
+        if image.ndim == 3:
             names = vigra.analysis.supportedConvexHullFeatures(labels)
             logger.debug('Convex Hull Features: Supported Convex Hull Features: done.')
 
@@ -135,31 +118,6 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
                 features[feature]["detailtext"] = "Combined centroid of convexity defects, which are defined as areas of the " \
                                                   "convex hull, not covered by the original object."
 
-##
-## OLD CONVEX HULL FEATURES, NO LONGER AVAILABLE IN VIGRA
-##
-
-#             if feature == "Perimeter":
-#                 features[feature]["displaytext"] = "Convex Hull Perimeter"
-#                 features[feature]["detailtext"] = "Perimeter of the convex hull of this object, computed from its interpixel contour."
-
-#             if feature == "Rugosity":
-#                 features[feature]["displaytext"] = "Rugosity"
-#                 features[feature]["detailtext"] = "The ratio between the perimeters of the convex hull and this object object (>= 1)"
-
-#             if feature == "Input Perimeter":
-#                 features[feature]["displaytext"] = "Object Perimeter"
-#                 features[feature]["detailtext"] = "Perimeter of the object, computed from the interpixel contour."
-
-#             if feature == "Input Count":
-#                 features[feature]["displaytext"] = "Object Size in Pixels"
-#                 features[feature]["detailtext"] = "Size of this object in pixels."
-#                 features[feature]["advanced"] = True #hide this feature, all it has to say is already contained in area
-
-#             if feature == "Defect Area List":
-#                 features[feature]["displaytext"] = "Largest Defect Area"
-#                 features[feature]["detailtext"] = "Areas of the three largest defects. Defects are defined as connected components in the area of the " \
-#                                                   "convex hull, not covered by the original object."
 
         return features
 
@@ -169,7 +127,7 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
         # ignoreLabel=0 ignores calculation of background label parameters
         assert isinstance(labels, vigra.VigraArray) and hasattr(labels, 'axistags')
         try:
-            result = vigra.analysis.extract2DConvexHullFeatures(labels.squeeze().astype(numpy.uint32), ignoreLabel=0)
+            result = vigra.analysis.extract3DConvexHullFeatures(labels.squeeze().astype(numpy.uint32), ignoreLabel=0)
         except:
             return dict()
         
@@ -187,7 +145,11 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
         #The background object is always present (even if there is no 0 label) and is always removed here
         return cleanup(result, nobj, features)
 
+
     def compute_global(self, image, labels, features, axes):
         
         return self._do_4d(image, labels, list(features.keys()), axes)
+
+
+
 
