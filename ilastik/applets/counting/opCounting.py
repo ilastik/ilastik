@@ -182,7 +182,7 @@ class OpBoxViewer( Operator ):
     description = "DummyOperator to serialize view-boxes"
 
     # Images = InputSlot(level=1),
-    Rois = InputSlot(level=1, stype="list", value=[])
+    rois = InputSlot(level=1, stype="list", value=[])
 
     def propagateDirty(self, slot, subindex, roi):
         pass
