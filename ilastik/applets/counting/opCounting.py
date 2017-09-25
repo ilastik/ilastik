@@ -629,7 +629,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.UncertaintyEstimate.connect( self.opUncertaintyCache.Output )
 
         self.meaner = OpMean(parent = self)
-        self.meaner.Input.connect(self.prediction_cache_gui.Output)
+        self.meaner.Input.connect(self.predict.PMaps)
 
         self.precomputed_predictions_gui = OpPrecomputedInput( ignore_dirty_input=False, parent=self )
         self.precomputed_predictions_gui.name = "precomputed_predictions_gui"
