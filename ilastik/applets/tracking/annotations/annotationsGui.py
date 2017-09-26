@@ -660,6 +660,7 @@ class AnnotationsGui(LayerViewerGui):
 
     def handleEditorLeftClick(self, position5d, globalWindowCoordiante):
 
+        print("...>",position5d, globalWindowCoordiante)
         if self.divLock:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
             if not oid == 0:
@@ -717,7 +718,8 @@ class AnnotationsGui(LayerViewerGui):
             activeTrack = activeTrack.value
             
             t = position5d[0]
-    
+
+            print("===>",activeTrack,oid,t)
             res = self._addObjectToTrack(activeTrack,oid,t)
 
             if res == -99 or res == -98:
@@ -990,6 +992,7 @@ class AnnotationsGui(LayerViewerGui):
 
     def _addObjectToTrack(self, activeTrack, oid, t):
 
+        print ("--->",activeTrack, oid, t)
         maxTime = self.topLevelOperatorView.LabelImage.meta.shape[0]
         if t not in self.mainOperator.labels.keys():
             self.mainOperator.labels[t] = {}

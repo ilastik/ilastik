@@ -28,6 +28,7 @@ import warnings
 import itertools
 from collections import defaultdict, OrderedDict
 from functools import partial
+import copy
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
@@ -104,14 +105,16 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
     LabelImages = OutputSlot(level=1)
     Predictions = OutputSlot(level=1, stype=Opaque, rtype=List)
     Probabilities = OutputSlot(level=1, stype=Opaque, rtype=List)
+    UncertaintyEstimate = OutputSlot(level=1, stype=Opaque, rtype=List)
 
     # pulls whatever is in the cache, but does not try to compute more.
     CachedProbabilities = OutputSlot(level=1, stype=Opaque, rtype=List)
-
     PredictionImages = OutputSlot(level=1) #Labels, by the majority vote
     UncachedPredictionImages = OutputSlot(level=1)
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     ProbabilityChannelImage = OutputSlot(level=1)
+    UncertaintyEstimateImage = OutputSlot(level=1)
+
     SegmentationImagesOut = OutputSlot(level=1) #input connected components
     BadObjects = OutputSlot(level=1, stype=Opaque, rtype=List) #Objects with NaN-like features
     BadObjectImages = OutputSlot(level=1) #Images, where objects with NaN-like features are black
@@ -201,7 +204,16 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         self.opProbabilityChannelsToImage.Image.connect(self.SegmentationImages)
         self.opProbabilityChannelsToImage.ObjectMaps.connect(self.opPredict.ProbabilityChannels)
         self.opProbabilityChannelsToImage.Features.connect(self.ObjectFeatures)
-        
+
+        self.UncertaintyEstimate.connect(self.opPredict.UncertaintyEstimate)
+
+        self.opUncertaintiesToImage = OpMultiLaneWrapper(OpRelabelSegmentation, **opkwargs)
+        self.opUncertaintiesToImage.Image.connect(self.SegmentationImages)
+        self.opUncertaintiesToImage.ObjectMap.connect(self.opPredict.UncertaintyEstimate)
+        self.opUncertaintiesToImage.Features.connect(self.ObjectFeatures)
+        self.UncertaintyEstimateImage.connect(self.opUncertaintiesToImage.Output)
+
+
         class OpWrappedCache(Operator):
             """
             This quick hack is necessary because there's not currently a way to wrap an OperatorWrapper.
@@ -269,6 +281,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         self.LabelImages.connect(self.opLabelsToImage.Output)
         self.Predictions.connect(self.opPredict.Predictions)
         self.Probabilities.connect(self.opPredict.Probabilities)
+
         self.CachedProbabilities.connect(self.opPredict.CachedProbabilities)
         self.PredictionImages.connect(self.opPredictionImageCache.Output)
         self.UncachedPredictionImages.connect(self.opPredictionsToImage.Output)
@@ -318,8 +331,6 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         self.LabelInputs[imageIndex].meta.axistags = None
 
         self._resetLabelInputs(imageIndex)
-        
-        
 
     def _resetLabelInputs(self, imageIndex, roi=None):
         labels = dict()
@@ -397,6 +408,12 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         self.opProbChannelsImageCache.BlockShape.setValue( (blockShapeX, blockShapeY, blockShapeZ) )
         self.MaxNumObj.setValue( len(self.LabelNames.value) - 1)
 
+        self.UncertaintyEstimate.meta.assignFrom(self.Probabilities.meta)
+        self.UncertaintyEstimateImage.meta.assignFrom(self.RawImages.meta)
+        taggedShape = self.RawImages[0].meta.getTaggedShape()
+        taggedShape['c'] = 1
+        self.UncertaintyEstimateImage.meta.shape = tuple(taggedShape.values())
+
     def setInSlot(self, slot, subindex, roi, value):
         pass
 
@@ -405,7 +422,6 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
             
             self._ambiguousLabels[subindex[0]] = self.LabelInputs[subindex[0]].value
             self._needLabelTransfer = True
-
 
     def assignObjectLabel(self, imageIndex, coordinate, assignedLabel):
         """
@@ -1064,14 +1080,18 @@ class OpObjectPredict(Operator):
     CachedProbabilities = OutputSlot(stype=Opaque, rtype=List)
     ProbabilityChannels = OutputSlot(stype=Opaque, rtype=List, level=1)
     BadObjects = OutputSlot(stype=Opaque, rtype=List)
-
-    #SegmentationThreshold = 0.5
+    UncertaintyEstimate = OutputSlot(stype=Opaque, rtype=List)
 
     def setupOutputs(self):
         self.Predictions.meta.shape = self.Features.meta.shape
         self.Predictions.meta.dtype = object
         self.Predictions.meta.axistags = None
         self.Predictions.meta.mapping_dtype = numpy.uint8
+
+        self.UncertaintyEstimate.meta.shape = self.Features.meta.shape
+        self.UncertaintyEstimate.meta.dtype = object
+        self.UncertaintyEstimate.meta.axistags = None
+        self.UncertaintyEstimate.meta.mapping_dtype = numpy.float32
 
         self.Probabilities.meta.shape = self.Features.meta.shape
         self.Probabilities.meta.dtype = object
@@ -1096,11 +1116,14 @@ class OpObjectPredict(Operator):
         self.lock = RequestLock()
         self.prob_cache = dict()
         self.bad_objects = dict()
+        self.uncertainty_estimate = dict()
 
     def execute(self, slot, subindex, roi, result):
         assert slot in [self.Predictions,
                         self.Probabilities,
+                        self.UncertaintyEstimate,
                         self.CachedProbabilities,
+                        # self.CachedUncertaintyEstimate,
                         self.ProbabilityChannels,
                         self.BadObjects]
 
@@ -1150,6 +1173,8 @@ class OpObjectPredict(Operator):
             rows, cols = replace_missing(ftmatrix)
             self.bad_objects[t] = numpy.zeros((ftmatrix.shape[0],))
             self.bad_objects[t][rows] = 1
+            self.uncertainty_estimate[t] = numpy.zeros((ftmatrix.shape[0],))
+            self.uncertainty_estimate[t][rows] = 1
             feats[t] = ftmatrix
   
         # Are there any objects to predict?
@@ -1182,6 +1207,7 @@ class OpObjectPredict(Operator):
                     self.prob_cache[t][0] = 0 # Background probability is always zero
 
             if slot == self.Probabilities:
+                # print("=====>",{ t : self.prob_cache[t] for t in times })
                 return { t : self.prob_cache[t] for t in times }
             elif slot == self.Predictions:
                 # FIXME: Support SegmentationThreshold again...
@@ -1190,7 +1216,7 @@ class OpObjectPredict(Operator):
                     prob_sum = numpy.sum(self.prob_cache[t], axis=1)
                     labels[t] = 1 + numpy.argmax(self.prob_cache[t], axis=1)
                     labels[t][0] = 0 # Background gets the zero label
-                
+
                 return labels
 
             elif slot == self.ProbabilityChannels:
@@ -1206,6 +1232,30 @@ class OpObjectPredict(Operator):
             elif slot == self.BadObjects:
                 return { t : self.bad_objects[t] for t in times }
 
+            elif slot == self.UncertaintyEstimate:
+                for t in times:
+
+                    prob = self.prob_cache[t]
+                    shape = numpy.shape(prob)
+                    res = numpy.zeros(shape=(shape[0]))
+                    if shape[1] <=1:
+                        self.uncertainty_estimate[t] = res
+                        return {t : self.uncertainty_estimate[t] for t in times}
+                    else:
+                        maxElt = numpy.argmax(self.prob_cache[t], axis=1)
+                        ones = numpy.zeros(shape)
+                        for i in range(shape[0]):
+                            ones[i,maxElt[i]] = 1
+                        probMinusMax = prob-numpy.multiply(prob,ones)
+                        if numpy.max(probMinusMax) <= 0:
+                            self.uncertainty_estimate[t] = numpy.zeros(shape=(shape[0]))
+                        else:
+                            secondElt = numpy.argmax(probMinusMax,axis=1)
+                            for i in range(shape[0]):
+                                res[i] = 1-(prob[i][maxElt[i]] - prob[i][secondElt[i]])
+                            self.uncertainty_estimate[t] = res
+                            self.uncertainty_estimate[t][0] = 0
+                return { t : self.uncertainty_estimate[t] for t in times }
             else:
                 assert False, "Unknown input slot"
 
@@ -1215,9 +1265,91 @@ class OpObjectPredict(Operator):
             self.prob_cache = self.InputProbabilities([]).wait()
         self.Predictions.setDirty(())
         self.Probabilities.setDirty(())
+        self.UncertaintyEstimate.setDirty(())
         self.ProbabilityChannels.setDirty(())
 
-
+# class OpEnsembleMargin(Operator):
+#     """
+#     Produces an objectwise measure of the uncertainty of the object predictions.
+#
+#     Uncertainty is negatively proportional to the difference between the
+#     highest two probabilities at every object.
+#     """
+#     ProbabilityChannels = InputSlot(stype=Opaque, rtype=List, level=1)
+#     # InputPredictions = InputSlot(stype=Opaque)
+#     # LabelsCount = InputSlot(stype='integer')
+#     OutputUncertainty = OutputSlot(level=1, stype=Opaque)
+#
+#     def setupOutputs(self):
+#         print ("----------------------------------------------------------------->")
+#         print ("--len->",len(self.ProbabilityChannels))
+#         self.OutputUncertainty.meta.assignFrom(self.ProbabilityChannels[0].meta)
+#         self.OutputUncertainty.meta.shape = self.ProbabilityChannels[0].meta.shape
+#         # print ("-self.ProbabilityChannels[0].meta-->",self.ProbabilityChannels[0].meta)
+#         # print ("-self.ProbabilityChannels[0].meta.shape-->",self.ProbabilityChannels[0].meta.shape)
+#         # time = self.OutputUncertainty.meta.shape[0]
+#         # for c in range(len(self.ProbabilityChannels)):
+#         #     print ("c  +++++>", c)
+#         #     for t in range(time):
+#         #         print (t, "--->",self.ProbabilityChannels[c][t])
+#         # self.OutputUncertainty.meta.assignFrom(self.InputPredictions.meta)
+#         # if self.InputPredictions.ready() and self.InputPredictions.meta.axistags is not None:
+#         #     print ("................>>>",self.InputPredictions.meta)
+#         #     taggedShape = self.InputPredictions.meta.getTaggedShape()
+#         #     taggedShape['c'] = 1
+#         #     self.Output.meta.shape = tuple(taggedShape.values())
+#         #     self.Output.meta.axistags = self.InputPredictions.meta.axistags
+#         # self.OutputUncertainty.meta.dtype = numpy.float32
+#
+#     def execute(self, slot, subindex, roi, result):
+#
+#         print("            ********************************************************              in execute ")
+#         time = self.OutputUncertainty.meta.shape[0]
+#         # If there's only 1 channel, there's zero uncertainty
+#         if len(self.ProbabilityChannels) <= 1:
+#             print ("=====time", time,self.ProbabilityChannels[0].value)
+#             result = {}
+#             for t in range(time):
+#                 for (objID, t) in self.ProbabilityChannels[0][t]:
+#                     print ("(...........................", objID, t, self.ProbabilityChannels[0][t][(objID,t)])
+#                 # result[] = 0
+#             return []
+#
+#
+#
+#         # if self.LabelsCount.value <= 1:
+#         #     result[:] = 0
+#         #     return
+#
+#         #
+#         # roi = copy.copy(roi)
+#         # taggedShape = self.Input.meta.getTaggedShape()
+#         # chanAxis = self.Input.meta.axistags.index('c')
+#         # roi.start[chanAxis] = 0
+#         # roi.stop[chanAxis] = taggedShape['c']
+#         # pmap = self.Input.get(roi).wait()
+#         #
+#         # # Sort along channel axis so the every pixel's channels are sorted lowest to highest.
+#         # pmap.sort(axis=self.Input.meta.axistags.index('c'))
+#         # pmap = pmap.view(vigra.VigraArray)
+#         # pmap.axistags = self.Input.meta.axistags
+#         #
+#         # # Subtract the highest channel from the second-highest channel.
+#         # res = pmap.bindAxis('c', -1) - pmap.bindAxis('c', -2)
+#         # res = res.withAxes( *list(taggedShape.keys()) ).view(numpy.ndarray)
+#         #
+#         # # Subtract from 1 to make this an "uncertainty" measure, not a "certainty" measure
+#         # # e.g. predictions of .99 and .01 -> low uncertainty (0.98)
+#         # # e.g. predictions of .51 and .49 -> high uncertainty (0.02)
+#         # result[...] = (1-res)
+#
+#         result = []
+#         return result
+#
+#     def propagateDirty(self, inputSlot, subindex, roi):
+#         roi = copy.copy(roi)
+#         self.OutputUncertainty.setDirty( roi )
+#
 class OpRelabelSegmentation(Operator):
     """Takes a segmentation image and a mapping and returns the
     mapped image.
@@ -1279,7 +1411,7 @@ class OpRelabelSegmentation(Operator):
         if self.logger.getEffectiveLevel() >= logging.DEBUG:
             tStart = 1000.0*(time.time()-tStart)
             self.logger.debug("took %f msec. (img: %f, wait ObjectMap: %f, do work: %f, max: %f)" % (tStart, tIMG, tMAP, tWORK, tMAX))
-        
+
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -1326,6 +1458,7 @@ class OpMultiRelabelSegmentation(Operator):
         self._innerOperators = []
 
     def setupOutputs(self):
+
         nmaps = len(self.ObjectMaps)
         for islot in self.ObjectMaps:
             op = OpRelabelSegmentation(parent=self)
@@ -1336,7 +1469,6 @@ class OpMultiRelabelSegmentation(Operator):
         self.Output.resize(nmaps)
         for i, oslot in enumerate(self.Output):
             oslot.connect(self._innerOperators[i].Output)
-            
 
     def propagateDirty(self, slot, subindex, roi):
         pass
