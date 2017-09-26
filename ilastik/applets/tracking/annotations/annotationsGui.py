@@ -717,7 +717,7 @@ class AnnotationsGui(LayerViewerGui):
             activeTrack = activeTrack.value
             
             t = position5d[0]
-    
+
             res = self._addObjectToTrack(activeTrack,oid,t)
 
             if res == -99 or res == -98:
