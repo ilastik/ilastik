@@ -843,7 +843,14 @@ class ObjectClassificationGui(LabelingGui):
                 print( "probabilities:  {}".format(prob) )
                 print( "prediction:     {}".format(pred) )
 
-            
+                uncertainty = 'none'
+                if self.op.UncertaintyEstimate.ready():
+                    uncertainties = self.op.UncertaintyEstimate([t]).wait()[t]
+                    if len(uncertainties) >= obj:
+                        uncertainty = uncertainties[obj]
+
+                print( "uncertainty:    {}".format(uncertainty) )
+
             print( "------------------------------------------------------------" )
         elif action.text()==clearlabel:
             topLevelOp = self.topLevelOperatorView.viewed_operator()
