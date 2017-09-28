@@ -685,7 +685,8 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
                 start = boxHandle.getStart()
                 stop = boxHandle.getStop()
                 slicing = [slice(s1, s2) for s1, s2 in zip(start, stop)]
-                val = numpy.sum(gui.currentGui().op.Density[slicing[1:3]].wait())
+                # rounding here is necessary, because box label is rounded too
+                val = numpy.round(numpy.sum(gui.currentGui().op.Density[slicing[1:3]].wait()), 1)
                 val2 = float(box.density)
                 assert abs(val - val2) < 1E-3, "The value written to the box {} differs from the one gotten via the\
                 operator {}".format(val, val2)
