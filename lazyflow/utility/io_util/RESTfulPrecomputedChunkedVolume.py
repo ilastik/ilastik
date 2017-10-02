@@ -176,7 +176,7 @@ class RESTfulPrecomputedChunkedVolume(object):
         Args:
             block_coordinates (iterable): start of the block, 'czyx' axistags
               assumed
-            scale (string): key to desired scale
+            scale (string): key identifying the scale to be used
         """
         pass
 
@@ -186,15 +186,33 @@ class RESTfulPrecomputedChunkedVolume(object):
 
         Args:
             block_coordinates (ndarray): 2d array of voxel coordinates at the
-              given scale; zyx order assumed! No channel!
-            scale (ndarray): Description
+              given scale; czyx
+            scale (string): key identifying the scale to be used
 
         Returns:
-            TYPE: Description
-
-
+            string: URL to access the block with the given block coordinates
         """
-        pass
+        if scale is None:
+            scale = self._use_scale
+
+        # block shape without channel -> [1::]
+        block_shape = self.get_block_shape(scale)[1::]
+        coordinates = block_coordinates[1::]
+
+        if not numpy.allclose(numpy.remainder(coordinates, block_shape), 0):
+            raise ValueError(
+                f'Supplied coordinates ({coordinates}) not a valid block- '
+                'start for block shape {block_shape}.')
+
+        base_url = self.volume_url
+        min_values = coordinates
+        max_values = min_values + block_shape
+        # ignore c -> [1::]
+        min_z, min_y, min_x = min_values
+        max_z, max_y, max_x = max_values
+
+        url = f'{base_url}/{scale}/{min_x}-{max_x}_{min_y}-{max_y}_{min_z}-{max_z}'
+        return url
 
 
 if __name__ == '__main__':
@@ -205,3 +223,5 @@ if __name__ == '__main__':
     print(f'scales: {cvol.available_scales}')
     print(f'block_shape: {cvol.get_block_shape()}')
     print(f'shape: {cvol.get_shape()}')
+    block_start = [1, 128, 64, 256]
+    print(f'download_url for block {block_start}: {cvol.generate_url(block_start)}')
