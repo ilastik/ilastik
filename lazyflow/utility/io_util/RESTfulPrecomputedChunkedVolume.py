@@ -1,4 +1,14 @@
+import json
+import jsonschema
 import logging
+import requests
+from concurrent import futures
+import threading
+from functools import partial
+
+import numpy
+
+import lazyflow.roi
 
 
 logger = logging.getLogger(__file__)
@@ -89,7 +99,37 @@ class RESTfulPrecomputedChunkedVolume(object):
               supplied, the given volume is checked and set as volume for the
               instance. If not, `self.volume_url` is used.
         """
-        pass
+        if volume_url is not None:
+            self.volume_url = volume_url
+
+        if volume_description is None and self.volume_url is not None:
+            self.download_info()
+        else:
+            self._json_info = volume_description
+
+        jsonschema.validate(self._json_info, self.info_schema)
+        _scale_info = {x['key']: x for x in self._json_info['scales']}
+
+        # save json contents
+        self._scale_info = _scale_info
+
+        self._use_scale, resolution = self.determine_lowest_scale(_scale_info)
+
+        self.available_scales = self._scale_info.keys()
+
+        self.dtype = self._json_info['data_type']
+        self.n_channels = self._json_info['num_channels']
+
+    @staticmethod
+    def determine_lowest_scale(scales_info_dict):
+        scales = scales_info_dict.keys()
+        resolutions = [(scale, scales_info_dict[scale]['resolution'])
+                       for scale in scales]
+        # sort by x value of the resolution
+        resolutions.sort(key=lambda x: x[1][0])
+        lowest_scale = resolutions[0]
+        logger.debug(f'using lowest scale {lowest_scale[0]}')
+        return lowest_scale
 
     def get_block_shape(self, scale=None):
         pass
@@ -107,7 +147,14 @@ class RESTfulPrecomputedChunkedVolume(object):
         pass
 
     def download_info(self):
-        pass
+        logger.debug(f'getting volume from {self.volume_url}/info')
+        r = requests.get(f'{self.volume_url}/info')
+
+        # check if success:
+        if r.status_code != 200:
+            raise ValueError(f'Could not find info file at {self.volume_url}!')
+
+        self._json_info = json.loads(r.content)
 
     def download_block(self, block_coordinates, scale=None):
         """downloads a single block at a given scale
@@ -129,7 +176,7 @@ class RESTfulPrecomputedChunkedVolume(object):
             scale (ndarray): Description
 
         Returns:
-            string: string to access a secific block
+            TYPE: Description
 
 
         """
@@ -140,3 +187,4 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     volume_url = 'http://localhost:8080/precomputed/cremi'
     cvol = RESTfulPrecomputedChunkedVolume(volume_url=volume_url)
+    print(f'dtype: {cvol.dtype}')
