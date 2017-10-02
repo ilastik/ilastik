@@ -2,9 +2,6 @@ import json
 import jsonschema
 import logging
 import requests
-from concurrent import futures
-import threading
-from functools import partial
 
 import numpy
 
@@ -132,19 +129,36 @@ class RESTfulPrecomputedChunkedVolume(object):
         return lowest_scale
 
     def get_block_shape(self, scale=None):
-        pass
+        if scale is None:
+            scale = self._use_scale
+        n_channels = self.n_channels
+        block_shape = numpy.array([n_channels] + self._scale_info[scale]['chunk_sizes'][0][::-1])
+        return block_shape
 
     def get_resolution(self, scale=None):
-        pass
+        if scale is None:
+            scale = self._use_scale
+        resolution = numpy.array(self._scale_info[scale]['resolution'][::-1])
+        return resolution
 
     def get_voxel_offset(self, scale=None):
-        pass
+        if scale is None:
+            scale = self._use_scale
+        voxel_offset = numpy.array([0] + self._scale_info[scale]['voxel_offset'][::-1])
+        return voxel_offset
 
     def get_encoding(self, scale=None):
-        pass
+        if scale is None:
+            scale = self._use_scale
+        encoding = self._scale_info[scale]['encoding']
+        return encoding
 
     def get_shape(self, scale=None):
-        pass
+        if scale is None:
+            scale = self._use_scale
+        n_channels = self.n_channels
+        shape = numpy.array([n_channels] + self._scale_info[scale]['size'][::-1])
+        return shape
 
     def download_info(self):
         logger.debug(f'getting volume from {self.volume_url}/info')
@@ -188,3 +202,6 @@ if __name__ == '__main__':
     volume_url = 'http://localhost:8080/precomputed/cremi'
     cvol = RESTfulPrecomputedChunkedVolume(volume_url=volume_url)
     print(f'dtype: {cvol.dtype}')
+    print(f'scales: {cvol.available_scales}')
+    print(f'block_shape: {cvol.get_block_shape()}')
+    print(f'shape: {cvol.get_shape()}')
