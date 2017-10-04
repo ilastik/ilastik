@@ -389,7 +389,7 @@ class OpPredictCounter(Operator):
         traceLogger.debug("OpPredictRandomForest: Requesting classifier. roi={}".format(roi))
         forests=self.inputs["Classifier"][:].wait()
 
-        if forests is None:
+        if any(forest is None for forest in forests):
             # Training operator may return 'None' if there was no data to train with
             return np.zeros(np.subtract(roi.stop, roi.start), dtype=np.float32)[...]
 

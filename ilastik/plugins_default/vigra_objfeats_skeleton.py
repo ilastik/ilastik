@@ -86,6 +86,7 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
             if feature == "Skeleton Center":
                 features[feature]["displaytext"] = "Center of the Skeleton"
                 features[feature]["detailtext"] = "The coordinates of the midpoint on the longest path between the endpoints of the skeleton."
+                features[feature]["group"] = "Location"
             if feature == "Total Length":
                 features[feature]["displaytext"] = "Length of the Skeleton"
                 features[feature]["detailtext"] = "Total length of the skeleton in pixels"
@@ -95,10 +96,12 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
             if feature == "Terminal 1":
                 features[feature]["displaytext"] = "Terminal 1"
                 features[feature]["detailtext"] = "First endpoint of the longest path between the skeleton's endpoints"
+                features[feature]["group"] = "Location"
                 features[feature]["advanced"] = True
             if feature == "Terminal 2":
                 features[feature]["displaytext"] = "Terminal 2"
                 features[feature]["detailtext"] = "Second endpoint of the longest path between the skeleton's endpoints"
+                features[feature]["group"] = "Location"
                 features[feature]["advanced"] = True
 
         return features

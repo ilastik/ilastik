@@ -120,15 +120,18 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
             if feature == "InputCenter":
                 features[feature]["displaytext"] = "Object Center"
                 features[feature]["detailtext"] = "Centroid of this object. The axes order is x, y, z"
+                features[feature]["group"] = "Location"
 
             if feature == "HullCenter":
                 features[feature]["displaytext"] = "Convex Hull Center"
                 features[feature]["detailtext"] = "Centroid of the convex hull of this object. The axes order is x, y, z"
+                features[feature]["group"] = "Location"
 
-            if feature == "Defect Center":
+            if feature == "DefectCenter":
                 features[feature]["displaytext"] = "Defect Center"
                 features[feature]["detailtext"] = "Combined centroid of convexity defects, which are defined as areas of the " \
                                                   "convex hull, not covered by the original object."
+                features[feature]["group"] = "Location"
 
 ##
 ## OLD CONVEX HULL FEATURES, NO LONGER AVAILABLE IN VIGRA
