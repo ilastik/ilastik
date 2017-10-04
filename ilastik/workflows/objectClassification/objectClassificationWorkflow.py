@@ -95,9 +95,6 @@ class ObjectClassificationWorkflow(Workflow):
         parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
         if parsed_args.fillmissing != 'none' and parsed_creation_args.fillmissing != parsed_args.fillmissing:
             logger.error( "Ignoring --fillmissing cmdline arg.  Can't specify a different fillmissing setting after the project has already been created." )
-        
-        if parsed_args.filter != 'Original' and parsed_creation_args.filter != parsed_args.filter:
-            logger.error( "Ignoring --filter cmdline arg.  Can't specify a different filter setting after the project has already been created." )
 
         self.batch = not parsed_args.nobatch
 
