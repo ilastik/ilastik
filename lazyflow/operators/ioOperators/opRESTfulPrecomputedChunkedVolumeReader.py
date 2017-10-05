@@ -62,16 +62,85 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
         self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
         self.AvailableScales.setValue(self._volume_object.available_scales)
 
+    @staticmethod
+    def get_intersecting_blocks(blockshape, roi):
+        """Find block indices for given roi
+
+        Wraps around lazyflow.roi.getIntersectingBlocks
+        Idea is that only the required blocks are allocated using
+
+        Everything in 'czyx' - order
+
+        Args:
+            blockshape (iterable): block shape
+            roi (tuple): (start, stop), inclusive start of block, exclusive end
+
+        Difference is that it returns a dictionary consisting of
+          * 'array_of_blocks' the array of blocks
+          * 'subimage_shape' shape of the subimage
+          * 'block_offsets' array of offset for each of the blocks
+          * 'subimage_roi' the roi in the sub_image
+        """
+        blocks = lazyflow.roi.getIntersectingBlocks(blockshape, roi, asarray=True)
+
+        num_indexes = numpy.prod(blocks.shape[0:-1])
+        axiscount = blocks.shape[-1]
+        blocks_array = numpy.reshape(blocks, (num_indexes, axiscount))
+
+        block_aligned_subimage_start = blocks_array.min(axis=0)
+        block_aligned_subimage_end = blocks_array.max(axis=0)
+
+        assert (block_aligned_subimage_start == blocks_array).all(axis=1).any(), \
+            "roi does not seem to be block aligned"
+        assert (block_aligned_subimage_end == blocks_array).all(axis=1).any(), \
+            "roi does not seem to be block aligned"
+
+        # get the real end of the image:
+        block_aligned_subimage_end += blockshape
+
+        subimage_shape = block_aligned_subimage_end - block_aligned_subimage_start
+        block_offsets = blocks_array - block_aligned_subimage_start
+        subimage_start = roi[0] - block_aligned_subimage_start
+        subimage_roi = (
+            (subimage_start),
+            (subimage_start + (roi[1] - roi[0]))
+        )
+
+        return blocks_array, block_offsets, subimage_roi, subimage_shape
+
     def execute(self, slot, subindex, roi, result):
         """
         Args:
-            slot (TYPE): Description
-            subindex (TYPE): Description
-            roi (TYPE): we assume czyx order here
-            result (TYPE): Description
+            slot (OutputSlot): Requested slot
+            subindex (tuple): Subslot index for multi-level slots
+            roi (rtype.Roi): we assume czyx order here
+            result (ndarray): array in which the results are written in
 
         """
-        pass
+        start, stop = roi.start, roi.stop
+        roi = (start, stop)
+
+        scale = self.Scale.value
+        assert len(roi) == 2
+        assert all(len(x) == len(self._volume_object.get_shape(scale)) for x in roi)
+        block_shape = self._volume_object.get_block_shape(scale)
+        array_of_blocks, block_offsets, subimage_roi, subimage_shape = \
+            self.get_intersecting_blocks(
+                blockshape=block_shape,
+                roi=roi
+            )
+        subimage = numpy.zeros((subimage_shape))
+        assert array_of_blocks.shape[-1] == 4
+
+        for block, offset in zip(array_of_blocks, block_offsets):
+            slicing = lazyflow.roi.roiToSlice(offset, offset + block_shape)
+            subimage[slicing] = self._volume_object.download_block(
+                block,
+                scale
+            )
+        slicing = lazyflow.roi.roiToSlice(subimage_roi[0], subimage_roi[1])
+        result[...] = subimage[slicing]
+        return result
 
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(slice(None))
@@ -87,4 +156,12 @@ if __name__ == '__main__':
     op = OpRESTfulPrecomputedChunkedVolumeReader(graph=g)
     op.BaseUrl.setValue(volume_url)
     print(f'available scales: {op.AvailableScales.value}')
-    print(op.Scale.value)
+    print(f'Selected scale: {op.Scale.value}')
+
+    # get some data
+    roi = ((0, 0, 0, 0), (1, 10, 100, 100))
+    data = op.Output(*roi).wait()
+    import h5py
+    with h5py.File('/tmp/temph5.h5', 'w') as f:
+        f.create_dataset('exported', data=data)
+    print(data)

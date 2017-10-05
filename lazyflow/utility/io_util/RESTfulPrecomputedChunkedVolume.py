@@ -178,7 +178,39 @@ class RESTfulPrecomputedChunkedVolume(object):
               assumed
             scale (string): key identifying the scale to be used
         """
-        pass
+        if scale is None:
+            scale = self._use_scale
+
+        url = self.generate_url(block_coordinates, scale)
+        content = self.downloading(url)
+        return self.decode_content(
+            content,
+            encoding=self.get_encoding(scale),
+            shape=self.get_block_shape(scale),
+            dtype=self.dtype
+        )
+
+    @classmethod
+    def decode_content(cls, content, encoding, shape, dtype):
+        """converts to numpy array according to self.encoding
+
+        Args:
+            content (string): encoding type: {'raw', 'jpg'}
+              raw: is gz
+        """
+        logger.debug(f'decoding encoding {encoding}; dtype {dtype}')
+        if encoding == 'raw':
+            raw = content
+            arr = numpy.fromstring(raw, dtype=dtype).reshape(shape)
+            return arr
+        else:
+            raise NotImplementedError(f'encoding {encoding} not supported :(')
+
+    @staticmethod
+    def downloading(url):
+        logger.debug(f'requesting {url}')
+        r = requests.get(url)
+        return r.content
 
     def generate_url(self, block_coordinates, scale=None):
         """Generate url to access a specific block
