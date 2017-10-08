@@ -79,7 +79,7 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
         output_shape = tuple(self._volume_object.get_shape(scale=self.Scale.value))
 
         self.Output.meta.shape = output_shape
-        self.Output.meta.dtype = self._volume_object.dtype
+        self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
         self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
         self.AvailableScales.setValue(self._volume_object.available_scales)
 

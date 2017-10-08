@@ -167,6 +167,7 @@ class OpInputDataReader(Operator):
         openFuncs = [self._attemptOpenAsKlb,
                      self._attemptOpenAsUfmf,
                      self._attemptOpenAsMmf,
+                     self._attemptOpenAsRESTfulPrecomputedChunkedVolume,
                      self._attemptOpenAsDvidVolume,
                      self._attemptOpenAsHdf5Stack,
                      self._attemptOpenAsTiffStack,
@@ -268,6 +269,15 @@ class OpInputDataReader(Operator):
             '''
         else:
             return ([], None)
+
+    def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):
+        if not filePath.lower().startswith('precomputed://'):
+            return ([], None)
+        else:
+            url = filePath.lower().split('precomputed://')[1]
+            reader = OpRESTfulPrecomputedChunkedVolumeReader(parent=self)
+            reader.BaseUrl.setValue(url)
+            return [reader], reader.Output
 
     def _attemptOpenAsHdf5Stack(self, filePath):
         if not ('*' in filePath or os.path.pathsep in filePath):
