@@ -33,7 +33,7 @@ from lazyflow.operators.ioOperators import (
     OpStreamingHdf5Reader, OpStreamingHdf5SequenceReaderS,
     OpStreamingHdf5SequenceReaderM, OpTiffReader,
     OpTiffSequenceReader, OpCachedTiledVolumeReader, OpRawBinaryFileReader,
-    OpStackLoader
+    OpStackLoader, OpRESTfulPrecomputedChunkedVolumeReader
 )
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import isUrl, PathComponents
