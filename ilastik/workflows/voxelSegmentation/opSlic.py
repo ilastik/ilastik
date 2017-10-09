@@ -37,7 +37,7 @@ class OpSlic(Operator):
 
         tagged_shape = self.Input.meta.getTaggedShape()
         assert 'c' in tagged_shape, "We assume the image has an explicit channel axis."
-        assert tagged_shape.keys()[-1] == 'c', "This code assumes that channel is the LAST axis."
+        assert next(reversed(tagged_shape))[0] == 'c', "This code assumes that channel is the LAST axis."
 
         # Output will have exactly one channel, regardless of input channels
         tagged_shape['c'] = 1
@@ -72,14 +72,14 @@ class OpSlic(Operator):
 
             for i in range(len(input_data)):
                 # import IPython; IPython.embed()
-                print slic_sp[i].shape
-                print boundaries[i].shape
+                print(slic_sp[i].shape)
+                print(boundaries[i].shape)
                 reshaped_slic = slic_sp[i].reshape(boundaries[i].shape)
                 boundaries[i] = skimage.segmentation.find_boundaries(
                     reshaped_slic)
 
-            print result.shape
-            print boundaries.shape
+            print(result.shape)
+            print(boundaries.shape)
             result[:] = boundaries[...,None]
             return result
 
@@ -129,8 +129,8 @@ class OpSlicCached(Operator):
         # but we want to force the entire image to be handled and stored at once.
         # Therefore, we set the 'block shape' to be the entire image -- there will only be one block stored in the cache.
         # (Note: The OpBlockedArrayCache.innerBlockshape slot is deprecated and ignored.)
-        self.opCache.outerBlockShape.setValue( self.Input.meta.shape )
-        self.boundariesOpCache.outerBlockShape.setValue( self.Input.meta.shape)
+        self.opCache.BlockShape.setValue( self.Input.meta.shape )
+        self.boundariesOpCache.BlockShape.setValue( self.Input.meta.shape)
     
     def execute(self, slot, subindex, roi, result):
         # When an output slot is accessed, it asks for data from it's upstream connection (if any)

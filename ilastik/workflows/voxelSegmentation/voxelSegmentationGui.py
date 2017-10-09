@@ -2,8 +2,8 @@ from functools import partial
 import logging
 import os
 
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QIcon
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
 
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.pixelClassification import pixelClassificationGui
@@ -75,7 +75,7 @@ class VoxelSegmentationGui(pixelClassificationGui.PixelClassificationGui):
         #        To re-enable rendering, we need to allow the user to render a segmentation
         #        and then initialize the render manager on-the-fly.
         #        (We might want to warn the user if her volume is not small.)
-        self.render = True
+        self.render = False
         self._renderMgr = None
         self._renderedLayers = {} # (layer name, label number)
 

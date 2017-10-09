@@ -26,8 +26,8 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 from ilastik.applets.pixelClassification import PixelClassificationDataExportApplet
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 
-from slicApplet import SlicApplet
-from voxelSegmentationApplet import VoxelSegmentationApplet
+from .slicApplet import SlicApplet
+from .voxelSegmentationApplet import VoxelSegmentationApplet
 
 
 from lazyflow.graph import Graph

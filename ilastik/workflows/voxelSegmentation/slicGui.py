@@ -5,7 +5,7 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.api import Layer
 
-from slicViewerControls import SlicViewerControls
+from .slicViewerControls import SlicViewerControls
 
 
 class SlicGui(LayerViewerGui):

@@ -20,8 +20,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from slicGui import SlicGui
-from opSlic import OpSlicCached
+from .slicGui import SlicGui
+from .opSlic import OpSlicCached
 
 class SlicApplet(StandardApplet):
     def __init__(self, workflow):

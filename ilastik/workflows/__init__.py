@@ -95,8 +95,8 @@ except ImportError as e:
 from .examples.dataConversion.dataConversionWorkflow import DataConversionWorkflow
 WORKFLOW_CLASSES += [DataConversionWorkflow]
 
-import voxelSegmentation
-WORKFLOW_CLASSES += [voxelSegmentation.VoxelSegmentationWorkflow]
+from .voxelSegmentation import VoxelSegmentationWorkflow
+WORKFLOW_CLASSES += [VoxelSegmentationWorkflow]
 
 # Examples
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):

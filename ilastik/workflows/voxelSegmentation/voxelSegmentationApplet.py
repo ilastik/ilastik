@@ -23,8 +23,8 @@ from ilastik.applets.pixelClassification.pixelClassificationSerializer import Pi
 
 
 
-from opVoxelSegmentation import OpVoxelSegmentation
-from voxelSegmentationGui import VoxelSegmentationGui
+from .opVoxelSegmentation import OpVoxelSegmentation
+from .voxelSegmentationGui import VoxelSegmentationGui
 
 class VoxelSegmentationApplet(PixelClassificationApplet):
     def __init__(self, workflow, projectFileGroupName):
@@ -56,7 +56,7 @@ class VoxelSegmentationApplet(PixelClassificationApplet):
         #  directly to the applet's overall progress signal, because it's the only thing we report progress for at the moment.
         # If we start reporting progress for multiple tasks that might occur simulatneously,
         #  we'll need to aggregate the progress updates.
-        self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal.emit)
+        self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
     
         # super(VoxelSegmentationApplet, self).__init__(workflow, projectFileGroupName)
 
