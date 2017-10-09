@@ -84,7 +84,7 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
         self.AvailableScales.setValue(self._volume_object.available_scales)
 
     @staticmethod
-    def get_intersecting_blocks(blockshape, roi):
+    def get_intersecting_blocks(blockshape, roi, shape):
         """Find block indices for given roi
 
         Wraps around lazyflow.roi.getIntersectingBlocks
@@ -118,6 +118,8 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
 
         # get the real end of the image:
         block_aligned_subimage_end += blockshape
+        # take care of image border
+        block_aligned_subimage_end = numpy.min([block_aligned_subimage_end, shape], axis=0)
 
         subimage_shape = block_aligned_subimage_end - block_aligned_subimage_start
         block_offsets = blocks_array - block_aligned_subimage_start
@@ -145,10 +147,12 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
         assert len(roi) == 2
         assert all(len(x) == len(self._volume_object.get_shape(scale)) for x in roi)
         block_shape = self._volume_object.get_block_shape(scale)
+        image_shape = self._volume_object.get_shape(scale)
         array_of_blocks, block_offsets, subimage_roi, subimage_shape = \
             self.get_intersecting_blocks(
                 blockshape=block_shape,
-                roi=roi
+                roi=roi,
+                shape=image_shape
             )
         subimage = numpy.zeros((subimage_shape))
         assert array_of_blocks.shape[-1] == 4

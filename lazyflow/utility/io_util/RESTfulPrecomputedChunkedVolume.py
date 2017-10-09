@@ -202,12 +202,12 @@ class RESTfulPrecomputedChunkedVolume(object):
         if scale is None:
             scale = self._use_scale
 
-        url = self.generate_url(block_coordinates, scale)
+        url, blockshape = self.generate_url(block_coordinates, scale)
         content = self.downloading(url)
         return self.decode_content(
             content,
             encoding=self.get_encoding(scale),
-            shape=self.get_block_shape(scale),
+            shape=blockshape,
             dtype=self.dtype
         )
 
@@ -248,9 +248,10 @@ class RESTfulPrecomputedChunkedVolume(object):
         if scale is None:
             scale = self._use_scale
 
-        # block shape without channel -> [1::]
-        block_shape = self.get_block_shape(scale)[1::]
-        coordinates = block_coordinates[1::]
+        # block shape without channel
+        shape = self.get_shape(scale)
+        block_shape = self.get_block_shape(scale)
+        coordinates = block_coordinates
 
         if not numpy.allclose(numpy.remainder(coordinates, block_shape), 0):
             raise ValueError(
@@ -260,12 +261,14 @@ class RESTfulPrecomputedChunkedVolume(object):
         base_url = self.volume_url
         min_values = coordinates
         max_values = min_values + block_shape
+        max_values = numpy.min([shape, max_values], axis=0)
+        downloaded_block_shape = max_values - min_values
         # ignore c -> [1::]
-        min_z, min_y, min_x = min_values
-        max_z, max_y, max_x = max_values
+        min_z, min_y, min_x = min_values[1::]
+        max_z, max_y, max_x = max_values[1::]
 
         url = f'{base_url}/{scale}/{min_x}-{max_x}_{min_y}-{max_y}_{min_z}-{max_z}'
-        return url
+        return url, downloaded_block_shape
 
 
 if __name__ == '__main__':
