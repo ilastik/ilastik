@@ -74,6 +74,7 @@ class TestOpBigTiffReader(unittest.TestCase):
 
         self.assertEqual(op.Output.meta.shape, self.data.shape)
         output_data = op.Output[:].wait()
+        op.cleanUp()
 
         numpy.testing.assert_array_equal(output_data, self.data)
 
