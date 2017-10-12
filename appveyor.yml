@@ -38,7 +38,7 @@ test_script:
   - activate %ENV_NAME%
   - cd \
   - cd ilastik\ilastik-meta\lazyflow\tests
-  - set C:\ilastik\scripts;%Path%
+  - set Path=C:\ilastik\scripts;%Path%
   - >
       nosetests
       --nologcapture
