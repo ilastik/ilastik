@@ -197,7 +197,7 @@ class OpObjectsSegment(OpGraphCut):
             nVoxels = ccbox.size
             if nVoxels > MAXBOXSIZE:
                 #problem too large to run graph cut, assign to seed
-                logger.warn("Object {} too large for graph cut.".format(i))
+                logger.warning("Object {} too large for graph cut.".format(i))
                 resbox[ccbox == i] = 1
                 return
 
@@ -217,11 +217,11 @@ class OpObjectsSegment(OpGraphCut):
             passed = vigra.analysis.unique(filtered.astype(np.uint32))
             assert len(passed.shape) == 1
             if passed.size > 2:
-                logger.warn("ambiguous label assignment for region {}".format(
+                logger.warning("ambiguous label assignment for region {}".format(
                     (zmin, zmax, ymin, ymax, xmin, xmax)))
                 resbox[ccbox == i] = 1
             elif passed.size <= 1:
-                logger.warn(
+                logger.warning(
                     "box {} segmented out with beta {}".format(i, beta))
             else:
                 # assign to the overlap region

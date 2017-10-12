@@ -607,7 +607,7 @@ class CoupledRectangleElement(object):
                 self.boxLabel.density = "%.1f" % value
         except Exception as e:
             import warnings
-            warnings.warn("Warning: invalid subregion", RuntimeWarning)
+            warnings.warning("Warning: invalid subregion", RuntimeWarning)
 
 
 

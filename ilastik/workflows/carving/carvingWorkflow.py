@@ -172,7 +172,7 @@ class CarvingWorkflow(Workflow):
 
         parsed_args, unused_args = parser.parse_known_args(unused_args)
         if unused_args:
-            logger.warn("Did not use the following command-line arguments: {}".format(unused_args))
+            logger.warning("Did not use the following command-line arguments: {}".format(unused_args))
 
         # Execute pre-processing.
         if parsed_args.run_preprocessing:

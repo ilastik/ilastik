@@ -151,7 +151,7 @@ class NewAutocontextWorkflowBase(Workflow):
             self._batch_export_args = None
 
         if unused_args:
-            logger.warn("Unused command-line args: {}".format( unused_args ))
+            logger.warning("Unused command-line args: {}".format( unused_args ))
 
     def createDataSelectionApplet(self):
         """
@@ -419,7 +419,7 @@ class NewAutocontextWorkflowBase(Workflow):
         if self._batch_input_args:
             for pcApplet in self.pcApplets:
                 if pcApplet.topLevelOperator.classifier_cache._dirty:
-                    logger.warn("At least one of your classifiers is not yet trained.  "
+                    logger.warning("At least one of your classifiers is not yet trained.  "
                                 "A new classifier will be trained for this run.")
                     break
 

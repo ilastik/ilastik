@@ -18,7 +18,7 @@ import nose
 def test_headless_launch():
     if __name__ != "__main__":
         import warnings
-        warnings.warn("Skipping: This test must be run independently: python {}".format(__file__))
+        warnings.warning("Skipping: This test must be run independently: python {}".format(__file__))
         raise nose.SkipTest()
     
     print('looking for ilastik.py...')

@@ -108,7 +108,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         
         else: # Features and all other layers.
             if selection.startswith("Features"):
-                warnings.warn("Not sure how to display '{}' result.  Showing with default layer settings."
+                warnings.warning("Not sure how to display '{}' result.  Showing with default layer settings."
                               .format(selection))
 
             if opLane.ImageToExport.ready():

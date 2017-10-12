@@ -137,7 +137,7 @@ class PixelClassificationWorkflow(Workflow):
             self._batch_export_args = None
 
         if unused_args:
-            logger.warn("Unused command-line args: {}".format( unused_args ))
+            logger.warning("Unused command-line args: {}".format( unused_args ))
 
     def createDataSelectionApplet(self):
         """
@@ -322,7 +322,7 @@ class PixelClassificationWorkflow(Workflow):
             self.dataExportApplet.configure_operator_with_parsed_args( self._batch_export_args )
 
         if self._batch_input_args and self.pcApplet.topLevelOperator.classifier_cache._dirty:
-            logger.warn("Your project file has no classifier.  A new classifier will be trained for this run.")
+            logger.warning("Your project file has no classifier.  A new classifier will be trained for this run.")
 
         if self._headless and self._batch_input_args and self._batch_export_args:
             logger.info("Beginning Batch Processing")

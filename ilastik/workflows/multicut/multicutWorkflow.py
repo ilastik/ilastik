@@ -128,7 +128,7 @@ class MulticutWorkflow(Workflow):
             self._data_export_args = None
 
         if unused_args:
-            logger.warn("Unused command-line args: {}".format( unused_args ))
+            logger.warning("Unused command-line args: {}".format( unused_args ))
         
         if not self._headless:
             shell.currentAppletChanged.connect( self.handle_applet_changed )

@@ -15,7 +15,7 @@ try:
                                      getMergersPerTimestep, getLinksPerTimestep, getDetectionsPerTimestep, \
                                      getDivisionsPerTimestep
 except ImportError:
-    logger.warn("Could not load hytra. Event exporting plugin not loaded.")
+    logger.warning("Could not load hytra. Event exporting plugin not loaded.")
 else:
 
     def writeEvents(timestep, activeLinks, activeDivisions, mergers, detections, fn, labelImage, verbose=False):

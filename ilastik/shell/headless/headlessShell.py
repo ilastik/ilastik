@@ -103,7 +103,7 @@ class HeadlessShell(object):
                 import ilastik.workflows
                 workflow_class = ilastik.workflows.pixelClassification.PixelClassificationWorkflow
                 import warnings
-                warnings.warn( "Your project file ({}) does not specify a workflow type.  "
+                warnings.warning( "Your project file ({}) does not specify a workflow type.  "
                                "Assuming Pixel Classification".format( projectFilePath ) )            
             
             # Create our project manager

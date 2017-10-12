@@ -359,7 +359,7 @@ class SerialListSlot(SerialSlot):
         except:
             if logger.isEnabledFor(logging.DEBUG):
                 # Only show this warning when debugging serialization
-                warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
+                warnings.warning("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
             return
         if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
             self.inslot.setValue( self._iterable([]) )
@@ -630,7 +630,7 @@ class SerialClassifierSlot(SerialSlot):
         try:
             classifier = classifier_type.deserialize_hdf5( classifierGroup )
         except:
-            warnings.warn( "Wasn't able to deserialize the saved classifier.  "
+            warnings.warning( "Wasn't able to deserialize the saved classifier.  "
                            "It will need to be retrainied" )
             return
 
@@ -733,7 +733,7 @@ class SerialCountingSlot(SerialSlot):
                 from ilastik.applets.counting.countingsvr import SVR
                 forests.append(SVR.load(cachePath, targetname))
         except:
-            warnings.warn( "Wasn't able to deserialize the saved classifier.  "
+            warnings.warning( "Wasn't able to deserialize the saved classifier.  "
                            "It will need to be retrainied" )
             return
         finally:
@@ -798,7 +798,7 @@ class SerialDictSlot(SerialSlot):
         try:
             slot.setValue(result)
         except AssertionError as e:
-            warnings.warn('setValue() failed. message: {}'.format(e.message))
+            warnings.warning('setValue() failed. message: {}'.format(e.message))
 
 class SerialClassifierFactorySlot(SerialSlot):
     def __init__(self, slot, name=None):
@@ -830,7 +830,7 @@ class SerialClassifierFactorySlot(SerialSlot):
             assert 'VERSION' in value.__dict__ and value.VERSION == type(value).VERSION
         except:
             self._failed_to_deserialize = True
-            warnings.warn("This project file uses an old or unsupported classifier storage format. "
+            warnings.warning("This project file uses an old or unsupported classifier storage format. "
                           "The classifier will be stored in the new format when you save your project.")
         else:
             slot.setValue( value )
@@ -872,7 +872,7 @@ class SerialPickleableSlot(SerialSlot):
             value = pickle.loads(pickled)
         except:
             self._failed_to_deserialize = True
-            warnings.warn("This project file uses an old or unsupported storage format. "
+            warnings.warning("This project file uses an old or unsupported storage format. "
                           "When save the project the next time, it will be stored in the new format.")
             slot.setValue(self._default)
         else:
