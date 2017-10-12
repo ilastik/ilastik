@@ -30,6 +30,8 @@ import vigra
 
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackLoader
+# from lazyflow.operators.ioOperators import OpInputDataReader
+import h5py
 
 
 class TestOpStackLoader(object):
@@ -37,7 +39,6 @@ class TestOpStackLoader(object):
         self._tmp_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        return
         shutil.rmtree(self._tmp_dir)
 
     def _prepare_data(self, name, shape, axes, stack_axis,
@@ -89,7 +90,7 @@ class TestOpStackLoader(object):
         expected_volume, globstring = self._prepare_data(
             'rand_3d',
             (11, 99, 98),
-            'zxy',
+            'zyx',
             'z'
         )
 
@@ -103,7 +104,7 @@ class TestOpStackLoader(object):
 
         volume_from_stack = op.stack[:].wait()
         volume_from_stack = vigra.taggedView(volume_from_stack, 'zyxc')
-        volume_from_stack = volume_from_stack.withAxes(*'zxy')
+        volume_from_stack = volume_from_stack.withAxes(*'zyx')
 
         assert (volume_from_stack == expected_volume).all(), \
             "3D Volume from stack did not match expected data."
@@ -133,7 +134,7 @@ class TestOpStackLoader(object):
         assert (volume_from_stack == expected_volume).all(), \
             "3D Volume stacked along c did not match expected data."
 
-    def test_xyzc(self):
+    def test_zyxc(self):
         expected_volume_zyxc, globstring = self._prepare_data(
             'rand_3dc',
             (10, 50, 100, 3),
@@ -155,7 +156,7 @@ class TestOpStackLoader(object):
         assert (vol_from_stack_zyxc == expected_volume_zyxc).all(), \
             "3D+c Volume from stack did not match expected data."
 
-    def test_xyzc_stack_c(self):
+    def test_zyxc_stack_c(self):
         # Test to stack 3D data with channels along the channels.
         # For data preparation only the t axis is used to create a tiff series
         # of 3D+c data, the expected_volume is corrected to 'czyx' with the
@@ -183,7 +184,7 @@ class TestOpStackLoader(object):
         assert (volume_from_stack == expected_volume).all(), \
             "3D+c Volume stacked along c did not match expected data."
 
-    def test_txyz(self):
+    def test_tzyx(self):
         expected_volume_tzyx, globstring = self._prepare_data(
             'rand_4d',
             (5, 10, 100, 99),
@@ -206,7 +207,7 @@ class TestOpStackLoader(object):
         assert (vol_from_stack_tzyx == expected_volume_tzyx).all(), \
             "4D Volume from stack did not match expected data."
 
-    def test_txyzc(self):
+    def test_tzyxc(self):
         expected_volume_tzyxc, globstring = self._prepare_data(
             'rand_4dc',
             (5, 10, 50, 100, 3),
@@ -227,6 +228,29 @@ class TestOpStackLoader(object):
 
         assert (vol_from_stack_tzyxc == expected_volume_tzyxc).all(), \
             "4D+c Volume from stack did not match expected data."
+
+    def test_stack_pngs(self):
+        graph = Graph()
+        op = OpStackLoader(graph=graph)
+        op.SequenceAxis.setValue('c')
+
+        globstring = os.path.join('data', 'inputdata', '3c[0-2].png')
+        op.globstring.setValue(globstring)
+
+        assert len(op.stack.meta.axistags) == 3
+        assert op.stack.meta.getAxisKeys() == list('xyc')
+
+        stack = op.stack[:].wait()
+
+        gt_path = os.path.join('data', 'inputdata', '3cRGB.h5')
+        h5File = h5py.File(gt_path, 'r')
+        expected = h5File['data']
+        
+        assert stack.dtype == expected.dtype
+        assert stack.shape == expected.shape
+
+        assert (stack == expected).all(), \
+            "stacked 2d images did not match expected data."
 
 
 if __name__ == "__main__":
