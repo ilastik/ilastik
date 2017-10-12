@@ -75,6 +75,9 @@ class TestOpBigTiffReader(unittest.TestCase):
         self.assertEqual(op.Output.meta.shape, self.data.shape)
         output_data = op.Output[:].wait()
 
+        # clean up closes tiff file, which prevents PermissionError on Windows
+        op.cleanUp()
+
         numpy.testing.assert_array_equal(output_data, self.data)
 
 
