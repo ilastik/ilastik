@@ -590,7 +590,7 @@ class BlockwiseFileset(object):
             fileLock = FileLock( blockFilePathComponents.externalPath )
             found_lock |= fileLock.purge()
             if found_lock:
-                logger.warn( "Purged lock for block: {}".format( tuple(block_start) ) )
+                logger.warning( "Purged lock for block: {}".format( tuple(block_start) ) )
         
         return found_lock
 

@@ -97,7 +97,7 @@ class FlyMovie(object):
         self.next_frame = None
 
         if self.bytes_per_chunk != self.bits_per_pixel//8*self.framesize[0]*self.framesize[1] + self.timestamp_len:
-            logger.warn("FMF reading will probably end badly: {}, {}, {}, {}, {}".format(self.bytes_per_chunk, self.bits_per_pixel, self.framesize, self.timestamp_len, self.bits_per_pixel*self.framesize[0]*self.framesize[1] + self.timestamp_len) )
+            logger.warning("FMF reading will probably end badly: {}, {}, {}, {}, {}".format(self.bytes_per_chunk, self.bits_per_pixel, self.framesize, self.timestamp_len, self.bits_per_pixel*self.framesize[0]*self.framesize[1] + self.timestamp_len) )
 
         if self.n_frames == 0: # unknown movie length, read to find out
             # seek to end of the movie
@@ -193,10 +193,10 @@ class FlyMovie(object):
                 frame = self.bgcenter.copy()
                 frame[idx] = v
             except:
-                logger.warn("sbfmf indexing error: {}".format(self.file.tell()) )
-                logger.warn( "{}".format(len( x ) ) )
-                logger.warn( "{}".format( idx.shape, nx.max( idx ) ) )
-                logger.warn( "{}".format( frame.shape ) )
+                logger.warning("sbfmf indexing error: {}".format(self.file.tell()) )
+                logger.warning( "{}".format(len( x ) ) )
+                logger.warning( "{}".format( idx.shape, nx.max( idx ) ) )
+                logger.warning( "{}".format( frame.shape ) )
                 raise
             frame.shape = self.framesize
         else:
@@ -269,7 +269,7 @@ class FlyMovie(object):
         try:
             x = self.get_next_frame()
         except:
-            logger.warn( "error after seeking to {} for frame {}".format(seek_to, frame_number) )
+            logger.warning( "error after seeking to {} for frame {}".format(seek_to, frame_number) )
             raise
         else:
             return x
@@ -443,7 +443,7 @@ class FlyMovieSaver(object):
             assert nbytes == self._bytes_per_image
         else:
             if not hasattr(self,'gave_dump_fd_warning'):
-                warnings.warn('could save faster if %s implemented dump_to_file()'%(str(type(origframe)),))
+                warnings.warning('could save faster if %s implemented dump_to_file()'%(str(type(origframe)),))
                 self.gave_dump_fd_warning = True
             b2 = frame.tostring()
             if len(b2) != self._bytes_per_image:
@@ -547,7 +547,7 @@ class FlyMovieSaver(object):
 
     def close(self):
         if self.n_frames == 0:
-            warnings.warn('no frames in FlyMovie')
+            warnings.warning('no frames in FlyMovie')
             # no frames added
             self.file.close()
             del self.file

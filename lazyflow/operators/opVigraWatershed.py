@@ -64,7 +64,7 @@ class OpVigraWatershed(Operator):
         self.Output.meta.assignFrom( self.InputImage.meta )
         self.Output.meta.dtype = numpy.uint32
         
-        #warnings.warn("FIXME: How can this drange be right?")
+        #warnings.warning("FIXME: How can this drange be right?")
         #self.Output.meta.drange = (0,255)
         
         if self.SeedImage.ready():

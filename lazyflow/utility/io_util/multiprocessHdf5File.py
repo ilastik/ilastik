@@ -127,7 +127,7 @@ class _Dataset(object):
         self.mp_file = mp_file
         
         if self.compression is None:
-            warnings.warn( "MultiProcessHdf5File does not improve performance for non-compressed datasets! "
+            warnings.warning( "MultiProcessHdf5File does not improve performance for non-compressed datasets! "
                            "Your dataset '{}' is not compressed.".format( self.mp_file._filepath + internal_path ) )
     
     def __getitem__(self, slicing):

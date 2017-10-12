@@ -29,7 +29,7 @@ import warnings
 from functools import reduce
 
 def warn_deprecated(msg, stacklevel=0):
-    warnings.warn("DEPRECATION WARNING: " + msg,
+    warnings.warning("DEPRECATION WARNING: " + msg,
                   stacklevel=stacklevel+2)
 
 # deprecation warning decorator

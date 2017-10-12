@@ -178,7 +178,7 @@ class ArrayLike( SlotType ):
 
 
     def isCompatible(self, value):
-        warnings.warn("ArrayLike.isCompatible: FIXME here")
+        warnings.warning("ArrayLike.isCompatible: FIXME here")
         return True
 
 

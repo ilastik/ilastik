@@ -97,13 +97,13 @@ class Memory(object):
             logger.info("Available memory set to {}".format(
                 Memory.format(cls._allowed_ram)))
             if cls._allowed_ram > cls._physically_available_ram:
-                logger.warn("User specified memory exceeds memory "
+                logger.warning("User specified memory exceeds memory "
                             "physically available. Please check the"
                             "configuration.")
 
         if cls._user_limits_specified['caches'] and \
                 cls._allowed_ram_caches > cls._allowed_ram:
-            logger.warn("User specified cache memory exceeds total RAM "
+            logger.warning("User specified cache memory exceeds total RAM "
                         "available, resetting to default")
             cls._user_limits_specified['caches'] = False
 
@@ -135,7 +135,7 @@ class Memory(object):
             logger.info("Memory for caches set to {}".format(
                 Memory.format(cls._allowed_ram_caches)))
             if cls._allowed_ram_caches > cls.getAvailableRam():
-                logger.warn("User specified memory for caches exceeds "
+                logger.warning("User specified memory for caches exceeds "
                             "memory available for the application. "
                             "Please check the configuration.")
 

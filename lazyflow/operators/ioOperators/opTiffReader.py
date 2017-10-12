@@ -11,7 +11,7 @@ import tifffile
 # import tifffile._tifffile
 # if tifffile.decode_lzw != tifffile._tifffile.decode_lzw:
 #     import warnings
-#     warnings.warn("tifffile C-extension is not working, probably due to a bug in tifffile._replace_by().\n"
+#     warnings.warning("tifffile C-extension is not working, probably due to a bug in tifffile._replace_by().\n"
 #                   "TIFF decompression will be VERY SLOW.")
 
 import vigra
