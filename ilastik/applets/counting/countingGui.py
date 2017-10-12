@@ -802,7 +802,7 @@ class CountingGui(LabelingGui):
 #        Handle this event by asking the topLevelOperatorView for a prediction over the entire output region.
 #        """
 #        import warnings
-#        warnings.warning("FIXME: Remove this function and just use the data export applet.")
+#        warnings.warn("FIXME: Remove this function and just use the data export applet.")
 #        # The button does double-duty as a cancel button while predictions are being stored
 #        if self._currentlySavingPredictions:
 #            self.predictionSerializer.cancel()

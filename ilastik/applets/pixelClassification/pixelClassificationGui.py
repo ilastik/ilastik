@@ -133,7 +133,7 @@ class ClassifierSelectionDlg(QDialog):
             classifiers["SVM Nu-Support (scikit-learn)"] = SklearnLazyflowClassifierFactory( NuSVC, probability=True )
         except ImportError:
             import warnings
-            warnings.warning("Couldn't import sklearn. Scikit-learn classifiers not available.")
+            warnings.warn("Couldn't import sklearn. Scikit-learn classifiers not available.")
 
         # Debug classifiers
         classifiers["Parallel Random Forest with Variable Importance (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(100, variable_importance_enabled=True)        

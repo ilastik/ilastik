@@ -267,7 +267,7 @@ class OpMulticutAgglomerator(Operator):
         # Therefore, use max_sp, not num_sp
         node_count = rag.max_sp+1
         if rag.num_sp != rag.max_sp+1:
-            warnings.warning( "Superpixel IDs are not consecutive. GM will contain excess variables to fill the gaps."
+            warnings.warn( "Superpixel IDs are not consecutive. GM will contain excess variables to fill the gaps."
                            " (num_sp = {}, max_sp = {})".format( rag.num_sp, rag.max_sp ) )
         #
         # Solve
