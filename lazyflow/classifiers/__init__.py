@@ -12,5 +12,5 @@ try:
     from .iiboostLazyflowClassifier import IIBoostLazyflowClassifier, IIBoostLazyflowClassifierFactory
 except (ImportError, OSError) as _ex:
     import warnings
-    warnings.warning("Couldn't import IIBoost classifier.")
+    warnings.warn("Couldn't import IIBoost classifier.")
     

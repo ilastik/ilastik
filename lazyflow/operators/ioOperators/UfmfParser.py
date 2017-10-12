@@ -242,7 +242,7 @@ def minimize_rectangle_coverage( overlap_rects, rectangle_penalty=0 ):
     Digitized Blobs. Computer Vision, Graphics, and Image Processing.
 
     """
-    warnings.warning('not implemented: minimize_rectangle_coverage')
+    warnings.warn('not implemented: minimize_rectangle_coverage')
     return overlap_rects
 
 def Ufmf(filename,**kwargs):
@@ -799,7 +799,7 @@ class UfmfV3(UfmfBase):
                 if raise_write_errors:
                     raise
                 else:
-                    warnings.warning('IO error when trying to save .ufmf index '
+                    warnings.warn('IO error when trying to save .ufmf index '
                                   'for %s (was .ufmf file opened read-only?)'%(
                         file,))
         else:
@@ -1010,7 +1010,7 @@ class UfmfV4(UfmfV3):
                 if raise_write_errors:
                     raise
                 else:
-                    warnings.warning('IO error when trying to save .ufmf index '
+                    warnings.warn('IO error when trying to save .ufmf index '
                                   'for %s (was .ufmf file opened read-only?)'%(
                         file,))
         else:
@@ -1119,7 +1119,7 @@ class FlyMovieEmulator(object):
         return self._timestamps
     def get_frame(self,fno,allow_partial_frames=False,_return_more=False):
         if allow_partial_frames:
-            warnings.warning('unsupported argument "allow_partial_frames" ignored')
+            warnings.warn('unsupported argument "allow_partial_frames" ignored')
         try:
             self.seek(fno)
         except NoSuchFrameError as err:
@@ -1174,7 +1174,7 @@ class FlyMovieEmulator(object):
                 try:
                     mean_image,im_timestamp=self._ufmf.get_keyframe_for_timestamp('mean',timestamp)
                 except (KeyError, NoMoreFramesException):
-                    warnings.warning('UfmfV3 fmf emulator filling bg with white')
+                    warnings.warn('UfmfV3 fmf emulator filling bg with white')
                     w,h=self._ufmf.get_max_size()
                     mean_image = numpy.empty((h,w),dtype=np.uint8)
                     mean_image.fill(255)
@@ -1271,7 +1271,7 @@ class FlyMovieEmulator(object):
             if int(os.environ.get('UFMF_FORCE_CACHE','0')):
                 raise
             else:
-                warnings.warning( 'While attempting to open cache in %s: %s '
+                warnings.warn( 'While attempting to open cache in %s: %s '
                                ' (set environment variable '
                                'UFMF_FORCE_CACHE=1 to raise)'%(cache_fname,err))
 
@@ -1301,7 +1301,7 @@ class FlyMovieEmulator(object):
             if int(os.environ.get('UFMF_FORCE_CACHE','0')):
                 raise
             else:
-                warnings.warning( str(err)+' (set environment variable '
+                warnings.warn( str(err)+' (set environment variable '
                                'UFMF_FORCE_CACHE=1 to raise)' )
 
     def get_height(self):
@@ -1454,7 +1454,7 @@ class UfmfSaverV3(UfmfSaverBase):
             elif coding==b'YUV422':
                 xinc_yinc = (4,1)
             else:
-                warnings.warning('ufmf xinc_yinc set (2,2) because coding unknown')
+                warnings.warn('ufmf xinc_yinc set (2,2) because coding unknown')
                 xinc_yinc = (2,2)
         self.xinc, self.yinc = xinc_yinc
         self._index = {b'keyframe':collections.defaultdict(dict),

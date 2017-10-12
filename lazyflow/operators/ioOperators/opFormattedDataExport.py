@@ -138,7 +138,7 @@ class OpFormattedDataExport(Operator):
         clipped_start = numpy.maximum(0, new_start)
         clipped_stop = numpy.minimum(total_roi[1], new_stop)
         if (clipped_start != new_start).any() or (clipped_stop != new_stop).any():
-            warnings.warning("The ROI you are attempting to export exceeds the extents of your dataset.  Clipping to dataset bounds.")
+            warnings.warn("The ROI you are attempting to export exceeds the extents of your dataset.  Clipping to dataset bounds.")
 
         new_start, new_stop = tuple(clipped_start), tuple(clipped_stop)
 
@@ -201,7 +201,7 @@ class OpFormattedDataExport(Operator):
                 self._opReorderAxes.AxisOrder.setValue( self.OutputAxisOrder.value )
             except KeyError:
                 # FIXME: Why does the above line fail sometimes?
-                warnings.warning("Ignoring invalid axis order setting")
+                warnings.warn("Ignoring invalid axis order setting")
                 axistags = self.Input.meta.axistags
                 self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in axistags ) )
         else:

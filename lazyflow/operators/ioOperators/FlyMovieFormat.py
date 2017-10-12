@@ -443,7 +443,7 @@ class FlyMovieSaver(object):
             assert nbytes == self._bytes_per_image
         else:
             if not hasattr(self,'gave_dump_fd_warning'):
-                warnings.warning('could save faster if %s implemented dump_to_file()'%(str(type(origframe)),))
+                warnings.warn('could save faster if %s implemented dump_to_file()'%(str(type(origframe)),))
                 self.gave_dump_fd_warning = True
             b2 = frame.tostring()
             if len(b2) != self._bytes_per_image:
@@ -547,7 +547,7 @@ class FlyMovieSaver(object):
 
     def close(self):
         if self.n_frames == 0:
-            warnings.warning('no frames in FlyMovie')
+            warnings.warn('no frames in FlyMovie')
             # no frames added
             self.file.close()
             del self.file
