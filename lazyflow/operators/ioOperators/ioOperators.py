@@ -103,8 +103,8 @@ class OpStackLoader(Operator):
                 sequence_axis = 'z'
             # For stacks of 2D images, we assume xy slices
             if sequence_axis == 'c':
-                shape = (C*num_files, Y, X)
-                axistags = vigra.defaultAxistags('cxy')
+                shape = (X, Y, C*num_files)
+                axistags = vigra.defaultAxistags('xyc')
             else:
                 shape = (num_files, Y, X, C)
                 axistags = vigra.defaultAxistags(sequence_axis + 'yxc')
@@ -150,9 +150,9 @@ class OpStackLoader(Operator):
 
     def _execute_3d(self, roi, result):
         traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
-        # roi is in yxc order; stacking over c
-        y_start, x_start, c_start = roi.start
-        y_stop, x_stop, c_stop = roi.stop
+        # roi is in xyc order; stacking over c
+        x_start, y_start, c_start = roi.start
+        x_stop, y_stop, c_stop = roi.stop
 
         # get C of slice
         C = self.info.getShape()[2]
@@ -171,7 +171,7 @@ class OpStackLoader(Operator):
             result[:, :, i*C:(i + 1)*C] = \
                 vigra.impex.readImage(fileName)[x_start:x_stop,
                                                 y_start:y_stop,
-                                                :].withAxes(*'yxc')
+                                                :].withAxes(*'xyc')
         return result
 
     def _execute_4d(self, roi, result):
