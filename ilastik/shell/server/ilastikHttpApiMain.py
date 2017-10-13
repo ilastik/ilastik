@@ -15,15 +15,22 @@ from ilastik.shell.server.ilastikAPI import IlastikAPI
 from ilastik.shell.server.dataHttpAPI import dataAPI
 from functools import partial
 
-from argparse import ArgumentParser
+import argparse
 import logging
 
 
 logger = logging.getLogger(__name__)
 
 
+class ExpandPaths(argparse.Action):
+    """Generate full paths"""
+    def __call__(self, parser, namespace, values, option_string=None):
+        """"""
+        setattr(namespace, self.dest, os.path.abspath(os.path.expanduser(values)))
+
+
 def parse_args():
-    p = ArgumentParser(
+    p = argparse.ArgumentParser(
         description="",
         usage="",
         epilog="",
@@ -35,6 +42,20 @@ def parse_args():
         type=int,
         help=('Set to 0 when using deep nets!'),
     )
+    p.add_argument(
+        '--projects-path',
+        default="~/ilastik_server/projects",
+        type=str,
+        help=('Path with write permissions, to save and load projects.'),
+        action=ExpandPaths,
+    )
+    p.add_argument(
+        '--data-path',
+        default="~/ilastik_server/data",
+        type=str,
+        help=('Path with write permissions, to save and load data'),
+        action=ExpandPaths,
+    )
 
     args = p.parse_args()
     return args
@@ -42,7 +63,7 @@ def parse_args():
 
 class IlastikServerConfig(object):
     def __init__(self, *args, **kwargs):
-        super(IlastikServerConfig, self).__init__(*args, **kwargs)
+        super().__init__()
         default_config = {
             "projects_path": os.path.expanduser('~/ilastik_server/projects'),
             "data_path": os.path.expanduser('~/ilastik_server/data')
@@ -68,12 +89,14 @@ class IlastikServerConfig(object):
         projects_path = self.projects_path
         if not os.path.exists(projects_path):
             os.makedirs(projects_path)
-            logger.info('Created project path %s', projects_path)
+            logger.info(f'Created project path {projects_path}')
+        logger.info(f'Using project path: {projects_path}')
 
         data_path = self.data_path
         if not os.path.exists(data_path):
             os.makedirs(data_path)
-            logger.info('Created project path %s', data_path)
+            logger.info(f'Created data path {data_path}.')
+        logger.info(f'Using data path: {data_path}')
 
 
 class DefaultConfig(object):
@@ -81,14 +104,12 @@ class DefaultConfig(object):
     TESTING = False
 
 
-def create_app(config=DefaultConfig):
+def create_app(ilastik_config, config=DefaultConfig):
     """
     """
     # TODO: command line handling
-
     app = Flask(__name__)
     app.config.from_object(config)
-    ilastik_config = IlastikServerConfig()
     ilastik_api = IlastikAPI()
     app._ilastik_api = ilastik_api
     app._ilastik_config = ilastik_config
@@ -138,7 +159,13 @@ def main():
     args = parse_args()
     _configure_lazyflow_settings(n_threads=args.n_threads)
     _init_logging()
-    app = create_app()
+    ilastik_kwargs = {}
+    if args.projects_path != "":
+        ilastik_kwargs['projects_path'] = args.projects_path
+    if args.data_path != "":
+        ilastik_kwargs['data_path'] = args.data_path
+    ilastik_config = IlastikServerConfig(**ilastik_kwargs)
+    app = create_app(ilastik_config=ilastik_config)
     app.run(host='0.0.0.0', port=5000, threaded=True)
 
 
