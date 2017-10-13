@@ -7,6 +7,7 @@
 from __future__ import division, print_function
 import os
 from flask import Flask
+from flask_cors import CORS
 from ilastik.shell.server.ilastikHttpAPI import ilastikHttpAPI
 from ilastik.shell.server.appletHttpAPI import appletAPI
 from ilastik.shell.server.workflowHttpAPI import workflowAPI
@@ -118,6 +119,7 @@ def create_app(ilastik_config, config=DefaultConfig):
     app.register_blueprint(workflowAPI, url_prefix='/api/workflow')
     app.register_blueprint(projectAPI, url_prefix='/api/project')
     app.register_blueprint(dataAPI, url_prefix='/api/data')
+    CORS(app)
     return app
 
 
