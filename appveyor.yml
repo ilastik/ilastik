@@ -5,6 +5,7 @@ environment:
   # set miniconda version explicitly
   MINICONDA: C:\Miniconda36-x64
 
+
 install:
   - set DEV_PREFIX=%MINICONDA%/envs/%ENV_NAME%
   - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
