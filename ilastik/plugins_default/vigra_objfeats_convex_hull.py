@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.plugins import ObjectFeaturesPlugin
-from ilastik.plugins_default.feature_fill import fill_convexHull
+from ilastik.plugins_default.feature_fill import fill_feature_description
 import vigra
 import numpy
 import logging
@@ -73,7 +73,7 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
         # fill in the detailed information about the features.
         # features should be a dict with the feature_name as key.
         # NOTE, this function needs to be updated every time skeleton features change
-        features = fill_convexHull(features)
+        features = fill_feature_description(features)
 
         return features
 
