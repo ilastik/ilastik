@@ -1,5 +1,5 @@
 
-def fill_convexHull(features):
+def fill_featue_description(features):
 
         for feature in features.keys():
             features[feature]["displaytext"] = feature
