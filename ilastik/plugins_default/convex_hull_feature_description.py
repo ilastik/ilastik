@@ -1,5 +1,5 @@
 
-def fill_featue_description(features):
+def fill_feature_description(features):
 
         for feature in features.keys():
             features[feature]["displaytext"] = feature
