@@ -482,6 +482,8 @@ class OpConservationTracking(Operator):
                 from hytra.core.splittracking import SplitTracking 
                 result = SplitTracking.trackFlowBasedWithSplits(model, weights, numFramesPerSplit=numFramesPerSplit)
             else:
+                # casting weights to float (raised TypeError on Windows before)
+                weights['weights'] = [float(w) for w in weights['weights']]
                 result = dpct.trackFlowBased(model, weights)
 
         elif solverName == 'ILP' and mht:
