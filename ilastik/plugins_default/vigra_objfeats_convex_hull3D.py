@@ -35,7 +35,7 @@ class VigraConvexHullObjFeats3D(ObjectFeaturesPlugin):
     
     def availableFeatures(self, image, labels):
 
-        print (image.ndim)
+        # print (image.ndim)
 
         if image.ndim == 3:
             names = vigra.analysis.supportedConvexHullFeatures(labels)

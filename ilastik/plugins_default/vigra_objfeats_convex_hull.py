@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#		   http://ilastik.org/license.
 ###############################################################################
 from ilastik.plugins import ObjectFeaturesPlugin
 from ilastik.plugins_default.convex_hull_feature_description import fill_feature_description
