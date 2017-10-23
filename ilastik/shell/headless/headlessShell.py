@@ -139,7 +139,7 @@ class HeadlessShell(object):
                                                   workflow_cmdline_args=self._workflow_cmdline_args,
                                                   project_creation_args=self._workflow_cmdline_args )
 
-            self.projectManager._importProject(importFromPath, hdf5File, projectFilePath)
+            self.projectManager._importProject(oldProjectFilePath, hdf5File, projectFilePath)
 
     def setAppletEnabled(self, applet, enabled):
         """

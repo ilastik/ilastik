@@ -38,6 +38,7 @@ import vigra
 import logging
 logger = logging.getLogger(__name__)
 
+import hytra
 import dpct
 try:
     import multiHypoTracking_with_cplex as mht
@@ -46,13 +47,6 @@ except ImportError:
         import multiHypoTracking_with_gurobi as mht
     except ImportError:
         logger.warning("Could not find any ILP solver")
-
-try:
-    import hytra
-    WITH_HYTRA = True
-
-except ImportError as e:
-    WITH_HYTRA = False
 
 class OpConservationTracking(Operator):
     LabelImage = InputSlot()
@@ -75,7 +69,7 @@ class OpConservationTracking(Operator):
  
     # Use a slot for storing the export settings in the project file.
     # just here so that old projects still load!
-    ExportSettings = InputSlot()
+    ExportSettings = InputSlot(value={})
 
     DivisionProbabilities = InputSlot(optional=True, stype=Opaque, rtype=List)
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
@@ -127,7 +121,7 @@ class OpConservationTracking(Operator):
 
         self.result = None
 
-        # gui progress
+        # progress bar
         self.progressWindow = None
         self.progressVisitor=DefaultProgressVisitor()
 
@@ -269,31 +263,18 @@ class OpConservationTracking(Operator):
                                    time_range[-1]+1,
                                    scales)
 
-        if WITH_HYTRA:
-            hypothesesGraph = IlastikHypothesesGraph(
-                probabilityGenerator=traxelstore,
-                timeRange=(time_range[0],time_range[-1]+1),
-                maxNumObjects=maxObj,
-                numNearestNeighbors=max_nearest_neighbors,
-                fieldOfView=fieldOfView,
-                withDivisions=withDivisions,
-                maxNeighborDistance=maxDist,
-                divisionThreshold=divThreshold,
-                borderAwareWidth=borderAwareWidth,
-                progressVisitor=self.progressVisitor
-            )
-        else:
-            hypothesesGraph = IlastikHypothesesGraph(
-                probabilityGenerator=traxelstore,
-                timeRange=(time_range[0],time_range[-1]+1),
-                maxNumObjects=maxObj,
-                numNearestNeighbors=max_nearest_neighbors,
-                fieldOfView=fieldOfView,
-                withDivisions=withDivisions,
-                maxNeighborDistance=maxDist,
-                divisionThreshold=divThreshold,
-                borderAwareWidth=borderAwareWidth
-            )
+        hypothesesGraph = IlastikHypothesesGraph(
+            probabilityGenerator=traxelstore,
+            timeRange=(time_range[0],time_range[-1]+1),
+            maxNumObjects=maxObj,
+            numNearestNeighbors=max_nearest_neighbors,
+            fieldOfView=fieldOfView,
+            withDivisions=withDivisions,
+            maxNeighborDistance=maxDist,
+            divisionThreshold=divThreshold,
+            borderAwareWidth=borderAwareWidth,
+            progressVisitor=self.progressVisitor
+        )
         return hypothesesGraph
     
     def _resolveMergers(self, hypothesesGraph, model):
@@ -412,13 +393,9 @@ class OpConservationTracking(Operator):
         Main conservation tracking function. Runs tracking solver, generates hypotheses graph, and resolves mergers.
         """
 
-        if WITH_HYTRA:
-            self.progressWindow = progressWindow
-            self.progressVisitor=progressVisitor
-        else:
-            self.progressWindow = None
-            self.progressVisitor = CommandLineProgressVisitor()
-
+        self.progressWindow = progressWindow
+        self.progressVisitor=progressVisitor
+    
         if not self.Parameters.ready():
             self.raiseException(self.progressWindow, "Parameter slot is not ready")
         
@@ -505,6 +482,8 @@ class OpConservationTracking(Operator):
                 from hytra.core.splittracking import SplitTracking 
                 result = SplitTracking.trackFlowBasedWithSplits(model, weights, numFramesPerSplit=numFramesPerSplit)
             else:
+                # casting weights to float (raised TypeError on Windows before)
+                weights['weights'] = [float(w) for w in weights['weights']]
                 result = dpct.trackFlowBased(model, weights)
 
         elif solverName == 'ILP' and mht:
@@ -532,7 +511,7 @@ class OpConservationTracking(Operator):
 
         if self.progressWindow is not None:
             self.progressWindow.onTrackDone()
-
+        self.progressVisitor.showProgress(1.0)
         # Uncomment to export a hypothese graph diagram
         #logger.info("Exporting hypotheses graph diagram")
         #from hytra.util.hypothesesgraphdiagram import HypothesesGraphDiagram
@@ -557,11 +536,7 @@ class OpConservationTracking(Operator):
         elif inputSlot is self.ResolvedMergers:
             pass
         elif inputSlot == self.NumLabels:
-            if self.parent.parent.trackingApplet._gui \
-                    and self.parent.parent.trackingApplet._gui.currentGui() \
-                    and self.NumLabels.ready() \
-                    and self.NumLabels.value > 1:
-                self.parent.parent.trackingApplet._gui.currentGui()._drawer.maxObjectsBox.setValue(self.NumLabels.value-1)
+            pass
 
     def _labelMergers(self, volume, time, offset):
         """
@@ -692,10 +667,6 @@ class OpConservationTracking(Operator):
             raise RuntimeError('Exporting tracking solution with plugin failed')
         else:
             return True
-
-    def get_table_export_settings(self):
-        # TODO: remove once tracking is hytra-only
-        return None, None
 
     def _checkConstraints(self, *args):
         if self.RawImage.ready():

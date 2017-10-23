@@ -66,7 +66,6 @@ class PixelClassificationWorkflow(Workflow):
         self._workflow_cmdline_args = workflow_cmdline_args
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
-        parser.add_argument('--filter', help="pixel feature filter implementation.", choices=['Original', 'Refactored', 'Interpolated'], default='Original')
         parser.add_argument('--print-labels-by-slice', help="Print the number of labels for each Z-slice of each image.", action="store_true")
         parser.add_argument('--label-search-value', help="If provided, only this value is considered when using --print-labels-by-slice", default=0, type=int)
         parser.add_argument('--generate-random-labels', help="Add random labels to the project file.", action="store_true")
@@ -79,8 +78,7 @@ class PixelClassificationWorkflow(Workflow):
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
-        self.filter_implementation = parsed_creation_args.filter
-        
+
         # Parse the cmdline args for the current session.
         parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
         self.print_labels_by_slice = parsed_args.print_labels_by_slice
@@ -93,9 +91,6 @@ class PixelClassificationWorkflow(Workflow):
         self.variable_importance_path = parsed_args.variable_importance_path
         self.label_proportion = parsed_args.label_proportion
 
-        if parsed_args.filter and parsed_args.filter != parsed_creation_args.filter:
-            logger.error("Ignoring new --filter setting.  Filter implementation cannot be changed after initial project creation.")
-        
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right.\n\n"\
                             "Power users: Optionally use the 'Prediction Mask' tab to supply a binary image that tells ilastik where it should avoid computations you don't need."
 
@@ -156,14 +151,13 @@ class PixelClassificationWorkflow(Workflow):
                                     supportIlastik05Import=True,
                                     instructionText=data_instructions )
 
-
     def createFeatureSelectionApplet(self):
         """
         Can be overridden by subclasses, if they want to return their own type of FeatureSelectionApplet.
         NOTE: The applet returned here must have the same interface as the regular FeatureSelectionApplet.
               (If it looks like a duck...)
         """
-        return FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
+        return FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections")
 
     def createPixelClassificationApplet(self):
         """

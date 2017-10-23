@@ -29,7 +29,7 @@ import volumina.colortables as colortables
 from volumina.api import LazyflowSource, ColortableLayer
 
 
-from ilastik.workflows.tracking.conservation.pluginExportOptionsDlg import PluginExportOptionsDlg
+from ilastik.applets.tracking.base.pluginExportOptionsDlg import PluginExportOptionsDlg
 from ilastik.applets.dataExport.opDataExport import get_model_op
 
 
@@ -116,7 +116,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
                                      "check that images were specified in the (batch) input applet and try again." )
             return
 
-        settingsDlg = PluginExportOptionsDlg(self, opExportModelOp)
+        settingsDlg = PluginExportOptionsDlg(self)
         if settingsDlg.exec_() == PluginExportOptionsDlg.Accepted:
             # Copy the settings from our 'model op' into the real op
             setting_slots = [ opExportModelOp.RegionStart,
@@ -189,33 +189,6 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
     def set_default_export_filename(self, filename):
         # TODO: remove once tracking is hytra-only
         self._default_export_filename = filename
-
-    # override this ExportingOperator function so that we can pass the default filename
-    def show_export_dialog(self):
-        """
-        Shows the ExportObjectInfoDialog and calls the operators export_object_data method
-        """
-        # TODO: remove once tracking is hytra-only
-        # Late imports here, so we don't accidentally import PyQt during headless mode.
-        from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
-        
-        dimensions = self.get_raw_shape()
-        feature_names = self.get_feature_names()
-
-        op = self.get_exporting_operator()
-        settings, selected_features = op.get_table_export_settings()
-                
-        dialog = ExportObjectInfoDialog(dimensions, 
-                                        feature_names,
-                                        selected_features=selected_features, 
-                                        title=self.get_export_dialog_title(), 
-                                        filename=self._default_export_filename)
-        if not dialog.exec_():
-            return (None, None)
-
-        settings = dialog.settings()
-        selected_features = list(dialog.checked_features()) # returns a generator, but that's inconvenient because it can't be serialized.
-        return settings, selected_features
 
     def exportResultsForSlot(self, opLane):
         if self.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName and not self.pluginWasSelected:

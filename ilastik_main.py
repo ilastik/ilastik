@@ -314,6 +314,8 @@ def _prepare_test_recording_and_playback( parsed_args ):
     return eventcapture_mode, playback_args
 
 def _enable_faulthandler():
+    if sys.platform.startswith('win'): # todo: fix
+        return
     try:
         # Enable full stack trace printout in case of a segfault
         # (Requires the faulthandler module from PyPI)

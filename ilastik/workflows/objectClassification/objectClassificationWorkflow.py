@@ -86,20 +86,15 @@ class ObjectClassificationWorkflow(Workflow):
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
         parser.add_argument('--fillmissing', help="use 'fill missing' applet with chosen detection method", choices=['classic', 'svm', 'none'], default='none')
-        parser.add_argument('--filter', help="pixel feature filter implementation.", choices=['Original', 'Refactored', 'Interpolated'], default='Original')
         parser.add_argument('--nobatch', help="do not append batch applets", action='store_true', default=False)
-        
+
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
 
         self.fillMissing = parsed_creation_args.fillmissing
-        self.filter_implementation = parsed_creation_args.filter
 
         parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
         if parsed_args.fillmissing != 'none' and parsed_creation_args.fillmissing != parsed_args.fillmissing:
             logger.error( "Ignoring --fillmissing cmdline arg.  Can't specify a different fillmissing setting after the project has already been created." )
-        
-        if parsed_args.filter != 'Original' and parsed_creation_args.filter != parsed_args.filter:
-            logger.error( "Ignoring --filter cmdline arg.  Can't specify a different filter setting after the project has already been created." )
 
         self.batch = not parsed_args.nobatch
 
@@ -572,7 +567,6 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
             self,
             "Feature Selection",
             "FeatureSelections",
-            filter_implementation=self.filter_implementation
         )
 
         self.pcApplet = PixelClassificationApplet(
