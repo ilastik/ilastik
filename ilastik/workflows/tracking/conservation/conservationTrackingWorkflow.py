@@ -384,7 +384,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
                     if os.path.basename(filename) == '':
                         filename = os.path.join(filename, 'pluginExport.txt')
                 else:
-                    filename = os.path.dirname(partially_formatted_name)
+                    filename = partially_formatted_name
 
                 if filename is None or len(str(filename)) == 0:
                     logger.error("Cannot export from plugin with empty output filename")
