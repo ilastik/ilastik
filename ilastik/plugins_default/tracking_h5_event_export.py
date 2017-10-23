@@ -89,7 +89,7 @@ else:
     
         def checkFilesExist(self, filename):
             ''' Check whether the files we want to export are already present '''
-            return os.path.exists(os.path.join(filename, 'H5-Event-Sequence'))
+            return os.path.exists(filename)
     
         def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
             """Export the tracking solution stored in the hypotheses graph as a sequence of H5 files,
@@ -119,6 +119,9 @@ else:
             pool = RequestPool()
     
             timeIndex = labelImageSlot.meta.axistags.index('t')
+
+            if not os.path.exists(filename):
+                os.makedirs(filename)
     
             for timestep in traxelIdPerTimestepToUniqueIdMap.keys():
                 # extract current frame lable image
@@ -127,9 +130,7 @@ else:
                 roi = tuple(roi)
                 labelImage = labelImageSlot[roi].wait()
     
-                if not os.path.exists(filename + '/H5-Event-Sequence'):
-                    os.makedirs(filename + '/H5-Event-Sequence')
-                fn = os.path.join(filename, "H5-Event-Sequence/{0:05d}.h5".format(int(timestep)))
+                fn = os.path.join(filename, "{0:05d}.h5".format(int(timestep)))
                 pool.add(Request(partial(writeEvents,
                                             int(timestep),
                                              linksPerTimestep[timestep],
