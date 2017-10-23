@@ -51,7 +51,7 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
                 blockedFeatures[standardObjFeatStr].append(feature)
 
         for category in categories:
-            for feature in list(features[frame][category].keys()):
+            for feature in sorted(list(features[frame][category].keys())):
                 if feature not in excludedFeatures and feature not in blockedFeatures[category]:
                     featureName = self._getFeatureNameTranslation(category, feature).replace(' ', '_')
                     if (np.asarray(features[frame][category][feature])).ndim == 2:
@@ -97,7 +97,7 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
             colIdx = 6
 
             for category in categories:
-                for feature in list(features[frame][category].keys()):
+                for feature in sorted(list(features[frame][category].keys())):
 
                     if feature not in excludedFeatures and feature not in blockedFeatures[category]:
                         if (np.asarray(features[frame][category][feature])).ndim == 2:
