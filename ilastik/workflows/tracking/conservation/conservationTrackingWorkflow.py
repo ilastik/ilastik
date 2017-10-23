@@ -6,7 +6,6 @@ from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
 from ilastik.applets.tracking.conservation.conservationTrackingApplet import ConservationTrackingApplet
 from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
-#from ilastik.applets.opticalTranslation.opticalTranslationApplet import OpticalTranslationApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
@@ -62,9 +61,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         if not self.fromBinary:
             self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self, 
                                                                   "Threshold and Size Filter", 
-                                                                  "ThresholdTwoLevels" )        
-        if self.withOptTrans:
-            self.opticalTranslationApplet = OpticalTranslationApplet(workflow=self)
+                                                                  "ThresholdTwoLevels" )
                                                                    
         self.objectExtractionApplet = TrackingFeatureExtractionApplet(workflow=self, interactive=False,
                                                                       name="Object Feature Computation")                                                                     
@@ -124,23 +121,16 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
         self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
 
-        # table only export is just available for the pgmlink backend, hytra uses the CSV plugin instead
-        try:
-            import hytra
-        except ImportError:
-            self.dataExportApplet.includeTableOnlyOption() # Export table only, without volumes
 
         # configure export settings
-        settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}
-        selected_features = ['Count', 'RegionCenter', 'RegionRadii', 'RegionAxes']                  
-        opTracking.ExportSettings.setValue( (settings, selected_features) )
+        # settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}
+        # selected_features = ['Count', 'RegionCenter', 'RegionRadii', 'RegionAxes']                  
+        # opTracking.ExportSettings.setValue( (settings, selected_features) )
         
         self._applets = []                
         self._applets.append(self.dataSelectionApplet)
         if not self.fromBinary:
             self._applets.append(self.thresholdTwoLevelsApplet)
-        if self.withOptTrans:
-            self._applets.append(self.opticalTranslationApplet)
         self._applets.append(self.objectExtractionApplet)
 
         if self.divisionDetectionApplet:
@@ -164,7 +154,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             self._batch_input_args = None
 
         if unused_args:
-            logger.warn("Unused command-line args: {}".format( unused_args ))
+            logger.warning("Unused command-line args: {}".format( unused_args ))
         
     @property
     def applets(self):
@@ -221,8 +211,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         if not self.fromBinary:
             opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
-        if self.withOptTrans:
-            opOptTranslation = self.opticalTranslationApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction.setDefaultFeatures(configConservation.allFeaturesObjectCount)
 
@@ -250,17 +238,11 @@ class ConservationTrackingWorkflowBase( Workflow ):
         op5Binary = OpReorderAxes(parent=self)         
         op5Binary.AxisOrder.setValue("txyzc")
         op5Binary.Input.connect(binarySrc)
-        
-        if self.withOptTrans:
-            opOptTranslation.RawImage.connect(op5Raw.Output)
-            opOptTranslation.BinaryImage.connect(op5Binary.Output)
-        
+
         # # Connect operators ##       
         opObjExtraction.RawImage.connect(op5Raw.Output)
         opObjExtraction.BinaryImage.connect(op5Binary.Output)
-        if self.withOptTrans:
-            opObjExtraction.TranslationVectors.connect(opOptTranslation.TranslationVectors)
-        
+
         if self.divisionDetectionApplet:            
             opDivDetection.BinaryImages.connect( op5Binary.Output )
             opDivDetection.RawImages.connect( op5Raw.Output )        
@@ -381,9 +363,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
         # the MessageBox and then don't export. For the next round we click the export button,
         # we really want it to export, so checkOverwriteFiles=False.
         
-        # FIXME: This probably only works for the non-blockwise export slot.
-        #        We should assert that the user isn't using the blockwise slot.
-
         # Plugin export if selected
         logger.info("Export source is: " + self.dataExportApplet.topLevelOperator.SelectedExportSource.value)
 
@@ -411,40 +390,15 @@ class ConservationTrackingWorkflowBase( Workflow ):
                     logger.error("Cannot export from plugin with empty output filename")
                     return True
 
+                self.dataExportApplet.progressSignal(-1)
                 exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin, checkOverwriteFiles)
+                self.dataExportApplet.progressSignal(100)
+
                 if not exportStatus:
                     return False
                 logger.info("Export done")
 
             return True
-
-        # Legacy CSV Table export (only if plugin was not selected)
-        settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
-        if settings:
-            self.dataExportApplet.progressSignal(0)
-            name_format = settings['file path']
-            partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
-            settings['file path'] = partially_formatted_name
-
-            req = self.trackingApplet.topLevelOperator.getLane(lane_index).export_object_data(
-                        lane_index, 
-                        # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
-                        #        That's not a huge deal, because there's still a progress bar for the overall export.
-                        show_gui=False)
-
-            req.wait()
-            self.dataExportApplet.progressSignal(100)
-
-            # Restore option to bypass cache to false
-            self.objectExtractionApplet.topLevelOperator[lane_index].BypassModeEnabled.setValue(False)
-            
-            # Restore state of axis ranges
-            parameters = self.trackingApplet.topLevelOperator.Parameters.value
-            parameters['time_range'] = self.prev_time_range
-            parameters['x_range'] = self.prev_x_range
-            parameters['y_range'] = self.prev_y_range
-            parameters['z_range'] = self.prev_z_range
-
         return True
 
     def getPartiallyFormattedName(self, lane_index, path_format_string):

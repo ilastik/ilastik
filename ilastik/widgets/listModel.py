@@ -248,6 +248,8 @@ class ListModel(QAbstractTableModel):
                 return Qt.NoItemFlags
         elif  index.column() == self.ColumnID.Name:
             return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        else:
+            return Qt.NoItemFlags
 
     def setData(self, index, value, role=Qt.EditRole):
         '''

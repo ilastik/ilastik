@@ -44,7 +44,7 @@ def _format_version(t):
     """converts a tuple to a string"""
     return '.'.join(str(i) for i in t)
 
-__version_info__ = (1, 2, '2') # Don't forget to update the splash screen!
+__version_info__ = (1, 3, '0a2') # Don't forget to update the splash screen!
 __version__ = _format_version(__version_info__)
 
 core_developers = [ "Janez Ales",
@@ -109,7 +109,7 @@ def isVersionCompatible(version):
     v2 = __version_info__[0:2]
     
     # Version 1.0 is compatible in all respects with version 0.6
-    compatible_set = [(0,6), (1,0), (1,1), (1,2)]
+    compatible_set = [(0,6), (1,0), (1,1), (1,2), (1,3)]
     if v1 in compatible_set and v2 in compatible_set:
         return True
     

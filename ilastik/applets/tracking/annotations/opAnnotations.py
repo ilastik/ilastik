@@ -44,8 +44,7 @@ class OpAnnotations(Operator):
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
     MaxNumObj = InputSlot()
     ComputedFeatureNames = InputSlot(rtype=List, stype=Opaque)
-    Crops = InputSlot()
-    
+
     TrackImage = OutputSlot()
     Labels = OutputSlot(stype=Opaque, rtype=List)
     Divisions = OutputSlot(stype=Opaque, rtype=List)

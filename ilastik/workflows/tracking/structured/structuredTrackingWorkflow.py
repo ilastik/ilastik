@@ -30,7 +30,6 @@ from ilastik.applets.tracking.structured.structuredTrackingApplet import Structu
 from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
 from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
-from ilastik.applets.cropping.cropSelectionApplet import CropSelectionApplet
 from ilastik.applets.trackingFeatureExtraction import config
 from ilastik.applets.tracking.conservation import config as configConservation
 from ilastik.applets.tracking.structured import config as configStructured
@@ -57,17 +56,12 @@ except ImportError:
         logger.info("GUROBI found!")
     except ImportError:
         try:
-            import pgmlink
-            SOLVER = "PGMLINK"
-            logger.info("PGMLINK found!")
+            import dpct
+            SOLVER = "DPCT"
+            logger.warning("Could not find any learning solver. Tracking will use flow-based solver (DPCT). " + \
+                           "Learning for tracking will be disabled!")
         except ImportError:
-            try:
-                import dpct
-                SOLVER = "DPCT"
-                logger.warning("Could not find any learning solver (HYTRA, PGMLINK). Tracking will use flow-based solver (DPCT). " + \
-                               "Learning for tracking will be disabled!")
-            except ImportError:
-                raise ImportError("Could not find any solver.")
+            raise ImportError("Could not find any solver.")
 
 class StructuredTrackingWorkflowBase( Workflow ):
     workflowName = "Structured Learning Tracking Workflow BASE"
@@ -120,8 +114,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
                                                                      projectFileGroupName="CountClassification",
                                                                      selectedFeatures=configStructured.selectedFeaturesObjectCount)
 
-        self.cropSelectionApplet = CropSelectionApplet(self,"Crop Selection","CropSelection")
-
         self.trackingFeatureExtractionApplet = TrackingFeatureExtractionApplet(name="Object Feature Computation",workflow=self, interactive=False)
 
         self.objectExtractionApplet = ObjectExtractionApplet(name="Object Feature Computation",workflow=self, interactive=False)
@@ -129,20 +121,11 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self.annotationsApplet = AnnotationsApplet( name="Training", workflow=self )
         opAnnotations = self.annotationsApplet.topLevelOperator
 
-        # self.default_training_export_filename = '{dataset_dir}/{nickname}-training_exported_data.csv'
-        # self.dataExportAnnotationsApplet = TrackingBaseDataExportApplet(self, "Training Export",default_export_filename=self.default_training_export_filename)
-        # opDataExportAnnotations = self.dataExportAnnotationsApplet.topLevelOperator
-        # opDataExportAnnotations.SelectionNames.setValue( ['User Training for Tracking', 'Object Identities'] )
-        # opDataExportAnnotations.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
-        # self.dataExportAnnotationsApplet.set_exporting_operator(opAnnotations)
-
         self.trackingApplet = StructuredTrackingApplet( name="Tracking - Structured Learning", workflow=self )
         opStructuredTracking = self.trackingApplet.topLevelOperator
 
         if SOLVER=="CPLEX" or SOLVER=="GUROBI":
             self._solver="ILP"
-        elif SOLVER=="PGMLINK":
-            self._solver="PgmLink"
         elif SOLVER=="DPCT":
             self._solver="Flow-based"
         else:
@@ -173,10 +156,8 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self.batchProcessingApplet = BatchProcessingApplet(self, "Batch Processing", self.dataSelectionApplet, self.dataExportTrackingApplet)
 
         self._applets.append(self.cellClassificationApplet)
-        self._applets.append(self.cropSelectionApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.annotationsApplet)
-        # self._applets.append(self.dataExportAnnotationsApplet)
         self._applets.append(self.trackingApplet)
         self._applets.append(self.dataExportTrackingApplet)
 
@@ -220,9 +201,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opAnnotations = self.annotationsApplet.topLevelOperator.getLane(laneIndex)
         if not self.fromBinary:
             opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
-        # opDataAnnotationsExport = self.dataExportAnnotationsApplet.topLevelOperator.getLane(laneIndex)
 
-        opCropSelection = self.cropSelectionApplet.topLevelOperator.getLane(laneIndex)
         opStructuredTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
         opDataTrackingExport = self.dataExportTrackingApplet.topLevelOperator.getLane(laneIndex)
 
@@ -246,18 +225,11 @@ class StructuredTrackingWorkflowBase( Workflow ):
         op5Binary.AxisOrder.setValue("txyzc")
         op5Binary.Input.connect(binarySrc)
 
-        opCropSelection.InputImage.connect( opData.ImageGroup[0] )
-        opCropSelection.PredictionImage.connect( opData.ImageGroup[1] )
-
         opObjExtraction.RawImage.connect( op5Raw.Output )
         opObjExtraction.BinaryImage.connect( op5Binary.Output )
 
         opTrackingFeatureExtraction.RawImage.connect( op5Raw.Output )
         opTrackingFeatureExtraction.BinaryImage.connect( op5Binary.Output )
-
-        # vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name]))
-        # feature_names_vigra = {}
-        # feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
 
         opTrackingFeatureExtraction.setDefaultFeatures(configConservation.allFeaturesObjectCount)
         opTrackingFeatureExtraction.FeatureNamesVigra.setValue(configConservation.allFeaturesObjectCount)
@@ -283,16 +255,9 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opAnnotations.LabelImage.connect( opObjExtraction.LabelImage )
         opAnnotations.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
         opAnnotations.ComputedFeatureNames.connect(opObjExtraction.Features)
-        opAnnotations.Crops.connect( opCropSelection.Crops)
         opAnnotations.DivisionProbabilities.connect( opDivDetection.Probabilities )
         opAnnotations.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opAnnotations.MaxNumObj.connect (opCellClassification.MaxNumObj)
-
-        # opDataAnnotationsExport.Inputs.resize(2)
-        # opDataAnnotationsExport.Inputs[0].connect( opAnnotations.TrackImage )
-        # opDataAnnotationsExport.Inputs[1].connect( opAnnotations.LabelImage )
-        # opDataAnnotationsExport.RawData.connect( op5Raw.Output )
-        # opDataAnnotationsExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
 
         opStructuredTracking.RawImage.connect( op5Raw.Output )
         opStructuredTracking.LabelImage.connect( opTrackingFeatureExtraction.LabelImage )
@@ -304,14 +269,8 @@ class StructuredTrackingWorkflowBase( Workflow ):
             opStructuredTracking.ComputedFeatureNamesWithDivFeatures.connect( opTrackingFeatureExtraction.ComputedFeatureNamesAll )
             opStructuredTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
 
-        # configure tracking export settings
-        # settings = {'file path': self.default_tracking_export_filename, 'compression': {}, 'file type': 'csv'}
-        # selected_features = ['Count', 'RegionCenter']
-        # opStructuredTracking.configure_table_export_settings(settings, selected_features)
-
         opStructuredTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opStructuredTracking.NumLabels.connect( opCellClassification.NumLabels )
-        opStructuredTracking.Crops.connect (opCropSelection.Crops)
         opStructuredTracking.Annotations.connect (opAnnotations.Annotations)
         opStructuredTracking.Labels.connect (opAnnotations.Labels)
         opStructuredTracking.Divisions.connect (opAnnotations.Divisions)
@@ -368,9 +327,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self.annotationsApplet.topLevelOperator[lane_index].Annotations.setValue(
             self.trackingApplet.topLevelOperator[loaded_project_lane_index].Annotations.value)
 
-        self.cropSelectionApplet.topLevelOperator[lane_index].Crops.setValue(
-            self.trackingApplet.topLevelOperator[loaded_project_lane_index].Crops.value)
-
         def runLearningAndTracking(withMergerResolution=True):
             logger.info("Test: Structured Learning")
             weights = self.trackingApplet.topLevelOperator[lane_index]._runStructuredLearning(
@@ -426,16 +382,12 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
             self.result = runLearningAndTracking(withMergerResolution=False)
 
-            hypothesesGraph = self.trackingApplet.topLevelOperator[lane_index].HypothesesGraph.value
-            #hypothesesGraph.insertEnergies()
+            hypothesesGraph = self.trackingApplet.topLevelOperator[lane_index].LearningHypothesesGraph.value
             hypothesesGraph.insertSolution(self.result)
             hypothesesGraph.computeLineage()
             solution = hypothesesGraph.getSolutionDictionary()
             annotations = self.trackingApplet.topLevelOperator[lane_index].Annotations.value
 
-            # assuming one crop == the whole dataset
-            key = list(annotations.keys())[0]
-            annotations = annotations[key]
             self.trackingApplet.topLevelOperator[lane_index].insertAnnotationsToHypothesesGraph(hypothesesGraph,annotations,misdetectionLabel=-1)
             hypothesesGraph.computeLineage()
             solutionFromAnnotations = hypothesesGraph.getSolutionDictionary()
@@ -483,9 +435,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self.result = runLearningAndTracking(withMergerResolution=parameters['withMergerResolution'])
 
     def post_process_lane_export(self, lane_index, checkOverwriteFiles=False):
-        # FIXME: This probably only works for the non-blockwise export slot.
-        #        We should assert that the user isn't using the blockwise slot.
-
         # Plugin export if selected
         logger.info("Export source is: " + self.dataExportTrackingApplet.topLevelOperator.SelectedExportSource.value)
 
@@ -512,48 +461,19 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
                 if filename is None or len(str(filename)) == 0:
                     logger.error("Cannot export from plugin with empty output filename")
-                    return
+                    return True
 
+                self.dataExportTrackingApplet.progressSignal(-1)
                 exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(filename, exportPlugin, checkOverwriteFiles)
+                self.dataExportTrackingApplet.progressSignal(100)
+
                 if not exportStatus:
                     return False
                 logger.info("Export done")
 
-            return
+            return True
 
-        # CSV Table export (only if plugin was not selected)
-        settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
-        from lazyflow.utility import PathComponents, make_absolute, format_known_keys
-
-        if settings:
-            self.dataExportTrackingApplet.progressSignal(-1)
-            raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
-
-            project_path = self.shell.projectManager.currentProjectPath
-            project_dir = os.path.dirname(project_path)
-            dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
-            abs_dataset_dir = make_absolute(dataset_dir, cwd=project_dir)
-
-            known_keys = {}
-            known_keys['dataset_dir'] = abs_dataset_dir
-            nickname = raw_dataset_info.nickname.replace('*', '')
-            if os.path.pathsep in nickname:
-                nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
-            known_keys['nickname'] = nickname
-
-            # use partial formatting to fill in non-coordinate name fields
-            name_format = settings['file path']
-            partially_formatted_name = format_known_keys( name_format, known_keys )
-            settings['file path'] = partially_formatted_name
-
-            req = self.trackingApplet.topLevelOperator.getLane(lane_index).export_object_data(
-                        lane_index,
-                        # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
-                        #        That's not a huge deal, because there's still a progress bar for the overall export.
-                        show_gui=False)
-
-            req.wait()
-            self.dataExportTrackingApplet.progressSignal(100)
+        return True
 
     def getPartiallyFormattedName(self, lane_index, path_format_string):
         ''' Takes the format string for the output file, fills in the most important placeholders, and returns it '''
@@ -621,10 +541,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
         trackingFeatureExtractionOutput = opTrackingFeatureExtraction.ComputedFeatureNamesAll
         tracking_features_ready = thresholding_ready and len(trackingFeatureExtractionOutput) > 0
 
-        opCropSelection = self.cropSelectionApplet.topLevelOperator
-        croppingOutput = opCropSelection.Crops
-        cropping_ready = thresholding_ready and len(croppingOutput) > 0
-
         objectCountClassifier_ready = tracking_features_ready
 
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
@@ -658,7 +574,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self._shell.setAppletEnabled(self.trackingFeatureExtractionApplet, thresholding_ready and not busy)
         self._shell.setAppletEnabled(self.cellClassificationApplet, tracking_features_ready and not busy)
         self._shell.setAppletEnabled(self.divisionDetectionApplet, tracking_features_ready and not busy)
-        self._shell.setAppletEnabled(self.cropSelectionApplet, thresholding_ready and not busy) # and withIlpSolver)
         self._shell.setAppletEnabled(self.objectExtractionApplet, not busy)
         self._shell.setAppletEnabled(self.annotationsApplet, features_ready and not busy) # and withIlpSolver)
         # self._shell.setAppletEnabled(self.dataExportAnnotationsApplet, annotations_ready and not busy and \

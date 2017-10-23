@@ -601,8 +601,7 @@ class ZMQSubscriber(QObject, ZMQBase, Receiving):
     commandReceived = pyqtSignal(str, dict)
 
     def __init__(self, protocol, address):
-        super(ZMQSubscriber, self).__init__()
-        ZMQBase.__init__(self, protocol, address)
+        super().__init__(protocol=protocol, address=address)
         self.context = zmq.Context()
         self.socket = None
         self.thread = None

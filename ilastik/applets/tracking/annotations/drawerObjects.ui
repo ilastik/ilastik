@@ -32,20 +32,7 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
-    <widget class="QLabel" name="cropLabel">
-     <property name="text">
-      <string>Crop:</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="1">
-    <widget class="QComboBox" name="cropBoxView"/>
-   </item>
-   <item row="1" column="0">
-    <widget class="CropListView" name="cropListView"/>
-   </item>
-   <item row="2" column="0" colspan="2">
+   <item row="0" column="0" colspan="2">
     <layout class="QVBoxLayout" name="verticalLayout_3">
      <item>
       <widget class="QPushButton" name="nextUnlabeledObject">
@@ -86,7 +73,7 @@
      </item>
     </layout>
    </item>
-   <item row="3" column="0" colspan="2">
+   <item row="1" column="0" colspan="2">
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
@@ -150,7 +137,7 @@
      </item>
     </layout>
    </item>
-   <item row="4" column="0" colspan="2">
+   <item row="2" column="0" colspan="2">
     <widget class="QTextBrowser" name="logOutput">
      <property name="enabled">
       <bool>false</bool>
@@ -165,7 +152,7 @@
      </property>
     </widget>
    </item>
-   <item row="5" column="0">
+   <item row="3" column="0">
     <widget class="QLabel" name="labelDivisions">
      <property name="enabled">
       <bool>false</bool>
@@ -181,14 +168,14 @@
      </property>
     </widget>
    </item>
-   <item row="6" column="0" colspan="2">
+   <item row="4" column="0" colspan="2">
     <widget class="QListWidget" name="divisionsList">
      <property name="enabled">
       <bool>false</bool>
      </property>
     </widget>
    </item>
-   <item row="7" column="0" colspan="2">
+   <item row="5" column="0" colspan="2">
     <layout class="QGridLayout" name="gridLayout_4">
      <item row="0" column="0">
       <widget class="QLabel" name="timeStepLabel">
@@ -242,7 +229,7 @@
      </item>
     </layout>
    </item>
-   <item row="8" column="0" colspan="2">
+   <item row="6" column="0" colspan="2">
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
       <widget class="QLabel" name="automaticTrackingLabel">
@@ -348,7 +335,7 @@
      </item>
     </layout>
    </item>
-   <item row="9" column="0" colspan="2">
+   <item row="7" column="0" colspan="2">
     <layout class="QVBoxLayout" name="verticalLayout_7">
      <item>
       <widget class="QLabel" name="exportLabel">
@@ -401,13 +388,6 @@
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>CropListView</class>
-   <extends>QTableView</extends>
-   <header>ilastik.widgets.cropListView</header>
-  </customwidget>
- </customwidgets>
  <tabstops>
   <tabstop>newTrack</tabstop>
   <tabstop>delTrack</tabstop>
