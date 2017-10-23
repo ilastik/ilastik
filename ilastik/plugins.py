@@ -212,7 +212,6 @@ pluginManager.setCategoriesFilter({
    "TrackingExportFormats": TrackingExportFormatPlugin
    })
 
-
 pluginManager.collectPlugins()
 for pluginInfo in pluginManager.getAllPlugins():
     pluginManager.activatePluginByName(pluginInfo.name)
