@@ -40,7 +40,7 @@ import numpy
 # PyQt
 from PyQt5 import uic
 from PyQt5.QtCore import pyqtSignal, QObject, Qt, QUrl, QTimer
-from PyQt5.QtGui import QKeySequence, QIcon, QFont, QDesktopServices
+from PyQt5.QtGui import QKeySequence, QIcon, QFont, QDesktopServices, QPixmap
 from PyQt5.QtWidgets import QMainWindow, QWidget, QMenu, QApplication, \
                             QStackedWidget, qApp, QFileDialog, QMessageBox, \
                             QProgressBar, QInputDialog, QToolButton, QVBoxLayout, \
@@ -566,6 +566,28 @@ class IlastikShell(QMainWindow):
                 self.startscreen.VL1.insertWidget(insertion_index, b)
                 self.openFileButtons.append(b)
 
+    def _replaceLogo(self, localDir):
+        '''
+        Replaces the ilastik logo with fun alternatives on special days
+        '''
+        from datetime import date
+        d = date.today()
+        if (d.month == 10 and d.day > 29) or (d.month == 11 and d.day < 2):
+            import codecs
+            enc = codecs.getencoder( "rot-13" )
+            key = 'vynfgvxunyybjrra'
+            clearkey = enc( key )[0].encode()
+            
+            import zipfile
+            with zipfile.ZipFile(os.path.join(localDir, 'ilastik-logo-alternative.zip'), 'r') as z:
+                z.setpassword(clearkey)
+                filename = z.namelist()[0]
+                z.extract(filename, localDir)
+            
+                fullPath = os.path.join(localDir, filename)
+                self.startscreen.label.setPixmap(QPixmap(fullPath))
+                os.remove(fullPath)
+
     def _loaduifile(self):
         localDir = os.path.split(__file__)[0]
         if localDir == "": localDir = os.getcwd()
@@ -577,6 +599,7 @@ class IlastikShell(QMainWindow):
 
         self.startscreen.openRecentProject.setFont(ILASTIKFont)
         self.startscreen.openProject.setFont(ILASTIKFont)
+        self._replaceLogo(localDir)
         self.startscreen.createNewProject.setFont(ILASTIKFont)
 
         self.openFileButtons = []
