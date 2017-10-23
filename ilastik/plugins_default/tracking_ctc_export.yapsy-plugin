@@ -1,0 +1,9 @@
+[Core]
+Name = CellTrackingChallenge
+Module = tracking_ctc_export
+
+[Documentation]
+Author = Carsten Haubold
+Version = 0.1
+Website = ilastik.org
+Description = Tracking format used in the <a href="">ISBI Cell Tracking Challenges</a> <br> <br> <b>Usage: </b> Select the folder in which the following files will be exported: <ul> <li> The <i>images</i> containing the segmented and tracked cells as masks (labelimages), which will be saved as one tiff file per timeframe with the names <i> t000XX.tif </i>. </li> <li> A file about the <b>tracks</b> and lineages called <i> res_track.txt </i>. </li> </ul> <br><br> See the Cell Tracking Challenge documentation for more details ().
