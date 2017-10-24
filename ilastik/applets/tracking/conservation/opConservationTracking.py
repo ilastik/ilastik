@@ -853,7 +853,7 @@ class OpConservationTracking(Operator):
                     logger.info("Omitting traxel with ID: {} {}".format(traxel.Id,t))
                     print("Omitting traxel with ID: {} {}".format(traxel.Id,t))
                 else:
-                    logger.info("Adding traxel with ID: {}  {}".format(traxel.Id,t))
+                    logger.debug("Adding traxel with ID: {}  {}".format(traxel.Id,t))
                     traxelstore.TraxelsPerFrame.setdefault(int(t), {})[int(idx + 1)] = traxel
 
             if len(filtered_labels_at) > 0:
