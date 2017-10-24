@@ -116,8 +116,9 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
                 if key is  None:
                     continue
                 # our track value contains parent, begin, end
-                # but here we need begin, end, parent. so swap
-                f.write("{} {} {} {}\n".format(key, value[1], value[2], value[0]))
+                # but here we need begin, end, parent. so swap.
+                # Also, ilastik uses trackIDs starting at 2, but CTC wants 1, so subtract 1
+                f.write(f"{int(key) - 1} {value[1]} {value[2]} {int(value[0]) - 1}\n")
 
     def _remap_label_image(self, label_image, mapping):
         """ 
