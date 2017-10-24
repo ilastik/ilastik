@@ -345,14 +345,12 @@ def solve_with_nifty(edge_ids, edge_weights, node_count, solver_method):
                    addOnlyViolatedThreeCyclesConstraints=True)
 
     def getFmFac(subFac):
-        return obj.fusionMoveBasedFactory(
-            verbose=1,
+        return obj.ccFusionMoveBasedFactory(
             fusionMove=obj.fusionMoveSettings(mcFactory=subFac),
-            proposalGen=obj.watershedProposals(sigma=1,seedFraction=0.01),
+            proposalGenerator=obj.watershedCcProposals(sigma=1,numberOfSeeds=0.01),
             numberOfIterations=500,
-            numberOfParallelProposals=8,
-            stopIfNoImprovement=20,
-            fuseN=2
+            numberOfThreads=8,
+            stopIfNoImprovement=20
         )
 
      # TODO finetune parameters
@@ -382,9 +380,9 @@ def solve_with_nifty(edge_ids, edge_weights, node_count, solver_method):
         assert False, "Unknown solver method: {}".format( solver_method )
 
     if ret is None:
-        ret = inf.optimize(visitor=obj.multicutVerboseVisitor())
+        ret = inf.optimize(visitor=obj.verboseVisitor())
     else:
-        ret = inf.optimize(visitor=obj.multicutVerboseVisitor(), nodeLabels=ret)
+        ret = inf.optimize(visitor=obj.verboseVisitor(), nodeLabels=ret)
 
     mapping_index_array = ret.astype(np.uint32)
     return mapping_index_array

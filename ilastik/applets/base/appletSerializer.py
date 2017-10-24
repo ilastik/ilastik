@@ -773,6 +773,9 @@ class SerialDictSlot(SerialSlot):
                 if isinstance(v, str):
                     # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
                     v = v.encode('utf-8')
+                if isinstance(v, list):
+                    vv = [a.encode('utf-8') for a in v]
+                    v = vv
                 sg.create_dataset(str(key), data=v)
 
     def _getValueHelper(self, subgroup):
