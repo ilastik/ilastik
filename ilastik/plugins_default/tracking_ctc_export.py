@@ -1,6 +1,5 @@
-import os.path
+import os
 import numpy as np
-import shutil
 import vigra
 from skimage.external import tifffile
 from ilastik.plugins import TrackingExportFormatPlugin
@@ -21,7 +20,7 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
         """
         Export the tracking model and result
 
-        :param filename: string of the FILE where to save the result (will be appended with _graph.json and _result.json)
+        :param filename: string of the FOLDER where to save the result (will be filled with a res_track.txt and segmentation masks for each frame)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
         :param objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output
                of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
@@ -93,7 +92,7 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
         """
         Save a single frame to a 2D or 3D tif
         """
-        filename = os.path.join(output_dir, 'mask' + format(timestep, "0{}".format(filename_zero_padding)) + '.tif')
+        filename = os.path.join(output_dir, f"mask{timestep:0{filename_zero_padding}}.tif")
         # import ipdb; ipdb.set_trace()
         label_image = np.swapaxes(label_image.squeeze(), 0, 1)
         if len(label_image.shape) == 2: # 2d
@@ -114,7 +113,7 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
         filename = os.path.join(output_dir, 'res_track.txt')
         with open(filename, 'wt') as f:
             for key, value in tracks.items():
-                if key ==  None:
+                if key is  None:
                     continue
                 # our track value contains parent, begin, end
                 # but here we need begin, end, parent. so swap
