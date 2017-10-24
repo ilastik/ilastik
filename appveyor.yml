@@ -5,13 +5,21 @@ environment:
   # set miniconda version explicitly
   MINICONDA: C:\Miniconda36-x64
 
+cache:
+# modify this file in order to delete the cache; or use CURL (with authorization header):
+# DELETE https://ci.appveyor.com/api/projects/{accountName}/{projectSlug}/buildcache
+  - '%MINICONDA%\envs\%ENV_NAME% -> appveyor.yml'
+
 
 install:
   - set DEV_PREFIX=%MINICONDA%/envs/%ENV_NAME%
   - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  - conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge python=3.6 numpy=1.12 ilastik-dependencies-no-solvers
+  - ps: >-
+      If (![System.IO.File]::Exists($env:DEV_PREFIX)) {
+        conda config --set always_yes yes --set changeps1 no
+        conda update -q conda
+        conda create -q --yes -n $env:ENV_NAME -c ilastik-forge -c conda-forge python=3.6 numpy=1.12 ilastik-dependencies-no-solvers
+      }
   - activate %ENV_NAME%
   - cd \
   # Get the current master of all submodules
