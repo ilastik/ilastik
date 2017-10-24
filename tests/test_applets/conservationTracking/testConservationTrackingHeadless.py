@@ -80,16 +80,10 @@ class TestConservationTrackingHeadless(object):
 
     @timeLogged(logger)
     def testTrackingHeadless(self):        
-        # TODO: When Hytra is supported on Windows, we shouldn't skip the test and throw an assert instead
-        try:
-            import hytra
-        except ImportError as e:
-            logger.warn( "Hytra tracking pipeline couldn't be imported: " + str(e) )
-            raise nose.SkipTest
-        
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
-            logger.info("Test files not found.")   
+            logger.info("Test files not found.")
+            raise nose.SkipTest   
         
         args = ' --project='+self.PROJECT_FILE
         args += ' --headless'
@@ -114,17 +108,11 @@ class TestConservationTrackingHeadless(object):
 
     @timeLogged(logger)
     def testCSVExport(self):
-        # TODO: When Hytra is supported on Windows, we shouldn't skip the test and throw an assert instead
-        try:
-            import hytra
-        except ImportError as e:
-            logger.warn("Hytra tracking pipeline couldn't be imported: " + str(e))
-            raise nose.SkipTest
-
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(
                 self.BINARY_SEGMENTATION_FILE):
             logger.info("Test files not found.")
+            raise nose.SkipTest
 
         args = ' --project=' + self.PROJECT_FILE
         args += ' --headless'
