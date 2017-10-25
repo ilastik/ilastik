@@ -77,7 +77,6 @@ class TestConservationTrackingHeadless(object):
             except:
                 pass
 
-
     @timeLogged(logger)
     def testTrackingHeadless(self):        
         # Skip test because there are missing files
@@ -153,6 +152,132 @@ class TestConservationTrackingHeadless(object):
 
         # Check for expected number of rows in divisions csv table (we only have one division in the video)
         assert tracks_with_parent == self.EXPECTED_NUM_DIVISION_CHILDREN, 'Number of children divisions differs from expected'
+
+    @timeLogged(logger)
+    def testCTCExport(self):
+        # Skip test because there are missing files
+        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) \
+           or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
+            logger.info("Test files not found.")
+            raise nose.SkipTest
+
+        args = ' --project=' + self.PROJECT_FILE
+        args += ' --headless'
+
+        args += ' --export_source=Plugin'
+        args += ' --export_plugin=CellTrackingChallenge'
+        args += ' --raw_data ' + self.RAW_DATA_FILE + '/data'
+        args += ' --segmentation_image ' + self.BINARY_SEGMENTATION_FILE + '/exported_data'
+
+        sys.argv = ['ilastik.py']  # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv += args.split()
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        self.ilastik_startup.main()
+
+        # check output files exist
+        resTrackFilename = os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge', 'res_track.txt')
+        assert os.path.exists(resTrackFilename), "res_track not found"
+        a = np.genfromtxt(resTrackFilename, dtype=np.uint32, delimiter=' ')
+        assert a.shape == (5, 4)
+        # check that ids are starting at 1 and are consecutive
+        assert np.all(np.sort(a[:, 0]) == np.arange(1, 6))
+        # check that parent IDs are present in tracks or zero
+        parents = np.unique(a[:,3])
+        for p in parents:
+            assert p == 0 or p in a[:,0], "Parent is invalid track ID"
+
+        for i in range(7):
+            assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge', f'mask00{i}.tif')), f"Missing frame {i}"
+
+    @timeLogged(logger)
+    def testHDF5Export(self):
+        # Skip test because there are missing files
+        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) \
+           or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
+            logger.info("Test files not found.")
+            raise nose.SkipTest
+
+        args = ' --project=' + self.PROJECT_FILE
+        args += ' --headless'
+
+        args += ' --export_source=Plugin'
+        args += ' --export_plugin=H5-Event-Sequence'
+        args += ' --raw_data ' + self.RAW_DATA_FILE + '/data'
+        args += ' --segmentation_image ' + self.BINARY_SEGMENTATION_FILE + '/exported_data'
+
+        sys.argv = ['ilastik.py']  # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv += args.split()
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        self.ilastik_startup.main()
+
+        # check output files exist
+        for i in range(7):
+            assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_H5-Event-Sequence', f'0000{i}.h5')), f"Missing frame {i}"
+
+    @timeLogged(logger)
+    def testMamutExport(self):
+        # Skip test because there are missing files
+        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) \
+           or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
+            logger.info("Test files not found.")
+            raise nose.SkipTest
+        try:
+            from mamutexport.mamutxmlbuilder import MamutXmlBuilder
+        except:
+            logger.info("Mamutexport module not present. Skipping test")
+            raise nose.SkipTest
+
+        args = ' --project=' + self.PROJECT_FILE
+        args += ' --headless'
+
+        args += ' --export_source=Plugin'
+        args += ' --export_plugin=Fiji-MaMuT'
+        args += ' --raw_data ' + self.RAW_DATA_FILE + '/data'
+        args += ' --segmentation_image ' + self.BINARY_SEGMENTATION_FILE + '/exported_data'
+
+        sys.argv = ['ilastik.py']  # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv += args.split()
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        self.ilastik_startup.main()
+
+        # check output files exist
+        assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_mamut.xml'))
+        assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_bdv.xml'))
+        assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_raw.h5'))
+
+    @timeLogged(logger)
+    def testJsonExport(self):
+        # Skip test because there are missing files
+        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) \
+           or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
+            logger.info("Test files not found.")
+            raise nose.SkipTest
+        try:
+            from mamutexport.mamutxmlbuilder import MamutXmlBuilder
+        except:
+            logger.info("Mamutexport module not present. Skipping test")
+            raise nose.SkipTest
+
+        args = ' --project=' + self.PROJECT_FILE
+        args += ' --headless'
+
+        args += ' --export_source=Plugin'
+        args += ' --export_plugin=JSON'
+        args += ' --raw_data ' + self.RAW_DATA_FILE + '/data'
+        args += ' --segmentation_image ' + self.BINARY_SEGMENTATION_FILE + '/exported_data'
+
+        sys.argv = ['ilastik.py']  # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv += args.split()
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        self.ilastik_startup.main()
+
+        # check output files exist
+        assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_JSON_graph.json'))
+        assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_JSON_result.json'))
 
 
 if __name__ == "__main__":
