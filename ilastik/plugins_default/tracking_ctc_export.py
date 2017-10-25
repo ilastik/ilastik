@@ -126,7 +126,7 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
         returns a new label image with remapped object pixel values 
         """
         remapped_label_image = np.zeros(label_image.shape, dtype=label_image.dtype)
-        for dest, src in mapping.items():
-            remapped_label_image[label_image == dest] = src
+        for src, dest in mapping.items():
+            remapped_label_image[label_image == src] = dest - 1
 
         return remapped_label_image

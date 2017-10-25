@@ -25,6 +25,7 @@ import h5py
 import sys
 import nose
 import shutil
+import vigra
 
 import ilastik
 from lazyflow.utility.timer import timeLogged
@@ -176,7 +177,7 @@ class TestConservationTrackingHeadless(object):
         # Start up the ilastik.py entry script as if we had launched it from the command line
         self.ilastik_startup.main()
 
-        # check output files exist
+        # check res_track file exists
         resTrackFilename = os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge', 'res_track.txt')
         assert os.path.exists(resTrackFilename), "res_track not found"
         a = np.genfromtxt(resTrackFilename, dtype=np.uint32, delimiter=' ')
@@ -188,8 +189,16 @@ class TestConservationTrackingHeadless(object):
         for p in parents:
             assert p == 0 or p in a[:,0], "Parent is invalid track ID"
 
+        # check whether images exist
         for i in range(7):
             assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge', f'mask00{i}.tif')), f"Missing frame {i}"
+        
+        # check that the first frame contains consecutive trackIDs starting at 1, where 0 is background
+        imagePath = os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge', 'mask000.tif')
+        image = vigra.impex.readImage(imagePath, dtype=np.uint32)
+        assert set(np.unique(image)) == set(range(image.max() + 1)), "First frame does not contain consecutive IDs starting at 1!"
+
+        # cleanup
         shutil.rmtree(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge'))
 
     @timeLogged(logger)
