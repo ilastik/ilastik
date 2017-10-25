@@ -24,6 +24,8 @@ import numpy as np
 import h5py
 import sys
 import nose
+import shutil
+import vigra
 
 import ilastik
 from lazyflow.utility.timer import timeLogged
@@ -77,19 +79,12 @@ class TestConservationTrackingHeadless(object):
             except:
                 pass
 
-
     @timeLogged(logger)
     def testTrackingHeadless(self):        
-        # TODO: When Hytra is supported on Windows, we shouldn't skip the test and throw an assert instead
-        try:
-            import hytra
-        except ImportError as e:
-            logger.warn( "Hytra tracking pipeline couldn't be imported: " + str(e) )
-            raise nose.SkipTest
-        
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
-            logger.info("Test files not found.")   
+            logger.info("Test files not found.")
+            raise nose.SkipTest   
         
         args = ' --project='+self.PROJECT_FILE
         args += ' --headless'
@@ -114,17 +109,11 @@ class TestConservationTrackingHeadless(object):
 
     @timeLogged(logger)
     def testCSVExport(self):
-        # TODO: When Hytra is supported on Windows, we shouldn't skip the test and throw an assert instead
-        try:
-            import hytra
-        except ImportError as e:
-            logger.warn("Hytra tracking pipeline couldn't be imported: " + str(e))
-            raise nose.SkipTest
-
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(
                 self.BINARY_SEGMENTATION_FILE):
             logger.info("Test files not found.")
+            raise nose.SkipTest
 
         args = ' --project=' + self.PROJECT_FILE
         args += ' --headless'
@@ -166,6 +155,149 @@ class TestConservationTrackingHeadless(object):
         # Check for expected number of rows in divisions csv table (we only have one division in the video)
         assert tracks_with_parent == self.EXPECTED_NUM_DIVISION_CHILDREN, 'Number of children divisions differs from expected'
 
+    @timeLogged(logger)
+    def testCTCExport(self):
+        # Skip test because there are missing files
+        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) \
+           or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
+            logger.info("Test files not found.")
+            raise nose.SkipTest
+
+        args = ' --project=' + self.PROJECT_FILE
+        args += ' --headless'
+
+        args += ' --export_source=Plugin'
+        args += ' --export_plugin=CellTrackingChallenge'
+        args += ' --raw_data ' + self.RAW_DATA_FILE + '/data'
+        args += ' --segmentation_image ' + self.BINARY_SEGMENTATION_FILE + '/exported_data'
+
+        sys.argv = ['ilastik.py']  # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv += args.split()
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        self.ilastik_startup.main()
+
+        # check res_track file exists
+        resTrackFilename = os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge', 'res_track.txt')
+        assert os.path.exists(resTrackFilename), "res_track not found"
+        a = np.genfromtxt(resTrackFilename, dtype=np.uint32, delimiter=' ')
+        assert a.shape == (5, 4)
+        # check that ids are starting at 1 and are consecutive
+        assert np.all(np.sort(a[:, 0]) == np.arange(1, 6))
+        # check that parent IDs are present in tracks or zero
+        parents = np.unique(a[:,3])
+        for p in parents:
+            assert p == 0 or p in a[:,0], "Parent is invalid track ID"
+
+        # check whether images exist
+        for i in range(7):
+            assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge', f'mask00{i}.tif')), f"Missing frame {i}"
+        
+        # check that the first frame contains consecutive trackIDs starting at 1, where 0 is background
+        imagePath = os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge', 'mask000.tif')
+        image = vigra.impex.readImage(imagePath, dtype=np.uint32)
+        assert set(np.unique(image)) == set(range(image.max() + 1)), "First frame does not contain consecutive IDs starting at 1!"
+
+        # cleanup
+        shutil.rmtree(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge'))
+
+    @timeLogged(logger)
+    def testHDF5Export(self):
+        # Skip test because there are missing files
+        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) \
+           or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
+            logger.info("Test files not found.")
+            raise nose.SkipTest
+
+        args = ' --project=' + self.PROJECT_FILE
+        args += ' --headless'
+
+        args += ' --export_source=Plugin'
+        args += ' --export_plugin=H5-Event-Sequence'
+        args += ' --raw_data ' + self.RAW_DATA_FILE + '/data'
+        args += ' --segmentation_image ' + self.BINARY_SEGMENTATION_FILE + '/exported_data'
+
+        sys.argv = ['ilastik.py']  # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv += args.split()
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        self.ilastik_startup.main()
+
+        # check output files exist
+        for i in range(7):
+            assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_H5-Event-Sequence', f'0000{i}.h5')), f"Missing frame {i}"
+        shutil.rmtree(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_H5-Event-Sequence'))
+
+    @timeLogged(logger)
+    def testMamutExport(self):
+        # Skip test because there are missing files
+        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) \
+           or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
+            logger.info("Test files not found.")
+            raise nose.SkipTest
+        try:
+            from mamutexport.mamutxmlbuilder import MamutXmlBuilder
+        except:
+            logger.info("Mamutexport module not present. Skipping test")
+            raise nose.SkipTest
+
+        args = ' --project=' + self.PROJECT_FILE
+        args += ' --headless'
+
+        args += ' --export_source=Plugin'
+        args += ' --export_plugin=Fiji-MaMuT'
+        args += ' --raw_data ' + self.RAW_DATA_FILE + '/data'
+        args += ' --segmentation_image ' + self.BINARY_SEGMENTATION_FILE + '/exported_data'
+
+        sys.argv = ['ilastik.py']  # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv += args.split()
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        self.ilastik_startup.main()
+
+        # check output files exist
+        files = [os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_mamut.xml'), 
+                 os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_bdv.xml'), 
+                 os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_raw.h5')]
+        
+        for f in files:
+            assert os.path.exists(f)
+            os.remove(f)
+
+    @timeLogged(logger)
+    def testJsonExport(self):
+        # Skip test because there are missing files
+        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) \
+           or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
+            logger.info("Test files not found.")
+            raise nose.SkipTest
+        try:
+            from mamutexport.mamutxmlbuilder import MamutXmlBuilder
+        except:
+            logger.info("Mamutexport module not present. Skipping test")
+            raise nose.SkipTest
+
+        args = ' --project=' + self.PROJECT_FILE
+        args += ' --headless'
+
+        args += ' --export_source=Plugin'
+        args += ' --export_plugin=JSON'
+        args += ' --raw_data ' + self.RAW_DATA_FILE + '/data'
+        args += ' --segmentation_image ' + self.BINARY_SEGMENTATION_FILE + '/exported_data'
+
+        sys.argv = ['ilastik.py']  # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv += args.split()
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        self.ilastik_startup.main()
+
+        # check output files exist
+        files = [os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_JSON_graph.json'),
+                 os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_JSON_result.json')]
+        
+        for f in files:
+            assert os.path.exists(f)
+            os.remove(f)
 
 if __name__ == "__main__":
     # Make the program quit on Ctrl+C
