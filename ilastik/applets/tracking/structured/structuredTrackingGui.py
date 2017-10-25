@@ -443,21 +443,36 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self.applet.busy = True
             self.applet.appletStateUpdateRequested.emit()
             try:
-                self.topLevelOperatorView._runStructuredLearning(
-                    (self._drawer.from_z.value(),self._drawer.to_z.value()),
-                    self._maxNumObj,
-                    self._maxNearestNeighbors,
-                    self._drawer.maxDistBox.value(),
-                    self._drawer.divThreshBox.value(),
-                    (self._drawer.x_scale.value(), self._drawer.y_scale.value(), self._drawer.z_scale.value()),
-                    (self._drawer.from_size.value(), self._drawer.to_size.value()),
-                    self._drawer.divisionsBox.isChecked(),
-                    self._drawer.bordWidthBox.value(),
-                    self._drawer.classifierPriorBox.isChecked(),
-                    withBatchProcessing,
-                    progressWindow=self.progressWindow,
-                    progressVisitor=self.progressVisitor
-                )
+                if WITH_HYTRA:
+                    self.topLevelOperatorView._runStructuredLearning(
+                        (self._drawer.from_z.value(),self._drawer.to_z.value()),
+                        self._maxNumObj,
+                        self._maxNearestNeighbors,
+                        self._drawer.maxDistBox.value(),
+                        self._drawer.divThreshBox.value(),
+                        (self._drawer.x_scale.value(), self._drawer.y_scale.value(), self._drawer.z_scale.value()),
+                        (self._drawer.from_size.value(), self._drawer.to_size.value()),
+                        self._drawer.divisionsBox.isChecked(),
+                        self._drawer.bordWidthBox.value(),
+                        self._drawer.classifierPriorBox.isChecked(),
+                        withBatchProcessing,
+                        progressWindow=self.progressWindow,
+                        progressVisitor=self.progressVisitor
+                    )
+                else:
+                    self.topLevelOperatorView._runStructuredLearning(
+                        (self._drawer.from_z.value(),self._drawer.to_z.value()),
+                        self._maxNumObj,
+                        self._maxNearestNeighbors,
+                        self._drawer.maxDistBox.value(),
+                        self._drawer.divThreshBox.value(),
+                        (self._drawer.x_scale.value(), self._drawer.y_scale.value(), self._drawer.z_scale.value()),
+                        (self._drawer.from_size.value(), self._drawer.to_size.value()),
+                        self._drawer.divisionsBox.isChecked(),
+                        self._drawer.bordWidthBox.value(),
+                        self._drawer.classifierPriorBox.isChecked(),
+                        withBatchProcessing
+                    )
             except Exception:
                 ex_type, ex, tb = sys.exc_info()
                 traceback.print_tb(tb)
@@ -558,41 +573,76 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 ndim=2
 
             try:
-                self.mainOperator.track(
-                    time_range = self.time_range,
-                    x_range = (from_x, to_x + 1),
-                    y_range = (from_y, to_y + 1),
-                    z_range = (from_z, to_z + 1),
-                    size_range = (from_size, to_size + 1),
-                    x_scale = self._drawer.x_scale.value(),
-                    y_scale = self._drawer.y_scale.value(),
-                    z_scale = self._drawer.z_scale.value(),
-                    maxDist=maxDist,
-                    maxObj = maxObj,
-                    divThreshold=divThreshold,
-                    avgSize=avgSize,
-                    withTracklets=withTracklets,
-                    sizeDependent=sizeDependent,
-                    detWeight=detWeight,
-                    divWeight=divWeight,
-                    transWeight=transWeight,
-                    withDivisions=withDivisions,
-                    withOpticalCorrection=withOpticalCorrection,
-                    withClassifierPrior=classifierPrior,
-                    ndim=ndim,
-                    withMergerResolution=withMergerResolution,
-                    borderAwareWidth = borderAwareWidth,
-                    withArmaCoordinates = withArmaCoordinates,
-                    cplex_timeout = cplex_timeout,
-                    appearance_cost = appearanceCost,
-                    disappearance_cost = disappearanceCost,
-                    #graph_building_parameter_changed = True,
-                    #trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
-                    max_nearest_neighbors = self._maxNearestNeighbors,
-                    solverName=solverName,
-                    progressWindow=self.progressWindow,
-                    progressVisitor=self.progressVisitor
-                )
+                if WITH_HYTRA:
+                    self.mainOperator.track(
+                        time_range = self.time_range,
+                        x_range = (from_x, to_x + 1),
+                        y_range = (from_y, to_y + 1),
+                        z_range = (from_z, to_z + 1),
+                        size_range = (from_size, to_size + 1),
+                        x_scale = self._drawer.x_scale.value(),
+                        y_scale = self._drawer.y_scale.value(),
+                        z_scale = self._drawer.z_scale.value(),
+                        maxDist=maxDist,
+                        maxObj = maxObj,
+                        divThreshold=divThreshold,
+                        avgSize=avgSize,
+                        withTracklets=withTracklets,
+                        sizeDependent=sizeDependent,
+                        detWeight=detWeight,
+                        divWeight=divWeight,
+                        transWeight=transWeight,
+                        withDivisions=withDivisions,
+                        withOpticalCorrection=withOpticalCorrection,
+                        withClassifierPrior=classifierPrior,
+                        ndim=ndim,
+                        withMergerResolution=withMergerResolution,
+                        borderAwareWidth = borderAwareWidth,
+                        withArmaCoordinates = withArmaCoordinates,
+                        cplex_timeout = cplex_timeout,
+                        appearance_cost = appearanceCost,
+                        disappearance_cost = disappearanceCost,
+                        #graph_building_parameter_changed = True,
+                        #trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
+                        max_nearest_neighbors = self._maxNearestNeighbors,
+                        solverName=solverName,
+                        progressWindow=self.progressWindow,
+                        progressVisitor=self.progressVisitor
+                    )
+                else:
+                    self.mainOperator.track(
+                        time_range = self.time_range,
+                        x_range = (from_x, to_x + 1),
+                        y_range = (from_y, to_y + 1),
+                        z_range = (from_z, to_z + 1),
+                        size_range = (from_size, to_size + 1),
+                        x_scale = self._drawer.x_scale.value(),
+                        y_scale = self._drawer.y_scale.value(),
+                        z_scale = self._drawer.z_scale.value(),
+                        maxDist=maxDist,
+                        maxObj = maxObj,
+                        divThreshold=divThreshold,
+                        avgSize=avgSize,
+                        withTracklets=withTracklets,
+                        sizeDependent=sizeDependent,
+                        detWeight=detWeight,
+                        divWeight=divWeight,
+                        transWeight=transWeight,
+                        withDivisions=withDivisions,
+                        withOpticalCorrection=withOpticalCorrection,
+                        withClassifierPrior=classifierPrior,
+                        ndim=ndim,
+                        withMergerResolution=withMergerResolution,
+                        borderAwareWidth = borderAwareWidth,
+                        withArmaCoordinates = withArmaCoordinates,
+                        cplex_timeout = cplex_timeout,
+                        appearance_cost = appearanceCost,
+                        disappearance_cost = disappearanceCost,
+                        #graph_building_parameter_changed = True,
+                        #trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
+                        max_nearest_neighbors = self._maxNearestNeighbors,
+                        solverName=solverName
+                    )
             except Exception:
                 ex_type, ex, tb = sys.exc_info()
                 traceback.print_tb(tb)
