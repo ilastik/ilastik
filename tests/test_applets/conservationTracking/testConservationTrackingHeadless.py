@@ -24,6 +24,7 @@ import numpy as np
 import h5py
 import sys
 import nose
+import shutil
 
 import ilastik
 from lazyflow.utility.timer import timeLogged
@@ -189,6 +190,7 @@ class TestConservationTrackingHeadless(object):
 
         for i in range(7):
             assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge', f'mask00{i}.tif')), f"Missing frame {i}"
+        shutil.rmtree(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_CellTrackingChallenge'))
 
     @timeLogged(logger)
     def testHDF5Export(self):
@@ -215,6 +217,7 @@ class TestConservationTrackingHeadless(object):
         # check output files exist
         for i in range(7):
             assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_H5-Event-Sequence', f'0000{i}.h5')), f"Missing frame {i}"
+        shutil.rmtree(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_H5-Event-Sequence'))
 
     @timeLogged(logger)
     def testMamutExport(self):
@@ -244,9 +247,13 @@ class TestConservationTrackingHeadless(object):
         self.ilastik_startup.main()
 
         # check output files exist
-        assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_mamut.xml'))
-        assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_bdv.xml'))
-        assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_raw.h5'))
+        files = [os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_mamut.xml'), 
+                 os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_bdv.xml'), 
+                 os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_raw.h5')]
+        
+        for f in files:
+            assert os.path.exists(f)
+            os.remove(f)
 
     @timeLogged(logger)
     def testJsonExport(self):
@@ -276,9 +283,12 @@ class TestConservationTrackingHeadless(object):
         self.ilastik_startup.main()
 
         # check output files exist
-        assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_JSON_graph.json'))
-        assert os.path.exists(os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_JSON_result.json'))
-
+        files = [os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_JSON_graph.json'),
+                 os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_JSON_result.json')]
+        
+        for f in files:
+            assert os.path.exists(f)
+            os.remove(f)
 
 if __name__ == "__main__":
     # Make the program quit on Ctrl+C
