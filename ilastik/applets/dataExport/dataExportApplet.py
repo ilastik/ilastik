@@ -21,10 +21,15 @@ from __future__ import absolute_import
 ###############################################################################
 import os
 import argparse
+import json
+
+import numpy
+
 from ilastik.applets.base.applet import Applet
 from .opDataExport import OpDataExport
 from .dataExportSerializer import DataExportSerializer
 from ilastik.utility import OpMultiLaneWrapper
+from ilastik.utility.commandLineProcessing import ParseListFromString
 
 class DataExportApplet( Applet ):
     """
@@ -107,10 +112,25 @@ class DataExportApplet( Applet ):
     @classmethod
     def make_cmdline_parser(cls, starting_parser=None):
         arg_parser = starting_parser or argparse.ArgumentParser()
-        arg_parser.add_argument( '--cutout_subregion', help='Subregion to export (start,stop), e.g. [(0,0,0,0,0), (1,100,200,20,3)]', required=False )
-        
-        arg_parser.add_argument( '--pipeline_result_drange', help='Pipeline result data range (min,max) BEFORE normalization, e.g. (0.0, 1.0)', required=False )
-        arg_parser.add_argument( '--export_drange', help='Exported data range (min,max) AFTER normalization, e.g. (0, 255)', required=False )
+        arg_parser.add_argument(
+            '--cutout_subregion',
+            help='Subregion to export (start,stop), e.g. [(0,0,0,0,0), (1,100,200,20,3)]',
+            required=False,
+            action=ParseListFromString,
+        )
+
+        arg_parser.add_argument(
+            '--pipeline_result_drange',
+            help='Pipeline result data range (min,max) BEFORE normalization, e.g. (0.0, 1.0)',
+            required=False,
+            action=ParseListFromString,
+        )
+        arg_parser.add_argument(
+            '--export_drange',
+            help='Exported data range (min,max) AFTER normalization, e.g. (0, 255)',
+            required=False,
+            action=ParseListFromString,
+        )
 
         all_dtypes = ['uint8', 'uint16', 'uint32', 'int8', 'int16', 'int32', 'float32', 'float64']
         all_format_names = [fmt.name for fmt in OpDataExport.ALL_FORMATS]
@@ -151,50 +171,49 @@ class DataExportApplet( Applet ):
 
         msg = "Error parsing command-line arguments for data export applet.\n"
         if parsed_args.cutout_subregion:
-            try:
-                roi = eval( parsed_args.cutout_subregion )
-                roi = tuple( map(tuple, roi) )
-                parsed_args.cutout_subregion = roi
-            except:
-                msg += "Didn't understand cutout_subregion: {}\n".format(parsed_args.cutout_subregion)
-                raise Exception( msg )
-            else:
-                if len(roi) != 2:
-                    msg += "cutout_subregion must include separate start and stop tuples."
-                    raise Exception( msg )
-                elif len(roi[0]) != len(roi[1]):
-                    msg += "cutout_subregion start and stop coordinates must have the same dimensionality!"
-                    raise Exception( msg )
+            roi = parsed_args.cutout_subregion
+            assert isinstance(roi, list), "Expected a list"
+            roi = tuple(map(tuple, roi))
+            parsed_args.cutout_subregion = roi
 
-        if parsed_args.pipeline_result_drange:        
-            try:
-                input_drange = eval(parsed_args.pipeline_result_drange)
-                assert len(input_drange) == 2
-                parsed_args.pipeline_result_drange = tuple( input_drange )
-            except:
-                msg += "Didn't understand pipeline_result_drange: {}".format( parsed_args.pipeline_result_drange )
-                raise Exception( msg )
-                
+            if len(roi) != 2:
+                msg += "cutout_subregion must include separate start and stop tuples."
+                raise Exception(msg)
+            elif len(roi[0]) != len(roi[1]):
+                msg += "cutout_subregion start and stop coordinates must have the same dimensionality!"
+                raise Exception(msg)
+
+        if parsed_args.pipeline_result_drange:
+
+            input_drange = parsed_args.pipeline_result_drange
+            assert isinstance(input_drange, list), "Expected a list"
+
+            if len(input_drange) != 2:
+                msg += "Didn't understand pipeline_result_drange: {}".format(parsed_args.pipeline_result_drange)
+                raise Exception(msg)
+
+            parsed_args.pipeline_result_drange = tuple(input_drange)
+
         if parsed_args.export_drange:
             if not parsed_args.pipeline_result_drange:
-                raise Exception( "Cannot renormalize to custom export_drange without a specified pipeline_result_drange." )
-            
-            try:
-                input_drange = eval(parsed_args.export_drange)
-                assert len(input_drange) == 2
-                parsed_args.export_drange = tuple( input_drange )
-            except:
-                msg += "Didn't understand export_drange: {}".format( parsed_args.export_drange )
-                raise Exception( msg )
-                
+                raise Exception("Cannot renormalize to custom export_drange without a specified pipeline_result_drange.")
+
+            export_drange = parsed_args.export_drange
+            assert isinstance(export_drange, list), "Expected a list"
+
+            if len(export_drange) != 2:
+                msg += "Didn't understand export_drange: {}".format(parsed_args.export_drange)
+                raise Exception(msg)
+
+            parsed_args.export_drange = tuple(export_drange)
+
         if parsed_args.export_dtype:
             try:
-                from numpy import uint8, uint16, uint32, int8, int16, int32, float32, float64
-                parsed_args.export_dtype = eval(parsed_args.export_dtype)
-            except:
-                msg += "Didn't understand export_dtype: {}".format( parsed_args.export_dtype )
-                raise Exception( msg )
-        
+                parsed_args.export_dtype = numpy.dtype(parsed_args.export_dtype).type
+            except TypeError as e:
+                msg += "Didn't understand export_dtype: {}".format(parsed_args.export_dtype)
+                raise Exception(msg)
+
         if parsed_args.output_axis_order:
             output_axis_order = parsed_args.output_axis_order.lower()
             if any( [a not in 'txyzc' for a in output_axis_order] ):
