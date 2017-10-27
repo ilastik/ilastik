@@ -201,7 +201,7 @@ class OpMultiArrayStacker(Operator):
 
         for inSlot in self.inputs["Images"]:
             inTagKeys = [ax.key for ax in inSlot.meta.axistags]
-            if inSlot.partner is not None:
+            if inSlot.upstream_slot is not None:
                 self.Output.meta.assignFrom( inSlot.meta )
 
                 outTagKeys = [ax.key for ax in self.outputs["Output"].meta.axistags]
@@ -340,7 +340,6 @@ class OpSingleChannelSelector(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
-        
         channelAxis=self.Input.meta.axistags.channelIndex
         inshape=list(self.Input.meta.shape)
         outshape = list(inshape)
@@ -365,14 +364,14 @@ class OpSingleChannelSelector(Operator):
 
         # Output can't be accessed unless the input has enough channels
         # We can't assert here because it's okay to configure this slot incorrectly as long as it is never accessed.
-        # Because the order of callbacks isn't well defined, people may not disconnect this operator from its 
-        #  upstream partner until after it has already been configured.
+        # Because the order of callbacks isn't well defined, people may not disconnect this operator from its
+        #  upstream_slot until after it has already been configured.
         # Again, that's okay as long as it isn't accessed.
         #assert self.Input.meta.getTaggedShape()['c'] > self.Index.value, \
         #        "Requested channel {} is out of range of input data (shape {})".format(self.Index.value, self.Input.meta.shape)
         if self.Input.meta.getTaggedShape()['c'] <= self.Index.value:
             self.Output.meta.NOTREADY = True
-        
+
     def execute(self, slot, subindex, roi, result):
         index=self.inputs["Index"].value
         channelIndex = self.Input.meta.axistags.channelIndex
