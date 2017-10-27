@@ -195,18 +195,18 @@ class Slot(object):
 
         # in the case of an InputSlot this is the slot to which it is
         # connected
-        self.partner = None
+        self.upstream_slot = None
         self.level = level
 
         # in the case of an InputSlot one can directly assign a value
-        # to a slot instead of connecting it to a partner, this
+        # to a slot instead of connecting it to an upstream_slot, this
         # attribute holds the value
         self._value = None
 
         self._defaultValue = value
 
         # Causes calls to setValue to be propagated backwards to the
-        # partner slot. Used by the OperatorWrapper.
+        # upstream_slot. Used by the OperatorWrapper.
         self._backpropagate_values = False
 
         self.rtype = rtype
@@ -476,7 +476,7 @@ class Slot(object):
 
     def _handleUpstreamUnready(self, slot):
         """
-        This handler ensures that UNready status propagates quickly 
+        This handler ensures that UNready status propagates quickly
         through the graph (before the normal _changed path)
         """
         if self.meta._ready:
@@ -484,29 +484,29 @@ class Slot(object):
             self._sig_unready(self)
 
     @is_setup_fn
-    def connect(self, partner, notify=True, permit_distant_connection=False):
+    def connect(self, upstream_slot, notify=True, permit_distant_connection=False):
         """
         Connect a slot to another slot
 
         Arguments:
-          partner   : the slot to which this slot is conencted
+          upstream_slot   : the slot to which this slot is conencted
         """
         try:
 
-            if partner is None:
+            if upstream_slot is None:
                 self.disconnect()
                 return
-    
-            assert isinstance(partner, Slot), ("Slot.connect() can only be used to"
+
+            assert isinstance(upstream_slot, Slot), ("Slot.connect() can only be used to"
                                                " connect other Slots.  Did you mean"
                                                " to use Slot.setValue()?")
-            assert self.allow_mask or (not partner.meta.has_mask), \
+            assert self.allow_mask or (not upstream_slot.meta.has_mask), \
                         "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"," \
                         " from the output slot, \"%s\", on operator, \"%s\". This is currently not supported." \
-                        % (self.operator.name, self.name, partner.name, partner.operator.name)
+                        % (self.operator.name, self.name, upstream_slot.name, upstream_slot.operator.name)
 
             my_op = self.getRealOperator()
-            partner_op = partner.getRealOperator()
+            partner_op = upstream_slot.getRealOperator()
             if partner_op and not( partner_op.parent is my_op.parent or \
                     (self._type == "output" and partner_op.parent is my_op) or \
                     (self._type == "input" and my_op.parent is partner_op) or \
@@ -518,37 +518,37 @@ class Slot(object):
                         msg += "\n(For one of your operators, parent=None.  Was it already cleaned up?"
                     raise Exception(msg)
     
-            if self.partner is partner and partner.level == self.level:
+            if self.upstream_slot is upstream_slot and upstream_slot.level == self.level:
                 return
             if self.level == 0:
                 self.disconnect()
     
-            if partner is not None:
-                partner._sig_unready.subscribe( self._handleUpstreamUnready )
+            if upstream_slot is not None:
+                upstream_slot._sig_unready.subscribe( self._handleUpstreamUnready )
                 self._value = None
-                if partner.level == self.level:
-                    assert isinstance(partner.stype, type(self.stype)), \
+                if upstream_slot.level == self.level:
+                    assert isinstance(upstream_slot.stype, type(self.stype)), \
                         "Can't connect slots of non-matching stypes!" \
-                        " Attempting to connect '{}' (stype: {}) to '{}' (stype: {})".format(self.name, self.stype, partner.name, partner.stype)
-                    self.partner = partner
-                    notifyReady = (self.partner.meta._ready and
+                        " Attempting to connect '{}' (stype: {}) to '{}' (stype: {})".format(self.name, self.stype, upstream_slot.name, upstream_slot.stype)
+                    self.upstream_slot = upstream_slot
+                    notifyReady = (self.upstream_slot.meta._ready and
                                    not self.meta._ready)
-                    self.meta = self.partner.meta.copy()
+                    self.meta = self.upstream_slot.meta.copy()
     
                     # the slot with more sub-slots determines
                     # the number of subslots
-                    if len(self) < len(partner):
-                        self.resize(len(partner))
-                    elif len(self) > len(partner):
-                        partner.resize(len(self))
+                    if len(self) < len(upstream_slot):
+                        self.resize(len(upstream_slot))
+                    elif len(self) > len(upstream_slot):
+                        upstream_slot.resize(len(self))
     
-                    partner.partners.append(self)
-                    for i in range(len(self.partner)):
-                        p = self.partner[i]
+                    upstream_slot.partners.append(self)
+                    for i in range(len(self.upstream_slot)):
+                        p = self.upstream_slot[i]
                         self[i].connect(p)
     
                     # call slot type connect function
-                    self.stype.connect(partner)
+                    self.stype.connect(upstream_slot)
     
                     if self.level > 0 or self.stype.isConfigured():
                         self._changed()
@@ -556,17 +556,17 @@ class Slot(object):
                     # call connect callbacks
                     self._sig_connect(self)
     
-                    # Notify readiness after partner is updated
+                    # Notify readiness after upstream_slot is updated
                     if notifyReady:
                         self._sig_ready(self)
     
-                elif partner.level < self.level:
-                    self.partner = partner
-                    notifyReady = (self.partner.meta._ready and not
+                elif upstream_slot.level < self.level:
+                    self.upstream_slot = upstream_slot
+                    notifyReady = (self.upstream_slot.meta._ready and not
                                    self.meta._ready)
-                    self.meta = self.partner.meta.copy()
+                    self.meta = self.upstream_slot.meta.copy()
                     for i, slot in enumerate(self._subSlots):
-                        slot.connect(partner)
+                        slot.connect(upstream_slot)
     
                     if notifyReady:
                         self._sig_ready(self)
@@ -575,7 +575,7 @@ class Slot(object):
                     # call connect callbacks
                     self._sig_connect(self)
     
-                elif partner.level > self.level:
+                elif upstream_slot.level > self.level:
                     msg = str("Can't connect slots:"
                            " {}.{}.level={}, but"
                            " {}.{}.level={}"
@@ -583,14 +583,14 @@ class Slot(object):
                            " is no longer supported.)").format(
                                self.getRealOperator().name,
                                self.name, self.level,
-                               partner.getRealOperator().name,
-                               partner.name, partner.level)
+                               upstream_slot.getRealOperator().name,
+                               upstream_slot.name, upstream_slot.level)
                     raise RuntimeError(msg)
     
                 # propagate value changed signals from inner to outer
                 # operators.
-                if self._type == partner._type == "output":
-                    partner.notifyValueChanged(self._sig_value_changed)
+                if self._type == upstream_slot._type == "output":
+                    upstream_slot.notifyValueChanged(self._sig_value_changed)
 
         except:
             try:
@@ -621,26 +621,26 @@ class Slot(object):
     @is_setup_fn    
     def disconnect(self):
         """
-        Disconnect a InputSlot from its partner
+        Disconnect a InputSlot from its upstream_slot
         """
         if self.backpropagate_values and self.getRealOperator() and not self.getRealOperator()._cleaningUp:
-            if self.partner is not None:
-                self.partner.disconnect()
+            if self.upstream_slot is not None:
+                self.upstream_slot.disconnect()
             return
 
         for slot in self._subSlots:
             slot.disconnect()
 
-        had_partner = False
-        if self.partner is not None:
-            had_partner = True
+        had_upstream_slot = False
+        if self.upstream_slot is not None:
+            had_upstream_slot = True
             # safe to unsubscribe, even if not subscribed
-            self.partner._sig_unready.unsubscribe(self._handleUpstreamUnready)
+            self.upstream_slot._sig_unready.unsubscribe(self._handleUpstreamUnready)
             try:
-                self.partner.partners.remove(self)
+                self.upstream_slot.partners.remove(self)
             except ValueError:
                 pass
-        self.partner = None
+        self.upstream_slot = None
         had_value = self._value is not None
         self._value = None
         oldReady = self.meta._ready
@@ -650,7 +650,7 @@ class Slot(object):
             self.resize(0)
 
         # call callbacks
-        if had_partner or had_value:
+        if had_upstream_slot or had_value:
             self._sig_disconnect(self)
 
         # Notify our partners that we changed.
@@ -702,8 +702,8 @@ class Slot(object):
                 c.resize(size)
 
         # propagate size change upward
-        if (self.partner and len(self.partner) < size and self.partner.level == self.level):
-            self.partner.resize(size)
+        if (self.upstream_slot and len(self.upstream_slot) < size and self.upstream_slot.level == self.level):
+            self.upstream_slot.resize(size)
 
         # connect newly added slots
         # We must connect these subslots here, AFTER all resizes have propagated up and down through the graph.
@@ -731,18 +731,18 @@ class Slot(object):
         self._sig_insert(self, position, finalsize)
 
         slot =  self._insertNew(position)
-        
+
         # New slot inherits our settings
         slot.backpropagate_values = self.backpropagate_values
-        
+
         operator_name = '<NO OPERATOR>'
         if self.operator:
             operator_name = self.operator.name
         self.logger.debug("Inserting slot {} into slot {} of operator {} to size {}".format(
             position, self.name, operator_name, finalsize))
         if propagate:
-            if self.partner is not None and self.partner.level == self.level:
-                self.partner.insertSlot(position, finalsize)
+            if self.upstream_slot is not None and self.upstream_slot.level == self.level:
+                self.upstream_slot.insertSlot(position, finalsize)
 
             for p in self.partners:
                 if p.level == self.level:
@@ -776,8 +776,8 @@ class Slot(object):
         slot.operator = None
         slot._real_operator = None
         if propagate:
-            if self.partner is not None and self.partner.level == self.level:
-                self.partner.removeSlot(position, finalsize)
+            if self.upstream_slot is not None and self.upstream_slot.level == self.level:
+                self.upstream_slot.removeSlot(position, finalsize)
             for p in self.partners:
                 if p.level == self.level:
                     p.removeSlot(position, finalsize)
@@ -805,10 +805,10 @@ class Slot(object):
             # --> construct cheaper request object for this case
             result = self.stype.writeIntoDestination(None, self._value, roi)
             return ValueRequest(result)
-        elif self.partner is not None:
+        elif self.upstream_slot is not None:
             # this handles the case of an inputslot
             # --> just relay the request
-            return self.partner.get(roi)
+            return self.upstream_slot.get(roi)
         else:
             if not self.ready():
                 # Something is wrong.  Are we cancelled?
@@ -826,11 +826,11 @@ class Slot(object):
                 raise Slot.SlotNotReadyError(msg)
 
             # If someone is asking for data from an inputslot that has
-            #  no value and no partner, then something is wrong.
+            #  no value and no upstream_slot, then something is wrong.
             if self._type == "input":
                 # Something is wrong.  Are we cancelled?
                 Request.raise_if_cancelled()
-                assert self._type != "input", "This inputSlot has no value and no partner.  You can't ask for its data yet!"
+                assert self._type != "input", "This inputSlot has no value and no upstream_slot.  You can't ask for its data yet!"
             # normal (outputslot) case
             # --> construct heavy request object..
             execWrapper = Slot.RequestExecutionWrapper(self, roi)
@@ -843,8 +843,8 @@ class Slot(object):
 
     @staticmethod
     def _findUpstreamProblemSlot(slot):
-        if slot.partner is not None:
-            return Slot._findUpstreamProblemSlot( slot.partner )
+        if slot.upstream_slot is not None:
+            return Slot._findUpstreamProblemSlot(slot.upstream_slot)
         if slot.getRealOperator() is not None:
             for inputSlot in list(slot.getRealOperator().inputs.values()):
                 if not inputSlot._optional and not inputSlot.ready():
@@ -1100,7 +1100,7 @@ class Slot(object):
         or float value
 
         """
-        if self.partner is not None:
+        if self.upstream_slot is not None:
             # outputslot-inputsslot, inputslot-inputslot and outputslot-outputslot case
             temp = self[:].wait()
         elif self._value is None:
@@ -1157,12 +1157,12 @@ class Slot(object):
                 % (self.operator.name, self.name)
     
             if not self.backpropagate_values:
-                assert self.partner is None, \
+                assert self.upstream_slot is None, \
                     ("Cannot call setValue on this slot."
-                     " It is already connected to a partner."
+                     " It is already connected to a upstream_slot."
                      " Call disconnect first if that's what you really wanted.")
-            elif self.partner is not None:
-                self.partner.setValue(value, notify, check_changed)
+            elif self.upstream_slot is not None:
+                self.upstream_slot.setValue(value, notify, check_changed)
                 return
     
             changed = True
@@ -1299,12 +1299,12 @@ class Slot(object):
             slot.backpropagate_values = backprop
 
     def connected(self):
-        """Returns True if the slot is conencted to a partner slot or
+        """Returns True if the slot is connected to an upstream_slot or
         has a _value assigned as input
 
         """
         answer = True
-        if self._value is None and self.partner is None:
+        if self._value is None and self.upstream_slot is None:
             answer = False
         if answer is False and len(self._subSlots) > 0:
             answer = True
@@ -1406,8 +1406,8 @@ class Slot(object):
     def _changed(self):
         oldMeta = self.meta
         old_ready = self.ready()
-        if self.partner is not None and self.meta != self.partner.meta:
-            self.meta = self.partner.meta.copy()
+        if self.upstream_slot is not None and self.meta != self.upstream_slot.meta:
+            self.meta = self.upstream_slot.meta.copy()
 
         if self._type == "output":
             for o in self._subSlots:
@@ -1455,7 +1455,7 @@ class Slot(object):
         self._changed()
 
     def _connectSubSlot(self, slot, notify=True):
-        """Connect a subslot either to the partner, or set the correct
+        """Connect a subslot either to the upstream_slot, or set the correct
         value in case of self._value != None
 
         """
@@ -1465,12 +1465,12 @@ class Slot(object):
         else:
             index = self._subSlots.index(slot)
 
-        if self.partner is not None:
-            if self.partner.level == self.level:
-                if len(self.partner) > index:
-                    slot.connect(self.partner[index])
+        if self.upstream_slot is not None:
+            if self.upstream_slot.level == self.level:
+                if len(self.upstream_slot) > index:
+                    slot.connect(self.upstream_slot[index])
             else:
-                slot.connect(self.partner)
+                slot.connect(self.upstream_slot)
         if self._value is not None:
             slot.setValue(self._value, notify=notify)
 
