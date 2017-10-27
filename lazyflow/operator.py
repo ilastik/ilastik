@@ -356,8 +356,8 @@ class Operator(metaclass=OperatorMetaClass):
     #  FIXME: Unused function?
     def disconnectFromDownStreamPartners(self):
         for slot in list(self.inputs.values()) + list(self.outputs.values()):
-            partners = list(slot.partners)
-            for p in partners:
+            downstream_slots = list(slot.downstream_slots)
+            for p in downstream_slots:
                 p.disconnect()
 
     def _initCleanup(self):
@@ -376,14 +376,14 @@ class Operator(metaclass=OperatorMetaClass):
 
         for s in list(self.inputs.values()) + list(self.outputs.values()):
             # See note about the externally_managed flag in Operator.__init__
-            partners = list(p for p in s.partners
+            downstream_slots = list(p for p in s.downstream_slots
                             if p.getRealOperator() is not None and
                             not p.getRealOperator().externally_managed)
-            if len(partners) > 0:
+            if len(downstream_slots) > 0:
                 msg = ("Cannot clean up this operator ({}): Slot '{}'"
                        " is still providing data to downstream"
                        " operators!\n".format( self.name, s.name))
-                for i, p in enumerate(s.partners):
+                for i, p in enumerate(s.downstream_slots):
                     msg += "Downstream Partner {}: {}.{}".format(
                         i, p.getRealOperator().name, p.name)
                 raise RuntimeError(msg)
