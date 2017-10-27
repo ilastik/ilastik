@@ -186,7 +186,7 @@ class Slot(object):
             self._type = None
         if isinstance(stype, (str, unicode)):
             stype = ArrayLike
-        self.partners = []
+        self.downstream_slots = []
         self.name = name
         self._optional = optional
         self.operator = operator
@@ -542,7 +542,7 @@ class Slot(object):
                     elif len(self) > len(upstream_slot):
                         upstream_slot.resize(len(self))
     
-                    upstream_slot.partners.append(self)
+                    upstream_slot.downstream_slots.append(self)
                     for i in range(len(self.upstream_slot)):
                         p = self.upstream_slot[i]
                         self[i].connect(p)
@@ -637,7 +637,7 @@ class Slot(object):
             # safe to unsubscribe, even if not subscribed
             self.upstream_slot._sig_unready.unsubscribe(self._handleUpstreamUnready)
             try:
-                self.upstream_slot.partners.remove(self)
+                self.upstream_slot.downstream_slots.remove(self)
             except ValueError:
                 pass
         self.upstream_slot = None
@@ -653,7 +653,7 @@ class Slot(object):
         if had_upstream_slot or had_value:
             self._sig_disconnect(self)
 
-        # Notify our partners that we changed.
+        # Notify our downstream_slots that we changed.
         self._changed()
 
         # If we were ready before, signal that we aren't any more
@@ -697,7 +697,7 @@ class Slot(object):
             self.removeSlot(len(self)-1, len(self)-1, propagate=False)
 
         # propagate size change downward
-        for c in self.partners:
+        for c in self.downstream_slots:
             if c.level == self.level:
                 c.resize(size)
 
@@ -707,7 +707,7 @@ class Slot(object):
 
         # connect newly added slots
         # We must connect these subslots here, AFTER all resizes have propagated up and down through the graph.
-        # Otherwise, our new subslots may lose downstream partners (happens in "diamond" shaped graphs.)
+        # Otherwise, our new subslots may lose downstream_slots (happens in "diamond" shaped graphs.)
         for i in new_subslots:
             self._connectSubSlot(i)
 
@@ -744,7 +744,7 @@ class Slot(object):
             if self.upstream_slot is not None and self.upstream_slot.level == self.level:
                 self.upstream_slot.insertSlot(position, finalsize)
 
-            for p in self.partners:
+            for p in self.downstream_slots:
                 if p.level == self.level:
                     p.insertSlot(position, finalsize)
 
@@ -778,7 +778,7 @@ class Slot(object):
         if propagate:
             if self.upstream_slot is not None and self.upstream_slot.level == self.level:
                 self.upstream_slot.removeSlot(position, finalsize)
-            for p in self.partners:
+            for p in self.downstream_slots:
                 if p.level == self.level:
                     p.removeSlot(position, finalsize)
 
@@ -970,7 +970,7 @@ class Slot(object):
             else:
                 roi = args[0]
 
-            for c in self.partners:
+            for c in self.downstream_slots:
                 c.setDirty(roi)
 
             # call callbacks
@@ -1059,8 +1059,8 @@ class Slot(object):
         if self._type == "input":
             self.operator.setInSlot(self, (), roi, value)
 
-        # Forward to partners
-        for p in self.partners:
+        # Forward to downstream_slots
+        for p in self.downstream_slots:
             p[key] = value
 
     def index(self, slot):
@@ -1345,7 +1345,7 @@ class Slot(object):
 
         # If we just became ready...
         if not wasReady and self.meta._ready:
-            # Notify partners of changed readystatus
+            # Notify downstream_slots of changed readystatus
             self._changed()
             self._sig_ready(self)
 
@@ -1426,7 +1426,7 @@ class Slot(object):
                 "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
                 " This is currently not supported." \
                 % (self.operator.name, self.name)
-            for c in self.partners:
+            for c in self.downstream_slots:
                 c._changed()
             self.meta._dirty = False
 
