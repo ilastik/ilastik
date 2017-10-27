@@ -403,7 +403,7 @@ class OpPrecomputedInput(Operator):
                 # If the slow input became dirty, the party is over.
                 # We can't use the pre-computed input anymore.
                 with self._lock:
-                    if self.Output.partner != self.SlowInput:
+                    if self.Output.upstream_slot != self.SlowInput:
                         self.Output.connect(self.SlowInput)
                         self.Output.setDirty(roi)
         elif slot is self.Reset:

@@ -223,7 +223,7 @@ class OperatorWrapper(Operator):
             self._name = "Wrapped " + op.name
 
         # If anyone calls setValue() on one of these slots,
-        # forward the setValue call to the slot's partner (the
+        # forward the setValue call to the slot's upstream_slot (the
         # outer slot on the operator wrapper)
         for slot in list(op.inputs.values()):
             slot.backpropagate_values = True
@@ -238,16 +238,16 @@ class OperatorWrapper(Operator):
             # wrapping
             if outerSlot.name in self.promotedSlotNames:
                 outerSlot.insertSlot(index, length)
-                partner = outerSlot[index]
+                upstream_slot = outerSlot[index]
             else:
-                partner = outerSlot
-            if op.inputs[key].partner is not None:
+                upstream_slot = outerSlot
+            if op.inputs[key].upstream_slot is not None:
                 msg = ("Can't set up OperatorWrapper connections."
                        " Input slot {} is already connected to a"
-                       " partner (must have happened in {}'s"
+                       " upstream_slot (must have happened in {}'s"
                        " constructor".format(key, op.name))
                 raise RuntimeError(msg)
-            op.inputs[key].connect(partner)
+            op.inputs[key].connect(upstream_slot)
 
         # Connect our outer output slots to the inner operator's output slots.
         for key, mslot in list(self.outputs.items()):
