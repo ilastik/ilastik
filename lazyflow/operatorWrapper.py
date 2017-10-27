@@ -292,5 +292,5 @@ class OperatorWrapper(Operator):
 
     def setInSlot(self, slot, subindex, key, value):
         # Nothing to do here. Calls to Slot.setitem are already
-        # forwarded to all slot partners.
+        # forwarded to all downstream partners.
         pass
