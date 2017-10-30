@@ -208,7 +208,8 @@ class TestOpObjectPredict(unittest.TestCase):
         self.op.Features.connect(self._opRegFeatsAdaptOutput.Output)
         self.op.SelectedFeatures.setValue(sel_features)
         self.op.LabelsCount.connect( self.trainop.LabelsCount )
-        self.assertTrue(self.op.Predictions.ready(), "The output of operator {} was not ready after connections took place.".format(self.op))
+        self.assertTrue(self.op.Predictions.ready(), "The prediction output of operator {} was not ready after connections took place.".format(self.op))
+        self.assertTrue(self.op.UncertaintyEstimate.ready(), "The uncertainty output of operator {} was not ready after connections took place.".format(self.op))
 
     def test_predict(self):
         ###
@@ -239,6 +240,13 @@ class TestOpObjectPredict(unittest.TestCase):
         
         self.assertTrue( np.all(probChannel0Time01[0]==probs[0][:, 0]) )
         self.assertTrue( np.all(probChannel0Time01[1]==probs[1][:, 0]) )
+
+    def test_uncertainty(self):
+        ###
+        # For now, just test that background uncertainty is 0 as it should be
+        ###
+        uncerts = self.op.UncertaintyEstimate([0]).wait()
+        self.assertTrue(uncerts[0][0]==0)
         
 
  
@@ -425,6 +433,8 @@ class TestFullOperator(unittest.TestCase):
     def test(self):
         self.assertTrue(self.classOp.Predictions.ready(), "Prediction slot of OpObjectClassification wasn't ready.")
         probs = self.classOp.PredictionImages[0][:].wait()
+        self.assertTrue(self.classOp.UncertaintyEstimate.ready(), "UncertaintyEstimate lost of OpObjectClassification wasn't ready.")
+        uncerts = self.classOp.UncachedPredictionImages[0][:].wait()
         
     def test_unfavorable_conditions(self):
         #TODO write test with not so nice input

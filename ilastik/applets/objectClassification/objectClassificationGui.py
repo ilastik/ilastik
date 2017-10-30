@@ -648,6 +648,25 @@ class ObjectClassificationGui(LabelingGui):
             objLayer.setToolTip("Segmented objects (labeled image/connected components)")
             layers.append(objLayer)
 
+        uncertaintySlot = self.op.UncertaintyEstimateImage
+        if uncertaintySlot.ready():
+            uncertaintySrc = LazyflowSource(uncertaintySlot)
+            uncertaintyLayer = AlphaModulatedLayer( uncertaintySrc,
+                                                    tintColor=QColor( Qt.cyan ),
+                                                    range=(0.0, 1.0),
+                                                    normalize=(0.0, 1.0) )
+            uncertaintyLayer.name = "Uncertainty"
+            uncertaintyLayer.visible = False
+            uncertaintyLayer.opacity = 1.0
+            ActionInfo = ShortcutManager.ActionInfo
+            uncertaintyLayer.shortcutRegistration = ( "u", ActionInfo( "Uncertainty Layers",
+                                                                       "Uncertainty",
+                                                                       "Show/Hide Uncertainty",
+                                                                       uncertaintyLayer.toggleVisible,
+                                                                       self.viewerControlWidget(),
+                                                                       uncertaintyLayer ) )
+            layers.append(uncertaintyLayer)
+
         if binarySlot.ready():
             ct_binary = [0,
                          QColor(255, 255, 255, 255).rgba()]
@@ -824,7 +843,14 @@ class ObjectClassificationGui(LabelingGui):
                 print( "probabilities:  {}".format(prob) )
                 print( "prediction:     {}".format(pred) )
 
-            
+                uncertainty = 'none'
+                if self.op.UncertaintyEstimate.ready():
+                    uncertainties = self.op.UncertaintyEstimate([t]).wait()[t]
+                    if len(uncertainties) >= obj:
+                        uncertainty = uncertainties[obj]
+
+                print( "uncertainty:    {}".format(uncertainty) )
+
             print( "------------------------------------------------------------" )
         elif action.text()==clearlabel:
             topLevelOp = self.topLevelOperatorView.viewed_operator()
