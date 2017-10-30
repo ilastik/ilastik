@@ -328,20 +328,21 @@ class StructuredTrackingWorkflowBase( Workflow ):
             self.trackingApplet.topLevelOperator[loaded_project_lane_index].Annotations.value)
 
         def runLearningAndTracking(withMergerResolution=True):
-            logger.info("Test: Structured Learning")
-            weights = self.trackingApplet.topLevelOperator[lane_index]._runStructuredLearning(
-                z_range,
-                parameters['maxObj'],
-                parameters['max_nearest_neighbors'],
-                parameters['maxDist'],
-                parameters['divThreshold'],
-                [parameters['scales'][0],parameters['scales'][1],parameters['scales'][2]],
-                parameters['size_range'],
-                parameters['withDivisions'],
-                parameters['borderAwareWidth'],
-                parameters['withClassifierPrior'],
-                withBatchProcessing=True)
-            logger.info("weights: {}".format(weights))
+            if self.testFullAnnotations:
+                logger.info("Test: Structured Learning")
+                weights = self.trackingApplet.topLevelOperator[lane_index]._runStructuredLearning(
+                    z_range,
+                    parameters['maxObj'],
+                    parameters['max_nearest_neighbors'],
+                    parameters['maxDist'],
+                    parameters['divThreshold'],
+                    [parameters['scales'][0],parameters['scales'][1],parameters['scales'][2]],
+                    parameters['size_range'],
+                    parameters['withDivisions'],
+                    parameters['borderAwareWidth'],
+                    parameters['withClassifierPrior'],
+                    withBatchProcessing=True)
+                logger.info("weights: {}".format(weights))
 
             logger.info("Test: Tracking")
             result = self.trackingApplet.topLevelOperator[lane_index].track(
