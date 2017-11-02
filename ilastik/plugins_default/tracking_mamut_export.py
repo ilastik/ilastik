@@ -70,38 +70,64 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         graph = hypothesesGraph._graph
 
         features = objectFeaturesSlot([]).wait() # this is a dict of structure: {frame: {category: {featureNames}}}
-        firstPass = True
 
+        # first loop over all nodes to find present features and highest trackId
+        firstNode = True
+        presentTrackIds = set([])
+        for node in graph.nodes_iter():
+            frame, label = node
+            # print(f"Node {node} has value={graph.node[node]['value']} and trackId={graph.node[node]['trackId']}")
+            if graph.node[node]['value'] > 0:
+                t = graph.node[node]['traxel']
+                presentTrackIds.add(int(graph.node[node]['trackId']))
+
+                if firstNode:
+                    radius = 2*features[frame]['Standard Object Features']['RegionRadii'][label, 0]
+                    for category in list(features[frame].keys()):
+                        for key in list(features[frame][category].keys()):
+
+                            if firstNode:
+                                feature_string = key
+                                feature_string = convertKeyName(feature_string)
+                                if len(feature_string) > 15:
+                                    shortname = getShortname(feature_string).replace('_', '')
+                                else:
+                                    shortname = feature_string.replace('_', '')
+
+                                isInt = isinstance(features[frame][category][key], int)
+
+                                if (np.asarray(features[frame][category][key])).ndim == 2:
+                                    if key != 'Histogram':
+                                        #print key, np.asarray(features[key]).shape
+                                        for column in range((np.asarray(features[frame][category][key])).shape[1]):
+                                            builder.addFeatureName(feature_string + '_' + str(column), feature_string, shortname + '_' + str(column), isInt)
+                                else:
+                                    #print "ELSE", key, np.asarray(features[key]).shape
+                                    builder.addFeatureName(feature_string, feature_string, shortname, isInt)
+
+                    builder.addFeatureName("LabelimageId", "LabelimageId", "labelid", False)
+                    builder.addFeatureName("Track_color", "Track_color", "trackcol", False)
+                    builder.addTrackFeatureName("Track_color", "Track_color", "trackcol", False)
+                    firstNode = False
+
+        # assign random colors to tracks
+        randomColorPerTrack = {}
+        for trackId in presentTrackIds:
+            randomColorPerTrack[trackId] = np.random.random()
+            builder.setTrackFeatures(trackId, {'Track_color': randomColorPerTrack[trackId]})
+
+        # second pass over the nodes passes features and tracks to the builder
         for node in graph.nodes_iter():
             frame, label = node
             if graph.node[node]['value'] > 0:
                 t = graph.node[node]['traxel']
+                trackId = int(graph.node[node]['trackId'])
 
                 radius = 2*features[frame]['Standard Object Features']['RegionRadii'][label, 0]
                 
                 featureDict = {}
                 for category in list(features[frame].keys()):
                     for key in list(features[frame][category].keys()):
-
-                        if firstPass:
-                            feature_string = key
-                            feature_string = convertKeyName(feature_string)
-                            if len(feature_string) > 15:
-                                shortname = getShortname(feature_string).replace('_', '')
-                            else:
-                                shortname = feature_string.replace('_', '')
-
-                            isInt = isinstance(features[frame][category][key], int)
-
-                            if (np.asarray(features[frame][category][key])).ndim == 2:
-                                if key != 'Histogram':
-                                    #print key, np.asarray(features[key]).shape
-                                    for column in range((np.asarray(features[frame][category][key])).shape[1]):
-                                        builder.addFeatureName(feature_string + '_' + str(column), feature_string, shortname + '_' + str(column), isInt)
-                            else:
-                                #print "ELSE", key, np.asarray(features[key]).shape
-                                builder.addFeatureName(feature_string, feature_string, shortname, isInt)
-
                         if key != 'Histogram':
                             if label != 0: # ignoring background
                                 if (np.asarray(features[frame][category][key])).ndim == 0:
@@ -119,10 +145,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                                                 featureDict[convertKeyName(key) + '_{}'.format(str(j))] = 0.
                                             continue
                                         featureDict[convertKeyName(key) + '_{}'.format(str(j))] = features[frame][category][key][label, j]
-                firstPass = False
 
-                # TODO: builder.addSpot(frame, graph.node[node]['id'], t.X(), t.Y(), t.Z(), radius, featureDict)
-                # instead of the next lines
                 xpos = features[frame]['Standard Object Features']['RegionCenter'][label, 0]
                 ypos = features[frame]['Standard Object Features']['RegionCenter'][label, 1]
                 try:
@@ -130,11 +153,13 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                 except IndexError:
                     zpos = 0.0
 
-                builder.addSpot(frame, 'track-{}'.format(graph.node[node]['trackId']), graph.node[node]['id'], xpos, ypos, zpos, radius, featureDict)
+                featureDict['Track_color'] = randomColorPerTrack[trackId]
+                featureDict['LabelimageId'] = label
+                builder.addSpot(frame, 'track-{}'.format(trackId), graph.node[node]['id'], xpos, ypos, zpos, radius, featureDict)
 
         for edge in graph.edges_iter():
             if graph.edge[edge[0]][edge[1]]['value'] > 0:
-                builder.addLink(graph.node[edge[0]]['lineageId'], graph.node[edge[0]]['id'], graph.node[edge[1]]['id'])
+                builder.addLink(graph.node[edge[0]]['trackId'], graph.node[edge[0]]['id'], graph.node[edge[1]]['id'])
 
         builder.setBigDataViewerImagePath(os.path.dirname(bigDataViewerFile), os.path.basename(bigDataViewerFile))
         builder.writeToFile(filename + '_mamut.xml')
