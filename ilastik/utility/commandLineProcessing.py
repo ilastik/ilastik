@@ -48,6 +48,7 @@ def convertStringToList(some_string):
     replace_values = {
         '(': '[',
         ')': ']',
+        'None': 'null',
     }
     to_parse = some_string
     for k, v in replace_values.items():

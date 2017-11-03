@@ -67,6 +67,7 @@ class CommandLineHelperTests(unittest.TestCase):
             '(123)': [123],
             '[(1, 2)]': [[1, 2]],
             '[(1, 2), (3, 4)]': [[1, 2], [3, 4]],
+            '[(0, 0, 0), (0, None, None)]': [[0, 0, 0], [0, None, None]],
         }
 
         for value, expected in values_to_test.items():
