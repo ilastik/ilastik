@@ -25,7 +25,15 @@ started after changes are committed.
 
 Also this can be used as a basis for further headless-mode testing.
 """
+import os
+import sys
+import tempfile
+
+import ilastik_main
 from ilastik.workflow import getAvailableWorkflows
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class TestHeadlessWorkflowStartupProjectCreation(object):
@@ -33,3 +41,37 @@ class TestHeadlessWorkflowStartupProjectCreation(object):
     @classmethod
     def setupClass(cls):
         cls.workflow_list = list(getAvailableWorkflows())
+
+    def test_workflow_creation_headless(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for wf in self.workflow_list:
+                yield self.start_workflow_create_project_headless, wf, temp_dir
+
+    def start_workflow_create_project_headless(self, workflow_class_tuple, temp_dir):
+        """Tests project file creation via the command line
+        Args:
+            workflow_class_tuple (tuple): tuple returned from getAvailableWorkflows
+              with (workflow_class, workflow_name, workflow_class.workflowDisplayName)
+        """
+        workflow_class, workflow_name, display_name = workflow_class_tuple
+        logger.debug(f'starting {workflow_name}')
+        project_file = os.path.join(
+            temp_dir,
+            f'test_project_{"_".join(workflow_name.split())}.ilp'
+        )
+        args = [
+            '--headless',
+            f'--new_project={project_file}',
+            f'--workflow={workflow_name}',
+        ]
+        # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv = ['ilastik.py']
+        sys.argv.extend(args)
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
+        shell = ilastik_main.main(
+            parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False)
+
+        # now check if the project file has been created:
+        assert os.path.exists(project_file), f"Project File {project_file} creation not successful"
