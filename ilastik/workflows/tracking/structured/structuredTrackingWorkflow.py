@@ -32,7 +32,7 @@ from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import Threshol
 from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
 from ilastik.applets.trackingFeatureExtraction import config
 from ilastik.applets.tracking.conservation import config as configConservation
-from ilastik.applets.tracking.structured import config as configStructured
+
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
@@ -107,12 +107,12 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self.divisionDetectionApplet = ObjectClassificationApplet(workflow=self,
                                                                      name="Division Detection (optional)",
                                                                      projectFileGroupName="DivisionDetection",
-                                                                     selectedFeatures=configStructured.selectedFeaturesDiv)
+                                                                     selectedFeatures=configConservation.selectedFeaturesDiv)
 
         self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
                                                                      name="Object Count Classification",
                                                                      projectFileGroupName="CountClassification",
-                                                                     selectedFeatures=configStructured.selectedFeaturesObjectCount)
+                                                                     selectedFeatures=configConservation.selectedFeaturesObjectCount)
 
         self.trackingFeatureExtractionApplet = TrackingFeatureExtractionApplet(name="Object Feature Computation",workflow=self, interactive=False)
 

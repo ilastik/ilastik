@@ -59,6 +59,17 @@ allFeaturesObjectCount = {
         'InputCenter': {},
         'InputVolume': {}
     },
+    '3D Convex Hull Features': {
+        'DefectDisplacementMean': {},
+        'Area': {}, 
+        'DefectCount': {},
+        'DefectVolumeVariance': {},
+        'DefectVolumeMean': {},
+        'Convexity': {},
+        'HullCenter': {},
+        'InputCenter': {},
+        'InputVolume': {}
+    },
     'Standard Object Features': {
         'Coord<Maximum>': {},
         'Coord<Minimum>': {},
