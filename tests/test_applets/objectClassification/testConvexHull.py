@@ -2,8 +2,6 @@ import numpy as np
 import vigra
 import unittest
 from lazyflow.graph import Graph
-from ilastik.plugins_default.vigra_objfeats_convex_hull3D import VigraConvexHullObjFeats3D
-from ilastik.plugins_default.vigra_objfeats_convex_hull import VigraConvexHullObjFeats
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures
 
 
@@ -120,7 +118,6 @@ class TestConvexHull(unittest.TestCase):
 
 if __name__ == "__main__":
 
-    import sys
     import nose
 
     nose.run(defaultTest=__file__)
