@@ -30,6 +30,7 @@ from abc import ABCMeta
 from ilastik.config import cfg as ilastik_config
 from lazyflow.utility.orderedSignal import OrderedSignal
 from ilastik.utility.maybe import maybe
+from ilastik.utility.commandLineProcessing import convertStringToList
 import os
 import sys
 import re
@@ -574,7 +575,7 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
             groupName, labelGroup = t
             assert extract_index(groupName) == index, "subgroup extraction order should be numerical order!"
             for blockRoiString, blockDataset in list(labelGroup.items()):
-                blockRoi = eval(blockRoiString)
+                blockRoi = convertStringToList(blockRoiString)
                 roiShape = TinyVector(blockRoi[1]) - TinyVector(blockRoi[0])
                 assert roiShape == blockDataset.shape
 

@@ -6,6 +6,8 @@ import csv
 
 import numpy
 
+from ilastik.utility.commandLineProcessing import ParseListFromString
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -324,18 +326,21 @@ if __name__ == "__main__":
     parser.add_argument("--method", choices=['binary', 'by_count', 'by_size'], default='by_count', 
                         help="The method by which points will be accumulated into the downsampled volume.")
     parser.add_argument("--smooth_with_sigma_xyz", required=False)
-    parser.add_argument("--normalize_with_max", required=False)
+    parser.add_argument("--normalize_with_max", type=float, required=False)
     parser.add_argument("--output_dtype", required=False)
     parser.add_argument("pointcloud_csv_filepath")
     parser.add_argument("output_filepath", help="Path to .h5 or .tiff file to (over)write.")
-    parser.add_argument("scale_xyz", nargs='?', default=None, 
-                        help="Scale to divide all coordinates by (after offset), e.g. 1000.0 or [100, 100, 1.1]")
+    parser.add_argument("scale_xyz", required=False,
+                        help="Scale to divide all coordinates by (after offset), [100, 100, 1.1]",
+                        action=ParseListFromString)
 
     # These parameters aren't usually needed...
-    parser.add_argument("offset_xyz", nargs='?', default=None, 
-                        help="Offset to remove from all point coordinates before processing, e.g. 10.0 or [7.1, 8, 0]")
-    parser.add_argument("volume_shape_xyz", nargs='?', default=None, 
-                        help="Full shape of the original volume. If not provided, use bounding box of the pointcloud.")
+    parser.add_argument("offset_xyz", required=False,
+                        help="Offset to remove from all point coordinates before processing, [7.1, 8, 0]",
+                        action=ParseListFromString)
+    parser.add_argument("volume_shape_xyz", required=False,
+                        help="Full shape of the original volume. If not provided, use bounding box of the pointcloud.",
+                        action=ParseListFromString)
 
     # Here's some default cmd-line args for debugging...
     DEBUG = False
@@ -351,11 +356,10 @@ if __name__ == "__main__":
     # Parse!
     parsed_args = parser.parse_args()
 
-    # Evaluate tuple args if provided
-    volume_shape_xyz = parsed_args.volume_shape_xyz and eval(parsed_args.volume_shape_xyz)
-    offset_xyz = parsed_args.offset_xyz and eval(parsed_args.offset_xyz)
-    scale_xyz = parsed_args.scale_xyz and eval(parsed_args.scale_xyz)
-    smoothing_sigma_xyz = parsed_args.smooth_with_sigma_xyz and eval(parsed_args.smooth_with_sigma_xyz)
+    volume_shape_xyz = parsed_args.volume_shape_xyz
+    offset_xyz = parsed_args.offset_xyz
+    scale_xyz = parsed_args.scale_xyz
+    smoothing_sigma_xyz = parsed_args.smooth_with_sigma_xyz
     
     # Evaluate other optional args
     output_dtype = None
@@ -363,9 +367,9 @@ if __name__ == "__main__":
         assert parsed_args.output_dtype in \
             [ 'uint8', 'int8', 'uint16', 'int16', 'uint32', 'int32', 'uint64', 'int64', 'float32', 'float64' ], \
             "Unknown dtype: {}".format( parsed_args.output_dtype )
-        output_dtype = eval( "numpy." + parsed_args.output_dtype )
+        output_dtype = numpy.dtype(parsed_args.output_dtype).type
     
-    normalize_with_max = parsed_args.normalize_with_max and eval(parsed_args.normalize_with_max)
+    normalize_with_max = parsed_args.normalize_with_max
 
     # Main func.
     sys.exit( downsample_pointcloud( parsed_args.pointcloud_csv_filepath,

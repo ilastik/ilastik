@@ -5,6 +5,8 @@ import collections
 
 import numpy
 
+from ilastik.utility.commandLineProcessing import ParseListFromString
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -67,10 +69,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("csv_filepath")
     parser.add_argument("ply_filepath")
-    parser.add_argument("offset", nargs='?', default=None, 
-                        help="Offset to remove from all point coordinates during export, e.g. 10.0 or [7.1, 8, 0]")
-    parser.add_argument("scale", nargs='?', default=None, 
-                        help="Scale to divide from all point coordinates during export, e.g. 100.0 or [100, 100, 1.1]")
+    parser.add_argument("offset", required=False,
+                        help="Offset to remove from all point coordinates during export, e.g. [7.1, 8, 0]",
+                        action=ParseListFromString)
+    parser.add_argument("scale", required=False,
+                        help="Scale to divide from all point coordinates during export, e.g. [100, 100, 1.1]",
+                        action=ParseListFromString)
 
     parsed_args = parser.parse_args()
 
@@ -78,8 +82,8 @@ if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)    
 
     # Evaluate offset/scale strings if provided
-    offset = parsed_args.offset and eval(parsed_args.offset)
-    scale = parsed_args.scale and eval(parsed_args.scale)
+    offset = parsed_args.offset
+    scale = parsed_args.scale
 
     sys.exit( pointcloud_csv_to_ply( parsed_args.csv_filepath, 
                                      parsed_args.ply_filepath,

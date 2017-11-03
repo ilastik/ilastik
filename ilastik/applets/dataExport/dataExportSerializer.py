@@ -20,6 +20,15 @@
 ###############################################################################
 from functools import partial
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialListSlot
+import numpy
+
+
+_ALLOWED_TYPES = [
+    numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64,
+    numpy.int8, numpy.int16, numpy.int32, numpy.int64,
+    numpy.float32, numpy.float64
+]
+
 
 class SerialDtypeSlot(SerialSlot):
     
@@ -34,8 +43,9 @@ class SerialDtypeSlot(SerialSlot):
 
     @staticmethod
     def _getValue(subgroup, slot):
-        from numpy import uint8, uint16, uint32, uint64, int8, int16, int32, int64, float32, float64
-        val = eval(subgroup[()])
+        val = numpy.dtype(subgroup[()]).type
+        if val not in _ALLOWED_TYPES:
+            raise ValueError(f"Datatype {val.name} not allowed!")
         slot.setValue(val)
 
 class DataExportSerializer(AppletSerializer):
