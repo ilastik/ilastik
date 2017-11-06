@@ -72,7 +72,6 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         features = objectFeaturesSlot([]).wait() # this is a dict of structure: {frame: {category: {featureNames}}}
 
         # first loop over all nodes to find present features
-        firstNode = True
         presentTrackIds = set([])
         for node in graph.nodes_iter():
             frame, label = node
@@ -83,25 +82,23 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                 radius = 2*features[frame]['Standard Object Features']['RegionRadii'][label, 0]
                 for category in list(features[frame].keys()):
                     for key in list(features[frame][category].keys()):
+                        feature_string = key
+                        feature_string = convertKeyName(feature_string)
+                        if len(feature_string) > 15:
+                            shortname = getShortname(feature_string).replace('_', '')
+                        else:
+                            shortname = feature_string.replace('_', '')
 
-                        if firstNode:
-                            feature_string = key
-                            feature_string = convertKeyName(feature_string)
-                            if len(feature_string) > 15:
-                                shortname = getShortname(feature_string).replace('_', '')
-                            else:
-                                shortname = feature_string.replace('_', '')
+                        isInt = isinstance(features[frame][category][key], int)
 
-                            isInt = isinstance(features[frame][category][key], int)
-
-                            if (np.asarray(features[frame][category][key])).ndim == 2:
-                                if key != 'Histogram':
-                                    #print key, np.asarray(features[key]).shape
-                                    for column in range((np.asarray(features[frame][category][key])).shape[1]):
-                                        builder.addFeatureName(feature_string + '_' + str(column), feature_string, shortname + '_' + str(column), isInt)
-                            else:
-                                #print "ELSE", key, np.asarray(features[key]).shape
-                                builder.addFeatureName(feature_string, feature_string, shortname, isInt)
+                        if (np.asarray(features[frame][category][key])).ndim == 2:
+                            if key != 'Histogram':
+                                #print key, np.asarray(features[key]).shape
+                                for column in range((np.asarray(features[frame][category][key])).shape[1]):
+                                    builder.addFeatureName(feature_string + '_' + str(column), feature_string, shortname + '_' + str(column), isInt)
+                        else:
+                            #print "ELSE", key, np.asarray(features[key]).shape
+                            builder.addFeatureName(feature_string, feature_string, shortname, isInt)
 
                 builder.addFeatureName("LabelimageId", "LabelimageId", "labelid", False)
                 builder.addFeatureName("Track_color", "Track_color", "trackcol", False)
