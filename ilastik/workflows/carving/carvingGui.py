@@ -40,14 +40,17 @@ from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 
 from ilastik.widgets.labelListModel import LabelListModel
-try:
-    from volumina.view3d.volumeRendering import RenderingManager
-    from volumina.view3d.view3d import convertVTPtoOBJ
-    from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
-    from vtk import vtkXMLPolyDataWriter, vtkPolyDataWriter
-    _have_vtk = True
-except ImportError:
-    _have_vtk = False
+#try:
+#    from volumina.view3d.volumeRendering import RenderingManager
+#    from volumina.view3d.view3d import convertVTPtoOBJ
+#    from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
+#    from vtk import vtkXMLPolyDataWriter, vtkPolyDataWriter
+#    _have_vtk = True
+#except ImportError:
+_have_vtk = False
+
+from volumina.view3d.meshgenerator import MeshGeneratorDialog, mesh_to_obj
+from volumina.view3d.volumeRendering import RenderingManager
 
 #ilastik
 from ilastik.utility import bind
@@ -57,6 +60,7 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 import logging
 logger = logging.getLogger(__name__)
 
+CURRENT_SEGMENTATION_NAME = "__current_segmentation__"
 #===----------------------------------------------------------------------------------------------------------------===
 
 class CarvingGui(LabelingGui):
@@ -126,7 +130,7 @@ class CarvingGui(LabelingGui):
         self.labelingDrawerUi.segment.clicked.connect(self.onSegmentButton)
         self.labelingDrawerUi.segment.setEnabled(True)
 
-        self.topLevelOperatorView.Segmentation.notifyDirty( bind( self._update_rendering ) )
+        self.topLevelOperatorView.Segmentation.notifyDirty( bind( self._segmentation_dirty ) )
         self.topLevelOperatorView.HasSegmentation.notifyValueChanged( bind( self._updateGui ) )
 
         ## uncertainty
@@ -247,14 +251,6 @@ class CarvingGui(LabelingGui):
                 self._doneSegmentationColortable.append(QColor(r,g,b).rgba())
             self._doneSegmentationColortable.append(QColor(0,255,0).rgba())
         makeColortable()
-        def onRandomizeColors():
-            if self._doneSegmentationLayer is not None:
-                logger.debug( "randomizing colors ..." )
-                makeColortable()
-                self._doneSegmentationLayer.colorTable = self._doneSegmentationColortable
-                if self.render and self._renderMgr.ready:
-                    self._update_rendering()
-        #self.labelingDrawerUi.randomizeColors.clicked.connect(onRandomizeColors)
         self._updateGui()
     
     def _after_init(self):
@@ -312,6 +308,10 @@ class CarvingGui(LabelingGui):
             logger.info( "save object as %s" % name )
             if prevName != name and prevName != "":
                 self.topLevelOperatorView.deleteObject(prevName)
+            elif prevName == name:
+                self._renderMgr.removeObject(prevName)
+                self._renderMgr.invalidateObject(prevName)
+                self._shownObjects3D.pop(prevName, None)
         else:
             msgBox = QMessageBox(self)
             msgBox.setText("The data does not seem fit to be stored.")
@@ -398,9 +398,9 @@ class CarvingGui(LabelingGui):
                     showAction.triggered.connect( partial(onShow3D, name ) )
             
             # Export mesh
-            if _have_vtk:
-                exportAction = submenu.addAction("Export mesh for %s" % name)
-                exportAction.triggered.connect( partial(self._onContextMenuExportMesh, name) )
+
+            exportAction = submenu.addAction("Export mesh for %s" % name)
+            exportAction.triggered.connect( partial(self._onContextMenuExportMesh, name) )
                         
             menu.addMenu(submenu)
 
@@ -485,7 +485,7 @@ class CarvingGui(LabelingGui):
         1) Pop the first name/file from the args
         2) Kick off the export by launching the export mesh dlg
         3) return from this function to allow the eventloop to resume while the export is running
-        4) When the export dlg is finished, create the mesh file (by writing a temporary .vtk file and converting it into a .obj file)
+        4) When the export dlg is finished, create the mesh file
         5) If there are still more items in the object_names list to process, repeat this function.
         """
         # Pop the first object off the list
@@ -502,18 +502,25 @@ class CarvingGui(LabelingGui):
         supervoxel_volume = mst.supervoxelUint32
         object_volume = object_lut[supervoxel_volume]
 
+        if len(numpy.unique(object_volume)) <= 1:
+            if object_names:
+                self._exportMeshes(object_names, obj_filepaths)
+            return
+
         # Run the mesh extractor
-        window = MeshExtractorDialog(parent=self)
+        window = MeshGeneratorDialog(self)
         
-        def onMeshesComplete():
+        def onMeshesComplete(mesh):
             """
             Called when mesh extraction is complete.
             Writes the extracted mesh to an .obj file
             """
             logger.info( "Mesh generation complete." )
-            mesh_count = len( window.extractor.meshes )
 
-            # Mesh count can sometimes be 0 for the '<not saved yet>' object...
+            # FIXME: the old comment: Mesh count can sometimes be 0 for the '<not saved yet>' object...
+            # FIXME: is this still relevant???
+            '''
+            mesh_count = len( window.extractor.meshes )
             if mesh_count > 0:
                 assert mesh_count == 1, \
                     "Found {} meshes processing object '{}',"\
@@ -532,7 +539,9 @@ class CarvingGui(LabelingGui):
                 
                 # Now convert the file to .obj format.
                 convertVTPtoOBJ(vtkpoly_path, obj_filepath)
-    
+            '''
+            logger.info("Saving meshes to {}".format(obj_filepath))
+            mesh_to_obj(mesh, obj_filepath, object_name)
             # Cleanup: We don't need the window anymore.
             window.setParent(None)
 
@@ -545,9 +554,9 @@ class CarvingGui(LabelingGui):
 
         # Kick off the save process and exit to the event loop
         window.show()
-        QTimer.singleShot(0, partial(window.run, object_volume, [0]))
+        QTimer.singleShot(0, partial(window.run, object_volume))
 
-    
+
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
         names = self.topLevelOperatorView.doneObjectNamesForPosition(position5d[1:4])
         op = self.topLevelOperatorView
@@ -565,7 +574,12 @@ class CarvingGui(LabelingGui):
             self._renderMgr.removeObject(self._segmentation_3d_label)
             self._segmentation_3d_label = None
         self._update_rendering()
-    
+
+    def _segmentation_dirty(self):
+        self._renderMgr.invalidateObject(CURRENT_SEGMENTATION_NAME)
+        self._renderMgr.removeObject(CURRENT_SEGMENTATION_NAME)
+        self._update_rendering()
+
     def _update_rendering(self):
         if not self.render:
             return
@@ -580,16 +594,20 @@ class CarvingGui(LabelingGui):
                                     if k in list(op.MST.value.object_lut.keys()))
 
         lut = numpy.zeros(op.MST.value.nodeNum+1, dtype=numpy.int32)
+        label_name_map = {}
         for name, label in self._shownObjects3D.items():
             objectSupervoxels = op.MST.value.objects[name]
             lut[objectSupervoxels] = label
+            label_name_map[label] = name
+            label_name_map[name] = label
 
         if self._showSegmentationIn3D:
             # Add segmentation as label, which is green
+            label_name_map[self._segmentation_3d_label] = CURRENT_SEGMENTATION_NAME
+            label_name_map[CURRENT_SEGMENTATION_NAME] = self._segmentation_3d_label
             lut[:] = numpy.where( op.MST.value.getSuperVoxelSeg() == 2, self._segmentation_3d_label, lut )
-        import vigra
-        #with vigra.Timer("remapping"):          
-        self._renderMgr.volume = lut[op.MST.value.supervoxelUint32] # (Advanced indexing)
+
+        self._renderMgr.volume = lut[op.MST.value.supervoxelUint32], label_name_map  # (Advanced indexing)
         self._update_colors()
         self._renderMgr.update()
 

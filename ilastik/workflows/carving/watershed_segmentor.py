@@ -1,7 +1,5 @@
-import vigra
-from vigra import graphs as vgraph
-#from vigra import ilastiktools
 import ilastiktools
+import h5py
 import numpy
 
 
