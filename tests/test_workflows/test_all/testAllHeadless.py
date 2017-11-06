@@ -71,8 +71,11 @@ class TestHeadlessWorkflowStartupProjectCreation(object):
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
         parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
+
         shell = ilastik_main.main(
             parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False)
+
+        shell.closeCurrentProject()
 
         # now check if the project file has been created:
         assert os.path.exists(project_file), f"Project File {project_file} creation not successful"
@@ -114,5 +117,7 @@ class TestHeadlessWorkflowStartupProjectCreation(object):
         parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
         shell = ilastik_main.main(
             parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False)
+
+        shell.closeCurrentProject()
 
         # no errors -> everything should be cool
