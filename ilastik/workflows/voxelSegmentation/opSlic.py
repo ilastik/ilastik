@@ -49,6 +49,7 @@ class OpSlic(Operator):
         if slot == self.Output:
             # print input_data.shape
             # numpy.save("/tmp/image", input_data)
+            print("calling with {}".format(self.NumSegments.value))
             slic_sp = skimage.segmentation.slic(input_data,
                                                 n_segments=self.NumSegments.value,
                                                 compactness=self.Compactness.value,
@@ -72,14 +73,14 @@ class OpSlic(Operator):
 
             for i in range(len(input_data)):
                 # import IPython; IPython.embed()
-                print(slic_sp[i].shape)
-                print(boundaries[i].shape)
+                # print(slic_sp[i].shape)
+                # print(boundaries[i].shape)
                 reshaped_slic = slic_sp[i].reshape(boundaries[i].shape)
                 boundaries[i] = skimage.segmentation.find_boundaries(
                     reshaped_slic)
 
-            print(result.shape)
-            print(boundaries.shape)
+            # print(result.shape)
+            # print(boundaries.shape)
             result[:] = boundaries[...,None]
             return result
 

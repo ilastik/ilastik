@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.pixelClassification import PixelClassificationApplet
+from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer, Ilastik05ImportDeserializer
 
 
@@ -26,7 +26,7 @@ from ilastik.applets.pixelClassification.pixelClassificationSerializer import Pi
 from .opVoxelSegmentation import OpVoxelSegmentation
 from .voxelSegmentationGui import VoxelSegmentationGui
 
-class VoxelSegmentationApplet(PixelClassificationApplet):
+class VoxelSegmentationApplet(StandardApplet):
     def __init__(self, workflow, projectFileGroupName):
         self._topLevelOperator = OpVoxelSegmentation( parent=workflow )
         
@@ -39,7 +39,7 @@ class VoxelSegmentationApplet(PixelClassificationApplet):
                 self.appletStateUpdateRequested.emit()
         self._topLevelOperator.classifier_cache.Output.notifyDirty( on_classifier_changed )
         
-        super(PixelClassificationApplet, self).__init__( "Training" )
+        super(VoxelSegmentationApplet, self).__init__( "Training" )
         self._topLevelOperator = OpVoxelSegmentation( parent=workflow )
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.
@@ -63,6 +63,10 @@ class VoxelSegmentationApplet(PixelClassificationApplet):
     @property
     def topLevelOperator(self):
         return self._topLevelOperator
+
+    @property
+    def dataSerializers(self):
+        return self._serializableItems
 
     @property
     def singleLaneGuiClass(self):

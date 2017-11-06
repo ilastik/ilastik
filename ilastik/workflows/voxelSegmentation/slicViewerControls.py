@@ -52,12 +52,18 @@ class SlicViewerControls(QWidget):
 
         def runSlic():
             for param in SLIC_PARAMS:
+                print("{} {}".format(param, getattr(self, param).value()))
                 getattr(self.slicOperator, param).setValue(getattr(self, param).value())
+
+            self.slicOperator.Input.setDirty()
 
         self.RunSLICButton.clicked.connect(runSlic)
 
+        # Import default params from opSlic
         for param in SLIC_PARAMS:
             getattr(self, param).setValue(getattr(slicOperator, param).value)
+
+
 
     def export(self):
         modelindex = self.layerWidget.currentIndex()
