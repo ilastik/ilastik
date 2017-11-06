@@ -427,21 +427,22 @@ class AnnotationsGui(LayerViewerGui):
         self.topLevelOperatorView.Labels.setValue(self.topLevelOperatorView.labels)
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
 
-    def _onSaveAnnotations(self):
+    def _onSaveAnnotations(self, time=None, label=None, time_interval=None, delete=False, track=None):
         self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         if "divisions" not in self.topLevelOperatorView.Annotations.value.keys():
             self.topLevelOperatorView.Annotations.value["divisions"] = {}
+
         for parentTrack in self.topLevelOperatorView.divisions.keys():
-            time = self.topLevelOperatorView.divisions[parentTrack][1]
+            t = self.topLevelOperatorView.divisions[parentTrack][1]
             child1Track = self.topLevelOperatorView.divisions[parentTrack][0][0]
             child2Track = self.topLevelOperatorView.divisions[parentTrack][0][1]
 
-            parent = self.getLabel(time, parentTrack)
-            child1 = self.getLabel(time+1, child1Track)
-            child2 = self.getLabel(time+1, child2Track)
+            parent = self.getLabel(t, parentTrack)
+            child1 = self.getLabel(t+1, child1Track)
+            child2 = self.getLabel(t+1, child2Track)
 
             if not (parent and child1 and child2):
-                logger.info("WARNING:Your divisions and labels do not match for time {} and parent track {} with label {}!".format(time,parentTrack,parent))
+                logger.info("WARNING:Your divisions and labels do not match for time {} and parent track {} with label {}!".format(t,parentTrack,parent))
                 pass
             else:
                 if parentTrack not in self.topLevelOperatorView.Annotations.value["divisions"].keys():
@@ -452,23 +453,51 @@ class AnnotationsGui(LayerViewerGui):
         if "labels" not in self.topLevelOperatorView.Annotations.value.keys():
             self.topLevelOperatorView.Annotations.value["labels"] = {}
 
-        for time in self.topLevelOperatorView.labels.keys():
-            for label in self.topLevelOperatorView.labels[time].keys():
+        if time is not None and label is not None:
+            if time in self.topLevelOperatorView.labels.keys():
                 if time not in self.topLevelOperatorView.Annotations.value["labels"].keys():
                     self.topLevelOperatorView.Annotations.value["labels"][time] = {}
-                self.topLevelOperatorView.Annotations.value["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
+                if label not in self.topLevelOperatorView.Annotations.value["labels"][time].keys():
+                    self.topLevelOperatorView.Annotations.value["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
 
-        if self.topLevelOperatorView.Annotations.value["divisions"] == {} and \
-                self.topLevelOperatorView.Annotations.value["labels"] == {}:
-            annotations = self.topLevelOperatorView.Annotations.value
-            del annotations["labels"]
-            del annotations["divisions"]
-            self.topLevelOperatorView.Annotations.setValue(annotations)
+        elif delete and time_interval is not None and time_interval[0] is not None and time_interval[1] is not None and label is not None and track is not None:
+            time_range = range(time_interval[0],time_interval[1])
+            for t in time_range:
+                if t in self.topLevelOperatorView.labels.keys():
+                    if label in self.topLevelOperatorView.labels[t].keys():
+                        if t not in self.topLevelOperatorView.Annotations.value["labels"].keys() and label in self.topLevelOperatorView.Annotations.value["labels"][t].keys():
+                            if track in self.topLevelOperatorView.labels[t][track].keys():
+                                del self.topLevelOperatorView.labels[t][label][track]
 
-        for time in self.topLevelOperatorView.labels.keys():
-            for label in self.topLevelOperatorView.labels[time].keys():
-                if time not in self.topLevelOperatorView.Annotations.value["labels"].keys() and label in self.topLevelOperatorView.Annotations.value["labels"][time].keys():
-                    del self.topLevelOperatorView.labels[time][label]
+        elif time_interval is not None and time_interval[0] is not None and time_interval[1] is not None and label is not None:
+            time_range = range(time_interval[0],time_interval[1])
+            for t in time_range:
+                if t in self.topLevelOperatorView.labels.keys():
+                    if label in self.topLevelOperatorView.labels[t].keys():
+                        if t not in self.topLevelOperatorView.Annotations.value["labels"].keys():
+                            self.topLevelOperatorView.Annotations.value["labels"][t] = {}
+                        if label not in self.topLevelOperatorView.Annotations.value["labels"][t].keys():
+                            self.topLevelOperatorView.Annotations.value["labels"][t][label] = self.topLevelOperatorView.labels[t][label]
+
+        else:
+            for t in self.topLevelOperatorView.labels.keys():
+                for lab in self.topLevelOperatorView.labels[t].keys():
+                    if t not in self.topLevelOperatorView.Annotations.value["labels"].keys():
+                        self.topLevelOperatorView.Annotations.value["labels"][t] = {}
+                    if lab not in self.topLevelOperatorView.Annotations.value["labels"][t].keys():
+                        self.topLevelOperatorView.Annotations.value["labels"][t][lab] = self.topLevelOperatorView.labels[t][lab]
+
+            if self.topLevelOperatorView.Annotations.value["divisions"] == {} and \
+                    self.topLevelOperatorView.Annotations.value["labels"] == {}:
+                annotations = self.topLevelOperatorView.Annotations.value
+                del annotations["labels"]
+                del annotations["divisions"]
+                self.topLevelOperatorView.Annotations.setValue(annotations)
+
+            for t in self.topLevelOperatorView.labels.keys():
+                for lab in self.topLevelOperatorView.labels[t].keys():
+                    if t not in self.topLevelOperatorView.Annotations.value["labels"].keys() and lab in self.topLevelOperatorView.Annotations.value["labels"][t].keys():
+                        del self.topLevelOperatorView.labels[t][lab]
 
         self._setDirty(self.mainOperator.Annotations, list(range(self.mainOperator.TrackImage.meta.shape[0])))
         self._setDirty(self.mainOperator.Labels, list(range(self.mainOperator.TrackImage.meta.shape[0])))
@@ -705,6 +734,7 @@ class AnnotationsGui(LayerViewerGui):
                     self.divs = []
                     self._drawer.divEvent.setChecked(False)
                     self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=True)
+            self._onSaveAnnotations(division=True)
         else:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
             if oid == 0:
@@ -735,7 +765,8 @@ class AnnotationsGui(LayerViewerGui):
     
             self._setPosModel(time=self.editor.posModel.time + 1)
 
-        self._onSaveAnnotations()
+            self._onSaveAnnotations(time=t,label=oid)
+
 
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
 
@@ -791,14 +822,14 @@ class AnnotationsGui(LayerViewerGui):
             text = "remove label " + str(l)
             delLabel[text] = l
             menu.addAction(text)
-            
+
             if l != self.misdetIdx:
                 if t < maxTime:
                     text = "remove label " + str(l) + " from here to end"
                     delSubtrackToEnd[text] = l
                     menu.addAction(text)
 
-                if t > maxTime:
+                if t > 0:
                     text = "remove label " + str(l) + " from here to start"
                     delSubtrackToStart[text] = l
                     menu.addAction(text)
@@ -825,6 +856,7 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.TrackImage, [t])
             self._setDirty(self.mainOperator.UntrackedImage, [t])
             self._setDirty(self.mainOperator.Labels, [t])
+            self._onSaveAnnotations(time_interval=[t,t],label=oid,track=delLabel[selection],delete=True)
 
         elif selection in list(delSubtrackToEnd.keys()):
             track2remove = delSubtrackToEnd[selection]
@@ -837,6 +869,7 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.TrackImage, list(range(t,maxt)))
             self._setDirty(self.mainOperator.UntrackedImage, list(range(t, maxt)))
             self._setDirty(self.mainOperator.Labels, list(range(t,maxt)))
+            self._onSaveAnnotations(time_interval=[t,maxt],label=oid,track=track2remove,delete=True)
 
         elif selection in list(delSubtrackToStart.keys()):
             track2remove = delSubtrackToStart[selection]
@@ -848,12 +881,15 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.TrackImage, list(range(0,t+1)))
             self._setDirty(self.mainOperator.UntrackedImage, list(range(0,t+1)))
             self._setDirty(self.mainOperator.Labels, list(range(0,t+1)))
-            
+            self._onSaveAnnotations(time_interval=[0,t+1],label=oid,track=track2remove,delete=True)
+
         elif selection in list(runTracking.keys()):
             self._runSubtracking(position5d, oid, runTracking[selection])
-        
+            self._onSaveAnnotations(time_interval=[t,maxTime],label=oid)
+
         elif selection in list(delDivision.keys()):
             self._delDivisionEvent(delDivision[selection])
+            self._onSaveAnnotations()
 
         elif selection in list(setActiveTrack.keys()):
             for i in range(self._drawer.activeTrackBox.count()):
@@ -862,8 +898,6 @@ class AnnotationsGui(LayerViewerGui):
 
         else:
             assert False, "cannot reach this"
-
-        self._onSaveAnnotations()
 
     def handleEditorToolTip(self, position5d, globalWindowCoordiante):
         oid = self._getObject(self.mainOperator.LabelImage, position5d)
@@ -957,7 +991,6 @@ class AnnotationsGui(LayerViewerGui):
         self._setDirty(self.mainOperator.TrackImage, [t])
         self._setDirty(self.mainOperator.UntrackedImage, [t])
 
-        self._onSaveAnnotations()
         return True
         
     def _onDelTrackPressed(self):        
@@ -1026,8 +1059,9 @@ class AnnotationsGui(LayerViewerGui):
         if self.misdetLock:
             self._onMarkMisdetectionPressed()
 
+
     def _runSubtracking(self, position5d, oid, track):
-               
+
         def _subtracking():
             window = [self._drawer.windowXBox.value(), self._drawer.windowYBox.value(), self._drawer.windowZBox.value()]
             
