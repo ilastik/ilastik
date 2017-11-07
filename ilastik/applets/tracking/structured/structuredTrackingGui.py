@@ -579,6 +579,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     progressVisitor=self.progressVisitor
                 )
             except Exception:
+                self.progressWindow.onTrackDone()
                 ex_type, ex, tb = sys.exc_info()
                 traceback.print_tb(tb)
                 self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))
