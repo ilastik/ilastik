@@ -137,6 +137,7 @@ class VoxelSegmentationWorkflow(PixelClassificationWorkflow):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opSlic.Input.connect(opData.Image)
         self.pcApplet.topLevelOperator.SlicBoundaries.connect(opSlic.BoundariesOutput)
+        self.pcApplet.topLevelOperator.SlicValues.connect(opSlic.Output)
 
     def createVoxelSegmentationApplet(self):
         return VoxelSegmentationApplet(self, "VoxelSegmentation")
