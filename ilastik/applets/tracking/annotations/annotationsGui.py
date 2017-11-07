@@ -846,26 +846,26 @@ class AnnotationsGui(LayerViewerGui):
         maxTime = self.topLevelOperatorView.LabelImage.meta.shape[0]
         for l in trackids:
             if activeTrack != self.misdetIdx and t < maxTime:
-                text = "run automatic tracking for object " + str(oid) + " with track label " + str(l)
+                text = "run automatic tracking for object " + str(oid) + " with track " + str(l)
                 runTracking[text] = l
                 menu.addAction(text)
 
-            text = "set active track to label " + str(l)
+            text = "set active track to " + str(l)
             setActiveTrack[text] = l
             menu.addAction(text)
 
-            text = "remove label " + str(l)
+            text = "remove track " + str(l)
             delLabel[text] = l
             menu.addAction(text)
 
             if l != self.misdetIdx:
                 if t < maxTime:
-                    text = "remove label " + str(l) + " from here to end"
+                    text = "remove track " + str(l) + " from here to end"
                     delSubtrackToEnd[text] = l
                     menu.addAction(text)
 
                 if t > 0:
-                    text = "remove label " + str(l) + " from here to start"
+                    text = "remove track " + str(l) + " from here to start"
                     delSubtrackToStart[text] = l
                     menu.addAction(text)
 
@@ -874,19 +874,19 @@ class AnnotationsGui(LayerViewerGui):
             isAppearance = self._isAppearance(t,oid,l)
             isDisappearance = self._isDisappearance(t,oid,l)
             if isAppearance and not isDisappearance:
-                text = "remove Appearance from label " + str(l)
+                text = "remove appearance from track " + str(l)
                 removeAppearance[text] = l
                 menu.addAction(text)
             elif isDisappearance and not isAppearance:
-                text = "remove Disappearance from label " + str(l)
+                text = "remove disappearance from track " + str(l)
                 removeDisappearance[text] = l
                 menu.addAction(text)
             else:
-                text = "mark label " + str(l) + " as Appearance"
+                text = "mark appearance for track " + str(l)
                 markAppearance[text] = l
                 menu.addAction(text)
 
-                text = "mark label " + str(l) + " as Disappearance"
+                text = "mark disappearance for track " + str(l)
                 markDisappearance[text] = l
                 menu.addAction(text)
 
@@ -896,7 +896,7 @@ class AnnotationsGui(LayerViewerGui):
         if activeTrack != self.misdetIdx:
             for trackid in trackids:
                 if trackid in list(self.mainOperator.divisions.keys()) and self.mainOperator.divisions[trackid][1] == t:
-                    text = "remove division event from label " + str(trackid)
+                    text = "remove division event from track " + str(trackid)
                     delDivision[text] = trackid
                     menu.addSeparator()
                     menu.addAction(text)
