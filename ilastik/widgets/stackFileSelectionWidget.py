@@ -96,7 +96,9 @@ class StackFileSelectionWidget(QDialog):
     def sequence_axis(self):
         if self.stackAcrossTButton.isChecked():
             return 't'
-        return 'z'
+        elif self.stackAcrossZButton.isChecked():
+            return 'z'
+        return 'c'
 
     def _configureGui(self, mode):
         """
