@@ -136,6 +136,7 @@ class OpVoxelSegmentation(Operator):
         self.opPredictionPipeline.FreezePredictions.connect(self.FreezePredictions)
         self.opPredictionPipeline.PredictionsFromDisk.connect(self.PredictionsFromDisk)
         self.opPredictionPipeline.PredictionMask.connect(self.PredictionMasks)
+        self.opPredictionPipeline.SupervoxelValues.connect(self.SupervoxelValues)
 
         # Feature Selection Stuff
         self.opFeatureMatrixCaches = OpMultiLaneWrapper(OpFeatureMatrixCache, parent=self)
@@ -587,7 +588,9 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.prediction_cache_gui.BlockShape.setValue((blockShapeX, blockShapeY, blockShapeZ))
         self.opUncertaintyCache.BlockShape.setValue((blockShapeX, blockShapeY, blockShapeZ))
 
-        assert self.opConvertToUint8.Output.meta.drange == (0, 255)
+        print(self.opConvertToUint8.Output.meta.drange)
+        # import IPython; IPython.embed()
+        # assert self.opConvertToUint8.Output.meta.drange == (0, 255)
 
 
 class OpEnsembleMargin(Operator):

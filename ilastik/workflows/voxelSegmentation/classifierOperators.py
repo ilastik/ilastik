@@ -131,25 +131,25 @@ class OpTrainSupervoxelwiseClassifierBlocked(Operator):
         self._opFeatureMatrixCaches.LabelImage.connect(self.Labels)
         self._opFeatureMatrixCaches.FeatureImage.connect(self.Images)
 
-        self._opConcatenateFeatureMatrices = OpConcatenateFeatureMatrices(parent=self)
-        self._opConcatenateFeatureMatrices.FeatureMatrices.connect(self._opFeatureMatrixCaches.LabelAndFeatureMatrix)
-        self._opConcatenateFeatureMatrices.ProgressSignals.connect(self._opFeatureMatrixCaches.ProgressSignal)
+        # self._opConcatenateFeatureMatrices = OpConcatenateFeatureMatrices(parent=self)
+        # self._opConcatenateFeatureMatrices.FeatureMatrices.connect(self._opFeatureMatrixCaches.LabelAndFeatureMatrix)
+        # self._opConcatenateFeatureMatrices.ProgressSignals.connect(self._opFeatureMatrixCaches.ProgressSignal)
 
         self._opTrainFromFeatures = OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(parent=self)
         self._opTrainFromFeatures.ClassifierFactory.connect(self.ClassifierFactory)
-        self._opTrainFromFeatures.LabelAndFeatureMatrix.connect(self._opConcatenateFeatureMatrices.ConcatenatedOutput)
+        self._opTrainFromFeatures.LabelAndFeatureMatrix.connect(self._opFeatureMatrixCaches.LabelAndFeatureMatrix)
         self._opTrainFromFeatures.SupervoxelValues.connect(self.SupervoxelValues)
         self._opTrainFromFeatures.MaxLabel.connect(self.MaxLabel)
 
         self.Classifier.connect(self._opTrainFromFeatures.Classifier)
 
         # Progress reporting
-        def _handleFeatureProgress(progress):
-            # Note that these progress messages will probably appear out-of-order.
-            # See comments in OpFeatureMatrixCache
-            logger.debug("Training: {:02}% (Computing features)".format(int(progress)))
-            self.progressSignal(0.8*progress)
-        self._opConcatenateFeatureMatrices.progressSignal.subscribe(_handleFeatureProgress)
+        # def _handleFeatureProgress(progress):
+        #     # Note that these progress messages will probably appear out-of-order.
+        #     # See comments in OpFeatureMatrixCache
+        #     logger.debug("Training: {:02}% (Computing features)".format(int(progress)))
+        #     self.progressSignal(0.8*progress)
+        # self._opConcatenateFeatureMatrices.progressSignal.subscribe(_handleFeatureProgress)
 
         def _handleTrainingComplete():
             logger.debug("Training: 100% (Complete)")
@@ -173,8 +173,8 @@ class OpTrainSupervoxelwiseClassifierBlocked(Operator):
 
 class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
     ClassifierFactory = InputSlot()
-    LabelAndFeatureMatrix = InputSlot()
-    SupervoxelValues = InputSlot()
+    LabelAndFeatureMatrix = InputSlot(level=1)
+    SupervoxelValues = InputSlot(level=1)
 
     MaxLabel = InputSlot()
     Classifier = OutputSlot()
@@ -195,10 +195,10 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
 
     def execute(self, slot, subindex, roi, result):
         channel_names = self.LabelAndFeatureMatrix.meta.channel_names
-        labels_and_features = self.LabelAndFeatureMatrix.value
+        labels_and_features = self.LabelAndFeatureMatrix[0].value
         featMatrix = labels_and_features[:, 1:]
         labelsMatrix = labels_and_features[:, 0:1].astype(numpy.uint32)
-        superVoxelValuesMatrix = self.SupervoxelValues.value
+        superVoxelValuesMatrix = self.SupervoxelValues[0].value
 
         maxLabel = self.MaxLabel.value
 
@@ -213,12 +213,12 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
             "Factory is of type {}, which does not satisfy the LazyflowVectorwiseClassifierFactoryABC interface."\
             "".format(type(classifier_factory))
 
-        logger.info("computing per-supervoxel features")
+        print("computing per-supervoxel features")
 
         supervoxelFeatures = get_supervoxel_features(featMatrix, superVoxelValuesMatrix)
         supervoxelLabels = get_supervoxel_labels(labelsMatrix, superVoxelValuesMatrix)
 
-        logger.debug("Training new classifier: {}".format(classifier_factory.description))
+        print("Training new classifier: {}".format(classifier_factory.description))
         classifier = classifier_factory.create_and_train(supervoxelFeatures, supervoxelLabels, channel_names)
         result[0] = classifier
         if classifier is not None:
@@ -277,8 +277,8 @@ class OpSupervoxelClassifierPredict(Operator):
 
         if self._mode == 'vectorwise':
             self._prediction_op = OpSupervoxelwiseClassifierPredict(parent=self)
-        # elif self._mode == 'pixelwise':
-        #     self._prediction_op = OpPixelwiseClassifierPredict(parent=self)
+        elif self._mode == 'pixelwise':
+            raise RuntimeError("shouldn't be here")
 
         self._prediction_op.PredictionMask.connect(self.PredictionMask)
         self._prediction_op.Image.connect(self.Image)
@@ -380,7 +380,7 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         shape = input_data.shape
         prod = numpy.prod(shape[:-1])
         features = input_data.reshape((prod, shape[-1]))
-        features = get_supervoxel_features(features, self.SupervoxelValues.value)
+        features = get_supervoxel_features(features, self.SupervoxelValues[0].value)
 
         with Timer() as prediction_timer:
             probabilities = classifier.predict_probabilities(features)

@@ -429,7 +429,7 @@ class VoxelSegmentationGui(LabelingGui):
 
         self.handleLabelSelectionChange()
 
-        superVoxelSlot = self.topLevelOperatorView.SlicBoundaries
+        superVoxelSlot = self.topLevelOperatorView.SupervoxelBoundaries
         if superVoxelSlot.ready():
             layer = self.createStandardLayerFromSlot(superVoxelSlot)
             layer.name = "SLIC segmentation"
