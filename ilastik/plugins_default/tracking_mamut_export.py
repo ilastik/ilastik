@@ -126,11 +126,12 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                         if key != 'Histogram':
                             if label != 0: # ignoring background
                                 feature_string = convertKeyName(key)
-                                if (np.asarray(features[frame][category][key])).ndim == 0:
+                                ndim = (np.asarray(features[frame][category][key])).ndim
+                                if ndim == 0:
                                     featureDict[feature_string] = features[frame][category][key]
-                                if (np.asarray(features[frame][category][key])).ndim == 1:
+                                elif ndim == 1:
                                     featureDict[feature_string] = features[frame][category][key][label]
-                                if (np.asarray(features[frame][category][key])).ndim == 2:
+                                elif ndim == 2:
                                     for j in range((np.asarray(features[frame][category][key])).shape[1]):
                                         try:
                                             _ = features[frame][category][key][label, 0]
@@ -141,6 +142,8 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                                                 featureDict[feature_string + '_{}'.format(str(j))] = 0.
                                             continue
                                         featureDict[feature_string + '_{}'.format(str(j))] = features[frame][category][key][label, j]
+                                else:
+                                    raise ValueError(f"Found feature matrix {feature_string} that has a dimensionality of > 2, cannot handle that yet")
 
                 xpos = features[frame]['Standard Object Features']['RegionCenter'][label, 0]
                 ypos = features[frame]['Standard Object Features']['RegionCenter'][label, 1]
