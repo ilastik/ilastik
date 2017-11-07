@@ -37,6 +37,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def generate_project_file_name(temp_dir, workflow_name):
+    project_file_name = os.path.join(
+        temp_dir,
+        f'test_project_{"_".join(workflow_name.split())}.ilp'
+    )
+    return project_file_name
+
+
 class TestHeadlessWorkflowStartupProjectCreation(object):
     """Start a headless shell and create a project for each workflow"""
     @classmethod
@@ -56,10 +64,8 @@ class TestHeadlessWorkflowStartupProjectCreation(object):
         """
         workflow_class, workflow_name, display_name = workflow_class_tuple
         logger.debug(f'starting {workflow_name}')
-        project_file = os.path.join(
-            temp_dir,
-            f'test_project_{"_".join(workflow_name.split())}.ilp'
-        )
+        project_file = generate_project_file_name(temp_dir, workflow_name)
+
         args = [
             '--headless',
             f'--new_project={project_file}',
@@ -97,10 +103,7 @@ class TestHeadlessWorkflowStartupProjectCreation(object):
         """
         workflow_class, workflow_name, display_name = workflow_class_tuple
         logger.debug(f'starting {workflow_name}')
-        project_file = os.path.join(
-            temp_dir,
-            f'test_project_{"_".join(workflow_name.split())}.ilp'
-        )
+        project_file = generate_project_file_name(temp_dir, workflow_name)
 
         self.create_project_file(workflow_class, project_file)
         assert os.path.exists(project_file), f"Project File {project_file} creation not successful"
