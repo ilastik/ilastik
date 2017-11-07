@@ -30,6 +30,8 @@ except ImportError:
 class OpStructuredTracking(OpConservationTracking):
     Labels = InputSlot(stype=Opaque, rtype=List)
     Divisions = InputSlot(stype=Opaque, rtype=List)
+    Appearances = InputSlot(stype=Opaque)
+    Disappearances = InputSlot(stype=Opaque)
     Annotations = InputSlot(stype=Opaque)
     MaxNumObj = InputSlot()
     LearningHypothesesGraph = InputSlot(value={})
@@ -47,7 +49,11 @@ class OpStructuredTracking(OpConservationTracking):
 
         self.labels = {}
         self.divisions = {}
+        self.appearances = {}
+        self.disappearances = {}
         self.Annotations.setValue({})
+        self.Appearances.setValue({})
+        self.Disappearances.setValue({})
         self._ndim = 3
 
         self._parent = parent
@@ -69,6 +75,8 @@ class OpStructuredTracking(OpConservationTracking):
 
         self.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
         self.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
+        self.Appearances.notifyReady( bind(self._updateAppearancesFromOperator) )
+        self.Disappearances.notifyReady( bind(self._updateDisappearancesFromOperator) )
 
         self._solver = self.parent.parent._solver
 
@@ -77,6 +85,12 @@ class OpStructuredTracking(OpConservationTracking):
 
     def _updateDivisionsFromOperator(self):
         self.divisions = self.Divisions.value
+
+    def _updateAppearancesFromOperator(self):
+        self.appearances = self.Appearances.value
+
+    def _updateDisappearancesFromOperator(self):
+        self.disappearances = self.Disappearances.value
 
     def setupOutputs(self):
         super(OpStructuredTracking, self).setupOutputs()
@@ -93,6 +107,12 @@ class OpStructuredTracking(OpConservationTracking):
 
         elif slot is self.Divisions:
             result=self.Divisions.wait()
+
+        elif slot is self.Appearances:
+            result=self.Appearances.wait()
+
+        elif slot is self.Disappearances:
+            result=self.Disappearances.wait()
 
         else:
             super(OpStructuredTracking, self).execute(slot, subindex, roi, result)

@@ -503,6 +503,34 @@ class AnnotationsGui(LayerViewerGui):
         self._setDirty(self.mainOperator.Labels, list(range(self.mainOperator.TrackImage.meta.shape[0])))
         self._setDirty(self.mainOperator.Divisions, list(range(self.mainOperator.TrackImage.meta.shape[0])))
 
+    def _onSaveAppearances(self):
+        self.topLevelOperatorView.Appearances.setValue({})
+        for t in self.topLevelOperatorView.appearances.keys():
+            for oid in self.topLevelOperatorView.appearances[t].keys():
+                for track in self.topLevelOperatorView.appearances[t][oid].keys():
+                    if t not in self.topLevelOperatorView.Appearances.value.keys():
+                        self.topLevelOperatorView.Appearances.value[t] = {}
+                    if oid not in self.topLevelOperatorView.Appearances.value[t].keys():
+                        self.topLevelOperatorView.Appearances.value[t][oid] = {}
+                    if track not in self.topLevelOperatorView.Appearances.value[t][oid].keys():
+                        self.topLevelOperatorView.Appearances.value[t][oid][track] = self.topLevelOperatorView.appearances[t][oid][track]
+
+        self._setDirty(self.mainOperator.Appearances, list(range(self.mainOperator.TrackImage.meta.shape[0])))
+
+    def _onSaveDisappearances(self):
+        self.topLevelOperatorView.Disappearances.setValue({})
+        for t in self.topLevelOperatorView.disappearances.keys():
+            for oid in self.topLevelOperatorView.disappearances[t].keys():
+                for track in self.topLevelOperatorView.disappearances[t][oid].keys():
+                    if t not in self.topLevelOperatorView.Disappearances.value.keys():
+                        self.topLevelOperatorView.Disappearances.value[t] = {}
+                    if oid not in self.topLevelOperatorView.Disappearances.value[t].keys():
+                        self.topLevelOperatorView.Disappearances.value[t][oid] = {}
+                    if track not in self.topLevelOperatorView.Disappearances.value[t][oid].keys():
+                        self.topLevelOperatorView.Disappearances.value[t][oid][track] = self.topLevelOperatorView.disappearances[t][oid][track]
+
+        self._setDirty(self.mainOperator.Disappearances, list(range(self.mainOperator.TrackImage.meta.shape[0])))
+
     def getLabel(self, time, track):
         for label in list(self.mainOperator.labels[time].keys()):
             if self.mainOperator.labels[time][label] == set([track]):
@@ -681,6 +709,10 @@ class AnnotationsGui(LayerViewerGui):
             self.mainOperator.Labels.setDirty(timesteps)
         elif slot is self.mainOperator.Annotations:
             self.mainOperator.Annotations.setDirty([])
+        elif slot is self.mainOperator.Appearances:
+            self.mainOperator.Appearances.setDirty([])
+        elif slot is self.mainOperator.Disappearances:
+            self.mainOperator.Disappearances.setDirty([])
         elif slot is self.mainOperator.Divisions:
             self.mainOperator.Divisions.setDirty([])
         elif slot is self.mainOperator.UntrackedImage:
@@ -767,7 +799,6 @@ class AnnotationsGui(LayerViewerGui):
 
             self._onSaveAnnotations(time=t,label=oid)
 
-
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
 
         if self.divLock:
@@ -808,6 +839,10 @@ class AnnotationsGui(LayerViewerGui):
         delSubtrackToStart = {}
         setActiveTrack = {}
         runTracking = {}
+        markAppearance = {}
+        markDisappearance = {}
+        removeAppearance = {}
+        removeDisappearance = {}
         maxTime = self.topLevelOperatorView.LabelImage.meta.shape[0]
         for l in trackids:
             if activeTrack != self.misdetIdx and t < maxTime:
@@ -833,7 +868,28 @@ class AnnotationsGui(LayerViewerGui):
                     text = "remove label " + str(l) + " from here to start"
                     delSubtrackToStart[text] = l
                     menu.addAction(text)
-            
+
+            menu.addSeparator()
+
+            isAppearance = self._isAppearance(t,oid,l)
+            isDisappearance = self._isDisappearance(t,oid,l)
+            if isAppearance and not isDisappearance:
+                text = "remove Appearance from label " + str(l)
+                removeAppearance[text] = l
+                menu.addAction(text)
+            elif isDisappearance and not isAppearance:
+                text = "remove Disappearance from label " + str(l)
+                removeDisappearance[text] = l
+                menu.addAction(text)
+            else:
+                text = "mark label " + str(l) + " as Appearance"
+                markAppearance[text] = l
+                menu.addAction(text)
+
+                text = "mark label " + str(l) + " as Disappearance"
+                markDisappearance[text] = l
+                menu.addAction(text)
+
             menu.addSeparator()
         
         delDivision = {}
@@ -850,7 +906,28 @@ class AnnotationsGui(LayerViewerGui):
             return
 
         selection = str(action.text())
-        if selection in list(delLabel.keys()):
+
+        if selection in list(markAppearance.keys()):
+            self._markAppearance(t,oid, markAppearance[selection])
+            self._onSaveAppearances()
+            self._setDirty(self.mainOperator.Appearances, [t])
+
+        elif selection in list(markDisappearance.keys()):
+            self._markDisappearance(t,oid, markDisappearance[selection])
+            self._onSaveDisappearances()
+            self._setDirty(self.mainOperator.Disappearances, [t])
+
+        elif selection in list(removeAppearance.keys()):
+            self._removeAppearance(t,oid, removeAppearance[selection])
+            self._onSaveAppearances()
+            self._setDirty(self.mainOperator.Appearances, [t])
+
+        elif selection in list(removeDisappearance.keys()):
+            self._removeDisappearance(t,oid, removeDisappearance[selection])
+            self._onSaveDisappearances()
+            self._setDirty(self.mainOperator.Disappearances, [t])
+
+        elif selection in list(delLabel.keys()):
             self._delLabel(t, oid, delLabel[selection])
             
             self._setDirty(self.mainOperator.TrackImage, [t])
@@ -992,8 +1069,62 @@ class AnnotationsGui(LayerViewerGui):
         self._setDirty(self.mainOperator.UntrackedImage, [t])
 
         return True
-        
-    def _onDelTrackPressed(self):        
+
+    def _markAppearance(self,t,oid,track):
+        if t not in self.mainOperator.appearances.keys():
+            self.mainOperator.appearances[t] = {}
+        if oid not in self.mainOperator.appearances[t].keys():
+            self.mainOperator.appearances[t][oid] ={}
+        if track not in self.mainOperator.appearances[t][oid].keys():
+            self.mainOperator.appearances[t][oid][track] = True
+        self._setDirty(self.mainOperator.Appearances, [t])
+
+    def _removeAppearance(self,t,oid,track):
+        if t in self.mainOperator.appearances.keys() and oid in self.mainOperator.appearances[t].keys() and track in self.mainOperator.appearances[t][oid].keys():
+            del self.mainOperator.appearances[t][oid][track]
+
+            if self.mainOperator.appearances[t][oid] == {}:
+                del self.mainOperator.appearances[t][oid]
+
+                if self.mainOperator.appearances[t] == {}:
+                    del self.mainOperator.appearances[t]
+
+        self._setDirty(self.mainOperator.Appearances, [t])
+
+    def _markDisappearance(self,t,oid,track):
+        if t not in self.mainOperator.disappearances.keys():
+            self.mainOperator.disappearances[t] = {}
+        if oid not in self.mainOperator.disappearances[t].keys():
+            self.mainOperator.disappearances[t][oid] ={}
+        if track not in self.mainOperator.disappearances[t][oid].keys():
+            self.mainOperator.disappearances[t][oid][track] = True
+        self._setDirty(self.mainOperator.Disappearances, [t])
+
+    def _removeDisappearance(self,t,oid,track):
+        if t in self.mainOperator.disappearances.keys() and oid in self.mainOperator.disappearances[t].keys() and track in self.mainOperator.disappearances[t][oid].keys():
+            del self.mainOperator.disappearances[t][oid][track]
+
+            if self.mainOperator.disappearances[t][oid] == {}:
+                del self.mainOperator.disappearances[t][oid]
+
+                if self.mainOperator.disappearances[t] == {}:
+                    del self.mainOperator.disappearances[t]
+
+        self._setDirty(self.mainOperator.Disappearances, [t])
+
+    def _isAppearance(self,time,oid,label):
+        if time in self.mainOperator.appearances.keys() and oid in self.mainOperator.appearances[time].keys() and label in self.mainOperator.appearances[time][oid].keys():
+            return self.mainOperator.appearances[time][oid][label]
+        else:
+            return False
+
+    def _isDisappearance(self,time,oid,label):
+        if time in self.mainOperator.disappearances.keys() and oid in self.mainOperator.disappearances[time].keys() and label in self.mainOperator.disappearances[time][oid].keys():
+            return self.mainOperator.disappearances[time][oid][label]
+        else:
+            return False
+
+    def _onDelTrackPressed(self):
         activeTrackBox = self._drawer.activeTrackBox
         if activeTrackBox.count() == 0:            
             return 
