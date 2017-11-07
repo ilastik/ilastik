@@ -342,6 +342,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     )
 
             except Exception as ex:
+                self.progressWindow.onTrackDone()
                 log_exception(logger, "Error during tracking.  See above error traceback.")
                 self._criticalMessage("Error during tracking.  See error log.\n\n"
                                       "Exception was:\n\n{})".format( ex ))
