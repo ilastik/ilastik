@@ -144,8 +144,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         logger.info(f'expected pytorch input shape is {self._tiktorch_net.expected_input_shape}')
         logger.info(f'expected pytorch output shape is {self._tiktorch_net.expected_output_shape}')
 
-        # num_channels = len(self.known_classes)
-        num_channels = 2
+        num_channels = len(self.known_classes)
         expected_shape = [stop - start for start, stop in zip(roi[0], roi[1])] + [num_channels]
 
         self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_image, axistags=axistags))
@@ -159,8 +158,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             f'Shape after reordering input is {reordered_feature_image.shape}, '
             f'axistags are {self._opReorderAxes.Output.meta.axistags}')
 
-        slice_shape = list(reordered_feature_image.shape[:])  # ignore z axis
-        slice_shape[0] = 1
+        slice_shape = list(reordered_feature_image.shape[1::])  # ignore z axis
 
         if slice_shape != list(self._tiktorch_net.expected_input_shape):
             logger.info(
@@ -177,14 +175,14 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
                 # vigra.impex.writeHDF5(reordered_feature_image[z,...], "data", "/Users/chaubold/Desktop/dump.h5")
 
                 # create batch of desired num slices. Multiple slices can be processed on multiple GPUs!
-                batch = [reordered_feature_image[zi:zi + 1, ...]
+                batch = [reordered_feature_image[zi:zi + 1, ...].reshape(slice_shape)
                          for zi in range(z, min(z + self.BATCH_SIZE, reordered_feature_image.shape[0]))]
                 logger.info(f"batch info: {[x.shape for x in batch]}")
                 result_batch = self._tiktorch_net.forward(batch)
                 logger.info(f"Resulting slices from {z} to {z + len(batch)} have shape {result_batch[0].shape}")
 
                 for i, zi in enumerate(range(z, (z + len(batch)))):
-                    result[zi:(zi + 1), 0, ...] = result_batch[i]
+                    result[zi:(zi + 1), ...] = result_batch[i]
 
             logger.info(f"Obtained a predicted block of shape {result.shape}")
 
