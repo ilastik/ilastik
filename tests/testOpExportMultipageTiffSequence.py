@@ -31,7 +31,7 @@ import h5py
 
 import lazyflow.graph
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.operators import OpArrayCache
+from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.ioOperators import OpExportMultipageTiffSequence, OpStackLoader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
 
@@ -60,8 +60,8 @@ class TestOpExportMultipageTiffSequence(object):
         shutil.rmtree(self._tmpdir)
         
     def test_Writer(self):
-        opData = OpArrayCache( graph=self.graph )
-        opData.blockShape.setValue( self.testData.shape )
+        opData = OpBlockedArrayCache( graph=self.graph )
+        opData.BlockShape.setValue( self.testData.shape )
         opData.Input.setValue( self.testData )
         
         opExport = OpExportMultipageTiffSequence(graph=self.graph)

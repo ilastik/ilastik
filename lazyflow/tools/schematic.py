@@ -52,7 +52,7 @@ def generateSvgFileForOperator(svgPath, op, detail):
         svgOp.drawAt(canvas, (10, 10) )
         svgOp.drawConnections(canvas)
     
-    with file(str(svgPath), 'w') as f:
+    with open(str(svgPath), 'w') as f:
         f.write( canvas.getvalue() )
 
 def createSvgSlot(slot):

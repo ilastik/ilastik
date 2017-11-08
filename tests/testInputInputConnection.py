@@ -30,6 +30,7 @@ import logging
 logger = logging.getLogger()
 logger.addHandler( logging.NullHandler() )
 
+
 class OpB(Operator):
 
     Input = InputSlot()
@@ -46,6 +47,7 @@ class OpB(Operator):
 
     def propagateDirty(self, inputSlot, subindex, roi):
         self.Output.setDirty(roi)
+
 
 class OpA(Operator):
 
@@ -70,6 +72,27 @@ class OpA(Operator):
 
     def propagateDirty(self, inputSlot, subindex, roi):
         self.Output.setDirty(roi)
+
+
+class OpDummyOutputResize(Operator):
+    """Operator with level 1 output slot, with size corresponding to OutputSize
+
+    acts as an internal operator for OperatorWrapper, primarily used to check
+    whether slots in OperatorWrapper follow the resizing of the inner ones
+    """
+    OutputSize = InputSlot(value=0)
+    Output = OutputSlot(level=1)
+
+    def setupOutputs(self):
+        n_output_slots = self.OutputSize.value
+
+        self.Output.resize(n_output_slots)
+
+        for i in range(n_output_slots):
+            self.Output[i].setValue(i)
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        self.Output.setDirty([])
 
 
 class TestInputInputConnection(object):
@@ -136,17 +159,17 @@ class TestInputInputConnection(object):
         self.op.internalOp.Input.connect(self.op.Input)
 
     def test_wrapping(self):
-        opm = operators.Op5ToMulti(graph=self.g)
-        opm.Input0.setValue(1)
+        opm = OpDummyOutputResize(graph=self.g)
+        opm.OutputSize.setValue(1)
 
-        op = OperatorWrapper( OpA, graph=self.g )
-        op.Input.connect(opm.Outputs)
+        op = OperatorWrapper(OpA, graph=self.g)
+        op.Input.connect(opm.Output)
         result = op.Output[0][:].wait()[0]
-        assert result == 1
+        assert result == 0
 
-        opm.Input1.setValue(2)
+        opm.OutputSize.setValue(2)
         result = op.Output[1][:].wait()[0]
-        assert result == 2
+        assert result == 1
 
         # Note: operator wrappers do not "restore" back to unwrapped operators after disconnect
         # (That was their behavior at some point, but no longer.)
@@ -163,7 +186,7 @@ class OpC(Operator):
 
     def __init__(self,parent=None, graph=None):
         Operator.__init__(self, parent, graph)
-        self.internalOp = OperatorWrapper( OpB, graph=self.graph )
+        self.internalOp = OperatorWrapper(OpB, graph=self.graph)
         self.internalOp.Input.connect(self.Input)
         self.inputBackup = self.Input
 
@@ -178,6 +201,7 @@ class OpC(Operator):
         result[0] = self.internalOp.Output[:].wait()[0]
         return result
 
+
 class TestMultiInputInputConnection(object):
 
     def setUp(self):
@@ -185,14 +209,15 @@ class TestMultiInputInputConnection(object):
         self.op = OpC(graph=self.g)
 
     def test_wrapping(self):
-        opm = operators.Op5ToMulti(graph=self.g)
-        opm.Input0.setValue(1)
+        opm = OpDummyOutputResize(graph=self.g)
+        opm.OutputSize.setValue(1)
 
-        self.op.Input.connect(opm.Outputs)
+        self.op.Input.connect(opm.Output)
 
         assert len(self.op.internalOp.Output) == 1
         assert self.op.internalOp.Output[0].meta.shape is not None
-        assert self.op.internalOp.Output[0].value == 1
+        assert self.op.internalOp.Output[0].value == 0
+
 
 if __name__ == "__main__":
     import sys

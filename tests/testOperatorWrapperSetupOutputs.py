@@ -27,7 +27,7 @@ from functools import partial
 import numpy
 import vigra
 import lazyflow.graph
-from lazyflow.operators.operators import OpArrayCache
+from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operator import Operator
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.operatorWrapper import OperatorWrapper
@@ -60,7 +60,7 @@ class TestOperatorWrapperSetupOutputs(object):
         # for each inner operator, even when resizing the slot
         # more then one time
         graph = lazyflow.graph.Graph()
-        opaw = OperatorWrapper(OpArrayCache, graph = graph)
+        opaw = OperatorWrapper(OpBlockedArrayCache, graph = graph)
         opbw = OperatorWrapper(OpA, graph = graph)
         
         opbw.input.connect(opaw.Output)

@@ -29,6 +29,7 @@ import threading
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper, MetaDict
 from lazyflow import operators
 from lazyflow.operators import *
+from lazyflow.roi import roiToSlice, sliceToRoi
 
 from lazyflow.operators.valueProviders import OpOutputProvider
 
@@ -38,6 +39,105 @@ import unittest
 
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+class OpMultiArraySlicer_REDUCE_DIM(Operator):
+    """
+    Produces a list of image slices along the given axis.
+    Same as the slicer operator below, but reduces the dimensionality of the data.
+    The sliced axis is discarded in the output image shape.
+    """
+    Input = InputSlot()
+    AxisFlag = InputSlot()
+    Slices = OutputSlot(level=1)
+
+    name = "Multi Array Slicer"
+    category = "Misc"
+
+    def setupOutputs(self):
+        flag=self.inputs["AxisFlag"].value
+
+        indexAxis=self.inputs["Input"].meta.axistags.index(flag)
+        outshape=list(self.inputs["Input"].meta.shape)
+        n=outshape.pop(indexAxis)
+        outshape=tuple(outshape)
+        
+        if self.Input.meta.ideal_blockshape:
+            ideal_blockshape = list( self.Input.meta.ideal_blockshape )
+            ideal_blockshape.pop(indexAxis)
+            ideal_blockshape = tuple(ideal_blockshape)
+
+        if self.Input.meta.max_blockshape:
+            max_blockshape = list( self.Input.meta.max_blockshape )
+            max_blockshape.pop(indexAxis)
+            max_blockshape = tuple(max_blockshape)
+        
+        outaxistags=copy.copy(self.inputs["Input"].meta.axistags)
+        del outaxistags[flag]
+
+        self.outputs["Slices"].resize(n)
+
+        for o in self.outputs["Slices"]:
+            # Output metadata is a modified copy of the input's metadata
+            o.meta.assignFrom( self.Input.meta )
+            o.meta.axistags = outaxistags
+            o.meta.shape = outshape
+            if self.Input.meta.drange is not None:
+                o.meta.drange = self.Input.meta.drange
+
+            if self.Input.meta.ideal_blockshape:
+                o.meta.ideal_blockshape = ideal_blockshape
+
+            if self.Input.meta.max_blockshape:
+                o.meta.max_blockshape = max_blockshape
+
+    def execute(self, slot, subindex, rroi, result):
+        key = roiToSlice(rroi.start, rroi.stop)
+        index = subindex[0]
+        #print "SLICER: key", key, "indexes[0]", indexes[0], "result", result.shape
+        start,stop=sliceToRoi(key,self.outputs["Slices"][index].meta.shape)
+
+        start=list(start)
+        stop=list(stop)
+
+        flag=self.inputs["AxisFlag"].value
+        indexAxis=self.inputs["Input"].meta.axistags.index(flag)
+
+        start.insert(indexAxis,index)
+        stop.insert(indexAxis,index)
+
+        newKey=roiToSlice(numpy.array(start),numpy.array(stop))
+
+        ttt = self.inputs["Input"][newKey].wait()
+
+        writeKey = [slice(None, None, None) for k in key]
+        writeKey.insert(indexAxis, 0)
+        writeKey = tuple(writeKey)
+
+        return ttt[writeKey ]#+ (0,)]
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.AxisFlag:
+            for i,s in enumerate(self.Slices):
+                s.setDirty( slice(None) )
+        elif slot == self.Input:
+            key = roi.toSlice()
+            reducedKey = list(key)
+            inputTags = self.Input.meta.axistags
+            flag = self.AxisFlag.value
+            axisSlice = reducedKey.pop( inputTags.index(flag) )
+            
+            axisStart, axisStop = axisSlice.start, axisSlice.stop
+            if axisStart is None:
+                axisStart = 0
+            if axisStop is None:
+                axisStop = len( self.Slices )
+    
+            for i in range(axisStart, axisStop):
+                self.Slices[i].setDirty( reducedKey )
+        else:
+            assert False, "Unknown dirty input slot"
+        
+
 
 class OpTrackedOutputProvider(OpOutputProvider):
     """
@@ -87,6 +187,7 @@ def testMinimalRequest():
     for index, op in enumerate(ops):
         assert len(op.requested_rois) == 0 or index in range(3,5), "Stacker requested more data than it needed."
 
+
 def testFullAllocate():
 
     nx = 5
@@ -99,7 +200,7 @@ def testFullAllocate():
     g = Graph()
 
     #assume that the slicer works
-    slicerX = OpMultiArraySlicer(graph=g)
+    slicerX = OpMultiArraySlicer_REDUCE_DIM(graph=g)
     slicerX.inputs["Input"].setValue(stack)
     slicerX.inputs["AxisFlag"].setValue('x')
 
@@ -117,15 +218,17 @@ def testFullAllocate():
     stack2 = vigra.VigraArray((nx-1, ny, nz, nc), axistags=vigra.defaultAxistags('xyzc'))
     stack2[...] = numpy.random.rand(nx-1, ny, nz, nc)
 
-    opMulti = Op5ToMulti(graph=g)
-    opMulti.inputs["Input0"].setValue(stack)
-    opMulti.inputs["Input1"].setValue(stack2)
-
-    #print "OPMULTI: ", len(opMulti.outputs["Outputs"])
-
     stackerX2 = OpMultiArrayStacker(graph=g)
 
-    stackerX2.inputs["Images"].connect(opMulti.outputs["Outputs"])
+    stackerX2.Images.resize(2)
+
+    ap1 = operators.OpArrayPiper(graph=g)
+    ap2 = operators.OpArrayPiper(graph=g)
+    ap1.Input.setValue(stack)
+    ap2.Input.setValue(stack2)
+    stackerX2.Images[0].connect(ap1.Output)
+    stackerX2.Images[1].connect(ap2.Output)
+
     stackerX2.inputs["AxisFlag"].setValue('x')
     stackerX2.inputs["AxisIndex"].setValue(0)
 
@@ -143,7 +246,7 @@ def testFullAllocate():
     ##### channel
 
     #assume that the slicer works
-    slicerC = OpMultiArraySlicer(graph=g)
+    slicerC = OpMultiArraySlicer_REDUCE_DIM(graph=g)
     slicerC.inputs["Input"].setValue(stack)
     slicerC.inputs["AxisFlag"].setValue('c')
 
@@ -164,14 +267,15 @@ def testFullAllocate():
     stack3 = vigra.VigraArray((nx, ny, nz, nc-1), axistags=vigra.defaultAxistags('xyzc'))
     stack3[...] = numpy.random.rand(nx, ny, nz, nc-1)
 
-    opMulti = Op5ToMulti(graph=g)
-    opMulti.inputs["Input0"].setValue(stack)
-    opMulti.inputs["Input1"].setValue(stack3)
+    ap3 = operators.OpArrayPiper(graph=g)
+    ap3.Input.setValue(stack3)
 
     stackerC2 = OpMultiArrayStacker(graph=g)
     stackerC2.inputs["AxisFlag"].setValue('c')
     stackerC2.inputs["AxisIndex"].setValue(3)
-    stackerC2.inputs["Images"].connect(opMulti.outputs["Outputs"])
+    stackerC2.Images.resize(2)
+    stackerC2.Images[0].connect(ap1.Output)
+    stackerC2.Images[1].connect(ap3.Output)
 
     newdata = stackerC2.outputs["Output"][:].wait()
     bothstacks = numpy.concatenate((stack, stack3), axis=3)
@@ -191,7 +295,7 @@ def testPartialAllocate():
     g = Graph()
 
     #assume that the slicer works
-    slicerX = OpMultiArraySlicer(graph=g)
+    slicerX = OpMultiArraySlicer_REDUCE_DIM(graph=g)
     slicerX.inputs["Input"].setValue(stack)
     slicerX.inputs["AxisFlag"].setValue('x')
 

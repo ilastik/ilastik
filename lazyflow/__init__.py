@@ -20,11 +20,13 @@ from __future__ import absolute_import
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-try:
-    import faulthandler
-    faulthandler.enable()
-except ImportError:
-    pass
+import sys
+if not sys.platform.startswith('win'): # todo: fix
+    try:
+        import faulthandler
+        faulthandler.enable()
+    except ImportError:
+        pass
 
 from . import utility
 from . import request

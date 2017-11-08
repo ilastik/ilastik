@@ -32,7 +32,8 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.utility import PathComponents
 from lazyflow.roi import roiFromShape
-from lazyflow.operators.operators import OpArrayCache, OpArrayPiper
+from lazyflow.operators.operators import OpArrayPiper
+from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader, OpExportSlot, OpStackLoader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
@@ -148,8 +149,8 @@ class TestOpExportSlot(object):
         # Must run this through an operator
         # Can't use opExport.setValue() because because OpStackWriter can't work with ValueRequests
         graph = Graph()
-        opData = OpArrayCache( graph=graph )
-        opData.blockShape.setValue( data.shape )
+        opData = OpBlockedArrayCache( graph=graph )
+        opData.BlockShape.setValue( data.shape )
         opData.Input.setValue( data )
         
         filepattern = self._tmpdir + '/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}_z{slice_index}'
@@ -188,8 +189,8 @@ class TestOpExportSlot(object):
         # Must run this through an operator
         # Can't use opExport.setValue() because because OpStackWriter can't work with ValueRequests
         graph = Graph()
-        opData = OpArrayCache( graph=graph )
-        opData.blockShape.setValue( data.shape )
+        opData = OpBlockedArrayCache( graph=graph )
+        opData.BlockShape.setValue( data.shape )
         opData.Input.setValue( data )
         
         filepattern = self._tmpdir + '/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}_t{slice_index}'

@@ -31,7 +31,7 @@ import h5py
 
 import lazyflow.graph
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.operators import OpArrayCache
+from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.ioOperators import OpStackWriter, OpStackLoader
 
 import sys
@@ -59,8 +59,8 @@ class TestOpStackWriter(object):
         shutil.rmtree(self._tmpdir)
         
     def test_Writer(self):
-        opData = OpArrayCache( graph=self.graph )
-        opData.blockShape.setValue( self.testData.shape )
+        opData = OpBlockedArrayCache( graph=self.graph )
+        opData.BlockShape.setValue( self.testData.shape )
         opData.Input.setValue( self.testData )
         
         opWriter = OpStackWriter(graph=self.graph)

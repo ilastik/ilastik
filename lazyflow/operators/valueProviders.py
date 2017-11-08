@@ -40,8 +40,8 @@ from lazyflow.operators.opCache import ObservableCache
 class ListToMultiOperator(Operator):
     name = "List to Multislot converter"
     category = "Input"
-    inputSlots = [InputSlot("List", stype = "sequence")]
-    outputSlots = [OutputSlot("Items", level = 1)]
+    List = InputSlot()
+    Items = OutputSlot(level=1)
 
     def setupOutputs(self):
         inputSlot = self.inputs["List"]

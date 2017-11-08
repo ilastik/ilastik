@@ -174,6 +174,33 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
 
         self.assertTrue(True)
 
+    def test_expandGlobStrings(self):
+        expected_datasets = ['g1/g2/data2', 'g1/g2/data3']
+
+        with tempdir() as d:
+            file_name = '{}/test.h5'.format(d)
+            try:
+                f = h5py.File(file_name, mode='w')
+                g1 = f.create_group('g1')
+                g2 = g1.create_group('g2')
+                g3 = f.create_group('g3')
+                g1.create_dataset('data1', data=numpy.ones((10, 10)))
+                g2.create_dataset('data2', data=numpy.ones((10, 10)))
+                g2.create_dataset('data3', data=numpy.ones((10, 10)))
+                g3.create_dataset('data4', data=numpy.ones((10, 10)))
+                f.flush()
+
+                glob_res1 = OpStreamingHdf5SequenceReaderS.expandGlobStrings(
+                    f, '{}/g1/g2/data*'.format(file_name))
+                self.assertEqual(glob_res1, expected_datasets)
+
+            finally:
+                f.close()
+
+            glob_res2 = OpStreamingHdf5SequenceReaderS.expandGlobStrings(
+                file_name, '{}/g1/g2/data*'.format(file_name))
+            self.assertEqual(glob_res2, expected_datasets)
+
 
 if __name__ == "__main__":
     import sys
