@@ -1,18 +1,8 @@
-from __future__ import absolute_import
-from future import standard_library
-standard_library.install_aliases()
-from builtins import map
-from builtins import zip
 from builtins import range
-import os
-import tempfile
 import pickle as pickle
-import collections
 
 import numpy
-import numpy as np
 import vigra
-import h5py
 
 from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -31,10 +21,12 @@ except ImportError as e:
 # PYTORCH_MODEL_FILE_PATH = '/Users/chaubold/opt/miniconda/envs/ilastik-py3/src/tiktorch/test3.nn'
 PYTORCH_MODEL_FILE_PATH = '/export/home/dkutra/Downloads/dunet-cpu.nn'
 
-class PyTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
-    VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
-                # You must bump this if any instance members are added/removed/renamed.
-    
+
+class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
+    # The version is used to determine compatibility of pickled classifier factories.
+    # You must bump this if any instance members are added/removed/renamed.
+    VERSION = 1
+
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
@@ -42,7 +34,7 @@ class PyTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         # FIXME: hard coded file path to a trained and pickled pytorch network!
         self._filename = PYTORCH_MODEL_FILE_PATH
         self._loaded_pytorch_net = None
-    
+
     def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
         self._filename = PYTORCH_MODEL_FILE_PATH
         logger.debug('Loading pytorch network from {}'.format(self._filename))
@@ -55,7 +47,7 @@ class PyTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         logger.info(self.description)
 
         # logger.info("OOB during training: {}".format( oob ))
-        return PyTorchLazyflowClassifier(self._loaded_pytorch_net, self._filename)
+        return TikTorchLazyflowClassifier(self._loaded_pytorch_net, self._filename)
 
     def get_halo_shape(self, data_axes='zyxc'):
         # return (z_halo, y_halo, x_halo, 0)
@@ -68,46 +60,49 @@ class PyTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     @property
     def description(self):
         if self._loaded_pytorch_net:
-            return "pytorch network loaded from {} with expected input shape {} and output shape {}".format(
-                self._filename,
-                self._loaded_pytorch_net.expected_input_shape,
-                self._loaded_pytorch_net.expected_output_shape)
+            return (
+                f"pytorch network loaded from {self._filename} with "
+                f"expected input shape {self._loaded_pytorch_net.expected_input_shape} and "
+                f"output shape {self._loaded_pytorch_net.expected_output_shape}"
+            )
         else:
-            return "pytorch network loading from {} failed".format(self._filename)
+            return f"pytorch network loading from {self._filename} failed"
 
     def estimated_ram_usage_per_requested_predictionchannel(self):
         # FIXME: compute from model size somehow??
         return numpy.inf
 
     def __eq__(self, other):
-        return (    isinstance(other, type(self))
-                and self._args == other._args
-                and self._kwargs == other._kwargs )
+        return (isinstance(other, type(self)) and
+                self._args == other._args and
+                self._kwargs == other._kwargs
+        )
+
     def __ne__(self, other):
         return not self.__eq__(other)
 
-assert issubclass(PyTorchLazyflowClassifierFactory, LazyflowPixelwiseClassifierFactoryABC)
 
-class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
+assert issubclass(TikTorchLazyflowClassifierFactory, LazyflowPixelwiseClassifierFactoryABC)
+
+
+class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     HDF5_GROUP_FILENAME = 'pytorch_network_path'
     HALO_SIZE = 32
     BATCH_SIZE = 4
 
-    """
-    Adapt the vigra RandomForest class to the interface lazyflow expects.
-    """
-    def __init__(self, pytorch_net, filename):
-        self.feature_names = []
-        self._pytorch_net = pytorch_net
+    def __init__(self, pytorch_net, filename=None):
         self._filename = filename
+        self._filename = PYTORCH_MODEL_FILE_PATH
+        self._pytorch_net = pytorch_net
+
         self._opReorderAxes = OpReorderAxes(graph=Graph())
         self._opReorderAxes.AxisOrder.setValue('zcyx')
-    
+
     def predict_probabilities_pixelwise(self, feature_image, roi, axistags=None):
-        logger.info('predicting using pytorch network for image of shape {} and roi {}'.format(feature_image.shape, roi))
-        logger.info("Stats of input: min={}, max={}, mean={}".format(feature_image.min(), feature_image.max(), feature_image.mean()))
-        logger.info('expected pytorch input shape is {} '.format(self._pytorch_net.expected_input_shape))
-        logger.info('expected pytorch output shape is {} '.format(self._pytorch_net.expected_output_shape))
+        logger.info(f'predicting using pytorch network for image of shape {feature_image.shape} and roi {roi}')
+        logger.info(f"Stats of input: min={feature_image.min()}, max={feature_image.max()}, mean={feature_image.mean()}")
+        logger.info(f'expected pytorch input shape is {self._pytorch_net.expected_input_shape}')
+        logger.info(f'expected pytorch output shape is {self._pytorch_net.expected_output_shape}')
 
         # num_channels = len(self.known_classes)
         num_channels = 2
@@ -121,18 +116,20 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         # reordered_feature_image = (reordered_feature_image - reordered_feature_image.mean()) / (reordered_feature_image.std() + 0.000001)
 
         logger.info(
-            'Shape after reordering input is {}, axistags are {}'.format(
-                reordered_feature_image.shape, 
-                self._opReorderAxes.Output.meta.axistags))
-         
-        slice_shape = list(reordered_feature_image.shape[:]) # ignore z axis
+            f'Shape after reordering input is {reordered_feature_image.shape}, '
+            f'axistags are {self._opReorderAxes.Output.meta.axistags}')
+
+        slice_shape = list(reordered_feature_image.shape[:])  # ignore z axis
         slice_shape[0] = 1
 
         if slice_shape != list(self._pytorch_net.expected_input_shape):
-            logger.info("Expected input shape is {}, but got {}, returning zeros".format(self._pytorch_net.expected_input_shape, slice_shape))
-            return np.zeros(expected_shape)
+            logger.info(
+                f"Expected input shape is {self._pytorch_net.expected_input_shape}, "
+                f"but got {slice_shape}, returning zeros")
+            return numpy.zeros(expected_shape)
         else:
-            result = np.zeros([reordered_feature_image.shape[0], num_channels] + list(reordered_feature_image.shape[2:]))
+            result = numpy.zeros(
+                [reordered_feature_image.shape[0], num_channels] + list(reordered_feature_image.shape[2:]))
 
             # we always predict in 2D, per z-slice, so we loop over z
             for z in range(0, reordered_feature_image.shape[0], self.BATCH_SIZE):
@@ -140,31 +137,33 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
                 # vigra.impex.writeHDF5(reordered_feature_image[z,...], "data", "/Users/chaubold/Desktop/dump.h5")
 
                 # create batch of desired num slices. Multiple slices can be processed on multiple GPUs!
-                batch = [reordered_feature_image[zi:zi+1,...] for zi in range(z, min(z+self.BATCH_SIZE, reordered_feature_image.shape[0]))]
+                batch = [reordered_feature_image[zi:zi + 1, ...]
+                         for zi in range(z, min(z + self.BATCH_SIZE, reordered_feature_image.shape[0]))]
 
                 result_batch = self._pytorch_net.forward(batch)
-                logger.info("Resulting slices from {} to {} have shape {}".format(z, z+len(batch), result_batch[0].shape))
+                logger.info(f"Resulting slices from {z} to {z + len(batch)} have shape {result_batch[0].shape}")
 
-                for i, zi in enumerate(range(z, z+len(batch))):
-                    result[zi:zi+1, 0, ...] = result_batch[i]
+                for i, zi in enumerate(range(z, (z + len(batch)))):
+                    result[zi:(zi + 1), 0, ...] = result_batch[i]
 
-            logger.info("Obtained a predicted block of shape {}".format(result.shape))
-            
+            logger.info(f"Obtained a predicted block of shape {result.shape}")
+
             # crop away halo and reorder axes to match "axistags"
-            cropped_result = result[..., self.HALO_SIZE:-self.HALO_SIZE, self.HALO_SIZE:-self.HALO_SIZE] # crop in X and Y
-            logger.info("cropped the predicted block to shape {}".format(cropped_result.shape))
+            # crop in X and Y:
+            cropped_result = result[..., self.HALO_SIZE:-self.HALO_SIZE, self.HALO_SIZE:-self.HALO_SIZE]
+            logger.info(f"cropped the predicted block to shape {cropped_result.shape}")
 
             self._opReorderAxes.Input.setValue(vigra.VigraArray(cropped_result, axistags=vigra.makeAxistags('zcyx')))
-            self._opReorderAxes.AxisOrder.setValue(''.join(axistags.keys())) # axistags is vigra.AxisTags, but opReorderAxes expects a string
+            # axistags is vigra.AxisTags, but opReorderAxes expects a string
+            self._opReorderAxes.AxisOrder.setValue(''.join(axistags.keys()))
             result = self._opReorderAxes.Output([]).wait()
-            logger.info("Reordered result to shape {}".format(result.shape))
+            logger.info(f"Reordered result to shape {result.shape}")
 
             # FIXME: not needed for real neural net results:
-            logger.info("Stats of result: min={}, max={}, mean={}".format(result.min(), result.max(), result.mean()))
+            logger.info(f"Stats of result: min={result.min()}, max={result.max()}, mean={result.mean()}")
 
             return result
 
-    
     @property
     def known_classes(self):
         return list(range(self._pytorch_net.expected_output_shape[0]))
@@ -182,20 +181,22 @@ class PyTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
 
     def serialize_hdf5(self, h5py_group):
         # TODO: serialize network directly to HDF5!
-        print('?>??>?>>?>>>>>>>>>>>>>>>>z')
+        logger.debug('Serializing')
         h5py_group[self.HDF5_GROUP_FILENAME] = self._filename
-        h5py_group['pickled_type'] = pickle.dumps( type(self), 0 )
+        h5py_group['pickled_type'] = pickle.dumps(type(self), 0)
 
     @classmethod
     def deserialize_hdf5(cls, h5py_group):
         # TODO: load from HDF5 instead of hard coded path!
-        print('SAKLCMSAKLCNSAKNCSAKLCNSAKNCKANSCNKLASNCAKLSNCLSA')
-        filename = PYTORCH_MODEL_FILE_PATH
-        #filename = h5py_group[cls.HDF5_GROUP_FILENAME]
-        logger.warning("Deserializing from {}".format(filename))
+        logger.debug('Deserializing')
+        # HACK:
+        # filename = PYTORCH_MODEL_FILE_PATH
+        filename = h5py_group[cls.HDF5_GROUP_FILENAME]
+        logger.debug("Deserializing from {}".format(filename))
         loaded_pytorch_net = TikTorch.unserialize(filename)
         loaded_pytorch_net.set('window_size', [512, 512])
 
-        return PyTorchLazyflowClassifier(loaded_pytorch_net, filename)
+        return TikTorchLazyflowClassifier(loaded_pytorch_net, filename)
 
-assert issubclass( PyTorchLazyflowClassifier, LazyflowPixelwiseClassifierABC )
+
+assert issubclass(TikTorchLazyflowClassifier, LazyflowPixelwiseClassifierABC)
