@@ -113,24 +113,36 @@ assert issubclass(TikTorchLazyflowClassifierFactory, LazyflowPixelwiseClassifier
 
 class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     HDF5_GROUP_FILENAME = 'pytorch_network_path'
+    # TODO: parametrize!
     HALO_SIZE = 32
-    BATCH_SIZE = 4
+    # TODO: parametrize!
+    BATCH_SIZE = 3
 
-    def __init__(self, pytorch_net=None, filename=None):
+    def __init__(self, tiktorch_net, filename=None):
+        """
+        Args:
+            tiktorch_net (tiktorch): tiktorch object to be loaded into this
+              classifier object
+            filename (None, optional): Save file name for future reference
+        """
         self._filename = filename
         if self._filename is None:
             self._filename = ""
 
-        self._pytorch_net = pytorch_net
+        self._tiktorch_net = tiktorch_net
 
         self._opReorderAxes = OpReorderAxes(graph=Graph())
         self._opReorderAxes.AxisOrder.setValue('zcyx')
 
     def predict_probabilities_pixelwise(self, feature_image, roi, axistags=None):
+        """
+        Implicitly assumes that feature_image is includes the surrounding HALO!
+        roi must be chosen accordingly
+        """
         logger.info(f'predicting using pytorch network for image of shape {feature_image.shape} and roi {roi}')
         logger.info(f"Stats of input: min={feature_image.min()}, max={feature_image.max()}, mean={feature_image.mean()}")
-        logger.info(f'expected pytorch input shape is {self._pytorch_net.expected_input_shape}')
-        logger.info(f'expected pytorch output shape is {self._pytorch_net.expected_output_shape}')
+        logger.info(f'expected pytorch input shape is {self._tiktorch_net.expected_input_shape}')
+        logger.info(f'expected pytorch output shape is {self._tiktorch_net.expected_output_shape}')
 
         # num_channels = len(self.known_classes)
         num_channels = 2
@@ -150,9 +162,9 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         slice_shape = list(reordered_feature_image.shape[:])  # ignore z axis
         slice_shape[0] = 1
 
-        if slice_shape != list(self._pytorch_net.expected_input_shape):
+        if slice_shape != list(self._tiktorch_net.expected_input_shape):
             logger.info(
-                f"Expected input shape is {self._pytorch_net.expected_input_shape}, "
+                f"Expected input shape is {self._tiktorch_net.expected_input_shape}, "
                 f"but got {slice_shape}, returning zeros")
             return numpy.zeros(expected_shape)
         else:
@@ -167,8 +179,8 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
                 # create batch of desired num slices. Multiple slices can be processed on multiple GPUs!
                 batch = [reordered_feature_image[zi:zi + 1, ...]
                          for zi in range(z, min(z + self.BATCH_SIZE, reordered_feature_image.shape[0]))]
-
-                result_batch = self._pytorch_net.forward(batch)
+                logger.info(f"batch info: {[x.shape for x in batch]}")
+                result_batch = self._tiktorch_net.forward(batch)
                 logger.info(f"Resulting slices from {z} to {z + len(batch)} have shape {result_batch[0].shape}")
 
                 for i, zi in enumerate(range(z, (z + len(batch)))):
@@ -194,11 +206,11 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
 
     @property
     def known_classes(self):
-        return list(range(self._pytorch_net.expected_output_shape[0]))
+        return list(range(self._tiktorch_net.expected_output_shape[0]))
 
     @property
     def feature_count(self):
-        return self._pytorch_net.expected_input_shape[0]
+        return self._tiktorch_net.expected_input_shape[0]
 
     def get_halo_shape(self, data_axes='zyxc'):
         if len(data_axes) == 4:
@@ -214,7 +226,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
 
         # HACK: can this be done more elegantly?
         with tempfile.TemporaryFile() as f:
-            self._pytorch_net.serialize(f)
+            self._tiktorch_net.serialize(f)
             f.seek(0)
             h5py_group['classifier'] = numpy.void(f.read())
 
