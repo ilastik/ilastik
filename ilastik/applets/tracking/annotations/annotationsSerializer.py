@@ -190,6 +190,7 @@ class SerialAppearancesSlot(SerialSlot):
                     for track in list(oid_gr.keys()):
                         appearances[int(t)][int(oid)][int(track)] = True
             op.appearances = appearances
+            op.Appearances.setValue(appearances)
         self.dirty = False
 
 class SerialDisappearancesSlot(SerialSlot):
@@ -231,6 +232,7 @@ class SerialDisappearancesSlot(SerialSlot):
                     for track in list(oid_gr.keys()):
                         disappearances[int(t)][int(oid)][int(track)] = True
             op.disappearances = disappearances
+            op.Disappearances.setValue(disappearances)
         self.dirty = False
 
 class AnnotationsSerializer(AppletSerializer):
