@@ -188,7 +188,7 @@ class SerialAppearancesSlot(SerialSlot):
                     appearances[int(t)][int(oid)] = {}
                     oid_gr = t_gr[str(oid)]
                     for track in list(oid_gr.keys()):
-                        appearances[int(t)][int(oid)][int(track)] = oid_gr[track]
+                        appearances[int(t)][int(oid)][int(track)] = True
             op.appearances = appearances
         self.dirty = False
 
@@ -229,7 +229,7 @@ class SerialDisappearancesSlot(SerialSlot):
                     disappearances[int(t)][int(oid)] = {}
                     oid_gr = t_gr[str(oid)]
                     for track in list(oid_gr.keys()):
-                        disappearances[int(t)][int(oid)][int(track)] = oid_gr[track]
+                        disappearances[int(t)][int(oid)][int(track)] = True
             op.disappearances = disappearances
         self.dirty = False
 
