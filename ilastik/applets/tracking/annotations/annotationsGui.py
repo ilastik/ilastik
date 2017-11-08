@@ -944,7 +944,7 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.Labels, [t])
             self._onSaveAnnotations(time_interval=[t,t],label=oid,track=delLabel[selection],delete=True)
             self._onSaveAppearances()
-            self._onSaveDisppearances()
+            self._onSaveDisappearances()
 
         elif selection in list(delSubtrackToEnd.keys()):
             track2remove = delSubtrackToEnd[selection]
@@ -959,7 +959,7 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.Labels, list(range(t,maxt)))
             self._onSaveAnnotations(time_interval=[t,maxt],label=oid,track=track2remove,delete=True)
             self._onSaveAppearances()
-            self._onSaveDisppearances()
+            self._onSaveDisappearances()
 
         elif selection in list(delSubtrackToStart.keys()):
             track2remove = delSubtrackToStart[selection]
@@ -973,7 +973,7 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.Labels, list(range(0,t+1)))
             self._onSaveAnnotations(time_interval=[0,t+1],label=oid,track=track2remove,delete=True)
             self._onSaveAppearances()
-            self._onSaveDisppearances()
+            self._onSaveDisappearances()
 
         elif selection in list(runTracking.keys()):
             self._runSubtracking(position5d, oid, runTracking[selection])
@@ -983,7 +983,7 @@ class AnnotationsGui(LayerViewerGui):
             self._delDivisionEvent(delDivision[selection])
             self._onSaveAnnotations()
             self._onSaveAppearances()
-            self._onSaveDisppearances()
+            self._onSaveDisappearances()
 
         elif selection in list(setActiveTrack.keys()):
             for i in range(self._drawer.activeTrackBox.count()):
@@ -1034,7 +1034,7 @@ class AnnotationsGui(LayerViewerGui):
 
         self._onSaveAnnotations()
         self._onSaveAppearances()
-        self._onSaveDisppearances()
+        self._onSaveDisappearances()
 
     def _currentActiveTrackChanged(self):
         self.mainOperator.ActiveTrack.setValue(self._getActiveTrack())
@@ -1171,7 +1171,7 @@ class AnnotationsGui(LayerViewerGui):
 
         self._onSaveAnnotations()
         self._onSaveAppearances()
-        self._onSaveDisppearances()
+        self._onSaveDisappearances()
 
     def _addObjectToTrack(self, activeTrack, oid, t):
 
@@ -1328,7 +1328,7 @@ class AnnotationsGui(LayerViewerGui):
 
         self._onSaveAnnotations()
         self._onSaveAppearances()
-        self._onSaveDisppearances()
+        self._onSaveDisappearances()
 
     def _setStyleSheet(self, widget, qcolor, qType="QComboBox"):
         values = "{r}, {g}, {b}, {a}".format(r = qcolor.red(),
@@ -1389,7 +1389,7 @@ class AnnotationsGui(LayerViewerGui):
         
         self._onSaveAnnotations()
         self._onSaveAppearances()
-        self._onSaveDisppearances()
+        self._onSaveDisappearances()
 
     @staticmethod
     def _appendUnique(lst, obj):
