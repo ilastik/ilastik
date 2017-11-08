@@ -115,6 +115,10 @@ class OpAnnotations(Operator):
         for t in range(self.LabelImage.meta.shape[0]):
             if t not in list(self.labels.keys()):
                 self.labels[t]={}
+            if t not in list(self.appearances.keys()):
+                self.appearances[t]={}
+            if t not in list(self.disappearances.keys()):
+                self.disappearances[t]={}
 
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
@@ -179,10 +183,10 @@ class OpAnnotations(Operator):
         if slot.name == 'Annotations':
             annotations = self.Annotations[key].wait()
             result[...] = annotations
-        elif slot is self.Appearances:
+        elif slot.name =='Appearances':
             appearances = self.Appearances[key].wait()
             result[...] = appearances
-        elif slot is self.Disappearances:
+        elif slot.name == 'Disappearances':
             disappearances = self.Disappearances[key].wait()
             result[...] = disappearances
 

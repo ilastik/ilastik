@@ -142,7 +142,7 @@ class OpStructuredTracking(OpConservationTracking):
         self.progressVisitor=progressVisitor
         
         emptyAnnotations = False
-        empty = self.Annotations.value["divisions"]=={} and self.Annotations.value["labels"]=={}
+        empty = self.Annotations.value == {} or self.Annotations.value["divisions"]=={} and self.Annotations.value["labels"]=={}
         if empty and not withBatchProcessing:
             gui._criticalMessage("Error: Weights can not be calculated because training annotations are missing. " +\
                               "Go back to Training applet!")
