@@ -1,5 +1,7 @@
 from builtins import range
 import pickle as pickle
+import tempfile
+
 
 import numpy
 import vigra
@@ -90,9 +92,11 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     HALO_SIZE = 32
     BATCH_SIZE = 4
 
-    def __init__(self, pytorch_net, filename=None):
+    def __init__(self, pytorch_net=None, filename=None):
         self._filename = filename
-        self._filename = PYTORCH_MODEL_FILE_PATH
+        if self._filename is None:
+            self._filename = ""
+
         self._pytorch_net = pytorch_net
 
         self._opReorderAxes = OpReorderAxes(graph=Graph())
@@ -180,10 +184,15 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             return (self.HALO_SIZE, self.HALO_SIZE, 0)
 
     def serialize_hdf5(self, h5py_group):
-        # TODO: serialize network directly to HDF5!
         logger.debug('Serializing')
         h5py_group[self.HDF5_GROUP_FILENAME] = self._filename
         h5py_group['pickled_type'] = pickle.dumps(type(self), 0)
+
+        # HACK: can this be done more elegantly?
+        with tempfile.TemporaryFile() as f:
+            self._pytorch_net.serialize(f)
+            f.seek(0)
+            h5py_group['classifier'] = numpy.void(f.read())
 
     @classmethod
     def deserialize_hdf5(cls, h5py_group):
@@ -193,8 +202,11 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         # filename = PYTORCH_MODEL_FILE_PATH
         filename = h5py_group[cls.HDF5_GROUP_FILENAME]
         logger.debug("Deserializing from {}".format(filename))
-        loaded_pytorch_net = TikTorch.unserialize(filename)
-        loaded_pytorch_net.set('window_size', [512, 512])
+
+        with tempfile.TemporaryFile() as f:
+            f.write(h5py_group['classifier'].value)
+            f.seek(0)
+            loaded_pytorch_net = TikTorch.unserialize(f)
 
         return TikTorchLazyflowClassifier(loaded_pytorch_net, filename)
 
