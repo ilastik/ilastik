@@ -44,7 +44,7 @@ logger.setLevel(logging.DEBUG)
 class TestAxesOrderPreservation(object):
     dir = tempfile.mkdtemp()
     # os.path.expanduser('~/Desktop/tmp')
-    PROJECT_FILE_BASE = os.path.join('..', '..', 'data')
+    PROJECT_FILE_BASE = os.path.join(os.path.dirname(__file__), '..', '..', 'data')
 
     @classmethod
     def setupClass(cls):
@@ -53,6 +53,7 @@ class TestAxesOrderPreservation(object):
         projects = zipfile.ZipFile(os.path.join(cls.PROJECT_FILE_BASE,
                                                 'test_projects.zip'),
                                    mode='r')
+
         projects.extractall(path=cls.PROJECT_FILE_BASE)
         cls.unzipped_project_files = projects.namelist()
         cls.untested_projects = list(cls.unzipped_project_files)
