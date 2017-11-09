@@ -882,11 +882,27 @@ class AnnotationsGui(LayerViewerGui):
 
             isAppearance = self._isAppearance(t,oid,l)
             isDisappearance = self._isDisappearance(t,oid,l)
+            if isAppearance and isDisappearance:
+                text = "remove appearance from track " + str(l)
+                removeAppearance[text] = l
+                menu.addAction(text)
+
+                text = "remove disappearance from track " + str(l)
+                removeDisappearance[text] = l
+                menu.addAction(text)
             if isAppearance and not isDisappearance:
                 text = "remove appearance from track " + str(l)
                 removeAppearance[text] = l
                 menu.addAction(text)
+
+                text = "mark disappearance for track " + str(l)
+                markDisappearance[text] = l
+                menu.addAction(text)
             elif isDisappearance and not isAppearance:
+                text = "mark appearance for track " + str(l)
+                markAppearance[text] = l
+                menu.addAction(text)
+
                 text = "remove disappearance from track " + str(l)
                 removeDisappearance[text] = l
                 menu.addAction(text)
