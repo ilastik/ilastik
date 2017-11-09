@@ -205,7 +205,8 @@ class OpStructuredTracking(OpConservationTracking):
 
             logger.info("Structured Learning: Adding Training Annotations to Hypotheses Graph")
 
-            mergeMsgStr = "Your tracking annotations contradict this model assumptions! All tracks must be continuous; mergers may merge or split but all tracks in a merger appear/disappear together."
+            mergeMsgStr = "Your tracking annotations contradict this model assumptions! All tracks must be continuous; mergers may merge or split but all tracks in a merger appear/disappear together. " + \
+                "You may also have to improve division and/or object count classifier in order to match your tracking annotations with small uncertainty (see Uncertainty Layer in the classiefiers)."
             foundAllArcs = True;
             numAllAnnotatedDivisions = 0
 
@@ -283,6 +284,18 @@ class OpStructuredTracking(OpConservationTracking):
                                             logger.info("[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS t:{} id:{}".format(time-1, int(previous_label)))
                                             # print "[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS t:{} id:{}".format(time-1, int(previous_label))
                                             break
+
+                                    if type[0] in ["FIRST", "SINGLETON(FIRST_LAST)"] and time in self.appearances.keys() and label in self.appearances[time].keys() and track in self.appearances[time][label].keys() and self.appearances[time][label][track]:
+                                        # print("---> appearance",time,label,track)
+                                        if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
+                                            hypothesesGraph._graph.node[(time, int(label))]['appearance'] = True
+                                            logger.info("[structuredTrackingGui] APPEARANCE: {} {}".format(time, int(label)))
+
+                                    elif type[0] in ["LAST", "SINGLETON(FIRST_LAST)"] and time in self.disappearances.keys() and label in self.disappearances[time].keys() and track in self.disappearances[time][label].keys() and self.disappearances[time][label][track]:
+                                        # print("---> disappearance",time,label,track)
+                                        if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
+                                            hypothesesGraph._graph.node[(time, int(label))]['disappearance'] = True
+                                            logger.info("[structuredTrackingGui] DISAPPEARANCE: {} {}".format(time, int(label)))
 
                                 if type == None:
                                     self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
