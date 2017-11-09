@@ -219,6 +219,8 @@ class BoxListModel(ListModel):
                 return Qt.ItemIsEnabled | Qt.ItemIsSelectable
             else:
                 return Qt.NoItemFlags
+        else:
+            return Qt.NoItemFlags
 
     def removeRow(self, position, parent=QModelIndex()):
         self.boxRemoved.emit(position)
