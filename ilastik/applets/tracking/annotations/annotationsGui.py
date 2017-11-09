@@ -890,7 +890,7 @@ class AnnotationsGui(LayerViewerGui):
                 text = "remove disappearance from track " + str(l)
                 removeDisappearance[text] = l
                 menu.addAction(text)
-            if isAppearance and not isDisappearance:
+            elif isAppearance and not isDisappearance:
                 text = "remove appearance from track " + str(l)
                 removeAppearance[text] = l
                 menu.addAction(text)
