@@ -883,11 +883,12 @@ class AnnotationsGui(LayerViewerGui):
             isAppearance = self._isAppearance(t,oid,l)
             isDisappearance = self._isDisappearance(t,oid,l)
 
+            opTracking = self.mainOperator.parent.parent.trackingApplet.topLevelOperator[0]
             if isAppearance:
                 text = "remove appearance from track " + str(l)
                 removeAppearance[text] = l
                 menu.addAction(text)
-            else:
+            elif opTracking._type(t,l)[0] in ["FIRST","SINGLETON(FIRST_LAST)"] and t >0:
                 text = "mark appearance for track " + str(l)
                 markAppearance[text] = l
                 menu.addAction(text)
@@ -896,7 +897,7 @@ class AnnotationsGui(LayerViewerGui):
                 text = "remove disappearance from track " + str(l)
                 removeDisappearance[text] = l
                 menu.addAction(text)
-            else:
+            elif opTracking._type(t,l)[0] in ["LAST","SINGLETON(FIRST_LAST)"] and t < maxTime:
                 text = "mark disappearance for track " + str(l)
                 markDisappearance[text] = l
                 menu.addAction(text)
