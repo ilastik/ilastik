@@ -596,7 +596,7 @@ class CarvingGui(LabelingGui):
         lut = numpy.zeros(op.MST.value.nodeNum+1, dtype=numpy.int32)
         label_name_map = {}
         for name, label in self._shownObjects3D.items():
-            objectSupervoxels = op.MST.value.objects[name]
+            objectSupervoxels = op.MST.value.object_lut[name]
             lut[objectSupervoxels] = label
             label_name_map[label] = name
             label_name_map[name] = label
