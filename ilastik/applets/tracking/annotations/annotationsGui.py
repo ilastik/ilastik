@@ -863,7 +863,7 @@ class AnnotationsGui(LayerViewerGui):
             setActiveTrack[text] = l
             menu.addAction(text)
 
-            text = "remove track " + str(l)
+            text = "remove track " + str(l) + " for object " + str(oid)
             delLabel[text] = l
             menu.addAction(text)
 
