@@ -213,6 +213,11 @@ class OpCreateRag(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.Rag.setDirty()
 
+def decodeToStringIfBytes(s):
+    if isinstance(s, bytes):
+        return s.decode()
+    else:
+        return s
 
 class OpComputeEdgeFeatures(Operator):
     FeatureNames = InputSlot()
@@ -234,7 +239,8 @@ class OpComputeEdgeFeatures(Operator):
             channel_name = self.VoxelData.meta.channel_names[c]
             if channel_name not in channel_feature_names:
                 continue
-            feature_names = list(channel_feature_names[channel_name])
+            
+            feature_names = [decodeToStringIfBytes(f) for f in channel_feature_names[channel_name]]
             if not feature_names:
                 # No features selected for this channel
                 continue

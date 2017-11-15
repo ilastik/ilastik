@@ -340,7 +340,6 @@ def solve_with_nifty(edge_ids, edge_weights, node_count, solver_method):
     def getIlpFac(ilpSolver):
         return obj.multicutIlpFactory(
                    ilpSolver=ilpSolver,
-                   verbose=0,
                    addThreeCyclesConstraints=True,
                    addOnlyViolatedThreeCyclesConstraints=True)
 
