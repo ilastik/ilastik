@@ -429,11 +429,16 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._criticalMessage("You have to compute object features first.")
             return
 
-        numStages = 4
+        numStages = 6
+        # object features
+        # detection probabilities
         # creating traxel store
         # generating probabilities
         # insert energies
         # structured learning
+        if self._drawer.divisionsBox.isChecked():
+            # division probabilities
+            numStages +=1
 
         self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
         self.progressWindow.run()

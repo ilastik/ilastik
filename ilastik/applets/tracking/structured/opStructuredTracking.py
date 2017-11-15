@@ -431,6 +431,7 @@ class OpStructuredTracking(OpConservationTracking):
         if self.DetectionWeight.value < 0.0 or self.DivisionWeight.value < 0.0 or self.TransitionWeight.value < 0.0 or \
             self.AppearanceWeight.value < 0.0 or self.DisappearanceWeight.value < 0.0:
 
+            self.progressVisitor.showProgress(0)
             model['settings']['nonNegativeWeightsOnly'] = True
             weightsDict = mht.train(model, gt)
 
