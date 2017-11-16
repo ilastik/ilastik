@@ -37,7 +37,7 @@ from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
 
-#carving Cython module
+#carving backend in ilastiktools
 from .watershed_segmentor import WatershedSegmentor
 
 import logging

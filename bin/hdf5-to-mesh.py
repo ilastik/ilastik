@@ -9,23 +9,28 @@ If --label=N is provided, then only the pixels with value N will be converted in
 Otherwise, all nonzero pixels are used.
 """
 from __future__ import print_function
-import os
-import sys
-import argparse
-from functools import partial
-import shutil
-import tempfile
+#import os
+#import sys
+#import argparse
+#from functools import partial
+#import shutil
+#import tempfile
 
-import h5py
-from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QApplication
-from vtk import vtkPolyDataWriter
+from os.path import splitext
+from sys import stderr, exit as sysexit
+from argparse import ArgumentParser
+from numpy import unique
 
-from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
-from volumina.view3d.view3d import convertVTPtoOBJ
+#import h5py
+#from PyQt5.QtCore import QTimer
+#from PyQt5.QtWidgets import QApplication
 
-def main():
-    parser = argparse.ArgumentParser()
+from h5py import File
+from volumina.view3d.meshgenerator import labeling_to_mesh, mesh_to_obj
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
     parser.add_argument("--label", type=int, required=False)
     parser.add_argument("input_hdf5_file")
     parsed_args = parser.parse_args()
@@ -33,62 +38,21 @@ def main():
     output_file = os.path.splitext(parsed_args.input_hdf5_file)[0] + ".obj"
 
     print("Loading volume...")
-    with h5py.File(parsed_args.input_hdf5_file, 'r') as f_input:
+    with File(parsed_args.input_hdf5_file, 'r') as f_input:
         dataset_names = []
         f_input.visit(dataset_names.append)
         if len(dataset_names) != 1:
-            sys.stderr.write("Input HDF5 file should have exactly 1 dataset.\n")
-            sys.exit(1)
+            stderr.write("Input HDF5 file should have exactly 1 dataset.\n")
+            sysexit(1)
         volume = f_input[dataset_names[0]][:].squeeze()
 
     if parsed_args.label:
         volume[:] = (volume == parsed_args.label)
+        labels = [parsed_args.label]
     else:
         volume[:] = (volume != 0)
-    
-    app = QApplication([])
+        labels = [label for label in unique(volume) if label != 0]
 
-    dlg = MeshExtractorDialog()
-    dlg.finished.connect( partial(onMeshesComplete, dlg, output_file) )
-    dlg.show()
-    dlg.raise_()
+    for label, mesh in labeling_to_mesh(volume, labels):
+        mesh_to_obj(mesh, "{}_{}.obj".format(output_file, label), label)
 
-    QTimer.singleShot(0, partial(dlg.run, volume, [0]))
-    app.exec_()
-    print("DONE.")
-
-def onMeshesComplete(dlg, obj_filepath):
-    """
-    Called when mesh extraction is complete.
-    Writes the extracted mesh to an .obj file
-    """
-    print("Mesh generation complete.")
-    mesh_count = len( dlg.extractor.meshes )
-
-    # Mesh count can sometimes be 0 for the '<not saved yet>' object...
-    if mesh_count > 0:
-        assert mesh_count == 1, \
-            "Found {} meshes. (Only expected 1)".format( mesh_count )
-        mesh = list(dlg.extractor.meshes.values())[0]
-
-        # Use VTK to write to a temporary .vtk file
-        tmpdir = tempfile.mkdtemp()
-        vtkpoly_path = os.path.join(tmpdir, 'meshes.vtk')
-        w = vtkPolyDataWriter()
-        w.SetFileTypeToASCII()
-        w.SetInput(mesh)
-        w.SetFileName(vtkpoly_path)
-        w.Write()
-        
-        # Now convert the file to .obj format.
-        print("Saving meshes to {}".format( obj_filepath ))
-        convertVTPtoOBJ(vtkpoly_path, obj_filepath)
-
-        shutil.rmtree( tmpdir )
-
-    # Cleanup: We don't need the window anymore.
-    #dlg.setParent(None)
-
-
-if __name__ == "__main__":
-    main()
