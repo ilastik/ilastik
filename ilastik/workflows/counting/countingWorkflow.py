@@ -106,7 +106,7 @@ class CountingWorkflow(Workflow):
             self._batch_export_args = None
 
         if unused_args:
-            logger.warn("Unused command-line args: {}".format( unused_args ))
+            logger.warning("Unused command-line args: {}".format( unused_args ))
 
 
     @property
@@ -183,7 +183,7 @@ class CountingWorkflow(Workflow):
                 self.dataExportApplet.topLevelOperator.CsvFilepath.setValue(csv_path)
 
             if self.countingApplet.topLevelOperator.classifier_cache._dirty:
-                logger.warn("Your project file has no classifier.  "
+                logger.warning("Your project file has no classifier.  "
                             "A new classifier will be trained for this run.")
                 
             logger.info("Beginning Batch Processing")

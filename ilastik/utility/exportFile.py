@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 try:
     from ilastik.plugins import pluginManager
 except:
-    logger.warn('could not import pluginManager')
+    logger.warning('could not import pluginManager')
 
 class Default(object):
     DivisionNames = {"names": ("timestep", "object_id", "lineage_id", "track_id", "child1_object_id", "child1_track_id", "child2_object_id", "child2_track_id")}

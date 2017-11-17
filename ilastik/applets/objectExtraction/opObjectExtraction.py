@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 try:
     from ilastik.plugins import pluginManager
 except:
-    logger.warn('could not import pluginManager')
+    logger.warning('could not import pluginManager')
 
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -676,7 +676,7 @@ class OpRegionFeatures(Operator):
                 try:
                     pfeats[key] = numpy.vstack(list(v.reshape(1, -1) for v in value))
                 except:
-                    logger.warn('feature {} failed'.format(key))
+                    logger.warning('feature {} failed'.format(key))
                     del pfeats[key]
 
         # merge the global and local features

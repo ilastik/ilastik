@@ -84,7 +84,7 @@ class TCPServerInfoWidget(QWidget):
             self.ui.toggleStatus.setEnabled(True)
 
         else:
-            logger.warn("'%s' is no valid server status attribute ")
+            logger.warning("'%s' is no valid server status attribute ")
             return
         self.server_status[attribute] = value
 

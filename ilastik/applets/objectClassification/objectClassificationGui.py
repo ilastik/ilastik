@@ -935,7 +935,7 @@ class ObjectClassificationGui(LabelingGui):
         warning = self.op.Warnings[:].wait()
 
         # log the warning message in any case
-        logger.warn(warning['text'])
+        logger.warning(warning['text'])
 
         # create dialog only once to prevent a pop-up window cascade
         if self.badObjectBox is None:
@@ -1166,4 +1166,4 @@ class BadObjectsDialog(QMessageBox):
             if len(s) > 0:
                 parts.append(s)
         msg = "\n".join(parts)
-        logger.warn(msg)
+        logger.warning(msg)

@@ -549,7 +549,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                 self.editor.navCtrl.changeSliceAbsolute(pos3d[i],i)
 
         except Exception as e:
-            logger.warn("Failed to navigate to position (%s): %s" % (pos, e))
+            logger.warning("Failed to navigate to position (%s): %s" % (pos, e))
         return
     
     def validatePos(self, pos, dims=5):

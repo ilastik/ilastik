@@ -310,7 +310,7 @@ def compute_edge_weights( edge_ids, edge_probabilities, beta ):
     # See note special behavior, above
     edges_touching_zero = edge_ids[:,0] == 0
     if edges_touching_zero.any():
-        logger.warn("Volume contains label 0, which will be excluded from the segmentation.")
+        logger.warning("Volume contains label 0, which will be excluded from the segmentation.")
         MINIMUM_ENERGY = -1000.0
         edge_weights[edges_touching_zero] = MINIMUM_ENERGY
     
