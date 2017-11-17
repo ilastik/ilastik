@@ -276,7 +276,7 @@ class OpStructuredTracking(OpConservationTracking):
                                         sink = (time, int(label))
                                         foundAllArcs = False
                                         for edge in list(hypothesesGraph._graph.in_edges(sink)): # an edge is a tuple of source and target nodes
-                                            logger.info("Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label))
+                                            logger.debug("Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label))
                                             # print "Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label)
                                             if edge[0][0] == time-1 and edge[0][1] == int(previous_label): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
                                                 foundAllArcs = True
@@ -291,13 +291,13 @@ class OpStructuredTracking(OpConservationTracking):
                                         # print("---> appearance",time,label,track)
                                         if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
                                             hypothesesGraph._graph.node[(time, int(label))]['appearance'] = True
-                                            logger.info("[structuredTrackingGui] APPEARANCE: {} {}".format(time, int(label)))
+                                            logger.debug("[structuredTrackingGui] APPEARANCE: {} {}".format(time, int(label)))
 
                                     elif type[0] in ["LAST", "SINGLETON(FIRST_LAST)"] and time in self.disappearances.keys() and label in self.disappearances[time].keys() and track in self.disappearances[time][label].keys() and self.disappearances[time][label][track]:
                                         # print("---> disappearance",time,label,track)
                                         if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
                                             hypothesesGraph._graph.node[(time, int(label))]['disappearance'] = True
-                                            logger.info("[structuredTrackingGui] DISAPPEARANCE: {} {}".format(time, int(label)))
+                                            logger.debug("[structuredTrackingGui] DISAPPEARANCE: {} {}".format(time, int(label)))
 
                                 if type == None:
                                     self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
@@ -305,10 +305,10 @@ class OpStructuredTracking(OpConservationTracking):
                                 elif type[0] in ["FIRST", "LAST", "INTERMEDIATE", "SINGLETON(FIRST_LAST)"]:
                                     if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
                                         hypothesesGraph._graph.node[(time, int(label))]['value'] = trackCount
-                                        logger.info("[structuredTrackingGui] NODE: {} {}".format(time, int(label)))
+                                        logger.debug("[structuredTrackingGui] NODE: {} {}".format(time, int(label)))
                                         # print "[structuredTrackingGui] NODE: {} {} {}".format(time, int(label), int(trackCount))
                                     else:
-                                        logger.info("[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label)))
+                                        logger.debug("[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label)))
                                         # print "[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label))
 
                                         foundAllArcs = False
