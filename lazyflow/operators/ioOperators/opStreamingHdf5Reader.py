@@ -103,7 +103,7 @@ class OpStreamingHdf5Reader(Operator):
         chunks = self._hdf5File[internalPath].chunks
         if not chunks and total_volume > 1e8:
             self.OutputImage.meta.inefficient_format = True
-            logger.warn("This dataset ({}{}) is NOT chunked.  "
+            logger.warning("This dataset ({}{}) is NOT chunked.  "
                         "Performance for 3D access patterns will be bad!"
                         .format( self._hdf5File.filename, internalPath ))
         if chunks:

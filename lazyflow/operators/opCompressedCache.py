@@ -294,12 +294,12 @@ class OpUnmanagedCompressedCache(Operator):
                         if d == 0:
                             ideal[i] = blockshape[i]
                     if not isConsistent(ideal):
-                        logger.warn("{}: BlockShape and ideal_blockshape are "
+                        logger.warning("{}: BlockShape and ideal_blockshape are "
                                     "inconsistent {} vs {}".format(self.name, blockshape, ideal))
                     else:
                         return tuple(ideal)
                 else:
-                    logger.warn("{}: Encountered meta.ideal_blockshape that does "
+                    logger.warning("{}: Encountered meta.ideal_blockshape that does "
                                 "not fit the data".format(self.name))
 
         # we need to figure out an ideal chunk shape on our own

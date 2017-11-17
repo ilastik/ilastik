@@ -1481,7 +1481,7 @@ class UfmfSaverV3(UfmfSaverBase):
             assert np_image_data.strides[0] == width*np_image_data.strides[1]
             assert np_image_data.strides[1] == strides1
         except:
-            logger.warn('np_image_data.strides: {}, width: {}'.format(np_image_data.strides, width) )
+            logger.warning('np_image_data.strides: {}, width: {}'.format(np_image_data.strides, width) )
             raise
         b = bytes(chr(KEYFRAME_CHUNK) + chr(char2), 'utf-8') + keyframe_type # chunkid, len(type), type
         b += struct.pack(FMT[self.version].KEYFRAME2,dtype,width,height,timestamp)
