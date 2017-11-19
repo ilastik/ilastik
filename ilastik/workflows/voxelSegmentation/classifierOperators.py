@@ -38,10 +38,11 @@ from lazyflow.utility import Timer
 from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC, \
     LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 
-from lazyflow.operators.opFeatureMatrixCache import OpFeatureMatrixCache
 from lazyflow.operators.opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
 
-from .utils import get_supervoxel_features, get_supervoxel_labels
+from .opFeatureMatrixCache import OpFeatureMatrixCache
+from .utils import get_supervoxel_features, get_supervoxel_labels, slic_to_mask
+
 
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,7 @@ class OpTrainSuperVoxelClassifierBlocked(Operator):
     Classifier = OutputSlot()
 
     def __init__(self, *args, **kwargs):
+        print("init {}".format(self.__class__))
         super(OpTrainSuperVoxelClassifierBlocked, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
         self._mode = None
@@ -100,8 +102,9 @@ class OpTrainSuperVoxelClassifierBlocked(Operator):
 
         if self._mode == 'vectorwise':
             self.Classifier.connect(self._opVectorwiseTrain.Classifier)
-        # elif self._mode == 'pixelwise':
-        #     self.Classifier.connect(self._opPixelwiseTrain.Classifier)
+        elif self._mode == 'pixelwise':
+            raise RuntimeError("shouldn't be here")
+            # self.Classifier.connect(self._opPixelwiseTrain.Classifier)
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here..."
@@ -124,6 +127,7 @@ class OpTrainSupervoxelwiseClassifierBlocked(Operator):
     # Labels[N] --> opFeatureMatrixCaches ---(FeatureImage[N])---> opConcatenateFeatureImages ---(label+feature matrix)---> OpTrainFromFeatures ---(Classifier)--->
 
     def __init__(self, *args, **kwargs):
+        print("init {}".format(self.__class__))
         super(OpTrainSupervoxelwiseClassifierBlocked, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
 
@@ -139,7 +143,9 @@ class OpTrainSupervoxelwiseClassifierBlocked(Operator):
         self._opTrainFromFeatures.ClassifierFactory.connect(self.ClassifierFactory)
         self._opTrainFromFeatures.LabelAndFeatureMatrix.connect(self._opFeatureMatrixCaches.LabelAndFeatureMatrix)
         self._opTrainFromFeatures.SupervoxelValues.connect(self.SupervoxelValues)
+        self._opTrainFromFeatures.Labels.connect(self.Labels)
         self._opTrainFromFeatures.MaxLabel.connect(self.MaxLabel)
+        self._opTrainFromFeatures.Images.connect(self.Images)
 
         self.Classifier.connect(self._opTrainFromFeatures.Classifier)
 
@@ -175,11 +181,14 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
     ClassifierFactory = InputSlot()
     LabelAndFeatureMatrix = InputSlot(level=1)
     SupervoxelValues = InputSlot(level=1)
+    Labels = InputSlot(level=1)
+    Images = InputSlot(level=1)
 
     MaxLabel = InputSlot()
     Classifier = OutputSlot()
 
     def __init__(self, *args, **kwargs):
+        print("init {}".format(self.__class__))
         super(OpTrainClassifierFromFeatureVectorsAndSupervoxelMask, self).__init__(*args, **kwargs)
         self.trainingCompleteSignal = OrderedSignal()
 
@@ -214,10 +223,12 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
             "".format(type(classifier_factory))
 
         print("computing per-supervoxel features")
-
-        supervoxelFeatures = get_supervoxel_features(featMatrix, superVoxelValuesMatrix)
-        supervoxelLabels = get_supervoxel_labels(labelsMatrix, superVoxelValuesMatrix)
-
+        print("labels shape {}".format(self.Labels[0].value.shape))
+        print("Image shape {}".format(self.Images[0].value.shape))
+        # featMatrix = featMatrix.reshape(list(self.Images[0].value.shape[:3])+[featMatrix.shape[1]])
+        supervoxelFeatures = get_supervoxel_features(featMatrix, self.Images[0].value[:,:,:,0], superVoxelValuesMatrix)
+        supervoxelLabels = get_supervoxel_labels(self.Labels[0].value, superVoxelValuesMatrix)
+        print("pixel labels {}".format(numpy.unique(self.Labels[0].value)))
         print("Training new classifier: {}".format(classifier_factory.description))
         classifier = classifier_factory.create_and_train(supervoxelFeatures, supervoxelLabels, channel_names)
         result[0] = classifier
@@ -237,7 +248,7 @@ class OpSupervoxelClassifierPredict(Operator):
     Image = InputSlot()
     LabelsCount = InputSlot()
     Classifier = InputSlot()
-    SupervoxelValues = InputSlot(level=1)
+    SupervoxelValues = InputSlot()
 
     # An entire prediction request is skipped if the mask is all zeros for the requested roi.
     # Otherwise, the request is serviced as usual and the mask is ignored.
@@ -284,6 +295,7 @@ class OpSupervoxelClassifierPredict(Operator):
         self._prediction_op.Image.connect(self.Image)
         self._prediction_op.LabelsCount.connect(self.LabelsCount)
         self._prediction_op.Classifier.connect(self.Classifier)
+        self._prediction_op.SupervoxelValues.connect(self.SupervoxelValues)
         self.PMaps.connect(self._prediction_op.PMaps)
 
     def execute(self, slot, subindex, roi, result):
@@ -298,7 +310,7 @@ class OpSupervoxelwiseClassifierPredict(Operator):
     Image = InputSlot()
     LabelsCount = InputSlot()
     Classifier = InputSlot()
-    SupervoxelValues = InputSlot(level=1)
+    SupervoxelValues = InputSlot()
 
 
     # An entire prediction request is skipped if the mask is all zeros for the requested roi.
@@ -326,12 +338,14 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,)  # FIXME: This assumes that channel is the last axis
         self.PMaps.meta.drange = (0.0, 1.0)
 
-        ideal_blockshape = self.Image.meta.ideal_blockshape
-        if ideal_blockshape is None:
-            ideal_blockshape = (0,) * len(self.Image.meta.shape)
-        ideal_blockshape = list(ideal_blockshape)
-        ideal_blockshape[-1] = self.PMaps.meta.shape[-1]
-        self.PMaps.meta.ideal_blockshape = tuple(ideal_blockshape)
+        self.Image.meta.ideal_blockshape = self.Image.meta.shape
+        self.PMaps.meta.ideal_blockshape = self.Image.meta.shape
+        # ideal_blockshape = self.Image.meta.ideal_blockshape
+        # if ideal_blockshape is None:
+        #     ideal_blockshape = (0,) * len(self.Image.meta.shape)
+        # ideal_blockshape = list(ideal_blockshape)
+        # ideal_blockshape[-1] = self.PMaps.meta.shape[-1]
+        # self.PMaps.meta.ideal_blockshape = tuple(ideal_blockshape)
 
         output_channels = nlabels
         input_channels = self.Image.meta.shape[-1]
@@ -346,6 +360,7 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         self.PMaps.meta.ram_usage_per_requested_pixel = classifier_ram_per_pixel + feature_ram_per_pixel
 
     def execute(self, slot, subindex, roi, result):
+        print("predicting")
         classifier = self.Classifier.value
 
         # Training operator may return 'None' if there was no data to train with
@@ -380,10 +395,19 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         shape = input_data.shape
         prod = numpy.prod(shape[:-1])
         features = input_data.reshape((prod, shape[-1]))
-        features = get_supervoxel_features(features, self.SupervoxelValues[0].value)
+        features = get_supervoxel_features(features, self.Image.value[:,:,:,0], self.SupervoxelValues.value)
+
+        # features = get_supervoxel_features(features, self.SupervoxelValues.value)
 
         with Timer() as prediction_timer:
             probabilities = classifier.predict_probabilities(features)
+        print(probabilities[0])
+        print(self.PMaps.meta.shape[-1])
+        print(classifier.known_classes)
+        print("probs shape: {}".format(probabilities.shape))
+        import ipdb; ipdb.set_trace()
+        probabilities = slic_to_mask(self.SupervoxelValues.value, probabilities).reshape(-1, 1)
+        print("probs shape unslicd: {}".format(probabilities.shape))
 
         logger.debug("Features took {} seconds, Prediction took {} seconds for roi: {} : {}"
                      .format(features_timer.seconds(), prediction_timer.seconds(), roi.start, roi.stop))

@@ -11,7 +11,8 @@ import vigra
 from lazyflow.roi import determineBlockShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpValueCache, OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
-    OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray, OpFeatureMatrixCache
+    OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray, OpFeatureMatrixCache, \
+    OpBlockedArrayCache
 import ilastik_feature_selection
 import numpy as np
 
@@ -493,7 +494,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
     """
     FreezePredictions = InputSlot()
     CachedFeatureImages = InputSlot()
-    SupervoxelValues = InputSlot(level=1)
+    SupervoxelValues = InputSlot()
 
 
     PredictionProbabilities = OutputSlot()
@@ -526,7 +527,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.PredictionProbabilitiesUint8.connect(self.opConvertToUint8.Output)
 
         # Prediction cache for the GUI
-        self.prediction_cache_gui = OpSlicedBlockedArrayCache(parent=self)
+        self.prediction_cache_gui = OpBlockedArrayCache(parent=self)
         self.prediction_cache_gui.name = "prediction_cache_gui"
         self.prediction_cache_gui.inputs["fixAtCurrent"].connect(self.FreezePredictions)
         self.prediction_cache_gui.inputs["Input"].connect(self.predict.PMaps)
@@ -553,42 +554,43 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.opUncertaintyEstimator.Input.connect(self.prediction_cache_gui.Output)
 
         # Cache the uncertainty so we get zeros for uncomputed points
-        self.opUncertaintyCache = OpSlicedBlockedArrayCache(parent=self)
+        self.opUncertaintyCache = OpBlockedArrayCache(parent=self)
         self.opUncertaintyCache.name = "opUncertaintyCache"
         self.opUncertaintyCache.Input.connect(self.opUncertaintyEstimator.Output)
         self.opUncertaintyCache.fixAtCurrent.connect(self.FreezePredictions)
         self.UncertaintyEstimate.connect(self.opUncertaintyCache.Output)
 
     def setupOutputs(self):
+        self.prediction_cache_gui.BlockShape.setValue(self.FeatureImages.meta.shape)
+        self.opUncertaintyCache.BlockShape.setValue(self.FeatureImages.meta.shape)
         # Set the blockshapes for each input image separately, depending on which axistags it has.
-        axisOrder = [tag.key for tag in self.FeatureImages.meta.axistags]
+        # axisOrder = [tag.key for tag in self.FeatureImages.meta.axistags]
 
-        blockDimsX = {'t': (1, 1),
-                      'z': (256, 256),
-                      'y': (256, 256),
-                      'x': (1, 1),
-                      'c': (100, 100)}
+        # blockDimsX = {'t': (1, 1),
+        #               'z': (256, 256),
+        #               'y': (256, 256),
+        #               'x': (1, 1),
+        #               'c': (100, 100)}
 
-        blockDimsY = {'t': (1, 1),
-                      'z': (256, 256),
-                      'y': (1, 1),
-                      'x': (256, 256),
-                      'c': (100, 100)}
+        # blockDimsY = {'t': (1, 1),
+        #               'z': (256, 256),
+        #               'y': (1, 1),
+        #               'x': (256, 256),
+        #               'c': (100, 100)}
 
-        blockDimsZ = {'t': (1, 1),
-                      'z': (1, 1),
-                      'y': (256, 256),
-                      'x': (256, 256),
-                      'c': (100, 100)}
+        # blockDimsZ = {'t': (1, 1),
+        #               'z': (1, 1),
+        #               'y': (256, 256),
+        #               'x': (256, 256),
+        #               'c': (100, 100)}
 
-        blockShapeX = tuple(blockDimsX[k][1] for k in axisOrder)
-        blockShapeY = tuple(blockDimsY[k][1] for k in axisOrder)
-        blockShapeZ = tuple(blockDimsZ[k][1] for k in axisOrder)
+        # blockShapeX = tuple(blockDimsX[k][1] for k in axisOrder)
+        # blockShapeY = tuple(blockDimsY[k][1] for k in axisOrder)
+        # blockShapeZ = tuple(blockDimsZ[k][1] for k in axisOrder)
 
-        self.prediction_cache_gui.BlockShape.setValue((blockShapeX, blockShapeY, blockShapeZ))
-        self.opUncertaintyCache.BlockShape.setValue((blockShapeX, blockShapeY, blockShapeZ))
-
-        print(self.opConvertToUint8.Output.meta.drange)
+        # self.prediction_cache_gui.BlockShape.setValue((blockShapeX, blockShapeY, blockShapeZ))
+        # self.opUncertaintyCache.BlockShape.setValue((blockShapeX, blockShapeY, blockShapeZ))
+        # print(self.opConvertToUint8.Output.meta.drange)
         # import IPython; IPython.embed()
         # assert self.opConvertToUint8.Output.meta.drange == (0, 255)
 
