@@ -55,18 +55,34 @@ def get_supervoxel_features(featuresMatrix, image, supervoxel_mask):
         # print(supervoxel_features.shape)
         # print(supervoxel_mask[:, :, :, 0].shape)
         supervoxel_features[v, :N_features] = np.mean(voxelfeatures[:, supervoxel_mask[:, :, :, 0] == v], axis=1)
-        return supervoxel_features
+    return supervoxel_features
 
 
 def get_supervoxel_labels(labels, supervoxel_mask):
     supervoxel_mask = supervoxel_mask[:, :, :, 0]
     print("labels {}".format(labels.shape))
-    return [np.bincount(labels[supervoxel_mask == v].ravel()).argmax() for v in range(np.max(supervoxel_mask) + 1)]
+
+    N_supervoxels = np.max(supervoxel_mask) + 1
+    supervoxel_labels = np.ndarray((N_supervoxels,))
+
+    for supervoxel in range(N_supervoxels):
+        counts = np.bincount(labels[supervoxel_mask == supervoxel].ravel())
+
+        # Little trick to avoid labelling a supervoxel as unlabelled if only a small part of it has been labelled
+        if len(counts) == 1:  # or max(counts[1:]) == 0:
+            # If there's only unlabelled pixels, label 0 (=unlabeled)
+            label = 0
+        else:
+            # Else, return the label which has the most pixels (excluding label 0)
+            label = counts[1:].argmax() + 1
+
+        supervoxel_labels[supervoxel] = label
+    return supervoxel_labels
 
 
 def slic_to_mask(slic_segmentation, supervoxel_values):
-    out = np.zeros(slic_segmentation.shape, dtype=supervoxel_values.dtype)
+    shape = slic_segmentation.shape + (supervoxel_values.shape[-1],)
+    out = np.zeros(shape, dtype=supervoxel_values.dtype)
     for (i, v) in enumerate(supervoxel_values):
-        if v:
-            out[slic_segmentation == i] = v
+        out[slic_segmentation == i, :] = v[:]
     return out

@@ -210,7 +210,7 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
         superVoxelValuesMatrix = self.SupervoxelValues[0].value
 
         maxLabel = self.MaxLabel.value
-
+        print("SV NLABELS {}".format(maxLabel))
         if featMatrix.shape[0] < maxLabel:
             # If there isn't enough data for the random forest to train with, return None
             result[:] = None
@@ -225,11 +225,20 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
         print("computing per-supervoxel features")
         print("labels shape {}".format(self.Labels[0].value.shape))
         print("Image shape {}".format(self.Images[0].value.shape))
+        print("ROI {}".format(roi.pprint()))
         # featMatrix = featMatrix.reshape(list(self.Images[0].value.shape[:3])+[featMatrix.shape[1]])
         supervoxelFeatures = get_supervoxel_features(featMatrix, self.Images[0].value[:,:,:,0], superVoxelValuesMatrix)
         supervoxelLabels = get_supervoxel_labels(self.Labels[0].value, superVoxelValuesMatrix)
+        # indices = numpy.arange(supervoxelFeatures.shape[0])
+
+        mask = numpy.where(supervoxelLabels != 0)
+        supervoxelFeatures = supervoxelFeatures[mask]
+        supervoxelLabels = supervoxelLabels[mask]
+
+        # import ipdb; ipdb.set_trace()
         print("pixel labels {}".format(numpy.unique(self.Labels[0].value)))
         print("Training new classifier: {}".format(classifier_factory.description))
+        print("features before training {}".format(supervoxelFeatures))
         classifier = classifier_factory.create_and_train(supervoxelFeatures, supervoxelLabels, channel_names)
         result[0] = classifier
         if classifier is not None:
@@ -396,7 +405,7 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         prod = numpy.prod(shape[:-1])
         features = input_data.reshape((prod, shape[-1]))
         features = get_supervoxel_features(features, self.Image.value[:,:,:,0], self.SupervoxelValues.value)
-
+        print("features before prediction {}".format(features))
         # features = get_supervoxel_features(features, self.SupervoxelValues.value)
 
         with Timer() as prediction_timer:
@@ -405,8 +414,8 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         print(self.PMaps.meta.shape[-1])
         print(classifier.known_classes)
         print("probs shape: {}".format(probabilities.shape))
-        import ipdb; ipdb.set_trace()
-        probabilities = slic_to_mask(self.SupervoxelValues.value, probabilities).reshape(-1, 1)
+        # import ipdb; ipdb.set_trace()
+        probabilities = slic_to_mask(self.SupervoxelValues.value, probabilities).reshape(-1, probabilities.shape[-1])
         print("probs shape unslicd: {}".format(probabilities.shape))
 
         logger.debug("Features took {} seconds, Prediction took {} seconds for roi: {} : {}"
