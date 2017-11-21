@@ -30,15 +30,15 @@ except ImportError as e:
 class StructuredTrackingSerializer(AppletSerializer):
 
     def __init__(self, topLevelOperator, projectFileGroupName):
-
+        self.VERSION = 1
         if WITH_HYTRA:
 
             try:
                 slots = [ SerialDictSlot(topLevelOperator.Parameters, selfdepends=True),
                           SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
-                          SerialPickledValueSlot(topLevelOperator.ExportSettings),
-                          SerialPickledValueSlot(topLevelOperator.HypothesesGraph),
-                          SerialPickledValueSlot(topLevelOperator.ResolvedMergers),
+                          SerialPickleableSlot(topLevelOperator.ExportSettings, self.VERSION),
+                          SerialPickleableSlot(topLevelOperator.HypothesesGraph, self.VERSION),
+                          SerialPickleableSlot(topLevelOperator.ResolvedMergers, self.VERSION),
                           SerialSlot(topLevelOperator.DivisionWeight),
                           SerialSlot(topLevelOperator.DetectionWeight),
                           SerialSlot(topLevelOperator.TransitionWeight),
@@ -49,8 +49,8 @@ class StructuredTrackingSerializer(AppletSerializer):
             except:
                 slots = [ SerialDictSlot(topLevelOperator.Parameters, selfdepends=True),
                           SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
-                          SerialPickledValueSlot(topLevelOperator.ExportSettings),
-                          SerialPickledValueSlot(topLevelOperator.ResolvedMergers),
+                          SerialPickleableSlot(topLevelOperator.ExportSettings, self.VERSION),
+                          SerialPickleableSlot(topLevelOperator.ResolvedMergers, self.VERSION),
                           SerialSlot(topLevelOperator.DivisionWeight),
                           SerialSlot(topLevelOperator.DetectionWeight),
                           SerialSlot(topLevelOperator.TransitionWeight),

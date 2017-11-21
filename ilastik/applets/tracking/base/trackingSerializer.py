@@ -18,8 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    SerialDictSlot, SerialSlot, SerialHdf5BlockSlot, SerialPickleableSlot, SerialPickledValueSlot
+from ilastik.applets.base.appletSerializer import (
+    AppletSerializer, SerialDictSlot, SerialPickleableSlot)
 
 try:
     import hytra
@@ -28,14 +28,14 @@ except ImportError as e:
     WITH_HYTRA = False
 
 class TrackingSerializer(AppletSerializer):
-    VERSION = 1 # Make sure to bump the version in case you make any changes in the serialization
-    
+    VERSION = 1  # Make sure to bump the version in case you make any changes in the serialization
+
     def __init__(self, mainOperator, projectFileGroupName):
         # Serialization for the new pipeline (HyTra)
         if WITH_HYTRA:
             slots = [SerialDictSlot(mainOperator.Parameters, selfdepends=True),
                      SerialDictSlot(mainOperator.FilteredLabels, transform=str, selfdepends=True),
-                     SerialPickledValueSlot(mainOperator.ExportSettings),                     
+                     SerialPickleableSlot(mainOperator.ExportSettings, self.VERSION, None),                     
                      SerialPickleableSlot(mainOperator.HypothesesGraph, self.VERSION, None),
                      SerialPickleableSlot(mainOperator.ResolvedMergers, self.VERSION, None)
                      ]
@@ -55,7 +55,7 @@ class TrackingSerializer(AppletSerializer):
                                          name="CachedOutput"),
                      SerialDictSlot(mainOperator.EventsVector, transform=str, selfdepends=True),
                      SerialDictSlot(mainOperator.FilteredLabels, transform=str, selfdepends=True),
-                     SerialPickledValueSlot(mainOperator.ExportSettings)
+                     SerialPickleableSlot(mainOperator.ExportSettings, self.VERSION, None),
                      ]
             
     
@@ -70,4 +70,4 @@ class TrackingSerializer(AppletSerializer):
                 slots.append(SerialPickleableSlot(mainOperator.CoordinateMap, 1, pgmlink.TimestepIdCoordinateMap()))
 
         super( TrackingSerializer, self ).__init__( projectFileGroupName, slots=slots )
-        
+
