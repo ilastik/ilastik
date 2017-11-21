@@ -23,7 +23,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
-from .classifierOperators import OpTrainSuperVoxelClassifierBlocked, OpSupervoxelClassifierPredict
+from .classifierOperators import OpTrainSupervoxelClassifierBlocked, OpSupervoxelClassifierPredict
 
 
 class OpVoxelSegmentation(Operator):
@@ -118,12 +118,12 @@ class OpVoxelSegmentation(Operator):
         self.opSupervoxelFeaturesAndLabels.FeatureImages.connect(self.FeatureImages)
 
         # Hook up the Training operator
-        self.opTrain = OpTrainSuperVoxelClassifierBlocked(parent=self)
+        self.opTrain = OpTrainSupervoxelClassifierBlocked(parent=self)
         self.opTrain.ClassifierFactory.connect(self.ClassifierFactory)
         self.opTrain.Labels.connect(self.opLabelPipeline.Output)
         self.opTrain.Images.connect(self.FeatureImages)
-        self.opTrain.SuperVoxelLabels.connect(self.opSupervoxelFeaturesAndLabels.SupervoxelLabels)
-        self.opTrain.SuperVoxelFeatures.connect(self.opSupervoxelFeaturesAndLabels.SupervoxelFeatures)
+        self.opTrain.SupervoxelLabels.connect(self.opSupervoxelFeaturesAndLabels.SupervoxelLabels)
+        self.opTrain.SupervoxelFeatures.connect(self.opSupervoxelFeaturesAndLabels.SupervoxelFeatures)
         self.opTrain.SupervoxelSegmentation.connect(self.SupervoxelSegmentation)
         self.opTrain.nonzeroLabelBlocks.connect(self.opLabelPipeline.nonzeroBlocks)
 
@@ -145,6 +145,7 @@ class OpVoxelSegmentation(Operator):
         self.opPredictionPipeline.PredictionsFromDisk.connect(self.PredictionsFromDisk)
         self.opPredictionPipeline.PredictionMask.connect(self.PredictionMasks)
         self.opPredictionPipeline.SupervoxelSegmentation.connect(self.SupervoxelSegmentation)
+        self.opPredictionPipeline.SupervoxelFeatures.connect(self.opSupervoxelFeaturesAndLabels.SupervoxelFeatures)
 
         # Feature Selection Stuff
         self.opFeatureMatrixCaches = OpMultiLaneWrapper(OpFeatureMatrixCache, parent=self)
@@ -418,7 +419,7 @@ class OpSupervoxelFeaturesAndLabels(Operator):
     SupervoxelLabels = OutputSlot()
 
     def execute(self, slot, subindex, roi, result):
-        if slot == self.SupervoxelFeatures or slot == self.SupervoxelSegmentation:
+        if slot == self.SupervoxelFeatures:
             supervoxel_mask = self.SupervoxelSegmentation.value
             features_matrix = self.FeatureImages.value
 
@@ -434,7 +435,7 @@ class OpSupervoxelFeaturesAndLabels(Operator):
                 supervoxel_features[v, :N_features] = np.mean(features_matrix[supervoxel_mask[:, :, :, 0] == v, :], axis=0)
 
             return supervoxel_features
-        elif slot == self.SupervoxelLabels or slot == self.SupervoxelSegmentation:
+        elif slot == self.SupervoxelLabels:
             supervoxel_mask = self.SupervoxelSegmentation.value[:, :, :, 0]
             labels = self.Labels.value
 
@@ -459,18 +460,19 @@ class OpSupervoxelFeaturesAndLabels(Operator):
 
     def setupOutputs(self):
         pass
+        # self.SupervoxelFeatures._setReady()
         # self.SupervoxelFeatures.setDirty()
         # self.SupervoxelLabels.setDirty()
         # self.Output.meta.assignFrom(self.Input.meta)
 
     def propagateDirty(self, slot, subindex, roi):
-        pass
+        # pass
         # If supervoxel segmentation changed, we have to recompute everything. Other wise, only compute what's needed.
-        # if slot == self.FeatureImages or slot == self.SupervoxelSegmentation:
-        #     # TODO: recompute only the features that changed, if feasible.
-        #     self.SupervoxelFeatures.setDirty()
-        # if slot == self.Labels or slot == self.SupervoxelSegmentation:
-        #     self.SupervoxelLabels.setDirty()
+        if slot == self.FeatureImages or slot == self.SupervoxelSegmentation:
+            # TODO: recompute only the features that changed, if feasible.
+            self.SupervoxelFeatures.setDirty()
+        if slot == self.Labels or slot == self.SupervoxelSegmentation:
+            self.SupervoxelLabels.setDirty()
 
 
 class OpPredictionPipelineNoCache(Operator):
@@ -499,7 +501,7 @@ class OpPredictionPipelineNoCache(Operator):
         self.cacheless_predict.name = "OpSupervoxelClassifierPredict (Cacheless Path)"
         self.cacheless_predict.Classifier.connect(self.Classifier)
         self.cacheless_predict.Image.connect(self.FeatureImages)  # <--- Not from cache
-        # self.cacheless_predict.SupervoxelFeatures.connect(self.SupervoxelFeatures)  # <--- Not from cache
+        self.cacheless_predict.SupervoxelFeatures.connect(self.SupervoxelFeatures)  # <--- Not from cache
 
         self.cacheless_predict.LabelsCount.connect(self.NumClasses)
         self.cacheless_predict.PredictionMask.connect(self.PredictionMask)
@@ -594,6 +596,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.predict.SupervoxelSegmentation.connect(self.SupervoxelSegmentation)
         self.predict.PredictionMask.connect(self.PredictionMask)
         self.predict.LabelsCount.connect(self.NumClasses)
+        self.predict.SupervoxelFeatures.connect(self.SupervoxelFeatures)
         self.PredictionProbabilities.connect(self.predict.PMaps)
 
         # Alternate headless output: uint8 instead of float.

@@ -48,7 +48,7 @@ from .utils import get_supervoxel_features, get_supervoxel_labels, slic_to_mask
 logger = logging.getLogger(__name__)
 
 
-class OpTrainSuperVoxelClassifierBlocked(Operator):
+class OpTrainSupervoxelClassifierBlocked(Operator):
     """
     Owns two child training operators, for 'vectorwise' and 'pixelwise' classifier types.
     Chooses which one to use based on the type of ClassifierFactory provided as input.
@@ -56,8 +56,8 @@ class OpTrainSuperVoxelClassifierBlocked(Operator):
     Images = InputSlot(level=1)
     SupervoxelSegmentation = InputSlot(level=1)
     Labels = InputSlot(level=1)
-    SuperVoxelFeatures = InputSlot(level=1)
-    SuperVoxelLabels = InputSlot(level=1)
+    SupervoxelFeatures = InputSlot(level=1)
+    SupervoxelLabels = InputSlot(level=1)
     ClassifierFactory = InputSlot()
     nonzeroLabelBlocks = InputSlot(level=1)  # Used only in the pixelwise case.
     MaxLabel = InputSlot()
@@ -66,7 +66,7 @@ class OpTrainSuperVoxelClassifierBlocked(Operator):
 
     def __init__(self, *args, **kwargs):
         print("init {}".format(self.__class__))
-        super(OpTrainSuperVoxelClassifierBlocked, self).__init__(*args, **kwargs)
+        super(OpTrainSupervoxelClassifierBlocked, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
         self._mode = None
 
@@ -257,7 +257,6 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
 
 class OpSupervoxelClassifierPredict(Operator):
     Image = InputSlot()
-    # SupervoxelFeatures = InputSlot()
     LabelsCount = InputSlot()
     Classifier = InputSlot()
     SupervoxelSegmentation = InputSlot()
@@ -265,6 +264,7 @@ class OpSupervoxelClassifierPredict(Operator):
     # An entire prediction request is skipped if the mask is all zeros for the requested roi.
     # Otherwise, the request is serviced as usual and the mask is ignored.
     PredictionMask = InputSlot(optional=True)
+    SupervoxelFeatures = InputSlot()
 
     PMaps = OutputSlot()
 
