@@ -161,6 +161,7 @@ class OpVoxelSegmentation(Operator):
             """
             numClasses = len(self.LabelNames.value)
             self.opTrain.MaxLabel.setValue(numClasses)
+            self.opSupervoxelFeaturesAndLabels.MaxLabel.setValue(numClasses)
             self.opPredictionPipeline.NumClasses.setValue(numClasses)
             self.NumClasses.setValue(numClasses)
         self.LabelNames.notifyDirty(_updateNumClasses)
@@ -415,6 +416,7 @@ class OpSupervoxelFeaturesAndLabels(Operator):
     SupervoxelSegmentation = InputSlot()
     FeatureImages = InputSlot()
     Labels = InputSlot()
+    MaxLabel = InputSlot()
     SupervoxelFeatures = OutputSlot()
     SupervoxelLabels = OutputSlot()
 
@@ -459,8 +461,10 @@ class OpSupervoxelFeaturesAndLabels(Operator):
             return supervoxel_labels
 
     def setupOutputs(self):
-        pass
-        # self.SupervoxelFeatures._setReady()
+        self.SupervoxelFeatures.meta.shape = (np.max(self.SupervoxelSegmentation.value)+1, self.FeatureImages.value.shape[-1])
+        self.SupervoxelLabels.meta.shape = (np.max(self.SupervoxelSegmentation.value)+1,)
+        print("SVF shape: {}".format(self.SupervoxelFeatures.meta.shape))
+        print("SVL shape: {}".format(self.SupervoxelLabels.meta.shape))
         # self.SupervoxelFeatures.setDirty()
         # self.SupervoxelLabels.setDirty()
         # self.Output.meta.assignFrom(self.Input.meta)
