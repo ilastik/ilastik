@@ -31,7 +31,7 @@ class OpVoxelSegmentation(Operator):
     Top-level operator for pixel classification
     """
     SupervoxelBoundaries = InputSlot(level=1)
-    SupervoxelValues = InputSlot(level=1)
+    SupervoxelSegmentation = InputSlot(level=1)
 
     name = "OpVoxelSegmentation"
     # name="OpPixelClassification"
@@ -112,12 +112,19 @@ class OpVoxelSegmentation(Operator):
         self.LabelImages.connect(self.opLabelPipeline.Output)
         self.NonzeroLabelBlocks.connect(self.opLabelPipeline.nonzeroBlocks)
 
+        self.opSupervoxelFeaturesAndLabels = OpMultiLaneWrapper(OpSupervoxelFeaturesAndLabels, parent=self)
+        self.opSupervoxelFeaturesAndLabels.SupervoxelSegmentation.connect(self.SupervoxelSegmentation)
+        self.opSupervoxelFeaturesAndLabels.Labels.connect(self.opLabelPipeline.Output)
+        self.opSupervoxelFeaturesAndLabels.FeatureImages.connect(self.FeatureImages)
+
         # Hook up the Training operator
         self.opTrain = OpTrainSuperVoxelClassifierBlocked(parent=self)
         self.opTrain.ClassifierFactory.connect(self.ClassifierFactory)
         self.opTrain.Labels.connect(self.opLabelPipeline.Output)
         self.opTrain.Images.connect(self.FeatureImages)
-        self.opTrain.SupervoxelValues.connect(self.SupervoxelValues)
+        self.opTrain.SuperVoxelLabels.connect(self.opSupervoxelFeaturesAndLabels.SupervoxelLabels)
+        self.opTrain.SuperVoxelFeatures.connect(self.opSupervoxelFeaturesAndLabels.SupervoxelFeatures)
+        self.opTrain.SupervoxelSegmentation.connect(self.SupervoxelSegmentation)
         self.opTrain.nonzeroLabelBlocks.connect(self.opLabelPipeline.nonzeroBlocks)
 
         # Hook up the Classifier Cache
@@ -137,7 +144,7 @@ class OpVoxelSegmentation(Operator):
         self.opPredictionPipeline.FreezePredictions.connect(self.FreezePredictions)
         self.opPredictionPipeline.PredictionsFromDisk.connect(self.PredictionsFromDisk)
         self.opPredictionPipeline.PredictionMask.connect(self.PredictionMasks)
-        self.opPredictionPipeline.SupervoxelValues.connect(self.SupervoxelValues)
+        self.opPredictionPipeline.SupervoxelSegmentation.connect(self.SupervoxelSegmentation)
 
         # Feature Selection Stuff
         self.opFeatureMatrixCaches = OpMultiLaneWrapper(OpFeatureMatrixCache, parent=self)
@@ -399,11 +406,79 @@ class OpLabelPipeline(Operator):
         pass
 
 
+class OpSupervoxelFeaturesAndLabels(Operator):
+    """
+    Given one or more feature images computed from an image I, and the supervoxel segmentation for I,
+    outputs the average value of the feature for each supervoxel.
+    """
+    SupervoxelSegmentation = InputSlot()
+    FeatureImages = InputSlot()
+    Labels = InputSlot()
+    SupervoxelFeatures = OutputSlot()
+    SupervoxelLabels = OutputSlot()
+
+    def execute(self, slot, subindex, roi, result):
+        if slot == self.SupervoxelFeatures or slot == self.SupervoxelSegmentation:
+            supervoxel_mask = self.SupervoxelSegmentation.value
+            features_matrix = self.FeatureImages.value
+
+            N_voxels = np.max(supervoxel_mask) + 1
+            N_features = features_matrix.shape[-1]
+
+            supervoxel_features = np.ndarray((N_voxels, N_features))
+            print("svf shape {}".format(supervoxel_features.shape))
+            print("featm shape {}".format(features_matrix.shape))
+            # Parallelize by mapping over supervoxels
+
+            for v in range(N_voxels):
+                supervoxel_features[v, :N_features] = np.mean(features_matrix[supervoxel_mask[:, :, :, 0] == v, :], axis=0)
+
+            return supervoxel_features
+        elif slot == self.SupervoxelLabels or slot == self.SupervoxelSegmentation:
+            supervoxel_mask = self.SupervoxelSegmentation.value[:, :, :, 0]
+            labels = self.Labels.value
+
+            print("labels {}".format(labels.shape))
+
+            N_supervoxels = np.max(supervoxel_mask) + 1
+            supervoxel_labels = np.ndarray((N_supervoxels,))
+
+            for supervoxel in range(N_supervoxels):
+                counts = np.bincount(labels[supervoxel_mask == supervoxel].ravel())
+
+                # Little trick to avoid labelling a supervoxel as unlabelled if only a small part of it has been labelled
+                if len(counts) == 1:  # or max(counts[1:]) == 0:
+                    # If there's only unlabelled pixels, label 0 (=unlabeled)
+                    label = 0
+                else:
+                    # Else, return the label which has the most pixels (excluding label 0)
+                    label = counts[1:].argmax() + 1
+
+                supervoxel_labels[supervoxel] = label
+            return supervoxel_labels
+
+    def setupOutputs(self):
+        pass
+        # self.SupervoxelFeatures.setDirty()
+        # self.SupervoxelLabels.setDirty()
+        # self.Output.meta.assignFrom(self.Input.meta)
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
+        # If supervoxel segmentation changed, we have to recompute everything. Other wise, only compute what's needed.
+        # if slot == self.FeatureImages or slot == self.SupervoxelSegmentation:
+        #     # TODO: recompute only the features that changed, if feasible.
+        #     self.SupervoxelFeatures.setDirty()
+        # if slot == self.Labels or slot == self.SupervoxelSegmentation:
+        #     self.SupervoxelLabels.setDirty()
+
+
 class OpPredictionPipelineNoCache(Operator):
     """
     This contains only the cacheless parts of the prediction pipeline, for easy use in headless workflows.
     """
     FeatureImages = InputSlot()
+    SupervoxelFeatures = InputSlot()
     PredictionMask = InputSlot(optional=True)
     Classifier = InputSlot()
     PredictionsFromDisk = InputSlot(optional=True)
@@ -424,6 +499,8 @@ class OpPredictionPipelineNoCache(Operator):
         self.cacheless_predict.name = "OpSupervoxelClassifierPredict (Cacheless Path)"
         self.cacheless_predict.Classifier.connect(self.Classifier)
         self.cacheless_predict.Image.connect(self.FeatureImages)  # <--- Not from cache
+        # self.cacheless_predict.SupervoxelFeatures.connect(self.SupervoxelFeatures)  # <--- Not from cache
+
         self.cacheless_predict.LabelsCount.connect(self.NumClasses)
         self.cacheless_predict.PredictionMask.connect(self.PredictionMask)
         self.HeadlessPredictionProbabilities.connect(self.cacheless_predict.PMaps)
@@ -494,7 +571,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
     """
     FreezePredictions = InputSlot()
     CachedFeatureImages = InputSlot()
-    SupervoxelValues = InputSlot()
+    SupervoxelSegmentation = InputSlot()
 
 
     PredictionProbabilities = OutputSlot()
@@ -514,7 +591,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.predict.name = "OpSupervoxelClassifierPredict"
         self.predict.Classifier.connect(self.Classifier)
         self.predict.Image.connect(self.CachedFeatureImages)
-        self.predict.SupervoxelValues.connect(self.SupervoxelValues)
+        self.predict.SupervoxelSegmentation.connect(self.SupervoxelSegmentation)
         self.predict.PredictionMask.connect(self.PredictionMask)
         self.predict.LabelsCount.connect(self.NumClasses)
         self.PredictionProbabilities.connect(self.predict.PMaps)
