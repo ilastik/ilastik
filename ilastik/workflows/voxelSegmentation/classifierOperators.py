@@ -40,7 +40,7 @@ from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVector
 
 from lazyflow.operators.opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
 
-from .opFeatureMatrixCache import OpFeatureMatrixCache
+from lazyflow.operators.opFeatureMatrixCache import OpFeatureMatrixCache
 from .utils import get_supervoxel_features, get_supervoxel_labels, slic_to_mask
 
 
@@ -227,7 +227,7 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
         print("Image shape {}".format(self.Images[0].value.shape))
         print("ROI {}".format(roi.pprint()))
         # featMatrix = featMatrix.reshape(list(self.Images[0].value.shape[:3])+[featMatrix.shape[1]])
-        supervoxelFeatures = get_supervoxel_features(featMatrix, self.Images[0].value[:,:,:,0], superVoxelValuesMatrix)
+        supervoxelFeatures = get_supervoxel_features(self.Images[0].value, superVoxelValuesMatrix)
         supervoxelLabels = get_supervoxel_labels(self.Labels[0].value, superVoxelValuesMatrix)
         # indices = numpy.arange(supervoxelFeatures.shape[0])
 
@@ -404,7 +404,7 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         shape = input_data.shape
         prod = numpy.prod(shape[:-1])
         features = input_data.reshape((prod, shape[-1]))
-        features = get_supervoxel_features(features, self.Image.value[:,:,:,0], self.SupervoxelValues.value)
+        features = get_supervoxel_features(self.Image.value, self.SupervoxelValues.value)
         print("features before prediction {}".format(features))
         # features = get_supervoxel_features(features, self.SupervoxelValues.value)
 

@@ -11,50 +11,19 @@ def log(s):
     logger.info(s)
 
 
-def get_supervoxel_features(featuresMatrix, image, supervoxel_mask):
+def get_supervoxel_features(featuresMatrix, supervoxel_mask):
 
     N_voxels = np.max(supervoxel_mask) + 1
-    N_features = 2
+    N_features = featuresMatrix.shape[-1]
 
-    supervoxel_features = np.ndarray((N_voxels, N_features))  # +8 is for the 3 features that are  3-dimensional
+    supervoxel_features = np.ndarray((N_voxels, N_features))
     print("svf shape {}".format(supervoxel_features.shape))
     print("featm shape {}".format(featuresMatrix.shape))
     # Parallelize by mapping over supervoxels
 
-    filters = []
-
-    for ffilter in features.FASTFILTERS:
-        for params in ffilter["params"]:
-            filters.append(
-                {
-                    "function": ffilter["function"],
-                    "name": ffilter["name"],
-                    "params": params,
-                }
-            )
-
-    def build_feature(filter):
-        #         log("feature: {}".format(filter["name"]))
-        feature = filter["function"](image, window_size=3.5, **filter['params'])
-        return feature
-
-    voxelfeatures = []
-
-    for f in filters:
-        feature = build_feature(f)
-        if len(feature.shape) == 4:
-            for dimension in range(feature.shape[3]):
-                voxelfeatures.append(feature[:, :, :, dimension])
-        else:
-            voxelfeatures.append(feature)
-
-    voxelfeatures = np.stack(voxelfeatures)
-
     for v in range(N_voxels):
-        # print(voxelfeatures.shape)
-        # print(supervoxel_features.shape)
-        # print(supervoxel_mask[:, :, :, 0].shape)
-        supervoxel_features[v, :N_features] = np.mean(voxelfeatures[:, supervoxel_mask[:, :, :, 0] == v], axis=1)
+        supervoxel_features[v, :N_features] = np.mean(featuresMatrix[supervoxel_mask[:, :, :, 0] == v, :], axis=0)
+
     return supervoxel_features
 
 
