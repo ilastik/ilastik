@@ -292,7 +292,7 @@ class LabelImportOptionsDlg(QDialog):
         inputAxes = dataInputSlot.meta.getAxisKeys()
         if srcInputFiles is not None and 'z' in inputAxes:
             z_idx = inputAxes.index('z')
-            filename_digits = list(filter(str.isdigit, os.path.basename(srcInputFiles[0])))
+            filename_digits = ''.join(x for x in filter(str.isdigit, os.path.basename(srcInputFiles[0])))
             idx = int(filename_digits) if filename_digits else 0
             img_offset[z_idx] = max(0, min(idx, axisRanges[z_idx]))
 
