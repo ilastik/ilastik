@@ -35,7 +35,7 @@ dependencies:
     - git clone http://github.com/ilastik/ilastik-meta ${TEST_ENV_PREFIX}/ilastik-meta
     - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule init
     - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule update --recursive
-    - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule foreach "git checkout master"
+    - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule foreach "git checkout python-2-legacy"
 
     # Replace lazyflow with the code in the current build (may not be master)
     - rm -rf ${TEST_ENV_PREFIX}/ilastik-meta/ilastik
