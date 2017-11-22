@@ -5,7 +5,7 @@ cache:
 install:
   - ps: >-
       if (-Not (Test-Path "C:\ilastik.exe")){
-        wget http://files.ilastik.org/ilastik-1.2.2rc4-win64.exe -OutFile C:\ilastik.exe
+        wget http://files.ilastik.org/ilastik-1.2.2post1-win64.exe -OutFile C:\ilastik.exe
       }
   - c:\ilastik.exe /VERYSILENT /DIR=C:\ilastik
   - timeout 60
