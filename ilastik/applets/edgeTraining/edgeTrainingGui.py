@@ -152,13 +152,29 @@ class EdgeTrainingGui(LayerViewerGui):
         cleanup_fn = op.GroundtruthSegmentation.notifyReady( self.configure_gui_from_operator, defer=True )
         self.__cleanup_fns.append( cleanup_fn )
 
+
+
     def _open_feature_selection_dlg(self):
         rag = self.topLevelOperatorView.Rag.value
         feature_names = rag.supported_features()
         channel_names = self.topLevelOperatorView.VoxelData.meta.channel_names
         default_selections = self.topLevelOperatorView.FeatureNames.value
 
-        dlg = FeatureSelectionDialog(channel_names, feature_names, default_selections, parent=self)
+        def decodeToStringIfBytes(s):
+            if isinstance(s, bytes):
+                return s.decode()
+            else:
+                return s
+
+        channel_names = [decodeToStringIfBytes(s) for s in channel_names]
+        feature_names = [decodeToStringIfBytes(s) for s in feature_names]
+        # default_selections
+        #    *dict, str: list - of - str *
+        default_selections_strings = {}
+        for key, value in default_selections.items():
+            default_selections_strings[decodeToStringIfBytes(key)] = [decodeToStringIfBytes(s) for s in value]
+
+        dlg = FeatureSelectionDialog(channel_names, feature_names, default_selections_strings, parent=self)
         dlg_result = dlg.exec_()
         if dlg_result != dlg.Accepted:
             return
