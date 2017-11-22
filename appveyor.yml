@@ -14,7 +14,7 @@ install:
   - git clone https://github.com/ilastik/ilastik-meta c:\ilastik\ilastik-meta
   - cd ilastik\ilastik-meta
   - git submodule update --init --recursive
-  - git submodule foreach "git checkout master"
+  - git submodule foreach "git checkout python-2-legacy"
   - ps: rm -Force -Recurse c:\ilastik\ilastik-meta\ilastik
   - ps: cp -recurse C:\projects\ilastik c:\ilastik\ilastik-meta\ilastik
 
