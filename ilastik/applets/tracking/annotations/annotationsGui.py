@@ -1308,7 +1308,7 @@ class AnnotationsGui(LayerViewerGui):
         req = Request( _subtracking )
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
-        req.submit()
+        req.wait()
 
     @threadRouted
     def _setPosModel(self, time=None, slicingPos=None, cursorPos=None):        
