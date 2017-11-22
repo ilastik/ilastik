@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, \
-    SerialHdf5BlockSlot, SerialPickleableSlot, SerialPickledValueSlot
+    SerialHdf5BlockSlot, SerialPickleableSlot
 
 try:
     import hytra
