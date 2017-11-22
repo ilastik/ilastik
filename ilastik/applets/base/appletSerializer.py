@@ -643,24 +643,6 @@ class SerialClassifierSlot(SerialSlot):
         # retrained.)
         self.cache.forceValue( classifier )
 
-class SerialPickledValueSlot(SerialSlot):
-    """
-    For storing value slots whose data is a python object (not an array or a simple number).
-    """
-    def __init__(self, slot):
-        super(SerialPickledValueSlot, self).__init__(slot)
-    
-    @staticmethod
-    def _saveValue(group, name, value):
-        group.create_dataset(name, data=numpy.void(pickle.dumps(value, 0)))
-
-    @staticmethod
-    def _getValue(subgroup, slot):
-        val = subgroup[()]
-        if isinstance(val, numpy.void):
-            val = val.tobytes()
-        slot.setValue(pickle.loads(val, encoding='latin1'))
-
 
 class SerialCountingSlot(SerialSlot):
     """For saving a random forest classifier."""
