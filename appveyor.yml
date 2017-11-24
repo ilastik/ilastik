@@ -5,7 +5,7 @@ cache:
 install:
   - ps: >-
       if (-Not (Test-Path "C:\ilastik.exe")){
-        wget http://files.ilastik.org/ilastik-1.2.2rc4-win64.exe -OutFile C:\ilastik.exe
+        wget http://files.ilastik.org/ilastik-1.2.2post1-win64.exe -OutFile C:\ilastik.exe
       }
   - c:\ilastik.exe /VERYSILENT /DIR=C:\ilastik
   - timeout 60
@@ -14,7 +14,7 @@ install:
   - git clone https://github.com/ilastik/ilastik-meta c:\ilastik\ilastik-meta
   - cd ilastik\ilastik-meta
   - git submodule update --init --recursive
-  - git submodule foreach "git checkout master"
+  - git submodule foreach "git checkout python-2-legacy"
   - ps: rm -Force -Recurse c:\ilastik\ilastik-meta\ilastik
   - ps: cp -recurse C:\projects\ilastik c:\ilastik\ilastik-meta\ilastik
 
