@@ -1,5 +1,5 @@
 from apistar.test import TestClient
-from app import app, welcome
+from ilastik.shell.server.app import app, welcome
 
 
 def test_welcome():
