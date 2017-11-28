@@ -113,7 +113,7 @@ class OpVoxelSegmentation(Operator):
         self.NonzeroLabelBlocks.connect(self.opLabelPipeline.nonzeroBlocks)
 
         self.opSupervoxelFeaturesAndLabels = OpMultiLaneWrapper(OpSupervoxelFeaturesAndLabelsCached, parent=self)
-        self.opSupervoxelFeaturesAndLabels.SupervoxelSegmentation.connect(self.SupervoxelSegmentation)
+        # self.opSupervoxelFeaturesAndLabels.SupervoxelSegmentation.connect(self.SupervoxelSegmentation)
         self.opSupervoxelFeaturesAndLabels.Labels.connect(self.opLabelPipeline.Output)
         self.opSupervoxelFeaturesAndLabels.FeatureImages.connect(self.FeatureImages)
 
@@ -233,6 +233,9 @@ class OpVoxelSegmentation(Operator):
                     def removeSlot(a, b, position, finalsize):
                         a.removeSlot(position, finalsize)
                     s1.notifyRemoved(partial(removeSlot, s2))
+
+    def connectSegmentation(self):
+        self.opSupervoxelFeaturesAndLabels.SupervoxelSegmentation.connect(self.SupervoxelSegmentation)
 
     def setupCaches(self, imageIndex):
         numImages = len(self.InputImages)
@@ -463,10 +466,10 @@ class OpSupervoxelFeaturesAndLabels(Operator):
     def setupOutputs(self):
         self.SupervoxelFeatures.meta.dtype = self.FeatureImages.meta.dtype
         self.SupervoxelLabels.meta.dtype = self.Labels.meta.dtype
-        # self.SupervoxelFeatures.meta.shape = (np.max(self.SupervoxelSegmentation.value)+1, self.FeatureImages.value.shape[-1])
-        # self.SupervoxelLabels.meta.shape = (np.max(self.SupervoxelSegmentation.value)+1,)
-        self.SupervoxelFeatures.meta.shape = (144, self.FeatureImages.value.shape[-1])
-        self.SupervoxelLabels.meta.shape = (144,)
+        self.SupervoxelFeatures.meta.shape = (np.max(self.SupervoxelSegmentation.value)+1, self.FeatureImages.value.shape[-1])
+        self.SupervoxelLabels.meta.shape = (np.max(self.SupervoxelSegmentation.value)+1,)
+        # self.SupervoxelFeatures.meta.shape = (144, self.FeatureImages.value.shape[-1])
+        # self.SupervoxelLabels.meta.shape = (144,)
         self.SupervoxelFeatures.meta.axistags = vigra.defaultAxistags("xc")
         self.SupervoxelLabels.meta.axistags = vigra.defaultAxistags("x")
         print("SVF shape: {}".format(self.SupervoxelFeatures.meta.shape))

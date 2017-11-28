@@ -349,6 +349,10 @@ class VoxelSegmentationWorkflow(Workflow):
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
 
+        # Connect this only after deserialization, so that SuperVoxelFeaturesCached can use the deserialized segmentation
+        # when computing the max number of supervoxel in its setupOutput method.
+        self.pcApplet.topLevelOperator.connectSegmentation()
+
     def prepare_for_entire_export(self):
         """
         Assigned to DataExportApplet.prepare_for_entire_export

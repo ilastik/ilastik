@@ -114,9 +114,11 @@ class OpSlicCached(Operator):
 
     CacheInput = InputSlot(optional=True)
     Output = OutputSlot()
+    CacheBoundariesInput = InputSlot(optional=True)
     BoundariesOutput = OutputSlot()
 
     CleanBlocks = OutputSlot()
+    BoundariesCleanBlocks = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpSlicCached, self).__init__(*args, **kwargs)
@@ -141,16 +143,20 @@ class OpSlicCached(Operator):
         self.opSlicBoundaries = OpSlicBoundaries(parent=self)
         self.opSlicBoundaries.SegmentationInput.connect(self.opCache.Output)
 
-        self.boundariesOpCache = OpBlockedArrayCache(parent=self)
-        self.boundariesOpCache.Input.connect(self.opSlicBoundaries.BoundariesOutput)
-        self.BoundariesOutput.connect(self.boundariesOpCache.Output)
+        self.opBoundariesCache = OpBlockedArrayCache(parent=self)
+        self.opBoundariesCache.Input.connect(self.opSlicBoundaries.BoundariesOutput)
+        self.BoundariesOutput.connect(self.opBoundariesCache.Output)
+        self.BoundariesCleanBlocks.connect(self.opBoundariesCache.CleanBlocks)
 
     def setInSlot(self, slot, subindex, roi, value):
         print("in setinslot")
         # Write the data into the cache
-        assert slot is self.CacheInput
-        slicing = roiToSlice(roi.start, roi.stop)
-        self.opCache.Input[slicing] = value
+        if slot is self.CacheInput:
+            slicing = roiToSlice(roi.start, roi.stop)
+            self.opCache.Input[slicing] = value
+        if slot is self.CacheBoundariesInput:
+            slicing = roiToSlice(roi.start, roi.stop)
+            self.opBoundariesCache.Input[slicing] = value
 
     def setupOutputs(self):
         # The cache is capable of requesting and storing results in small blocks,
@@ -158,7 +164,7 @@ class OpSlicCached(Operator):
         # Therefore, we set the 'block shape' to be the entire image -- there will only be one block stored in the cache.
         # (Note: The OpBlockedArrayCache.innerBlockshape slot is deprecated and ignored.)
         self.opCache.BlockShape.setValue(self.Input.meta.shape)
-        self.boundariesOpCache.BlockShape.setValue(self.Input.meta.shape)
+        self.opBoundariesCache.BlockShape.setValue(self.Input.meta.shape)
 
     def execute(self, slot, subindex, roi, result):
         # When an output slot is accessed, it asks for data from it's upstream connection (if any)
