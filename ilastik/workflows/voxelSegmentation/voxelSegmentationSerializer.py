@@ -36,19 +36,30 @@ class VoxelSegmentationSerializer(AppletSerializer):
         self._serialClassifierSlot = SerialClassifierSlot(operator.Classifier,
                                                           operator.classifier_cache,
                                                           name="ClassifierForests")
-        slots = [SerialListSlot(operator.LabelNames),
-                 SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
-                 SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
-                 SerialPickledValueSlot(operator.Bookmarks),
-                 SerialBlockSlot(operator.LabelImages,
-                                 operator.LabelInputs,
-                                 operator.NonzeroLabelBlocks,
-                                 name='LabelSets',
-                                 subname='labels{:03d}',
-                                 selfdepends=False,
-                                 shrink_to_bb=True),
-                 SerialClassifierFactorySlot(operator.ClassifierFactory),
-                 self._serialClassifierSlot]
+        slots = [
+            SerialListSlot(operator.LabelNames),
+            SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
+            SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
+            SerialPickledValueSlot(operator.Bookmarks),
+            SerialBlockSlot(operator.LabelImages,
+                            operator.LabelInputs,
+                            operator.NonzeroLabelBlocks,
+                            name='LabelSets',
+                            subname='labels{:03d}',
+                            selfdepends=False,
+                            shrink_to_bb=True),
+            SerialClassifierFactorySlot(operator.ClassifierFactory),
+            self._serialClassifierSlot,
+            SerialBlockSlot(
+                operator.opSupervoxelFeaturesAndLabels.SupervoxelFeatures,
+                operator.opSupervoxelFeaturesAndLabels.CacheSupervoxelFeaturesInput,
+                operator.opSupervoxelFeaturesAndLabels.SupervoxelFeaturesCleanBlocks
+            ),
+            SerialBlockSlot(
+                operator.opSupervoxelFeaturesAndLabels.SupervoxelLabels,
+                operator.opSupervoxelFeaturesAndLabels.CacheSupervoxelLabelsInput,
+                operator.opSupervoxelFeaturesAndLabels.SupervoxelLabelsCleanBlocks
+            ),
+        ]
 
         super(VoxelSegmentationSerializer, self).__init__(projectFileGroupName, slots, operator)
-

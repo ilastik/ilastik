@@ -17,6 +17,7 @@ import ilastik_feature_selection
 import numpy as np
 
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
+from lazyflow.roi import roiToSlice
 
 # ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -496,6 +497,12 @@ class OpSupervoxelFeaturesAndLabelsCached(Operator):
     SupervoxelFeatures = OutputSlot()
     SupervoxelLabels = OutputSlot()
 
+    # Serialization-specific slots
+    SupervoxelFeaturesCleanBlocks = OutputSlot()
+    SupervoxelLabelsCleanBlocks = OutputSlot()
+    CacheSupervoxelFeaturesInput = InputSlot(optional=True)
+    CacheSupervoxelLabelsInput = InputSlot(optional=True)
+
     def __init__(self, *args, **kwargs):
         super(OpSupervoxelFeaturesAndLabelsCached, self).__init__(*args, **kwargs)
 
@@ -516,6 +523,25 @@ class OpSupervoxelFeaturesAndLabelsCached(Operator):
         # Connect each cache output to our outputs
         self.SupervoxelLabels.connect(self.opSupervoxelLabelsCache.Output)
         self.SupervoxelFeatures.connect(self.opSupervoxelFeaturesCache.Output)
+
+        self.SupervoxelFeaturesCleanBlocks.connect(self.opSupervoxelFeaturesCache.CleanBlocks)
+        self.SupervoxelLabelsCleanBlocks.connect(self.opSupervoxelLabelsCache.CleanBlocks)
+
+
+    def setInSlot(self, slot, subindex, roi, value):
+        print("in SVFL setinslot")
+        # Write the data into the cache
+        if slot is self.CacheSupervoxelFeaturesInput:
+            # import IPython; IPython.embed();
+            self.opSupervoxelFeaturesCache.Input.meta.shape = value.shape
+            self.opSupervoxelFeaturesCache._opCacheFixer.Input.meta.shape = value.shape
+            slicing = roiToSlice(roi.start, roi.stop)
+            self.opSupervoxelFeaturesCache.Input[slicing] = value
+        if slot is self.CacheSupervoxelLabelsInput:
+            self.opSupervoxelLabelsCache.Input.meta.shape = value.shape
+            self.opSupervoxelLabelsCache._opCacheFixer.Input.meta.shape = value.shape
+            slicing = roiToSlice(roi.start, roi.stop)
+            self.opSupervoxelLabelsCache.Input[slicing] = value
 
     def setupOutputs(self):
         # The cache is capable of requesting and storing results in small blocks,
