@@ -60,7 +60,6 @@ class OpTrainSupervoxelClassifierBlocked(Operator):
     SupervoxelLabels = InputSlot(level=1)
     ClassifierFactory = InputSlot()
     nonzeroLabelBlocks = InputSlot(level=1)  # Used only in the pixelwise case.
-    MaxLabel = InputSlot()
 
     Classifier = OutputSlot()
 
@@ -78,7 +77,6 @@ class OpTrainSupervoxelClassifierBlocked(Operator):
         self._opVectorwiseTrain.SupervoxelLabels.connect(self.SupervoxelLabels)
         self._opVectorwiseTrain.Labels.connect(self.Labels)
         self._opVectorwiseTrain.ClassifierFactory.connect(self.ClassifierFactory)
-        self._opVectorwiseTrain.MaxLabel.connect(self.MaxLabel)
         self._opVectorwiseTrain.progressSignal.subscribe(self.progressSignal)
 
         # # Fully connect the pixelwise training operator
@@ -124,7 +122,6 @@ class OpTrainSupervoxelwiseClassifierBlocked(Operator):
     SupervoxelFeatures = InputSlot(level=1)
     SupervoxelLabels = InputSlot(level=1)
     ClassifierFactory = InputSlot()
-    MaxLabel = InputSlot()
 
     Classifier = OutputSlot()
 
@@ -152,7 +149,6 @@ class OpTrainSupervoxelwiseClassifierBlocked(Operator):
         self._opTrainFromFeatures.SupervoxelFeatures.connect(self.SupervoxelFeatures)
         self._opTrainFromFeatures.SupervoxelLabels.connect(self.SupervoxelLabels)
         self._opTrainFromFeatures.Labels.connect(self.Labels)
-        self._opTrainFromFeatures.MaxLabel.connect(self.MaxLabel)
         self._opTrainFromFeatures.Images.connect(self.Images)
 
         self.Classifier.connect(self._opTrainFromFeatures.Classifier)
@@ -194,7 +190,6 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
     SupervoxelFeatures = InputSlot(level=1)
     SupervoxelLabels = InputSlot(level=1)
 
-    MaxLabel = InputSlot()
     Classifier = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -219,8 +214,6 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
         # labelsMatrix = labels_and_features[:, 0:1].astype(numpy.uint32)
         supervoxelSegmentationMatrix = self.SupervoxelSegmentation[0].value
 
-        maxLabel = self.MaxLabel.value
-        print("SV NLABELS {}".format(maxLabel))
         # if featMatrix.shape[0] < maxLabel:
         #     # If there isn't enough data for the random forest to train with, return None
         #     result[:] = None
@@ -232,7 +225,6 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
             "Factory is of type {}, which does not satisfy the LazyflowVectorwiseClassifierFactoryABC interface."\
             "".format(type(classifier_factory))
 
-        print("computing per-supervoxel features")
         print("labels shape {}".format(self.Labels[0].value.shape))
         print("Image shape {}".format(self.Images[0].value.shape))
         print("ROI {}".format(roi.pprint()))
@@ -241,7 +233,6 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
         # supervoxelLabels = get_supervoxel_labels(self.Labels[0].value, supervoxelSegmentationMatrix)
         # indices = numpy.arange(supervoxelFeatures.shape[0])
 
-        
         supervoxelFeatures = self.SupervoxelFeatures[0].value
         supervoxelLabels = self.SupervoxelLabels[0].value
         mask = numpy.where(supervoxelLabels != 0)
@@ -250,7 +241,7 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
         # import ipdb; ipdb.set_trace()
         print("pixel labels {}".format(numpy.unique(self.Labels[0].value)))
         print("Training new classifier: {}".format(classifier_factory.description))
-        print("features before training {}".format(supervoxelFeatures))
+        # print("features before training {}".format(supervoxelFeatures))
         classifier = classifier_factory.create_and_train(supervoxelFeatures, supervoxelLabels, channel_names)
         result[0] = classifier
         if classifier is not None:
@@ -318,6 +309,7 @@ class OpSupervoxelClassifierPredict(Operator):
         self._prediction_op.LabelsCount.connect(self.LabelsCount)
         self._prediction_op.Classifier.connect(self.Classifier)
         self._prediction_op.SupervoxelSegmentation.connect(self.SupervoxelSegmentation)
+        self._prediction_op.SupervoxelFeatures.connect(self.SupervoxelFeatures)
         self.PMaps.connect(self._prediction_op.PMaps)
 
     def execute(self, slot, subindex, roi, result):
@@ -333,6 +325,7 @@ class OpSupervoxelwiseClassifierPredict(Operator):
     LabelsCount = InputSlot()
     Classifier = InputSlot()
     SupervoxelSegmentation = InputSlot()
+    SupervoxelFeatures = InputSlot()
 
 
     # An entire prediction request is skipped if the mask is all zeros for the requested roi.
@@ -417,7 +410,7 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         shape = input_data.shape
         prod = numpy.prod(shape[:-1])
         features = input_data.reshape((prod, shape[-1]))
-        features = get_supervoxel_features(self.Image.value, self.SupervoxelSegmentation.value)
+        features = self.SupervoxelFeatures.value
         # print("features before prediction {}".format(features))
         # features = get_supervoxel_features(features, self.SupervoxelSegmentation.value)
 
@@ -427,7 +420,7 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         # import ipdb; ipdb.set_trace()
         probabilities = slic_to_mask(self.SupervoxelSegmentation.value, probabilities).reshape(-1, probabilities.shape[-1])
         print("probs shape unslicd: {}".format(probabilities.shape))
-
+        print("ROI {}".format(roi.pprint()))
         logger.debug("Features took {} seconds, Prediction took {} seconds for roi: {} : {}"
                      .format(features_timer.seconds(), prediction_timer.seconds(), roi.start, roi.stop))
 
@@ -460,7 +453,5 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         if slot == self.Classifier:
             self.logger.debug("classifier changed, setting dirty")
             self.PMaps.setDirty()
-        elif slot == self.Image:
+        elif slot in [self.Image, self.PredictionMask, self.SupervoxelFeatures, self.SupervoxelSegmentation]:
             self.PMaps.setDirty()
-        elif slot == self.PredictionMask:
-            self.PMaps.setDirty(roi.start, roi.stop)

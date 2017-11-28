@@ -16,32 +16,28 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#          http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.standardApplet import StandardApplet
+from builtins import range
 
-from .opSlic import OpSlicCached
-from .slicGui import SlicGui
-from .slicSerializer import SlicSerializer
+import vigra
+
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot, SerialPickledValueSlot, SerialSlot
+from ilastik.utility import bind
+
+import logging
+logger = logging.getLogger(__name__)
 
 
-class SlicApplet(StandardApplet):
-    def __init__(self, workflow, projectFileGroupName):
-        super(SlicApplet, self).__init__("SLIC Applet", workflow)
-        self._serializableItems = [SlicSerializer(self.topLevelOperator, projectFileGroupName)]  # Default serializer for new projects   # Legacy (v0.5) importer
+class SlicSerializer(AppletSerializer):
+    """Encapsulate the serialization scheme for pixel classification
+    workflow parameters and datasets.
 
-    @property
-    def dataSerializers(self):
-        return self._serializableItems
+    """
 
-    @property
-    def singleLaneGuiClass(self):
-        return SlicGui
+    def __init__(self, operator, projectFileGroupName):
+        slots = [
+            SerialBlockSlot(operator.Output, operator.CacheInput, operator.CleanBlocks)
+        ]
 
-    @property
-    def singleLaneOperatorClass(self):
-        return OpSlicCached
-
-    @property
-    def broadcastingSlots(self):
-        return ['NumSegments', 'Compactness', 'MaxIter']
+        super(SlicSerializer, self).__init__(projectFileGroupName, slots, operator)
