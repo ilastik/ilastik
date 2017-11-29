@@ -9,6 +9,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.utility import Timer
 
+import sys
 import subprocess
 
 import logging
@@ -36,7 +37,14 @@ except ImportError:
 
 # Nifty first choice: With-CPLEX
 try:
-    subprocess.check_output(["python", "-c", "import nifty_with_cplex"])
+    # On windows nifty_with_cplex/gurobi gets imported partially eventhough
+    # cplex/gurobi is not available. This leads to errors like:
+    #   generic_type: type "LogLevel" is already registered!
+    # Therefore we start a subprocess to test the import.
+    # Todo: Make sure the shell's python command refers to ilastik's python.
+    if sys.platform.startswith('win'):
+        subprocess.check_output(["python", "-c", "import nifty_with_cplex"])
+
     import nifty_with_cplex as nifty
     assert nifty.Configuration.WITH_CPLEX
     MulticutObjectiveUndirectedGraph = \
@@ -45,13 +53,15 @@ try:
                           'Nifty_FmCplex',
                           'Nifty_ExactCplex']
     DEFAULT_SOLVER_NAME = 'Nifty_ExactCplex'
-except subprocess.CalledProcessError:
+except (ImportError, subprocess.CalledProcessError):
     NIFTY_SOLVER_NAMES = []
 
 # Nifty second choice: With-Gurobi
 if not NIFTY_SOLVER_NAMES:
     try:
-        subprocess.check_call(["python", "-c", "import nifty_with_gurobi"])
+        # see comment at nifty_with_cplex
+        if sys.platform.startswith('win'):
+            subprocess.check_call(["python", "-c", "import nifty_with_gurobi"])
         import nifty_with_gurobi as nifty
         assert nifty.Configuration.WITH_GUROBI
         MulticutObjectiveUndirectedGraph = \
@@ -60,7 +70,7 @@ if not NIFTY_SOLVER_NAMES:
                               'Nifty_FmGurobi',
                               'Nifty_ExactGurobi']
         DEFAULT_SOLVER_NAME = 'Nifty_ExactGurobi'
-    except subprocess.CalledProcessError:
+    except (ImportError, subprocess.CalledProcessError):
         NIFTY_SOLVER_NAMES = []
 
 # Nifty third choice: No exact optimizer
