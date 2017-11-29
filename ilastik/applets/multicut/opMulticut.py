@@ -9,7 +9,6 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.utility import Timer
 
-import os
 import sys
 import subprocess
 
@@ -43,10 +42,8 @@ try:
     #   generic_type: type "LogLevel" is already registered!
     # Therefore we start a subprocess to test the import.
     if sys.platform.startswith('win'):
-        # make sure to get the correct python executable
-        ilastik_dir = os.path.join(os.path.dirname(__file__), *['..'] * 5)
-        pycmd = os.path.abspath(os.path.join(ilastik_dir, 'python'))
-        subprocess.check_output([pycmd, '-c', 'import nifty_with_cplex'])
+        subprocess.check_output(
+            [sys.executable, '-c', 'import nifty_with_cplex'])
 
     import nifty_with_cplex as nifty
     assert nifty.Configuration.WITH_CPLEX
@@ -64,7 +61,8 @@ if not NIFTY_SOLVER_NAMES:
     try:
         # see comment at nifty_with_cplex
         if sys.platform.startswith('win'):
-            subprocess.check_call([pycmd, '-c', 'import nifty_with_gurobi'])
+            subprocess.check_call(
+                [sys.executable, '-c', 'import nifty_with_gurobi'])
 
         import nifty_with_gurobi as nifty
         assert nifty.Configuration.WITH_GUROBI
