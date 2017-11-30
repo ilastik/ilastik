@@ -32,6 +32,10 @@ ProjectTypes = typesystem.enum(
     enum=['PixelClassificationWorkflow', 'ObjectClassificationWorkflow'],
 )
 
+DataList = typesystem.array(
+    description='List of data available on server.'
+)
+
 
 class NewLocalProject(typesystem.Object):
     properties = {
