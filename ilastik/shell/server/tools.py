@@ -15,7 +15,7 @@ def time_function_call(logger=logger):
             ret = func(*args, **kwargs)
             t2 = time()
 
-            logger.debug(f'Execution took {t2 - t1} seconds')
+            logger.debug(f'{func.__name__} execution took {t2 - t1} seconds')
             return ret
         return wrapped
     return wrapper
