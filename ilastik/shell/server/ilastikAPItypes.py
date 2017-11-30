@@ -1,6 +1,6 @@
 """Type description for various types used in communication
 
-These types are used to automatically generate API documentation and 
+These types are used to automatically generate API documentation and
 specification by apistar
 """
 from apistar import typesystem
@@ -16,7 +16,31 @@ class LocalDataset(typesystem.Object):
     }
 
 
+class LocalProject(typesystem.Object):
+    """Representation of a project that is local to the ilastik-server instance
+    """
+    properties = {
+        'project_name': typesystem.string(
+            description='name(key) of the project on the server'
+        )
+    }
 
+
+ProjectTypes = typesystem.enum(
+    description='Available workflow types',
+    # TDDO: make that dynamic via a static api function?!
+    enum=['PixelClassificationWorkflow', 'ObjectClassificationWorkflow'],
+)
+
+
+class NewLocalProject(typesystem.Object):
+    properties = {
+        'project_name': typesystem.string(
+            description='name for the new project',
+            # TODO: add length constraint,
+        ),
+        'project_type': ProjectTypes
+    }
 
 
 class Test(typesystem.Object):
