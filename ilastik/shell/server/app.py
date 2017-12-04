@@ -3,7 +3,7 @@ from apistar import Route, Include
 from apistar.handlers import docs_urls, static_urls
 import os
 
-from .routes import basic, data, project
+from .routes import basic, data, project, workflow
 from .ilastikAPI import IlastikAPI
 from .renderer import IlastikJSONRenderer
 
@@ -20,6 +20,7 @@ routes = [
     Include('/static', static_urls),
     Include('/project', project.routes),
     Include('/data', data.routes),
+    Include('/workflow', workflow.routes)
 ]
 
 # extend here in order to add them to site root
