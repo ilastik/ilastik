@@ -30,6 +30,7 @@ import h5py
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
+from lazyflow import stype
 from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 from lazyflow.operators import OpReorderAxes, OperatorWrapper
@@ -91,9 +92,9 @@ class OpFeatureSelectionNoCache(Operator):
     # Features are presented in the channels of the output image
     # Output can be optionally accessed via an internal cache.
     # (Training a classifier benefits from caching, but predicting with an existing classifier does not.)
-    OutputImage = OutputSlot()
+    OutputImage = OutputSlot(stype=stype.ImageType)
 
-    FeatureLayers = OutputSlot(level=1) # For the GUI, we also provide each feature as a separate slot in this multislot
+    FeatureLayers = OutputSlot(level=1, stype=stype.ImageType)  # For the GUI, we also provide each feature as a separate slot in this multislot
 
     def __init__(self, *args, **kwargs):
         super(OpFeatureSelectionNoCache, self).__init__(*args, **kwargs)

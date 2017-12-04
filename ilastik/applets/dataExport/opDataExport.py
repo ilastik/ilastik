@@ -23,6 +23,7 @@ import collections
 import numpy
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow import stype
 from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
 from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
 from lazyflow.operators.generic import OpSubRegion
@@ -36,14 +37,14 @@ class OpDataExport(Operator):
     TransactionSlot = InputSlot()   # To apply all settings in one 'transaction', 
                                     # disconnect this slot and reconnect it when all slots are ready
 
-    RawData = InputSlot(optional=True) # Display only
-    FormattedRawData = OutputSlot() # OUTPUT - for overlaying the transformed raw data with the export data.
+    RawData = InputSlot(optional=True, stype=stype.ImageType)  # Display only
+    FormattedRawData = OutputSlot(stype=stype.ImageType)  # OUTPUT - for overlaying the transformed raw data with the export data.
 
     # The dataset info for the original dataset (raw data)
     RawDatasetInfo = InputSlot()
     WorkingDirectory = InputSlot() # Non-absolute paths are relative to this directory.  If not provided, paths must be absolute.
     
-    Inputs = InputSlot(level=1) # The exportable slots (should all be of the same shape, except for channel)
+    Inputs = InputSlot(level=1, stype=stype.ImageType) # The exportable slots (should all be of the same shape, except for channel)
     InputSelection = InputSlot(value=0)
     SelectionNames = InputSlot() # A list of names corresponding to the exportable inputs
 
@@ -71,10 +72,10 @@ class OpDataExport(Operator):
     
     ExportPath = OutputSlot() # Location of the saved file after export is complete.
     
-    ConvertedImage = OutputSlot() # Cropped image, not yet re-ordered (useful for guis)
-    ImageToExport = OutputSlot() # The image that will be exported
+    ConvertedImage = OutputSlot(stype=stype.ImageType) # Cropped image, not yet re-ordered (useful for guis)
+    ImageToExport = OutputSlot(stype=stype.ImageType) # The image that will be exported
 
-    ImageOnDisk = OutputSlot() # This slot reads the exported image from disk (after the export is complete)
+    ImageOnDisk = OutputSlot(stype=stype.ImageType) # This slot reads the exported image from disk (after the export is complete)
     Dirty = OutputSlot() # Whether or not the result currently matches what's on disk
     FormatSelectionErrorMsg = OutputSlot()
 

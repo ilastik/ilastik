@@ -26,6 +26,7 @@ import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+from lazyflow import stype
 from lazyflow.utility.jsonConfig import RoiTuple
 from lazyflow.operators.ioOperators import (
     OpStreamingHdf5Reader, OpStreamingHdf5SequenceReaderS, OpInputDataReader
@@ -491,16 +492,16 @@ class OpDataSelectionGroup( Operator ):
     DatasetGroup = InputSlot(stype='object', level=1, optional=True) # Must mark as optional because not all subslots are required.
 
     # Outputs
-    ImageGroup = OutputSlot(level=1)
+    ImageGroup = OutputSlot(level=1, stype=stype.ImageType)
     
     # These output slots are provided as a convenience, since otherwise it is tricky to create a lane-wise multislot of level-1 for only a single role.
     # (It can be done, but requires OpTransposeSlots to invert the level-2 multislot indexes...) 
-    Image = OutputSlot() # The first dataset. Equivalent to ImageGroup[0]
-    Image1 = OutputSlot() # The second dataset. Equivalent to ImageGroup[1]
-    Image2 = OutputSlot() # The third dataset. Equivalent to ImageGroup[2]
+    Image = OutputSlot(stype=stype.ImageType)  # The first dataset. Equivalent to ImageGroup[0]
+    Image1 = OutputSlot(stype=stype.ImageType)  # The second dataset. Equivalent to ImageGroup[1]
+    Image2 = OutputSlot(stype=stype.ImageType)  # The third dataset. Equivalent to ImageGroup[2]
     AllowLabels = OutputSlot(stype='bool') # Pulled from the first dataset only.
 
-    _NonTransposedImageGroup = OutputSlot(level=1)
+    _NonTransposedImageGroup = OutputSlot(level=1, stype=stype.ImageType)
 
     # Must be the LAST slot declared in this class.
     # When the shell detects that this slot has been resized,
