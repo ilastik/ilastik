@@ -15,6 +15,7 @@ from ilastik.applets.dataSelection.dataSelectionApplet import DataSelectionApple
 from ilastik.applets.pixelClassification import PixelClassificationApplet
 
 from lazyflow.graph import OperatorWrapper
+from lazyflow import stype
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
@@ -31,12 +32,18 @@ class SlotTracker(object):
         self.image_name_multislot = image_name_multislot
         self._slot_versions = {}  # { dataset_name : { slot_name : [slot, version] } }
 
+        # TODO: name could not be enough
         self.multislot_names = [s.name for s in multislots]
+        print(self.multislot_names)
         if forced_axes is None:
             self.multislots = multislots
         else:
             self.multislots = []
             for multislot in multislots:
+                # HACK: skip slots with level > 1
+                if multislot.level > 1:
+                    logger.info(f'skipping slot {multislot} of {multislot.getRealOperator()}')
+                    continue
                 op = OperatorWrapper(
                     OpReorderAxes,
                     parent=multislot.getRealOperator().parent,
@@ -89,7 +96,10 @@ class SlotTracker(object):
         states = collections.OrderedDict()
         slot_versions = self.get_slot_versions(dataset_name)
         for slot_name, (slot, version) in slot_versions.items():
-            axes = ''.join(slot.meta.getAxisKeys())
+            try:
+                axes = ''.join(slot.meta.getAxisKeys())
+            except AssertionError:
+                continue
             states[slot_name] = VoxelSourceState(slot_name,
                                                  axes,
                                                  slot.meta.shape,
@@ -158,14 +168,26 @@ class IlastikAPI(object):
             return None
 
     def initialize_voxel_server(self):
-        op = self._server_shell.workflow.pcApplet.topLevelOperator
-        multislots = [op.InputImages,
-                      #op.LabelImages,
-                      op.PredictionProbabilities]
+        multislots = []
+        for applet in self.applets:
+            print(f'applet: {applet}')
+            op = applet.topLevelOperator
+            print(f'op: {op}')
+            if op is None:
+                continue
+            # Todo: go through all applets and connect slots to SlotTracker
+            tmp_slots = []
+            for slotname, slot in op.outputs.items():
+                if isinstance(slot.stype, stype.ImageType):
+                    print(slotname, slot)
+                    tmp_slots.append(slot)
+            multislots.extend(tmp_slots)
 
         image_name_multislot = self._server_shell.workflow.dataSelectionApplet.topLevelOperator.ImageName
         # forcing to neuroglancer axisorder
-        self.slot_tracker = SlotTracker(image_name_multislot, multislots, forced_axes='tczyx')
+        self.slot_tracker = SlotTracker(
+            image_name_multislot, multislots, forced_axes='tczyx'
+        )
 
     def create_project(self, workflow_type='pixel_classification', project_path=None):
         """Create a new project
