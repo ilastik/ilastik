@@ -36,139 +36,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class RegressorC(object):
-
-    def __init__(self, C=1, epsilon=0.1, penalty="l2",regularization="l2",pos_constr=False):
-        """
-            penalty : "l1" or "l2" penalty
-            
-        """
-        
-        self.penalty=penalty
-        self._C = C
-        self._epsilon = epsilon
-        self.regularization=regularization
-        
-        self.pos_constr=pos_constr
-    
-    def get_Xhat(self,X):
-        return np.hstack( [X,np.ones((X.shape[0],1))])
-    
-    def predictUnfiltered(self,X):
-        
-        oldShape = X.shape
-        result = np.dot(self.get_Xhat(X.reshape((-1, X.shape[-1]))),self.w).reshape(X.shape[:-1])
-        return result
-    
-    def fitcplex(self,X,Yl,tags, boxConstraints = None):
-        from .cwrapper import cplex
-        import ctypes
-        c_float_p = ctypes.POINTER(ctypes.c_float)
-        c_char_p= ctypes.POINTER(ctypes.c_char)
-        c_int_p= ctypes.POINTER(ctypes.c_int64)
-        c_double_p= ctypes.POINTER(ctypes.c_double)
-        X = X.astype(np.float64)
-        Yl = Yl.astype(np.float64)
-        X_p = X.ctypes.data_as(c_double_p)
-        Yl_p = Yl.ctypes.data_as(c_double_p)
-        numRows = X.shape[0]
-        numCols = X.shape[1]
-        self.w = np.zeros((numCols + 1), dtype = np.float64).reshape(-1, 1)
-        w_p = self.w.ctypes.data_as(c_double_p)
-        
-
-
-        numConstraints = 0
-        boxValues_p = None
-        boxIndices_p = None
-        boxFeatures_p = None
-        dens_p = None
-        if boxConstraints and type(boxConstraints) == dict:
-            numConstraints = len(boxConstraints["boxValues"])
-            boxValues = boxConstraints["boxValues"].astype(np.float64)
-            boxValues_p = boxValues.ctypes.data_as(c_double_p)
-            boxIndices = boxConstraints["boxIndices"].astype(np.int64)
-            boxIndices_p = boxIndices.ctypes.data_as(c_int_p)
-            boxFeatures = boxConstraints["boxFeatures"].astype(np.float64)
-            boxFeatures_p = boxFeatures.ctypes.data_as(c_double_p)
-            #filter out boxes of size 0
-            boxSizes = [boxIndices[i+1] - boxIndices[i] for i in range(len(boxValues))]
-            assert(np.count_nonzero(boxSizes) == len(boxValues))
-            assert(len(boxFeatures.shape) == 2)
-            assert(boxIndices[-1] == boxFeatures.shape[0])
-            #self.dens = np.zeros((boxIndices[-1]), dtype = np.float64).reshape(-1, 1)
-            #dens_p = self.dens.ctypes.data_as(c_double_p)
-        #print "constraints:", boxFeatures.shape[0]
-
-        #import sitecustomize
-        #sitecustomize.debug_trace()
-        cplex.extlib.fit(X_p, Yl_p, w_p, ctypes.c_int(tags[0]), numRows, numCols, ctypes.c_double(self._C),
-                                ctypes.c_double(self._epsilon), numConstraints, boxValues_p, boxIndices_p,
-                                boxFeatures_p)#, dens_p)
-        #self.dens[np.where(self.dens < 0)] = 0
-
-    def fitgurobi(self,X,Yl,tags, boxConstraints = None):
-        from .cwrapper import gurobi
-        import ctypes
-        #extlib.main()
-        c_float_p = ctypes.POINTER(ctypes.c_float)
-        c_char_p= ctypes.POINTER(ctypes.c_char)
-        c_int_p= ctypes.POINTER(ctypes.c_int64)
-        c_double_p= ctypes.POINTER(ctypes.c_double)
-        X = X.astype(np.float64)
-        Yl = Yl.astype(np.float64)
-        X_p = X.ctypes.data_as(c_double_p)
-        Yl_p = Yl.ctypes.data_as(c_double_p)
-        numRows = X.shape[0]
-        numCols = X.shape[1]
-        self.w = np.zeros((numCols + 1), dtype = np.float64).reshape(-1, 1)
-        w_p = self.w.ctypes.data_as(c_double_p)
-        
-
-
-        numConstraints = 0
-        boxValues_p = None
-        boxIndices_p = None
-        boxFeatures_p = None
-        dens_p = None
-        if boxConstraints and type(boxConstraints) == dict:
-            numConstraints = len(boxConstraints["boxValues"])
-            boxValues = boxConstraints["boxValues"].astype(np.float64)
-            boxValues_p = boxValues.ctypes.data_as(c_double_p)
-            boxIndices = boxConstraints["boxIndices"].astype(np.int64)
-            boxIndices_p = boxIndices.ctypes.data_as(c_int_p)
-            boxFeatures = boxConstraints["boxFeatures"].astype(np.float64)
-            boxFeatures_p = boxFeatures.ctypes.data_as(c_double_p)
-            #filter out boxes of size 0
-            boxSizes = [boxIndices[i+1] - boxIndices[i] for i in range(len(boxValues))]
-            assert(np.count_nonzero(boxSizes) == len(boxValues))
-            assert(len(boxFeatures.shape) == 2)
-            assert(boxIndices[-1] == boxFeatures.shape[0])
-            #self.dens = np.zeros((boxIndices[-1]), dtype = np.float64).reshape(-1, 1)
-            #dens_p = self.dens.ctypes.data_as(c_double_p)
-        #print "constraints:", boxFeatures.shape[0]
-
-        #import sitecustomize
-        #sitecustomize.debug_trace()
-        gurobi.extlib.fit(X_p, Yl_p, w_p, ctypes.c_int(tags[0]), numRows, numCols, ctypes.c_double(self._C),
-                                ctypes.c_double(self._epsilon), numConstraints, boxValues_p, boxIndices_p,
-                                boxFeatures_p)#, dens_p)
-        #self.dens[np.where(self.dens < 0)] = 0
-        
-
-    def predict(self, X):
-        
-        oldShape = X.shape
-        result = np.dot(self.get_Xhat(X.reshape((-1, X.shape[-1]))),self.w).reshape(X.shape[:-1])
-        return result
-
-    def predictFiltered(self, X):
-        
-        oldShape = X.shape
-        result = np.dot(self.get_Xhat(X.reshape((-1, X.shape[-1]))),self.w).reshape(X.shape[:-1])
-        result[np.where(result < 0)] = 0
-        return result
-
 class RegressorGurobi(object):
     
 
@@ -355,12 +222,8 @@ class SVR(object):
 
 
     options = [
-        {"method" : "BoxedRegressionGurobi", "gui":["default", "svr"],
-         "req":["ilastik.applets.counting.cwrapper.gurobi"], "boxes": True},
-        {"method" : "BoxedRegressionCplex", "gui":["default", "svr"], "req":["ilastik.applets.counting.cwrapper.cplex"],
-         "boxes": True},
-        #{"method" : "svrBoxed-gurobi", "gui":["default", "svr"], "req":["gurobipy"]},
         {"method" : "RandomForest" ,"gui":["default","rf"], "req":["sklearn"], "boxes": False},
+        {"method" : "svrBoxed-gurobi", "gui":["default", "svr"], "req":["gurobipy"]}
         #{"optimization" : "svr-sklearn", "kernel" : "rbf","gui":["default","svr"], "req":["sklearn"]},
         #{"method" : "svr-gurobi", "gui":["default", "svr"], "req":["gurobipy"]}
         
@@ -598,17 +461,10 @@ class SVR(object):
             regressor = RegressorGurobi(C = self._C, epsilon = self._epsilon)
             regressor.fit(img, dot, tags, self.getOldBoxConstraints(boxConstraints, numFeatures
                                                                    ))
-        #elif self._method == "svrBoxed-gurobi":
-        #    regressor = RegressorGurobi(C = self._C, epsilon = self._epsilon)
-        #    regressor.fit(img, dot, tags, self.getOldBoxConstraints(boxConstraints, numFeatures
-        #                                                           ))
-        elif self._method == "BoxedRegressionGurobi":
-            regressor = RegressorC(C = self._C, epsilon = self._epsilon)
-            regressor.fitgurobi(img, dot, tags, boxConstraints)
-        
-        elif self._method == "BoxedRegressionCplex":
-            regressor = RegressorC(C = self._C, epsilon = self._epsilon)
-            regressor.fitcplex(img, dot, tags, boxConstraints)
+        elif self._method == "svrBoxed-gurobi":
+           regressor = RegressorGurobi(C = self._C, epsilon = self._epsilon)
+           regressor.fit(img, dot, tags, self.getOldBoxConstraints(boxConstraints, numFeatures
+                                                                  ))
 
         return regressor
         
