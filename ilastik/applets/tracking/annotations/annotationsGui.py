@@ -914,7 +914,7 @@ class AnnotationsGui(LayerViewerGui):
                 text = "remove disappearance from track " + str(l)
                 removeDisappearance[text] = l
                 menu.addAction(text)
-            elif opTracking._type(t,l)[0] in ["LAST","SINGLETON(FIRST_LAST)"] and t < maxTime:
+            elif opTracking._type(t,l)[0] in ["LAST","SINGLETON(FIRST_LAST)"] and t < maxTime-1:
                 text = "mark disappearance for track " + str(l)
                 markDisappearance[text] = l
                 menu.addAction(text)
