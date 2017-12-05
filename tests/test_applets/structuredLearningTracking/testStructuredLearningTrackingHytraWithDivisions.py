@@ -114,7 +114,7 @@ class TestStructuredLearningTrackingHeadless(object):
         try:
             import ilastik.workflows.tracking.structured
         except ImportError as e:
-            logger.warn( "Structured learning tracking could not be imported. CPLEX is most likely missing: " + str(e) )
+            logger.warning( "Structured learning tracking could not be imported. CPLEX is most likely missing: " + str(e) )
             raise nose.SkipTest
 
         # Skip test because there are missing files
@@ -152,7 +152,7 @@ class TestStructuredLearningTrackingHeadless(object):
         try:
             import hytra
         except ImportError as e:
-            logger.warn("Hytra tracking pipeline couldn't be imported: " + str(e))
+            logger.warning("Hytra tracking pipeline couldn't be imported: " + str(e))
             raise nose.SkipTest
 
         # Skip test because there are missing files

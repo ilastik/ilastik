@@ -235,10 +235,10 @@ class DataSelectionApplet( Applet ):
                     break
 
             if need_warning:
-                logger.warn("*******************************************************************************************")
-                logger.warn("Some of your input data is stored in a format that is not efficient for 3D access patterns.")
-                logger.warn("Performance may suffer as a result.  For best performance, use a chunked HDF5 volume.")                
-                logger.warn("*******************************************************************************************")        
+                logger.warning("*******************************************************************************************")
+                logger.warning("Some of your input data is stored in a format that is not efficient for 3D access patterns.")
+                logger.warning("Performance may suffer as a result.  For best performance, use a chunked HDF5 volume.")                
+                logger.warning("*******************************************************************************************")        
 
     @classmethod
     def convertStacksToH5(cls, filePaths, stackVolumeCacheDir):

@@ -21,7 +21,7 @@
 from builtins import range
 import numpy
 import vigra
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot, SerialPickledValueSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot, SerialPickleableSlot
 
 import logging
 logger = logging.getLogger(__name__) 
@@ -32,13 +32,14 @@ class PixelClassificationSerializer(AppletSerializer):
 
     """
     def __init__(self, operator, projectFileGroupName):
+        self.VERSION = 1
         self._serialClassifierSlot =  SerialClassifierSlot(operator.Classifier,
                                                            operator.classifier_cache,
                                                            name="ClassifierForests")
         slots = [SerialListSlot(operator.LabelNames),
                  SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
                  SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
-                 SerialPickledValueSlot(operator.Bookmarks),
+                 SerialPickleableSlot(operator.Bookmarks, self.VERSION),
                  SerialBlockSlot(operator.LabelImages,
                                  operator.LabelInputs,
                                  operator.NonzeroLabelBlocks,

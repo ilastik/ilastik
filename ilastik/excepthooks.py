@@ -54,10 +54,10 @@ def init_user_mode_excepthook():
         # Slot-not-ready errors in the render thread are logged, but not shown to the user.
         from volumina.pixelpipeline.asyncabcs import IndeterminateRequestError
         if isinstance(exc_info[1], IndeterminateRequestError):
-            logger.warn( "Caught unhandled IndeterminateRequestError from volumina." )
+            logger.warning( "Caught unhandled IndeterminateRequestError from volumina." )
             sio = io.StringIO()
             traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
-            logger.warn( sio.getvalue() )
+            logger.warning( sio.getvalue() )
             return
         
         # All other exceptions are treated as true errors

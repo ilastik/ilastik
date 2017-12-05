@@ -36,8 +36,18 @@ class CarvingSerializer( AppletSerializer ):
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         obj = getOrCreateGroup(topGroup, "objects")
         for imageIndex, opCarving in enumerate( self._o.innerOperators ):
-            mst = opCarving._mst 
-            for name in opCarving._dirtyObjects:
+            mst = opCarving._mst
+
+            # Populate a list of objects to save:
+            objects_to_save = set(list(mst.object_names.keys()))
+            objects_already_saved = set(list(topGroup["objects"]))
+            # 1.) all objects that are in mst.object_names that are not in saved
+            objects_to_save = objects_to_save.difference(objects_already_saved)
+
+            # 2.) add opCarving._dirtyObjects:
+            objects_to_save = objects_to_save.union(opCarving._dirtyObjects)
+
+            for name in objects_to_save:
                 logger.info( "[CarvingSerializer] serializing %s" % name )
                
                 if name in obj and name in mst.object_seeds_fg_voxels: 

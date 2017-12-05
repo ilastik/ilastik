@@ -517,7 +517,6 @@ class OpCarving(Operator):
         self._mst.bg_priority[name] = self.BackgroundPriority.value
         self._mst.no_bias_below[name] = self.NoBiasBelow.value
 
-        self._mst.objects[name] = numpy.where(sVseg == 2)
         self._mst.object_lut[name] = numpy.where(sVseg == 2)
 
      

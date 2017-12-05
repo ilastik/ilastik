@@ -22,7 +22,7 @@ import warnings
 
 from ilastik.applets.base.appletSerializer import \
   AppletSerializer, SerialSlot, SerialDictSlot, \
-  SerialClassifierSlot, SerialListSlot, SerialPickledValueSlot
+  SerialClassifierSlot, SerialListSlot, SerialPickleableSlot
 
 class SerialDictSlotWithoutDeserialization(SerialDictSlot):
     
@@ -44,6 +44,7 @@ class ObjectClassificationSerializer(AppletSerializer):
     # would call setValue() on a connected slot
 
     def __init__(self, topGroupName, operator):
+        self.VERSION = 1  # Make sure to bump the version in case you make any changes in the serialization
         serialSlots = [
             SerialDictSlot(operator.SelectedFeatures),
             SerialListSlot(operator.LabelNames),
@@ -57,7 +58,7 @@ class ObjectClassificationSerializer(AppletSerializer):
                            operator.InputProbabilities,
                            transform=int),
             SerialSlot(operator.MaxNumObj),
-            SerialPickledValueSlot(operator.ExportSettings)
+            SerialPickleableSlot(operator.ExportSettings, self.VERSION, None)
         ]
 
         super(ObjectClassificationSerializer, self ).__init__(topGroupName,

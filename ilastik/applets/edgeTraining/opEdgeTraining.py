@@ -138,7 +138,7 @@ class OpEdgeTraining(Operator):
         lane_index = self.Superpixels.index(subslot)
         old_labels = self.EdgeLabelsDict[lane_index].value
         if old_labels:
-            logger.warn( "Superpixels changed.  Deleting all labels in lane {}.".format( lane_index ) )
+            logger.warning( "Superpixels changed.  Deleting all labels in lane {}.".format( lane_index ) )
             logger.info( "Old labels were: {}".format( old_labels ) )
             self.EdgeLabelsDict[lane_index].setValue({})
 

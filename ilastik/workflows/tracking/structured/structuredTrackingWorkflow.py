@@ -191,7 +191,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
             self.testFullAnnotations = False
 
         if unused_args:
-            logger.warn("Unused command-line args: {}".format( unused_args ))
+            logger.warning("Unused command-line args: {}".format( unused_args ))
 
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)

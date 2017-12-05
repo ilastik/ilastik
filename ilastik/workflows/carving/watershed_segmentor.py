@@ -1,7 +1,5 @@
-import vigra
-from vigra import graphs as vgraph
-#from vigra import ilastiktools
 import ilastiktools
+import h5py
 import numpy
 
 
@@ -89,15 +87,15 @@ class WatershedSegmentor(object):
         self.gridSegmentor.addSeeds(brushStroke=brushStroke,roiBegin=roiBegin, 
                                     roiEnd=roiEnd, maxValidLabel=2)
 
-    def getVoxelSegmentation(self, roi, out = None):
+    def getVoxelSegmentation(self, roi):
         if isinstance(self.gridSegmentor, ilastiktools.GridSegmentor_3D_UInt32):
             roiBegin  = roi.start[1:4]
             roiEnd  = roi.stop[1:4]
-            return self.gridSegmentor.getSegmentation(roiBegin=roiBegin,roiEnd=roiEnd, out=out)
+            return self.gridSegmentor.getSegmentation(roiBegin=roiBegin,roiEnd=roiEnd)
         else:
             roiBegin  = roi.start[1:3]
             roiEnd  = roi.stop[1:3]
-            return self.gridSegmentor.getSegmentation(roiBegin=roiBegin,roiEnd=roiEnd, out=out)[:,:,None]
+            return self.gridSegmentor.getSegmentation(roiBegin=roiBegin,roiEnd=roiEnd)[:,:,None]
 
 
     def setSeeds(self,fgSeeds, bgSeeds):

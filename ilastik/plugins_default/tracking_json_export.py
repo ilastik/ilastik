@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 try:
     from hytra.core.jsongraph import writeToFormattedJSON
 except ImportError:
-    logger.warn("Could not load hytra. JSON export plugin not loaded.")
+    logger.warning("Could not load hytra. JSON export plugin not loaded.")
 else:
 
     class TrackingJSONExportFormatPlugin(TrackingExportFormatPlugin):
