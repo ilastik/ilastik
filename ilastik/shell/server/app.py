@@ -16,11 +16,11 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 routes = [
-    Include('/docs', docs_urls),
+    Include('/api/docs', docs_urls),
     Include('/static', static_urls),
-    Include('/project', project.routes),
-    Include('/data', data.routes),
-    Include('/workflow', workflow.routes)
+    Include('/api/project', project.routes),
+    Include('/api/data', data.routes),
+    Include('/api/workflow', workflow.routes)
 ]
 
 # extend here in order to add them to site root
