@@ -870,6 +870,22 @@ class AnnotationsGui(LayerViewerGui):
         removeAppearance = {}
         removeDisappearance = {}
         maxTime = self.topLevelOperatorView.LabelImage.meta.shape[0]
+
+        delDivision = {}
+        if activeTrack != self.misdetIdx:
+            for trackid in trackids:
+                if trackid in list(self.mainOperator.divisions.keys()) and self.mainOperator.divisions[trackid][1] == t:
+                    text = "remove division event from track " + str(trackid)
+                    delDivision[text] = trackid
+                    menu.addSeparator()
+                    menu.addAction(text)
+
+        divisionChildren = []
+        for divTrack in list(self.mainOperator.divisions.keys()):
+            if self.mainOperator.divisions[divTrack][1] == t-1:
+                divisionChildren.append(self.mainOperator.divisions[divTrack][0][0])
+                divisionChildren.append(self.mainOperator.divisions[divTrack][0][1])
+
         for l in trackids:
             if activeTrack != self.misdetIdx and t < maxTime:
                 text = "run automatic tracking for object " + str(oid) + " with track " + str(l)
@@ -905,7 +921,7 @@ class AnnotationsGui(LayerViewerGui):
                 text = "remove appearance from track " + str(l)
                 removeAppearance[text] = l
                 menu.addAction(text)
-            elif opTracking._type(t,l)[0] in ["FIRST","SINGLETON(FIRST_LAST)"] and t >0:
+            elif opTracking._type(t,l)[0] in ["FIRST","SINGLETON(FIRST_LAST)"] and t >0 and l not in divisionChildren:
                 text = "mark appearance for track " + str(l)
                 markAppearance[text] = l
                 menu.addAction(text)
@@ -914,21 +930,12 @@ class AnnotationsGui(LayerViewerGui):
                 text = "remove disappearance from track " + str(l)
                 removeDisappearance[text] = l
                 menu.addAction(text)
-            elif opTracking._type(t,l)[0] in ["LAST","SINGLETON(FIRST_LAST)"] and t < maxTime-1:
+            elif opTracking._type(t,l)[0] in ["LAST","SINGLETON(FIRST_LAST)"] and t < maxTime-1 and l not in delDivision.values():
                 text = "mark disappearance for track " + str(l)
                 markDisappearance[text] = l
                 menu.addAction(text)
 
             menu.addSeparator()
-        
-        delDivision = {}
-        if activeTrack != self.misdetIdx:
-            for trackid in trackids:
-                if trackid in list(self.mainOperator.divisions.keys()) and self.mainOperator.divisions[trackid][1] == t:
-                    text = "remove division event from track " + str(trackid)
-                    delDivision[text] = trackid
-                    menu.addSeparator()
-                    menu.addAction(text)
         
         action = menu.exec_(globalWindowCoordiante)
         if action is None:
