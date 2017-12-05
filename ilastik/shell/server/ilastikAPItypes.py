@@ -37,6 +37,17 @@ DataList = typesystem.array(
 )
 
 
+class RoiType(typesystem.Object):
+    properties = {
+        'extents_min': typesystem.string(description='Minimum values (minx_miny_minz) of roi'),
+        'extents_max': typesystem.string(description='Maximum values (maxx_maxy_maxz) of roi'),
+        'format': typesystem.string(
+            description='Encoding, currently supporting "raw", "npz". Defaults to "raw".',
+            default='raw'
+        )
+    }
+
+
 class NewLocalProject(typesystem.Object):
     properties = {
         'project_name': typesystem.string(

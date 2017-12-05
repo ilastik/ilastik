@@ -44,4 +44,16 @@ def get_structured_info():
     dataset_names, json_states = app._ilastik_api.get_structured_info()
     resp = jsonify(states=json_states, image_names=dataset_names)
     resp.status_code = 200
+
     return resp
+
+
+@dataAPI.route('/voxels/<dataset_name>/<source_name>', methods=['POST'])
+def get_voxels(dataset_name, source_name):
+    start = map(int, request.json.get('extents_min').split('_'))
+    stop = map(int, request.json.get('extents_max').split('_'))
+    slot = app._ilastik_api.slot_tracker.get_slot(dataset_name, source_name)
+
+    format = 'raw'
+    if 'format' in request.json:
+        format = str(request.json['format'])
