@@ -107,7 +107,7 @@ class ProjectManager(object):
         if workflow_class is not None:
             h5File.create_dataset("workflowName", data=workflow_class.__name__.encode('utf-8'))
         if workflow_cmdline_args is not None and len(workflow_cmdline_args) > 0:
-            h5File.create_dataset("workflow_cmdline_args", data=workflow_cmdline_args.encode('utf-8'))
+            h5File.create_dataset("workflow_cmdline_args", data=[arg.encode('utf-8') for arg in workflow_cmdline_args])
         
         return h5File
 
