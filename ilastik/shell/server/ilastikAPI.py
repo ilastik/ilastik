@@ -206,6 +206,7 @@ class IlastikAPI(object):
         Raises:
             ValueError: if an unsupported `workflow_type` is given
         """
+        self.slot_tracker = None
         if project_path is None:
             raise NotImplementedError('memory-only projects have to be implemented')
         from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
@@ -223,6 +224,7 @@ class IlastikAPI(object):
         Args:
           project_file_path (str): path of `.ilp` file
         """
+        self.slot_tracker = None
         self._server_shell.openProjectFile(project_file_path)
         pc_applet = self.get_applet(PixelClassificationApplet)
         tlo = pc_applet.topLevelOperator
