@@ -21,11 +21,6 @@
 import sys
 import inspect
 
-def write_lineno():
-    """Returns the current line number in our program."""
-    line_number = inspect.currentframe().f_back.f_lineno
-    sys.stderr.write(".{} {} ...\n".format(__file__, line_number))
-
 from future import standard_library
 standard_library.install_aliases()
 from builtins import range
@@ -621,34 +616,26 @@ class SerialClassifierSlot(SerialSlot):
     def _serialize(self, group, name, slot):
         # Is the cache up-to-date?
         # if not, we'll just return (don't recompute the classifier just to save it)
-        write_lineno()
         if self.cache._dirty:
             return
-        write_lineno()
         classifier = self.cache.Output.value
 
         # Classifier can be None if there isn't any training data yet.
         if classifier is None:
             return
-        write_lineno()
         classifier_group = group.create_group( name )
-        write_lineno()
-        print(name, group.name)
         classifier.serialize_hdf5( classifier_group )
 
     def deserialize(self, group):
         """
         Have to override this to ensure that dirty is always set False.
         """
-        write_lineno()
         super(SerialClassifierSlot, self).deserialize(group)
         self.dirty = False
 
     def _deserialize(self, classifierGroup, slot):
-        write_lineno()
         try:
             classifier_type = pickle.loads( classifierGroup['pickled_type'][()] )
-            print(classifier_type)
         except KeyError:
             # For compatibility with old project files, choose the default classifier.
             from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
