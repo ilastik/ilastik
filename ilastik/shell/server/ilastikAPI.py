@@ -26,7 +26,14 @@ VoxelSourceState = collections.namedtuple(
 
 
 class SlotTracker(object):
-    """Copied from voxel_server"""
+    """Copied from voxel_server
+
+    Attributes:
+      multislots (list): Outputs of OpReorderAxis for each of the multislots
+      image_name_multislot (OpMultiLaneDataSelectionGroup.ImageName): should be
+        a level 1 slot and hold a name for each image group (each lane)
+      multislot_names: the name for each of the multi slots
+    """
 
     def __init__(self, image_name_multislot, multislots, forced_axes=None):
         self.image_name_multislot = image_name_multislot
