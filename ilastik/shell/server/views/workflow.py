@@ -17,6 +17,27 @@ def get_structured_info():
     }
     return resp
 
+@time_function_call(logger=logger)
+def get_data(dataset_name: str, source_name: str, format: str, roi_begin: str, roi_end: str) -> Response:
+    print(dataset_name, source_name, format, roi_begin, roi_end)
+    start = map(int, roi_begin.split('_'))
+    stop = map(int, roi_end.split('_'))
+    slot = get_current_app()._ilastik_api.slot_tracker.get_slot(dataset_name, source_name)
+
+    requested_format = format
+    data = slot(start, stop).wait()
+
+    content_type = 'application/octet-stream'
+    if requested_format == 'raw':
+        print('returning raw')
+        stream = io.BytesIO(encode_raw(data))
+        return Response(content=stream, content_type=content_type)
+
+    if requested_format == 'npz':
+        print('encoding')
+        data = numpy.asarray(data, order='C')
+        stream = encode_npz(data)
+        return Response(content=stream, content_type=content_type)
 
 @time_function_call(logger=logger)
 def get_voxels(dataset_name: str, source_name: str, roi: RoiType) -> Response:
