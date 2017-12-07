@@ -241,7 +241,7 @@ def create_slicing(axistags, dimensions, margin, feature_table):
                   min(maxz[i] + margin, dimensions[3])),
             slice(None)
         ]
-        yield map(slicing.__getitem__, indices)[:5 - excludes], oid
+        yield [slicing[x] for x in indices][:5 - excludes], oid
         oid += 1
 
 
