@@ -80,6 +80,8 @@ ilastik_server_config = IlastikServerConfig()
 ilastik_api = IlastikAPI()
 app._ilastik_config = ilastik_server_config
 app._ilastik_api = ilastik_api
+# {dataset_name: {slot_name: N5handle, slot_name2: N5handle, ...}, dataset_name2: {}, ...}
+app._n5_file_list = {}
 
 
 if __name__ == '__main__':
