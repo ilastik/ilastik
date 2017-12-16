@@ -115,6 +115,15 @@ class VoxelSegmentationGui(LabelingGui):
         self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
         self.__cleanup_fns.append(partial(self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty)))
 
+        # update displayed plane after prediction
+
+        def SelectBestPlane():
+            v = self.topLevelOperatorView.BestAnnotationPlane.value
+            import IPython; IPython.embed()
+            d, index = self.topLevelOperatorView.BestAnnotationPlane.value
+
+        self.topLevelOperatorView.BestAnnotationPlane.notifyValueChanged(bind(SelectBestPlane))
+
     def initFeatSelDlg(self):
         if self.topLevelOperatorView.name == "OpVoxelSegmentation":
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
@@ -142,6 +151,17 @@ class VoxelSegmentationGui(LabelingGui):
 
         classifier_action = advanced_menu.addAction("Classifier...")
         classifier_action.triggered.connect(handleClassifierAction)
+
+        def bp():
+            axis, index = self.topLevelOperatorView.BestAnnotationPlane.value
+
+            # Axes from the classifiation operator are in the order z y x while volumina has x y z
+            axis = [2, 1, 0][axis]
+
+            self.editor.navCtrl._updateSlice(index, axis)
+
+        bpa = advanced_menu.addAction("bp")
+        bpa.triggered.connect(bp)
 
         def showVarImpDlg():
             varImpDlg = VariableImportanceDialog(self.topLevelOperatorView.Classifier.value.named_importances, parent=self)
@@ -431,11 +451,14 @@ class VoxelSegmentationGui(LabelingGui):
 
         superVoxelSlot = self.topLevelOperatorView.SupervoxelBoundaries
         if superVoxelSlot.ready():
-            layer = self.createStandardLayerFromSlot(superVoxelSlot)
+            layer = AlphaModulatedLayer(LazyflowSource(superVoxelSlot),
+                                        tintColor=QColor(Qt.blue),
+                                        range=(0.0, 1.0),
+                                        normalize=(0.0, 1.0))
             layer.name = "SLIC segmentation"
             layer.visible = True
             layer.opacity = 1.0
-            layers.append(layer)
+            layers.insert(0, layer)
         return layers
 
     def _toggleSegmentation3D(self):

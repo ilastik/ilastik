@@ -71,6 +71,8 @@ class OpVoxelSegmentation(Operator):
 
     UncertaintyEstimate = OutputSlot(level=1)
 
+    BestAnnotationPlane = OutputSlot(level=1)
+
     SimpleSegmentation = OutputSlot(level=1)  # For debug, for now
 
     # GUI-only (not part of the pipeline, but saved to the project)
@@ -147,6 +149,7 @@ class OpVoxelSegmentation(Operator):
         self.opPredictionPipeline.FreezePredictions.connect(self.FreezePredictions)
         self.opPredictionPipeline.PredictionsFromDisk.connect(self.PredictionsFromDisk)
         self.opPredictionPipeline.PredictionMask.connect(self.PredictionMasks)
+        self.BestAnnotationPlane.connect(self.opPredictionPipeline.BestAnnotationPlane)
 
         # Feature Selection Stuff
         self.opFeatureMatrixCaches = OpMultiLaneWrapper(OpFeatureMatrixCache, parent=self)
@@ -234,6 +237,11 @@ class OpVoxelSegmentation(Operator):
                     def removeSlot(a, b, position, finalsize):
                         a.removeSlot(position, finalsize)
                     s1.notifyRemoved(partial(removeSlot, s2))
+
+        def onSegmentationResize(slot, oldsize, newsize):
+            print("resized from {} to {}".format(oldsize, newsize))
+
+        self.SupervoxelSegmentation.notifyResized(onSegmentationResize)
 
     def connectSegmentation(self):
         self.opSupervoxelFeaturesAndLabels.SupervoxelSegmentation.connect(self.SupervoxelSegmentation)
@@ -668,6 +676,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
     PredictionProbabilityChannels = OutputSlot(level=1)
     SegmentationChannels = OutputSlot(level=1)
     UncertaintyEstimate = OutputSlot()
+    BestAnnotationPlane = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpPredictionPipeline, self).__init__(*args, **kwargs)
@@ -723,6 +732,11 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.opUncertaintyCache.Input.connect(self.opUncertaintyEstimator.Output)
         self.opUncertaintyCache.fixAtCurrent.connect(self.FreezePredictions)
         self.UncertaintyEstimate.connect(self.opUncertaintyCache.Output)
+
+        # Compute the plane which has the most uncertainty
+        self.opPlaneSelection = OpPlaneSelection(parent=self)
+        self.opPlaneSelection.Input.connect(self.opUncertaintyCache.Output)
+        self.BestAnnotationPlane.connect(self.opPlaneSelection.Output)
 
     def setupOutputs(self):
         self.prediction_cache_gui.BlockShape.setValue(self.FeatureImages.meta.shape)
@@ -811,6 +825,36 @@ class OpEnsembleMargin(Operator):
         self.Output.setDirty(roi)
 
 
+class OpPlaneSelection(Operator):
+    Input = InputSlot()
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        print(self.Input.meta)
+        self.Output.meta.shape = (1,)
+        self.Output.meta.dtype = list
+
+    def execute(self, slot, subindex, roi, result):
+        # Remove last singleton dimension
+        uncertainty = np.squeeze(self.Input.value, -1)
+        # find the smallest dimension, so we can return the larger plane
+        d = np.argmin(uncertainty.shape)
+
+        max_average_uncertainty_plane = 0
+        max_average_uncertainty = 0
+
+        for i, slice_ in enumerate(np.rollaxis(uncertainty, d)):
+            average_uncertainty = np.mean(slice_)
+            if average_uncertainty > max_average_uncertainty:
+                max_average_uncertainty = average_uncertainty
+                max_average_uncertainty_plane = i
+        print("best plane {} {}".format(d, max_average_uncertainty_plane))
+        return [[d, max_average_uncertainty_plane]]
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        self.Output.setDirty(roi)
+
+
 class OpFilterFeatureSelection(Operator):
     FeatureLabelMatrix = InputSlot(level=1)
     FilterMethod = InputSlot(optional=True)
@@ -821,7 +865,7 @@ class OpFilterFeatureSelection(Operator):
     def setupOutputs(self):
         # the output slot should maybe contain the internal feature IDs or a bool list of len(internal_feature_ids)
         self.SelectedFeatureIDs.meta.shape = (1,)
-        self.SelectedFeatureIDs.meta.dtype = list
+        self.SelectedFeatureIDs.meta.dtype = object
         self._filter_method = "ICAP"
         feature_label_matrix = self.FeatureLabelMatrix[0].value
         labels = feature_label_matrix[:, 0]  # first row is labels

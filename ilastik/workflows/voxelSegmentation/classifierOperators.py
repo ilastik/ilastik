@@ -413,7 +413,7 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         features = self.SupervoxelFeatures.value
         # print("features before prediction {}".format(features))
         # features = get_supervoxel_features(features, self.SupervoxelSegmentation.value)
-
+        # import ipdb; ipdb.set_trace()
         with Timer() as prediction_timer:
             probabilities = classifier.predict_probabilities(features)
         print("probs shape: {}".format(probabilities.shape))

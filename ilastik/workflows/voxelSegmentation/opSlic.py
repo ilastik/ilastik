@@ -6,6 +6,8 @@ a cache can be used to force every request to be taken from a global result.
 See the __main__ section, below.
 It also includes a brief demonstration of lazyflow's OperatorWrapper mechanism.
 """
+import logging
+
 import numpy
 
 import skimage.segmentation
@@ -13,6 +15,9 @@ import skimage.segmentation
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.roi import roiToSlice
+
+
+logger = logging.getLogger(__name__)
 
 
 class OpSlic(Operator):
@@ -26,14 +31,15 @@ class OpSlic(Operator):
 
     # These are the slic parameters.
     # Here we give default values, but they can be changed.
-    NumSegments = InputSlot(value=100)
-    Compactness = InputSlot(value=0.1)
+    NumSegments = InputSlot(value=0)
+    Compactness = InputSlot(value=0.6)
     MaxIter = InputSlot(value=10)
 
     Output = OutputSlot()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.dtype = numpy.uint16
 
         tagged_shape = self.Input.meta.getTaggedShape()
         assert 'c' in tagged_shape, "We assume the image has an explicit channel axis."
@@ -46,11 +52,25 @@ class OpSlic(Operator):
     def execute(self, slot, subindex, roi, result):
         input_data = self.Input(roi.start, roi.stop).wait()
         assert slot == self.Output
-        # print input_data.shape
-        # numpy.save("/tmp/image", input_data)
-        print("calling with {}".format(self.NumSegments.value))
+
+        n_segments = self.NumSegments.value
+
+        if n_segments == 0:
+            # If the number of supervoxels was not given, use a default proportional to the number of voxels
+            n_segments = numpy.int(numpy.prod(input_data.shape) / 20000)
+
+        print("calling skimage.segmentation.slic with {}".format(
+            dict(
+                n_segments=n_segments,
+                compactness=self.Compactness.value,
+                max_iter=self.MaxIter.value,
+                multichannel=True,
+                enforce_connectivity=True,
+                convert2lab=False
+                )
+        ))
         slic_sp = skimage.segmentation.slic(input_data,
-                                            n_segments=self.NumSegments.value,
+                                            n_segments=n_segments,
                                             compactness=self.Compactness.value,
                                             max_iter=self.MaxIter.value,
                                             multichannel=True,
@@ -62,6 +82,8 @@ class OpSlic(Operator):
 
         # slic_sp has no channel axis, so insert that axis before copying to 'result'
         result[:] = slic_sp[..., None]
+        print("got {} different supervoxels".format(numpy.max(result)))
+        # import IPython; IPython.embed()
 
         return result
 
@@ -108,8 +130,8 @@ class OpSlicCached(Operator):
     """
     # Same slots as OpSlic
     Input = InputSlot()
-    NumSegments = InputSlot(value=200)
-    Compactness = InputSlot(value=0.4)
+    NumSegments = InputSlot(value=0)
+    Compactness = InputSlot(value=0.6)
     MaxIter = InputSlot(value=10)
 
     CacheInput = InputSlot(optional=True)

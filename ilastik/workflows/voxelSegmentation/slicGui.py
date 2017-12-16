@@ -1,9 +1,12 @@
 import os
 
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor
+
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from volumina.pixelpipeline.datasources import LazyflowSource
-from volumina.api import Layer
+from volumina.api import AlphaModulatedLayer
 
 from .slicViewerControls import SlicViewerControls
 
@@ -11,14 +14,17 @@ from .slicViewerControls import SlicViewerControls
 class SlicGui(LayerViewerGui):
     def setupLayers(self):
         layers = [self.createStandardLayerFromSlot(self.topLevelOperatorView.Input)]
-        layers[0].opacity = 0.5
+        layers[0].opacity = 1.0
         superVoxelSlot = self.topLevelOperatorView.BoundariesOutput
         if superVoxelSlot.ready():
-            layer = self.createStandardLayerFromSlot(superVoxelSlot)
+            layer = AlphaModulatedLayer(LazyflowSource(superVoxelSlot),
+                            tintColor=QColor(Qt.blue),
+                            range=(0.0, 1.0),
+                            normalize=(0.0, 1.0))
             layer.name = "Input Data"
             layer.visible = True
             layer.opacity = 1.0
-            layers.append(layer)
+            layers.insert(0, layer)
 
         return layers
 
