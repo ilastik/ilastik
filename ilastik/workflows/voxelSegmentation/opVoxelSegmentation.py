@@ -4,6 +4,7 @@ from functools import partial
 
 # SciPy
 import numpy
+from pathos import multiprocessing
 import skimage
 #import IPython
 import vigra
@@ -26,6 +27,7 @@ from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
 from .classifierOperators import OpTrainSupervoxelClassifierBlocked, OpSupervoxelClassifierPredict
+from .utils import timeit
 
 
 class OpVoxelSegmentation(Operator):
@@ -432,6 +434,7 @@ class OpSupervoxelFeaturesAndLabels(Operator):
     SupervoxelFeatures = OutputSlot()
     SupervoxelLabels = OutputSlot()
 
+    @timeit
     def execute(self, slot, subindex, roi, result):
         
         if slot == self.SupervoxelFeatures:
@@ -458,21 +461,26 @@ class OpSupervoxelFeaturesAndLabels(Operator):
 
             print("labels {}".format(labels.shape))
 
-            N_supervoxels = np.max(supervoxel_mask) + 1
-            supervoxel_labels = np.ndarray((N_supervoxels,))
+            def computeLabel(supervoxels):
+                supervoxel_labels = np.ndarray((len(supervoxels),))
+                for i, supervoxel in enumerate(supervoxels):
+                    counts = np.bincount(labels[supervoxel_mask == supervoxel].ravel())
 
-            for supervoxel in range(N_supervoxels):
-                counts = np.bincount(labels[supervoxel_mask == supervoxel].ravel())
+                    # Little trick to avoid labelling a supervoxel as unlabelled if only a small part of it has been labelled
+                    if len(counts) == 1:  # or max(counts[1:]) == 0:
+                        # If there's only unlabelled pixels, label 0 (=unlabeled)
+                        label = 0
+                    else:
+                        # Else, return the label which has the most pixels (excluding label 0)
+                        label = counts[1:].argmax() + 1
 
-                # Little trick to avoid labelling a supervoxel as unlabelled if only a small part of it has been labelled
-                if len(counts) == 1:  # or max(counts[1:]) == 0:
-                    # If there's only unlabelled pixels, label 0 (=unlabeled)
-                    label = 0
-                else:
-                    # Else, return the label which has the most pixels (excluding label 0)
-                    label = counts[1:].argmax() + 1
+                    supervoxel_labels[i] = label
+                return supervoxel_labels
 
-                supervoxel_labels[supervoxel] = label
+            num_cores = multiprocessing.cpu_count()
+            pool = multiprocessing.Pool(num_cores)
+            supervoxels_list = np.arange(np.max(supervoxel_mask) + 1)
+            supervoxel_labels = np.concatenate(pool.map(computeLabel, np.array_split(supervoxels_list, num_cores)))
             return supervoxel_labels
 
     def setupOutputs(self):
