@@ -4,6 +4,7 @@ from functools import partial
 
 # SciPy
 import numpy
+import skimage
 #import IPython
 import vigra
 
@@ -70,6 +71,7 @@ class OpVoxelSegmentation(Operator):
     HeadlessUncertaintyEstimate = OutputSlot(level=1)  # Same as uncertaintly estimate, but does not rely on cached data.
 
     UncertaintyEstimate = OutputSlot(level=1)
+    TopUncertaintyEstimate = OutputSlot(level=1)
 
     BestAnnotationPlane = OutputSlot(level=1)
 
@@ -177,6 +179,7 @@ class OpVoxelSegmentation(Operator):
         self.PredictionProbabilityChannels.connect(self.opPredictionPipeline.PredictionProbabilityChannels)
         self.SegmentationChannels.connect(self.opPredictionPipeline.SegmentationChannels)
         self.UncertaintyEstimate.connect(self.opPredictionPipeline.UncertaintyEstimate)
+        self.TopUncertaintyEstimate.connect(self.opPredictionPipeline.TopUncertaintyEstimate)
         self.SimpleSegmentation.connect(self.opPredictionPipeline.SimpleSegmentation)
         self.HeadlessUncertaintyEstimate.connect(self.opPredictionPipeline.HeadlessUncertaintyEstimate)
 
@@ -676,6 +679,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
     PredictionProbabilityChannels = OutputSlot(level=1)
     SegmentationChannels = OutputSlot(level=1)
     UncertaintyEstimate = OutputSlot()
+    TopUncertaintyEstimate = OutputSlot()
     BestAnnotationPlane = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -733,6 +737,12 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.opUncertaintyCache.fixAtCurrent.connect(self.FreezePredictions)
         self.UncertaintyEstimate.connect(self.opUncertaintyCache.Output)
 
+        self.opTopUncertaintyCache = OpBlockedArrayCache(parent=self)
+        self.opTopUncertaintyCache.name = "opTopUncertaintyCache"
+        self.opTopUncertaintyCache.Input.connect(self.opUncertaintyEstimator.TopUncertain)
+        self.opTopUncertaintyCache.fixAtCurrent.connect(self.FreezePredictions)
+        self.TopUncertaintyEstimate.connect(self.opTopUncertaintyCache.Output)
+
         # Compute the plane which has the most uncertainty
         self.opPlaneSelection = OpPlaneSelection(parent=self)
         self.opPlaneSelection.Input.connect(self.opUncertaintyCache.Output)
@@ -782,14 +792,19 @@ class OpEnsembleMargin(Operator):
     """
     Input = InputSlot()
     Output = OutputSlot()
+    # Todo rename to UncertainBoundaries
+    TopUncertain = OutputSlot()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
+        self.TopUncertain.meta.assignFrom(self.Input.meta)
         taggedShape = self.Input.meta.getTaggedShape()
         taggedShape['c'] = 1
         self.Output.meta.shape = tuple(taggedShape.values())
+        self.TopUncertain.meta.shape = tuple(taggedShape.values())
 
     def execute(self, slot, subindex, roi, result):
+
         # If there's only 1 channel, there's zero uncertainty
         if self.Input.meta.getTaggedShape()['c'] <= 1:
             result[:] = 0
@@ -815,6 +830,24 @@ class OpEnsembleMargin(Operator):
         # e.g. predictions of .99 and .01 -> low uncertainty (0.98)
         # e.g. predictions of .51 and .49 -> high uncertainty (0.02)
         result[...] = (1-res)
+
+        # Only show top 10% uncertain blocks
+        threshold = np.percentile(result, 90)
+        result[result < threshold] = 0
+
+        if slot == self.TopUncertain:
+            result[result >= threshold] = 0.5
+            boundaries = skimage.segmentation.find_boundaries(result, mode="inner")
+            # result[:, ::3, ::3] = 1
+
+            result[::3, ::3, ::3][result[::3, ::3, ::3] != 0] = 1.0
+            result[1::3, 1::3, 1::3][result[1::3, 1::3, 1::3] != 0] = 1.0
+            result[2::3, 2::3, 2::3][result[2::3, 2::3, 2::3] != 0] = 1.0
+            result[result == 0.5] = 0
+            result[boundaries] = 1
+            result *= threshold  # Make uncertainty more and more transparent as threshold gets lower
+
+
         return result
 
     def propagateDirty(self, inputSlot, subindex, roi):
@@ -823,6 +856,7 @@ class OpEnsembleMargin(Operator):
         roi.start[chanAxis] = 0
         roi.stop[chanAxis] = 1
         self.Output.setDirty(roi)
+        self.TopUncertain.setDirty(roi)
 
 
 class OpPlaneSelection(Operator):

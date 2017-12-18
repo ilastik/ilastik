@@ -124,12 +124,7 @@ class VoxelSegmentationGui(LabelingGui):
             # Axes from the classifiation operator are in the order z y x while volumina has x y z
             axis = [2, 1, 0][axis]
 
-            # self.editor.navCtrl._updateSlice(index, axis)
-            # newPos = copy.copy(self.editor.navCtrl._model.slicingPos)
-            # newPos[axis] = index
-            # self.editor.navCtrl.panSlicingViews(newPos, [a for a in [0, 1, 2] if a != axis])
             self.editor.navCtrl.changeSliceAbsolute(index, axis)
-            # import IPython; IPython.embed()
 
         self.labelingDrawerUi.nextPlaneButton.clicked.connect(SelectBestPlane)
 
@@ -324,6 +319,25 @@ class VoxelSegmentationGui(LabelingGui):
                                                                      uncertaintyLayer))
             layers.append(uncertaintyLayer)
 
+        # Add the top uncertainty estimate layer
+        topUncertaintySlot = self.topLevelOperatorView.TopUncertaintyEstimate
+        if topUncertaintySlot.ready():
+            topUncertaintySrc = LazyflowSource(topUncertaintySlot)
+            topUncertaintyLayer = AlphaModulatedLayer(topUncertaintySrc,
+                                                      tintColor=QColor(Qt.cyan),
+                                                      range=(0.0, 1.0),
+                                                      normalize=(0.0, 1.0))
+            topUncertaintyLayer.name = "topUncertainty"
+            topUncertaintyLayer.visible = True
+            topUncertaintyLayer.opacity = 1.0
+            topUncertaintyLayer.shortcutRegistration = ("u", ActionInfo("Prediction Layers",
+                                                                        "topUncertainty",
+                                                                        "Show/Hide topUncertainty",
+                                                                        topUncertaintyLayer.toggleVisible,
+                                                                        self.viewerControlWidget(),
+                                                                        topUncertaintyLayer))
+            layers.insert(0, topUncertaintyLayer)
+
         labels = self.labelListData
 
         # Add each of the segmentations
@@ -450,13 +464,13 @@ class VoxelSegmentationGui(LabelingGui):
         superVoxelSlot = self.topLevelOperatorView.SupervoxelBoundaries
         if superVoxelSlot.ready():
             layer = AlphaModulatedLayer(LazyflowSource(superVoxelSlot),
-                                        tintColor=QColor(Qt.blue),
+                                        tintColor=QColor(Qt.black),
                                         range=(0.0, 1.0),
                                         normalize=(0.0, 1.0))
             layer.name = "SLIC segmentation"
             layer.visible = True
-            layer.opacity = 1.0
-            layers.insert(0, layer)
+            layer.opacity = 0.3
+            layers.insert(1, layer)
         return layers
 
     def _toggleSegmentation3D(self):
