@@ -1,3 +1,4 @@
+import copy
 from functools import partial
 import logging
 from past.utils import old_div
@@ -55,7 +56,7 @@ class VoxelSegmentationGui(LabelingGui):
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         if labelingDrawerUiPath is None:
-            labelingDrawerUiPath = os.path.split(pixelClassificationGui.__file__)[0] + '/labelingDrawer.ui'
+            labelingDrawerUiPath = os.path.dirname(__file__) + '/labelingDrawer.ui'
 
         # Base class init
         super(VoxelSegmentationGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath)
@@ -118,11 +119,19 @@ class VoxelSegmentationGui(LabelingGui):
         # update displayed plane after prediction
 
         def SelectBestPlane():
-            v = self.topLevelOperatorView.BestAnnotationPlane.value
-            import IPython; IPython.embed()
-            d, index = self.topLevelOperatorView.BestAnnotationPlane.value
+            axis, index = self.topLevelOperatorView.BestAnnotationPlane.value
 
-        self.topLevelOperatorView.BestAnnotationPlane.notifyValueChanged(bind(SelectBestPlane))
+            # Axes from the classifiation operator are in the order z y x while volumina has x y z
+            axis = [2, 1, 0][axis]
+
+            # self.editor.navCtrl._updateSlice(index, axis)
+            # newPos = copy.copy(self.editor.navCtrl._model.slicingPos)
+            # newPos[axis] = index
+            # self.editor.navCtrl.panSlicingViews(newPos, [a for a in [0, 1, 2] if a != axis])
+            self.editor.navCtrl.changeSliceAbsolute(index, axis)
+            # import IPython; IPython.embed()
+
+        self.labelingDrawerUi.nextPlaneButton.clicked.connect(SelectBestPlane)
 
     def initFeatSelDlg(self):
         if self.topLevelOperatorView.name == "OpVoxelSegmentation":
@@ -151,17 +160,6 @@ class VoxelSegmentationGui(LabelingGui):
 
         classifier_action = advanced_menu.addAction("Classifier...")
         classifier_action.triggered.connect(handleClassifierAction)
-
-        def bp():
-            axis, index = self.topLevelOperatorView.BestAnnotationPlane.value
-
-            # Axes from the classifiation operator are in the order z y x while volumina has x y z
-            axis = [2, 1, 0][axis]
-
-            self.editor.navCtrl._updateSlice(index, axis)
-
-        bpa = advanced_menu.addAction("bp")
-        bpa.triggered.connect(bp)
 
         def showVarImpDlg():
             varImpDlg = VariableImportanceDialog(self.topLevelOperatorView.Classifier.value.named_importances, parent=self)
