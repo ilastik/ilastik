@@ -42,8 +42,9 @@ try:
     #   generic_type: type "LogLevel" is already registered!
     # Therefore we start a subprocess to test the import.
     if sys.platform.startswith('win'):
-        subprocess.check_output(
-            [sys.executable, '-c', 'import nifty_with_cplex'])
+        subprocess.run(
+            [sys.executable, '-c', 'import nifty_with_cplex'], check=True,
+            stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 
     import nifty_with_cplex as nifty
     assert nifty.Configuration.WITH_CPLEX
@@ -61,8 +62,9 @@ if not NIFTY_SOLVER_NAMES:
     try:
         # see comment at nifty_with_cplex
         if sys.platform.startswith('win'):
-            subprocess.check_call(
-                [sys.executable, '-c', 'import nifty_with_gurobi'])
+            subprocess.run(
+                [sys.executable, '-c', 'import nifty_with_gurobi'], check=True,
+                stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 
         import nifty_with_gurobi as nifty
         assert nifty.Configuration.WITH_GUROBI
