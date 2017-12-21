@@ -222,8 +222,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         self.topLevelOperatorView.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
         self.topLevelOperatorView.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
+        self.topLevelOperatorView.Appearances.notifyReady( bind(self._updateAppearancesFromOperator) )
+        self.topLevelOperatorView.Disappearances.notifyReady( bind(self._updateDisappearancesFromOperator) )
 
         self.operator.labels = self.operator.Labels.value
+        self.operator.appearances = self.operator.Appearances.value
+        self.operator.disappearances = self.operator.Disappearances.value
 
         self._drawer.exportButton.setVisible(False)
         self._drawer.exportTifButton.setVisible(False)
@@ -405,6 +409,14 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     def _updateDivisionsFromOperator(self):
         self.operator.divisions = self.topLevelOperatorView.Divisions.wait()
 
+    @threadRouted
+    def _updateAppearancesFromOperator(self):
+        self.operator.appearances = self.topLevelOperatorView.Appearances.wait()
+
+    @threadRouted
+    def _updateDisappearancesFromOperator(self):
+        self.operator.disappearances = self.topLevelOperatorView.Disappearances.wait()
+
     def getLabel(self, time, track):
         for label in list(self.operator.labels[time].keys()):
             if self.operator.labels[time][label] == set([track]):
@@ -417,11 +429,16 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._criticalMessage("You have to compute object features first.")
             return
 
-        numStages = 4
+        numStages = 6
+        # object features
+        # detection probabilities
         # creating traxel store
         # generating probabilities
         # insert energies
         # structured learning
+        if self._drawer.divisionsBox.isChecked():
+            # division probabilities
+            numStages +=1
 
         self.progressWindow = TrackProgressDialog(parent=self,numStages=numStages)
         self.progressWindow.run()
