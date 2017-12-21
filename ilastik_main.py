@@ -74,6 +74,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     this_path = os.path.dirname(__file__)
     ilastik_dir = os.path.abspath(
         os.path.join(this_path, "..%s.." % os.path.sep))
+    _import_h5py_with_utf8_encoding()
     _update_debug_mode(parsed_args)
 
     # If necessary, redirect stdout BEFORE logging is initialized
@@ -149,6 +150,14 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
         from ilastik.shell.gui.startShellGui import startShellGui
         sys.exit(startShellGui(workflow_cmdline_args, eventcapture_mode,
                                playback_args, preinit_funcs, postinit_funcs))
+
+
+def _import_h5py_with_utf8_encoding():
+    # This is a monkeypatch for windows in order to support utf-8 filenames.
+    # Note: This works only with the patched version of hdf5-1.10.1 (forked at
+    # ilastik)
+    import h5py
+    h5py._hl.compat.WINDOWS_ENCODING = "utf-8"
 
 
 def _init_configfile(parsed_args):
