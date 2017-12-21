@@ -20,6 +20,7 @@
 ###############################################################################
 import sys
 import argparse
+import itertools
 from lazyflow.graph import Graph, Operator, OperatorWrapper
 
 from ilastik.workflow import Workflow
@@ -58,9 +59,16 @@ class CountingWorkflow(Workflow):
         # Interactive workflow
         ######################
 
+        allowed_axis_orders = []
+        for space in itertools.combinations('xyz', 2):
+            for space_c_perm in itertools.permutations(''.join(space)  + 'c'):
+                allowed_axis_orders.append(''.join(space_c_perm))
+
+
         self.dataSelectionApplet = DataSelectionApplet(self,
                                                        "Input Data",
-                                                       "Input Data" )
+                                                       "Input Data",
+                                                       forceAxisOrder=allowed_axis_orders)
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         role_names = ['Raw Data']
         opDataSelection.DatasetRoles.setValue( role_names )
@@ -73,18 +81,18 @@ class CountingWorkflow(Workflow):
         opCounting = self.countingApplet.topLevelOperator
 
         self.dataExportApplet = CountingDataExportApplet(self, "Density Export", opCounting)
-        
+
         # Customization hooks
         self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
         self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
         self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
-        
+
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.PmapColors.connect(opCounting.PmapColors)
         opDataExport.LabelNames.connect(opCounting.LabelNames)
         opDataExport.UpperBound.connect(opCounting.UpperBound)
         opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
-        opDataExport.SelectionNames.setValue( ['Probabilities'] )        
+        opDataExport.SelectionNames.setValue( ['Probabilities'] )
 
         self._applets = []
         self._applets.append(self.dataSelectionApplet)
@@ -92,9 +100,9 @@ class CountingWorkflow(Workflow):
         self._applets.append(self.countingApplet)
         self._applets.append(self.dataExportApplet)
 
-        self.batchProcessingApplet = BatchProcessingApplet( self, 
-                                                            "Batch Processing", 
-                                                            self.dataSelectionApplet, 
+        self.batchProcessingApplet = BatchProcessingApplet( self,
+                                                            "Batch Processing",
+                                                            self.dataSelectionApplet,
                                                             self.dataExportApplet )
         self._applets.append(self.batchProcessingApplet)
         if unused_args:
@@ -167,8 +175,8 @@ class CountingWorkflow(Workflow):
     def onProjectLoaded(self, projectManager):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
-        
-        If the user provided command-line arguments, use them to configure 
+
+        If the user provided command-line arguments, use them to configure
         the workflow for batch mode and export all results.
         (This workflow's headless mode supports only batch mode for now.)
         """
@@ -185,11 +193,11 @@ class CountingWorkflow(Workflow):
             if self.countingApplet.topLevelOperator.classifier_cache._dirty:
                 logger.warning("Your project file has no classifier.  "
                             "A new classifier will be trained for this run.")
-                
+
             logger.info("Beginning Batch Processing")
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
-    
+
     def prepare_for_entire_export(self):
         """
         Customization hook for data export (including batch mode).
@@ -202,7 +210,7 @@ class CountingWorkflow(Workflow):
             csv_path = self.dataExportApplet.topLevelOperator.CsvFilepath.value
             logger.info("Exporting object counts to CSV: " + csv_path)
             self.csv_export_file = open(csv_path, 'w')
-    
+
     def post_process_lane_export(self, lane_index):
         """
         Customization hook for data export (including batch mode).
@@ -210,7 +218,7 @@ class CountingWorkflow(Workflow):
         # Write the object counts for this lane as a line in the CSV file.
         if self.csv_export_file:
             self.dataExportApplet.write_csv_results(self.csv_export_file, lane_index)
-        
+
     def post_process_entire_export(self):
         """
         Customization hook for data export (including batch mode).
@@ -245,8 +253,8 @@ class CountingWorkflow(Workflow):
         self._shell.setAppletEnabled(self.countingApplet, features_ready)
         self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not self.dataExportApplet.busy)
         self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not self.batchProcessingApplet.busy)
-        
-        # Lastly, check for certain "busy" conditions, during which we 
+
+        # Lastly, check for certain "busy" conditions, during which we
         #  should prevent the shell from closing the project.
         busy = False
         busy |= self.dataSelectionApplet.busy
