@@ -42,7 +42,7 @@ def main( parsed_args, workflow_cmdline_args=[], init_logging=True ):
     this_path = os.path.dirname(__file__)
     ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
     _update_debug_mode( parsed_args )
-    
+
     # If necessary, redirect stdout BEFORE logging is initialized
     _redirect_output( parsed_args )
 
@@ -50,7 +50,7 @@ def main( parsed_args, workflow_cmdline_args=[], init_logging=True ):
         _init_logging( parsed_args ) # Initialize logging before anything else
 
     _init_configfile( parsed_args )
-    
+
     _init_threading_logging_monkeypatch()
     _validate_arg_compatibility( parsed_args )
 
@@ -58,7 +58,7 @@ def main( parsed_args, workflow_cmdline_args=[], init_logging=True ):
     # These are called during app startup, but before the shell is created.
     preinit_funcs = []
     preinit_funcs.append( _import_opengm ) # Must be first (or at least before vigra).
-    
+
     lazyflow_config_fn = _prepare_lazyflow_config( parsed_args )
     if lazyflow_config_fn:
         preinit_funcs.append( lazyflow_config_fn )
@@ -70,14 +70,14 @@ def main( parsed_args, workflow_cmdline_args=[], init_logging=True ):
     load_fn = _prepare_auto_open_project( parsed_args )
     if load_fn:
         postinit_funcs.append( load_fn )
-    
+
     create_fn = _prepare_auto_create_new_project( parsed_args )
     if create_fn:
         postinit_funcs.append( create_fn )
 
     _enable_faulthandler()
     _init_excepthooks( parsed_args )
-    eventcapture_mode, playback_args = _prepare_test_recording_and_playback( parsed_args )    
+    eventcapture_mode, playback_args = _prepare_test_recording_and_playback( parsed_args )
 
     if ilastik_config.getboolean("ilastik", "debug"):
         message = 'Starting ilastik in debug mode from "%s".' % ilastik_dir
@@ -87,7 +87,7 @@ def main( parsed_args, workflow_cmdline_args=[], init_logging=True ):
         message = 'Starting ilastik from "%s".' % ilastik_dir
         logger.info(message)
         print(message)     # always print the startup message
-    
+
     # Headless launch
     if parsed_args.headless:
         # If any applet imports the GUI in headless mode, that's a mistake.
@@ -99,7 +99,7 @@ def main( parsed_args, workflow_cmdline_args=[], init_logging=True ):
         # Run pre-init
         for f in preinit_funcs:
             f()
-        
+
         from ilastik.shell.headless.headlessShell import HeadlessShell
         shell = HeadlessShell( workflow_cmdline_args )
 
@@ -122,16 +122,16 @@ stdout_redirect_file = None
 old_stdout = None
 old_stderr = None
 def _redirect_output( parsed_args ):
-    if parsed_args.redirect_output:        
+    if parsed_args.redirect_output:
         global old_stdout, old_stderr
         old_stdout = sys.stdout
         old_stderr = sys.stderr
-        
+
         global stdout_redirect_file
         stdout_redirect_file = open( parsed_args.redirect_output, 'a' )
         sys.stdout = stdout_redirect_file
         sys.stderr = stdout_redirect_file
-        
+
         # Close the file when we exit...
         import atexit
         atexit.register( stdout_redirect_file.close )
@@ -160,7 +160,7 @@ def _init_logging( parsed_args ):
     else:
         default_config.init(process_name, default_config.OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, logfile_path)
         startUpdateInterval(10) # 10 second periodic refresh
-    
+
     if parsed_args.redirect_output:
         logger.info( "All console output is being redirected to: {}"
                      .format( parsed_args.redirect_output ) )
@@ -222,7 +222,7 @@ def _prepare_lazyflow_config( parsed_args ):
         if n_threads == -1:
             n_threads = None
     total_ram_mb = total_ram_mb or ilastik_config.getint('lazyflow', 'total_ram_mb')
-    
+
     # Note that n_threads == 0 is valid and useful for debugging.
     if (n_threads is not None) or total_ram_mb or status_interval_secs:
         def _configure_lazyflow_settings():
@@ -265,7 +265,7 @@ def _prepare_auto_open_project( parsed_args ):
     parsed_args.project = os.path.expanduser(parsed_args.project)
     #convert path to convenient format
     path = PathComponents(parsed_args.project).totalPath()
-    
+
     def loadProject(shell):
         # This should work for both the IlastikShell and the HeadlessShell
         shell.openProjectFile(path, parsed_args.readonly)
