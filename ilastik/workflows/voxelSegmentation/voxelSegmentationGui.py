@@ -1,4 +1,3 @@
-import copy
 from functools import partial
 import logging
 from past.utils import old_div
@@ -13,6 +12,8 @@ from PyQt5.QtGui import QColor, QIcon
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
 from volumina.utility import ShortcutManager, PreferencesManager
+from volumina.interpreter import ClickReportingInterpreter
+from volumina.brushingcontroller import BrushingInterpreter
 
 from lazyflow.utility import PathComponents
 from lazyflow.roi import slicing_to_string
@@ -20,6 +21,7 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader
 
 from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.applets.labeling.labelingImport import import_labeling_layer
 from ilastik.applets.pixelClassification import pixelClassificationGui
 from ilastik.applets.pixelClassification.FeatureSelectionDialog import FeatureSelectionDialog
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -30,6 +32,8 @@ from ilastik.utility.gui import threadRouted
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5VolumeSelectionDlg
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
 
+from .superVoxelBrushingController import SuperVoxelBrushingController
+from .superVoxelSinkSource import SuperVoxelSinkSource
 
 # Loggers
 logger = logging.getLogger(__name__)
@@ -78,6 +82,8 @@ class VoxelSegmentationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.toggleInteractive)
 
+        self.labelingDrawerUi.trainButton.clicked.connect(self.train)
+
         self.initFeatSelDlg()
         self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_feature_selection_dialog)
         self.featSelDlg.accepted.connect(self.update_features_from_dialog)
@@ -113,19 +119,41 @@ class VoxelSegmentationGui(LabelingGui):
         def FreezePredDirty():
             self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
         # listen to freezePrediction changes
-        self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
+        # self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
         self.__cleanup_fns.append(partial(self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty)))
+
+        # self.superVoxelSinkSource = SuperVoxelSinkSource(self._labelingSlots.labelOutput,
+        #                                                  self._labelingSlots.labelInput)
+        # self.superVoxelBrushingController = SuperVoxelBrushingController(self.editor.brushingModel, self.editor.posModel, self.topLevelOperatorView.SuperVoxelLabels)
+        # self.superVoxelBrushingInterpreter = BrushingInterpreter(self.editor.navCtrl, self.superVoxelBrushingController)
+        # self.superVoxelClickReporter = ClickReportingInterpreter(self.superVoxelBrushingInterpreter, self.editor.posModel)
 
         # update displayed plane after prediction
 
         def SelectBestPlane():
-            axis, index = self.topLevelOperatorView.BestAnnotationPlane.value
+            if self.mostUncertainPlanes is None and self.mostUncertainAxis is None:
+                axis, indices = self.topLevelOperatorView.BestAnnotationPlane.value
+                # Axes from the classifiation operator are in the order z y x while volumina has x y z
+                axis = [2, 1, 0][axis]
 
-            # Axes from the classifiation operator are in the order z y x while volumina has x y z
-            axis = [2, 1, 0][axis]
+                self.mostUncertainAxis = axis
+                self.mostUncertainPlanes = indices
 
-            self.editor.navCtrl.changeSliceAbsolute(index, axis)
+            if len(self.mostUncertainPlanes) == 0:
+                print("no more planes to show")
 
+            # Pop most uncertain plane from list
+            index, self.mostUncertainPlanes = self.mostUncertainPlanes[-1], self.mostUncertainPlanes[:-1]
+            # Display the plane
+            self.editor.navCtrl.changeSliceAbsolute(index, self.mostUncertainAxis)
+
+        def resetBestPlanes():
+            logger.info("resetting planes")
+            self.mostUncertainPlanes = None
+            self.mostUncertainAxis = None
+        resetBestPlanes()
+        self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(resetBestPlanes))
+        self.topLevelOperatorView.LabelImages.notifyDirty(bind(resetBestPlanes))
         self.labelingDrawerUi.nextPlaneButton.clicked.connect(SelectBestPlane)
 
     def initFeatSelDlg(self):
@@ -260,6 +288,36 @@ class VoxelSegmentationGui(LabelingGui):
 
         menus += [advanced_menu]
         return menus
+
+    def ccreateLabelLayer(self, direct=False):
+        """
+        Return a colortable layer that displays the label slot data, along with its associated label source.
+        direct: whether this layer is drawn synchronously by volumina
+        """
+        labelOutput = self._labelingSlots.labelOutput
+        if not labelOutput.ready():
+            return (None, None)
+        else:
+            # Add the layer to draw the labels, but don't add any labels
+            labelsrc = SuperVoxelSinkSource(self._labelingSlots.labelOutput,
+                                            self._labelingSlots.labelInput)
+
+            labellayer = ColortableLayer(labelsrc, colorTable=self._colorTable16, direct=direct)
+            labellayer.name = "Labels"
+            labellayer.ref_object = None
+
+            labellayer.contexts.append(QAction("Import...", None,
+                                               triggered=partial(import_labeling_layer, labellayer, self._labelingSlots, self)))
+
+            labellayer.shortcutRegistration = ("0", ShortcutManager.ActionInfo(
+                "Labeling",
+                "LabelVisibility",
+                "Show/Hide Labels",
+                labellayer.toggleVisible,
+                self.viewerControlWidget(),
+                labellayer))
+
+            return labellayer, labelsrc
 
     def setupLayers(self):
         """
@@ -583,7 +641,7 @@ class VoxelSegmentationGui(LabelingGui):
             layer.contexts.append(QAction('Toggle 3D rendering', None, triggered=callback))
 
     def toggleInteractive(self, checked):
-        logger.debug("toggling interactive mode to '%r'" % checked)
+        logger.info("toggling interactive mode to '%r'" % checked)
 
         if checked == True:
             if not self.topLevelOperatorView.FeatureImages.ready() \
@@ -621,6 +679,20 @@ class VoxelSegmentationGui(LabelingGui):
         # (For example, the downstream pixel classification applet can
         #  be used now that there are features selected)
         self.parentApplet.appletStateUpdateRequested()
+
+    def train(self):
+        # return self.toggleInteractive(True)
+        self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
+        self.labelingDrawerUi.labelListView.allowDelete = False
+        self.labelingDrawerUi.AddLabelButton.setEnabled(False)
+        self.interactiveModeActive = True
+
+        self.topLevelOperatorView.FreezePredictions.setValue(False)
+        self.labelingDrawerUi.liveUpdateButton.setChecked(True)
+        self._viewerControlUi.checkShowPredictions.setChecked(True)
+        self.handleShowPredictionsClicked()
+        self.parentApplet.appletStateUpdateRequested()
+        # self.topLevelOperatorView.FreezePredictions.setValue(True)
 
     @pyqtSlot()
     def handleShowPredictionsClicked(self):

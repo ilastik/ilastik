@@ -434,9 +434,13 @@ class OpSupervoxelFeaturesAndLabels(Operator):
     SupervoxelFeatures = OutputSlot()
     SupervoxelLabels = OutputSlot()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.supervoxelLabelsCache = None
+        self.dirtySlices = []
+
     @timeit
     def execute(self, slot, subindex, roi, result):
-        
         if slot == self.SupervoxelFeatures:
             print("OpSupervoxelFeaturesAndLabels.execute features")
             supervoxel_mask = self.SupervoxelSegmentation.value
@@ -448,6 +452,7 @@ class OpSupervoxelFeaturesAndLabels(Operator):
             supervoxel_features = np.ndarray((N_voxels, N_features))
             print("svf shape {}".format(supervoxel_features.shape))
             print("featm shape {}".format(features_matrix.shape))
+
             # Parallelize by mapping over supervoxels
 
             for v in range(N_voxels):
@@ -455,39 +460,84 @@ class OpSupervoxelFeaturesAndLabels(Operator):
 
             return supervoxel_features
         elif slot == self.SupervoxelLabels:
-            print("OpSupervoxelFeaturesAndLabels.execute labels")
-            supervoxel_mask = self.SupervoxelSegmentation.value[:, :, :, 0]
-            labels = self.Labels.value
+            updated_labels = []
 
-            print("labels {}".format(labels.shape))
+            # If cache is empty, compute labels for all supervoxel
+            if self.supervoxelLabelsCache is None:
+                updated_labels = self.computeSupervoxelLabels()  # updated_labels now contains all supervoxels
+                self.supervoxelLabelsCache = np.zeros((self.n_supervoxels,))
+                # Remove dirtyslices if we just computed labels on the whole stack
+                self.dirtySlices = []
 
-            def computeLabel(supervoxels):
-                supervoxel_labels = np.ndarray((len(supervoxels),))
-                for i, supervoxel in enumerate(supervoxels):
-                    counts = np.bincount(labels[supervoxel_mask == supervoxel].ravel())
+            # If cache is not empty but there are dirty regions, recompute labels for those regions
+            if self.supervoxelLabelsCache is not None and len(self.dirtySlices) > 0:
+                # updated_labels now contains only supervoxel that changed
+                updated_labels = self.getUpdatedSupervoxelLabels(self.dirtySlices)
+                self.dirtySlices = []
 
-                    # Little trick to avoid labelling a supervoxel as unlabelled if only a small part of it has been labelled
-                    if len(counts) == 1:  # or max(counts[1:]) == 0:
-                        # If there's only unlabelled pixels, label 0 (=unlabeled)
-                        label = 0
-                    else:
-                        # Else, return the label which has the most pixels (excluding label 0)
-                        label = counts[1:].argmax() + 1
+            print("updated_labels")
+            print(updated_labels)
 
-                    supervoxel_labels[i] = label
-                return supervoxel_labels
+            for (supervoxel, label) in updated_labels.items():
+                self.supervoxelLabelsCache[supervoxel] = label
 
-            num_cores = multiprocessing.cpu_count()
-            pool = multiprocessing.Pool(num_cores)
-            supervoxels_list = np.arange(np.max(supervoxel_mask) + 1)
-            supervoxel_labels = np.concatenate(pool.map(computeLabel, np.array_split(supervoxels_list, num_cores)))
+            return self.supervoxelLabelsCache
+
+    def getUpdatedSupervoxelLabels(self, dirtySlices):
+        updated = {}
+        for slice_ in dirtySlices:
+            updated.update(self.computeSupervoxelLabels(slice_))
+        return updated
+
+    def computeSupervoxelLabels(self, slice_=None):
+        if slice_ is None:
+            slice_ = (slice(None), slice(None), slice(None))
+
+        print("OpSupervoxelFeaturesAndLabels.execute labels")
+        supervoxel_mask = self.SupervoxelSegmentation.value[slice_ + (0,)]
+        labels = self.Labels.value[slice_]
+
+        print("labels {}".format(labels.shape))
+        print("supervoxel_mask {}".format(supervoxel_mask.shape))
+
+        def computeLabel(supervoxels):
+            # supervoxel_labels = np.ndarray((len(supervoxels),))
+            supervoxel_labels = {}
+            for supervoxel in supervoxels:
+                # import IPython; IPython.embed()
+                counts = np.bincount(labels[supervoxel_mask == supervoxel].ravel())
+
+                # Little trick to avoid labelling a supervoxel as unlabelled if only a small part of it has been labelled
+                if len(counts) == 1:  # or max(counts[1:]) == 0:
+                    # If there's only unlabelled pixels, label 0 (=unlabeled)
+                    label = 0
+                else:
+                    # Else, return the label which has the most pixels (excluding label 0)
+                    label = counts[1:].argmax() + 1
+
+                supervoxel_labels[supervoxel] = label
             return supervoxel_labels
 
+        num_cores = multiprocessing.cpu_count()
+        pool = multiprocessing.Pool(num_cores*2)
+        supervoxels_list = np.unique(supervoxel_mask)
+        print("supervoxels_list")
+        print(supervoxels_list)
+        # supervoxel_labels = np.concatenate(pool.map(computeLabel, np.array_split(supervoxels_list, num_cores)))
+        supervoxel_labels = {}
+        supervoxel_labels_dicts = pool.map(computeLabel, np.array_split(supervoxels_list, num_cores))
+        pool.close()
+        # supervoxel_labels_dicts = [computeLabel(l) for l in np.array_split(supervoxels_list, num_cores)]
+        for d in supervoxel_labels_dicts:
+            supervoxel_labels.update(d)
+        return supervoxel_labels
+
     def setupOutputs(self):
+        self.n_supervoxels = np.max(self.SupervoxelSegmentation.value)+1
         self.SupervoxelFeatures.meta.dtype = self.FeatureImages.meta.dtype
         self.SupervoxelLabels.meta.dtype = self.Labels.meta.dtype
-        self.SupervoxelFeatures.meta.shape = (np.max(self.SupervoxelSegmentation.value)+1, self.FeatureImages.value.shape[-1])
-        self.SupervoxelLabels.meta.shape = (np.max(self.SupervoxelSegmentation.value)+1,)
+        self.SupervoxelFeatures.meta.shape = (self.n_supervoxels, self.FeatureImages.value.shape[-1])
+        self.SupervoxelLabels.meta.shape = (self.n_supervoxels,)
         # self.SupervoxelFeatures.meta.shape = (144, self.FeatureImages.value.shape[-1])
         # self.SupervoxelLabels.meta.shape = (144,)
         self.SupervoxelFeatures.meta.axistags = vigra.defaultAxistags("xc")
@@ -506,6 +556,9 @@ class OpSupervoxelFeaturesAndLabels(Operator):
             self.SupervoxelFeatures.setDirty()
         if slot == self.Labels or slot == self.SupervoxelSegmentation:
             self.SupervoxelLabels.setDirty()
+        if slot == self.Labels:
+            self.dirtySlices.append(roiToSlice(roi.start, roi.stop)[:3])
+            print(self.dirtySlices)
 
 
 class OpSupervoxelFeaturesAndLabelsCached(Operator):
@@ -882,16 +935,19 @@ class OpPlaneSelection(Operator):
         # find the smallest dimension, so we can return the larger plane
         d = np.argmin(uncertainty.shape)
 
-        max_average_uncertainty_plane = 0
-        max_average_uncertainty = 0
+        # max_average_uncertainty_plane = 0
+        # max_average_uncertainty = 0
+        mean_axes = list(range(len(uncertainty.shape)))
+        mean_axes.pop(d)
+        plane_list = np.mean(np.rollaxis(uncertainty, d), axis=tuple(mean_axes)).argsort()
 
-        for i, slice_ in enumerate(np.rollaxis(uncertainty, d)):
-            average_uncertainty = np.mean(slice_)
-            if average_uncertainty > max_average_uncertainty:
-                max_average_uncertainty = average_uncertainty
-                max_average_uncertainty_plane = i
-        print("best plane {} {}".format(d, max_average_uncertainty_plane))
-        return [[d, max_average_uncertainty_plane]]
+        # for i, slice_ in enumerate(np.rollaxis(uncertainty, d)):
+        # average_uncertainty = np.mean(slice_)
+        # if average_uncertainty > max_average_uncertainty:
+        # max_average_uncertainty = average_uncertainty
+        # max_average_uncertainty_plane = i
+        # print("best plane {} {}".format(d, max_average_uncertainty_plane))
+        return [[d, plane_list]]
 
     def propagateDirty(self, inputSlot, subindex, roi):
         self.Output.setDirty(roi)

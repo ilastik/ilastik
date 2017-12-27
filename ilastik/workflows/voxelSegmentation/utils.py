@@ -60,6 +60,10 @@ def get_supervoxel_labels(labels, supervoxel_mask):
         supervoxel_labels[supervoxel] = label
     return supervoxel_labels
 
+@timeit
+def get_supervoxels_in_region(region, supervoxel_mask):
+    pass
+
 
 @timeit
 def slic_to_mask(slic_segmentation, supervoxel_values):
@@ -74,7 +78,7 @@ def slic_to_mask(slic_segmentation, supervoxel_values):
             slice_out[slice_ == i, :] = v[:]
         return slice_out
 
-    pool = multiprocessing.Pool(num_cores)
+    pool = multiprocessing.Pool(num_cores*2)
 
     slices_out = pool.map(compute, slices)
 
