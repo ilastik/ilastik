@@ -20,6 +20,14 @@ def timeit(method):
         return result
     return timed
 
+def timeit2(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        print('2 %r  %2.2f ms' % (method.__name__, (te - ts) * 1000))
+        return result
+    return timed
 
 @timeit
 def get_supervoxel_features(featuresMatrix, supervoxel_mask):
@@ -60,17 +68,14 @@ def get_supervoxel_labels(labels, supervoxel_mask):
         supervoxel_labels[supervoxel] = label
     return supervoxel_labels
 
-@timeit
-def get_supervoxels_in_region(region, supervoxel_mask):
-    pass
-
 
 @timeit
 def slic_to_mask(slic_segmentation, supervoxel_values):
     num_cores = multiprocessing.cpu_count()
 
-    slices = np.array_split(slic_segmentation, num_cores)
+    slices = np.array_split(slic_segmentation, num_cores*16)
 
+    @timeit2
     def compute(slice_):
         shape = slice_.shape + (supervoxel_values.shape[-1],)
         slice_out = np.zeros(shape, dtype=supervoxel_values.dtype)
@@ -78,8 +83,29 @@ def slic_to_mask(slic_segmentation, supervoxel_values):
             slice_out[slice_ == i, :] = v[:]
         return slice_out
 
-    pool = multiprocessing.Pool(num_cores*2)
+    pool = multiprocessing.Pool(num_cores*4)
 
     slices_out = pool.map(compute, slices)
 
     return np.concatenate(slices_out)
+
+
+# @timeit
+# def slic_to_mask2(slic_segmentation, supervoxel_values):
+#     num_cores = multiprocessing.cpu_count()
+
+#     slices = np.array_split(slic_segmentation, num_cores*2)
+
+#     @timeit2
+#     def compute(slice_):
+#         shape = slice_.shape + (supervoxel_values.shape[-1],)
+#         slice_out = np.zeros(shape, dtype=supervoxel_values.dtype)
+#         for (i, v) in enumerate(supervoxel_values):
+#             slice_out[slice_ == i, :] = v[:]
+#         return slice_out
+
+#     pool = multiprocessing.Pool(num_cores*2)
+
+#     slices_out = pool.map(compute, slices)
+
+#     return np.concatenate(slices_out)

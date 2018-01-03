@@ -447,6 +447,8 @@ class OpSupervoxelwiseClassifierPredict(Operator):
 
         # Copy only the prediction channels the client requested.
         result[...] = probabilities[..., roi.start[-1]:roi.stop[-1]]
+        print("result.shape")
+        print(result.shape)
         return result
 
     def propagateDirty(self, slot, subindex, roi):

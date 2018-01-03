@@ -289,36 +289,6 @@ class VoxelSegmentationGui(LabelingGui):
         menus += [advanced_menu]
         return menus
 
-    def ccreateLabelLayer(self, direct=False):
-        """
-        Return a colortable layer that displays the label slot data, along with its associated label source.
-        direct: whether this layer is drawn synchronously by volumina
-        """
-        labelOutput = self._labelingSlots.labelOutput
-        if not labelOutput.ready():
-            return (None, None)
-        else:
-            # Add the layer to draw the labels, but don't add any labels
-            labelsrc = SuperVoxelSinkSource(self._labelingSlots.labelOutput,
-                                            self._labelingSlots.labelInput)
-
-            labellayer = ColortableLayer(labelsrc, colorTable=self._colorTable16, direct=direct)
-            labellayer.name = "Labels"
-            labellayer.ref_object = None
-
-            labellayer.contexts.append(QAction("Import...", None,
-                                               triggered=partial(import_labeling_layer, labellayer, self._labelingSlots, self)))
-
-            labellayer.shortcutRegistration = ("0", ShortcutManager.ActionInfo(
-                "Labeling",
-                "LabelVisibility",
-                "Show/Hide Labels",
-                labellayer.toggleVisible,
-                self.viewerControlWidget(),
-                labellayer))
-
-            return labellayer, labelsrc
-
     def setupLayers(self):
         """
         Called by our base class when one of our data slots has changed.

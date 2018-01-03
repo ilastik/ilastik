@@ -460,7 +460,7 @@ class OpSupervoxelFeaturesAndLabels(Operator):
 
             return supervoxel_features
         elif slot == self.SupervoxelLabels:
-            updated_labels = []
+            updated_labels = {}
 
             # If cache is empty, compute labels for all supervoxel
             if self.supervoxelLabelsCache is None:
@@ -525,7 +525,7 @@ class OpSupervoxelFeaturesAndLabels(Operator):
         print(supervoxels_list)
         # supervoxel_labels = np.concatenate(pool.map(computeLabel, np.array_split(supervoxels_list, num_cores)))
         supervoxel_labels = {}
-        supervoxel_labels_dicts = pool.map(computeLabel, np.array_split(supervoxels_list, num_cores))
+        supervoxel_labels_dicts = pool.map(computeLabel, np.array_split(supervoxels_list, num_cores*2))
         pool.close()
         # supervoxel_labels_dicts = [computeLabel(l) for l in np.array_split(supervoxels_list, num_cores)]
         for d in supervoxel_labels_dicts:
@@ -558,7 +558,6 @@ class OpSupervoxelFeaturesAndLabels(Operator):
             self.SupervoxelLabels.setDirty()
         if slot == self.Labels:
             self.dirtySlices.append(roiToSlice(roi.start, roi.stop)[:3])
-            print(self.dirtySlices)
 
 
 class OpSupervoxelFeaturesAndLabelsCached(Operator):
