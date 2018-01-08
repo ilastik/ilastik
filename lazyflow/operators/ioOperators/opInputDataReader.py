@@ -107,6 +107,7 @@ class OpInputDataReader(Operator):
     # Other types are determined via file extension
     WorkingDirectory = InputSlot(stype='filestring', optional=True)
     FilePath = InputSlot(stype='filestring')
+    SequenceAxis = InputSlot(optional=True)
 
     # FIXME: Document this.
     SubVolumeRoi = InputSlot(optional=True)  # (start, stop)
@@ -300,6 +301,8 @@ class OpInputDataReader(Operator):
 
         try:
             opReader.GlobString.setValue(filePath)
+            if self.SequenceAxis.ready():
+                opReader.SequenceAxis.setValue(self.SequenceAxis.value)
             return ([opReader], opReader.OutputImage)
         except (OpStreamingHdf5SequenceReaderM.WrongFileTypeError,
                 OpStreamingHdf5SequenceReaderS.WrongFileTypeError):
