@@ -22,14 +22,15 @@ from __future__ import division
 from __future__ import absolute_import
 from builtins import range
 import os
+import sys
 import glob
 import argparse
 import collections
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)  # noqa
 
 import vigra
-from lazyflow.utility import PathComponents, isUrl, make_absolute
+from lazyflow.utility import PathComponents, isUrl
 from ilastik.applets.base.applet import Applet
 from .opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
 from .dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
@@ -43,7 +44,8 @@ class DataSelectionApplet(Applet):
 
     DEFAULT_INSTRUCTIONS = "Use the controls shown to the right to add image files to this workflow."
 
-    def __init__(self, workflow, title, projectFileGroupName, supportIlastik05Import=False, batchDataGui=False, forceAxisOrder=None, instructionText=DEFAULT_INSTRUCTIONS, max_lanes=None, show_axis_details=False):
+    def __init__(self, workflow, title, projectFileGroupName, supportIlastik05Import=False, batchDataGui=False,
+                 forceAxisOrder=None, instructionText=DEFAULT_INSTRUCTIONS, max_lanes=None, show_axis_details=False):
         self.__topLevelOperator = OpMultiLaneDataSelectionGroup(parent=workflow, forceAxisOrder=forceAxisOrder)
         super(DataSelectionApplet, self).__init__(title, syncWithImageIndex=False)
 
@@ -101,7 +103,8 @@ class DataSelectionApplet(Applet):
 
         .. note: If the top-level operator was configured with multiple 'roles', then the input files for
                  each role can be configured separately:
-                 $ python ilastik.py [other workflow options] --my-role-A inputA1.png inputA2.png --my-role-B inputB1.png, inputB2.png
+                 $ python ilastik.py [other workflow options] --my-role-A inputA1.png inputA2.png --my-role-B
+                    inputB1.png, inputB2.png
                  If the workflow has only one role (or only one required role), then the role-name flag can be omitted:
                  # python ilastik.py [other workflow options] input1.png input2.png
 
@@ -117,8 +120,9 @@ class DataSelectionApplet(Applet):
         # Finally, a catch-all for role 0 (if the workflow only has one role, there's no need to provide role names
         arg_parser.add_argument('unspecified_input_files', nargs='*', help='List of input files to process.')
 
-        arg_parser.add_argument(
-            '--preconvert_stacks', help="Convert image stacks to temporary hdf5 files before loading them.", action='store_true', default=False)
+        arg_parser.add_argument('--preconvert_stacks',
+                                help="Convert image stacks to temporary hdf5 files before loading them.",
+                                action='store_true', default=False)
         arg_parser.add_argument('--input_axes', help="Explicitly specify the axes of your dataset.", required=False)
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
 
@@ -134,7 +138,7 @@ class DataSelectionApplet(Applet):
                     role_args_str = ", ".join(role_args)
                     raise Exception("Invalid command line arguments: All roles must be configured explicitly.\n"
                                     "Use the following flags to specify which files are matched with which inputs:\n"
-                                    + role_args_str)
+                                    "" + role_args_str)
 
             # Relocate to the 'default' role
             arg_name = cls._role_name_to_arg_name(role_names[0])
@@ -237,10 +241,14 @@ class DataSelectionApplet(Applet):
                     break
 
             if need_warning:
-                logger.warning("*******************************************************************************************")
-                logger.warning("Some of your input data is stored in a format that is not efficient for 3D access patterns.")
-                logger.warning("Performance may suffer as a result.  For best performance, use a chunked HDF5 volume.")
-                logger.warning("*******************************************************************************************")
+                logger.warning(
+                    "*******************************************************************************************")
+                logger.warning(
+                    "Some of your input data is stored in a format that is not efficient for 3D access patterns.")
+                logger.warning(
+                    "Performance may suffer as a result.  For best performance, use a chunked HDF5 volume.")
+                logger.warning(
+                    "*******************************************************************************************")
 
     @classmethod
     def convertStacksToH5(cls, filePaths, stackVolumeCacheDir):
