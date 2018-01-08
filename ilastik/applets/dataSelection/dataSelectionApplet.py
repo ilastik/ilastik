@@ -124,6 +124,8 @@ class DataSelectionApplet(Applet):
                                 help="Convert image stacks to temporary hdf5 files before loading them.",
                                 action='store_true', default=False)
         arg_parser.add_argument('--input_axes', help="Explicitly specify the axes of your dataset.", required=False)
+        arg_parser.add_argument('--stack_along', help="Sequence axis along which to stack", type=str, default='z')
+
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
 
         if parsed_args.unspecified_input_files:

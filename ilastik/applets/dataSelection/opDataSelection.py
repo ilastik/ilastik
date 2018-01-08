@@ -48,7 +48,8 @@ class DatasetInfo(object):
         ProjectInternal = 1
         PreloadedArray = 2
 
-    def __init__(self, filepath=None, jsonNamespace=None, cwd=None, preloaded_array=None):
+    def __init__(self, filepath=None, jsonNamespace=None, cwd=None,
+                 preloaded_array=None, sequence_axis=None):
         """
         filepath: may be a globstring or a full hdf5 path+dataset
 
@@ -59,6 +60,8 @@ class DatasetInfo(object):
         preloaded_array: Instead of providing a filePath to read from, a pre-loaded array can be directly provided.
                          In that case, you'll probably want to configure the axistags member, or provide a tagged
                          vigra.VigraArray.
+
+        sequence_axis: Axis along which to stack (only applicable for stacks).
         """
         assert preloaded_array is None or not filepath, "You can't provide filepath and a preloaded_array"
         cwd = cwd or os.getcwd()
@@ -71,6 +74,7 @@ class DatasetInfo(object):
         self.allowLabels = True
         self.drange = None
         self.normalizeDisplay = True
+        self.sequenceAxis = None
         self.fromstack = False
         self.nickname = ""
         self.axistags = None
@@ -81,7 +85,6 @@ class DatasetInfo(object):
         if self.preloaded_array is not None:
             self.filePath = ""  # set property to ensure unique _datasetId
             self.location = Location.PreloadedArray
-            self.fromstack = False
             self.nickname = "preloaded-{}-array".format(self.preloaded_array.dtype.name)
             if hasattr(self.preloaded_array, 'axistags'):
                 self.axistags = self.preloaded_array.axistags
@@ -179,6 +182,7 @@ class DatasetInfo(object):
             self.nickname = nickname
             self.filePath = filepath
             self.fromstack = fromstack
+            self.sequenceAxis = sequence_axis
 
         if jsonNamespace is not None:
             self.updateFromJson(jsonNamespace)
@@ -355,6 +359,7 @@ class OpDataSelection(Operator):
                     opReader.SubVolumeRoi.setValue(datasetInfo.subvolume_roi)
                 opReader.WorkingDirectory.setValue(self.WorkingDirectory.value)
                 opReader.FilePath.setValue(datasetInfo.filePath)
+                opReader.SequenceAxis.setValue(datasetInfo.sequenceAxis)
                 providerSlot = opReader.Output
             self._opReaders.append(opReader)
 

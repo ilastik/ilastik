@@ -63,9 +63,9 @@ class BatchProcessingApplet(Applet):
         role_names = self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(
             parsed_args, role_names)
-        return self.run_export(role_path_dict, parsed_args.input_axes)
+        return self.run_export(role_path_dict, parsed_args.input_axes, sequence_axis=parsed_args.stack_along)
 
-    def run_export(self, role_data_dict, input_axes=None, export_to_array=False):
+    def run_export(self, role_data_dict, input_axes=None, export_to_array=False, sequence_axis=None):
         """
         Run the export for each dataset listed in role_data_dict,
         which must be a dict of {role_index : path-list} OR {role_index : DatasetInfo-list}
@@ -98,7 +98,7 @@ class BatchProcessingApplet(Applet):
         try:
             assert isinstance(role_data_dict, OrderedDict)
 
-            template_infos = self._get_template_dataset_infos(input_axes)
+            template_infos = self._get_template_dataset_infos(input_axes, sequence_axis)
             # Invert dict from [role][batch_index] -> path to a list-of-tuples, indexed by batch_index:
             # [ (role-1-path, role-2-path, ...),
             #   (role-1-path, role-2-path,...) ]
@@ -154,7 +154,7 @@ class BatchProcessingApplet(Applet):
         finally:
             self.progressSignal(100)
 
-    def _get_template_dataset_infos(self, input_axes=None):
+    def _get_template_dataset_infos(self, input_axes=None, sequence_axis=None):
         """
         Sometimes the default settings for an input file are not suitable (e.g. the axistags need to be changed).
         We assume the LAST non-batch input in the workflow has settings that will work for all batch processing inputs.
@@ -172,6 +172,8 @@ class BatchProcessingApplet(Applet):
                 if input_axes:
                     template_infos[role_index].axistags = vigra.defaultAxistags(
                         input_axes)
+                if sequence_axis:
+                    template_infos[role_index].sequenceAxis = sequence_axis
             return template_infos
 
         # Use the LAST non-batch input file as our 'template' for DatasetInfo settings (e.g. axistags)
@@ -189,6 +191,8 @@ class BatchProcessingApplet(Applet):
                 # Support the --input_axes arg to override input axis order, same as DataSelection applet.
                 template_infos[role_index].axistags = vigra.defaultAxistags(
                     input_axes)
+            if sequence_axis:
+                template_infos[role_index].sequenceAxis = sequence_axis
         return template_infos
 
     def _run_export_with_empty_batch_lane(self, role_input_datas, batch_lane_index, template_infos, progress_callback,
