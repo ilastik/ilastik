@@ -17,7 +17,7 @@ from __future__ import print_function
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#          http://ilastik.org/license.html
 ###############################################################################
 import os
 import shutil
@@ -220,10 +220,10 @@ class TestOpDataSelection_Basic2D(object):
 #        reader = OpDataSelection(graph=graph)
 #        reader.ProjectFile.setValue(self.projectFile)
 #        reader.WorkingDirectory.setValue( os.getcwd() )
-#        
+#
 #        # Create a list of dataset infos . . .
 #        datasetInfos = []
-#        
+#
 #        # npy inverted
 #        info = DatasetInfo()
 #        info.location = DatasetInfo.Location.FileSystem
@@ -232,7 +232,7 @@ class TestOpDataSelection_Basic2D(object):
 #        info.invertColors = True
 #        info.convertToGrayscale = False
 #        datasetInfos.append(info)
-#        
+#
 #        # png inverted
 #        info = DatasetInfo()
 #        info.location = DatasetInfo.Location.FileSystem
@@ -252,7 +252,7 @@ class TestOpDataSelection_Basic2D(object):
 #        for x in range(invertedNpyData.shape[0]):
 #            for y in range(invertedNpyData.shape[1]):
 #                assert invertedNpyData[x,y,0] == 255-self.imgData2D[x,y]
-#        
+#
 #        assert invertedPngData.shape == self.imgData2Dc.shape
 #        for x in range(invertedPngData.shape[0]):
 #            for y in range(invertedPngData.shape[1]):
@@ -264,10 +264,10 @@ class TestOpDataSelection_Basic2D(object):
 #        reader = OpDataSelection(graph=graph)
 #        reader.ProjectFile.setValue(self.projectFile)
 #        reader.WorkingDirectory.setValue( os.getcwd() )
-#        
+#
 #        # Create a list of dataset infos . . .
 #        datasetInfos = []
-#        
+#
 #        # png grayscale
 #        info = DatasetInfo()
 #        info.location = DatasetInfo.Location.FileSystem
@@ -278,10 +278,10 @@ class TestOpDataSelection_Basic2D(object):
 #        datasetInfos.append(info)
 #
 #        reader.Dataset.setValues(datasetInfos)
-#        
+#
 #        grayscalePngData = reader.ProcessedImages[0][...].wait()
 #
-#        # Check grayscale conversion 
+#        # Check grayscale conversion
 #        assert grayscalePngData.shape == self.imgData2Dc.shape[:-1] + (1,) # Only one channel
 #        for x in range(grayscalePngData.shape[0]):
 #            for y in range(grayscalePngData.shape[1]):
@@ -294,7 +294,7 @@ class TestOpDataSelection_Basic2D(object):
 #        reader = OpDataSelection(graph=graph)
 #        reader.ProjectFile.setValue(self.projectFile)
 #        reader.WorkingDirectory.setValue( os.getcwd() )
-#        
+#
 #        # Create a list of dataset infos . . .
 #        datasetInfos = []
 #
@@ -308,25 +308,25 @@ class TestOpDataSelection_Basic2D(object):
 #        datasetInfos.append(info)
 #
 #        reader.Dataset.setValues(datasetInfos)
-#        
-#        invertedGrayscalePngData = reader.ProcessedImages[0][...].wait()
-#        
 #
-#        # Check inverted grayscale conversion 
+#        invertedGrayscalePngData = reader.ProcessedImages[0][...].wait()
+#
+#
+#        # Check inverted grayscale conversion
 #        assert invertedGrayscalePngData.shape == (100, 200, 1)
 #        for x in range(invertedGrayscalePngData.shape[0]):
 #            for y in range(invertedGrayscalePngData.shape[1]):
 #                # (See formula in OpRgbToGrayscale)
 #                assert invertedGrayscalePngData[x,y,0] == int(numpy.round(  0.299*(255-self.imgData2Dc[x,y,0])
-#                                                                          + 0.587*(255-self.imgData2Dc[x,y,1]) 
+#                                                                          + 0.587*(255-self.imgData2Dc[x,y,1])
 #                                                                          + 0.114*(255-self.imgData2Dc[x,y,2]) ))
     def testProjectLocalData(self):
         graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper( OpDataSelection, graph=graph )
+        reader = OperatorWrapper(OpDataSelection, graph=graph)
         reader.ProjectFile.setValue(self.projectFile)
-        reader.WorkingDirectory.setValue( os.getcwd() )
-        reader.ProjectDataGroup.setValue( 'DataSelection/local_data' )
-        
+        reader.WorkingDirectory.setValue(os.getcwd())
+        reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
         # Create a list of dataset infos . . .
         datasetInfos = []
 
@@ -334,7 +334,7 @@ class TestOpDataSelection_Basic2D(object):
         info = DatasetInfo()
         info.location = DatasetInfo.Location.ProjectInternal
         info.filePath = "This string should be ignored..."
-        info._datasetId = 'dataset1' # (Cheating a bit here...)
+        info._datasetId = 'dataset1'  # (Cheating a bit here...)
         info.invertColors = False
         info.convertToGrayscale = False
         datasetInfos.append(info)
@@ -884,38 +884,7 @@ class TestOpDataSelection_SingleFileH5Stacks():
 
         numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
 
+
 if __name__ == "__main__":
     import nose
     nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE': 1})
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
