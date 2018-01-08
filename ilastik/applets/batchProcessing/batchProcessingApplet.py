@@ -3,10 +3,9 @@ from __future__ import absolute_import
 from builtins import range
 import copy
 import weakref
-import argparse
 from collections import OrderedDict
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)  # noqa
 
 import numpy
 import vigra
@@ -15,7 +14,6 @@ from ilastik.utility import log_exception
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, OpMultiLaneDataSelectionGroup
-from ilastik.applets.dataExport.opDataExport import OpDataExport
 
 
 class BatchProcessingApplet(Applet):
@@ -78,7 +76,8 @@ class BatchProcessingApplet(Applet):
 
         For each dataset:
             1. Append a lane to the workflow
-            2. Configure the new lane's DataSelection inputs with the new file (or files, if there is more than one role).
+            2. Configure the new lane's DataSelection inputs with the new file (or files, if there is more than one
+               role).
             3. Export the results from the new lane
             4. Remove the lane from the workflow.
 
@@ -159,7 +158,8 @@ class BatchProcessingApplet(Applet):
         """
         Sometimes the default settings for an input file are not suitable (e.g. the axistags need to be changed).
         We assume the LAST non-batch input in the workflow has settings that will work for all batch processing inputs.
-        Here, we get the DatasetInfo objects from that lane and store them as 'templates' to modify for all batch-processing files.
+        Here, we get the DatasetInfo objects from that lane and store them as 'templates' to modify for all batch-
+        processing files.
         """
         template_infos = {}
 
@@ -191,7 +191,8 @@ class BatchProcessingApplet(Applet):
                     input_axes)
         return template_infos
 
-    def _run_export_with_empty_batch_lane(self, role_input_datas, batch_lane_index, template_infos, progress_callback, export_to_array):
+    def _run_export_with_empty_batch_lane(self, role_input_datas, batch_lane_index, template_infos, progress_callback,
+                                          export_to_array):
         """
         Configure the fresh batch lane with the given input files, and export the results.
 
