@@ -21,11 +21,13 @@ from __future__ import print_function
 ###############################################################################
 import os
 import shutil
+import itertools
 from collections import defaultdict
 import numpy
 import vigra
 import lazyflow
 import h5py
+from PIL import Image
 from lazyflow.graph import OperatorWrapper
 from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -883,6 +885,103 @@ class TestOpDataSelection_SingleFileH5Stacks():
         assert imgData.shape == self.imgData3Dct.shape
 
         numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
+
+
+class TestOpDataSelection_stack_along_parameter():
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = tempfile.mkdtemp()
+        cls.tmpdir = 'C:\\Users\\Fynn\\AppData\\Local\\Temp\\tmp'
+
+        cls.rgb00c = numpy.array([[1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                  [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                  [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                  [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                  [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=numpy.float32)
+
+        cls.rgb10c = numpy.array([[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                                  [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                  [0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                                  [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+                                  [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0]], dtype=numpy.float32)
+
+        cls.rgb20c = numpy.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                                  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+                                  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+                                  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+                                  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0]], dtype=numpy.float32)
+
+        cls.grey0c = numpy.array([[1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1],
+                                  [1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1],
+                                  [1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0],
+                                  [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0],
+                                  [1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0]], dtype=numpy.float32) / 2
+
+        cls.rgb01c = cls.rgb00c[..., None]
+        cls.rgb11c = cls.rgb10c[..., None]
+        cls.rgb21c = cls.rgb20c[..., None]
+        cls.grey1c = cls.grey0c[..., None]
+
+        cls.rgb03c = numpy.zeros((cls.rgb00c.shape[0], cls.rgb00c.shape[1], 3), dtype=numpy.float32)
+        cls.rgb13c = numpy.zeros((cls.rgb10c.shape[0], cls.rgb10c.shape[1], 3), dtype=numpy.float32)
+        cls.rgb23c = numpy.zeros((cls.rgb20c.shape[0], cls.rgb20c.shape[1], 3), dtype=numpy.float32)
+        cls.rgb03c[..., 0] = cls.rgb00c
+        cls.rgb13c[..., 1] = cls.rgb10c
+        cls.rgb23c[..., 2] = cls.rgb20c
+        cls.grey3c = numpy.repeat(cls.grey1c, 3, axis=2)
+
+        for name, c in itertools.product(['rgb0', 'rgb1', 'rgb2', 'grey'], ['0c', '1c', '3c']):
+            name += c
+            data = eval('cls.' + name)
+
+            # save as h5
+            vigra.impex.writeHDF5(data=data, filenameOrGroup=os.path.join(cls.tmpdir, f'{name}.h5'), pathInFile='data')
+
+            # save as tiff, if possible
+            if c == '0c':
+                im = Image.fromarray(data)
+            elif c == '1c':
+                continue
+            elif c == '3c':
+                im = Image.fromarray((data * 255).astype(numpy.uint8), mode='RGB')
+            else:
+                raise NotImplementedError(f'How to create PIL image with c == {c}?')
+
+            im.save(os.path.join(cls.tmpdir, f'{name}.tiff'))
+
+    def _test_stack_along(self, name, extension, sequence_axis, expected):
+        fileName = os.path.join(self.tmpdir, f'{name}{extension}')
+        graph = lazyflow.graph.Graph()
+        reader = OpDataSelection(graph=graph)
+        reader.WorkingDirectory.setValue(os.getcwd())
+        info = DatasetInfo(fileName, sequence_axis=sequence_axis)
+        reader.Dataset.setValue(info)
+        read = reader.Image[...].wait()
+
+        assert numpy.allclose(read, expected), f'shapes: {read.shape}, {expected.shape}'
+
+    def test_stack_along(self):
+
+        testcases = [
+            ['rgb*0c', '.h5/data', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2)],
+            ['rgb*0c', '.tiff   ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2)],
+            ['rgb*1c', '.h5/data', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2)],
+            ['rgb*3c', '.h5/data', 'c', numpy.concatenate([self.rgb03c, self.rgb13c, self.rgb23c], axis=2)],
+            ['rgb*3c', '.tiff   ', 'c', numpy.concatenate([self.rgb03c, self.rgb13c, self.rgb23c], axis=2) * 255],
+            ['rgb*0c', '.h5/data', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*0c', '.tiff   ', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*1c', '.h5/data', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*3c', '.h5/data', 'z', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0)],
+            ['rgb*3c', '.tiff   ', 'z', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
+            ['rgb*0c', '.h5/data', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*0c', '.tiff   ', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*1c', '.h5/data', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*3c', '.h5/data', 't', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0)],
+            ['rgb*3c', '.tiff   ', 't', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
+        ]
+
+        for name, extension, sequence_axis, expected in testcases:
+            yield self._test_stack_along, name, extension, sequence_axis, expected
 
 
 if __name__ == "__main__":
