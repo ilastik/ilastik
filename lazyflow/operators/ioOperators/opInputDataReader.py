@@ -300,9 +300,8 @@ class OpInputDataReader(Operator):
             opReader = OpStreamingHdf5SequenceReaderM(parent=self)
 
         try:
+            opReader.SequenceAxis.connect(self.SequenceAxis)
             opReader.GlobString.setValue(filePath)
-            if self.SequenceAxis.ready():
-                opReader.SequenceAxis.setValue(self.SequenceAxis.value)
             return ([opReader], opReader.OutputImage)
         except (OpStreamingHdf5SequenceReaderM.WrongFileTypeError,
                 OpStreamingHdf5SequenceReaderS.WrongFileTypeError):
@@ -316,6 +315,7 @@ class OpInputDataReader(Operator):
 
         try:
             opReader = OpTiffSequenceReader(parent=self)
+            opReader.SequenceAxis.connect(self.SequenceAxis)
             opReader.GlobString.setValue(filePath)
             return ([opReader], opReader.Output)
         except OpTiffSequenceReader.WrongFileTypeError as ex:
@@ -324,6 +324,7 @@ class OpInputDataReader(Operator):
     def _attemptOpenAsStack(self, filePath):
         if '*' in filePath or os.path.pathsep in filePath:
             stackReader = OpStackLoader(parent=self)
+            stackReader.SequenceAxis.connect(self.SequenceAxis)
             stackReader.globstring.setValue(filePath)
             return ([stackReader], stackReader.stack)
         else:
