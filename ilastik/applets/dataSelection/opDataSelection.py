@@ -344,8 +344,8 @@ class OpDataSelection(Operator):
                 if datasetInfo.subvolume_roi is not None:
                     opReader.SubVolumeRoi.setValue(datasetInfo.subvolume_roi)
                 opReader.WorkingDirectory.setValue(self.WorkingDirectory.value)
-                opReader.FilePath.setValue(datasetInfo.filePath)
                 opReader.SequenceAxis.setValue(datasetInfo.sequenceAxis)
+                opReader.FilePath.setValue(datasetInfo.filePath)
                 providerSlot = opReader.Output
             self._opReaders.append(opReader)
 
