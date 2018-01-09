@@ -18,18 +18,19 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, SerialPickledValueSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, SerialPickleableSlot
 
 class StructuredTrackingSerializer(AppletSerializer):
 
     def __init__(self, topLevelOperator, projectFileGroupName):
+        self.VERSION = 1  # Make sure to bump the version in case you make any changes in the serialization
         try:
             slots = [ SerialDictSlot(topLevelOperator.Parameters, selfdepends=True),
                       SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
-                      SerialPickledValueSlot(topLevelOperator.ExportSettings),
-                      SerialPickledValueSlot(topLevelOperator.HypothesesGraph),
-                      SerialPickledValueSlot(topLevelOperator.LearningHypothesesGraph),
-                      SerialPickledValueSlot(topLevelOperator.ResolvedMergers),
+                      SerialPickleableSlot(topLevelOperator.ExportSettings, version=self.VERSION),
+                      SerialPickleableSlot(topLevelOperator.HypothesesGraph, version=self.VERSION),
+                      SerialPickleableSlot(topLevelOperator.LearningHypothesesGraph, version=self.VERSION),
+                      SerialPickleableSlot(topLevelOperator.ResolvedMergers, version=self.VERSION),
                       SerialSlot(topLevelOperator.DivisionWeight),
                       SerialSlot(topLevelOperator.DetectionWeight),
                       SerialSlot(topLevelOperator.TransitionWeight),
@@ -40,8 +41,8 @@ class StructuredTrackingSerializer(AppletSerializer):
         except:
             slots = [ SerialDictSlot(topLevelOperator.Parameters, selfdepends=True),
                       SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
-                      SerialPickledValueSlot(topLevelOperator.ExportSettings),
-                      SerialPickledValueSlot(topLevelOperator.ResolvedMergers),
+                      SerialPickleableSlot(topLevelOperator.ExportSettings, version=self.VERSION),
+                      SerialPickleableSlot(topLevelOperator.ResolvedMergers, version=self.VERSION),
                       SerialSlot(topLevelOperator.DivisionWeight),
                       SerialSlot(topLevelOperator.DetectionWeight),
                       SerialSlot(topLevelOperator.TransitionWeight),

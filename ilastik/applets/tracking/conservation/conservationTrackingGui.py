@@ -238,13 +238,18 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             return
 
         withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
-        numStages = 6
+        numStages = 8
+        # object features
+        # detection probabilities
         # creating traxel store
         # generating probabilities
         # insert energies
         # convexify costs
         # solver
         # compute lineages
+        if self._drawer.divisionsBox.isChecked():
+            # division probabilities
+            numStages +=1
 
         if withMergerResolution:
             numStages += 1 # merger resolution

@@ -151,11 +151,97 @@ class SerialLabelsSlot(SerialSlot):
             op.labels = labels
         self.dirty = False
         
+class SerialAppearancesSlot(SerialSlot):
+    def serialize(self, group):
+        if not self.shouldSerialize(group):
+            return
+        deleteIfPresent(group, self.name)
+        group = getOrCreateGroup(group, self.name)
+        mainOperator = self.slot.getRealOperator()
+        innerops = mainOperator.innerOperators
+        for i, op in enumerate(innerops):
+            gr = getOrCreateGroup(group, str(i))
+            for t in list(op.appearances.keys()):
+                t_gr = getOrCreateGroup(gr, str(t))
+                for oid in list(op.appearances[t].keys()):
+                    oid_gr = getOrCreateGroup(t_gr, str(oid))
+                    for track in list(op.appearances[t][oid].keys()):
+                        app = op.appearances[t][oid][track]
+                        if app:
+                            oid_gr.create_dataset(name=str(track), data=app)
+        self.dirty = False
+
+    def deserialize(self, group):
+        if not self.name in group:
+            return
+        mainOperator = self.slot.getRealOperator()
+        innerops = mainOperator.innerOperators
+        opgroup = group[self.name]
+        for inner in list(opgroup.keys()):
+            gr = opgroup[inner]
+            op = innerops[int(inner)]
+            appearances = {}
+            for t in list(gr.keys()):
+                appearances[int(t)] = {}
+                t_gr = gr[str(t)]
+                for oid in list(t_gr.keys()):
+                    appearances[int(t)][int(oid)] = {}
+                    oid_gr = t_gr[str(oid)]
+                    for track in list(oid_gr.keys()):
+                        appearances[int(t)][int(oid)][int(track)] = True
+            op.appearances = appearances
+            op.Appearances.setValue(appearances)
+        self.dirty = False
+
+class SerialDisappearancesSlot(SerialSlot):
+    def serialize(self, group):
+        if not self.shouldSerialize(group):
+            return
+        deleteIfPresent(group, self.name)
+        group = getOrCreateGroup(group, self.name)
+        mainOperator = self.slot.getRealOperator()
+        innerops = mainOperator.innerOperators
+        for i, op in enumerate(innerops):
+            gr = getOrCreateGroup(group, str(i))
+            for t in list(op.disappearances.keys()):
+                t_gr = getOrCreateGroup(gr, str(t))
+                for oid in list(op.disappearances[t].keys()):
+                    oid_gr = getOrCreateGroup(t_gr, str(oid))
+                    for track in list(op.disappearances[t][oid].keys()):
+                        app = op.disappearances[t][oid][track]
+                        if app:
+                            oid_gr.create_dataset(name=str(track), data=app)
+        self.dirty = False
+
+    def deserialize(self, group):
+        if not self.name in group:
+            return
+        mainOperator = self.slot.getRealOperator()
+        innerops = mainOperator.innerOperators
+        opgroup = group[self.name]
+        for inner in list(opgroup.keys()):
+            gr = opgroup[inner]
+            op = innerops[int(inner)]
+            disappearances = {}
+            for t in list(gr.keys()):
+                disappearances[int(t)] = {}
+                t_gr = gr[str(t)]
+                for oid in list(t_gr.keys()):
+                    disappearances[int(t)][int(oid)] = {}
+                    oid_gr = t_gr[str(oid)]
+                    for track in list(oid_gr.keys()):
+                        disappearances[int(t)][int(oid)][int(track)] = True
+            op.disappearances = disappearances
+            op.Disappearances.setValue(disappearances)
+        self.dirty = False
+
 class AnnotationsSerializer(AppletSerializer):
     
     def __init__(self, operator, projectFileGroupName):
         slots = [ SerialAnnotationsSlot(operator.Annotations),
                   SerialDivisionsSlot(operator.Divisions),
-                  SerialLabelsSlot(operator.Labels)]
+                  SerialLabelsSlot(operator.Labels),
+                  SerialAppearancesSlot(operator.Appearances),
+                  SerialDisappearancesSlot(operator.Disappearances)]
     
         super(AnnotationsSerializer, self ).__init__(projectFileGroupName, slots=slots)
