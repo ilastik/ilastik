@@ -36,6 +36,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.utility import PathComponents, isUrl, make_absolute
+from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
@@ -332,22 +333,7 @@ class OpDataSelection(Operator):
                 preloaded_array = datasetInfo.preloaded_array
                 assert preloaded_array is not None
                 if not hasattr(preloaded_array, 'axistags'):
-                    # Guess the axis order, since one was not provided.
-                    axisorders = {2: 'yx',
-                                  3: 'zyx',
-                                  4: 'zyxc',
-                                  5: 'tzyxc'}
-
-                    shape = preloaded_array.shape
-                    ndim = preloaded_array.ndim
-                    assert ndim != 0, "Support for 0-D data not yet supported"
-                    assert ndim != 1, "Support for 1-D data not yet supported"
-                    assert ndim <= 5, "No support for data with more than 5 dimensions."
-
-                    axisorder = axisorders[ndim]
-                    if ndim == 3 and shape[2] <= 4:
-                        # Special case: If the 3rd dim is small, assume it's 'c', not 'z'
-                        axisorder = 'yxc'
+                    axisorder = get_default_axisordering(preloaded_array.shape)
                     preloaded_array = vigra.taggedView(preloaded_array, axisorder)
                 opReader = OpArrayPiper(parent=self)
                 opReader.Input.setValue(preloaded_array)
