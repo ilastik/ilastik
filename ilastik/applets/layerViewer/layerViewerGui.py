@@ -76,12 +76,12 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     """
     Implements an applet GUI whose central widget is a VolumeEditor
     and whose layer controls simply contains a layer list widget.
-    Intended to be used as a subclass for applet GUI objects.
+    Intended to be used as a superclass for applet GUI objects.
 
     Provides: Central widget (viewer), View Menu, and Layer controls
     Provides an EMPTY applet drawer widget.  Subclasses should replace it with their own applet drawer.
     """
-    
+
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
@@ -115,7 +115,8 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     ###########################################
     ###########################################
 
-    def __init__(self, parentApplet, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False, crosshair=True):
+    def __init__(self, parentApplet, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False,
+                 crosshair=True, is_3d_widget_visible=False):
         """
         Constructor.  **All** slots of the provided *topLevelOperatorView* will be monitored for changes.
         Changes include slot resize events, and slot ready/unready status changes.
@@ -173,7 +174,8 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         self.saved_layer_visibilities = None
 
         self._initCentralUic()
-        self._initEditor(crosshair=crosshair)
+
+        self._initEditor(crosshair=crosshair, is_3d_widget_visible=is_3d_widget_visible)
         self.__viewerControlWidget = None
         if not centralWidgetOnly:
             self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
@@ -615,11 +617,11 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         localDir = os.path.split(__file__)[0]
         uic.loadUi(localDir+"/centralWidget.ui", self)
 
-    def _initEditor(self, crosshair):
+    def _initEditor(self, crosshair, is_3d_widget_visible):
         """
         Initialize the Volume Editor GUI.
         """
-        self.editor = VolumeEditor(self.layerstack, parent=self, crosshair=crosshair)
+        self.editor = VolumeEditor(self.layerstack, parent=self, crosshair=crosshair, is_3d_widget_visible=is_3d_widget_visible)
 
         # Replace the editor's navigation interpreter with one that has extra functionality
         self.clickReporter = ClickReportingInterpreter( self.editor.navInterpret, self.editor.posModel )

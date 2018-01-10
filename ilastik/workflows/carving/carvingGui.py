@@ -23,7 +23,6 @@ from __future__ import division
 from builtins import range
 from past.utils import old_div
 import os
-import tempfile
 from functools import partial
 from collections import defaultdict
 import numpy
@@ -88,32 +87,32 @@ class CarvingGui(LabelingGui):
         self.dialogdirCOM = os.path.join(directory, 'carvingObjectManagement.ui')
         self.dialogdirSAD = os.path.join(directory, 'saveAsDialog.ui')
 
-        super(CarvingGui, self).__init__(parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath)
-        
+        # Add 3DWidget only if the data is 3D
+        is_3d = self._is_3d()
+
+        super(CarvingGui, self).__init__(parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath,
+                                         is_3d_widget_visible=is_3d)
+
         self.labelingDrawerUi.currentObjectLabel.setText("<not saved yet>")
 
         # Init special base class members
         self.minLabelNumber = 2
         self.maxLabelNumber = 2
-        
+
         mgr = ShortcutManager()
         ActionInfo = ShortcutManager.ActionInfo
-        
+
         #set up keyboard shortcuts
-        mgr.register( "3", ActionInfo( "Carving", 
-                                       "Run interactive segmentation", 
-                                       "Run interactive segmentation", 
+        mgr.register( "3", ActionInfo( "Carving",
+                                       "Run interactive segmentation",
+                                       "Run interactive segmentation",
                                        self.labelingDrawerUi.segment.click,
                                        self.labelingDrawerUi.segment,
                                        self.labelingDrawerUi.segment  ) )
 
-        
+
         # Disable 3D view by default
         self.render = False
-        tagged_shape = defaultdict(lambda: 1)
-        tagged_shape.update( topLevelOperatorView.InputData.meta.getTaggedShape() )
-        is_3d = (tagged_shape['x'] > 1 and tagged_shape['y'] > 1 and tagged_shape['z'] > 1)
-
         if is_3d:
             try:
                 self._renderMgr = RenderingManager( self.editor.view3d )
@@ -252,11 +251,17 @@ class CarvingGui(LabelingGui):
             self._doneSegmentationColortable.append(QColor(0,255,0).rgba())
         makeColortable()
         self._updateGui()
-    
+
+    def _is_3d(self):
+        tagged_shape = defaultdict(lambda: 1)
+        tagged_shape.update(self.topLevelOperatorView.InputData.meta.getTaggedShape())
+        is_3d = tagged_shape['x'] > 1 and tagged_shape['y'] > 1 and tagged_shape['z'] > 1
+        return is_3d
+
     def _after_init(self):
         super(CarvingGui, self)._after_init()
-        if self.render:self._toggleSegmentation3D()
-        
+        if self.render:
+            self._toggleSegmentation3D()
         
     def _updateGui(self):
         self.labelingDrawerUi.save.setEnabled( self.topLevelOperatorView.dataIsStorable() )
