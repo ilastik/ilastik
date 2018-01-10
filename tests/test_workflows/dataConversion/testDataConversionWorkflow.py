@@ -23,7 +23,6 @@ import os
 import sys
 import imp
 import numpy
-import h5py
 import tempfile
 
 from lazyflow.graph import Graph
@@ -32,12 +31,7 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 import ilastik
 from lazyflow.utility.timer import timeLogged
-from ilastik.utility.slicingtools import sl, slicing2shape
-from ilastik.shell.projectManager import ProjectManager
-from ilastik.shell.headless.headlessShell import HeadlessShell
-from ilastik.workflows.examples.dataConversion import DataConversionWorkflow
 
-from ilastik.config import cfg as ilastik_config
 
 import logging
 logger = logging.getLogger(__name__)
@@ -47,7 +41,7 @@ logger = logging.getLogger(__name__)
 class TestDataConversionWorkflow(object):
     dir = tempfile.mkdtemp()
     PROJECT_FILE = os.path.join(dir, 'test_project.ilp')
-    #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
+    # SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
     @classmethod
     def setupClass(cls):
@@ -78,7 +72,7 @@ class TestDataConversionWorkflow(object):
         for f in removeFiles:
             try:
                 os.remove(f)
-            except:
+            except:  # noqa
                 pass
 
     @classmethod
@@ -101,7 +95,7 @@ class TestDataConversionWorkflow(object):
         args.append("--new_project=" + self.PROJECT_FILE)
         args.append("--workflow=DataConversionWorkflow")
         args.append("--headless")
-        #args.append( "--sys_tmp_dir=/tmp" )
+        # args.append( "--sys_tmp_dir=/tmp" )
 
         # Batch export options
         # If we were actually launching from the command line, 'png sequence' would be in quotes...
@@ -157,7 +151,6 @@ if __name__ == "__main__":
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    import sys
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
