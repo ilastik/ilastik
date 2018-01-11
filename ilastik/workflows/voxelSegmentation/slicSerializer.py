@@ -38,7 +38,10 @@ class SlicSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
         slots = [
             SerialBlockSlot(operator.Output, operator.CacheInput, operator.CleanBlocks),
-            SerialBlockSlot(operator.BoundariesOutput, operator.CacheBoundariesInput, operator.BoundariesCleanBlocks)
+            SerialBlockSlot(operator.BoundariesOutput, operator.CacheBoundariesInput, operator.BoundariesCleanBlocks),
+            # SerialSlot(operator.NumSegments),
+            # SerialSlot(operator.Compactness),
+            # SerialSlot(operator.MaxIter),
         ]
 
         super(SlicSerializer, self).__init__(projectFileGroupName, slots, operator)

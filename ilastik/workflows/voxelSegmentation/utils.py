@@ -86,7 +86,7 @@ def slic_to_mask(slic_segmentation, supervoxel_values):
     pool = multiprocessing.Pool(num_cores*4)
 
     slices_out = pool.map(compute, slices)
-
+    pool.close()
     return np.concatenate(slices_out)
 
 

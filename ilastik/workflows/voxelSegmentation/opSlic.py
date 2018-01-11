@@ -31,7 +31,7 @@ class OpSlic(Operator):
 
     # These are the slic parameters.
     # Here we give default values, but they can be changed.
-    NumSegments = InputSlot(value=0)
+    NumSegments = InputSlot()
     Compactness = InputSlot(value=0.6)
     MaxIter = InputSlot(value=10)
 
