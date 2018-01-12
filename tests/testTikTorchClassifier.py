@@ -82,7 +82,7 @@ class TestDummyTikTorchNet(object):
         assert len(classifier.known_classes) == self.tiktorch_net.get('num_output_channels')
         # TODO: test more stuff ;)
 
-    def test_classifier_serialization(self):
+    def test_classifier_serialization_derserialization(self):
         file_name = None
         classifier = TikTorchLazyflowClassifier(self.tiktorch_net, filename=file_name)
         classifier.serialize_hdf5(self.classifier_group)
@@ -90,12 +90,11 @@ class TestDummyTikTorchNet(object):
         assert self.classifier_group['pytorch_network_path'].value == ""
         # TODO: test more stuff!
 
-    def test_classifier_deserialization(self):
-        classifier = TikTorchLazyflowClassifier.deserialize_hdf5(self.classifier_group)
+        classifier_deserialized = TikTorchLazyflowClassifier.deserialize_hdf5(
+            self.classifier_group)
 
         # TODO: add __eq__ to tiktorch?!
-        assert str(classifier._tiktorch_net.model) == str(self.tiktorch_net.model)
-        # TODO: test more stuff!
+        assert str(classifier_deserialized._tiktorch_net.model) == str(self.tiktorch_net.model)
 
     def test_forward_through_model(self):
         classifier = TikTorchLazyflowClassifier(self.tiktorch_net)
