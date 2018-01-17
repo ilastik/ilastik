@@ -581,8 +581,10 @@ class CarvingGui(LabelingGui):
         self._update_rendering()
 
     def _segmentation_dirty(self):
-        self._renderMgr.invalidateObject(CURRENT_SEGMENTATION_NAME)
-        self._renderMgr.removeObject(CURRENT_SEGMENTATION_NAME)
+        if self.render:
+            self._renderMgr.invalidateObject(CURRENT_SEGMENTATION_NAME)
+            self._renderMgr.removeObject(CURRENT_SEGMENTATION_NAME)
+
         self._update_rendering()
 
     def _update_rendering(self):
