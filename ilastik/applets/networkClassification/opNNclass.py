@@ -3,11 +3,11 @@ from builtins import range
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opCompressedUserLabelArray import OpCompressedUserLabelArray
-from lazyflow.operators.classifierOperators import OpTrainClassifierBlocked, OpClassifierPredict
+from lazyflow.operators.classifierOperators import OpPixelwiseClassifierPredict
 from lazyflow.operators.valueProviders import OpValueCache
 
 
-from lazyflow.classifiers import TikTorchLazyflowClassifier
+from lazyflow.classifiers import TikTorchLazyflowClassifier, TikTorchLazyflowClassifierFactory
 
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.utility.operatorSubView import OperatorSubView
@@ -15,11 +15,15 @@ from ilastik.utility.operatorSubView import OperatorSubView
 class OpNNClassification(Operator):
 
     # ClassifierFactory = InputSlot(value=TikTorchLazyflowClassifier())
+    Classifier = InputSlot()
     ClassifierFactory = InputSlot()
     InputImage = InputSlot()
-    OutputImage = OutputSlot()
+    # OutputImage = OutputSlot()
     NumClasses = InputSlot()
+    BlockShape = InputSlot()
     # CachedOutputImage = OutputSlot()
+    PredictionProbabilities = OutputSlot()
+    CachedPredictionProbabilities = OutputSlot()
 
 
 
@@ -27,15 +31,23 @@ class OpNNClassification(Operator):
 
         super(OpNNClassification, self).__init__(*args, **kwargs)
 
-        self.OutputImage.connect(self.InputImage)
-
-
-        self.predict = OpClassifierPredict(parten=self)
+        self.predict = OpPixelwiseClassifierPredict(parent=self)
         self.predict.name = "OpClassifierPredict"
-        self.predict.Image.connect(self.InputImages)
-        self.predict.Classifier.connect(self.ClassifierFactory)
+        self.predict.Image.connect(self.InputImage)
+        self.predict.Classifier.connect(self.Classifier)
         self.predict.LabelsCount.connect(self.NumClasses)
-        # self.predict.PredictionProbabilities.connect( self.predict.PMaps )
+        self.PredictionProbabilities.connect( self.predict.PMaps)
+
+        self.prediction_cache = OpBlockedArrayCache(parent=self)
+        self.prediction_cache.name = "BlockedArrayCache"
+        self.prediction_cache.inputs["Input"].connect( self.predict.PMaps )
+        self.prediction_cache.BlockShape.connect( self.BlockShape )
+        self.CachedPredictionProbabilities.connect(self.prediction_cache.Output )
+
+
+    def propagateDirty(self, slot, subindex, roi):
+        # Our output changes when the input changed shape, not when it becomes dirty.
+        pass
 
 
 
