@@ -49,6 +49,25 @@
      </property>
     </widget>
    </item>
+      <item>
+      <widget class="QToolButton" name="liveUpdateButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Live Update</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="toolButtonStyle">
+        <enum>Qt::ToolButtonTextBesideIcon</enum>
+       </property>
+      </widget>
+     </item>
   </layout>
  </widget>
  <resources/>
