@@ -210,8 +210,11 @@ class NNClassificationWorkflow(Workflow):
             opClassify.PredictionMasks.connect( opData.ImageGroup[self.DATA_ROLE_PREDICTION_MASK] )
         
         # Feature Images -> Classification Op (for training, prediction)
-        opClassify.FeatureImages.connect( opNNclassify.OutputImage )
-        opClassify.CachedFeatureImages.connect( opNNclassify.OutputImage )
+        opClassify.FeatureImages.connect( opNNclassify.PredictionProbabilities )
+        opClassify.CachedFeatureImages.connect( opNNclassify.PredictionProbabilities )
+
+        #HACK
+        opNNclassify.NumClasses.setValue(3)
         
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
