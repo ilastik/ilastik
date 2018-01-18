@@ -891,7 +891,6 @@ class TestOpDataSelection_stack_along_parameter():
     @classmethod
     def setUpClass(cls):
         cls.tmpdir = tempfile.mkdtemp()
-        cls.tmpdir = 'C:\\Users\\Fynn\\AppData\\Local\\Temp\\tmp'
 
         cls.rgb00c = numpy.array([[1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                                   [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -937,17 +936,23 @@ class TestOpDataSelection_stack_along_parameter():
             # save as h5
             vigra.impex.writeHDF5(data=data, filenameOrGroup=os.path.join(cls.tmpdir, f'{name}.h5'), pathInFile='data')
 
-            # save as tiff, if possible
+            # save as png and tiff, if possible
             if c == '0c':
                 im = Image.fromarray(data)
+                im.save(os.path.join(cls.tmpdir, f'{name}.tiff'))
+                vigra.impex.writeImage(image=(data.T * 255).astype(numpy.uint8),
+                                       filename=os.path.join(cls.tmpdir, f'{name}.png'))
             elif c == '1c':
-                continue
+                vigra.impex.writeImage(image=(data.transpose(1, 0, 2) * 255).astype(numpy.uint8),
+                                       filename=os.path.join(cls.tmpdir, f'{name}.png'))
             elif c == '3c':
-                im = Image.fromarray((data * 255).astype(numpy.uint8), mode='RGB')
+                data = (data * 255).astype(numpy.uint8)
+                im = Image.fromarray(data, mode='RGB')
+                im.save(os.path.join(cls.tmpdir, f'{name}.tiff'))
+                vigra.impex.writeImage(image=data.transpose(1, 0, 2),
+                                       filename=os.path.join(cls.tmpdir, f'{name}.png'))
             else:
-                raise NotImplementedError(f'How to create PIL image with c == {c}?')
-
-            im.save(os.path.join(cls.tmpdir, f'{name}.tiff'))
+                raise NotImplementedError(f'How to create PIL/png image with c == {c}?')
 
     def _test_stack_along(self, name, extension, sequence_axis, expected):
         fileName = os.path.join(self.tmpdir, f'{name}{extension}')
@@ -958,25 +963,37 @@ class TestOpDataSelection_stack_along_parameter():
         reader.Dataset.setValue(info)
         read = reader.Image[...].wait()
 
-        assert numpy.allclose(read, expected), f'shapes: {read.shape}, {expected.shape}'
+        assert numpy.allclose(read, expected), f'{name}: {read.shape}, {expected.shape}'
 
     def test_stack_along(self):
 
         testcases = [
             ['rgb*0c', '.h5/data', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2)],
+            ['rgb*0c', '.png    ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2).transpose(1, 0, 2
+                                                                                                               ) * 255],
             ['rgb*0c', '.tiff   ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2)],
             ['rgb*1c', '.h5/data', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2)],
+            ['rgb*1c', '.png    ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2).transpose(1, 0, 2
+                                                                                                               ) * 255],
             ['rgb*3c', '.h5/data', 'c', numpy.concatenate([self.rgb03c, self.rgb13c, self.rgb23c], axis=2)],
+            ['rgb*3c', '.png    ', 'c', numpy.concatenate([self.rgb03c, self.rgb13c, self.rgb23c], axis=2).transpose(
+                1, 0, 2) * 255],
             ['rgb*3c', '.tiff   ', 'c', numpy.concatenate([self.rgb03c, self.rgb13c, self.rgb23c], axis=2) * 255],
             ['rgb*0c', '.h5/data', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*0c', '.png    ', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
             ['rgb*0c', '.tiff   ', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
             ['rgb*1c', '.h5/data', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*1c', '.png    ', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
             ['rgb*3c', '.h5/data', 'z', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0)],
+            ['rgb*3c', '.png    ', 'z', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
             ['rgb*3c', '.tiff   ', 'z', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
             ['rgb*0c', '.h5/data', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*0c', '.png    ', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
             ['rgb*0c', '.tiff   ', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
             ['rgb*1c', '.h5/data', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*1c', '.png    ', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
             ['rgb*3c', '.h5/data', 't', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0)],
+            ['rgb*3c', '.png    ', 't', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
             ['rgb*3c', '.tiff   ', 't', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
         ]
 
