@@ -40,6 +40,8 @@ from ilastik.applets.base.applet import DatasetConstraintError
 #carving backend in ilastiktools
 from .watershed_segmentor import WatershedSegmentor
 
+from .carvingTools import simple_parallel_ws
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -168,7 +170,7 @@ class OpNormalize255(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(roi.start, roi.stop)
 
-class OpSimpleWatershed(Operator):
+class OpSimpleBlockwiseWatershed(Operator):
     Input = InputSlot()
     Output = OutputSlot()
 
@@ -177,7 +179,7 @@ class OpSimpleWatershed(Operator):
         self.Output.meta.dtype = numpy.uint32
 
     def execute(self, slot, subindex, roi, result):
-        assert roi.stop - roi.start == self.Output.meta.shape, "Watershed must be run on the entire volume."
+        assert roi.stop - roi.start == self.Output.meta.shape, "Blockwise-Watershed must be run on the entire volume."
         input_image = self.Input(roi.start, roi.stop).wait()
         volume_feat = input_image[0,...,0]
         result_view = result[0,...,0]
@@ -199,6 +201,38 @@ class OpSimpleWatershed(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(slice(None))
+
+class OpSimpleWatershed(Operator):
+    Input = InputSlot()
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.dtype = numpy.uint32
+
+    def execute(self, slot, subindex, roi, result):
+        assert roi.stop - roi.start == self.Output.meta.shape, "Watershed must be run on the entire volume."
+        input_image = self.Input(roi.start, roi.stop).wait()
+        volume_feat = input_image[0,...,0]
+        result_view = result[0,...,0]
+        with Timer() as watershedTimer:
+            if self.Input.meta.getTaggedShape()['z'] > 1:
+                sys.stdout.write("Watershed..."); sys.stdout.flush()
+                #result_view[...] = vigra.analysis.watersheds(volume_feat[:,:])[0].astype(numpy.int32)
+                result_view[...] = simple_parallel_ws(volume_feat[:,:,0])
+                logger.info( "done {}".format(numpy.max(result[...]) ) )
+            else:
+                sys.stdout.write("Watershed..."); sys.stdout.flush()
+                labelVolume = simple_parallel_ws(volume_feat[:,:,0])
+                result_view[...] = labelVolume[:,:,numpy.newaxis]
+                logger.info( "done {}".format(numpy.max(labelVolume)) )
+
+        logger.info( "Watershed took {} seconds".format( watershedTimer.seconds() ) )
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty(slice(None))
+
     
 class OpMstSegmentorProvider(Operator):
     Image = InputSlot()
@@ -306,7 +340,7 @@ class OpPreprocessing(Operator):
         
         self._opFilterCache = OpBlockedArrayCache( parent=self )
         
-        self._opWatershed = OpSimpleWatershed( parent=self )
+        self._opWatershed = OpSimpleBlockwiseWatershed( parent=self )
         
         self._opWatershedCache = OpBlockedArrayCache( parent=self )
         
