@@ -116,7 +116,7 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None):
 
     labels -= int(global_min_label[0]-1)
 
-    print("labels ",labels.min())
+    #print("labels ",labels.min())
 
     return labels
         
