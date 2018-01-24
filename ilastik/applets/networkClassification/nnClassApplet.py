@@ -27,6 +27,7 @@ from .nnClassSerializer import NNClassificationSerializer
 class NNClassApplet(StandardApplet):
 
     def __init__( self, workflow, projectFileGroupName ):
+        # self._topLevelOperator = OpNNClassification(parent=workflow)
         
         # def on_classifier_changed(slot, roi):
         #     if self._topLevelOperator.classifier_cache.Output.ready() and \
@@ -46,14 +47,8 @@ class NNClassApplet(StandardApplet):
 
         self._gui = None
         
-        # GUI needs access to the serializer to enable/disable prediction storage
         self.predictionSerializer = self._serializableItems[0]
 
-        # FIXME: For now, we can directly connect the progress signal from the classifier training operator
-        #  directly to the applet's overall progress signal, because it's the only thing we report progress for at the moment.
-        # If we start reporting progress for multiple tasks that might occur simulatneously,
-        #  we'll need to aggregate the progress updates.
-        # self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
 
     @property
     def broadcastingSlots( self ):

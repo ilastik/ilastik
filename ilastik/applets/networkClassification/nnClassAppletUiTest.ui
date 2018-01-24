@@ -42,13 +42,25 @@
      </property>
     </widget>
    </item>
-   <item>
-    <widget class="QPushButton" name="predictButton">
-     <property name="text">
-      <string>Predict</string>
-     </property>
-    </widget>
-   </item>
+         <item>
+      <widget class="QToolButton" name="addModel">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Add Model</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="toolButtonStyle">
+        <enum>Qt::ToolButtonTextBesideIcon</enum>
+       </property>
+      </widget>
+     </item>
       <item>
       <widget class="QToolButton" name="liveUpdateButton">
        <property name="sizePolicy">
@@ -58,7 +70,7 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>Live Update</string>
+        <string>Live Prediction</string>
        </property>
        <property name="checkable">
         <bool>true</bool>
