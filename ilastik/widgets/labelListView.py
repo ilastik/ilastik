@@ -84,8 +84,14 @@ class LabelListView(ListView):
     def tableViewCellClicked(self, modelIndex):
         if (modelIndex.column() == self.model.ColumnID.Delete and
             not self.model.flags(modelIndex) == Qt.NoItemFlags):
-            self.model.removeRow(modelIndex.row())
-
+            message = "Label is deleting now  !\n"
+            buttons = QMessageBox.Ok | QMessageBox.Cancel
+            response = QMessageBox.warning(self, "Label Delete?", message, buttons)
+            if response == QMessageBox.Cancel:
+                return 
+            elif response == QMessageBox.Ok:
+                self.model.removeRow(modelIndex.row())
+    
     def contextMenuEvent(self, event):
         from_index = self._table.indexAt(event.pos())
         if not (0 <= from_index.row() < self.model.rowCount()):
