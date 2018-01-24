@@ -5,6 +5,7 @@ from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opCompressedUserLabelArray import OpCompressedUserLabelArray
 from lazyflow.operators.classifierOperators import OpPixelwiseClassifierPredict
 from lazyflow.operators.valueProviders import OpValueCache
+from lazyflow.operators import OpMultiArraySlicer2
 
 
 from lazyflow.classifiers import TikTorchLazyflowClassifier, TikTorchLazyflowClassifierFactory
@@ -14,16 +15,13 @@ from ilastik.utility.operatorSubView import OperatorSubView
 
 class OpNNClassification(Operator):
 
-    # ClassifierFactory = InputSlot(value=TikTorchLazyflowClassifier())
     Classifier = InputSlot()
-    ClassifierFactory = InputSlot()
     InputImage = InputSlot()
-    # OutputImage = OutputSlot()
     NumClasses = InputSlot()
     BlockShape = InputSlot()
-    # CachedOutputImage = OutputSlot()
     PredictionProbabilities = OutputSlot()
     CachedPredictionProbabilities = OutputSlot()
+    PredictionProbabilityChannels = OutputSlot(level=1)
 
 
 
@@ -41,8 +39,15 @@ class OpNNClassification(Operator):
         self.prediction_cache = OpBlockedArrayCache(parent=self)
         self.prediction_cache.name = "BlockedArrayCache"
         self.prediction_cache.inputs["Input"].connect( self.predict.PMaps )
+        # self.prediction_cache.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.prediction_cache.BlockShape.connect( self.BlockShape )
         self.CachedPredictionProbabilities.connect(self.prediction_cache.Output )
+
+        self.opPredictionSlicer = OpMultiArraySlicer2( parent=self )
+        self.opPredictionSlicer.name = "opPredictionSlicer"
+        self.opPredictionSlicer.Input.connect( self.prediction_cache.Output )
+        self.opPredictionSlicer.AxisFlag.setValue('c')
+        self.PredictionProbabilityChannels.connect( self.opPredictionSlicer.Slices )
 
 
     def propagateDirty(self, slot, subindex, roi):
