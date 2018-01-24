@@ -170,7 +170,7 @@ class OpNormalize255(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(roi.start, roi.stop)
 
-class OpSimpleBlockwiseWatershed(Operator):
+class OpSimpleWatershed(Operator):
     Input = InputSlot()
     Output = OutputSlot()
 
@@ -179,7 +179,7 @@ class OpSimpleBlockwiseWatershed(Operator):
         self.Output.meta.dtype = numpy.uint32
 
     def execute(self, slot, subindex, roi, result):
-        assert roi.stop - roi.start == self.Output.meta.shape, "Blockwise-Watershed must be run on the entire volume."
+        assert roi.stop - roi.start == self.Output.meta.shape, "Watershed must be run on the entire volume."
         input_image = self.Input(roi.start, roi.stop).wait()
         volume_feat = input_image[0,...,0]
         result_view = result[0,...,0]
@@ -202,7 +202,7 @@ class OpSimpleBlockwiseWatershed(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(slice(None))
 
-class OpSimpleWatershed(Operator):
+class OpSimpleBlockwiseWatershed(Operator):
     Input = InputSlot()
     Output = OutputSlot()
 
@@ -211,23 +211,23 @@ class OpSimpleWatershed(Operator):
         self.Output.meta.dtype = numpy.uint32
 
     def execute(self, slot, subindex, roi, result):
-        assert roi.stop - roi.start == self.Output.meta.shape, "Watershed must be run on the entire volume."
+        assert roi.stop - roi.start == self.Output.meta.shape, "Blockwise Watershed must be run on the entire volume."
         input_image = self.Input(roi.start, roi.stop).wait()
         volume_feat = input_image[0,...,0]
         result_view = result[0,...,0]
         with Timer() as watershedTimer:
             if self.Input.meta.getTaggedShape()['z'] > 1:
-                sys.stdout.write("Watershed..."); sys.stdout.flush()
+                sys.stdout.write("Blockwise Watershed 3D..."); sys.stdout.flush()
                 #result_view[...] = vigra.analysis.watersheds(volume_feat[:,:])[0].astype(numpy.int32)
-                result_view[...] = simple_parallel_ws(volume_feat[:,:,0])
+                result_view[...] = simple_parallel_ws(volume_feat)
                 logger.info( "done {}".format(numpy.max(result[...]) ) )
             else:
-                sys.stdout.write("Watershed..."); sys.stdout.flush()
+                sys.stdout.write("Blockwise Watershed..."); sys.stdout.flush()
                 labelVolume = simple_parallel_ws(volume_feat[:,:,0])
                 result_view[...] = labelVolume[:,:,numpy.newaxis]
                 logger.info( "done {}".format(numpy.max(labelVolume)) )
 
-        logger.info( "Watershed took {} seconds".format( watershedTimer.seconds() ) )
+        logger.info( "Blockwise Watershed took {} seconds".format( watershedTimer.seconds() ) )
         return result
 
     def propagateDirty(self, slot, subindex, roi):
