@@ -45,7 +45,7 @@ except ImportError as e:
 
 # FIXME: hard coded file path to a trained and pickled pytorch network!
 # PYTORCH_MODEL_FILE_PATH = '/Users/chaubold/opt/miniconda/envs/ilastik-py3/src/tiktorch/test3.nn'
-PYTORCH_MODEL_FILE_PATH = '/export/home/dkutra/Downloads/dunet-cpu.nn'
+# PYTORCH_MODEL_FILE_PATH = '/Users/jmassa/Downloads/dnunet-cpu-chaubold.nn'
 
 
 class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
@@ -57,8 +57,10 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         self._args = args
         self._kwargs = kwargs
 
+        print (self._args)
+
         # FIXME: hard coded file path to a trained and pickled pytorch network!
-        self._filename = PYTORCH_MODEL_FILE_PATH
+        self._filename = None # self._args[0]
         self._loaded_pytorch_net = None
 
     def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
@@ -129,6 +131,16 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         if self._filename is None:
             self._filename = ""
 
+
+        if tiktorch_net is None:
+            print (self._filename)
+            tiktorch_net = TikTorch.unserialize(self._filename)
+
+        # print (self._filename)
+
+        # assert tiktorch_net.return_hypercolumns == False
+        # print('blah')
+
         self._tiktorch_net = tiktorch_net
 
         self._opReorderAxes = OpReorderAxes(graph=Graph())
@@ -144,6 +156,9 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         logger.info(f'expected pytorch input shape is {self._tiktorch_net.expected_input_shape}')
         logger.info(f'expected pytorch output shape is {self._tiktorch_net.expected_output_shape}')
 
+        # print(self._tiktorch_net.expected_input_shape)
+        # print(self._tiktorch_net.expected_output_shape)
+
         num_channels = len(self.known_classes)
         expected_shape = [stop - start for start, stop in zip(roi[0], roi[1])] + [num_channels]
 
@@ -158,16 +173,25 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             f'Shape after reordering input is {reordered_feature_image.shape}, '
             f'axistags are {self._opReorderAxes.Output.meta.axistags}')
 
+        # print ("Shape after reordering input is ",reordered_feature_image.shape)
+        # print ("axistags are", self._opReorderAxes.Output.meta.axistag)
+
         slice_shape = list(reordered_feature_image.shape[1::])  # ignore z axis
 
-        if slice_shape != list(self._tiktorch_net.expected_input_shape):
+        if slice_shape != list(self._tiktorch_net.expected_input_shape[1::]):
             logger.info(
-                f"Expected input shape is {self._tiktorch_net.expected_input_shape}, "
+                f"Expected input shape is {self._tiktorch_net.expected_input_shape[1::]}, "
                 f"but got {slice_shape}, returning zeros")
+
+            # print ("Expected input shape is",self._tiktorch_net.expected_input_shape)
+            # print ("but got",slice_shape)
+
             return numpy.zeros(expected_shape)
         else:
             result = numpy.zeros(
                 [reordered_feature_image.shape[0], num_channels] + list(reordered_feature_image.shape[2:]))
+
+            print ("forward")
 
             # we always predict in 2D, per z-slice, so we loop over z
             for z in range(0, reordered_feature_image.shape[0], self.BATCH_SIZE):
@@ -175,16 +199,23 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
                 # vigra.impex.writeHDF5(reordered_feature_image[z,...], "data", "/Users/chaubold/Desktop/dump.h5")
 
                 # create batch of desired num slices. Multiple slices can be processed on multiple GPUs!
-                batch = [reordered_feature_image[zi:zi + 1, ...].reshape(slice_shape)
+                batch = [reordered_feature_image[zi:zi + 1, ...].reshape(self._tiktorch_net.expected_input_shape)
                          for zi in range(z, min(z + self.BATCH_SIZE, reordered_feature_image.shape[0]))]
                 logger.info(f"batch info: {[x.shape for x in batch]}")
+
+                print ("batch info:", [x.shape for x in batch])
+
                 result_batch = self._tiktorch_net.forward(batch)
                 logger.info(f"Resulting slices from {z} to {z + len(batch)} have shape {result_batch[0].shape}")
+
+                print ("Resulting slices from ",z ," to ", z + len(batch), " have shape ",result_batch[0].shape)
 
                 for i, zi in enumerate(range(z, (z + len(batch)))):
                     result[zi:(zi + 1), ...] = result_batch[i]
 
             logger.info(f"Obtained a predicted block of shape {result.shape}")
+
+            print ("Obtained a predicted block of shape ", result.shape)
 
             # crop away halo and reorder axes to match "axistags"
             # crop in X and Y:
