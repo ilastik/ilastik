@@ -20,3 +20,4 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 from .nnClassApplet import *
+from .nnClassificationDataExportApplet import NNClassificationDataExportApplet

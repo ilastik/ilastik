@@ -32,7 +32,7 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 # from ilastik.applets.featureSelection import FeatureSelectionApplet
-from ilastik.applets.networkClassification import NNClassApplet
+from ilastik.applets.networkClassification import NNClassApplet, NNClassificationDataExportApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationDataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
@@ -107,7 +107,9 @@ class NNClassificationWorkflow(Workflow):
         self.pcApplet = self.createPixelClassificationApplet()
         opClassify = self.pcApplet.topLevelOperator
 
+        # self.dataExportApplet = NNClassificationDataExportApplet(self, "Prediction Export")
         self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
+        
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.PmapColors.connect( opClassify.PmapColors )
         opDataExport.LabelNames.connect( opClassify.LabelNames )
@@ -204,24 +206,22 @@ class NNClassificationWorkflow(Workflow):
         # Input Image -> Feature Op
         #         and -> Classification Op (for display)
         opNNclassify.InputImage.connect( opData.Image )
-        opClassify.InputImages.connect( opData.Image )
+        opClassify.InputImages.connect( opNNclassify.CachedPredictionProbabilities )
         
         if ilastik_config.getboolean('ilastik', 'debug'):
             opClassify.PredictionMasks.connect( opData.ImageGroup[self.DATA_ROLE_PREDICTION_MASK] )
         
         # Feature Images -> Classification Op (for training, prediction)
-        opClassify.FeatureImages.connect( opNNclassify.PredictionProbabilities )
-        opClassify.CachedFeatureImages.connect( opNNclassify.PredictionProbabilities )
 
-        #HACK
-        opNNclassify.NumClasses.setValue(3)
+        opClassify.FeatureImages.connect( opNNclassify.CachedPredictionProbabilities )
+        opClassify.CachedFeatureImages.connect( opNNclassify.CachedPredictionProbabilities )
         
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW] )
         opDataExport.ConstraintDataset.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
-        opDataExport.Inputs[0].connect( opClassify.HeadlessPredictionProbabilities )
+        opDataExport.Inputs[0].connect( opNNclassify.CachedPredictionProbabilities )
         opDataExport.Inputs[1].connect( opClassify.SimpleSegmentation )
         opDataExport.Inputs[2].connect( opClassify.HeadlessUncertaintyEstimate )
         opDataExport.Inputs[3].connect( opClassify.FeatureImages )
