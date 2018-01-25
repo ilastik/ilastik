@@ -33,9 +33,6 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QListView" name="listView"/>
-   </item>
-   <item>
     <widget class="QComboBox" name="comboBox">
      <property name="currentText">
       <string/>
