@@ -147,11 +147,15 @@ class NNClassGui(LayerViewerGui):
         #split path string 
         modelname = os.path.basename(os.path.normpath(filename[0]))
 
+        #Statement for importing the same classifier twice 
         if modelname in self.classifiers.keys():
             print("Classifier already added")
             QMessageBox.critical(self, "Error loading file", "{} already added".format(modelname))
         else:
             self.classifiers[modelname] = TikTorchLazyflowClassifier(None, filename[0])
+
+            #clear first the comboBox or addItems will duplicate names
+            self.drawer.comboBox.clear()
 
             self.drawer.comboBox.addItems(self.classifiers)
 
