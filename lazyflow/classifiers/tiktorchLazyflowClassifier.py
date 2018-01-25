@@ -33,7 +33,7 @@ import vigra
 from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.graph import Graph
-
+from lazyflow.roi import roiToSlice
 
 import logging
 logger = logging.getLogger(__name__)
@@ -172,51 +172,62 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         # reordered_feature_image = (reordered_feature_image - reordered_feature_image.mean()) / (reordered_feature_image.std() + 0.000001)
 
         logger.info(
+            f'input axistags are {axistags}, '
             f'Shape after reordering input is {reordered_feature_image.shape}, '
             f'axistags are {self._opReorderAxes.Output.meta.axistags}')
 
         slice_shape = list(reordered_feature_image.shape[1::])  # ignore z axis
-
+        # assuming [z, y, x]
+        result_roi = numpy.array(roi)
         if slice_shape != list(self._tiktorch_net.expected_input_shape[1::]):
             logger.info(
                 f"Expected input shape is {self._tiktorch_net.expected_input_shape[1::]}, "
-                f"but got {slice_shape}, returning zeros")
-            
-            #adding a zero border to images that have the specific shape
+                f"but got {slice_shape}, reshaping...")
+
+            # adding a zero border to images that have the specific shape
 
             exp_shape = list(self._tiktorch_net.expected_input_shape)
             zero_img = numpy.zeros(exp_shape)
-            img_without_border = reordered_feature_image
 
+            # diff shape: cyx
             diff_shape = numpy.array(self._tiktorch_net.expected_input_shape[1::]) - numpy.array(slice_shape)
-            logger.info( f"Diff_shape {diff_shape} ")
+            # offset shape z, y, x, c for easy indexing, with c = 0, z = 0
+            offset = numpy.array([0, 0, 0, 0])
+            logger.info(f"Diff_shape {diff_shape}")
 
-            if diff_shape[1] == 0 : 
-                if diff_shape[2] == self.HALO_SIZE :
-                    zero_img[:,:,:,diff_shape[2]:] += img_without_border
-                elif diff_shape[2] > self.HALO_SIZE :
-                    zero_img[:,:,:,:(exp_shape[3]-diff_shape[2])] += img_without_border
-                    # logger.info( f"Shape!!!! {zero_img[:,:,:,:(exp_shape[3]-diff_shape[2])].shape} ")
+            # at least one of y, x (diff_shape[1], diff_shape[2]) should be off
+            # let's determine how to adjust the offset -> offset[2] and offset[3]
+            # caveat: this code assumes that image requests were tiled in a regular
+            # pattern starting from left upper corner.
+            # We use a blocked array-cache to achieve that
+            # y-offset:
+            if diff_shape[1] > 0:
+                # was the halo added to the upper side of the feature image?
+                # HACK: this only works because we assume the data to be in zyx!!!
+                if roi[0][1] == 0:
+                    # no, doesn't seem like it
+                    offset[1] = self.HALO_SIZE
 
-            elif diff_shape[1] == self.HALO_SIZE : 
-                if diff_shape[2] == 0 :
-                    zero_img[:,:,self.HALO_SIZE:,:] += img_without_border
-                elif diff_shape[2] == self.HALO_SIZE :
-                    zero_img[:,:,self.HALO_SIZE:,diff_shape[2]:] += img_without_border
-                elif diff_shape[2] > self.HALO_SIZE :
-                    zero_img[:,:,self.HALO_SIZE:,:(exp_shape[3]-diff_shape[2])] += img_without_border
+            # x-offsets:
+            if diff_shape[2] > 0:
+                # was the halo added to the upper side of the feature image?
+                # HACK: this only works because we assume the data to be in zyx!!!
+                if roi[0][2] == 0:
+                    # no, doesn't seem like it
+                    offset[2] = self.HALO_SIZE
 
-            elif diff_shape[1] > self.HALO_SIZE:
-                if diff_shape[2] == 0 :
-                    zero_img[:,:,:(exp_shape[3]-diff_shape[2]),:] += img_without_border
-                elif diff_shape[2] == self.HALO_SIZE :
-                    zero_img[:,:,:(exp_shape[3]-diff_shape[2]), diff_shape[2]:] += img_without_border
-                elif diff_shape[2] > self.HALO_SIZE :
-                    zero_img[:,:,:(exp_shape[3]-diff_shape[2]),:(exp_shape[3]-diff_shape[2])] += img_without_border
+            # HACK: still assuming zyxc
+            result_roi[0] += offset[0:3]
+            result_roi[1] += offset[0:3]
+            reorder_feature_image_extents = numpy.array(reordered_feature_image.shape)
+            # add the offset:
+            reorder_feature_image_extents[2:4] += offset[1:3]
+            zero_img[:, :, offset[1]:reorder_feature_image_extents[2], offset[2]:reorder_feature_image_extents[3]] = \
+                reordered_feature_image
 
             reordered_feature_image = zero_img
 
-            logger.info( f"New Image shape {reordered_feature_image.shape} ")
+            logger.info(f"New Image shape {reordered_feature_image.shape}")
 
         result = numpy.zeros(
             [reordered_feature_image.shape[0], num_channels] + list(reordered_feature_image.shape[2:]))
@@ -233,12 +244,12 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
                      for zi in range(z, min(z + self.BATCH_SIZE, reordered_feature_image.shape[0]))]
             logger.info(f"batch info: {[x.shape for x in batch]}")
 
-            print ("batch info:", [x.shape for x in batch])
+            print("batch info:", [x.shape for x in batch])
 
             result_batch = self._tiktorch_net.forward(batch)
             logger.info(f"Resulting slices from {z} to {z + len(batch)} have shape {result_batch[0].shape}")
 
-            print ("Resulting slices from ",z ," to ", z + len(batch), " have shape ",result_batch[0].shape)
+            print("Resulting slices from ",z ," to ", z + len(batch), " have shape ",result_batch[0].shape)
 
             for i, zi in enumerate(range(z, (z + len(batch)))):
                 result[zi:(zi + 1), ...] = result_batch[i]
@@ -247,12 +258,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
 
         print ("Obtained a predicted block of shape ", result.shape)
 
-        # crop away halo and reorder axes to match "axistags"
-        # crop in X and Y:
-        cropped_result = result[..., self.HALO_SIZE:-self.HALO_SIZE, self.HALO_SIZE:-self.HALO_SIZE]
-        logger.info(f"cropped the predicted block to shape {cropped_result.shape}")
-
-        self._opReorderAxes.Input.setValue(vigra.VigraArray(cropped_result, axistags=vigra.makeAxistags('zcyx')))
+        self._opReorderAxes.Input.setValue(vigra.VigraArray(result, axistags=vigra.makeAxistags('zcyx')))
         # axistags is vigra.AxisTags, but opReorderAxes expects a string
         self._opReorderAxes.AxisOrder.setValue(''.join(axistags.keys()))
         result = self._opReorderAxes.Output([]).wait()
@@ -261,16 +267,16 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         # FIXME: not needed for real neural net results:
         logger.info(f"Stats of result: min={result.min()}, max={result.max()}, mean={result.mean()}")
 
+        # cut out the required roi
+        logger.info(f"Roi shape {result_roi}")
 
-        roi = numpy.array(roi)
-        logger.info(f"Roi shape {roi}")
+        # crop away halo and reorder axes to match "axistags"
+        # crop in X and Y:
+        cropped_result = result[roiToSlice(*result_roi)]
 
-        # if roi[1,1] <= (exp_shape[2]-self.HALO_SIZE):
-        #     result = result[:,:(roi[1,1]-self.HALO_SIZE),:,:]
-        # if roi[1,2] <= (exp_shape[3]-self.HALO_SIZE):
-        #     result = result[:,:(roi[1,2]-self.HALO_SIZE),:,:]
+        logger.info(f"cropped the predicted block to shape {cropped_result.shape}")
 
-        return result
+        return cropped_result
 
     @property
     def known_classes(self):
