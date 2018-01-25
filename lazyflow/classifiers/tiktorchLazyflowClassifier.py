@@ -34,6 +34,7 @@ from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwis
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.graph import Graph
 
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -132,6 +133,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             self._filename = ""
 
 
+
         if tiktorch_net is None:
             print (self._filename)
             tiktorch_net = TikTorch.unserialize(self._filename)
@@ -173,65 +175,102 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             f'Shape after reordering input is {reordered_feature_image.shape}, '
             f'axistags are {self._opReorderAxes.Output.meta.axistags}')
 
-        # print ("Shape after reordering input is ",reordered_feature_image.shape)
-        # print ("axistags are", self._opReorderAxes.Output.meta.axistag)
-
         slice_shape = list(reordered_feature_image.shape[1::])  # ignore z axis
 
         if slice_shape != list(self._tiktorch_net.expected_input_shape[1::]):
             logger.info(
                 f"Expected input shape is {self._tiktorch_net.expected_input_shape[1::]}, "
                 f"but got {slice_shape}, returning zeros")
+            
+            #adding a zero border to images that have the specific shape
 
-            # print ("Expected input shape is",self._tiktorch_net.expected_input_shape)
-            # print ("but got",slice_shape)
+            exp_shape = list(self._tiktorch_net.expected_input_shape)
+            zero_img = numpy.zeros(exp_shape)
+            img_without_border = reordered_feature_image
 
-            return numpy.zeros(expected_shape)
-        else:
-            result = numpy.zeros(
-                [reordered_feature_image.shape[0], num_channels] + list(reordered_feature_image.shape[2:]))
+            diff_shape = numpy.array(self._tiktorch_net.expected_input_shape[1::]) - numpy.array(slice_shape)
+            logger.info( f"Diff_shape {diff_shape} ")
 
-            print ("forward")
+            if diff_shape[1] == 0 : 
+                if diff_shape[2] == self.HALO_SIZE :
+                    zero_img[:,:,:,diff_shape[2]:] += img_without_border
+                elif diff_shape[2] > self.HALO_SIZE :
+                    zero_img[:,:,:,:(exp_shape[3]-diff_shape[2])] += img_without_border
+                    # logger.info( f"Shape!!!! {zero_img[:,:,:,:(exp_shape[3]-diff_shape[2])].shape} ")
 
-            # we always predict in 2D, per z-slice, so we loop over z
-            for z in range(0, reordered_feature_image.shape[0], self.BATCH_SIZE):
-                # logger.warning("Dumping to {}".format('"/Users/chaubold/Desktop/dump.h5"'))
-                # vigra.impex.writeHDF5(reordered_feature_image[z,...], "data", "/Users/chaubold/Desktop/dump.h5")
+            elif diff_shape[1] == self.HALO_SIZE : 
+                if diff_shape[2] == 0 :
+                    zero_img[:,:,self.HALO_SIZE:,:] += img_without_border
+                elif diff_shape[2] == self.HALO_SIZE :
+                    zero_img[:,:,self.HALO_SIZE:,diff_shape[2]:] += img_without_border
+                elif diff_shape[2] > self.HALO_SIZE :
+                    zero_img[:,:,self.HALO_SIZE:,:(exp_shape[3]-diff_shape[2])] += img_without_border
 
-                # create batch of desired num slices. Multiple slices can be processed on multiple GPUs!
-                batch = [reordered_feature_image[zi:zi + 1, ...].reshape(self._tiktorch_net.expected_input_shape)
-                         for zi in range(z, min(z + self.BATCH_SIZE, reordered_feature_image.shape[0]))]
-                logger.info(f"batch info: {[x.shape for x in batch]}")
+            elif diff_shape[1] > self.HALO_SIZE:
+                if diff_shape[2] == 0 :
+                    zero_img[:,:,:(exp_shape[3]-diff_shape[2]),:] += img_without_border
+                elif diff_shape[2] == self.HALO_SIZE :
+                    zero_img[:,:,:(exp_shape[3]-diff_shape[2]), diff_shape[2]:] += img_without_border
+                elif diff_shape[2] > self.HALO_SIZE :
+                    zero_img[:,:,:(exp_shape[3]-diff_shape[2]),:(exp_shape[3]-diff_shape[2])] += img_without_border
 
-                print ("batch info:", [x.shape for x in batch])
+            reordered_feature_image = zero_img
 
-                result_batch = self._tiktorch_net.forward(batch)
-                logger.info(f"Resulting slices from {z} to {z + len(batch)} have shape {result_batch[0].shape}")
+            logger.info( f"New Image shape {reordered_feature_image.shape} ")
 
-                print ("Resulting slices from ",z ," to ", z + len(batch), " have shape ",result_batch[0].shape)
+        result = numpy.zeros(
+            [reordered_feature_image.shape[0], num_channels] + list(reordered_feature_image.shape[2:]))
 
-                for i, zi in enumerate(range(z, (z + len(batch)))):
-                    result[zi:(zi + 1), ...] = result_batch[i]
+        logger.info(f"forward")
 
-            logger.info(f"Obtained a predicted block of shape {result.shape}")
+        # we always predict in 2D, per z-slice, so we loop over z
+        for z in range(0, reordered_feature_image.shape[0], self.BATCH_SIZE):
+            # logger.warning("Dumping to {}".format('"/Users/chaubold/Desktop/dump.h5"'))
+            # vigra.impex.writeHDF5(reordered_feature_image[z,...], "data", "/Users/chaubold/Desktop/dump.h5")
 
-            print ("Obtained a predicted block of shape ", result.shape)
+            # create batch of desired num slices. Multiple slices can be processed on multiple GPUs!
+            batch = [reordered_feature_image[zi:zi + 1, ...].reshape(self._tiktorch_net.expected_input_shape)
+                     for zi in range(z, min(z + self.BATCH_SIZE, reordered_feature_image.shape[0]))]
+            logger.info(f"batch info: {[x.shape for x in batch]}")
 
-            # crop away halo and reorder axes to match "axistags"
-            # crop in X and Y:
-            cropped_result = result[..., self.HALO_SIZE:-self.HALO_SIZE, self.HALO_SIZE:-self.HALO_SIZE]
-            logger.info(f"cropped the predicted block to shape {cropped_result.shape}")
+            print ("batch info:", [x.shape for x in batch])
 
-            self._opReorderAxes.Input.setValue(vigra.VigraArray(cropped_result, axistags=vigra.makeAxistags('zcyx')))
-            # axistags is vigra.AxisTags, but opReorderAxes expects a string
-            self._opReorderAxes.AxisOrder.setValue(''.join(axistags.keys()))
-            result = self._opReorderAxes.Output([]).wait()
-            logger.info(f"Reordered result to shape {result.shape}")
+            result_batch = self._tiktorch_net.forward(batch)
+            logger.info(f"Resulting slices from {z} to {z + len(batch)} have shape {result_batch[0].shape}")
 
-            # FIXME: not needed for real neural net results:
-            logger.info(f"Stats of result: min={result.min()}, max={result.max()}, mean={result.mean()}")
+            print ("Resulting slices from ",z ," to ", z + len(batch), " have shape ",result_batch[0].shape)
 
-            return result
+            for i, zi in enumerate(range(z, (z + len(batch)))):
+                result[zi:(zi + 1), ...] = result_batch[i]
+
+        logger.info(f"Obtained a predicted block of shape {result.shape}")
+
+        print ("Obtained a predicted block of shape ", result.shape)
+
+        # crop away halo and reorder axes to match "axistags"
+        # crop in X and Y:
+        cropped_result = result[..., self.HALO_SIZE:-self.HALO_SIZE, self.HALO_SIZE:-self.HALO_SIZE]
+        logger.info(f"cropped the predicted block to shape {cropped_result.shape}")
+
+        self._opReorderAxes.Input.setValue(vigra.VigraArray(cropped_result, axistags=vigra.makeAxistags('zcyx')))
+        # axistags is vigra.AxisTags, but opReorderAxes expects a string
+        self._opReorderAxes.AxisOrder.setValue(''.join(axistags.keys()))
+        result = self._opReorderAxes.Output([]).wait()
+        logger.info(f"Reordered result to shape {result.shape}")
+
+        # FIXME: not needed for real neural net results:
+        logger.info(f"Stats of result: min={result.min()}, max={result.max()}, mean={result.mean()}")
+
+
+        roi = numpy.array(roi)
+        logger.info(f"Roi shape {roi}")
+
+        # if roi[1,1] <= (exp_shape[2]-self.HALO_SIZE):
+        #     result = result[:,:(roi[1,1]-self.HALO_SIZE),:,:]
+        # if roi[1,2] <= (exp_shape[3]-self.HALO_SIZE):
+        #     result = result[:,:(roi[1,2]-self.HALO_SIZE),:,:]
+
+        return result
 
     @property
     def known_classes(self):
