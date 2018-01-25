@@ -30,6 +30,8 @@ import tempfile
 import shutil
 import h5py
 
+from PIL import Image
+
 
 class TestOpInputDataReader(object):
 
@@ -39,8 +41,10 @@ class TestOpInputDataReader(object):
         self.testNpyDataFileName = tmpDir + '/test.npy'
         self.testNpzDataFileName = tmpDir + '/test.npz'
         self.testImageFileName = tmpDir + '/test.png'
+        self.testmultiImageFileName = tmpDir + '/test-{index:02d}.png'
         self.testH5FileName = tmpDir + '/test.h5'
         self.testmultiH5FileName = tmpDir + '/test-{index:02d}.h5'
+        self.testmultiTiffFileName = tmpDir + '/test-{index:02d}.tiff'
         self.tmpDir = tmpDir
 
     def tearDown(self):
@@ -115,6 +119,31 @@ class TestOpInputDataReader(object):
             for y in range(pngData.shape[1]):
                 assert pngData[x,y,0] == (x+y) % 256
 
+    def _test_multi_png(self, sequence_axis):
+
+        # Create PNG test data
+        data = numpy.random.randint(0, 255, size=(5, 100,200)).astype(numpy.uint8)
+        for idx, dat in enumerate(data):
+            vigra.impex.writeImage(dat.T, self.testmultiImageFileName.format(index=idx))
+
+        # Read the entire PNG file and verify the contents
+        pngReader = OpInputDataReader(graph=self.graph)
+        pngReader.SequenceAxis.setValue(sequence_axis)
+        globString = self.testmultiImageFileName.replace('02d}', 's}').format(index='*')
+        pngReader.FilePath.setValue(globString)
+        cwd = os.path.split(__file__)[0]
+        pngReader.WorkingDirectory.setValue(cwd)
+        pngData = pngReader.Output[:].wait().squeeze()
+        if sequence_axis == 'c':
+            data = data.T
+
+        assert pngData.shape == data.shape, f'{pngData.shape}, {data.shape}'
+        numpy.testing.assert_array_equal(pngData, data)
+
+    def test_multi_png(self):
+        for sequence_axis in ['t', 'z', 'c']:
+            yield self._test_multi_png, sequence_axis
+
     def test_h5(self):
         # Create HDF5 test data
         with h5py.File(self.testH5FileName) as f:
@@ -146,9 +175,9 @@ class TestOpInputDataReader(object):
             h5Reader.cleanUp()
             assert not h5Reader._file # Whitebox assertion...
 
-    def test_h5_stack_single_file(self):
-        """Test stack/sequence reading in hdf5-files"""
-        shape = (4, 8, 16, 32, 3)
+    def _test_h5_stack_single_file(self, sequence_axis):
+        """Test stack/sequence reading in hdf5-files for given 'sequence_axis'"""
+        shape = (4, 8, 16, 32, 3)  # assuming axis guess order is 'tzyxc'
         data = numpy.random.randint(0, 255, size=shape).astype(numpy.uint8)
         with h5py.File(self.testH5FileName) as f:
             data_group = f.create_group('volumes')
@@ -157,19 +186,30 @@ class TestOpInputDataReader(object):
                     "timepoint-{index:02d}".format(index=index),
                     data=t_slice)
 
+        if sequence_axis == 'z':
+            data = numpy.concatenate(data, axis=0)
+        elif sequence_axis == 'c':
+            data = numpy.concatenate(data, axis=-1)
+
         h5SequenceReader = OpInputDataReader(graph=self.graph)
+        h5SequenceReader.SequenceAxis.setValue(sequence_axis)
         filenamePlusGlob = "{}/volumes/timepoint-*".format(self.testH5FileName)
         try:
             h5SequenceReader.FilePath.setValue(filenamePlusGlob)
 
             h5data = h5SequenceReader.Output[:].wait()
-            assert h5data.shape == data.shape
+            assert h5data.shape == data.shape, f'{h5data.shape}, {data.shape}'
             numpy.testing.assert_array_equal(h5data, data)
         finally:
             # Call cleanUp() to close the file that this operator opened
             h5SequenceReader.cleanUp()
 
-    def test_h5_stack_multi_file(self):
+    def test_h5_stack_single_file(self):
+        for sequence_axis in ['t', 'z', 'c']:
+            yield self._test_h5_stack_single_file, sequence_axis
+
+
+    def _test_h5_stack_multi_file(self, sequence_axis):
         """Test stack/sequence reading in hdf5-files"""
         shape = (4, 8, 16, 32, 3)
         data = numpy.random.randint(0, 255, size=shape).astype(numpy.uint8)
@@ -181,19 +221,56 @@ class TestOpInputDataReader(object):
                     "data",
                     data=t_slice)
 
-        h5SequenceReader = OpInputDataReader(graph=self.graph)
+        if sequence_axis == 'z':
+            data = numpy.concatenate(data, axis=0)
+        elif sequence_axis == 'c':
+            data = numpy.concatenate(data, axis=-1)
 
+        h5SequenceReader = OpInputDataReader(graph=self.graph)
+        h5SequenceReader.SequenceAxis.setValue(sequence_axis)
         globString = self.testmultiH5FileName.replace('02d}', 's}').format(index='*')
         filenamePlusGlob = "{}/volume/data".format(globString)
         try:
             h5SequenceReader.FilePath.setValue(filenamePlusGlob)
-
             h5data = h5SequenceReader.Output[:].wait()
             assert h5data.shape == data.shape
             numpy.testing.assert_array_equal(h5data, data)
         finally:
             # Call cleanUp() to close the file that this operator opened
             h5SequenceReader.cleanUp()
+
+    def test_h5_stack_multi_file(self):
+        for sequence_axis in ['t', 'z', 'c']:
+            yield self._test_h5_stack_multi_file, sequence_axis
+
+    def _test_tiff_stack_multi_file(self, sequence_axis):
+        """Test stack/sequence reading in hdf5-files"""
+        shape = (4, 8, 16, 3)
+        data = numpy.random.randint(0, 255, size=shape).astype(numpy.uint8)
+        for idx, data_slice in enumerate(data):
+            im = Image.fromarray(data_slice, mode='RGB')
+            im.save(self.testmultiTiffFileName.format(index=idx))
+
+        if sequence_axis == 'c':
+            data = numpy.concatenate(data, axis=-1)
+
+        reader = OpInputDataReader(graph=self.graph)
+        reader.SequenceAxis.setValue(sequence_axis)
+        globString = self.testmultiTiffFileName.replace('02d}', 's}').format(index='*')
+        try:
+            reader.FilePath.setValue(globString)
+            tiffdata = reader.Output[:].wait()
+
+            assert tiffdata.shape == data.shape, f'{tiffdata.shape}, {data.shape}'
+            numpy.testing.assert_array_equal(tiffdata, data)
+        finally:
+            # Call cleanUp() to close the file that this operator opened
+            reader.cleanUp()
+
+    def test_tiff_stack_multi_file(self):
+        for sequence_axis in ['t', 'z', 'c']:
+            yield self._test_tiff_stack_multi_file, sequence_axis
+
 
     def test_npy_with_roi(self):
         a = numpy.indices((100,100,200)).astype( numpy.uint8 ).sum(0)
