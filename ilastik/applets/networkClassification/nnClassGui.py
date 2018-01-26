@@ -59,7 +59,6 @@ class NNClassGui(LayerViewerGui):
         self.initViewerControlUi() #ToDO
 
 
-
     def _initAppletDrawerUic(self, drawerPath=None):
         """
         Load the ui file for the applet drawer, which we own.
@@ -76,10 +75,8 @@ class NNClassGui(LayerViewerGui):
         self.drawer.addModel.clicked.connect(self.addModels)
         
 
-
     def initViewerControls(self):
         self._viewerControlWidgetStack = QStackedWidget(parent=self)
-
 
 
     def initViewerControlUi(self):
@@ -103,7 +100,8 @@ class NNClassGui(LayerViewerGui):
 
     def setupLayers(self):
         """
-        which layers will be shown in the layerviewergui
+        which layers will be shown in the layerviewergui.
+        Triggers the prediciton by setting the layer on visible 
         """
 
         inputSlot = self.topLevelOperator.InputImage
@@ -130,7 +128,7 @@ class NNClassGui(LayerViewerGui):
 
                 layers.append(predictionLayer)
 
-        #always as last layer
+        # always as last layer
         if inputSlot.ready(): 
             rawLayer = self.createStandardLayerFromSlot(inputSlot)
             rawLayer.visible = True
@@ -143,6 +141,9 @@ class NNClassGui(LayerViewerGui):
        
 
     def add_NN_classifiers(self, filename):
+        """
+        Adds the chosen FilePath to the classifierDictionary and to the ComboBox
+        """
 
         #split path string 
         modelname = os.path.basename(os.path.normpath(filename[0]))
@@ -160,10 +161,14 @@ class NNClassGui(LayerViewerGui):
             self.drawer.comboBox.addItems(self.classifiers)
 
 
-
     def pred_nn(self):
+        """
+        When LivePredictionButton is clicked.
+        Sets the ClassifierSlotValue for Prediction.
+        Updates the SetupLayers function
+        """
 
-        classifier_key = self.drawer.comboBox.itemText(0)
+        classifier_key = self.drawer.comboBox.currentText()
 
         if len(classifier_key) == 0 :
             QMessageBox.critical(self, "Error loading file", "Add a Model first")
@@ -183,8 +188,10 @@ class NNClassGui(LayerViewerGui):
             self.topLevelOperator.NumClasses.setValue(3)
 
             self.topLevelOperator.Classifier.setValue(self.classifiers[classifier_key])
+            print("new Classifier Value", self.classifiers[classifier_key])
 
-            #triggers setupLayers for prediction
+            print(self.topLevelOperator.prediction_cache.fixAtCurrent.value)
+
             self.updateAllLayers()
 
   
@@ -217,6 +224,9 @@ class NNClassGui(LayerViewerGui):
 
 
     def addModels(self):
+        """
+        When AddModels button is clicked.
+        """
 
         mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent models' )
         mostRecentImageFile = str(mostRecentImageFile)

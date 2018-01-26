@@ -33,6 +33,7 @@ from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 # from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.networkClassification import NNClassApplet, NNClassificationDataExportApplet
+from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationDataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
@@ -104,33 +105,42 @@ class NNClassificationWorkflow(Workflow):
 
         self.nnClassificationApplet = self.createNNClassificationApplet()
 
-        self.pcApplet = self.createPixelClassificationApplet()
-        opClassify = self.pcApplet.topLevelOperator
+        # self.pcApplet = self.createPixelClassificationApplet()
+        # opClassify = self.pcApplet.topLevelOperator
 
         # self.dataExportApplet = NNClassificationDataExportApplet(self, "Prediction Export")
-        self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
-        
-        opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.PmapColors.connect( opClassify.PmapColors )
-        opDataExport.LabelNames.connect( opClassify.LabelNames )
-        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
-        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )        
+        # self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
 
-        # Expose for shell
-        self._applets.append(self.dataSelectionApplet)
-        self._applets.append(self.nnClassificationApplet)
-        self._applets.append(self.pcApplet)
-        self._applets.append(self.dataExportApplet)
+        self.dataExportApplet = DataExportApplet(self, "Data Export")
+        self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
+        self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
+        
+        # opDataExport = self.dataExportApplet.topLevelOperator
+        # opDataExport.PmapColors.connect( opClassify.PmapColors )
+        # opDataExport.LabelNames.connect( opClassify.LabelNames )
+        # opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        # opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )        
         
         self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
         self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
+
+        # Configure global DataExport settings
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )
 
         self.batchProcessingApplet = BatchProcessingApplet(self, 
                                                            "Batch Processing", 
                                                            self.dataSelectionApplet, 
                                                            self.dataExportApplet)
 
+
+        # Expose for shell
+        self._applets.append(self.dataSelectionApplet)
+        self._applets.append(self.nnClassificationApplet)
+        self._applets.append(self.dataExportApplet)
         self._applets.append(self.batchProcessingApplet)
+
         if unused_args:
             # We parse the export setting args first.  All remaining args are considered input files by the input applet.
             self._batch_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
@@ -170,64 +180,63 @@ class NNClassificationWorkflow(Workflow):
         """
         return PixelClassificationApplet( self, "PixelClassification" )
 
-    def prepareForNewLane(self, laneIndex):
-        """
-        Overridden from Workflow base class.
-        Called immediately before a new lane is added to the workflow.
-        """
-        # When the new lane is added, dirty notifications will propagate throughout the entire graph.
-        # This means the classifier will be marked 'dirty' even though it is still usable.
-        # Before that happens, let's store the classifier, so we can restore it in handleNewLanesAdded(), below.
-        opPixelClassification = self.pcApplet.topLevelOperator
-        if opPixelClassification.classifier_cache.Output.ready() and \
-           not opPixelClassification.classifier_cache._dirty:
-            self.stored_classifier = opPixelClassification.classifier_cache.Output.value
-        else:
-            self.stored_classifier = None
+    # def prepareForNewLane(self, laneIndex):
+    #     """
+    #     Overridden from Workflow base class.
+    #     Called immediately before a new lane is added to the workflow.
+    #     """
+    #     # When the new lane is added, dirty notifications will propagate throughout the entire graph.
+    #     # This means the classifier will be marked 'dirty' even though it is still usable.
+    #     # Before that happens, let's store the classifier, so we can restore it in handleNewLanesAdded(), below.
+    #     opNNClassification = self.nnClassificationApplet.topLevelOperator
         
-    def handleNewLanesAdded(self):
-        """
-        Overridden from Workflow base class.
-        Called immediately after a new lane is added to the workflow and initialized.
-        """
-        # Restore classifier we saved in prepareForNewLane() (if any)
-        if self.stored_classifier:
-            self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
-            # Release reference
-            self.stored_classifier = None
+    #     if opNNClassification.classifier_cache.Output.ready() and \
+    #        not opNNClassification.classifier_cache._dirty:
+    #         self.stored_classifier = opNNClassification.classifier_cache.Output.value
+    #     else:
+    #         self.stored_classifier = None
+        
+    # def handleNewLanesAdded(self):
+    #     """
+    #     Overridden from Workflow base class.
+    #     Called immediately after a new lane is added to the workflow and initialized.
+    #     """
+    #     # Restore classifier we saved in prepareForNewLane() (if any)
+    #     if self.stored_classifier:
+    #         self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
+    #         # Release reference
+    #         self.stored_classifier = None
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opNNclassify = self.nnClassificationApplet.topLevelOperator.getLane(laneIndex)
-        opClassify = self.pcApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
         
         # Input Image -> Feature Op
         #         and -> Classification Op (for display)
         opNNclassify.InputImage.connect( opData.Image )
-        opClassify.InputImages.connect( opNNclassify.CachedPredictionProbabilities )
         
-        if ilastik_config.getboolean('ilastik', 'debug'):
-            opClassify.PredictionMasks.connect( opData.ImageGroup[self.DATA_ROLE_PREDICTION_MASK] )
+        # if ilastik_config.getboolean('ilastik', 'debug'):
+        #     opClassify.PredictionMasks.connect( opData.ImageGroup[self.DATA_ROLE_PREDICTION_MASK] )
         
         # Feature Images -> Classification Op (for training, prediction)
 
-        opClassify.FeatureImages.connect( opNNclassify.CachedPredictionProbabilities )
-        opClassify.CachedFeatureImages.connect( opNNclassify.CachedPredictionProbabilities )
+        # opClassify.FeatureImages.connect( opNNclassify.CachedPredictionProbabilities )
+        # opClassify.CachedFeatureImages.connect( opNNclassify.CachedPredictionProbabilities )
         
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW] )
-        opDataExport.ConstraintDataset.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
+        # opDataExport.ConstraintDataset.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
-        opDataExport.Inputs[0].connect( opNNclassify.CachedPredictionProbabilities )
-        opDataExport.Inputs[1].connect( opClassify.SimpleSegmentation )
-        opDataExport.Inputs[2].connect( opClassify.HeadlessUncertaintyEstimate )
-        opDataExport.Inputs[3].connect( opClassify.FeatureImages )
-        opDataExport.Inputs[4].connect( opClassify.LabelImages )
-        for slot in opDataExport.Inputs:
-            assert slot.partner is not None
+        # opDataExport.Inputs[0].connect( opNNclassify.CachedPredictionProbabilities)
+        # opDataExport.Inputs[1].connect( opClassify.SimpleSegmentation )
+        # opDataExport.Inputs[2].connect( opClassify.HeadlessUncertaintyEstimate )
+        # opDataExport.Inputs[3].connect( opClassify.FeatureImages )
+        # opDataExport.Inputs[4].connect( opClassify.LabelImages )
+        # for slot in opDataExport.Inputs:
+        #     assert slot.partner is not None
 
     def handleAppletStateUpdateRequested(self):
         """
@@ -238,7 +247,7 @@ class NNClassificationWorkflow(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
-        opClassificationSelection = self.nnClassificationApplet.topLevelOperator
+        opNNClassification = self.nnClassificationApplet.topLevelOperator
         nnOutput = []
         features_ready = input_ready 
 
@@ -248,28 +257,27 @@ class NNClassificationWorkflow(Workflow):
         #                  (TinyVector(featureOutput[0].meta.shape) > 0).all()
 
         opDataExport = self.dataExportApplet.topLevelOperator 
-        opPixelClassification = self.pcApplet.topLevelOperator
+        # opPixelClassification = self.pcApplet.topLevelOperator
 
-        invalid_classifier = opPixelClassification.classifier_cache.fixAtCurrent.value and \
-                             opPixelClassification.classifier_cache.Output.ready() and\
-                             opPixelClassification.classifier_cache.Output.value is None
+        # invalid_classifier = opNNClassification.prediction_cache.fixAtCurrent.value and \
+        #                      opNNClassification.prediction_cache.Output.ready() and\
+        #                      opNNClassification.prediction_cache.Output.value is None
 
         predictions_ready = features_ready and \
-                            not invalid_classifier and \
                             len(opDataExport.Inputs) > 0 and \
                             opDataExport.Inputs[0][0].ready() and \
                             (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
-        live_update_active = not opPixelClassification.FreezePredictions.value
+        # live_update_active = not opNNClassification.FreezePredictions.value
         
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
         
-        self._shell.setAppletEnabled(self.dataSelectionApplet, not live_update_active and not batch_processing_busy)
-        self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and not live_update_active and not batch_processing_busy)
-        self._shell.setAppletEnabled(self.pcApplet, features_ready and not batch_processing_busy)
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
+        self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and not batch_processing_busy)
+        # self._shell.setAppletEnabled(self.pcApplet, features_ready and not batch_processing_busy)
         self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not batch_processing_busy)
 
         if self.batchProcessingApplet is not None:
