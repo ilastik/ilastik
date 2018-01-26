@@ -39,7 +39,6 @@ class OpNNClassification(Operator):
         self.prediction_cache = OpBlockedArrayCache(parent=self)
         self.prediction_cache.name = "BlockedArrayCache"
         self.prediction_cache.inputs["Input"].connect( self.predict.PMaps )
-        # self.prediction_cache.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.prediction_cache.BlockShape.connect( self.BlockShape )
         self.CachedPredictionProbabilities.connect(self.prediction_cache.Output )
 
@@ -51,21 +50,6 @@ class OpNNClassification(Operator):
 
 
     def propagateDirty(self, slot, subindex, roi):
-        # Our output changes when the input changed shape, not when it becomes dirty.
-        pass
 
-
-
-    # def addLane(self, laneIndex):
-    #     numLanes = len(self.InputImages)
-    #     assert numLanes == laneIndex, "Image lanes must be appended."        
-    #     self.InputImages.resize(numLanes+1)
-    #     self.Bookmarks.resize(numLanes+1)
-    #     self.Bookmarks[numLanes].setValue([]) # Default value
-        
-    # def removeLane(self, laneIndex, finalLength):
-    #     self.InputImages.removeSlot(laneIndex, finalLength)
-        # self.Bookmarks.removeSlot(laneIndex, finalLength)
-
-    # def getLane(self, laneIndex):
-    #     return OperatorSubView(self, laneIndex)
+        print ("BOOM")
+        self.PredictionProbabilityChannels.setDirty(slice(None))
