@@ -103,4 +103,4 @@ workflowClass = Workflow.getSubclass(parsed_args.workflow)
 
 # Launch the GUI
 from ilastik.shell.gui.startShellGui import startShellGui
-sys.exit( startShellGui( workflowClass, *init_funcs ) )
+sys.exit(startShellGui(workflowClass, *init_funcs))

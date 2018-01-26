@@ -1741,13 +1741,6 @@ class IlastikShell(QMainWindow):
                     # But we're shutting down right now.
                     # Just block here for the save to complete before we continue to shut down.
                     saveThread.join()
-        try:
-            from eventcapture.eventRecordingApp import EventRecordingApp
-
-            if isinstance(QApplication.instance(), EventRecordingApp):
-                return QApplication.instance().recorder_control_window.confirmQuit()
-        except ImportError:
-            pass
         return True
 
     def closeAndQuit(self, quitApp=True):

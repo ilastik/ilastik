@@ -116,8 +116,6 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
 
     faulthandler.enable()
     _init_excepthooks(parsed_args)
-    eventcapture_mode, playback_args = _prepare_test_recording_and_playback(
-        parsed_args)
 
     if ilastik_config.getboolean("ilastik", "debug"):
         message = 'Starting ilastik in debug mode from "%s".' % ilastik_dir
@@ -152,8 +150,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     # Normal launch
     else:
         from ilastik.shell.gui.startShellGui import startShellGui
-        sys.exit(startShellGui(workflow_cmdline_args, eventcapture_mode,
-                               playback_args, preinit_funcs, postinit_funcs))
+        sys.exit(startShellGui(workflow_cmdline_args, preinit_funcs, postinit_funcs))
 
 
 def _import_h5py_with_utf8_encoding():
@@ -381,34 +378,6 @@ def _prepare_auto_create_new_project(parsed_args):
         # This should work for both the IlastikShell and the HeadlessShell
         shell.createAndLoadNewProject(path, workflow_class)
     return createNewProject
-
-
-def _prepare_test_recording_and_playback(parsed_args):
-    if parsed_args.start_recording or parsed_args.playback_script:
-        # Disable the opengl widgets during recording and playback.
-        # Somehow they can cause random segfaults if used during recording
-        # playback.
-        import volumina
-        volumina.NO3D = True
-
-    # Enable test-case recording?
-    eventcapture_mode = None
-    playback_args = {}
-    if parsed_args.start_recording:
-        assert not parsed_args.playback_script is False, "Can't record and " \
-            "play back at the same time!  Choose one or the other"
-        eventcapture_mode = 'record'
-    elif parsed_args.playback_script is not None:
-        # Only import GUI modules in non-headless mode.
-        from PyQt5.QtWidgets import QApplication
-        eventcapture_mode = 'playback'
-        # See EventRecordingApp.create_app() for details
-        playback_args['playback_script'] = parsed_args.playback_script
-        playback_args['playback_speed'] = parsed_args.playback_speed
-        # Auto-exit on success?
-        if parsed_args.exit_on_success:
-            playback_args['finish_callback'] = QApplication.quit
-    return eventcapture_mode, playback_args
 
 
 def _init_excepthooks(parsed_args):
