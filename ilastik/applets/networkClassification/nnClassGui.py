@@ -175,24 +175,29 @@ class NNClassGui(LayerViewerGui):
 
         else:
 
-            expected_input_shape = self.classifiers[classifier_key]._tiktorch_net.expected_input_shape
+            if self.drawer.liveUpdateButton.isChecked():
 
-            input_shape = numpy.array(expected_input_shape)
-            input_shape = input_shape[1:]
-            input_shape = numpy.append(input_shape,None)
+                self.topLevelOperator.FreezePredictions.setValue(False)
 
-            halo_size = self.classifiers[classifier_key].HALO_SIZE
-            input_shape[1:3] -= 2*halo_size
+                expected_input_shape = self.classifiers[classifier_key]._tiktorch_net.expected_input_shape
 
-            self.topLevelOperator.BlockShape.setValue(input_shape)
-            self.topLevelOperator.NumClasses.setValue(3)
+                input_shape = numpy.array(expected_input_shape)
+                input_shape = input_shape[1:]
+                input_shape = numpy.append(input_shape,None)
 
-            self.topLevelOperator.Classifier.setValue(self.classifiers[classifier_key])
-            print("new Classifier Value", self.classifiers[classifier_key])
+                halo_size = self.classifiers[classifier_key].HALO_SIZE
+                input_shape[1:3] -= 2*halo_size
 
-            print(self.topLevelOperator.prediction_cache.fixAtCurrent.value)
+                self.topLevelOperator.BlockShape.setValue(input_shape)
+                self.topLevelOperator.NumClasses.setValue(3)
 
-            self.updateAllLayers()
+                self.topLevelOperator.Classifier.setValue(self.classifiers[classifier_key])
+
+                self.updateAllLayers()
+
+            else:
+                #when disabled, the user can scroll around without predicting 
+                self.topLevelOperator.FreezePredictions.setValue(True)
 
   
     @pyqtSlot()
