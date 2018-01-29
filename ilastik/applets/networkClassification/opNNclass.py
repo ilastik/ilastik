@@ -1,5 +1,4 @@
 from __future__ import print_function
-from builtins import range
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opCompressedUserLabelArray import OpCompressedUserLabelArray
@@ -19,6 +18,7 @@ class OpNNClassification(Operator):
     InputImage = InputSlot()
     NumClasses = InputSlot()
     BlockShape = InputSlot()
+    FreezePredictions = InputSlot(stype='bool')
     PredictionProbabilities = OutputSlot()
     CachedPredictionProbabilities = OutputSlot()
     PredictionProbabilityChannels = OutputSlot(level=1)
@@ -40,6 +40,7 @@ class OpNNClassification(Operator):
         self.prediction_cache.name = "BlockedArrayCache"
         self.prediction_cache.inputs["Input"].connect( self.predict.PMaps )
         self.prediction_cache.BlockShape.connect( self.BlockShape )
+        self.prediction_cache.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.CachedPredictionProbabilities.connect(self.prediction_cache.Output )
 
         self.opPredictionSlicer = OpMultiArraySlicer2( parent=self )
@@ -51,5 +52,4 @@ class OpNNClassification(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
 
-        print ("BOOM")
         self.PredictionProbabilityChannels.setDirty(slice(None))
