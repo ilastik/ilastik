@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>615</width>
-    <height>1963</height>
+    <height>1968</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -662,7 +662,7 @@
         </font>
        </property>
        <property name="text">
-        <string>Crop</string>
+        <string>Field of View</string>
        </property>
       </widget>
      </item>
