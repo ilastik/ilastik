@@ -21,18 +21,16 @@
 from builtins import range
 import numpy
 import vigra
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialBlockSlot, SerialListSlot, SerialSlot
 
 import logging
-logger = logging.getLogger(__name__) 
+logger = logging.getLogger(__name__)
 
 class NNClassificationSerializer(AppletSerializer):
 
-    def __init__(self, operator, projectFileGroupName):
+    def __init__(self, topLevelOperator, projectFileGroupName):
+        self.VERSION = 1
+        self._dirty = False
 
-        # self._serialClassifierSlot =  SerialClassifierSlot(operator.Classifier,
-        #                                                    operator.classifier_cache,
-        #                                                    name="ClassifierForests")
-        slots = []
 
-        super(NNClassificationSerializer, self).__init__(projectFileGroupName, slots, operator)
+        super(NNClassificationSerializer, self).__init__(projectFileGroupName)
