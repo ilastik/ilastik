@@ -1,16 +1,22 @@
-import nifty
+
 import numpy
-import vigra
+
 from multiprocessing import cpu_count
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
+import vigra
 
+import nifty
+import nifty.tools
+import nifty.ufd
+import nifty.graph.agglo
+import nifty.graph.rag
 
 
 
 # parallel watershed with hard block boarders
-def simple_parallel_ws(data, block_shape=None, max_workers=None):
+def simple_parallel_ws_impl(data, block_shape=None, max_workers=None):
         
 
     if max_workers is None:
@@ -21,9 +27,9 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None):
     shape = data.shape
     ndim = len(shape)
     if block_shape is None:
-        block_shape  = tuple([64]*ndim)
+        block_shape  = tuple([100]*ndim)
     roi_begin = tuple([0]*ndim)
-    halo = [20]*ndim
+    halo = [10]*ndim
     blocking = nifty.tools.blocking(roiBegin=roi_begin, roiEnd=shape, blockShape=block_shape)
     n_blocks = blocking.numberOfBlocks
 
@@ -33,7 +39,7 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None):
         return [slice(b,e) for b,e in zip(begin, end)]
 
 
-    labels = numpy.zeros(shape, dtype='uint64')
+    labels = numpy.zeros(shape, dtype='int64')
 
     global_max_label = [0]
     global_min_label = [None]
@@ -67,13 +73,17 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None):
                 outer_block_data = data[outer_slicing]
 
                 # do vigra watershed
-                outer_block_data_vigra = numpy.require(outer_block_data, dtype='float32').T
+                outer_block_data_vigra = numpy.require(outer_block_data, dtype='float32')
                 outer_block_labels_vigra, nseg = vigra.analysis.watershedsNew(outer_block_data_vigra)
-                outer_block_labels = outer_block_labels_vigra.T
+                outer_block_labels = outer_block_labels_vigra
 
-                # extract inner labels
+
                 inner_block_labels = outer_block_labels[inner_local_slicing]
+                inner_block_labels = vigra.analysis.labelVolume(inner_block_labels.astype('uint32')) 
 
+
+
+                inner_block_labels = inner_block_labels.astype('int64')
                 # get the max
                 inner_block_max_label = inner_block_labels.max()
                 inner_block_min_label = inner_block_labels.min()
@@ -90,8 +100,10 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None):
                     inner_block_labels += gmax
 
                     done_blocks[0] = done_blocks[0] +1
-                    print(done_blocks[0],n_blocks)
+                    # print(done_blocks[0],n_blocks,  inner_block_labels.min(), inner_block_labels.max())
+                    # print(done_blocks[0],n_blocks,  outer_block_labels.min(), outer_block_labels.max())
 
+                    # print(inner_slicing, outer_slicing)
                     min_here = inner_block_min_label + gmax
 
                     if gmin is None:
@@ -101,12 +113,12 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None):
                         global_min_label[0] = min(gmin, min_here)
 
 
-                    global_max_label[0] = new_global_max_label + 1
+                    global_max_label[0] = new_global_max_label
 
 
+                    #print('g',labels[inner_slicing].shape, 'l', inner_block_labels.shape)
 
-
-                labels[inner_slicing] = inner_block_labels
+                    labels[inner_slicing] = inner_block_labels[:]
                         
 
         
@@ -122,15 +134,91 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None):
         
 
 
-# # reduce the number of segments 
-# # based on agglomerative clustering
-# def reduce_overseg(overseg, edge_indicator, size_regularizer, factor):
-#     pass
+def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, size_regularizer=0.5):
+
+    #print("watershed")
+    overseg = simple_parallel_ws_impl(data=data, block_shape=block_shape, max_workers=max_workers)
+
+    #print("the overseg",overseg.min(), overseg.max())
+
+    res = bincount = numpy.bincount(overseg.ravel().astype('int64'))
+    # for i,r in enumerate(res):
+    #     print(i,r)
+    n_empty  = (res==0).sum() - 1
+
+    #print('zeros',(res==0).sum())
+    #overseg = vigra.analysis.labelVolume(overseg.astype('uint32')) - 1
+
+    #print("rag")
+    with nifty.Timer("gridRagNoThreads"):
+        rag = nifty.graph.rag.gridRag(overseg)
+    
+    n_nodes = rag.numberOfNodes
+    non_empty_nodes = n_nodes - n_empty
 
 
-# # data = numpy.random.rand(20,20)
-# # simple_parallel_ws(data)
+    if max_workers is None:
+        max_workers = cpu_count()
 
 
-# data = numpy.random.rand(400,400,20)
-# simple_parallel_ws(data)
+    shape = data.shape
+    ndim = len(shape)
+    if block_shape is None:
+        block_shape  = [100]*ndim
+
+    print("acc")
+    edge_features, node_features = nifty.graph.rag.accumulateMeanAndLength(
+        rag, data, block_shape , max_workers)
+
+    meanEdgeStrength = edge_features[:,0]
+    edgeSizes = edge_features[:,1]
+    nodeSizes = node_features[:,1]
+
+    print("rag nodes",rag.numberOfNodes)
+    node_features[:] = 1
+
+    n_stop = max(1,non_empty_nodes * reduce_to)
+    n_stop = int(n_empty + n_stop)
+
+    clusterPolicy = nifty.graph.agglo.nodeAndEdgeWeightedClusterPolicy(
+        graph=rag, edgeIndicators=meanEdgeStrength,
+        nodeFeatures=node_features,
+        edgeSizes=edgeSizes, 
+        nodeSizes=nodeSizes,
+        beta=0.0, numberOfNodesStop=n_stop,
+        sizeRegularizer=size_regularizer)
+
+    print("run")
+    # run agglomerative clustering
+    agglomerativeClustering = nifty.graph.agglo.agglomerativeClustering(clusterPolicy) 
+    agglomerativeClustering.run(True, 10000)
+    nodeSeg = agglomerativeClustering.result()
+
+    print("nodeSeg", nodeSeg.dtype)
+    nodeSeg = numpy.require(nodeSeg, dtype='int64')
+    nodeSeg -=(nodeSeg.min()) 
+    nodeSeg += 1
+
+    print("nodeSeg", nodeSeg.dtype, nodeSeg.min(), nodeSeg.max())
+
+    comp = nifty.graph.components(rag)
+    comp.buildFromNodeLabels(nodeSeg)
+    nodeSeg = comp.componentLabels()+1
+
+    print("project back")
+    # convert graph segmentation
+    # to pixel segmentation
+    print(nodeSeg, nodeSeg.dtype)
+    seg = numpy.take(nodeSeg, overseg.astype('int64'))
+
+    #eg = nifty.graph.rag.projectScalarNodeDataToPixels(rag, nodeSeg.astype('uint64'))
+
+    print("seg", seg.dtype,seg.min(), seg.max())
+
+    seg -= seg.min()
+    seg += 1
+
+    #seg = vigra.analysis.labelVolume(seg.astype('uint32'))
+
+    return seg
+    
