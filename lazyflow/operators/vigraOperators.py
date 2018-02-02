@@ -707,7 +707,7 @@ class OpBaseFilter(Operator):
         channelsPerChannel = self.resultingChannels()
 
         if self.supportsRoi is False and largestSigma > 5:
-            logger.warning("WARNING: operator", self.name, "does not support roi !!")
+            logger.warning(f"WARNING: operator {self.name} does not support roi!!")
 
         i2 = 0
         for i in range(int(numpy.floor(1.0 * oldstart[channelAxis]/channelsPerChannel)),int(numpy.ceil(1.0 * oldstop[channelAxis]/channelsPerChannel))):
