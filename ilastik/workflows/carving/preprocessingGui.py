@@ -86,6 +86,12 @@ class PreprocessingGui(QMainWindow):
         # Event handlers
         self.drawer.runButton.clicked.connect(self.handleRunButtonClicked)
         self.drawer.sigmaSpin.valueChanged.connect(self.handleSigmaValueChanged)
+
+        self.drawer.sizeRegularizerSpin.valueChanged.connect(self.handleSizeRegularizerValueChanged)
+        self.drawer.reduceToSpin.valueChanged.connect(self.handleReduceToValueChanged)
+        self.drawer.doAggloCheckBox.stateChanged.connect(self.handleDoAggloChanged)
+
+
         self.drawer.watershedSourceCombo.currentIndexChanged.connect( self.handleWatershedSourceChange )
         self.drawer.invertWatershedSourceCheckbox.toggled.connect( self.handleInvertWatershedSourceChange )
         self.drawer.writeprotectBox.stateChanged.connect(self.handleWriterprotectStateChanged)
@@ -107,6 +113,8 @@ class PreprocessingGui(QMainWindow):
         self.drawer.watershedSourceCombo.setCurrentIndex( comboIndex )
         self.drawer.invertWatershedSourceCheckbox.setChecked( self.topLevelOperatorView.InvertWatershedSource.value )
     
+
+
     def handleFilterChanged(self):
         choice =  [f.isChecked() for f in self.filterbuttons].index(True)
         self.topLevelOperatorView.Filter.setValue(choice)
@@ -116,6 +124,20 @@ class PreprocessingGui(QMainWindow):
     
     def handleSigmaValueChanged(self):
         self.topLevelOperatorView.Sigma.setValue(self.drawer.sigmaSpin.value())
+
+
+
+    def handleSizeRegularizerValueChanged(self):
+        self.topLevelOperatorView.SizeRegularizer.setValue(self.drawer.sizeRegularizerSpin.value())
+
+
+    def handleReduceToValueChanged(self):
+        self.topLevelOperatorView.SizeRegularizer.setValue(self.drawer.reduceToSpin.value())
+
+    def handleDoAggloChanged(self):
+        self.topLevelOperatorView.DoAgglo.setValue( self.drawer.doAggloCheckBox.isChecked() )
+    
+
 
     def handleWatershedSourceChange(self, index):
         data = self.drawer.watershedSourceCombo.itemData(index)
@@ -144,6 +166,10 @@ class PreprocessingGui(QMainWindow):
         self.drawer.watershedSourceCombo.setEnabled(not iswriteprotect)
         self.drawer.invertWatershedSourceCheckbox.setEnabled( not iswriteprotect )
         self.drawer.runButton.setEnabled(not iswriteprotect)
+
+        self.drawer.sizeRegularizerSpin.setEnabled(not iswriteprotect)
+        self.drawer.reduceToSpin.setEnabled(not iswriteprotect)
+        self.drawer.doAggloCheckBox.setEnabled(not iswriteprotect)
     
     def enableWriteprotect(self,ew):
         self.drawer.writeprotectBox.setEnabled(ew)
