@@ -151,10 +151,9 @@ class NNClassificationWorkflow(Workflow):
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW])
-        opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
-        opDataExport.Inputs[0].connect(opNNclassify.CachedPredictionProbabilities)
-        opDataExport.Inputs[1].connect(opData.Image)
-        # opDataExport.Inputs[3].connect(opNNclassify.PredictionProbabilityChannels)
+        opDataExport.Inputs.resize( len(self.EXPORT_NAMES))
+        opDataExport.Inputs[0].connect(opData.Image)
+        opDataExport.Inputs[1].connect(opNNclassify.CachedPredictionProbabilities)
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
 
@@ -173,8 +172,8 @@ class NNClassificationWorkflow(Workflow):
         opDataExport = self.dataExportApplet.topLevelOperator 
 
         predictions_ready = input_ready and \
-                            len(opDataExport.Inputs) > 0 
-                            # opDataExport.Inputs[0][0].ready() and \
+                            len(opDataExport.Inputs) > 0 and \
+                            opNNClassification.CachedPredictionProbabilities.ready()
                             # (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         # Problems can occur if the features or input data are changed during live update mode.
