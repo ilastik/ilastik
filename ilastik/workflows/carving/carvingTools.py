@@ -13,7 +13,8 @@ import nifty.ufd
 import nifty.graph.agglo
 import nifty.graph.rag
 
-
+import logging
+logger = logging.getLogger(__name__)
 
 # parallel watershed with hard block boarders
 def simple_parallel_ws_impl(data, block_shape=None, max_workers=None):
@@ -135,24 +136,17 @@ def simple_parallel_ws_impl(data, block_shape=None, max_workers=None):
 
 
 def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, size_regularizer=0.5):
-
-    #print("watershed")
+    logger.info("blockwise watershed")
     overseg = simple_parallel_ws_impl(data=data, block_shape=block_shape, max_workers=max_workers)
 
     #print("the overseg",overseg.min(), overseg.max())
-
+    logger.info("bincount")
     res = bincount = numpy.bincount(overseg.ravel().astype('int64'))
-    # for i,r in enumerate(res):
-    #     print(i,r)
     n_empty  = (res==0).sum() - 1
 
-    #print('zeros',(res==0).sum())
-    #overseg = vigra.analysis.labelVolume(overseg.astype('uint32')) - 1
-
-    #print("rag")
-    with nifty.Timer("gridRagNoThreads"):
-        rag = nifty.graph.rag.gridRag(overseg)
-    
+    logger.info("grid rag")
+    rag = nifty.graph.rag.gridRag(overseg)
+    logger.info("rag: %s"%str(rag))
     n_nodes = rag.numberOfNodes
     non_empty_nodes = n_nodes - n_empty
 
@@ -166,15 +160,18 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, 
     if block_shape is None:
         block_shape  = [100]*ndim
 
-    print("acc")
+    data = numpy.require(data,dtype='float32')
+    logger.info("accumulate along boundaries")
     edge_features, node_features = nifty.graph.rag.accumulateMeanAndLength(
-        rag, data, block_shape , max_workers)
+        rag=rag, data=numpy.require(data,dtype='float32'), 
+        blockShape=list(block_shape), 
+        numberOfThreads=int(max_workers), saveMemory=True)
 
     meanEdgeStrength = edge_features[:,0]
     edgeSizes = edge_features[:,1]
     nodeSizes = node_features[:,1]
 
-    print("rag nodes",rag.numberOfNodes)
+    
     node_features[:] = 1
 
     n_stop = max(1,non_empty_nodes * reduce_to)
@@ -188,37 +185,35 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, 
         beta=0.0, numberOfNodesStop=n_stop,
         sizeRegularizer=size_regularizer)
 
-    print("run")
+    logger.info("run clustering")
     # run agglomerative clustering
     agglomerativeClustering = nifty.graph.agglo.agglomerativeClustering(clusterPolicy) 
     agglomerativeClustering.run(True, 10000)
     nodeSeg = agglomerativeClustering.result()
 
-    print("nodeSeg", nodeSeg.dtype)
+
     nodeSeg = numpy.require(nodeSeg, dtype='int64')
     nodeSeg -=(nodeSeg.min()) 
     nodeSeg += 1
 
-    print("nodeSeg", nodeSeg.dtype, nodeSeg.min(), nodeSeg.max())
+
 
     comp = nifty.graph.components(rag)
     comp.buildFromNodeLabels(nodeSeg)
     nodeSeg = comp.componentLabels()+1
 
-    print("project back")
+    logger.info("project back")
     # convert graph segmentation
     # to pixel segmentation
-    print(nodeSeg, nodeSeg.dtype)
+    
     seg = numpy.take(nodeSeg, overseg.astype('int64'))
 
-    #eg = nifty.graph.rag.projectScalarNodeDataToPixels(rag, nodeSeg.astype('uint64'))
 
-    print("seg", seg.dtype,seg.min(), seg.max())
 
     seg -= seg.min()
     seg += 1
 
     #seg = vigra.analysis.labelVolume(seg.astype('uint32'))
-
+    logger.info("agglomerative supervoxel creation is done")
     return seg
     
