@@ -64,7 +64,7 @@ class VariableImportanceDialog(QDialog):
             table.resizeColumnsToContents()  
             
             table.setSortingEnabled(True)
-            table.sortByColumn(3) # Sort by overall importance
+            table.sortByColumn(3, Qt.DescendingOrder)  # Sort by overall importance
 
             layout.addWidget(table, 1, 0, 3, 2)  
             
