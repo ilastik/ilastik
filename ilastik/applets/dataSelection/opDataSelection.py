@@ -385,6 +385,7 @@ class OpDataSelection(Operator):
                                     .format("".join(tag.key for tag in datasetInfo.axistags),
                                             len(providerSlot.meta.shape)))
                 metadata['axistags'] = datasetInfo.axistags
+
             if datasetInfo.subvolume_roi is not None:
                 metadata['subvolume_roi'] = datasetInfo.subvolume_roi
 
@@ -403,15 +404,14 @@ class OpDataSelection(Operator):
 
             self._NonTransposedImage.connect(providerSlot)
 
-            if self.forceAxisOrder:
+            provider_order = ''.join(providerSlot.meta.getAxisKeys())
+            if self.forceAxisOrder and provider_order not in self.forceAxisOrder:  # only force axis order if necessary
                 assert isinstance(self.forceAxisOrder, list), \
                     "forceAxisOrder should be a *list* of preferred axis orders"
 
                 # Before we re-order, make sure no non-singleton
                 #  axes would be dropped by the forced order.
-                provider_order = "".join(providerSlot.meta.getAxisKeys())
                 tagged_provider_shape = providerSlot.meta.getTaggedShape()
-
                 minimal_axes = [k_v for k_v in list(tagged_provider_shape.items()) if k_v[1] > 1]
                 minimal_axes = set(k for k, v in minimal_axes)
 
@@ -440,16 +440,11 @@ class OpDataSelection(Operator):
                 raise DatasetConstraintError("DataSelection",
                                              "Data must always have at leaset the axes x and y for ilastik to work.")
 
-            # If the channel axis is not last (or is missing),
-            #  make sure the axes are re-ordered so that channel is last.
-            if providerSlot.meta.axistags.index('c') != len(providerSlot.meta.axistags) - 1:
+            # If the channel axis is missing, add it as last axis
+            if 'c' not in providerSlot.meta.axistags:
                 op5 = OpReorderAxes(parent=self)
-                keys = list(providerSlot.meta.getTaggedShape().keys())
-                try:
-                    # Remove if present.
-                    keys.remove('c')
-                except ValueError:
-                    pass
+                keys = providerSlot.meta.getAxisKeys()
+
                 # Append
                 keys.append('c')
                 op5.AxisOrder.setValue("".join(keys))
