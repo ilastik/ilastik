@@ -202,11 +202,11 @@ class OpFormattedDataExport(Operator):
             except KeyError:
                 # FIXME: Why does the above line fail sometimes?
                 warnings.warn("Ignoring invalid axis order setting")
-                axistags = self.Input.meta.axistags
-                self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in axistags ) )
+                axiskeys = self.Input.meta.getOriginalAxisKeys()
+                self._opReorderAxes.AxisOrder.setValue(''.join(axiskeys))
         else:
-            axistags = self.Input.meta.axistags
-            self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in axistags ) )
+            axiskeys = self.Input.meta.getOriginalAxisKeys()
+            self._opReorderAxes.AxisOrder.setValue(''.join(axiskeys))
 
         # Provide the coordinate offset, but only for the axes that are present in the output image
         tagged_input_offset = collections.defaultdict( lambda: -1, list(zip(self.Input.meta.getAxisKeys(), new_start )) )
