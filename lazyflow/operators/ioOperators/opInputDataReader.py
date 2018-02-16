@@ -274,7 +274,7 @@ class OpInputDataReader(Operator):
         if not filePath.lower().startswith('precomputed://'):
             return ([], None)
         else:
-            url = filePath.lower().split('precomputed://')[1]
+            url = filePath.lstrip('precomputed://')
             reader = OpRESTfulPrecomputedChunkedVolumeReader(parent=self)
             reader.BaseUrl.setValue(url)
             return [reader], reader.Output

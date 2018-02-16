@@ -187,7 +187,7 @@ class RESTfulPrecomputedChunkedVolume(object):
 
         # check if success:
         if r.status_code != 200:
-            raise ValueError(f'Could not find info file at {self.volume_url}!')
+            raise ValueError(f'Could not find info file at {self.volume_url}, status code {r.status_code}!')
 
         self._json_info = json.loads(r.content)
 
