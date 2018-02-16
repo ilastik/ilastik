@@ -42,7 +42,12 @@ class PrecomputedVolumeBrowser(QDialog):
         self.setWindowTitle('Precomputed Volume Selection Dialog')
         main_layout = QVBoxLayout()
 
-        # TODO: get history of successful URLs from config:
+        description = QLabel(self)
+        description.setText(
+            'enter base URL of volume starting with "precomputed://http..."'
+            'hit the "check URL" button to validate the entered address.')
+        main_layout.addWidget(description)
+
         self.combo = QComboBox(self)
         self.combo.setEditable(True)
         self.combo.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Minimum)
@@ -72,10 +77,11 @@ class PrecomputedVolumeBrowser(QDialog):
 
         main_layout.addLayout(debug_layout)
 
-        qb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        qb.accepted.connect(self.accept)
-        qb.rejected.connect(self.reject)
-        main_layout.addWidget(qb)
+        self.qbuttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.qbuttons.accepted.connect(self.accept)
+        self.qbuttons.rejected.connect(self.reject)
+        self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
+        main_layout.addWidget(self.qbuttons)
         self.setLayout(main_layout)
 
     def handle_chk_button_clicked(self, event):
@@ -85,8 +91,11 @@ class PrecomputedVolumeBrowser(QDialog):
         try:
             rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
         except Exception as e:
+            # :<
+            self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
+            self.debug_text.setText("")
             qm = QMessageBox(self)
-            qm.setWindowTitle('An Error Occured')
+            qm.setWindowTitle('An Error Occured!')
             qm.setText(f"woops: {e}")
             qm.show()
             return
@@ -97,6 +106,7 @@ class PrecomputedVolumeBrowser(QDialog):
             f"using scale: {rv._use_scale}\n"
             f"data shape: {rv.get_shape()}\n"
         )
+        self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True)
 
 
 if __name__ == '__main__':
