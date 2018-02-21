@@ -174,7 +174,7 @@ class MetaDict(defaultdict):
         """
         pairs = []
         # For easy comparison, start with these in the same order every time.
-        standard_keys = ['_ready', 'NOTREADY', 'shape', 'axistags', 'dtype', 'drange', 'has_mask', '_dirty' ]
+        standard_keys = ['_ready', 'NOTREADY', 'shape', 'axistags', 'original_axistags', 'dtype', 'drange', 'has_mask', '_dirty' ]
         for key in standard_keys:
             if key in self:
                 pairs.append( key + ' : ' + repr(self[key]) )
