@@ -154,7 +154,7 @@ class TestOpDataSelection_Basic2D(object):
         """Test if plane 2d files are loaded correctly"""
         for fileName in self.imgFileNames2D:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -188,7 +188,7 @@ class TestOpDataSelection_Basic2D(object):
         self.compressedExtensions.append('.gif')
         for fileName in self.imgFileNames2Dc:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -209,7 +209,7 @@ class TestOpDataSelection_Basic2D(object):
             # Check the file name output
             assert reader.ImageName[0].value == fileName
             # Check raw images
-            assert imgData2Dc.shape == self.imgData2Dc.shape
+            assert imgData2Dc.shape == self.imgData2Dc.shape, (imgData2Dc.shape, self.imgData2Dc.shape)
             # skip this if image was saved compressed:
             if any(x in fileName.lower() for x in self.compressedExtensions):
                 print("Skipping raw comparison for compressed data: {}".format(fileName))
@@ -322,9 +322,10 @@ class TestOpDataSelection_Basic2D(object):
 #                assert invertedGrayscalePngData[x,y,0] == int(numpy.round(  0.299*(255-self.imgData2Dc[x,y,0])
 #                                                                          + 0.587*(255-self.imgData2Dc[x,y,1])
 #                                                                          + 0.114*(255-self.imgData2Dc[x,y,2]) ))
+
     def testProjectLocalData(self):
         graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper(OpDataSelection, graph=graph)
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
         reader.ProjectFile.setValue(self.projectFile)
         reader.WorkingDirectory.setValue(os.getcwd())
         reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -345,7 +346,7 @@ class TestOpDataSelection_Basic2D(object):
 
         projectInternalData = reader.Image[0][...].wait()
 
-        assert projectInternalData.shape == self.imgData2Dc.shape
+        assert projectInternalData.shape == self.imgData2Dc.shape, (projectInternalData.shape, self.imgData2Dc.shape)
         assert (projectInternalData == self.imgData2Dc).all()
 
 
@@ -435,7 +436,7 @@ class TestOpDataSelection_Basic_native_3D(object):
         """Test if plane 2d files are loaded correctly"""
         for fileName in self.imgFileNames3D:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -456,7 +457,7 @@ class TestOpDataSelection_Basic_native_3D(object):
             # Check the file name output
             assert reader.ImageName[0].value == fileName
             # Check raw images
-            assert imgData3D.shape == self.imgData3D.shape
+            assert imgData3D.shape == self.imgData3D.shape, (imgData3D.shape, self.imgData3D.shape)
             # skip this if image was saved compressed:
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
@@ -464,7 +465,7 @@ class TestOpDataSelection_Basic_native_3D(object):
         """Test if 3D file with intentionally wrong axes is rejected """
         for fileName in self.imgFileNames3D:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -491,7 +492,7 @@ class TestOpDataSelection_Basic_native_3D(object):
         # For some reason vigra saves 2D+c data compressed in gifs, so skip!
         for fileName in self.imgFileNames3Dc:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -512,13 +513,13 @@ class TestOpDataSelection_Basic_native_3D(object):
             # Check the file name output
             assert reader.ImageName[0].value == fileName
             # Check raw images
-            assert imgData3Dc.shape == self.imgData3Dc.shape
+            assert imgData3Dc.shape == self.imgData3Dc.shape, (imgData3Dc.shape, self.imgData3Dc.shape)
             # skip this if image was saved compressed:
             numpy.testing.assert_array_equal(imgData3Dc, self.imgData3Dc)
 
     def testProjectLocalData(self):
         graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper(OpDataSelection, graph=graph)
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
         reader.ProjectFile.setValue(self.projectFile)
         reader.WorkingDirectory.setValue(os.getcwd())
         reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -539,7 +540,7 @@ class TestOpDataSelection_Basic_native_3D(object):
 
         projectInternalData = reader.Image[0][...].wait()
 
-        assert projectInternalData.shape == self.imgData3Dc.shape
+        assert projectInternalData.shape == self.imgData3Dc.shape, (projectInternalData.shape, self.imgData3Dc.shape)
         assert (projectInternalData == self.imgData3Dc).all()
 
 
@@ -705,7 +706,7 @@ class TestOpDataSelection_3DStacks(object):
         """Test if stacked 2d files are loaded correctly"""
         for fileName in self.imgFileNameGlobs2D:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -726,7 +727,7 @@ class TestOpDataSelection_3DStacks(object):
             # Check the file name output
             assert reader.ImageName[0].value == fileName
             # Check raw images
-            assert imgData3D.shape == self.imgData3D.shape
+            assert imgData3D.shape == self.imgData3D.shape, (imgData3D.shape, self.imgData3D.shape)
             # skip this if image was saved compressed:
             if any(x in fileName.lower() for x in self.compressedExtensions):
                 print("Skipping raw comparison for compressed data: {}".format(fileName))
@@ -737,7 +738,7 @@ class TestOpDataSelection_3DStacks(object):
         for ext, fileNames in list(self.imgFileLists2D.items()):
             fileNameString = os.path.pathsep.join(fileNames)
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -755,7 +756,7 @@ class TestOpDataSelection_3DStacks(object):
             imgData3D = reader.Image[0][...].wait()
 
             # Check raw images
-            assert imgData3D.shape == self.imgData3D.shape
+            assert imgData3D.shape == self.imgData3D.shape, (imgData3D.shape, self.imgData3D.shape)
             # skip this if image was saved compressed:
             if any(x.strip('.') in ext.lower() for x in self.compressedExtensions):
                 print("Skipping raw comparison for compressed data: {}".format(ext))
@@ -768,7 +769,7 @@ class TestOpDataSelection_3DStacks(object):
         self.compressedExtensions.append('.gif')
         for fileName in self.imgFileNameGlobs2Dc:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -789,7 +790,7 @@ class TestOpDataSelection_3DStacks(object):
             # Check the file name output
             assert reader.ImageName[0].value == fileName
             # Check raw images
-            assert imgData3Dc.shape == self.imgData3Dc.shape
+            assert imgData3Dc.shape == self.imgData3Dc.shape, (imgData3Dc.shape, self.imgData3Dc.shape)
             # skip this if image was saved compressed:
             if any(x in fileName.lower() for x in self.compressedExtensions):
                 print("Skipping raw comparison for compressed data: {}".format(fileName))
@@ -839,7 +840,7 @@ class TestOpDataSelection_SingleFileH5Stacks():
 
     def test_load_single_file_with_glob(self):
         graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper(OpDataSelection, graph=graph)
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
         reader.ProjectFile.setValue(self.projectFile)
         reader.WorkingDirectory.setValue(os.getcwd())
         reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -857,13 +858,13 @@ class TestOpDataSelection_SingleFileH5Stacks():
         imgData = reader.Image[0][...].wait()
 
         # Check raw images
-        assert imgData.shape == self.imgData3Dct.shape
+        assert imgData.shape == self.imgData3Dct.shape, (imgData.shape, self.imgData3Dct.shape)
 
         numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
 
     def test_load_single_file_with_list(self):
         graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper(OpDataSelection, graph=graph)
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
         reader.ProjectFile.setValue(self.projectFile)
         reader.WorkingDirectory.setValue(os.getcwd())
         reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -880,9 +881,10 @@ class TestOpDataSelection_SingleFileH5Stacks():
 
         # Read the test files using the data selection operator and verify the contents
         imgData = reader.Image[0][...].wait()
+        print('imgData', reader.Image.meta.axistags, reader.Image.meta.original_axistags)
 
         # Check raw images
-        assert imgData.shape == self.imgData3Dct.shape
+        assert imgData.shape == self.imgData3Dct.shape, (imgData.shape, self.imgData3Dct.shape)
 
         numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
 
@@ -957,7 +959,7 @@ class TestOpDataSelection_stack_along_parameter():
     def _test_stack_along(self, name, extension, sequence_axis, expected):
         fileName = os.path.join(self.tmpdir, f'{name}{extension}')
         graph = lazyflow.graph.Graph()
-        reader = OpDataSelection(graph=graph)
+        reader = OpDataSelection(graph=graph, forceAxisOrder=False)
         reader.WorkingDirectory.setValue(os.getcwd())
         info = DatasetInfo(fileName, sequence_axis=sequence_axis)
         reader.Dataset.setValue(info)
@@ -968,10 +970,10 @@ class TestOpDataSelection_stack_along_parameter():
     def test_stack_along(self):
 
         testcases = [
-            ['rgb*0c', '.h5/data', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2)],
+            ['rgb*0c', '.h5/data', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)],
             ['rgb*0c', '.png    ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2).transpose(1, 0, 2
                                                                                                                ) * 255],
-            ['rgb*0c', '.tiff   ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2)],
+            ['rgb*0c', '.tiff   ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)],
             ['rgb*1c', '.h5/data', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2)],
             ['rgb*1c', '.png    ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2).transpose(1, 0, 2
                                                                                                                ) * 255],
