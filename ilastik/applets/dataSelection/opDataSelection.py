@@ -79,6 +79,7 @@ class DatasetInfo(object):
         self.fromstack = False
         self.nickname = ""
         self.axistags = None
+        self.original_axistags = None
         self.subvolume_roi = None
         self.location = Location.FileSystem
         self.display_mode = 'default'  # choices: default, grayscale, rgba, random-colortable, binary-mask.
@@ -211,6 +212,7 @@ class DatasetInfo(object):
             "drange": tuple,
             "nickname": str,
             "axistags": str,
+            "original_axistags": str,
             "subvolume_roi": RoiTuple()
         }
 
@@ -284,7 +286,7 @@ class OpDataSelection(Operator):
         def __str__(self):
             return self.message
 
-    def __init__(self, forceAxisOrder=False, *args, **kwargs):
+    def __init__(self, forceAxisOrder=['tczyx'], *args, **kwargs):
         """
         forceAxisOrder: How to auto-reorder the input data before connecting it to the rest of the workflow.
                         Should be a list of input orders that are allowed by the workflow
@@ -385,6 +387,8 @@ class OpDataSelection(Operator):
                                     .format("".join(tag.key for tag in datasetInfo.axistags),
                                             len(providerSlot.meta.shape)))
                 metadata['axistags'] = datasetInfo.axistags
+            if datasetInfo.original_axistags is not None:
+                metadata['original_axistags'] = datasetInfo.axistags
 
             if datasetInfo.subvolume_roi is not None:
                 metadata['subvolume_roi'] = datasetInfo.subvolume_roi
@@ -403,6 +407,11 @@ class OpDataSelection(Operator):
             self._opReaders.append(opMetadataInjector)
 
             self._NonTransposedImage.connect(providerSlot)
+
+            # make sure that x and y axes are present in the selected axis order
+            if 'x' not in providerSlot.meta.axistags or 'y' not in providerSlot.meta.axistags:
+                raise DatasetConstraintError("DataSelection",
+                                             "Data must always have at leaset the axes x and y for ilastik to work.")
 
             provider_order = ''.join(providerSlot.meta.getAxisKeys())
             if self.forceAxisOrder and provider_order not in self.forceAxisOrder:  # only force axis order if necessary
@@ -434,11 +443,6 @@ class OpDataSelection(Operator):
                 op5.Input.connect(providerSlot)
                 providerSlot = op5.Output
                 self._opReaders.append(op5)
-
-            # make sure that x and y axes are present in the selected axis order
-            if 'x' not in providerSlot.meta.axistags or 'y' not in providerSlot.meta.axistags:
-                raise DatasetConstraintError("DataSelection",
-                                             "Data must always have at leaset the axes x and y for ilastik to work.")
 
             # If the channel axis is missing, add it as last axis
             if 'c' not in providerSlot.meta.axistags:
