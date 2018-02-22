@@ -72,7 +72,7 @@ class TestStructuredLearningTrackingHeadless(object):
 
     EXPECTED_TRACKING_RESULT_FILE = ilastik_tests_file_path+'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers_Tracking-Result.h5'
     EXPECTED_CSV_FILE = ilastik_tests_file_path+'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers_CSV-Table.csv'
-    EXPECTED_SHAPE = (6, 66, 62, 1, 1) # Expected shape for tracking results HDF5 files
+    EXPECTED_SHAPE = (6, 66, 62, 1) # Expected shape for tracking results HDF5 files
     EXPECTED_NUM_LINES_TRACKING = 24 # Number of lines expected in exported csv file
     EXPECTED_MERGER_NUM = 5 # Number of mergers expected in exported csv file
     EXPECTED_NUM_DIVISIONS = 0 # Number of lines expected in exported csv file

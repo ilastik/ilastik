@@ -42,8 +42,8 @@ logger.setLevel(logging.DEBUG)
 
 
 class TestAxesOrderPreservation(object):
-    dir = tempfile.mkdtemp()
-    # os.path.expanduser('~/Desktop/tmp')
+    # dir = tempfile.mkdtemp()
+    dir = os.path.expanduser('~/Desktop/tmp')
     PROJECT_FILE_BASE = os.path.join(os.path.dirname(__file__), '..', '..', 'data')
 
     @classmethod
@@ -110,102 +110,116 @@ class TestAxesOrderPreservation(object):
 
         return input_path
 
-    def test_pixel_classification(self):
-        options = []
-        options.append((['2d', '2d3c'], ['yxc', 'xyc']))
-        # + ['ycx', 'xcy', 'cyx', 'cxy']
+    # def test_pixel_classification(self):
+    #     options = []
+    #     options.append((['2d'], ['xy', 'yx']))
+    #     options.append((['2d', '2d3c'], ['cxy', 'yxc', 'xyc', 'ycx']))
+    #     options.append((['3d', '3d1c', '3d2c'], ['xyzc', 'czyx']))
+    #     options.append((['5t2d1c', '5t2d2c'], ['tyxc', 'txyc', 'xytc']))
+    #     options.append((['5t3d2c'], ['tzyxc', 'ztxyc', 'xyztc']))
 
-        options.append((['3d', '3d1c', '3d2c'], ['zyxc']))
-        options.append((['5t2d1c', '5t2d2c'], ['tyxc', 'txyc', 'xytc']))
-        options.append((['5t3d2c'], ['tzyxc', 'ztxyc', 'xyztc']))
+    #     # options = cyx_options
+    #     for combination in options:
+    #         for testcase, order in itertools.product(*combination):
+    #             yield self._test_pixel_classification, testcase, order
 
-        # options = cyx_options
-        for combination in options:
-            for testcase, order in itertools.product(*combination):
-                yield self._test_pixel_classification, testcase, order
+    # @timeLogged(logger)
+    # def _test_pixel_classification(self, testcase, input_axes):
+    #     # NOTE: In this test, cmd-line args to nosetests will also end up
+    #     #       getting "parsed" by ilastik. That shouldn't be an issue, since
+    #     #       the pixel classification workflow ignores unrecognized options.
+    #     #       See if __name__ == __main__ section, below.
+    #     project = 'PixelClassification' + testcase + '.ilp'
+    #     try:
+    #         self.untested_projects.remove(project)
+    #     except ValueError:
+    #         pass
 
-    @timeLogged(logger)
-    def _test_pixel_classification(self, testcase, input_axes):
-        # NOTE: In this test, cmd-line args to nosetests will also end up
-        #       getting "parsed" by ilastik. That shouldn't be an issue, since
-        #       the pixel classification workflow ignores unrecognized options.
-        #       See if __name__ == __main__ section, below.
-        project = 'PixelClassification' + testcase + '.ilp'
-        try:
-            self.untested_projects.remove(project)
-        except ValueError:
-            pass
+    #     project_file = os.path.join(self.PROJECT_FILE_BASE, project)
 
-        project_file = os.path.join(self.PROJECT_FILE_BASE, project)
+    #     if not os.path.exists(project_file):
+    #         raise IOError('project file "{}" not found'.format(
+    #             project_file))
 
-        if not os.path.exists(project_file):
-            raise IOError('project file "{}" not found'.format(
-                project_file))
+    #     args = []
+    #     args.append("--headless")
+    #     args.append("--project=" + project_file)
 
-        args = []
-        args.append("--headless")
-        args.append("--project=" + project_file)
+    #     # Batch export options
+    #     # If we were actually launching from the command line, 'png sequence'
+    #     # would be in quotes...
+    #     # args.append('--output_format=png sequence')
+    #     args.append("--export_source=Simple Segmentation")
+    #     args.append(
+    #         "--output_filename_format=" + self.dir + "/{nickname}_result")
+    #     args.append(
+    #         "--output_format=hdf5")
+    #     args.append("--export_dtype=uint8")
+    #     # args.append("--output_axis_order=")
 
-        # Batch export options
-        # If we were actually launching from the command line, 'png sequence'
-        # would be in quotes...
-        # args.append('--output_format=png sequence')
-        args.append("--export_source=Simple Segmentation")
-        args.append(
-            "--output_filename_format=" + self.dir + "/{nickname}_result")
-        args.append(
-            "--output_format=hdf5")
-        args.append("--export_dtype=uint8")
-        # args.append("--output_axis_order=")
+    #     args.append("--pipeline_result_drange=(0,2)")
+    #     args.append("--export_drange=(0,2)")
 
-        args.append("--pipeline_result_drange=(0,2)")
-        args.append("--export_drange=(0,2)")
+    #     # Input args
+    #     args.append("--input_axes={}".format(input_axes))
+    #     input_source_path = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+    #                                      '{}.h5'.format(testcase))
+    #     input_path = self.create_input(input_source_path, input_axes)
+    #     args.append(input_path)
 
-        # Input args
-        args.append("--input_axes={}".format(input_axes))
-        input_source_path = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
-                                         '{}.h5'.format(testcase))
-        input_path = self.create_input(input_source_path, input_axes)
-        args.append(input_path)
+    #     # Clear the existing commandline args so it looks like we're starting
+    #     # fresh.
+    #     sys.argv = ['ilastik.py']
+    #     sys.argv += args
 
-        # Clear the existing commandline args so it looks like we're starting
-        # fresh.
-        sys.argv = ['ilastik.py']
-        sys.argv += args
+    #     # Start up the ilastik.py entry script as if we had launched it from
+    #     # the command line
+    #     # This will execute the batch mode script
+    #     self.ilastik_startup.main()
 
-        # Start up the ilastik.py entry script as if we had launched it from
-        # the command line
-        # This will execute the batch mode script
-        self.ilastik_startup.main()
+    #     output_path = input_path.replace('.', '_result.')
 
-        output_path = input_path.replace('.', '_result.')
+    #     opReaderResult = OpInputDataReader(graph=Graph())
+    #     opReaderResult.FilePath.setValue(output_path)
+    #     result = opReaderResult.Output[:].wait()
 
-        opReaderResult = OpInputDataReader(graph=Graph())
-        opReaderResult.FilePath.setValue(output_path)
-        result = opReaderResult.Output[:].wait()
+    #     if 'c' in input_axes:
+    #         assert input_axes == ''.join(opReaderResult.Output.meta.getAxisKeys()), \
+    #             ''.join(opReaderResult.Output.meta.getAxisKeys())
+    #     else:
+    #         assert input_axes == ''.join([a for a in opReaderResult.Output.meta.getAxisKeys() if a != 'c']), \
+    #             ''.join(opReaderResult.Output.meta.getAxisKeys())
 
-        compare_name = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
-                                    '{}_Simple Segmentation.h5/exported_data'
-                                    .format(testcase))
-        compare_name = os.path.abspath(compare_name)
-        opReaderCompare = OpInputDataReader(graph=Graph())
-        opReaderCompare.FilePath.setValue(compare_name)
-        opReorderCompare = OpReorderAxes(parent=opReaderCompare)
-        opReorderCompare.Input.connect(opReaderCompare.Output)
-        opReorderCompare.AxisOrder.setValue(input_axes)
+    #     compare_name = os.path.abspath(os.path.join(self.dir, f'PixelClassification_{testcase}.h5'))
 
-        compare = opReorderCompare.Output[:].wait()
+    #     if os.path.exists(compare_name):
+    #         opReaderCompare = OpInputDataReader(graph=Graph())
+    #         opReaderCompare.FilePath.setValue(compare_name)
+    #         opReorderCompare = OpReorderAxes(parent=opReaderCompare)
+    #         opReorderCompare.Input.connect(opReaderCompare.Output)
+    #         opReorderCompare.AxisOrder.setValue(''.join(opReaderResult.Output.meta.getAxisKeys()))
 
-        assert numpy.allclose(result, compare)
+    #         compare = opReorderCompare.Output[:].wait()
+
+    #         assert numpy.allclose(result, compare), f'{result.shape}, {compare.shape}'
+    #     else:
+    #         writer = OpFormattedDataExport(graph=Graph())
+    #         writer.Input.connect(opReaderResult.Output)
+
+    #         writer.OutputFilenameFormat.setValue(compare_name)
+    #         writer.TransactionSlot.setValue(True)
+    #         writer.run_export()
+    #         warnings.warn(f'created comparison data: {compare_name} with axis order {input_axes}')
 
     def test_object_classification(self):
         options = []
-        options.append((['2d', '2d3c'], ['_wPred', '_wSeg'], ['yxc', 'xyc']))
+        # options.append((['2d', '2d3c'], ['_wPred', '_wSeg'], ['yxc', 'xyc']))
+        options.append((['2d3c'], ['_wPred', '_wSeg'], ['yxc', 'xyc']))
         # + ['ycx', 'xcy', 'cyx', 'cxy']
 
-        options.append((['5t2d1c', '5t2d2c'], ['_wPred', '_wSeg'],
-                        ['tyxc', 'txyc', 'xytc']))
-        options.append((['5t3d2c'], ['_wPred', '_wSeg'], ['tzyxc', 'xztyc']))
+        # options.append((['5t2d1c', '5t2d2c'], ['_wPred', '_wSeg'],
+        #                 ['tyxc', 'txyc', 'xytc']))
+        # options.append((['5t3d2c'], ['_wPred', '_wSeg'], ['tzyxc', 'xztyc']))
 
         for combination in options:
             for dims, variant, order in itertools.product(*combination):
@@ -296,285 +310,285 @@ class TestAxesOrderPreservation(object):
 
         # should use input_axes here, but the workflow always gives out txyzc
         # opReorderCompare.AxisOrder.setValue(input_axes)
-        opReorderCompare.AxisOrder.setValue('txyzc')
-        compare = opReorderCompare.Output[:].wait()
-
-        assert numpy.allclose(result, compare)
-
-    def test_tracking_with_learning(self):
-        return
-        options = []
-        # mini test example to get the tests running:
-        options.append((['5t2d1c'], ['_wBin'],  # + '_wPred'
-                        ['tyxc']))
-        # test configurations
-        # options.append((['5t2d1c', '5t2d2c'], ['_wPred', '_wBin'],
-        #                 ['tyxc', 'txyc', 'xytc']))
-        # options.append((['5t3d2c'], ['_wPred', '_wBin'], ['tzyxc', 'xztyc']))
-
-        for combination in options:
-            for dims, variant, order in itertools.product(*combination):
-                yield self._test_tracking_with_learning, dims, variant, order
-
-    @timeLogged(logger)
-    def _test_tracking_with_learning(self, dims, variant, input_axes):
-        project = 'TrackingwLearning' + dims + variant + '.ilp'
-        try:
-            self.untested_projects.remove(project)
-        except ValueError:
-            pass
-
-        project_file = os.path.join(self.PROJECT_FILE_BASE, project)
-
-        if not os.path.exists(project_file):
-            raise IOError('project file "{}" not found'.format(
-                project_file))
-
-        args = []
-        args.append("--headless")
-        args.append("--project=" + project_file)
-
-        # Batch export options
-        # If we were actually launching from the command line, 'png sequence'
-        # would be in quotes...
-        # args.append('--output_format=png sequence')
-        args.append("--export_source=Tracking-Result")
-        args.append(
-            "--output_filename_format=" + self.dir + "/{nickname}_result" +
-            variant)
-        args.append(
-            "--output_format=hdf5")
-        args.append("--export_dtype=uint8")
-        # args.append("--output_axis_order=" + input_axes)
-
-        args.append("--pipeline_result_drange=(0,255)")
-        args.append("--export_drange=(0,255)")
-
-        # Input args
-        args.append("--input_axes={}".format(input_axes))
-        input_source_path1 = os.path.join(self.PROJECT_BASE, 'inputdata',
-                                          '{}.h5'.format(dims))
-        input_path1 = self.create_input(input_source_path1, input_axes)
-        args.append("--raw_data=" + input_path1)
-        if 'wPred' in variant:
-            input_source_path2 = os.path.join(self.PROJECT_BASE, 'inputdata',
-                                              '{}_Probabilities.h5'
-                                              .format(dims))
-            input_path2 = self.create_input(input_source_path2, input_axes)
-            args.append("--prediction_maps=" + input_path2)
-        elif 'wBin' in variant:
-            input_source_path2 = os.path.join(self.PROJECT_BASE, 'inputdata',
-                                              '{}_Binary Segmentation.h5'
-                                              .format(dims))
-            input_path2 = self.create_input(input_source_path2, input_axes)
-            args.append("--binary_image=" + input_path2)
-        else:
-            raise NotImplementedError('variant {} unknown'.format(variant))
-
-        # Clear the existing commandline args so it looks like we're starting
-        # fresh.
-        sys.argv = ['ilastik.py']
-        sys.argv += args
-
-        # Start up the ilastik.py entry script as if we had launched it from
-        # the command line
-        # This will execute the batch mode script
-        self.ilastik_startup.main()
-
-        output_path = input_path1.replace('.', '_result{}.'.format(variant))
-
-        opReaderResult = OpInputDataReader(graph=Graph())
-        opReaderResult.FilePath.setValue(output_path)
-        result = opReaderResult.Output[:].wait()
-
-        compare_name = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
-                                    '{}_Tracking-Result.h5/exported_data'
-                                    .format(dims + variant))
-        compare_name = os.path.abspath(compare_name)
-        opReaderCompare = OpInputDataReader(graph=Graph())
-        opReaderCompare.FilePath.setValue(compare_name)
-        opReorderCompare = OpReorderAxes(parent=opReaderCompare)
-        opReorderCompare.Input.connect(opReaderCompare.Output)
-
-        # todo: should use input_axes here, but the workflow always gives out
-        #       txyzc (this is copied from the test for object classification.
-        #       This might be different for tracking!)
-        # opReorderCompare.AxisOrder.setValue(input_axes)
-        opReorderCompare.AxisOrder.setValue('txyzc')
-        compare = opReorderCompare.Output[:].wait()
-
-        assert numpy.allclose(result, compare)
-
-    def test_boundarybased_segmentation_with_multicut(self):
-        options = []
-        options.append((['3d'], ['zcyx', 'xycz', 'yxcz']))
-        options.append((['3d1c'], ['zyxc', 'xyzc', 'cxzy']))
-        options.append((['3d2c'], ['zyxc', 'xyzc', 'czxy']))
-
-        for combination in options:
-            for dims, order in itertools.product(*combination):
-                yield self._test_boundarybased_segmentation_with_multicut, \
-                    dims, order
-
-    @timeLogged(logger)
-    def _test_boundarybased_segmentation_with_multicut(self, dims, input_axes):
-        if sys.platform == 'win32':
-            platform = 'win'
-        else:
-            platform = 'unix'
-
-        project = 'Boundary-basedSegmentationwMulticut' + dims + '_' + \
-                  platform + '.ilp'
-        try:
-            self.untested_projects.remove(project)
-        except ValueError:
-            pass
-
-        project_file = os.path.join(self.PROJECT_FILE_BASE, project)
-
-        if not os.path.exists(project_file):
-            raise IOError('project file "{}" not found'.format(
-                project_file))
-
-        args = []
-        args.append("--headless")
-        args.append("--project=" + project_file)
-
-        # Batch export options
-        # If we were actually launching from the command line, 'png sequence'
-        # would be in quotes...
-        # args.append('--output_format=png sequence')
-        args.append("--export_source=Multicut Segmentation")
-        args.append(
-            "--output_filename_format=" + self.dir + "/{nickname}_result")
-        args.append(
-            "--output_format=hdf5")
-        args.append("--export_dtype=uint8")
-        # args.append("--output_axis_order=" + input_axes)
-
-        args.append("--pipeline_result_drange=(0,255)")
-        args.append("--export_drange=(0,255)")
-
-        # Input args
-        args.append("--input_axes={}".format(input_axes))
-        input_source_path1 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
-                                          '{}.h5'.format(dims))
-        input_path1 = self.create_input(input_source_path1, input_axes)
-        args.append("--raw_data=" + input_path1)
-        input_source_path2 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
-                                          '{}_Probabilities.h5'.format(dims))
-        input_path2 = self.create_input(input_source_path2, input_axes)
-        args.append("--probabilities=" + input_path2)
-
-        print('args', args)
-        # Clear the existing commandline args so it looks like we're starting
-        # fresh.
-        sys.argv = ['ilastik.py']
-        sys.argv += args
-
-        # Start up the ilastik.py entry script as if we had launched it from
-        # the command line
-        # This will execute the batch mode script
-        self.ilastik_startup.main()
-
-        output_path = input_path1.replace('.', '_result.')
-
-        opReaderResult = OpInputDataReader(graph=Graph())
-        opReaderResult.FilePath.setValue(output_path)
-        result = opReaderResult.Output[:].wait()
-
-        compare_name = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
-                                    '{}_{}_Multicut Segmentation.h5/'
-                                    'exported_data'.format(dims, platform))
-        compare_name = os.path.abspath(compare_name)
-        opReaderCompare = OpInputDataReader(graph=Graph())
-        opReaderCompare.FilePath.setValue(compare_name)
-        opReorderCompare = OpReorderAxes(parent=opReaderCompare)
-        opReorderCompare.Input.connect(opReaderCompare.Output)
-
-        # todo: should use input_axes here, but the workflow always gives out
-        #       zyxc
-        # opReorderCompare.AxisOrder.setValue(input_axes)
-        opReorderCompare.AxisOrder.setValue('zyxc')
-        compare = opReorderCompare.Output[:].wait()
-
-        assert numpy.allclose(result, compare)
-
-    def test_counting(self):
-        options = []
-        options.append((['2d3c'], ['yxc', 'xyc']))  # , 'xcy'
-
-        for combination in options:
-            for dims, order in itertools.product(*combination):
-                yield self._test_counting, dims, order
-
-    @timeLogged(logger)
-    def _test_counting(self, dims, input_axes):
-        project = 'CellDensityCounting' + dims + '.ilp'
-        try:
-            self.untested_projects.remove(project)
-        except ValueError:
-            pass
-
-        project_file = os.path.join(self.PROJECT_FILE_BASE, project)
-
-        if not os.path.exists(project_file):
-            raise IOError('project file "{}" not found'.format(
-                project_file))
-
-        args = []
-        args.append("--headless")
-        args.append("--project=" + project_file)
-
-        # Batch export options
-        # If we were actually launching from the command line, 'png sequence'
-        # would be in quotes...
-        # args.append('--output_format=png sequence')
-        args.append("--export_source=Probabilities")
-        args.append(
-            "--output_filename_format=" + self.dir + "/{nickname}_result")
-        args.append(
-            "--output_format=hdf5")
-        args.append("--export_dtype=float32")
-        args.append("--pipeline_result_drange=(0,1)")
-        args.append("--export_drange=(0,1)")
-
-        # Input args
-        args.append("--input_axes={}".format(input_axes))
-        input_source_path1 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
-                                          '{}.h5'.format(dims))
-        input_path1 = self.create_input(input_source_path1, input_axes)
-        args.append("--raw_data=" + input_path1)
-
-        # Clear the existing commandline args so it looks like we're starting
-        # fresh.
-        sys.argv = ['ilastik.py']
-        sys.argv += args
-
-        # Start up the ilastik.py entry script as if we had launched it from
-        # the command line
-        # This will execute the batch mode script
-        self.ilastik_startup.main()
-
-        output_path = input_path1.replace('.', '_result.')
-
-        opReaderResult = OpInputDataReader(graph=Graph())
-        opReaderResult.FilePath.setValue(output_path)
-        result = opReaderResult.Output[:].wait()
-
-        compare_name = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
-                                    '{}_count_Probabilities.h5/exported_data'
-                                    .format(dims))
-        compare_name = os.path.abspath(compare_name)
-        opReaderCompare = OpInputDataReader(graph=Graph())
-        opReaderCompare.FilePath.setValue(compare_name)
-        opReorderCompare = OpReorderAxes(parent=opReaderCompare)
-        opReorderCompare.Input.connect(opReaderCompare.Output)
-
         opReorderCompare.AxisOrder.setValue(input_axes)
         compare = opReorderCompare.Output[:].wait()
 
         assert numpy.allclose(result, compare)
+
+    # def test_tracking_with_learning(self):
+    #     return
+    #     options = []
+    #     # mini test example to get the tests running:
+    #     options.append((['5t2d1c'], ['_wBin'],  # + '_wPred'
+    #                     ['tyxc']))
+    #     # test configurations
+    #     # options.append((['5t2d1c', '5t2d2c'], ['_wPred', '_wBin'],
+    #     #                 ['tyxc', 'txyc', 'xytc']))
+    #     # options.append((['5t3d2c'], ['_wPred', '_wBin'], ['tzyxc', 'xztyc']))
+
+    #     for combination in options:
+    #         for dims, variant, order in itertools.product(*combination):
+    #             yield self._test_tracking_with_learning, dims, variant, order
+
+    # @timeLogged(logger)
+    # def _test_tracking_with_learning(self, dims, variant, input_axes):
+    #     project = 'TrackingwLearning' + dims + variant + '.ilp'
+    #     try:
+    #         self.untested_projects.remove(project)
+    #     except ValueError:
+    #         pass
+
+    #     project_file = os.path.join(self.PROJECT_FILE_BASE, project)
+
+    #     if not os.path.exists(project_file):
+    #         raise IOError('project file "{}" not found'.format(
+    #             project_file))
+
+    #     args = []
+    #     args.append("--headless")
+    #     args.append("--project=" + project_file)
+
+    #     # Batch export options
+    #     # If we were actually launching from the command line, 'png sequence'
+    #     # would be in quotes...
+    #     # args.append('--output_format=png sequence')
+    #     args.append("--export_source=Tracking-Result")
+    #     args.append(
+    #         "--output_filename_format=" + self.dir + "/{nickname}_result" +
+    #         variant)
+    #     args.append(
+    #         "--output_format=hdf5")
+    #     args.append("--export_dtype=uint8")
+    #     # args.append("--output_axis_order=" + input_axes)
+
+    #     args.append("--pipeline_result_drange=(0,255)")
+    #     args.append("--export_drange=(0,255)")
+
+    #     # Input args
+    #     args.append("--input_axes={}".format(input_axes))
+    #     input_source_path1 = os.path.join(self.PROJECT_BASE, 'inputdata',
+    #                                       '{}.h5'.format(dims))
+    #     input_path1 = self.create_input(input_source_path1, input_axes)
+    #     args.append("--raw_data=" + input_path1)
+    #     if 'wPred' in variant:
+    #         input_source_path2 = os.path.join(self.PROJECT_BASE, 'inputdata',
+    #                                           '{}_Probabilities.h5'
+    #                                           .format(dims))
+    #         input_path2 = self.create_input(input_source_path2, input_axes)
+    #         args.append("--prediction_maps=" + input_path2)
+    #     elif 'wBin' in variant:
+    #         input_source_path2 = os.path.join(self.PROJECT_BASE, 'inputdata',
+    #                                           '{}_Binary Segmentation.h5'
+    #                                           .format(dims))
+    #         input_path2 = self.create_input(input_source_path2, input_axes)
+    #         args.append("--binary_image=" + input_path2)
+    #     else:
+    #         raise NotImplementedError('variant {} unknown'.format(variant))
+
+    #     # Clear the existing commandline args so it looks like we're starting
+    #     # fresh.
+    #     sys.argv = ['ilastik.py']
+    #     sys.argv += args
+
+    #     # Start up the ilastik.py entry script as if we had launched it from
+    #     # the command line
+    #     # This will execute the batch mode script
+    #     self.ilastik_startup.main()
+
+    #     output_path = input_path1.replace('.', '_result{}.'.format(variant))
+
+    #     opReaderResult = OpInputDataReader(graph=Graph())
+    #     opReaderResult.FilePath.setValue(output_path)
+    #     result = opReaderResult.Output[:].wait()
+
+    #     compare_name = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+    #                                 '{}_Tracking-Result.h5/exported_data'
+    #                                 .format(dims + variant))
+    #     compare_name = os.path.abspath(compare_name)
+    #     opReaderCompare = OpInputDataReader(graph=Graph())
+    #     opReaderCompare.FilePath.setValue(compare_name)
+    #     opReorderCompare = OpReorderAxes(parent=opReaderCompare)
+    #     opReorderCompare.Input.connect(opReaderCompare.Output)
+
+    #     # todo: should use input_axes here, but the workflow always gives out
+    #     #       txyzc (this is copied from the test for object classification.
+    #     #       This might be different for tracking!)
+    #     # opReorderCompare.AxisOrder.setValue(input_axes)
+    #     opReorderCompare.AxisOrder.setValue('txyzc')
+    #     compare = opReorderCompare.Output[:].wait()
+
+    #     assert numpy.allclose(result, compare)
+
+    # def test_boundarybased_segmentation_with_multicut(self):
+    #     options = []
+    #     options.append((['3d'], ['zcyx', 'xycz', 'yxcz']))
+    #     options.append((['3d1c'], ['zyxc', 'xyzc', 'cxzy']))
+    #     options.append((['3d2c'], ['zyxc', 'xyzc', 'czxy']))
+
+    #     for combination in options:
+    #         for dims, order in itertools.product(*combination):
+    #             yield self._test_boundarybased_segmentation_with_multicut, \
+    #                 dims, order
+
+    # @timeLogged(logger)
+    # def _test_boundarybased_segmentation_with_multicut(self, dims, input_axes):
+    #     if sys.platform == 'win32':
+    #         platform = 'win'
+    #     else:
+    #         platform = 'unix'
+
+    #     project = 'Boundary-basedSegmentationwMulticut' + dims + '_' + \
+    #               platform + '.ilp'
+    #     try:
+    #         self.untested_projects.remove(project)
+    #     except ValueError:
+    #         pass
+
+    #     project_file = os.path.join(self.PROJECT_FILE_BASE, project)
+
+    #     if not os.path.exists(project_file):
+    #         raise IOError('project file "{}" not found'.format(
+    #             project_file))
+
+    #     args = []
+    #     args.append("--headless")
+    #     args.append("--project=" + project_file)
+
+    #     # Batch export options
+    #     # If we were actually launching from the command line, 'png sequence'
+    #     # would be in quotes...
+    #     # args.append('--output_format=png sequence')
+    #     args.append("--export_source=Multicut Segmentation")
+    #     args.append(
+    #         "--output_filename_format=" + self.dir + "/{nickname}_result")
+    #     args.append(
+    #         "--output_format=hdf5")
+    #     args.append("--export_dtype=uint8")
+    #     # args.append("--output_axis_order=" + input_axes)
+
+    #     args.append("--pipeline_result_drange=(0,255)")
+    #     args.append("--export_drange=(0,255)")
+
+    #     # Input args
+    #     args.append("--input_axes={}".format(input_axes))
+    #     input_source_path1 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+    #                                       '{}.h5'.format(dims))
+    #     input_path1 = self.create_input(input_source_path1, input_axes)
+    #     args.append("--raw_data=" + input_path1)
+    #     input_source_path2 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+    #                                       '{}_Probabilities.h5'.format(dims))
+    #     input_path2 = self.create_input(input_source_path2, input_axes)
+    #     args.append("--probabilities=" + input_path2)
+
+    #     print('args', args)
+    #     # Clear the existing commandline args so it looks like we're starting
+    #     # fresh.
+    #     sys.argv = ['ilastik.py']
+    #     sys.argv += args
+
+    #     # Start up the ilastik.py entry script as if we had launched it from
+    #     # the command line
+    #     # This will execute the batch mode script
+    #     self.ilastik_startup.main()
+
+    #     output_path = input_path1.replace('.', '_result.')
+
+    #     opReaderResult = OpInputDataReader(graph=Graph())
+    #     opReaderResult.FilePath.setValue(output_path)
+    #     result = opReaderResult.Output[:].wait()
+
+    #     compare_name = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+    #                                 '{}_{}_Multicut Segmentation.h5/'
+    #                                 'exported_data'.format(dims, platform))
+    #     compare_name = os.path.abspath(compare_name)
+    #     opReaderCompare = OpInputDataReader(graph=Graph())
+    #     opReaderCompare.FilePath.setValue(compare_name)
+    #     opReorderCompare = OpReorderAxes(parent=opReaderCompare)
+    #     opReorderCompare.Input.connect(opReaderCompare.Output)
+
+    #     # todo: should use input_axes here, but the workflow always gives out
+    #     #       zyxc
+    #     # opReorderCompare.AxisOrder.setValue(input_axes)
+    #     opReorderCompare.AxisOrder.setValue('zyxc')
+    #     compare = opReorderCompare.Output[:].wait()
+
+    #     assert numpy.allclose(result, compare)
+
+    # def test_counting(self):
+    #     options = []
+    #     options.append((['2d3c'], ['yxc', 'xyc']))  # , 'xcy'
+
+    #     for combination in options:
+    #         for dims, order in itertools.product(*combination):
+    #             yield self._test_counting, dims, order
+
+    # @timeLogged(logger)
+    # def _test_counting(self, dims, input_axes):
+    #     project = 'CellDensityCounting' + dims + '.ilp'
+    #     try:
+    #         self.untested_projects.remove(project)
+    #     except ValueError:
+    #         pass
+
+    #     project_file = os.path.join(self.PROJECT_FILE_BASE, project)
+
+    #     if not os.path.exists(project_file):
+    #         raise IOError('project file "{}" not found'.format(
+    #             project_file))
+
+    #     args = []
+    #     args.append("--headless")
+    #     args.append("--project=" + project_file)
+
+    #     # Batch export options
+    #     # If we were actually launching from the command line, 'png sequence'
+    #     # would be in quotes...
+    #     # args.append('--output_format=png sequence')
+    #     args.append("--export_source=Probabilities")
+    #     args.append(
+    #         "--output_filename_format=" + self.dir + "/{nickname}_result")
+    #     args.append(
+    #         "--output_format=hdf5")
+    #     args.append("--export_dtype=float32")
+    #     args.append("--pipeline_result_drange=(0,1)")
+    #     args.append("--export_drange=(0,1)")
+
+    #     # Input args
+    #     args.append("--input_axes={}".format(input_axes))
+    #     input_source_path1 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+    #                                       '{}.h5'.format(dims))
+    #     input_path1 = self.create_input(input_source_path1, input_axes)
+    #     args.append("--raw_data=" + input_path1)
+
+    #     # Clear the existing commandline args so it looks like we're starting
+    #     # fresh.
+    #     sys.argv = ['ilastik.py']
+    #     sys.argv += args
+
+    #     # Start up the ilastik.py entry script as if we had launched it from
+    #     # the command line
+    #     # This will execute the batch mode script
+    #     self.ilastik_startup.main()
+
+    #     output_path = input_path1.replace('.', '_result.')
+
+    #     opReaderResult = OpInputDataReader(graph=Graph())
+    #     opReaderResult.FilePath.setValue(output_path)
+    #     result = opReaderResult.Output[:].wait()
+
+    #     compare_name = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+    #                                 '{}_count_Probabilities.h5/exported_data'
+    #                                 .format(dims))
+    #     compare_name = os.path.abspath(compare_name)
+    #     opReaderCompare = OpInputDataReader(graph=Graph())
+    #     opReaderCompare.FilePath.setValue(compare_name)
+    #     opReorderCompare = OpReorderAxes(parent=opReaderCompare)
+    #     opReorderCompare.Input.connect(opReaderCompare.Output)
+
+    #     opReorderCompare.AxisOrder.setValue(input_axes)
+    #     compare = opReorderCompare.Output[:].wait()
+
+    #     assert numpy.allclose(result, compare)
 
 
 if __name__ == "__main__":
