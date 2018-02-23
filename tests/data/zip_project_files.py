@@ -9,6 +9,6 @@ projects = zipfile.ZipFile('test_projects.zip',
                            compression=zipfile.ZIP_DEFLATED)
 
 for name in os.listdir('.'):
-    print('zipped ' + name)
     if name.endswith('.ilp'):
         projects.write(name)
+        print('zipped ' + name)
