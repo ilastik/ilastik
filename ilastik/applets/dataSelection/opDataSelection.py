@@ -377,16 +377,23 @@ class OpDataSelection(Operator):
                 metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
             if datasetInfo.axistags is not None:
                 if len(datasetInfo.axistags) != len(providerSlot.meta.shape):
-                    # This usually only happens when we copied a DatasetInfo from another lane,
-                    # and used it as a 'template' to initialize this lane.
-                    # This happens in the BatchProcessingApplet when it attempts to guess the axistags of
-                    # batch images based on the axistags chosen by the user in the interactive images.
-                    # If the interactive image tags don't make sense for the batch image, you get this error.
-                    raise Exception("Your dataset's provided axistags ({}) do not have the "
-                                    "correct dimensionality for your dataset, which has {} dimensions."
-                                    .format("".join(tag.key for tag in datasetInfo.axistags),
-                                            len(providerSlot.meta.shape)))
-                metadata['axistags'] = datasetInfo.axistags
+                    ts = providerSlot.meta.getTaggedShape()
+                    if 'c' in ts and 'c' not in datasetInfo.axistags and len(datasetInfo.axistags) + 1 == len(ts):
+                        # provider has no channel axis, but template has => add channel axis to provider
+                        # fixme: Optimize the axistag guess in BatchProcessingApplet instead of hoping for the best here
+                        metadata['axistags'] = vigra.defaultAxistags(''.join(datasetInfo.axistags.keys()) + 'c')
+                    else:
+                        # This usually only happens when we copied a DatasetInfo from another lane,
+                        # and used it as a 'template' to initialize this lane.
+                        # This happens in the BatchProcessingApplet when it attempts to guess the axistags of
+                        # batch images based on the axistags chosen by the user in the interactive images.
+                        # If the interactive image tags don't make sense for the batch image, you get this error.
+                        raise Exception("Your dataset's provided axistags ({}) do not have the "
+                                        "correct dimensionality for your dataset, which has {} dimensions."
+                                        .format("".join(tag.key for tag in datasetInfo.axistags),
+                                                len(providerSlot.meta.shape)))
+                else:
+                    metadata['axistags'] = datasetInfo.axistags
             if datasetInfo.original_axistags is not None:
                 metadata['original_axistags'] = datasetInfo.axistags
 
