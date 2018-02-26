@@ -46,7 +46,7 @@ class NNClassificationWorkflow(Workflow):
     
     DATA_ROLE_RAW = 0
     ROLE_NAMES = ['Raw Data']
-    EXPORT_NAMES = ['Probabilities', 'Features']
+    EXPORT_NAMES = ['Features', 'Probabilities']
     
     @property
     def applets(self):
@@ -83,7 +83,8 @@ class NNClassificationWorkflow(Workflow):
         # see role constants, above
         opDataSelection.DatasetRoles.setValue( NNClassificationWorkflow.ROLE_NAMES )
 
-        self.nnClassificationApplet = self.createNNClassificationApplet()
+        self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet")
+        opNNclassify = self.nnClassificationApplet.topLevelOperator
 
         self.dataExportApplet = DataExportApplet(self, "Data Export")
         self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
@@ -98,7 +99,6 @@ class NNClassificationWorkflow(Workflow):
                                                            "Batch Processing", 
                                                            self.dataSelectionApplet, 
                                                            self.dataExportApplet)
-
 
         # Expose for shell
         self._applets.append(self.dataSelectionApplet)
@@ -127,16 +127,11 @@ class NNClassificationWorkflow(Workflow):
                                     "Input Data",
                                     "Input Data",
                                     supportIlastik05Import=True,
-                                    instructionText=data_instructions )
+                                    instructionText=data_instructions)
 
-    def createNNClassificationApplet(self):
-        """
-        Can be overridden by subclasses, if they want to return their own type of NNClassificationApplet.
-        NOTE: The applet returned here must have the same interface as the regular NNClassificationApplet.
-              (If it looks like a duck...)
-        """
-        return NNClassApplet(self, "NNClassApplet")
+    # def prepareForNewLane(self, laneIndex):
 
+    #     opNNClassification = self.nnClassificationApplet.topLevelOperator
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator
@@ -151,11 +146,12 @@ class NNClassificationWorkflow(Workflow):
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW])
-        opDataExport.Inputs.resize( len(self.EXPORT_NAMES))
-        opDataExport.Inputs[0].connect(opData.Image)
-        opDataExport.Inputs[1].connect(opNNclassify.CachedPredictionProbabilities)
-        for slot in opDataExport.Inputs:
-            assert slot.partner is not None
+        # opDataExport.Inputs.resize( len(self.EXPORT_NAMES))
+        opDataExport.Inputs.resize( 1 )
+        # opDataExport.Inputs[0].connect(opNNclassify.InputImage)
+        opDataExport.Inputs[0].connect(opNNclassify.CachedPredictionProbabilities)
+        # for slot in opDataExport.Inputs:
+        #     assert slot.partner is not None
 
     def handleAppletStateUpdateRequested(self):
         """
@@ -172,20 +168,21 @@ class NNClassificationWorkflow(Workflow):
         opDataExport = self.dataExportApplet.topLevelOperator 
 
         predictions_ready = input_ready and \
-                            len(opDataExport.Inputs) > 0 and \
-                            opNNClassification.CachedPredictionProbabilities.ready()
+                            len(opDataExport.Inputs) > 0 
+                            # opDataExport.Inputs[0][0].ready()
                             # (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
-        # live_update_active = not opNNClassification.FreezePredictions.value
+        print ("liveupdate value", opNNClassification.FreezePredictions.value)
+        live_update_active = not opNNClassification.FreezePredictions.value
         
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
         
         self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
         self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and not batch_processing_busy)
-        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not batch_processing_busy)
+        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not batch_processing_busy and not live_update_active)
 
         if self.batchProcessingApplet is not None:
             self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
@@ -205,6 +202,7 @@ class NNClassificationWorkflow(Workflow):
         Assigned to DataExportApplet.prepare_for_entire_export
         (See above.)
         """
+        print ('prepare_for_entire_export')
         self.freeze_status = self.nnClassificationApplet.topLevelOperator.FreezePredictions.value
         self.nnClassificationApplet.topLevelOperator.FreezePredictions.setValue(False)
 
@@ -213,6 +211,7 @@ class NNClassificationWorkflow(Workflow):
         Assigned to DataExportApplet.post_process_entire_export
         (See above.)
         """
+        print('post_process_entire_export')
         self.nnClassificationApplet.topLevelOperator.FreezePredictions.setValue(self.freeze_status)
 
 
