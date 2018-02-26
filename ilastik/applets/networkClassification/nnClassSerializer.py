@@ -21,7 +21,7 @@
 from builtins import range
 import numpy
 import vigra
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialBlockSlot, SerialListSlot, SerialSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialListSlot
 
 import logging
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ class NNClassificationSerializer(AppletSerializer):
 
     def __init__(self, topLevelOperator, projectFileGroupName):
         self.VERSION = 1
-        self._dirty = False
-
+ 
+        # slots = [SerialListSlot(topLevelOperator.ModelPath)]
 
         super(NNClassificationSerializer, self).__init__(projectFileGroupName)
