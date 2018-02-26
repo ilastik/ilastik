@@ -19,36 +19,157 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 
-
 from __future__ import print_function
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.classifierOperators import OpPixelwiseClassifierPredict
 from lazyflow.operators import OpMultiArraySlicer2
+from ilastik.utility.operatorSubView import OperatorSubView
+from ilastik.utility import OpMultiLaneWrapper
 
 
+class OpNNClassification(Operator): 
+    """
+    Top-level operator for pixel classification
+    """
+    name="OpNNClassification"
+    category = "Top-level"
 
-
-class OpNNClassification(Operator):
+    #Graph inputs
 
     Classifier = InputSlot()
-    InputImage = InputSlot()
+    InputImage = InputSlot(level=1)
     NumClasses = InputSlot()
     BlockShape = InputSlot()
 
-    # Model_List = InputSlot(stype="str", optional=True)
+    FreezePredictions = InputSlot(stype='bool', value=False, nonlane=True)
 
-    FreezePredictions = InputSlot(stype='bool')
+    PredictionProbabilities = OutputSlot(level=1)
+    CachedPredictionProbabilities = OutputSlot(level=1)
+    PredictionProbabilityChannels = OutputSlot(level=2)
 
-    PredictionProbabilities = OutputSlot()
-    CachedPredictionProbabilities = OutputSlot()
-    PredictionProbabilityChannels = OutputSlot(level=1)
+    #Gui only (not part of the pipeline)
+    ModelPath = OutputSlot()
+
+    def setupOutputs(self):
+        self.ModelPath.meta.dtype = object
+        self.ModelPath.meta.shape = (1,)
 
 
 
     def __init__(self, *args, **kwargs):
 
         super(OpNNClassification, self).__init__(*args, **kwargs)
+
+        self.ModelPath.setValue( [] )
+
+        self.opMultiPredictionPipeline = OpMultiLaneWrapper(OpPredictionPipeline, parent=self, promotedSlotNames =['InputImage'] )
+        self.opMultiPredictionPipeline.InputImage.connect(self.InputImage)
+        self.opMultiPredictionPipeline.Classifier.connect(self.Classifier)
+        self.opMultiPredictionPipeline.NumClasses.connect(self.NumClasses)
+        self.opMultiPredictionPipeline.BlockShape.connect(self.BlockShape)
+        self.opMultiPredictionPipeline.FreezePredictions.connect(self.FreezePredictions)
+
+        self.PredictionProbabilities.connect(self.opMultiPredictionPipeline.PredictionProbabilities)
+        self.CachedPredictionProbabilities.connect(self.opMultiPredictionPipeline.CachedPredictionProbabilities)
+        self.PredictionProbabilityChannels.connect(self.opMultiPredictionPipeline.PredictionProbabilityChannels)
+
+        def inputResizeHandler( slot, oldsize, newsize ):
+            if ( newsize == 0 ):
+                self.PredictionProbabilities.resize(0)
+                self.CachedPredictionProbabilities.resize(0)
+                print("resized!")
+        self.InputImage.notifyResized( inputResizeHandler )
+
+        def handleNewInputImage( multislot, index, *args ):
+            def handleInputReady(slot):
+                self._checkConstraints( index )
+                # self.setupCaches( multislot.index(slot) )
+            multislot[index].notifyReady(handleInputReady)
+                
+        self.InputImage.notifyInserted( handleNewInputImage )
+
+    def _checkConstraints(self, laneIndex):
+        """
+        Ensure that all input images have the same number of channels.
+        """
+        if not self.InputImage[laneIndex].ready():
+            return
+
+        thisLaneTaggedShape = self.InputImage[laneIndex].meta.getTaggedShape()
+
+        # Find a different lane and use it for comparison
+        validShape = thisLaneTaggedShape
+        for i, slot in enumerate(self.InputImage):
+            if slot.ready() and i != laneIndex:
+                validShape = slot.meta.getTaggedShape()
+                break
+
+        if 't' in thisLaneTaggedShape:
+            del thisLaneTaggedShape['t']
+        if 't' in validShape:
+            del validShape['t']
+
+        if validShape['c'] != thisLaneTaggedShape['c']:
+            raise DatasetConstraintError(
+                 "Network Classification",
+                 "All input images must have the same number of channels.  "\
+                 "Your new image has {} channel(s), but your other images have {} channel(s)."\
+                 .format( thisLaneTaggedShape['c'], validShape['c'] ) )
+            
+        if len(validShape) != len(thisLaneTaggedShape):
+            raise DatasetConstraintError(
+                 "Network Classification",
+                 "All input images must have the same dimensionality.  "\
+                 "Your new image has {} dimensions (including channel), but your other images have {} dimensions."\
+                 .format( len(thisLaneTaggedShape), len(validShape) ) )
+        
+        mask_slot = self.PredictionMasks[laneIndex]
+        input_shape = self.InputImage[laneIndex].meta.shape
+        if mask_slot.ready() and mask_slot.meta.shape[:-1] != input_shape[:-1]:
+            raise DatasetConstraintError(
+                 "Network Classification",
+                 "If you supply a prediction mask, it must have the same shape as the input image."\
+                 "Your input image has shape {}, but your mask has shape {}."\
+                 .format( input_shape, mask_slot.meta.shape ) )
+
+
+    def propagateDirty(self, slot, subindex, roi):
+
+        self.opPredictionPipeline.PredictionProbabilityChannels.setDirty(slice(None))
+
+    def addLane(self, laneIndex):
+        numLanes = len(self.InputImages)
+        assert numLanes == laneIndex, "Image lanes must be appended."        
+        self.InputImages.resize(numLanes+1)
+        pass
+
+    def removeLane(self, laneIndex, finalLength):
+        self.InputImages.removeSlot(laneIndex, finalLength)
+        pass
+
+    def getLane(self, laneIndex):
+        return OperatorSubView(self, laneIndex)
+
+    def setupOutputs(self):
+        self.CachedPredictionProbabilities.resize(len(self.InputImage))
+
+
+class OpPredictionPipeline(Operator):
+
+    Classifier = InputSlot()
+    InputImage = InputSlot()
+    NumClasses = InputSlot()
+    BlockShape = InputSlot()
+
+    FreezePredictions = InputSlot(stype='bool', value=False, nonlane=True)
+
+    PredictionProbabilities = OutputSlot()
+    CachedPredictionProbabilities = OutputSlot()
+    PredictionProbabilityChannels = OutputSlot(level=1)
+
+    def __init__(self, *args, **kwargs):
+        super(OpPredictionPipeline, self).__init__( *args, **kwargs )
 
 
         self.predict = OpPixelwiseClassifierPredict(parent=self)
@@ -71,9 +192,40 @@ class OpNNClassification(Operator):
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect(self.opPredictionSlicer.Slices)
 
+    def setupOutputs(self):
+        pass
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
 
     def propagateDirty(self, slot, subindex, roi):
+        # Our output changes when the input changed shape, not when it becomes dirty.
+        pass
 
-        self.PredictionProbabilityChannels.setDirty(slice(None))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

@@ -73,6 +73,8 @@ class NNClassGui(LayerViewerGui):
         self.drawer.liveUpdateButton.clicked.connect(self.pred_nn)
 
         self.drawer.addModel.clicked.connect(self.addModels)
+
+        self.drawer.comboBox.addItems(self.topLevelOperator.ModelPath.value)
         
 
     def initViewerControls(self):
@@ -160,6 +162,8 @@ class NNClassGui(LayerViewerGui):
 
             self.drawer.comboBox.addItems(self.classifiers)
 
+            self.topLevelOperator.ModelPath.setValue([filename[0]])
+
 
     def pred_nn(self):
         """
@@ -194,10 +198,13 @@ class NNClassGui(LayerViewerGui):
                 self.topLevelOperator.Classifier.setValue(self.classifiers[classifier_key])
 
                 self.updateAllLayers()
+                self.parentApplet.appletStateUpdateRequested()
 
             else:
                 #when disabled, the user can scroll around without predicting 
                 self.topLevelOperator.FreezePredictions.setValue(True)
+                print(self.topLevelOperator.FreezePredictions.value)
+                self.parentApplet.appletStateUpdateRequested()
 
   
     @pyqtSlot()
