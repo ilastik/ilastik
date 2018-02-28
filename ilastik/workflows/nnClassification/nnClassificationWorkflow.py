@@ -133,6 +133,16 @@ class NNClassificationWorkflow(Workflow):
 
     #     opNNClassification = self.nnClassificationApplet.topLevelOperator
 
+    def prepareForNewLane(self, laneIndex):
+
+        # store model path
+        pass
+
+    def handleNewLanesAdded(self):
+
+        #load model path when ne lane is added
+        pass
+
     def connectLane(self, laneIndex):
         # Get a handle to each operator
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -146,12 +156,11 @@ class NNClassificationWorkflow(Workflow):
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW])
-        # opDataExport.Inputs.resize( len(self.EXPORT_NAMES))
-        opDataExport.Inputs.resize( 1 )
-        # opDataExport.Inputs[0].connect(opNNclassify.InputImage)
-        opDataExport.Inputs[0].connect(opNNclassify.CachedPredictionProbabilities)
-        # for slot in opDataExport.Inputs:
-        #     assert slot.partner is not None
+        opDataExport.Inputs.resize( len(self.EXPORT_NAMES))
+        opDataExport.Inputs[0].connect(opNNclassify.InputImage)
+        opDataExport.Inputs[1].connect(opNNclassify.CachedPredictionProbabilities)
+        for slot in opDataExport.Inputs:
+            assert slot.partner is not None
 
     def handleAppletStateUpdateRequested(self):
         """
@@ -174,7 +183,6 @@ class NNClassificationWorkflow(Workflow):
 
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
-        print ("liveupdate value", opNNClassification.FreezePredictions.value)
         live_update_active = not opNNClassification.FreezePredictions.value
         
         # The user isn't allowed to touch anything while batch processing is running.

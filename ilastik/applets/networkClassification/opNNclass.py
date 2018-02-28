@@ -36,17 +36,16 @@ class OpNNClassification(Operator):
     category = "Top-level"
 
     #Graph inputs
-
     Classifier = InputSlot()
-    InputImage = InputSlot(level=1)
+    InputImage = InputSlot()
     NumClasses = InputSlot()
     BlockShape = InputSlot()
 
     FreezePredictions = InputSlot(stype='bool', value=False, nonlane=True)
 
-    PredictionProbabilities = OutputSlot(level=1)
-    CachedPredictionProbabilities = OutputSlot(level=1)
-    PredictionProbabilityChannels = OutputSlot(level=2)
+    PredictionProbabilities = OutputSlot()
+    CachedPredictionProbabilities = OutputSlot()
+    PredictionProbabilityChannels = OutputSlot(level=1)
 
     #Gui only (not part of the pipeline)
     ModelPath = OutputSlot()
@@ -56,36 +55,43 @@ class OpNNClassification(Operator):
         self.ModelPath.meta.shape = (1,)
 
 
-
     def __init__(self, *args, **kwargs):
 
         super(OpNNClassification, self).__init__(*args, **kwargs)
 
         self.ModelPath.setValue( [] )
 
-        self.opMultiPredictionPipeline = OpMultiLaneWrapper(OpPredictionPipeline, parent=self, promotedSlotNames =['InputImage'] )
-        self.opMultiPredictionPipeline.InputImage.connect(self.InputImage)
-        self.opMultiPredictionPipeline.Classifier.connect(self.Classifier)
-        self.opMultiPredictionPipeline.NumClasses.connect(self.NumClasses)
-        self.opMultiPredictionPipeline.BlockShape.connect(self.BlockShape)
-        self.opMultiPredictionPipeline.FreezePredictions.connect(self.FreezePredictions)
+        self.predict = OpPixelwiseClassifierPredict(parent=self)
+        self.predict.name = "OpClassifierPredict"
+        self.predict.Image.connect(self.InputImage)
+        self.predict.Classifier.connect(self.Classifier)
+        self.predict.LabelsCount.connect(self.NumClasses)
+        self.PredictionProbabilities.connect(self.predict.PMaps)
 
-        self.PredictionProbabilities.connect(self.opMultiPredictionPipeline.PredictionProbabilities)
-        self.CachedPredictionProbabilities.connect(self.opMultiPredictionPipeline.CachedPredictionProbabilities)
-        self.PredictionProbabilityChannels.connect(self.opMultiPredictionPipeline.PredictionProbabilityChannels)
+        self.prediction_cache = OpBlockedArrayCache(parent=self)
+        self.prediction_cache.name = "BlockedArrayCache"
+        self.prediction_cache.inputs["Input"].connect(self.predict.PMaps)
+        self.prediction_cache.BlockShape.connect(self.BlockShape)
+        self.prediction_cache.inputs["fixAtCurrent"].connect(self.FreezePredictions)
+        self.CachedPredictionProbabilities.connect(self.prediction_cache.Output)
+
+        self.opPredictionSlicer = OpMultiArraySlicer2(parent=self)
+        self.opPredictionSlicer.name = "opPredictionSlicer"
+        self.opPredictionSlicer.Input.connect(self.prediction_cache.Output)
+        self.opPredictionSlicer.AxisFlag.setValue('c')
+        self.PredictionProbabilityChannels.connect(self.opPredictionSlicer.Slices)
 
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):
                 self.PredictionProbabilities.resize(0)
                 self.CachedPredictionProbabilities.resize(0)
-                print("resized!")
         self.InputImage.notifyResized( inputResizeHandler )
 
         def handleNewInputImage( multislot, index, *args ):
             def handleInputReady(slot):
                 self._checkConstraints( index )
                 # self.setupCaches( multislot.index(slot) )
-            multislot[index].notifyReady(handleInputReady)
+            # multislot[index].notifyReady(handleInputReady)
                 
         self.InputImage.notifyInserted( handleNewInputImage )
 
@@ -136,71 +142,23 @@ class OpNNClassification(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
 
-        self.opPredictionPipeline.PredictionProbabilityChannels.setDirty(slice(None))
+        self.PredictionProbabilityChannels.setDirty(slice(None))
 
     def addLane(self, laneIndex):
-        numLanes = len(self.InputImages)
+        numLanes = len(self.InputImage)
         assert numLanes == laneIndex, "Image lanes must be appended."        
-        self.InputImages.resize(numLanes+1)
+        self.InputImage.resize(numLanes+1)
         pass
 
     def removeLane(self, laneIndex, finalLength):
-        self.InputImages.removeSlot(laneIndex, finalLength)
+        self.InputImage.removeSlot(laneIndex, finalLength)
         pass
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
 
-    def setupOutputs(self):
-        self.CachedPredictionProbabilities.resize(len(self.InputImage))
 
 
-class OpPredictionPipeline(Operator):
-
-    Classifier = InputSlot()
-    InputImage = InputSlot()
-    NumClasses = InputSlot()
-    BlockShape = InputSlot()
-
-    FreezePredictions = InputSlot(stype='bool', value=False, nonlane=True)
-
-    PredictionProbabilities = OutputSlot()
-    CachedPredictionProbabilities = OutputSlot()
-    PredictionProbabilityChannels = OutputSlot(level=1)
-
-    def __init__(self, *args, **kwargs):
-        super(OpPredictionPipeline, self).__init__( *args, **kwargs )
-
-
-        self.predict = OpPixelwiseClassifierPredict(parent=self)
-        self.predict.name = "OpClassifierPredict"
-        self.predict.Image.connect(self.InputImage)
-        self.predict.Classifier.connect(self.Classifier)
-        self.predict.LabelsCount.connect(self.NumClasses)
-        self.PredictionProbabilities.connect(self.predict.PMaps)
-
-        self.prediction_cache = OpBlockedArrayCache(parent=self)
-        self.prediction_cache.name = "BlockedArrayCache"
-        self.prediction_cache.inputs["Input"].connect(self.predict.PMaps)
-        self.prediction_cache.BlockShape.connect(self.BlockShape)
-        self.prediction_cache.inputs["fixAtCurrent"].connect(self.FreezePredictions)
-        self.CachedPredictionProbabilities.connect(self.prediction_cache.Output)
-
-        self.opPredictionSlicer = OpMultiArraySlicer2(parent=self)
-        self.opPredictionSlicer.name = "opPredictionSlicer"
-        self.opPredictionSlicer.Input.connect(self.prediction_cache.Output)
-        self.opPredictionSlicer.AxisFlag.setValue('c')
-        self.PredictionProbabilityChannels.connect(self.opPredictionSlicer.Slices)
-
-    def setupOutputs(self):
-        pass
-
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
-
-    def propagateDirty(self, slot, subindex, roi):
-        # Our output changes when the input changed shape, not when it becomes dirty.
-        pass
 
 
 

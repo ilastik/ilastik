@@ -27,7 +27,7 @@ from .nnClassSerializer import NNClassificationSerializer
 class NNClassApplet(StandardApplet):
 
     def __init__( self, workflow, projectFileGroupName ):
-        # self._topLevelOperator = OpNNClassification(parent=workflow)
+        # self.__topLevelOperator = OpNNClassification(parent=workflow)
         
         super(NNClassApplet, self).__init__( "NN Classification", workflow=workflow)
 
@@ -42,18 +42,29 @@ class NNClassApplet(StandardApplet):
 
 
     @property
-    def broadcastingSlots( self ):
-        return []
+    def broadcastingSlots(self):
+        return ['Classifier']
 
     @property
     def dataSerializers(self):
         return self._serializableItems
+
+
+    # @property
+    # def topLevelOperator(self):
+    #     return self.__topLevelOperator
 
     @property
     def singleLaneGuiClass(self):
         from .nnClassGui import NNClassGui
         return NNClassGui
 
+    # def getMultiLaneGui(self):
+    #     if self._gui is None:
+    #         from .nnClassGui import NNClassGui
+    #         self._gui = NNClassGui( self, self.topLevelOperator )
+    #     return self._gui
+
     @property
-    def singleLaneOperatorClass( self ):
+    def singleLaneOperatorClass(self):
         return OpNNClassification

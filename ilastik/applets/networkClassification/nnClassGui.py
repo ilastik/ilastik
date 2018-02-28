@@ -175,7 +175,16 @@ class NNClassGui(LayerViewerGui):
         classifier_key = self.drawer.comboBox.currentText()
 
         if len(classifier_key) == 0 :
-            QMessageBox.critical(self, "Error loading file", "Add a Model first")
+
+            if self.topLevelOperator.Classifier.ready():
+
+                self.drawer.comboBox.clear()
+                self.drawer.comboBox.addItems(self.classifiers)
+                print(self.classifiers.keys())
+
+            else:
+                QMessageBox.critical(self, "Error loading file", "Add a Model first")
+
 
         else:
 
