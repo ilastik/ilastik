@@ -76,6 +76,7 @@ class NNClassGui(LayerViewerGui):
 
         if self.topLevelOperator.ModelPath.ready():
             self.add_NN_classifiers(self.topLevelOperator.ModelPath.value)
+            # self.drawer.comboBox.addItems(self.topLevelOperator.ModelPath.value)
         
 
     def initViewerControls(self):
@@ -164,7 +165,7 @@ class NNClassGui(LayerViewerGui):
             self.drawer.comboBox.addItems(self.classifiers)
 
             self.topLevelOperator.ModelPath.setValue(filename)
-
+            # self.topLevelOperator.ModelPath.setValue(self.classifiers)
 
     def pred_nn(self):
         """
@@ -177,15 +178,7 @@ class NNClassGui(LayerViewerGui):
 
         if len(classifier_key) == 0 :
 
-            if self.topLevelOperator.Classifier.ready():
-
-                # self.drawer.comboBox.clear()
-                # self.drawer.comboBox.addItems(self.classifiers)
-                # print(self.classifiers.keys())
-                self.add_NN_classifiers(self.topLevelOperator.ModelPath.value)
-
-            else:
-                QMessageBox.critical(self, "Error loading file", "Add a Model first")
+            QMessageBox.critical(self, "Error loading file", "Add a Model first")
 
 
         else:
