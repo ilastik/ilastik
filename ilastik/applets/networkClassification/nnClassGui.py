@@ -74,7 +74,8 @@ class NNClassGui(LayerViewerGui):
 
         self.drawer.addModel.clicked.connect(self.addModels)
 
-        self.drawer.comboBox.addItems(self.topLevelOperator.ModelPath.value)
+        if self.topLevelOperator.ModelPath.ready():
+            self.add_NN_classifiers(self.topLevelOperator.ModelPath.value)
         
 
     def initViewerControls(self):
@@ -162,7 +163,7 @@ class NNClassGui(LayerViewerGui):
 
             self.drawer.comboBox.addItems(self.classifiers)
 
-            self.topLevelOperator.ModelPath.setValue([filename[0]])
+            self.topLevelOperator.ModelPath.setValue(filename)
 
 
     def pred_nn(self):
@@ -178,9 +179,10 @@ class NNClassGui(LayerViewerGui):
 
             if self.topLevelOperator.Classifier.ready():
 
-                self.drawer.comboBox.clear()
-                self.drawer.comboBox.addItems(self.classifiers)
-                print(self.classifiers.keys())
+                # self.drawer.comboBox.clear()
+                # self.drawer.comboBox.addItems(self.classifiers)
+                # print(self.classifiers.keys())
+                self.add_NN_classifiers(self.topLevelOperator.ModelPath.value)
 
             else:
                 QMessageBox.critical(self, "Error loading file", "Add a Model first")
@@ -248,6 +250,7 @@ class NNClassGui(LayerViewerGui):
         """
         When AddModels button is clicked.
         """
+
 
         mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent models' )
         mostRecentImageFile = str(mostRecentImageFile)

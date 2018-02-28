@@ -48,7 +48,7 @@ class OpNNClassification(Operator):
     PredictionProbabilityChannels = OutputSlot(level=1)
 
     #Gui only (not part of the pipeline)
-    ModelPath = OutputSlot()
+    ModelPath = InputSlot()
 
     def setupOutputs(self):
         self.ModelPath.meta.dtype = object
@@ -59,7 +59,7 @@ class OpNNClassification(Operator):
 
         super(OpNNClassification, self).__init__(*args, **kwargs)
 
-        self.ModelPath.setValue( [] )
+        # self.ModelPath.setValue( [] )
 
         self.predict = OpPixelwiseClassifierPredict(parent=self)
         self.predict.name = "OpClassifierPredict"
@@ -80,6 +80,8 @@ class OpNNClassification(Operator):
         self.opPredictionSlicer.Input.connect(self.prediction_cache.Output)
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect(self.opPredictionSlicer.Slices)
+
+        # self.ModelPath_.connect(self.ModelPath)
 
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):
