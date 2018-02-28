@@ -43,27 +43,18 @@ class NNClassApplet(StandardApplet):
 
     @property
     def broadcastingSlots(self):
-        return ['Classifier']
+        return ['Classifier', 'ModelPath']
 
     @property
     def dataSerializers(self):
         return self._serializableItems
 
 
-    # @property
-    # def topLevelOperator(self):
-    #     return self.__topLevelOperator
-
     @property
     def singleLaneGuiClass(self):
         from .nnClassGui import NNClassGui
         return NNClassGui
 
-    # def getMultiLaneGui(self):
-    #     if self._gui is None:
-    #         from .nnClassGui import NNClassGui
-    #         self._gui = NNClassGui( self, self.topLevelOperator )
-    #     return self._gui
 
     @property
     def singleLaneOperatorClass(self):
