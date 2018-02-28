@@ -31,6 +31,6 @@ class NNClassificationSerializer(AppletSerializer):
     def __init__(self, topLevelOperator, projectFileGroupName):
         self.VERSION = 1
  
-        # slots = [SerialListSlot(topLevelOperator.ModelPath)]
+        slots = [SerialListSlot(topLevelOperator.ModelPath)]
 
-        super(NNClassificationSerializer, self).__init__(projectFileGroupName)
+        super(NNClassificationSerializer, self).__init__(projectFileGroupName, slots)
