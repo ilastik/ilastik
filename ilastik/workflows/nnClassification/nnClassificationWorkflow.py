@@ -129,19 +129,6 @@ class NNClassificationWorkflow(Workflow):
                                     supportIlastik05Import=True,
                                     instructionText=data_instructions)
 
-    # def prepareForNewLane(self, laneIndex):
-
-    #     opNNClassification = self.nnClassificationApplet.topLevelOperator
-
-    def prepareForNewLane(self, laneIndex):
-
-        # store model path
-        pass
-
-    def handleNewLanesAdded(self):
-
-        #load model path when ne lane is added
-        pass
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator
@@ -158,7 +145,7 @@ class NNClassificationWorkflow(Workflow):
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize( len(self.EXPORT_NAMES))
         opDataExport.Inputs[0].connect(opNNclassify.InputImage)
-        opDataExport.Inputs[1].connect(opNNclassify.CachedPredictionProbabilities)
+        opDataExport.Inputs[1].connect(opNNclassify.PredictionProbabilities)
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
 
