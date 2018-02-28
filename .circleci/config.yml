@@ -20,7 +20,7 @@ jobs:
     # Prepare for artifact and test results  collection equivalent to how it was done on 1.0.
     # In many cases you can simplify this from what is generated here.
     # 'See docs on artifact collection here https://circleci.com/docs/2.0/artifacts/'
-    - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+    # - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
     # Restore the dependency cache
     - restore_cache:
         keys:
@@ -61,10 +61,10 @@ jobs:
     # Teardown
     #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
     # Save test results
-    - store_test_results:
-        path: /tmp/circleci-test-results
-    # Save artifacts
-    - store_artifacts:
-        path: /tmp/circleci-artifacts
-    - store_artifacts:
-        path: /tmp/circleci-test-results
+    # - store_test_results:
+    #     path: /tmp/circleci-test-results
+    # # Save artifacts
+    # - store_artifacts:
+    #     path: /tmp/circleci-artifacts
+    # - store_artifacts:
+    #     path: /tmp/circleci-test-results
