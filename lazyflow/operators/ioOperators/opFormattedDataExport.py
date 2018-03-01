@@ -204,7 +204,7 @@ class OpFormattedDataExport(Operator):
             except KeyError:
                 # FIXME: Why does the above line fail sometimes?
                 warnings.warn("Ignoring invalid axis order setting")
-        
+
         if not user_provided:
             if self.Input.meta.original_axistags is None:
                 axiskeys = self.Input.meta.getAxisKeys()
