@@ -207,7 +207,6 @@ class NNClassGui(LayerViewerGui):
             else:
                 #when disabled, the user can scroll around without predicting 
                 self.topLevelOperator.FreezePredictions.setValue(True)
-                print(self.topLevelOperator.FreezePredictions.value)
                 self.parentApplet.appletStateUpdateRequested()
 
   
