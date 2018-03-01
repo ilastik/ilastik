@@ -1527,6 +1527,9 @@ class Slot(object):
                     mslot_info += " level={}".format( self.level )
             mslot_info += " ] "
 
+        # For debugging:
+        # Should actually never happen if the operator is constructed correctly,
+        # however, if it is not, the resulting error message was too cryptic
         if self.getRealOperator() is None:
             realOpName = 'Unassigned'
         else:
