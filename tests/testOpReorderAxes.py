@@ -112,7 +112,7 @@ class TestOpReorderAxes(unittest.TestCase):
             vresult.axistags = self.operator.Output.meta.axistags
             reorderedInput = self.inArray.withAxes(*[tag.key for tag in vresult.axistags])
             assert numpy.all(vresult == reorderedInput)
-    
+
     def test_Roi_default_order(self):
         for i in range(self.tests):
             self.prepareVolnOp()

@@ -152,7 +152,7 @@ class MetaDict(defaultdict):
     def getAxisKeys(self):
         assert self.axistags is not None
         return [tag.key for tag in self.axistags]
-        
+
     def getOriginalAxisKeys(self):
         assert self.original_axistags is not None
         return [tag.key for tag in self.original_axistags]
