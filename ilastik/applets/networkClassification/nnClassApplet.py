@@ -43,7 +43,7 @@ class NNClassApplet(StandardApplet):
 
     @property
     def broadcastingSlots(self):
-        return ['Classifier', 'ModelPath']
+        return ['ModelPath', "FreezePredictions"]
 
     @property
     def dataSerializers(self):
