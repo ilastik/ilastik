@@ -1,6 +1,6 @@
 import functools
+import types
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-
 
 def reorder_options(internal_axes_order, exceptions=[],
                     output_axes_order='tczyx'):
@@ -18,13 +18,13 @@ def reorder_options(internal_axes_order, exceptions=[],
               (see example usage below)
 
         @param internal_axes_order: str Axes order the decorated operator
-                                        assumes internally.ResizedShape
+                                        assumes internally.
         @param exceptions: list(str) List of slot names that do not need to be
                                      reordered.
         @param output_axes_order: str Output Axes order for all reordered
                                       output slots.
 
-        Example usage:
+        Example usage: (for a 'real-life example check OpGraphCut in ilastik)
 
             @reorder
             @reorder_options('tzyxc', ['ResizedShape'])
@@ -51,9 +51,31 @@ def reorder_options(internal_axes_order, exceptions=[],
 def guard_methods(cls):
     """
         helper function for reorder
+        For every method of an operator, which has a 'reorder decorator', the distinction has to be made, if the method
+        was called directly or indirectly by the operator itself, i.e. by one of its methods, or on the operator object
+        from the 'outside'. To clarify:
+        @reorder
+        @reorder_options(internal_axis_order='set in stone by dev',
+                         exceptions: 'i_dont_care_for_order',
+                         output_axes_order: 'outside world order')
+        class MyOp(operator):
+            def __init__(self):
+                super().__init__()
+                # inner call
+                self.my_method('Psst, I am an insider. '
+                               'I assume the internal order, the dev had in mind crating this operator.')
+
+            def my_method(self, msg):
+                print(msg)
+
+            def i_dont_care_for_order(self):
+                print('What order? I am an anarchist; do not force any order upon me!')
+
+        myOp = MyOp()
+        myOp.method('Hello from the outside world! The rules have changed, the axis order revolution has begun!)
     """
     methods = [member for member, member_type in cls.__dict__.items()
-               if isinstance(member_type, type(lambda:0)) and
+               if isinstance(member_type, types.FunctionType) and
                member != '__getattribute__' and  # will be adapted individually
                member != '__init__'  # will be adapted individually
                ]
@@ -65,7 +87,8 @@ def guard_methods(cls):
                         if isinstance(member_type, property)]
 
     # flag when methods are called from within the class
-    cls._inner_call = 0
+    # as opposed to invoking a method of the object from the "outside"
+    cls._inner_call = False
     # overwrite methods with guarded versions thereof
     for meth in methods:
         old_meth = getattr(cls, meth)
@@ -171,27 +194,6 @@ def reorder(cls):
         return wrap
 
     setattr(cls, '__init__', guard(old_meth))
-
-    # old_meth = getattr(cls, 'setupOutputs')
-
-    # def guard(fn):
-    #     @functools.wraps(old_meth)
-    #     def wrap(self):
-    #         # self._inner_call = False
-    #         # for name in outputSlots:
-    #         #     slot = self.__getattribute__(name)
-    #         #     # slot.connect(self._reorderedOutput[name].Output)
-    #         #     print('slot here', slot)
-    #         #     # print('done here')
-    #         #     # self._reorderedOutput[name].Input.connect()
-
-    #         self._inner_call = True
-    #         ret = fn(self)
-    #         self._inner_call = False
-    #         return ret
-    #     return wrap
-
-    # setattr(cls, 'setupOutputs', guard(old_meth))
 
     # change __getattribute__ in order to squeeze in the opReorderAxes ops
     def __getattribute__(self, name):
