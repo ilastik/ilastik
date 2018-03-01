@@ -46,7 +46,7 @@ class NNClassificationWorkflow(Workflow):
     
     DATA_ROLE_RAW = 0
     ROLE_NAMES = ['Raw Data']
-    EXPORT_NAMES = ['Features', 'Probabilities']
+    EXPORT_NAMES = ['Probabilities']
     
     @property
     def applets(self):
@@ -86,7 +86,8 @@ class NNClassificationWorkflow(Workflow):
         self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet")
         opNNclassify = self.nnClassificationApplet.topLevelOperator
 
-        self.dataExportApplet = DataExportApplet(self, "Data Export")
+        # self.dataExportApplet = DataExportApplet(self, "Data Export")
+        self.dataExportApplet = NNClassificationDataExportApplet(self, 'Data Export')
         self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
         self.dataExportApplet.post_process_entire_export = self.post_process_entire_export      
 
@@ -144,10 +145,9 @@ class NNClassificationWorkflow(Workflow):
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize( len(self.EXPORT_NAMES))
-        opDataExport.Inputs[0].connect(opNNclassify.InputImage)
-        opDataExport.Inputs[1].connect(opNNclassify.PredictionProbabilities)
-        for slot in opDataExport.Inputs:
-            assert slot.partner is not None
+        opDataExport.Inputs[0].connect(opNNclassify.CachedPredictionProbabilities)
+        # for slot in opDataExport.Inputs:
+        #     assert slot.partner is not None
 
     def handleAppletStateUpdateRequested(self):
         """
