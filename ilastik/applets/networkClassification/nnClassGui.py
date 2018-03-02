@@ -1,48 +1,79 @@
-import numpy
-from functools import partial
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
+#
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#          http://ilastik.org/license.html
+###############################################################################
 import os
-
-from collections import OrderedDict
 import logging
+from functools import partial
+from collections import OrderedDict
 
-from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
+import numpy
+
+from volumina.api import LazyflowSource, AlphaModulatedLayer
 from volumina.utility import PreferencesManager
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, pyqtSlot
-from PyQt5.QtWidgets import QWidget, QHeaderView, QStackedWidget, QTableWidgetItem, QPushButton, QMessageBox, QFileDialog
-from PyQt5.QtGui import QColor, QIcon, QCursor
+from PyQt5.QtWidgets import QStackedWidget, QMessageBox, QFileDialog
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
-
-import vigra
 
 from lazyflow.classifiers import TikTorchLazyflowClassifier
 
 logger = logging.getLogger(__name__)
 
-
-
 class NNClassGui(LayerViewerGui):
+    """
+    LayerViewerGui class for Neural Network Classification
+    """
 
     def viewerControlWidget(self):
+        """
+        Return the widget that controls how the content of the central widget is displayed
+        """
         return self._viewerControlUi
 
-    def centralWidget( self ):
+    def centralWidget(self):
+        """
+        Return the widget that will be displayed in the main viewer area.
+        """
         return self
 
     def stopAndCleanUp(self):
+        """
+        The gui should stop updating all data views and should clean up any resources it created
+        """
         for fn in self.__cleanup_fns:
             fn()
 
-    def menus( self ):
+    def menus(self):
+        """
+        Return a list of QMenu widgets to be shown in the menu bar when this applet is visible
+        """
         return []
 
     def appletDrawer(self):
+        """
+        Return the drawer widget for this applet
+        """
         return self.drawer
-
-
 
     def __init__(self, parentApplet, topLevelOperator):
         super(NNClassGui, self).__init__(parentApplet, topLevelOperator)
@@ -56,7 +87,7 @@ class NNClassGui(LayerViewerGui):
 
         self._initAppletDrawerUic()
         self.initViewerControls()
-        self.initViewerControlUi() #ToDO
+        self.initViewerControlUi() 
 
 
     def _initAppletDrawerUic(self, drawerPath=None):
@@ -65,7 +96,7 @@ class NNClassGui(LayerViewerGui):
         """
         if drawerPath is None:
             localDir = os.path.split(__file__)[0]
-            drawerPath = os.path.join( localDir, "nnClassAppletUiTest.ui")
+            drawerPath = os.path.join(localDir, "nnClassAppletUiTest.ui")
         self.drawer = uic.loadUi(drawerPath)
 
         self.drawer.comboBox.clear()
@@ -77,9 +108,11 @@ class NNClassGui(LayerViewerGui):
         if self.topLevelOperator.ModelPath.ready():
             self.add_NN_classifiers(self.topLevelOperator.ModelPath.value)
             # self.drawer.comboBox.addItems(self.topLevelOperator.ModelPath.value)
-        
 
     def initViewerControls(self):
+        """
+        initializing viewerControl
+        """
         self._viewerControlWidgetStack = QStackedWidget(parent=self)
 
 
@@ -89,13 +122,16 @@ class NNClassGui(LayerViewerGui):
         In our case, the viewer control GUI consists mainly of a layer list.
         """
         localDir = os.path.split(__file__)[0]
-        self._viewerControlUi = uic.loadUi( os.path.join( localDir, "viewerControls.ui" ) )
+        self._viewerControlUi = uic.loadUi(os.path.join(localDir, "viewerControls.ui"))
 
         def nextCheckState(checkbox):
-            checkbox.setChecked( not checkbox.isChecked() )
+            """
+            sets the checkbox to the next state
+            """
+            checkbox.setChecked(not checkbox.isChecked())
         self._viewerControlUi.checkShowPredictions.nextCheckState = partial(nextCheckState, self._viewerControlUi.checkShowPredictions)
 
-        self._viewerControlUi.checkShowPredictions.clicked.connect( self.handleShowPredictionsClicked )
+        self._viewerControlUi.checkShowPredictions.clicked.connect(self.handleShowPredictionsClicked)
 
         model = self.editor.layerStack
         self._viewerControlUi.viewerControls.setupConnections(model)
@@ -105,11 +141,11 @@ class NNClassGui(LayerViewerGui):
     def setupLayers(self):
         """
         which layers will be shown in the layerviewergui.
-        Triggers the prediciton by setting the layer on visible 
+        Triggers the prediciton by setting the layer on visible
         """
 
         inputSlot = self.topLevelOperator.InputImage
-        
+
         layers = []
 
         for channel, predictionSlot in enumerate(self.topLevelOperator.PredictionProbabilityChannels):
@@ -121,6 +157,9 @@ class NNClassGui(LayerViewerGui):
                 predictionLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
                 def setPredLayerName(n, predictLayer_=predictionLayer, initializing=False):
+                    """
+                    function for setting the names for every Channel
+                    """
                     if not initializing and predictLayer_ not in self.layerstack:
                         # This layer has been removed from the layerstack already.
                         # Don't touch it.
@@ -133,26 +172,26 @@ class NNClassGui(LayerViewerGui):
                 layers.append(predictionLayer)
 
         # always as last layer
-        if inputSlot.ready(): 
+        if inputSlot.ready():
             rawLayer = self.createStandardLayerFromSlot(inputSlot)
             rawLayer.visible = True
             rawLayer.opacity = 1.0
-            rawLayer.name = "Raw Data (display only)" 
+            rawLayer.name = "Raw Data (display only)"
             layers.append(rawLayer)
 
 
         return layers
-       
+
 
     def add_NN_classifiers(self, filename):
         """
         Adds the chosen FilePath to the classifierDictionary and to the ComboBox
         """
 
-        #split path string 
+        #split path string
         modelname = os.path.basename(os.path.normpath(filename[0]))
 
-        #Statement for importing the same classifier twice 
+        #Statement for importing the same classifier twice
         if modelname in self.classifiers.keys():
             print("Classifier already added")
             QMessageBox.critical(self, "Error loading file", "{} already added".format(modelname))
@@ -176,7 +215,7 @@ class NNClassGui(LayerViewerGui):
 
         classifier_key = self.drawer.comboBox.currentText()
 
-        if len(classifier_key) == 0 :
+        if len(classifier_key) == 0:
 
             QMessageBox.critical(self, "Error loading file", "Add a Model first")
 
@@ -191,7 +230,7 @@ class NNClassGui(LayerViewerGui):
 
                 input_shape = numpy.array(expected_input_shape)
                 input_shape = input_shape[1:]
-                input_shape = numpy.append(input_shape,None)
+                input_shape = numpy.append(input_shape, None)
 
                 halo_size = self.classifiers[classifier_key].HALO_SIZE
                 input_shape[1:3] -= 2*halo_size
@@ -205,13 +244,16 @@ class NNClassGui(LayerViewerGui):
                 self.parentApplet.appletStateUpdateRequested()
 
             else:
-                #when disabled, the user can scroll around without predicting 
+                #when disabled, the user can scroll around without predicting
                 self.topLevelOperator.FreezePredictions.setValue(True)
                 self.parentApplet.appletStateUpdateRequested()
 
-  
+
     @pyqtSlot()
     def handleShowPredictionsClicked(self):
+        """
+        sets the layer visibility when showPredicition is clicked
+        """
         checked = self._viewerControlUi.checkShowPredictions.isChecked()
         for layer in self.layerstack:
             if "Prediction" in layer.name:
@@ -244,7 +286,7 @@ class NNClassGui(LayerViewerGui):
         """
 
 
-        mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent models' )
+        mostRecentImageFile = PreferencesManager().get('DataSelection', 'recent models')
         mostRecentImageFile = str(mostRecentImageFile)
         if mostRecentImageFile is not None:
             defaultDirectory = os.path.split(mostRecentImageFile)[0]
@@ -258,7 +300,9 @@ class NNClassGui(LayerViewerGui):
 
 
     def getImageFileNamesToOpen(cls, parent_window, defaultDirectory):
-
+        """
+        opens a QFileDialog for importing files
+        """
         extensions = ['nn']
         filter_strs = ["*." + x for x in extensions]
         filters = ["{filt} ({filt})".format(filt=x) for x in filter_strs]
@@ -276,13 +320,13 @@ class NNClassGui(LayerViewerGui):
             #file_dialog.setNameFilterDetailsVisible(False)
             # select multiple files
             file_dialog.setFileMode(QFileDialog.ExistingFiles)
-            file_dialog.setDirectory( defaultDirectory )
+            file_dialog.setDirectory(defaultDirectory)
 
             if file_dialog.exec_():
                 fileNames = file_dialog.selectedFiles()
         else:
             # otherwise, use native dialog of the present platform
-            fileNames, _filter = QFileDialog.getOpenFileNames(parent_window, "Select Model", defaultDirectory, filt_all_str)
+            fileNames, _ = QFileDialog.getOpenFileNames(parent_window, "Select Model", defaultDirectory, filt_all_str)
 
         return fileNames
 

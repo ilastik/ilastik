@@ -18,32 +18,26 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-import warnings
-
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
-import warnings
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
-
-from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
-
-from ilastik.utility import bind
+from volumina.api import LazyflowSource, AlphaModulatedLayer
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 
-class NNClassificationDataExportGui( DataExportGui ):
+class NNClassificationDataExportGui(DataExportGui):
     """
     A subclass of the generic data export gui that creates custom layer viewers.
     """
     def createLayerViewer(self, opLane):
         return NNClassificationResultsViewer(self.parentApplet, opLane)
-        
+
 class NNClassificationResultsViewer(DataExportLayerViewerGui):
-    
+    """
+    SubClass for the DataExport viewerGui to show the layers correctly
+    """
+
     def __init__(self, *args, **kwargs):
         super(NNClassificationResultsViewer, self).__init__(*args, **kwargs)
-    
+
     def setupLayers(self):
         layers = []
         opLane = self.topLevelOperatorView
@@ -51,12 +45,12 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
         # This code depends on a specific order for the export slots.
         # If those change, update this function!
         selection_names = opLane.SelectionNames.value
-        
+
         # see comment above
         for name, expected in zip(selection_names[0:1], ['Probabilities']):
             assert name.startswith(expected), "The Selection Names don't match the expected selection names."
-        
-        selection = selection_names[ opLane.InputSelection.value ]
+
+        selection = selection_names[opLane.InputSelection.value]
 
         if selection.startswith('Probabilities'):
             exportedLayers = self._initPredictionLayers(opLane.ImageToExport)
@@ -64,25 +58,25 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
                 layer.visible = True
                 layer.name = layer.name + "- Exported"
             layers += exportedLayers
-            
+
         # If available, also show the raw data layer
         rawSlot = opLane.FormattedRawData
         if rawSlot.ready():
-            rawLayer = self.createStandardLayerFromSlot( rawSlot )
+            rawLayer = self.createStandardLayerFromSlot(rawSlot)
             rawLayer.name = "Raw Data"
             rawLayer.visible = True
             rawLayer.opacity = 1.0
-            layers.append( rawLayer )
+            layers.append(rawLayer)
 
-        return layers 
+        return layers
 
     def _initPredictionLayers(self, predictionSlot):
         opLane = self.topLevelOperatorView
         layers = []
 
         # Use a slicer to provide a separate slot for each channel layer
-        opSlicer = OpMultiArraySlicer2( parent=opLane.viewed_operator().parent )
-        opSlicer.Input.connect( predictionSlot )
+        opSlicer = OpMultiArraySlicer2(parent=opLane.viewed_operator().parent)
+        opSlicer.Input.connect(predictionSlot)
         opSlicer.AxisFlag.setValue('c')
 
         for channel, predictionSlot in enumerate(opSlicer.Slices):
@@ -93,6 +87,9 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
                 predictLayer.visible = True
 
                 def setPredLayerName(n, predictLayer_=predictLayer, initializing=False):
+                    """
+                    function for setting the names for every Channel
+                    """
                     if not initializing and predictLayer_ not in self.layerstack:
                         # This layer has been removed from the layerstack already.
                         # Don't touch it.
