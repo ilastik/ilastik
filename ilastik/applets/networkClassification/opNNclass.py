@@ -20,19 +20,18 @@
 ###############################################################################
 
 from __future__ import print_function
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.classifierOperators import OpPixelwiseClassifierPredict
 from lazyflow.operators import OpMultiArraySlicer2
 from ilastik.utility.operatorSubView import OperatorSubView
-from ilastik.utility import OpMultiLaneWrapper
 
 
-class OpNNClassification(Operator): 
+class OpNNClassification(Operator):
     """
     Top-level operator for pixel classification
     """
-    name="OpNNClassification"
+    name = "OpNNClassification"
     category = "Top-level"
 
     #Graph inputs
@@ -50,16 +49,9 @@ class OpNNClassification(Operator):
     #Gui only (not part of the pipeline)
     ModelPath = InputSlot()
 
-    def setupOutputs(self):
-        self.ModelPath.meta.dtype = object
-        self.ModelPath.meta.shape = (1,)
-
-
     def __init__(self, *args, **kwargs):
 
         super(OpNNClassification, self).__init__(*args, **kwargs)
-
-        # self.ModelPath.setValue( [] )
 
         self.predict = OpPixelwiseClassifierPredict(parent=self)
         self.predict.name = "OpClassifierPredict"
@@ -81,79 +73,16 @@ class OpNNClassification(Operator):
         self.opPredictionSlicer.AxisFlag.setValue('c')
         self.PredictionProbabilityChannels.connect(self.opPredictionSlicer.Slices)
 
-        # self.ModelPath_.connect(self.ModelPath)
-
-        def inputResizeHandler( slot, oldsize, newsize ):
-            if ( newsize == 0 ):
-                self.PredictionProbabilities.resize(0)
-                self.CachedPredictionProbabilities.resize(0)
-        self.InputImage.notifyResized( inputResizeHandler )
-
-        def handleNewInputImage( multislot, index, *args ):
-            def handleInputReady(slot):
-                self._checkConstraints( index )
-                # self.setupCaches( multislot.index(slot) )
-            # multislot[index].notifyReady(handleInputReady)
-                
-        self.InputImage.notifyInserted( handleNewInputImage )
-
-    def _checkConstraints(self, laneIndex):
-        """
-        Ensure that all input images have the same number of channels.
-        """
-        if not self.InputImage[laneIndex].ready():
-            return
-
-        thisLaneTaggedShape = self.InputImage[laneIndex].meta.getTaggedShape()
-
-        # Find a different lane and use it for comparison
-        validShape = thisLaneTaggedShape
-        for i, slot in enumerate(self.InputImage):
-            if slot.ready() and i != laneIndex:
-                validShape = slot.meta.getTaggedShape()
-                break
-
-        if 't' in thisLaneTaggedShape:
-            del thisLaneTaggedShape['t']
-        if 't' in validShape:
-            del validShape['t']
-
-        if validShape['c'] != thisLaneTaggedShape['c']:
-            raise DatasetConstraintError(
-                 "Network Classification",
-                 "All input images must have the same number of channels.  "\
-                 "Your new image has {} channel(s), but your other images have {} channel(s)."\
-                 .format( thisLaneTaggedShape['c'], validShape['c'] ) )
-            
-        if len(validShape) != len(thisLaneTaggedShape):
-            raise DatasetConstraintError(
-                 "Network Classification",
-                 "All input images must have the same dimensionality.  "\
-                 "Your new image has {} dimensions (including channel), but your other images have {} dimensions."\
-                 .format( len(thisLaneTaggedShape), len(validShape) ) )
-        
-        mask_slot = self.PredictionMasks[laneIndex]
-        input_shape = self.InputImage[laneIndex].meta.shape
-        if mask_slot.ready() and mask_slot.meta.shape[:-1] != input_shape[:-1]:
-            raise DatasetConstraintError(
-                 "Network Classification",
-                 "If you supply a prediction mask, it must have the same shape as the input image."\
-                 "Your input image has shape {}, but your mask has shape {}."\
-                 .format( input_shape, mask_slot.meta.shape ) )
-
-
     def propagateDirty(self, slot, subindex, roi):
-
+        """
+        PredicitionProbabilityChannels is called when the visibility of SetupLayers is changed
+        """
         self.PredictionProbabilityChannels.setDirty(slice(None))
 
     def addLane(self, laneIndex):
-        numLanes = len(self.InputImage)
-        assert numLanes == laneIndex, "Image lanes must be appended."        
-        self.InputImage.resize(numLanes+1)
         pass
 
     def removeLane(self, laneIndex, finalLength):
-        self.InputImage.removeSlot(laneIndex, finalLength)
         pass
 
     def getLane(self, laneIndex):

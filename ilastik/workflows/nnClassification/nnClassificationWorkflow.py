@@ -19,47 +19,50 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from builtins import range
-import sys
-import copy
 import argparse
 import logging
-logger = logging.getLogger(__name__)
 
-import numpy
-
-from ilastik.config import cfg as ilastik_config
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.networkClassification import NNClassApplet, NNClassificationDataExportApplet
-from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph
-from lazyflow.roi import TinyVector, fullSlicing
+
+logger = logging.getLogger(__name__)
 
 class NNClassificationWorkflow(Workflow):
-    
+    """
+    Workflow for the Neural Network Classification Applet
+    """
     workflowName = "Neural Network Classification"
     workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 0 # show DataSelection by default
-    
+
     DATA_ROLE_RAW = 0
     ROLE_NAMES = ['Raw Data']
     EXPORT_NAMES = ['Probabilities']
-    
+
     @property
     def applets(self):
+        """
+        Return the list of applets that are owned by this workflow
+        """
         return self._applets
 
     @property
     def imageNameListSlot(self):
+        """
+        Return the "image name list" slot, which lists the names of
+        all image lanes (i.e. files) currently loaded by the workflow
+        """
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
+
         # Create a graph to be shared by all operators
         graph = Graph()
-        super( NNClassificationWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
+        super(NNClassificationWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
         # Parse workflow-specific command-line args
@@ -76,29 +79,25 @@ class NNClassificationWorkflow(Workflow):
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right.\n\n"\
                             "Power users: Optionally use the 'Prediction Mask' tab to supply a binary image that tells ilastik where it should avoid computations you don't need."
 
-        # Applets for training (interactive) workflow 
+        # Applets for training (interactive) workflow
         self.dataSelectionApplet = self.createDataSelectionApplet()
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        
+
         # see role constants, above
-        opDataSelection.DatasetRoles.setValue( NNClassificationWorkflow.ROLE_NAMES )
+        opDataSelection.DatasetRoles.setValue(NNClassificationWorkflow.ROLE_NAMES)
 
         self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet")
-        opNNclassify = self.nnClassificationApplet.topLevelOperator
 
-        # self.dataExportApplet = DataExportApplet(self, "Data Export")
         self.dataExportApplet = NNClassificationDataExportApplet(self, 'Data Export')
-        self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
-        self.dataExportApplet.post_process_entire_export = self.post_process_entire_export      
 
         # Configure global DataExport settings
         opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
-        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )
+        opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
+        opDataExport.SelectionNames.setValue(self.EXPORT_NAMES)
 
-        self.batchProcessingApplet = BatchProcessingApplet(self, 
-                                                           "Batch Processing", 
-                                                           self.dataSelectionApplet, 
+        self.batchProcessingApplet = BatchProcessingApplet(self,
+                                                           "Batch Processing",
+                                                           self.dataSelectionApplet,
                                                            self.dataExportApplet)
 
         # Expose for shell
@@ -109,42 +108,44 @@ class NNClassificationWorkflow(Workflow):
 
         if unused_args:
             # We parse the export setting args first.  All remaining args are considered input files by the input applet.
-            self._batch_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
-            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( unused_args )
+            self._batch_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args(unused_args)
+            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args(unused_args)
         else:
             self._batch_input_args = None
             self._batch_export_args = None
 
         if unused_args:
-            logger.warn("Unused command-line args: {}".format( unused_args ))
+            logger.warn("Unused command-line args: {}".format(unused_args))
 
     def createDataSelectionApplet(self):
         """
-        Can be overridden by subclasses, if they want to use 
+        Can be overridden by subclasses, if they want to use
         special parameters to initialize the DataSelectionApplet.
         """
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
-        return DataSelectionApplet( self,
-                                    "Input Data",
-                                    "Input Data",
-                                    supportIlastik05Import=True,
-                                    instructionText=data_instructions)
+        return DataSelectionApplet(self,
+                                   "Input Data",
+                                   "Input Data",
+                                   supportIlastik05Import=True,
+                                   instructionText=data_instructions)
 
 
     def connectLane(self, laneIndex):
-        # Get a handle to each operator
+        """
+        connects the operators for different lanes, each lane has a laneIndex starting at 0
+        """
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opNNclassify = self.nnClassificationApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
-        
+
         # Input Image -> Feature Op
         #         and -> Classification Op (for display)
-        opNNclassify.InputImage.connect( opData.Image )
-        
+        opNNclassify.InputImage.connect(opData.Image)
+
         # Data Export connections
-        opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW])
-        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW])
-        opDataExport.Inputs.resize( len(self.EXPORT_NAMES))
+        opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
+        opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
+        opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
         opDataExport.Inputs[0].connect(opNNclassify.CachedPredictionProbabilities)
         # for slot in opDataExport.Inputs:
         #     assert slot.partner is not None
@@ -159,30 +160,29 @@ class NNClassificationWorkflow(Workflow):
         input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
         opNNClassification = self.nnClassificationApplet.topLevelOperator
-        nnOutput = []
 
-        opDataExport = self.dataExportApplet.topLevelOperator 
+        opDataExport = self.dataExportApplet.topLevelOperator
 
         predictions_ready = input_ready and \
-                            len(opDataExport.Inputs) > 0 
+                            len(opDataExport.Inputs) > 0
                             # opDataExport.Inputs[0][0].ready()
                             # (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
         live_update_active = not opNNClassification.FreezePredictions.value
-        
+
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
-        
+
         self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
         self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and not batch_processing_busy)
         self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not batch_processing_busy and not live_update_active)
 
         if self.batchProcessingApplet is not None:
             self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
-    
-        # Lastly, check for certain "busy" conditions, during which we 
+
+        # Lastly, check for certain "busy" conditions, during which we
         #  should prevent the shell from closing the project.
         busy = False
         busy |= self.dataSelectionApplet.busy
@@ -192,22 +192,7 @@ class NNClassificationWorkflow(Workflow):
         self._shell.enableProjectChanges(not busy)
 
 
-    def prepare_for_entire_export(self):
-        """
-        Assigned to DataExportApplet.prepare_for_entire_export
-        (See above.)
-        """
-        print ('prepare_for_entire_export')
-        self.freeze_status = self.nnClassificationApplet.topLevelOperator.FreezePredictions.value
-        self.nnClassificationApplet.topLevelOperator.FreezePredictions.setValue(False)
 
-    def post_process_entire_export(self):
-        """
-        Assigned to DataExportApplet.post_process_entire_export
-        (See above.)
-        """
-        print('post_process_entire_export')
-        self.nnClassificationApplet.topLevelOperator.FreezePredictions.setValue(self.freeze_status)
 
 
 

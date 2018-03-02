@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -19,40 +18,24 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from .opNNClassificationDataExport import OpNNClassificationDataExport
+from __future__ import absolute_import
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
-from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 
-from ilastik.utility import OpMultiLaneWrapper
+class NNClassificationDataExportApplet(DataExportApplet):
+    """
+    This a specialization of the generic data export applet that
+    provides a special viewer for Neural Network predictions.
+    """
 
-class NNClassificationDataExportApplet( DataExportApplet ):
-    # """
-    # This a specialization of the generic data export applet that
-    # provides a special viewer for pixel classification predictions.
-    # """
-    def __init__( self, workflow, title, isBatch=False ):
-    #     # Our operator is a subclass of the generic data export operator
-        # self._topLevelOperator = OpMultiLaneWrapper( OpNNClassificationDataExport, parent=workflow )
-        # self._gui = None
-        # self._title = title
-        # self._serializers = [ DataExportSerializer(self._topLevelOperator, title) ]
-
-    #     # Base class init
+    def __init__(self, workflow, title, isBatch=False):
+    # Base class init
         super(NNClassificationDataExportApplet, self).__init__(workflow, title, isBatch)
-        
-    # @property
-    # def dataSerializers(self):
-    #     return self._serializers
-
-    # @property
-    # def topLevelOperator(self):
-    #     return self._topLevelOperator
 
     def getMultiLaneGui(self):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from .nnClassificationDataExportGui import NNClassificationDataExportGui
-            self._gui = NNClassificationDataExportGui( self, self.topLevelOperator )
+            self._gui = NNClassificationDataExportGui(self, self.topLevelOperator)
         return self._gui
 
 
