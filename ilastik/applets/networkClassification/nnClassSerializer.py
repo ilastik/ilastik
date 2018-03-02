@@ -18,9 +18,6 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-import numpy
-import vigra
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialListSlot
 
 import logging
@@ -30,7 +27,7 @@ class NNClassificationSerializer(AppletSerializer):
 
     def __init__(self, topLevelOperator, projectFileGroupName):
         self.VERSION = 1
- 
+
         slots = [SerialListSlot(topLevelOperator.ModelPath)]
 
         super(NNClassificationSerializer, self).__init__(projectFileGroupName, slots)
