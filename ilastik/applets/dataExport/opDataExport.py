@@ -42,8 +42,10 @@ class OpDataExport(Operator):
     # The dataset info for the original dataset (raw data)
     RawDatasetInfo = InputSlot()
     WorkingDirectory = InputSlot() # Non-absolute paths are relative to this directory.  If not provided, paths must be absolute.
-    
-    Inputs = InputSlot(level=1) # The exportable slots (should all be of the same shape, except for channel)
+
+    # The exportable slots (should all be of the same shape, except for channel)
+    # Set as optional, so that we could export some of the slots (e.g. FeatureImages) before training
+    Inputs = InputSlot(level=1, optional=True)
     InputSelection = InputSlot(value=0)
     SelectionNames = InputSlot() # A list of names corresponding to the exportable inputs
 

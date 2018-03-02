@@ -263,12 +263,6 @@ class PixelClassificationWorkflow(Workflow):
                              opPixelClassification.classifier_cache.Output.ready() and\
                              opPixelClassification.classifier_cache.Output.value is None
 
-        predictions_ready = features_ready and \
-                            not invalid_classifier and \
-                            len(opDataExport.Inputs) > 0 and \
-                            opDataExport.Inputs[0][0].ready() and \
-                            (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
-
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
         live_update_active = not opPixelClassification.FreezePredictions.value
@@ -279,9 +273,15 @@ class PixelClassificationWorkflow(Workflow):
         self._shell.setAppletEnabled(self.dataSelectionApplet, not live_update_active and not batch_processing_busy)
         self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready and not live_update_active and not batch_processing_busy)
         self._shell.setAppletEnabled(self.pcApplet, features_ready and not batch_processing_busy)
-        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not batch_processing_busy)
+        self._shell.setAppletEnabled(self.dataExportApplet, features_ready and not batch_processing_busy)
 
         if self.batchProcessingApplet is not None:
+            predictions_ready = features_ready and \
+                                not invalid_classifier and \
+                                len(opDataExport.Inputs) > 0 and \
+                                opDataExport.Inputs[0][0].ready() and \
+                                (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
+
             self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
 
         # Lastly, check for certain "busy" conditions, during which we

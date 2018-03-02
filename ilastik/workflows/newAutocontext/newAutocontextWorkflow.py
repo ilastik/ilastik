@@ -399,7 +399,8 @@ class NewAutocontextWorkflowBase(Workflow):
                                                    #and not downstream_live_update \ # Not necessary because live update modes are synced -- labels can't be added in live update.
                                                    and not batch_processing_busy)
 
-        self._shell.setAppletEnabled(self.dataExportApplet, stage_flags[-1].predictions_ready and not batch_processing_busy)
+        # enable export if any of the features from any stage are ready
+        self._shell.setAppletEnabled(self.dataExportApplet, any(sf.features_ready for sf in stage_flags) and not batch_processing_busy)
         self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
     
         # Lastly, check for certain "busy" conditions, during which we 

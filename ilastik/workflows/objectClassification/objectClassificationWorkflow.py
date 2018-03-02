@@ -407,7 +407,7 @@ class ObjectClassificationWorkflow(Workflow):
         object_classification_ready = object_features_ready and not invalid_classifier
 
         cumulated_readyness = cumulated_readyness and object_classification_ready
-        self._shell.setAppletEnabled(self.dataExportApplet, cumulated_readyness)
+        self._shell.setAppletEnabled(self.dataExportApplet, object_features_ready)
 
         if self.batch:
             object_prediction_ready = True  # TODO is that so?
