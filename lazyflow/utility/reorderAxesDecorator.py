@@ -197,17 +197,17 @@ def reorder(cls):
         def wrap(cls, *args, **kwargs):
             # add input slots with outer axis order
             for name in inputSlots:
-                outer_name = inner_prefix + name
+                inner_name = inner_prefix + name
                 # check if slot is already there
-                if outer_name not in [s.name for s in cls.inputSlots]:
-                    cls.inputSlots.append(InputSlot(outer_name))
+                if inner_name not in [s.name for s in cls.inputSlots]:
+                    cls.inputSlots.append(InputSlot(inner_name))
             
             # add output slots with outer axis order
             for name in outputSlots:
-                outer_name = inner_prefix + name
+                inner_name = inner_prefix + name
                 # check if slot is already there
-                if outer_name not in [s.name for s in cls.outputSlots]:
-                    cls.outputSlots.append(OutputSlot(outer_name))
+                if inner_name not in [s.name for s in cls.outputSlots]:
+                    cls.outputSlots.append(OutputSlot(inner_name))
 
             return fn(cls, *args, **kwargs)
         return wrap
@@ -335,23 +335,15 @@ if __name__ == '__main__':
         out_b = OutputSlot(stype=ArrayLike)
 
         def __init__(self, inner_order, *args, **kwargs):
-            print('\tinit')
             super().__init__(*args, **kwargs)
             self.inner_order = inner_order
             self.opSum = OpSum(parent=self)
-
-            # try here
-            # # out_a pass-through of in_a
-            # self.out_a.connect(self.in_a)
-            print('\tinit done')
 
         def meth(self, *args):
             assert isinstance(self, LazyOp)
             assert len(args) == len(test_args)
             for test, got in zip(test_args, args):
                 assert test == got
-
-            return 'meth'
 
         @classmethod
         def class_meth(cls, *args):
@@ -360,20 +352,15 @@ if __name__ == '__main__':
             for test, got in zip(test_args, args):
                 assert test == got
 
-            return 'class_meth'
-
         @staticmethod
         def static_meth(*args):
             assert len(args) == len(test_args)
             for test, got in zip(test_args, args):
                 assert test == got
 
-            return 'static_meth'
-
         @property
         def property_meth(self):
             assert isinstance(self, LazyOp)
-            return 'property_meth'
 
         def except_meth(self, *args):
             assert isinstance(self, LazyOp)
@@ -381,27 +368,19 @@ if __name__ == '__main__':
             for test, got in zip(test_args, args):
                 assert test == got
 
-            return 'except_meth'
-
         def setupOutputs(self):
-            # print('\tsetup outputs')
             # out_a pass-through of in_a
             self.out_a.connect(self.in_a)
 
             # out_b, sum of in_a and in_b
-            # print('\n\n\n\n\n\nhere')
             self.opSum.InputA.connect(self.in_a)
-            # print('here\n\n\n\n\n\n ')
             self.opSum.InputB.connect(self.in_b)
             self.out_b.connect(self.opSum.Output)
-            # print('\tdone, inner shape', self.out_b.meta['shape'])
 
         def propagateDirty(self, slot, subindex, roi):
-            # print('\tpropagateDirty')
             self.out_b.setDirty(roi)
             if slot == self.in_a:
                 self.out_a.setDirty(roi)
-            # print('\tpropagateDirty done')
 
     # single example operator
     lazyOp = LazyOp(graph=Graph(), inner_order=inner_order)
@@ -420,12 +399,9 @@ if __name__ == '__main__':
             tags = vigra.defaultAxistags(outer_order)
             a = vigra.VigraArray(outer_shape, value=1, axistags=tags)
             b = vigra.VigraArray(outer_shape, value=2, axistags=tags)
-            # print('in a1')
             self.lazyOp1.in_a.setValue(a)
-            # print('in a1 done')
-            # print('in b1')
             self.lazyOp1.in_b.setValue(b)
-            # print('in b1 done')            
+
             self.lazyOp1.setupOutputs()
             self.lazyOp2.setupOutputs()
 
@@ -478,20 +454,20 @@ if __name__ == '__main__':
     opParent.check_lazyOp2()
     generateSvgFileForOperator(os.path.join(svg_dir, 'opParent.svg'), opParent, 5)
 
-    lazyWrap = OperatorWrapper(LazyOp, operator_kwargs={'inner_order': inner_order}, parent=opParent)
-    lazyWrap.in_a.resize(1)
-    lazyWrap.in_b.resize(1)
+    lazyWrap = OperatorWrapper(LazyOp, 
+                               broadcastingSlotNames=['in_a', 'in_b'],
+                               operator_kwargs={'inner_order': inner_order}, 
+                               parent=opParent)
+    lazyWrap.out_a.resize(1)
+    lazyWrap.out_b.resize(1)
+    
     tags = vigra.defaultAxistags(outer_order)
     a = vigra.VigraArray(outer_shape, value=1, axistags=tags)
     b = vigra.VigraArray(outer_shape, value=2, axistags=tags)
-    print('in a1')
-    lazyWrap.in_a[0].setValue(a)
-    print('in a1 done')
-    print('in b1')
-    lazyWrap.in_b[0].setValue(b)
-    print('in b1 done')
+    lazyWrap.in_a.setValue(a)
+    lazyWrap.in_b.setValue(b)
 
-    lazyWrap.setupOutputs()
+    lazyWrap.setupOutputs()  # fixe: decorator does not work with operatorWrapper yet
     print('innerOp')
     print(lazyWrap.innerOperators[0].out_a[:].wait().shape)
     print('slot')
