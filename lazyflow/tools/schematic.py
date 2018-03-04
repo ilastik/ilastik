@@ -29,8 +29,6 @@ import numpy
 from functools import partial
 import itertools
 
-import warnings
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -395,15 +393,12 @@ def get_column_within_parent( op ):
             continue
         upstream_op = slot.partner.getRealOperator()
         if upstream_op is not op.parent and upstream_op is not op:
-            if upstream_op.parent is not op.parent:
-                warnings.warn(
-                    "Slot '{}' of operator '{}' and it's upstream partner" \
-                    " (slot '{}' of operator '{}') do not have the same parent operator.\n" \
-                    "parent is '{}', upstream parent is '{}'".format(
-                     slot.name, op.name, slot.partner.name, upstream_op.name, op.parent.name, upstream_op.parent.name)
-                )
-            else:
-                max_column = max( max_column, get_column_within_parent(upstream_op)+1 )
+            assert upstream_op.parent is op.parent, \
+                "Slot '{}' of operator '{}' and it's upstream partner" \
+                " (slot '{}' of operator '{}') do not have the same parent operator.\n" \
+                "parent is '{}', upstream parent is '{}'".format(
+                 slot.name, op.name, slot.partner.name, upstream_op.name, op.parent.name, upstream_op.parent.name)
+            max_column = max( max_column, get_column_within_parent(upstream_op)+1 )
 
     memoized_columns[op] = max_column
     return max_column
