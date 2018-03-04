@@ -191,29 +191,6 @@ def reorder(cls):
     inner_prefix = 'inner_'
     cls._inner_call = False  # use this variable to distinguish in __getattribute__, which slot to return
 
-    old_new = getattr(cls, '__new__')
-    def guard(fn):
-        @functools.wraps(old_new)
-        def wrap(cls, *args, **kwargs):
-            # add input slots with outer axis order
-            for name in inputSlots:
-                inner_name = inner_prefix + name
-                # check if slot is already there
-                if inner_name not in [s.name for s in cls.inputSlots]:
-                    cls.inputSlots.append(InputSlot(inner_name))
-            
-            # add output slots with outer axis order
-            for name in outputSlots:
-                inner_name = inner_prefix + name
-                # check if slot is already there
-                if inner_name not in [s.name for s in cls.outputSlots]:
-                    cls.outputSlots.append(OutputSlot(inner_name))
-
-            return fn(cls, *args, **kwargs)
-        return wrap
-
-    setattr(cls, '__new__', guard(old_new))
-
     # change __init__ in order to squeeze in the opReorderAxes ops
     old_init = getattr(cls, '__init__')
     def guard(fn):
@@ -248,14 +225,8 @@ def reorder(cls):
                 slot = self.__getattribute__(name)
                 self._opReorderInput[name].Input.connect(slot)
 
-                inner_slot = self.__getattribute__(inner_prefix + name)
-                inner_slot.connect(self._opReorderInput[name].Output, permit_distant_connection=True)
-            
             for name in outputSlots:
                 self._opReorderOutput[name].AxisOrder.setValue(cls._output_axes_order)
-
-                inner_slot = self.__getattribute__(inner_prefix + name)
-                self._opReorderOutput[name].Input.connect(inner_slot)
                 
                 slot = self.__getattribute__(name)
                 slot.connect(self._opReorderOutput[name].Output)
@@ -273,10 +244,11 @@ def reorder(cls):
     def __getattribute__(self, name):
         if name in inputSlots:
             if self._inner_call:
-                name = inner_prefix + name
+                return self._opReorderInput[name].Output
+
         elif name in outputSlots:
             if self._inner_call:
-                name = inner_prefix + name
+                return self._opReorderOutput[name].Input
 
         return super(cls, self).__getattribute__(name)
 
@@ -454,22 +426,22 @@ if __name__ == '__main__':
     opParent.check_lazyOp2()
     generateSvgFileForOperator(os.path.join(svg_dir, 'opParent.svg'), opParent, 5)
 
+    # wrapped test operator
     lazyWrap = OperatorWrapper(LazyOp, 
                                broadcastingSlotNames=['in_a', 'in_b'],
                                operator_kwargs={'inner_order': inner_order}, 
                                parent=opParent)
-    lazyWrap.out_a.resize(1)
-    lazyWrap.out_b.resize(1)
-    
+    lazyWrap.out_a.resize(2)
+
     tags = vigra.defaultAxistags(outer_order)
     a = vigra.VigraArray(outer_shape, value=1, axistags=tags)
     b = vigra.VigraArray(outer_shape, value=2, axistags=tags)
     lazyWrap.in_a.setValue(a)
-    lazyWrap.in_b.setValue(b)
+    lazyWrap.in_b.setValue(b)    
 
-    lazyWrap.setupOutputs()  # fixe: decorator does not work with operatorWrapper yet
-    print('innerOp')
-    print(lazyWrap.innerOperators[0].out_a[:].wait().shape)
-    print('slot')
-    # print(lazyWrap.out_a[0][:].wait().shape)
-    # generateSvgFileForOperator(os.path.join(svg_dir, 'lazyWrap.svg'), lazyWrap, 5)
+    assert lazyWrap.out_a[0][:].wait().shape == outer_shape
+    assert lazyWrap.out_b[0][:].wait().shape == outer_shape
+    assert lazyWrap.out_a[1][:].wait().shape == outer_shape
+    assert lazyWrap.out_b[1][:].wait().shape == outer_shape
+
+    generateSvgFileForOperator(os.path.join(svg_dir, 'lazyWrap.svg'), lazyWrap, 5)
