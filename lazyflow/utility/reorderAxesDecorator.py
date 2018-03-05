@@ -1,12 +1,31 @@
-import collections
+###############################################################################
+#   lazyflow: data flow based lazy parallel computation framework
+#
+#       Copyright (C) 2011-2018, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the Lesser GNU General Public License
+# as published by the Free Software Foundation; either version 2.1
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Lesser General Public License for more details.
+#
+# See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
+# GNU Lesser General Public License version 2.1 and 3 respectively.
+# This information is also available on the ilastik web site at:
+#          http://ilastik.org/license/
+###############################################################################
 import functools
 import types
 
-from lazyflow.graph import Operator
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.slot import InputSlot, OutputSlot
 
-def reorder_options(internal_axes_order, exceptions=[],
+
+def reorder_options(internal_axes_order, ignore_slots=[],
                     output_axes_order='tczyx'):
     """
         Adds reorder options to the specific operator class that the decorator
@@ -23,8 +42,8 @@ def reorder_options(internal_axes_order, exceptions=[],
 
         @param internal_axes_order: str Axes order the decorated operator
                                         assumes internally.
-        @param exceptions: list(str) List of slot names that do not need to be
-                                     reordered.
+        @param ignore_slots: list(str) List of slot names that do not need to be
+                                       reordered.
         @param output_axes_order: str Output Axes order for all reordered
                                       output slots.
 
@@ -37,24 +56,24 @@ def reorder_options(internal_axes_order, exceptions=[],
 
     """
     assert isinstance(internal_axes_order, str)
-    assert isinstance(exceptions, list)
-    assert all([isinstance(ex, str) for ex in exceptions])
+    assert isinstance(ignore_slots, list)
+    assert all([isinstance(ex, str) for ex in ignore_slots])
     assert isinstance(output_axes_order, str)
 
     def set_options(cls):
         assert all([ex in [s.name for s in cls.inputSlots + cls.outputSlots]
-                    for ex in exceptions])
+                    for ex in ignore_slots])
         cls._internal_axes_order = internal_axes_order
-        cls._reorder_exceptions = exceptions
+        cls._not_reordered_slots = ignore_slots
         cls._output_axes_order = output_axes_order
         return cls
     return set_options
 
 
 def guard_methods(cls):
-    """ 
+    """
         helper function for reorder
-        
+
         Flag with 'self._inner_call' when methods are called from within the class
         as opposed to accessing a slot of the operator from the "outside"
     """
@@ -155,10 +174,11 @@ def reorder(cls):
         Pseudo example to clarify:
 
         @reorder
-        @reorder_options(internal_axis_order='set in stone by dev',
-                         exceptions: 'i_already_follow_the_new_outside_order',
-                         output_axes_order: 'the bright future')
-        class MyOp(operator):
+        @reorder_options(internal_axis_order='txyzc', # set in stone by original dev
+                         ignore_slots=['i_already_follow_the_new_outside_order'],
+                         output_axes_order='tczyx' # new order (e.g. the future standard)
+                         )
+            class MyOp(operator):
             Input = InputSlot()
             Output = OutputSlot()
 
@@ -178,21 +198,21 @@ def reorder(cls):
                 self.childOp.InputB.connect(self.Input)
                 self.Output.connect(self.childOp.Output)
     """
-    if '_reorder_exceptions' not in dir(cls):
-        cls._reorder_exceptions = []
+    if '_not_reordered_slots' not in dir(cls):
+        cls._not_reordered_slots = []
 
     cls = guard_methods(cls)
 
     inputSlots = [s.name for s in cls.inputSlots
-                  if s.name not in cls._reorder_exceptions]
+                  if s.name not in cls._not_reordered_slots]
     outputSlots = [s.name for s in cls.outputSlots
-                   if s.name not in cls._reorder_exceptions]
+                   if s.name not in cls._not_reordered_slots]
 
-    inner_prefix = 'inner_'
     cls._inner_call = False  # use this variable to distinguish in __getattribute__, which slot to return
 
     # change __init__ in order to squeeze in the opReorderAxes ops
     old_init = getattr(cls, '__init__')
+
     def guard(fn):
         @functools.wraps(old_init)
         def wrap(self, *args, graph=None, parent=None, **kwargs):
@@ -203,7 +223,7 @@ def reorder(cls):
             self._opReorderInput = {}
             for name in inputSlots:
                 self._opReorderInput[name] = OpReorderAxes(parent=self)
-            
+
             self._opReorderOutput = {}
             for name in outputSlots:
                 self._opReorderOutput[name] = OpReorderAxes(parent=self)
@@ -215,6 +235,7 @@ def reorder(cls):
 
     # change setupOutputs in order to connect the squeezed in opReorderAxes ops
     old_setupOutputs = getattr(cls, 'setupOutputs')
+
     def guard(fn):
         @functools.wraps(old_setupOutputs)
         def wrap(self, *args, **kwargs):
@@ -227,7 +248,7 @@ def reorder(cls):
 
             for name in outputSlots:
                 self._opReorderOutput[name].AxisOrder.setValue(cls._output_axes_order)
-                
+
                 slot = self.__getattribute__(name)
                 slot.connect(self._opReorderOutput[name].Output)
 
@@ -254,194 +275,3 @@ def reorder(cls):
 
     setattr(cls, '__getattribute__', __getattribute__)
     return cls
-
-
-if __name__ == '__main__':
-    import vigra
-    import os
-    from lazyflow.graph import Graph
-    from lazyflow.stype import ArrayLike
-
-    from lazyflow.tools.schematic import generateSvgFileForOperator
-    from lazyflow.operatorWrapper import OperatorWrapper
-
-    test_args = ['arg0', 1, False]
-
-    outer_order = 'tczyx'
-    outer_shape = (1, 2, 3, 4, 5)
-    inner_order = 'zyxct'
-    inner_shape = tuple([outer_shape[outer_order.find(x)] for x in inner_order])
-
-    svg_dir = '/Users/Fynn/Desktop/svg_tmp/'
-
-    class OpSum(Operator):
-        InputA = InputSlot()
-        InputB = InputSlot()
-
-        Output = OutputSlot()
-
-        def setupOutputs(self):
-            assert self.InputA.meta.getAxisKeys() == list(inner_order)
-            assert self.InputA.meta.shape == self.InputB.meta.shape, "Can't add images of different shapes!"
-            self.Output.meta.assignFrom(self.InputA.meta)
-
-        def execute(self, slot, subindex, roi, result):
-            a = self.InputA.get(roi).wait()
-            b = self.InputB.get(roi).wait()
-            result[...] = a + b
-            return result
-
-        def propagateDirty(self, slot, subindex, roi):
-            self.Output.setDirty(roi)
-
-    @reorder
-    @reorder_options(inner_order, [], outer_order)
-    class LazyOp(Operator):
-        """ test op """
-        name = 'LazyOp'
-
-        in_a = InputSlot(stype=ArrayLike)
-        in_b = InputSlot(stype=ArrayLike)
-
-        out_a = OutputSlot(stype=ArrayLike)
-        out_b = OutputSlot(stype=ArrayLike)
-
-        def __init__(self, inner_order, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self.inner_order = inner_order
-            self.opSum = OpSum(parent=self)
-
-        def meth(self, *args):
-            assert isinstance(self, LazyOp)
-            assert len(args) == len(test_args)
-            for test, got in zip(test_args, args):
-                assert test == got
-
-        @classmethod
-        def class_meth(cls, *args):
-            assert isinstance(cls, type)
-            assert len(args) == len(test_args), (args, test_args)
-            for test, got in zip(test_args, args):
-                assert test == got
-
-        @staticmethod
-        def static_meth(*args):
-            assert len(args) == len(test_args)
-            for test, got in zip(test_args, args):
-                assert test == got
-
-        @property
-        def property_meth(self):
-            assert isinstance(self, LazyOp)
-
-        def except_meth(self, *args):
-            assert isinstance(self, LazyOp)
-            assert len(args) == len(test_args)
-            for test, got in zip(test_args, args):
-                assert test == got
-
-        def setupOutputs(self):
-            # out_a pass-through of in_a
-            self.out_a.connect(self.in_a)
-
-            # out_b, sum of in_a and in_b
-            self.opSum.InputA.connect(self.in_a)
-            self.opSum.InputB.connect(self.in_b)
-            self.out_b.connect(self.opSum.Output)
-
-        def propagateDirty(self, slot, subindex, roi):
-            self.out_b.setDirty(roi)
-            if slot == self.in_a:
-                self.out_a.setDirty(roi)
-
-    # single example operator
-    lazyOp = LazyOp(graph=Graph(), inner_order=inner_order)
-    lazyOp.setupOutputs()
-    svg_path = os.path.join(svg_dir, 'lazyOp.svg')
-    generateSvgFileForOperator(svg_path, lazyOp, 5)
-
-    # embed tests in trivial parent operator
-    class OpParent(Operator):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self.lazyOp1 = LazyOp(inner_order=inner_order, parent=self)
-            self.lazyOp2 = LazyOp(inner_order='txyzc', parent=self)
-
-        def setupOutputs(self):
-            tags = vigra.defaultAxistags(outer_order)
-            a = vigra.VigraArray(outer_shape, value=1, axistags=tags)
-            b = vigra.VigraArray(outer_shape, value=2, axistags=tags)
-            self.lazyOp1.in_a.setValue(a)
-            self.lazyOp1.in_b.setValue(b)
-
-            self.lazyOp1.setupOutputs()
-            self.lazyOp2.setupOutputs()
-
-            self.lazyOp2.in_a.connect(self.lazyOp1.out_a)
-            self.lazyOp2.in_b.connect(self.lazyOp1.out_b)
-
-        def check_lazyOp1(self):
-            # check that method types are treated correctly (actual tests in LazyOp)
-            self.lazyOp1.meth(*test_args)
-            self.lazyOp1.class_meth(*test_args)
-            self.lazyOp1.static_meth(*test_args)
-            self.lazyOp1.property_meth
-            self.lazyOp1.except_meth(*test_args)
-
-            # when accessing the child's operators they should conform with the outside order. Here, the shape of the
-            # resulting numpy.ndarray is tested to make sure we are not just checking meta data.
-            assert self.lazyOp1.out_a[:].wait().shape == outer_shape
-            assert self.lazyOp1.out_b[:].wait().shape == outer_shape
-
-            tags = vigra.defaultAxistags(outer_order)
-            expect = vigra.VigraArray(outer_shape, value=3, axistags=tags)
-
-            assert (expect == self.lazyOp1.out_b[:].wait()).all()
-            assert expect.axistags == self.lazyOp1.out_b.meta.axistags
-            assert expect.shape == self.lazyOp1.out_b.meta.shape
-
-        def check_lazyOp2(self):
-            assert self.lazyOp2.in_a[:].wait().shape == outer_shape
-            assert self.lazyOp2.in_b[:].wait().shape == outer_shape
-            assert self.lazyOp2.out_a[:].wait().shape == outer_shape
-            assert self.lazyOp2.out_b[:].wait().shape == outer_shape
-
-            tags = vigra.defaultAxistags(outer_order)
-            expect = vigra.VigraArray(outer_shape, value=4, axistags=tags)
-            assert (expect == self.lazyOp2.out_b[:].wait()).all()
-            assert expect.axistags == self.lazyOp2.out_b.meta.axistags
-            assert expect.shape == self.lazyOp2.out_b.meta.shape
-
-            # checking inner shapes by pretending to make inner calls
-            self.lazyOp2._inner_call = True
-            assert self.lazyOp2.in_a[:].wait().shape == inner_shape
-            assert self.lazyOp2.in_b[:].wait().shape == inner_shape
-            assert self.lazyOp2.out_a[:].wait().shape == inner_shape
-            assert self.lazyOp2.out_b[:].wait().shape == inner_shape
-
-    # ensemble of two example operators
-    opParent = OpParent(graph=Graph())
-    opParent.setupOutputs()
-    opParent.check_lazyOp1()
-    opParent.check_lazyOp2()
-    generateSvgFileForOperator(os.path.join(svg_dir, 'opParent.svg'), opParent, 5)
-
-    # wrapped test operator
-    lazyWrap = OperatorWrapper(LazyOp, 
-                               broadcastingSlotNames=['in_a', 'in_b'],
-                               operator_kwargs={'inner_order': inner_order}, 
-                               parent=opParent)
-    lazyWrap.out_a.resize(2)
-
-    tags = vigra.defaultAxistags(outer_order)
-    a = vigra.VigraArray(outer_shape, value=1, axistags=tags)
-    b = vigra.VigraArray(outer_shape, value=2, axistags=tags)
-    lazyWrap.in_a.setValue(a)
-    lazyWrap.in_b.setValue(b)    
-
-    assert lazyWrap.out_a[0][:].wait().shape == outer_shape
-    assert lazyWrap.out_b[0][:].wait().shape == outer_shape
-    assert lazyWrap.out_a[1][:].wait().shape == outer_shape
-    assert lazyWrap.out_b[1][:].wait().shape == outer_shape
-
-    generateSvgFileForOperator(os.path.join(svg_dir, 'lazyWrap.svg'), lazyWrap, 5)
