@@ -45,7 +45,6 @@ class TestOpDataExport(object):
         graph = Graph()
         opExport = OpDataExport(graph=graph)
         try:
-            opExport.TransactionSlot.setValue(True)        
             opExport.WorkingDirectory.setValue( self._tmpdir )
             
             # Simulate the important fields of a DatasetInfo object
@@ -72,7 +71,9 @@ class TestOpDataExport(object):
             opExport.OutputFormat.setValue( 'hdf5' )
             opExport.OutputFilenameFormat.setValue( '{dataset_dir}/{nickname}_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}' )
             opExport.OutputInternalPath.setValue('volume/data')
-    
+
+            opExport.TransactionSlot.setValue(True)
+
             assert opExport.ImageToExport.ready()
             assert opExport.ExportPath.ready()
             
