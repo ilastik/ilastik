@@ -48,6 +48,8 @@ class OpNNClassification(Operator):
 
     #Gui only (not part of the pipeline)
     ModelPath = InputSlot()
+    Halo_Size = InputSlot(value=32)
+    Batch_Size = InputSlot(value=3)
 
     def __init__(self, *args, **kwargs):
 
