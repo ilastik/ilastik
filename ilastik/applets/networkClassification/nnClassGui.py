@@ -30,7 +30,8 @@ from volumina.utility import PreferencesManager
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, pyqtSlot
-from PyQt5.QtWidgets import QStackedWidget, QMessageBox, QFileDialog
+from PyQt5.QtWidgets import QStackedWidget, QMessageBox, QFileDialog, QMenu, QLineEdit, QDialogButtonBox, QVBoxLayout, \
+     QDialog
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
@@ -38,6 +39,54 @@ from ilastik.config import cfg as ilastik_config
 from lazyflow.classifiers import TikTorchLazyflowClassifier
 
 logger = logging.getLogger(__name__)
+
+
+class ParameterDlg(QDialog):
+    """
+    simple window for setting parameters
+    """
+    def __init__(self, topLevelOperator, parent):
+        super(QDialog, self).__init__(parent=parent)
+
+        self.topLevelOperator = topLevelOperator
+
+        buttonbox = QDialogButtonBox(Qt.Horizontal, parent=self)
+        buttonbox.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttonbox.accepted.connect(self.add_Parameters)
+        buttonbox.rejected.connect(self.reject)
+
+        self.halo_edit = QLineEdit(self)
+        self.halo_edit.setPlaceholderText("HaloSize")
+        self.batch_edit = QLineEdit(self)
+        self.batch_edit.setPlaceholderText("Batch Size")
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.halo_edit)
+        layout.addWidget(self.batch_edit)
+        layout.addWidget(buttonbox)
+
+        self.setLayout(layout)
+        self.setWindowTitle("Set Parameters")
+
+
+    def add_Parameters(self):
+        """
+        changning Halo Size and Batch Size Slot Values
+        """
+
+        halo_size = int(self.halo_edit.text())
+        batch_size = int(self.batch_edit.text())
+
+        self.topLevelOperator.Halo_Size.setValue(halo_size)
+        self.topLevelOperator.Batch_Size.setValue(batch_size)
+
+        #close dialog
+        super(ParameterDlg, self).accept()
+
+
+
+
+
 
 class NNClassGui(LayerViewerGui):
     """
@@ -67,7 +116,27 @@ class NNClassGui(LayerViewerGui):
         """
         Return a list of QMenu widgets to be shown in the menu bar when this applet is visible
         """
-        return []
+        menus = super(NNClassGui, self).menus()
+
+        advanced_menu = QMenu("Advanced", parent=self)
+
+        def settingParameter():
+            """
+            changing BatchSize and HaloSize
+            """
+            dlg = ParameterDlg(self.topLevelOperator, parent=self)
+            dlg.exec_()
+
+            classifier_key = self.drawer.comboBox.currentText()
+            self.classifiers[classifier_key].HALO_SIZE = self.topLevelOperator.Halo_Size.value
+            self.classifiers[classifier_key].BATCH_SIZE = self.topLevelOperator.Batch_Size.value
+
+        set_parameter = advanced_menu.addAction("Parameters...")
+        set_parameter.triggered.connect(settingParameter)
+
+        menus += [advanced_menu]
+
+        return menus    
 
     def appletDrawer(self):
         """
@@ -100,9 +169,7 @@ class NNClassGui(LayerViewerGui):
         self.drawer = uic.loadUi(drawerPath)
 
         self.drawer.comboBox.clear()
-
         self.drawer.liveUpdateButton.clicked.connect(self.pred_nn)
-
         self.drawer.addModel.clicked.connect(self.addModels)
 
         if self.topLevelOperator.ModelPath.ready():
@@ -196,11 +263,13 @@ class NNClassGui(LayerViewerGui):
             print("Classifier already added")
             QMessageBox.critical(self, "Error loading file", "{} already added".format(modelname))
         else:
-            self.classifiers[modelname] = TikTorchLazyflowClassifier(None, filename[0])
+            batch_size = self.topLevelOperator.Batch_Size.value
+            halo_size = self.topLevelOperator.Halo_Size.value
+
+            self.classifiers[modelname] = TikTorchLazyflowClassifier(None, filename[0], halo_size, batch_size)
 
             #clear first the comboBox or addItems will duplicate names
             self.drawer.comboBox.clear()
-
             self.drawer.comboBox.addItems(self.classifiers)
 
             self.topLevelOperator.ModelPath.setValue(filename)
@@ -216,9 +285,7 @@ class NNClassGui(LayerViewerGui):
         classifier_key = self.drawer.comboBox.currentText()
 
         if len(classifier_key) == 0:
-
             QMessageBox.critical(self, "Error loading file", "Add a Model first")
-
 
         else:
 
@@ -232,11 +299,16 @@ class NNClassGui(LayerViewerGui):
                 input_shape = input_shape[1:]
                 input_shape = numpy.append(input_shape, None)
 
-                halo_size = self.classifiers[classifier_key].HALO_SIZE
-                input_shape[1:3] -= 2*halo_size
+                # halo_size = self.classifiers[classifier_key].HALO_SIZE
+                input_shape[1:3] -= 2 * self.topLevelOperator.Halo_Size.value
+
+                # print(self.classifiers[classifier_key].HALO_SIZE)
+                # print(self.classifiers[classifier_key].BATCH_SIZE)
+
+                channels = self.topLevelOperator.InputImage.meta.shape[3]
 
                 self.topLevelOperator.BlockShape.setValue(input_shape)
-                self.topLevelOperator.NumClasses.setValue(3)
+                self.topLevelOperator.NumClasses.setValue(channels)
 
                 self.topLevelOperator.Classifier.setValue(self.classifiers[classifier_key])
 
@@ -284,8 +356,6 @@ class NNClassGui(LayerViewerGui):
         """
         When AddModels button is clicked.
         """
-
-
         mostRecentImageFile = PreferencesManager().get('DataSelection', 'recent models')
         mostRecentImageFile = str(mostRecentImageFile)
         if mostRecentImageFile is not None:
