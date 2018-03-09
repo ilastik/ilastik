@@ -767,6 +767,7 @@ class AnnotationsGui(LayerViewerGui):
                         self.divLock = False
                         self.divs = []
                         self._drawer.divEvent.setChecked(False)
+                        self._enableButtons(enable=True)
                         return
 
                     div = [activeTrack,]
