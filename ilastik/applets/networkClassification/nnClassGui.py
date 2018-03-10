@@ -173,8 +173,8 @@ class NNClassGui(LayerViewerGui):
         self.drawer.addModel.clicked.connect(self.addModels)
 
         if self.topLevelOperator.ModelPath.ready():
-            self.add_NN_classifiers(self.topLevelOperator.ModelPath.value)
-            # self.drawer.comboBox.addItems(self.topLevelOperator.ModelPath.value)
+            self.drawer.comboBox.clear()
+            self.drawer.comboBox.addItems(self.topLevelOperator.ModelPath.value)
 
     def initViewerControls(self):
         """
@@ -272,8 +272,7 @@ class NNClassGui(LayerViewerGui):
             self.drawer.comboBox.clear()
             self.drawer.comboBox.addItems(self.classifiers)
 
-            self.topLevelOperator.ModelPath.setValue(filename)
-            # self.topLevelOperator.ModelPath.setValue(self.classifiers)
+            self.topLevelOperator.ModelPath.setValue(self.classifiers)
 
     def pred_nn(self):
         """
@@ -298,12 +297,8 @@ class NNClassGui(LayerViewerGui):
                 input_shape = numpy.array(expected_input_shape)
                 input_shape = input_shape[1:]
                 input_shape = numpy.append(input_shape, None)
-
-                # halo_size = self.classifiers[classifier_key].HALO_SIZE
+                
                 input_shape[1:3] -= 2 * self.topLevelOperator.Halo_Size.value
-
-                # print(self.classifiers[classifier_key].HALO_SIZE)
-                # print(self.classifiers[classifier_key].BATCH_SIZE)
 
                 channels = self.topLevelOperator.InputImage.meta.shape[3]
 
