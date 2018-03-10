@@ -116,12 +116,8 @@ assert issubclass(TikTorchLazyflowClassifierFactory, LazyflowPixelwiseClassifier
 
 class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     HDF5_GROUP_FILENAME = 'pytorch_network_path'
-    # TODO: parametrize!
-    HALO_SIZE = 32
-    # TODO: parametrize!
-    BATCH_SIZE = 3
 
-    def __init__(self, tiktorch_net, filename=None):
+    def __init__(self, tiktorch_net, filename=None, HALO_SIZE=32, BATCH_SIZE=3):
         """
         Args:
             tiktorch_net (tiktorch): tiktorch object to be loaded into this
@@ -132,6 +128,8 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         if self._filename is None:
             self._filename = ""
 
+        self.HALO_SIZE = HALO_SIZE
+        self.BATCH_SIZE = BATCH_SIZE
 
 
         if tiktorch_net is None:
@@ -221,11 +219,19 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             result_roi[1] += offset[0:3]
             reorder_feature_image_extents = numpy.array(reordered_feature_image.shape)
             # add the offset:
-            reorder_feature_image_extents[2:4] += offset[1:3]
-            zero_img[:, :, offset[1]:reorder_feature_image_extents[2], offset[2]:reorder_feature_image_extents[3]] = \
-                reordered_feature_image
+            # reorder_feature_image_extents[2:4] += offset[1:3]
+            # zero_img[:, :, offset[1]:reorder_feature_image_extents[2], offset[2]:reorder_feature_image_extents[3]] = \
+            #     reordered_feature_image
 
-            reordered_feature_image = zero_img
+            # reordered_feature_image = zero_img
+
+            print(offset)
+            pad_img = numpy.pad(reordered_feature_image,[(0,0),(0,0),(offset[1],self._tiktorch_net.expected_input_shape[2]-reorder_feature_image_extents[2]), 
+                (offset[2],self._tiktorch_net.expected_input_shape[3]-reorder_feature_image_extents[3])],'reflect')
+
+            print (pad_img.shape)
+
+            reordered_feature_image = pad_img
 
             logger.info(f"New Image shape {reordered_feature_image.shape}")
 
