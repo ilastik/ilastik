@@ -420,8 +420,7 @@ class OpDataSelection(Operator):
                 raise DatasetConstraintError("DataSelection",
                                              "Data must always have at leaset the axes x and y for ilastik to work.")
 
-            provider_order = ''.join(providerSlot.meta.getAxisKeys())
-            if self.forceAxisOrder and provider_order not in self.forceAxisOrder:  # only force axis order if necessary
+            if self.forceAxisOrder:
                 assert isinstance(self.forceAxisOrder, list), \
                     "forceAxisOrder should be a *list* of preferred axis orders"
 
@@ -439,7 +438,7 @@ class OpDataSelection(Operator):
                 if len(candidate_orders) == 0:
                     msg = "The axes of your dataset ({}) are not compatible with any of the allowed"\
                           " axis configurations used by this workflow ({}). Please fix them."\
-                          .format(provider_order, self.forceAxisOrder)
+                          .format(providerSlot.meta.getAxisKeys(), self.forceAxisOrder)
                     raise DatasetConstraintError("DataSelection", msg)
 
                 output_order = sorted(candidate_orders, key=len)[0]  # the shortest one
