@@ -535,7 +535,7 @@ class RedRubberBand(QRubberBand):
 #===============================================================================
 
 class CoupledRectangleElement(object):
-    def __init__(self,x,y,h,w,inputSlot,editor = None, scene=None,parent=None,qcolor=QColor(0,0,255)):
+    def __init__(self, x, y, h, w, inputSlot, editor=None, scene=None, parent=None, qcolor=QColor(0, 0, 255)):
         '''
         Couples the functionality of the lazyflow operator OpSubRegion which gets a subregion of interest
         and the functionality of the resizable rectangle Item.
@@ -551,66 +551,55 @@ class CoupledRectangleElement(object):
         :param parent: the parent object if any
         :param qcolor: initial color of the rectangle
         '''
+        assert inputSlot.meta.getTaggedShape()['c'] == 1
 
+        assert parent is None, 'FIXME: QT structure does not seem to be implemented thoroughly. parent is always None!'
+        self._rectItem = QGraphicsResizableRect(x, y, h, w, scene, parent, editor)
+        # self._rectItem.color=qcolor  # FIXME: color can't be set
 
-        self._rectItem=QGraphicsResizableRect(x,y,h,w,scene,parent,editor)
-        self._opsub = OpSubRegion(graph=inputSlot.operator.graph, parent = inputSlot.operator.parent) #sub region correspondig to the rectangle region
-        #self.opsum = OpSumAll(graph=inputSlot.operator.graph)
-        self._graph=inputSlot.operator.graph
-        self._inputSlot=inputSlot #input slot which connect to the sub array
+        # sub region corresponding to the rectangle region
+        self._opsub = OpSubRegion(graph=inputSlot.operator.graph, parent=inputSlot.operator.parent)
 
+        self._inputSlot = inputSlot  # input slot which connect to the sub array
 
-        self.boxLabel=None #a reference to the label in the labellist model
+        self.boxLabel = None  # a reference to the label in the labellist model
         self._initConnect()
 
-        #self.rectItem.color=qcolor
-
     def _initConnect(self):
-        #print "initializing ...", self.getStart(),self.getStop()
-
-        #Operator changes
+        # Operator changes
         self._opsub.Input.connect(self._inputSlot)
-        self._opsub.Roi.setValue( [self.getStart(), self.getStop()] )
+        self._opsub.Roi.setValue([self.getStart(), self.getStop()])
         self._inputSlot.notifyDirty(self._updateTextWhenChanges)
 
-
-        #Signalling when the ractangle is moved
+        # Signaling when the rectangle is moved
         self._rectItem.Signaller.signalHasMoved.connect(self._updateTextWhenChanges)
         self._rectItem.Signaller.signalHasResized.connect(self._updateTextWhenChanges)
         self._updateTextWhenChanges()
 
-    #@mainthreadonly
     @pyqtSlot()
     def _updateTextWhenChanges(self, *args, **kwargs):
         '''
-        Do the actual job of displaying a new number when the region gets notified dirty
-        or the rectangle is moved or resized
+            Do the actual job of displaying a new number when the region gets
+            notified dirty or the rectangle is moved or resized
         '''
+        time.sleep(DELAY * 0.001)
 
-        time.sleep(DELAY*0.001)
-
-
-        #FIXME: Workaround: when the array is resized over the border of the image scene the
+        # FIXME: Workaround: when the array is resized over the border of the image scene the
         # region get a wrong size
+        # try:
         try:
-            subarray=self.getSubRegion()
+            subarray = self.getSubRegion()
+            value = 0
+            if subarray is not None:
+                value = subarray.sum()
 
-            #self.current_sum= self.opsum.outputs["Output"][:].wait()[0]
-            value=0
-            if subarray!=None:
-                value=np.sum(subarray)
+            self._rectItem.updateText(f'{value:.1f}')
 
-            #print "Resetting to a new value ",value,self.boxLabel
+            if self.boxLabel is not None:
+                self.boxLabel.density = f'{value:.1f}'
 
-            self._rectItem.updateText("%.1f"%(value))
-
-            if self.boxLabel!=None:
-                self.boxLabel.density = "%.1f" % value
         except Exception as e:
-            import warnings
-            warnings.warn("Warning: invalid subregion", RuntimeWarning)
-
-
+            warnings.warn(f'Warning: invalid subregion. {e}', RuntimeWarning)
 
     def getOpsub(self):
         return self._opsub
@@ -623,84 +612,71 @@ class CoupledRectangleElement(object):
         self._opsub.Input.disconnect()
 
     def getStart(self):
-        '''
-         5D coordinates of the start position of the subregion
-        '''
-        rect=self._rectItem
-        newstart=self._rectItem.topLeftDataPos()
+        ''' 5D coordinates of the start position of the subregion '''
+        rect_start = self._rectItem.topLeftDataPos()
 
-        start=(0,newstart[0],newstart[1],0,0)
-        return start
+        start = [0] * 5
+        start[self._inputSlot.meta.getAxisKeys().index('x')] = rect_start[0]
+        start[self._inputSlot.meta.getAxisKeys().index('y')] = rect_start[1]
+
+        return tuple(start)
 
     def getStop(self):
-        '''
-         5D coordinates of the stop position of the subregion
-        '''
-        rect=self._rectItem
-        newstop=self._rectItem.bottomRightDataPos()
-        stop=(1,newstop[0],newstop[1],1,1)
-        return stop
+        ''' 5D coordinates of the stop position of the subregion '''
+        rect_stop = self._rectItem.bottomRightDataPos()
+
+        stop = [1] * 5
+        stop[self._inputSlot.meta.getAxisKeys().index('x')] = rect_stop[0]
+        stop[self._inputSlot.meta.getAxisKeys().index('y')] = rect_stop[1]
+
+        return tuple(stop)
 
     def getSubRegion(self):
-        '''
-        Gets the sub region of interest in the array input Slot
+        ''' Gets the sub region of interest in the array input Slot '''
+        start = self.getStart()
+        stop = self.getStop()
 
-        '''
-        oldstart=self.getStart()
-        oldstop=self.getStop()
+        for sta, sto in zip(start, stop):
+            assert sto >= sta
 
-        # print "Start = %s , Stop = %s"%(oldstart,oldstop)
-
-        start=[]
-        stop=[]
-        for s1,s2 in zip(oldstart,oldstop):
-            if (s1-s2) == 0: #means that the region is squeezed to zero
-                           # thus return None
-                return None
-            start.append(int(np.minimum(s1,s2)))
-            stop.append(int(np.maximum(s1,s2)))
-
-        self._opsub.Roi.disconnect()
-        self._opsub.Roi.setValue([ tuple(start), tuple(stop)] )
-
-
-        return self._opsub.outputs["Output"][:].wait()
+        self._opsub.Roi.setValue([start, stop])
+        return self._opsub.Output[:].wait()
 
     @property
     def color(self):
         return self._rectItem.color
 
-    def setColor(self,qcolor):
+    def setColor(self, qcolor):
         self._rectItem.setColor(qcolor)
 
     @property
     def fontSize(self):
         return self._rectItem.fontSize
 
-    def setFontSize(self,size):
+    def setFontSize(self, size):
         self._rectItem.setFontSize(size)
 
     @property
     def fontColor(self):
         return self._rectItem.fontSize
 
-    def setFontColor(self,color):
+    def setFontColor(self, color):
         self._rectItem.setFontColor(color)
 
     @property
     def lineWidth(self):
         return self._rectItem.lineWidth
 
-    def setLineWidth(self,w):
+    def setLineWidth(self, w):
         self._rectItem.setLineWidth(w)
 
-    def setVisible(self,bool):
+    def setVisible(self, bool):
         return self._rectItem.setVisible(bool)
 
-    def setOpacity(self,float):
+    def setOpacity(self, float):
         return self._rectItem.setOpacity(float)
 
-    def setZValue(self,val):
+    def setZValue(self, val):
         return self._rectItem.setZValue(val)
 
     def release(self):
