@@ -154,7 +154,9 @@ class MetaDict(defaultdict):
         return [tag.key for tag in self.axistags]
 
     def getOriginalAxisKeys(self):
-        assert self.original_axistags is not None
+        if self.original_axistags is None:
+            return self.getAxisKeys()
+
         return [tag.key for tag in self.original_axistags]
 
     def getDtypeBytes(self):
