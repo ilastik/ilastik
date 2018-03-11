@@ -378,7 +378,20 @@ class OpPredictCounter(Operator):
         nlabels=self.inputs["LabelsCount"].value
         self.PMaps.meta.dtype = np.float32
         self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
+        self.PMaps.meta.original_axistags = copy.copy(self.Image.meta.original_axistags)
         self.PMaps.meta.shape = self.Image.meta.shape[:-1] + (OpTrainCounter.numRegressors,) # FIXME: This assumes that channel is the last axis
+        o_shape = self.Image.meta.original_shape
+        if o_shape is not None:
+            o_shape = list(o_shape)
+            keylist = self.Image.meta.getOriginalAxisKeys()
+            if 'c' in keylist:
+                o_shape[keylist.index('c')] = OpTrainCounter.numRegressors
+            else:
+                o_shape += (OpTrainCounter.numRegressors, )
+
+            o_shape = tuple(o_shape)
+
+        self.PMaps.meta.original_shape = o_shape
         self.PMaps.meta.drange = (0.0, 1.0)
 
     def execute(self, slot, subindex, roi, result):
