@@ -219,7 +219,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             result_roi[1] += offset[0:3]
             reorder_feature_image_extents = numpy.array(reordered_feature_image.shape)
             # add the offset:
-            # reorder_feature_image_extents[2:4] += offset[1:3]
+            reorder_feature_image_extents[2:4] += offset[1:3]
             # zero_img[:, :, offset[1]:reorder_feature_image_extents[2], offset[2]:reorder_feature_image_extents[3]] = \
             #     reordered_feature_image
 
