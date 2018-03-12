@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialListSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialListSlot, SerialDictSlot
 
 import logging
 logger = logging.getLogger(__name__)
@@ -28,6 +28,6 @@ class NNClassificationSerializer(AppletSerializer):
     def __init__(self, topLevelOperator, projectFileGroupName):
         self.VERSION = 1
 
-        slots = [SerialListSlot(topLevelOperator.ModelPath)]
+        slots = [SerialDictSlot(topLevelOperator.ModelPath)]
 
         super(NNClassificationSerializer, self).__init__(projectFileGroupName, slots)
