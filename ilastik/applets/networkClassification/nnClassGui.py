@@ -158,6 +158,9 @@ class NNClassGui(LayerViewerGui):
         self.initViewerControls()
         self.initViewerControlUi() 
 
+        self.batch_size = self.topLevelOperator.Batch_Size.value
+        self.halo_size = self.topLevelOperator.Halo_Size.value
+
 
     def _initAppletDrawerUic(self, drawerPath=None):
         """
@@ -175,6 +178,8 @@ class NNClassGui(LayerViewerGui):
         if self.topLevelOperator.ModelPath.ready():
             self.drawer.comboBox.clear()
             self.drawer.comboBox.addItems(self.topLevelOperator.ModelPath.value)
+
+            self.classifiers = self.topLevelOperator.ModelPath.value
 
     def initViewerControls(self):
         """
@@ -258,21 +263,27 @@ class NNClassGui(LayerViewerGui):
         #split path string
         modelname = os.path.basename(os.path.normpath(filename[0]))
 
+        print(filename)
+        print(filename[0])
+
         #Statement for importing the same classifier twice
         if modelname in self.classifiers.keys():
             print("Classifier already added")
             QMessageBox.critical(self, "Error loading file", "{} already added".format(modelname))
         else:
-            batch_size = self.topLevelOperator.Batch_Size.value
-            halo_size = self.topLevelOperator.Halo_Size.value
 
-            self.classifiers[modelname] = TikTorchLazyflowClassifier(None, filename[0], halo_size, batch_size)
+            #serialization problems because of group names when using the classifier function as value
+            # self.classifiers[modelname] = TikTorchLazyflowClassifier(None, filename[0], halo_size, batch_size)
+
+            #workAround
+            self.classifiers[modelname] = filename[0]
 
             #clear first the comboBox or addItems will duplicate names
             self.drawer.comboBox.clear()
             self.drawer.comboBox.addItems(self.classifiers)
 
             self.topLevelOperator.ModelPath.setValue(self.classifiers)
+
 
     def pred_nn(self):
         """
@@ -292,7 +303,8 @@ class NNClassGui(LayerViewerGui):
 
                 self.topLevelOperator.FreezePredictions.setValue(False)
 
-                expected_input_shape = self.classifiers[classifier_key]._tiktorch_net.expected_input_shape
+                expected_input_shape = TikTorchLazyflowClassifier(None, self.classifiers[classifier_key],
+                 self.halo_size, self.batch_size)._tiktorch_net.expected_input_shape
 
                 input_shape = numpy.array(expected_input_shape)
                 input_shape = input_shape[1:]
@@ -305,7 +317,8 @@ class NNClassGui(LayerViewerGui):
                 self.topLevelOperator.BlockShape.setValue(input_shape)
                 self.topLevelOperator.NumClasses.setValue(channels)
 
-                self.topLevelOperator.Classifier.setValue(self.classifiers[classifier_key])
+                self.topLevelOperator.Classifier.setValue(TikTorchLazyflowClassifier(None, self.classifiers[classifier_key],
+                 self.halo_size, self.batch_size))
 
                 self.updateAllLayers()
                 self.parentApplet.appletStateUpdateRequested()
