@@ -40,6 +40,8 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import log_exception
 from ilastik.utility import bind
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.applets.base.applet import DatasetConstraintError
 
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
@@ -170,6 +172,35 @@ class AnnotationsGui(LayerViewerGui):
                         if int(self._drawer.activeTrackBox.itemText(i)) == track:
                             self._drawer.activeTrackBox.setCurrentIndex(i)
                             break
+
+            feats = self.mainOperator.ObjectFeatures([t]).wait()
+            rc = feats[t][default_features_key]['RegionCenter']
+            lower = feats[t][default_features_key]['Coord<Minimum>']
+            upper = feats[t][default_features_key]['Coord<Maximum>']
+
+            for idx in range(rc.shape[0]):
+                if idx == ul:
+                    # for 2d data, set z-coordinate to 0:
+                    if len(rc[idx]) == 2:
+                        x, y = rc[idx]
+                        z = 0
+                        x_lower, y_lower = lower[idx]
+                        x_upper, y_upper = upper[idx]
+                        z_lower = 0
+                        z_upper = 0
+                    elif len(rc[idx]) == 3:
+                        x, y, z = rc[idx]
+                        x_lower, y_lower, z_lower = lower[idx]
+                        x_upper, y_upper, z_upper = upper[idx]
+                    else:
+                        raise DatasetConstraintError ("Tracking", "The RegionCenter feature must have dimensionality 2 or 3.")
+
+                    for imageView in self.editor.imageViews:
+                        imageView._croppingMarkers.crop_extents_model.setEditable(True)
+                        imageView._croppingMarkers.crop_extents_model.set_volume_shape_3d_cropped(
+                            [x_lower,y_lower,z_lower],[x_upper,y_upper,z_upper])
+                        imageView._croppingMarkers.setVisible(True)
+
             return ul, t
 
         return None, None
