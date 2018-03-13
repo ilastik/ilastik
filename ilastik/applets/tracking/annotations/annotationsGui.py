@@ -188,17 +188,24 @@ class AnnotationsGui(LayerViewerGui):
                         x_upper, y_upper = upper[idx]
                         z_lower = 0
                         z_upper = 0
+                        dx = abs(x_upper-x_lower)/3
+                        dy = abs(y_upper-y_lower)/3
+                        d = min([dx,dy])
                     elif len(rc[idx]) == 3:
                         x, y, z = rc[idx]
                         x_lower, y_lower, z_lower = lower[idx]
                         x_upper, y_upper, z_upper = upper[idx]
+                        dx = abs(x_upper-x_lower)/3
+                        dy = abs(y_upper-y_lower)/3
+                        dz = abs(z_upper-z_lower)/3
+                        d = min([dx,dy,dz])
                     else:
                         raise DatasetConstraintError ("Tracking", "The RegionCenter feature must have dimensionality 2 or 3.")
 
                     for imageView in self.editor.imageViews:
                         imageView._croppingMarkers.crop_extents_model.setEditable(True)
                         imageView._croppingMarkers.crop_extents_model.set_volume_shape_3d_cropped(
-                            [x_lower,y_lower,z_lower],[x_upper,y_upper,z_upper])
+                            [x_lower-d,y_lower-d,z_lower-d],[x_upper+d,y_upper+d,z_upper+d])
                         imageView._croppingMarkers.setVisible(True)
 
             return ul, t
@@ -272,6 +279,7 @@ class AnnotationsGui(LayerViewerGui):
         return None, None
 
     def goToNextUnlabeledObjectFrame(self):
+
         labels = self.mainOperator.labels
         t = self.editor.posModel.time
 
@@ -825,6 +833,10 @@ class AnnotationsGui(LayerViewerGui):
                     self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=True)
             self._onSaveAnnotations(division=True)
         else:
+
+            for imageView in self.editor.imageViews:
+                imageView._croppingMarkers.setVisible(False)
+
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
             if oid == 0:
                 return
@@ -860,7 +872,10 @@ class AnnotationsGui(LayerViewerGui):
 
         if self.divLock:
             return
-                
+
+        for imageView in self.editor.imageViews:
+            imageView._croppingMarkers.setVisible(False)
+
         oid = self._getObject(self.mainOperator.LabelImage, position5d)
         if oid == 0:
             return
@@ -1379,6 +1394,11 @@ class AnnotationsGui(LayerViewerGui):
         if self._getActiveTrack() == self.misdetIdx:
             self._criticalMessage("Error: Cannot add a division event for misdetections. Release misdetection button first.")
             return
+
+        if self.divLock:
+            for imageView in self.editor.imageViews:
+                imageView._croppingMarkers.setVisible(False)
+
         self.divLock = not self.divLock             
         self._drawer.divEvent.setChecked(not self.divLock)
         self.divs = []
@@ -1914,6 +1934,11 @@ class AnnotationsGui(LayerViewerGui):
                    self._drawer.newTrack,
                    self._drawer.markMisdetection,
                    self._drawer.divEvent,
+                   self._drawer.nextUnlabeledDivision,
+                   self._drawer.nextUnlabeledMerger,
+                   self._drawer.nextUnlabeledObject,
+                   self._drawer.nextUnlabeledObjectFrame,
+                   self._drawer.exportButton
                    ]
                 
         for b in buttons:
