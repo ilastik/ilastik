@@ -306,7 +306,11 @@ class LabelingGui(LayerViewerGui):
 
             #in this case, the actual data (for example color) has changed
             color = self._labelControlUi.labelListModel[firstRow].brushColor()
-            self._colorTable16[firstRow+1] = color.rgba()
+            color_value = color.rgba()
+            color_index = firstRow + 1
+            while len(self._colorTable16) <= color_index:
+                self._colorTable16.append(color_value)
+
             self.editor.brushingModel.setBrushColor(color)
 
             # Update the label layer colortable to match the list entry
