@@ -43,7 +43,7 @@ class NNClassApplet(StandardApplet):
         """
         defines which variables will be shared with different lanes
         """
-        return ['ModelPath', "FreezePredictions"]
+        return ['ModelPath', 'FullModel', "FreezePredictions"]
 
     @property
     def dataSerializers(self):
