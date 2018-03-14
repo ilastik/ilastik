@@ -47,9 +47,11 @@ class OpNNClassification(Operator):
     PredictionProbabilityChannels = OutputSlot(level=1)
 
     #Gui only (not part of the pipeline)
-    ModelPath = InputSlot()
+    ModelPath = InputSlot() # Path 
+    FullModel = InputSlot(value=[]) # When full model serialization is enabled
     Halo_Size = InputSlot(value=32)
     Batch_Size = InputSlot(value=3)
+    SaveFullModel = InputSlot(stype='bool', value=False, nonlane=True)
 
     def __init__(self, *args, **kwargs):
 

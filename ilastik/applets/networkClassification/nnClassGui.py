@@ -25,18 +25,21 @@ from collections import OrderedDict
 
 import numpy
 
+import torch
+
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 from volumina.utility import PreferencesManager
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, pyqtSlot
 from PyQt5.QtWidgets import QStackedWidget, QMessageBox, QFileDialog, QMenu, QLineEdit, QDialogButtonBox, QVBoxLayout, \
-     QDialog
+     QDialog, QCheckBox
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 
 from lazyflow.classifiers import TikTorchLazyflowClassifier
+
 
 logger = logging.getLogger(__name__)
 
@@ -84,8 +87,38 @@ class ParameterDlg(QDialog):
         super(ParameterDlg, self).accept()
 
 
+class SavingDlg(QDialog):
+    """
+    Saving Option Dialog
+    """
+    def __init__(self, topLevelOperator, parent):
+        super(QDialog, self).__init__(parent=parent)
 
+        self.topLevelOperator = topLevelOperator
 
+        buttonbox = QDialogButtonBox(Qt.Horizontal, parent=self)
+        buttonbox.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttonbox.accepted.connect(self.change_state)
+        buttonbox.rejected.connect(self.reject)
+
+        self.checkbox = QCheckBox()
+        self.checkbox.setChecked(self.topLevelOperator.SaveFullModel.value)
+        self.checkbox.setCheckable(True)
+        self.checkbox.setText("Enable Model Object serialization")
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.checkbox)
+        layout.addWidget(buttonbox)
+
+        self.setLayout(layout)
+        self.setWindowTitle("Saving Options")
+
+    def change_state(self):
+
+        self.topLevelOperator.SaveFullModel.setValue(self.checkbox.isChecked())
+
+        #close dialog
+        super(SavingDlg, self).accept()
 
 
 class NNClassGui(LayerViewerGui):
@@ -134,6 +167,27 @@ class NNClassGui(LayerViewerGui):
         set_parameter = advanced_menu.addAction("Parameters...")
         set_parameter.triggered.connect(settingParameter)
 
+        def serializing_options():
+            """
+            enable/disable serialization options
+            """
+            dlg = SavingDlg(self.topLevelOperator, parent=self)
+            dlg.exec_()
+
+            if self.topLevelOperator.SaveFullModel.value == True:
+                obj_list = []
+                # print(list(self.topLevelOperator.ModelPath.value.values())[0])
+                # object_ = torch.load(list(self.topLevelOperator.ModelPath.value.values())[0])
+                for key in self.topLevelOperator.ModelPath.value:
+                    object_ = torch.load(self.topLevelOperator.ModelPath.value[key])
+                    obj_list.append(object_)
+
+                self.topLevelOperator.FullModel.setValue(obj_list)
+
+
+        advanced_menu.addAction("Saving Options").triggered.connect(serializing_options)
+        
+
         menus += [advanced_menu]
 
         return menus    
@@ -176,6 +230,7 @@ class NNClassGui(LayerViewerGui):
         self.drawer.addModel.clicked.connect(self.addModels)
 
         if self.topLevelOperator.ModelPath.ready():
+
             self.drawer.comboBox.clear()
             self.drawer.comboBox.addItems(self.topLevelOperator.ModelPath.value)
 
@@ -282,7 +337,12 @@ class NNClassGui(LayerViewerGui):
             self.drawer.comboBox.clear()
             self.drawer.comboBox.addItems(self.classifiers)
 
-            self.topLevelOperator.ModelPath.setValue(self.classifiers)
+            if self.topLevelOperator.SaveFullModel.value  == True:
+                object_ = torch.load(filename[0])
+                self.topLevelOperator.FullModel.setValue(object_)
+
+            else:
+                self.topLevelOperator.ModelPath.setValue(self.classifiers)
 
 
     def pred_nn(self):
@@ -291,8 +351,8 @@ class NNClassGui(LayerViewerGui):
         Sets the ClassifierSlotValue for Prediction.
         Updates the SetupLayers function
         """
-
         classifier_key = self.drawer.comboBox.currentText()
+        classifier_index = self.drawer.comboBox.currentIndex()
 
         if len(classifier_key) == 0:
             QMessageBox.critical(self, "Error loading file", "Add a Model first")
@@ -301,9 +361,18 @@ class NNClassGui(LayerViewerGui):
 
             if self.drawer.liveUpdateButton.isChecked():
 
+                if self.topLevelOperator.FullModel.value:
+                    #if the full model object is serialized
+                    model_object = self.topLevelOperator.FullModel.value[classifier_index]
+                    print(classifier_index)
+                    model_path = None
+                else:
+                    model_object = None
+                    model_path = self.classifiers[classifier_key]
+
                 self.topLevelOperator.FreezePredictions.setValue(False)
 
-                expected_input_shape = TikTorchLazyflowClassifier(None, self.classifiers[classifier_key],
+                expected_input_shape = TikTorchLazyflowClassifier(model_object, model_path,
                  self.halo_size, self.batch_size)._tiktorch_net.expected_input_shape
 
                 input_shape = numpy.array(expected_input_shape)
@@ -317,7 +386,7 @@ class NNClassGui(LayerViewerGui):
                 self.topLevelOperator.BlockShape.setValue(input_shape)
                 self.topLevelOperator.NumClasses.setValue(channels)
 
-                self.topLevelOperator.Classifier.setValue(TikTorchLazyflowClassifier(None, self.classifiers[classifier_key],
+                self.topLevelOperator.Classifier.setValue(TikTorchLazyflowClassifier(model_object, model_path,
                  self.halo_size, self.batch_size))
 
                 self.updateAllLayers()
