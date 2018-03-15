@@ -1396,8 +1396,11 @@ class AnnotationsGui(LayerViewerGui):
             return
 
         if self.divLock:
+            self._drawer.divEvent.setText("Division Event")
             for imageView in self.editor.imageViews:
                 imageView._croppingMarkers.setVisible(False)
+        else:
+            self._drawer.divEvent.setText("Stop Division Event")
 
         self.divLock = not self.divLock             
         self._drawer.divEvent.setChecked(not self.divLock)
