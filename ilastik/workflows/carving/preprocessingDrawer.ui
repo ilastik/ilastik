@@ -163,48 +163,8 @@
       </layout>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QCheckBox" name="doAggloCheckBox">
-         <property name="text">
-          <string>Agglo?</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>SizeReg.</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QDoubleSpinBox" name="sizeRegularizerSpin">
-         <property name="decimals">
-          <number>3</number>
-         </property>
-         <property name="maximum">
-          <double>50.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>0.050000000000000</double>
-         </property>
-         <property name="value">
-          <double>0.500000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label_4">
-         <property name="text">
-          <string>ReduceTo</string>
-         </property>
-        </widget>
-       </item>
-       <item>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="2" column="3">
         <widget class="QDoubleSpinBox" name="reduceToSpin">
          <property name="decimals">
           <number>3</number>
@@ -223,7 +183,59 @@
          </property>
         </widget>
        </item>
-       <item>
+       <item row="2" column="4">
+        <spacer name="horizontalSpacer_4">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_3">
+         <property name="toolTip">
+          <string>Reduce the number of superpixels to this parameter * original number. By defalut, reduce to 20% of the original superpixel number.</string>
+         </property>
+         <property name="text">
+          <string>Reduce to </string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="3">
+        <widget class="QDoubleSpinBox" name="sizeRegularizerSpin">
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="maximum">
+          <double>50.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.050000000000000</double>
+         </property>
+         <property name="value">
+          <double>0.500000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QCheckBox" name="doAggloCheckBox">
+         <property name="toolTip">
+          <string>Cluster easy decisions in order to reduce the problem size</string>
+         </property>
+         <property name="text">
+          <string>Agglomerate???</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="4">
         <spacer name="horizontalSpacer_3">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -236,7 +248,33 @@
          </property>
         </spacer>
        </item>
+       <item row="0" column="4">
+        <spacer name="horizontalSpacer_5">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_4">
+         <property name="toolTip">
+          <string>How regular should the superpixel size be? 0 - no restrictions, 1 - all the same size</string>
+         </property>
+         <property name="text">
+          <string>Superpixel Regularity</string>
+         </property>
+        </widget>
+       </item>
       </layout>
+     </item>
+     <item>
+      <layout class="QGridLayout" name="gridLayout"/>
      </item>
      <item>
       <layout class="QHBoxLayout" name="wsInputLayout">
