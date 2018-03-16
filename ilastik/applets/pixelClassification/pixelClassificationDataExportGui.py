@@ -28,6 +28,7 @@ import warnings
 from lazyflow.operators.generic import OpMultiArraySlicer2
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
+from volumina import colortables
 
 from ilastik.utility import bind
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
@@ -167,7 +168,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 num_channels = 1
             if num_channels != len(names) or num_channels != len(colors):
                 names = ["Label {}".format(n) for n in range(1, num_channels+1)]
-                colors = self._createDefault16ColorColorTable()[:num_channels]
+                colors = colortables.default16_new[:num_channels]
 
         # Use a slicer to provide a separate slot for each channel layer
         opSlicer = OpMultiArraySlicer2( parent=opLane.viewed_operator().parent )
@@ -189,28 +190,3 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 layers.append(predictLayer)
 
         return layers
-
-    @staticmethod
-    def _createDefault16ColorColorTable():
-        colors = []
-        # ilastik v0.5 colors
-        colors.append( QColor( Qt.red ) )
-        colors.append( QColor( Qt.green ) )
-        colors.append( QColor( Qt.yellow ) )
-        colors.append( QColor( Qt.blue ) )
-        colors.append( QColor( Qt.magenta ) )
-        colors.append( QColor( Qt.darkYellow ) )
-        colors.append( QColor( Qt.lightGray ) )
-        # Additional colors
-        colors.append( QColor(255, 105, 180) ) #hot pink
-        colors.append( QColor(102, 205, 170) ) #dark aquamarine
-        colors.append( QColor(165,  42,  42) ) #brown
-        colors.append( QColor(0, 0, 128) )     #navy
-        colors.append( QColor(255, 165, 0) )   #orange
-        colors.append( QColor(173, 255,  47) ) #green-yellow
-        colors.append( QColor(128,0, 128) )    #purple
-        colors.append( QColor(240, 230, 140) ) #khaki
-        colors.append( QColor(255, 255, 255) ) #white
-        assert len(colors) == 16
-        colors = [(c.red(), c.green(), c.blue()) for c in colors]
-        return colors

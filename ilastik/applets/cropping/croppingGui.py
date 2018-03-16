@@ -36,6 +36,7 @@ from PyQt5.QtGui import QIcon, QColor, QKeySequence
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer
 from volumina.utility import ShortcutManager, PreferencesManager
+from volumina import colortables
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.cropListView import Crop
 from ilastik.widgets.cropListModel import CropListModel
@@ -167,7 +168,7 @@ class CroppingGui(LayerViewerGui):
         self.topLevelOperatorView.Crops.notifyDirty( bind(self._updateCropList) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.Crops.unregisterDirty, bind(self._updateCropList) ) )
         
-        self._colorTable16 = self._createDefault16ColorColorTable()
+        self._colorTable16 = colortables.default16_new
         self._programmaticallyRemovingCrops = False
 
         self._initCropUic(drawerUiPath)
@@ -592,31 +593,6 @@ class CroppingGui(LayerViewerGui):
             layers.append(layer)
 
         return layers
-
-    @staticmethod
-    def _createDefault16ColorColorTable():
-        colors = []
-        # Transparent for the zero crop
-        colors.append(QColor(0,0,0,0))
-        # ilastik v0.5 colors
-        colors.append( QColor( Qt.red ) )
-        colors.append( QColor( Qt.green ) )
-        colors.append( QColor( Qt.yellow ) )
-        colors.append( QColor( Qt.blue ) )
-        colors.append( QColor( Qt.magenta ) )
-        colors.append( QColor( Qt.darkYellow ) )
-        colors.append( QColor( Qt.lightGray ) )
-        # Additional colors
-        colors.append( QColor(255, 105, 180) ) #hot pink
-        colors.append( QColor(102, 205, 170) ) #dark aquamarine
-        colors.append( QColor(165,  42,  42) ) #brown
-        colors.append( QColor(0, 0, 128) )     #navy
-        colors.append( QColor(255, 165, 0) )   #orange
-        colors.append( QColor(173, 255,  47) ) #green-yellow
-        colors.append( QColor(128,0, 128) )    #purple
-        colors.append( QColor(240, 230, 140) ) #khaki
-        assert len(colors) == 16
-        return [c.rgba() for c in colors]
 
 
     def allowDeleteLastCropOnly(self, enabled):

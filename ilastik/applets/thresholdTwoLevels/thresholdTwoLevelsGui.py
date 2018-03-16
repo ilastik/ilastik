@@ -34,6 +34,7 @@ from PyQt5.QtGui import QColor, QPixmap, QIcon
 from PyQt5.QtWidgets import QMessageBox
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
+from volumina import colortables
 from volumina.colortables import create_default_16bit
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import bind
@@ -59,7 +60,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
     def __init__(self, *args, **kwargs):
         self.__cleanup_fns = []
         super( ThresholdTwoLevelsGui, self ).__init__(*args, **kwargs)
-        self._defaultInputChannelColors = self._createDefault16ColorColorTable()
+        self._defaultInputChannelColors = colortables.default16_new
 
         self._onInputMetaChanged()
 
@@ -142,7 +143,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             input_channel_colors = [QColor(r_g_b[0],r_g_b[1],r_g_b[2]) for r_g_b in op.InputChannelColors.value]
         else:
             if self._defaultInputChannelColors is None:
-                self._defaultInputChannelColors = self._createDefault16ColorColorTable()
+                self._defaultInputChannelColors = colortables.default16_new
             input_channel_colors = list(map(QColor, self._defaultInputChannelColors))
 
         self._drawer.inputChannelComboBox.clear()
@@ -413,38 +414,3 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             layers.append(rawLayer)
 
         return layers
-
-    #FIXME: why do we do it here? why not take the one from volumina?
-    def _createDefault16ColorColorTable(self):
-        colors = []
-
-        # SKIP: Transparent for the zero label
-        #colors.append(QColor(0,0,0,0))
-
-        # ilastik v0.5 colors
-        colors.append( QColor( Qt.red ) )
-        colors.append( QColor( Qt.green ) )
-        colors.append( QColor( Qt.yellow ) )
-        colors.append( QColor( Qt.blue ) )
-        colors.append( QColor( Qt.magenta ) )
-        colors.append( QColor( Qt.darkYellow ) )
-        colors.append( QColor( Qt.lightGray ) )
-
-        # Additional colors
-        colors.append( QColor(255, 105, 180) ) #hot pink
-        colors.append( QColor(102, 205, 170) ) #dark aquamarine
-        colors.append( QColor(165,  42,  42) ) #brown
-        colors.append( QColor(0, 0, 128) )     #navy
-        colors.append( QColor(255, 165, 0) )   #orange
-        colors.append( QColor(173, 255,  47) ) #green-yellow
-        colors.append( QColor(128,0, 128) )    #purple
-        colors.append( QColor(240, 230, 140) ) #khaki
-
-        colors.append( QColor(192, 192, 192) ) #silver
-
-#        colors.append( QColor(69, 69, 69) )    # dark grey
-#        colors.append( QColor( Qt.cyan ) )
-
-        assert len(colors) == 16
-
-        return [c.rgba() for c in colors]

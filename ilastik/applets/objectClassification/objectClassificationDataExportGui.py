@@ -24,6 +24,7 @@ from PyQt5.QtGui import QColor
 
 
 from volumina.api import LazyflowSource, ColortableLayer, AlphaModulatedLayer
+from volumina import colortables
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 from lazyflow.operators import OpMultiArraySlicer2
 from ilastik.utility.exportingOperator import ExportingGui
@@ -63,42 +64,10 @@ class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
         btn = QPushButton("Configure Feature Table Export", clicked=self.configure_table_export)
         self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
 
-def _createDefault16ColorColorTable():
-    colors = []
-
-    # Transparent for the zero label
-    colors.append(QColor(0,0,0,0))
-
-    # ilastik v0.5 colors
-    colors.append( QColor( Qt.red ) )
-    colors.append( QColor( Qt.green ) )
-    colors.append( QColor( Qt.yellow ) )
-    colors.append( QColor( Qt.blue ) )
-    colors.append( QColor( Qt.magenta ) )
-    colors.append( QColor( Qt.darkYellow ) )
-    colors.append( QColor( Qt.lightGray ) )
-
-    # Additional colors
-    colors.append( QColor(255, 105, 180) ) #hot pink
-    colors.append( QColor(102, 205, 170) ) #dark aquamarine
-    colors.append( QColor(165,  42,  42) ) #brown
-    colors.append( QColor(0, 0, 128) )     #navy
-    colors.append( QColor(255, 165, 0) )   #orange
-    colors.append( QColor(173, 255,  47) ) #green-yellow
-    colors.append( QColor(128,0, 128) )    #purple
-    colors.append( QColor(240, 230, 140) ) #khaki
-
-#    colors.append( QColor(192, 192, 192) ) #silver
-#    colors.append( QColor(69, 69, 69) )    # dark grey
-#    colors.append( QColor( Qt.cyan ) )
-
-    assert len(colors) == 16
-
-    return [c.rgba() for c in colors]
 
 class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
 
-    _colorTable16 = _createDefault16ColorColorTable()
+    _colorTable16 = colortables.default16_new
     
     def setupLayers(self):
         layers = []

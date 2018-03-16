@@ -159,7 +159,7 @@ class ObjectClassificationGui(LabelingGui):
         
         self.labelingDrawerUi.brushSizeCaption.setVisible(False)
 
-        self._colorTable16_forpmaps = self._createDefault16ColorColorTable()
+        self._colorTable16_forpmaps = colortables.default16_new
         self._colorTable16_forpmaps[15] = QColor(Qt.black).rgba() #for objects with NaNs in features
         
         # button handlers

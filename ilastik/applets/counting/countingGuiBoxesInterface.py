@@ -39,6 +39,7 @@ from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.api import Viewer
 from volumina.layer import ColortableLayer
 from volumina.colortables import jet
+from volumina import colortables
 
 import numpy as np
 import vigra
@@ -1089,34 +1090,9 @@ class BoxController(QObject):
 import numpy as np
 import colorsys
 
-def _createDefault16ColorColorTable():
-    from PyQt5.QtGui import QColor
-    from PyQt5.QtCore import Qt
-    colors = []
-    # Transparent for the zero label
-    colors.append(QColor(0,0,0,0))
-    # ilastik v0.5 colors
-    colors.append( QColor( Qt.red ) )
-    colors.append( QColor( Qt.green ) )
-    colors.append( QColor( Qt.yellow ) )
-    colors.append( QColor( Qt.blue ) )
-    colors.append( QColor( Qt.magenta ) )
-    colors.append( QColor( Qt.darkYellow ) )
-    colors.append( QColor( Qt.lightGray ) )
-    # Additional colors
-    colors.append( QColor(255, 105, 180) ) #hot pink
-    colors.append( QColor(102, 205, 170) ) #dark aquamarine
-    colors.append( QColor(165,  42,  42) ) #brown
-    colors.append( QColor(0, 0, 128) )     #navy
-    colors.append( QColor(255, 165, 0) )   #orange
-    colors.append( QColor(173, 255,  47) ) #green-yellow
-    colors.append( QColor(128,0, 128) )    #purple
-    colors.append( QColor(240, 230, 140) ) #khaki
-    return colors
-
 def RandomColorGenerator(seed=42):
     np.random.seed(seed)
-    default=_createDefault16ColorColorTable()
+    default=colortables.default16_new
 
     i=-1
     while 1:
