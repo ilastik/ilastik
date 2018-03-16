@@ -228,7 +228,7 @@
           <string>Cluster easy decisions in order to reduce the problem size</string>
          </property>
          <property name="text">
-          <string>Agglomerate???</string>
+          <string>Agglomerate</string>
          </property>
          <property name="checked">
           <bool>true</bool>
