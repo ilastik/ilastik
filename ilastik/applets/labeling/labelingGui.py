@@ -169,6 +169,7 @@ class LabelingGui(LayerViewerGui):
         self.__cleanup_fns.append( partial( self._labelingSlots.labelNames.unregisterDirty, bind(self._updateLabelList) ) )
 
 
+        self._colorTable16 = colortables.default16_new
         self._programmaticallyRemovingLabels = False
 
         if drawerUiPath is None:

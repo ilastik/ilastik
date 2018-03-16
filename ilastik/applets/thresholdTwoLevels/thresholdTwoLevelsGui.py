@@ -60,7 +60,11 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
     def __init__(self, *args, **kwargs):
         self.__cleanup_fns = []
         super( ThresholdTwoLevelsGui, self ).__init__(*args, **kwargs)
+<<<<<<< 0cc75154bcba04da1e80833b8320133626126a53
         self._defaultInputChannelColors = colortables.default16_new[1:] #first color is transparent
+=======
+        self._defaultInputChannelColors = colortables.default16_new
+>>>>>>> make all gui classes use the colortable16 from volumina.colortables
 
         self._onInputMetaChanged()
 
@@ -144,6 +148,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         else:
             if self._defaultInputChannelColors is None:
                 self._defaultInputChannelColors = colortables.default16_new[1:]
+
             input_channel_colors = list(map(QColor, self._defaultInputChannelColors))
 
         self._drawer.inputChannelComboBox.clear()

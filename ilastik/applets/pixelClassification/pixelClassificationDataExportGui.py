@@ -168,10 +168,8 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 num_channels = 1
             if num_channels != len(names) or num_channels != len(colors):
                 names = ["Label {}".format(n) for n in range(1, num_channels+1)]
-                colors = num_channels * [(0, 0, 0)] # it doesn't matter, if the pmaps color is not known,
-                                                    # we are either initializing and it will be rewritten or
-                                                    # something is very wrong elsewhere
 
+                colors = colortables.default16_new[:num_channels]
         # Use a slicer to provide a separate slot for each channel layer
         opSlicer = OpMultiArraySlicer2( parent=opLane.viewed_operator().parent )
         opSlicer.Input.connect( predictionSlot )
