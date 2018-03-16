@@ -46,26 +46,28 @@ def _format_version(t):
     return '.'.join(str(i) for i in t)
 
 
-__version_info__ = (1, 3, '0b4')  # Don't forget to update the splash screen!
+__version_info__ = (1, 3, '0')  # Don't forget to update the splash screen!
 __version__ = _format_version(__version_info__)
 
 core_developers = ["Janez Ales",
                    "Thorsten Beier",
                    "Stuart Berg",
+                   "Fynn Beuttenmueller",
                    "Jaime Cervantes",
                    "Markus Doering",
                    "Fred Hamprecht",
                    "Carsten Haubold",
                    "Bernhard Kausler",
-                   "Anna Kreshuk",
                    "Ullrich Koethe",
+                   "Anna Kreshuk",
                    "Thorben Kroeger",
+                   "Dominik Kutra",
                    "Martin Schiegg",
                    "Christoph Sommer",
-                   "Christoph Straehle"]
+                   "Christoph Straehle",
+                   "Adrian Wolny"]
 
-developers = ["Fynn Beuttenmueller",
-              "Niels Buwen",
+developers = ["Niels Buwen",
               "Christoph Decker",
               "Kemal Eren",
               "Burcin Erocal",
@@ -76,7 +78,6 @@ developers = ["Fynn Beuttenmueller",
               "Fabian Isensee",
               "Kai Karius",
               "Jens Kleesiek",
-              "Dominik Kutra",
               "Markus Nullmeier",
               "Letitia Parcalabescu",
               "Oliver Petra",

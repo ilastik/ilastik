@@ -26,7 +26,7 @@ from functools import partial
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QColorDialog, QVBoxLayout, QPushButton, QDialog, QWidget, QMenu
+from PyQt5.QtWidgets import QColorDialog, QVBoxLayout, QPushButton, QDialog, QWidget, QMenu, QMessageBox
 
 from .labelListModel import LabelListModel, Label
 from .listView import ListView
@@ -84,8 +84,19 @@ class LabelListView(ListView):
     def tableViewCellClicked(self, modelIndex):
         if (modelIndex.column() == self.model.ColumnID.Delete and
             not self.model.flags(modelIndex) == Qt.NoItemFlags):
-            self.model.removeRow(modelIndex.row())
-
+            current_row = modelIndex.row()
+            model = modelIndex.model()
+            label_name = model.data(model.index(current_row, 1), Qt.DisplayRole)
+            message = (
+                f"You are about to delete label '{label_name}' along with all associated annotations!\nAre you sure?"
+            )
+            buttons = QMessageBox.Ok | QMessageBox.Cancel
+            response = QMessageBox.warning(self, "Delete Label?", message, buttons)
+            if response == QMessageBox.Cancel:
+                return 
+            elif response == QMessageBox.Ok:
+                self.model.removeRow(modelIndex.row())
+    
     def contextMenuEvent(self, event):
         from_index = self._table.indexAt(event.pos())
         if not (0 <= from_index.row() < self.model.rowCount()):
