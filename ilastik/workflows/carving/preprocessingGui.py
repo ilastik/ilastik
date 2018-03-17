@@ -121,23 +121,18 @@ class PreprocessingGui(QMainWindow):
         
         #update lower bound for sigma
         self.drawer.sigmaSpin.setMinimum(self.correspondingSigmaMins[choice])
-    
+
     def handleSigmaValueChanged(self):
         self.topLevelOperatorView.Sigma.setValue(self.drawer.sigmaSpin.value())
-
-
 
     def handleSizeRegularizerValueChanged(self):
         self.topLevelOperatorView.SizeRegularizer.setValue(self.drawer.sizeRegularizerSpin.value())
 
-
     def handleReduceToValueChanged(self):
-        self.topLevelOperatorView.SizeRegularizer.setValue(self.drawer.reduceToSpin.value())
+        self.topLevelOperatorView.ReduceTo.setValue(self.drawer.reduceToSpin.value())
 
     def handleDoAggloChanged(self):
         self.topLevelOperatorView.DoAgglo.setValue( self.drawer.doAggloCheckBox.isChecked() )
-    
-
 
     def handleWatershedSourceChange(self, index):
         data = self.drawer.watershedSourceCombo.itemData(index)
