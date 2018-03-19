@@ -68,7 +68,6 @@ def simple_parallel_ws_impl(data, block_shape=None, max_workers=None):
                 inner_slicing = to_slicing(inner_block.begin, inner_block.end)
                 outer_slicing = to_slicing(outer_block.begin, outer_block.end)
                 inner_local_slicing = to_slicing(inner_block_local.begin, inner_block_local.end)
-              
 
                 # watershed input for block with margin/halo
                 outer_block_data = data[outer_slicing]
@@ -78,19 +77,13 @@ def simple_parallel_ws_impl(data, block_shape=None, max_workers=None):
                 outer_block_labels_vigra, nseg = vigra.analysis.watershedsNew(outer_block_data_vigra)
                 outer_block_labels = outer_block_labels_vigra
 
-
                 inner_block_labels = outer_block_labels[inner_local_slicing]
-                inner_block_labels = vigra.analysis.labelVolume(inner_block_labels.astype('uint32')) 
-
-
+                inner_block_labels = vigra.analysis.labelMultiArray(inner_block_labels.astype('uint32'))
 
                 inner_block_labels = inner_block_labels.astype('int64')
                 # get the max
                 inner_block_max_label = inner_block_labels.max()
                 inner_block_min_label = inner_block_labels.min()
-
-
-                
 
                 with labels_lock:
 
