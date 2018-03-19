@@ -69,6 +69,7 @@ class PreprocessingGui(QMainWindow):
                                 self.drawer.filter5]
         
         self.correspondingSigmaMins = [0.9,0.9,0.6,0.1,0.1]
+        self.filterChoice = None
         
         # Set up our handlers
         for f in self.filterbuttons:
@@ -83,14 +84,8 @@ class PreprocessingGui(QMainWindow):
         # Initialize widget values
         self.updateDrawerFromOperator()
 
-        # Event handlers
+        # Event handlers: everything is handled once the run button is clicked, not live
         self.drawer.runButton.clicked.connect(self.handleRunButtonClicked)
-        self.drawer.sigmaSpin.valueChanged.connect(self.handleSigmaValueChanged)
-
-        self.drawer.sizeRegularizerSpin.valueChanged.connect(self.handleSizeRegularizerValueChanged)
-        self.drawer.reduceToSpin.valueChanged.connect(self.handleReduceToValueChanged)
-        self.drawer.doAggloCheckBox.stateChanged.connect(self.handleDoAggloChanged)
-
 
         self.drawer.watershedSourceCombo.currentIndexChanged.connect( self.handleWatershedSourceChange )
         self.drawer.invertWatershedSourceCheckbox.toggled.connect( self.handleInvertWatershedSourceChange )
@@ -117,22 +112,10 @@ class PreprocessingGui(QMainWindow):
 
     def handleFilterChanged(self):
         choice =  [f.isChecked() for f in self.filterbuttons].index(True)
-        self.topLevelOperatorView.Filter.setValue(choice)
-        
+        self.filterChoice = choice
         #update lower bound for sigma
         self.drawer.sigmaSpin.setMinimum(self.correspondingSigmaMins[choice])
 
-    def handleSigmaValueChanged(self):
-        self.topLevelOperatorView.Sigma.setValue(self.drawer.sigmaSpin.value())
-
-    def handleSizeRegularizerValueChanged(self):
-        self.topLevelOperatorView.SizeRegularizer.setValue(self.drawer.sizeRegularizerSpin.value())
-
-    def handleReduceToValueChanged(self):
-        self.topLevelOperatorView.ReduceTo.setValue(self.drawer.reduceToSpin.value())
-
-    def handleDoAggloChanged(self):
-        self.topLevelOperatorView.DoAgglo.setValue( self.drawer.doAggloCheckBox.isChecked() )
 
     def handleWatershedSourceChange(self, index):
         data = self.drawer.watershedSourceCombo.itemData(index)
@@ -148,6 +131,12 @@ class PreprocessingGui(QMainWindow):
     
     def handleRunButtonClicked(self):
         self.setWriteprotect()
+        self.topLevelOperatorView.Filter.setValue(self.filterChoice)
+        self.topLevelOperatorView.SizeRegularizer.setValue(self.drawer.sizeRegularizerSpin.value())
+        self.topLevelOperatorView.Sigma.setValue(self.drawer.sigmaSpin.value())
+        self.topLevelOperatorView.ReduceTo.setValue(self.drawer.reduceToSpin.value())
+        self.topLevelOperatorView.DoAgglo.setValue(self.drawer.doAggloCheckBox.isChecked())
+
         r = self.topLevelOperatorView.PreprocessedData[:]
         r.notify_failed(self.onFailed)
         r.notify_finished( bind(self.parentApplet.appletStateUpdateRequested) )
