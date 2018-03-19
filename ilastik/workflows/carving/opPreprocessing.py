@@ -34,6 +34,8 @@ from lazyflow.roi import roiFromShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache
 
+from lazyflow.request import Request
+
 from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -228,7 +230,9 @@ class OpSimpleBlockwiseWatershed(Operator):
                     result_view[...] = vigra.analysis.watersheds(volume_feat[...])[0].astype(numpy.int32)
 
                 else:
-                    result_view[...] = simple_parallel_ws(volume_feat,
+                    result_view[...] = simple_parallel_ws(
+                        volume_feat,
+                        max_workers=Request.global_thread_pool.num_workers,
                         size_regularizer=self.SizeRegularizer.value,
                         reduce_to=self.ReduceTo.value)
                 logger.info( "done {}".format(numpy.max(result[...]) ) )
@@ -237,7 +241,9 @@ class OpSimpleBlockwiseWatershed(Operator):
                     result_view[...] = vigra.analysis.watersheds(volume_feat[:,:,0])[0].astype(numpy.int32)
                 else:
                     sys.stdout.write("Blockwise Watershed..."); sys.stdout.flush()
-                    labelVolume = simple_parallel_ws(volume_feat[:,:,0],
+                    labelVolume = simple_parallel_ws(
+                        volume_feat[:, :, 0],
+                        max_workers=Request.global_thread_pool.num_workers,
                         size_regularizer=self.SizeRegularizer.value,
                         reduce_to=self.ReduceTo.value)
                     result_view[...] = labelVolume[:,:,numpy.newaxis]

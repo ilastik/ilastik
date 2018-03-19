@@ -136,7 +136,10 @@ def simple_parallel_ws_impl(data, block_shape=None, max_workers=None):
 
 
 def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, size_regularizer=0.5):
-    logger.info("blockwise watershed")
+    if max_workers is None:
+        max_workers = cpu_count()
+
+    logger.info(f"blockwise watershed with {max_workers} threads.")
     overseg = simple_parallel_ws_impl(data=data, block_shape=block_shape, max_workers=max_workers)
 
     #print("the overseg",overseg.min(), overseg.max())
@@ -149,11 +152,6 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, 
     logger.info("rag: %s"%str(rag))
     n_nodes = rag.numberOfNodes
     non_empty_nodes = n_nodes - n_empty
-
-
-    if max_workers is None:
-        max_workers = cpu_count()
-
 
     shape = data.shape
     ndim = len(shape)
