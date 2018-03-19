@@ -4,7 +4,7 @@ from past.utils import old_div
 import warnings
 
 
-if False:
+if True:
     import numpy as np
 
     from lazyflow.graph import Operator, InputSlot, OutputSlot
