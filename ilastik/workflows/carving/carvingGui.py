@@ -172,34 +172,7 @@ class CarvingGui(LabelingGui):
         #    self.updateAllLayers() #make sure that an added/deleted uncertainty layer is recognized
         #self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onUncertaintyCombo)
 
-        ## background priority
-        
-        def onBackgroundPrioritySpin(value):
-            logger.debug( "background priority changed to %f" % value )
-            self.topLevelOperatorView.BackgroundPriority.setValue(value)
-        self.labelingDrawerUi.backgroundPrioritySpin.valueChanged.connect(onBackgroundPrioritySpin)
 
-        def onBackgroundPriorityDirty(slot, roi):
-            oldValue = self.labelingDrawerUi.backgroundPrioritySpin.value()
-            newValue = self.topLevelOperatorView.BackgroundPriority.value
-            if  newValue != oldValue:
-                self.labelingDrawerUi.backgroundPrioritySpin.setValue(newValue)
-        self.topLevelOperatorView.BackgroundPriority.notifyDirty(onBackgroundPriorityDirty)
-        
-        ## bias
-        
-        def onNoBiasBelowDirty(slot, roi):
-            oldValue = self.labelingDrawerUi.noBiasBelowSpin.value()
-            newValue = self.topLevelOperatorView.NoBiasBelow.value
-            if  newValue != oldValue:
-                self.labelingDrawerUi.noBiasBelowSpin.setValue(newValue)
-        self.topLevelOperatorView.NoBiasBelow.notifyDirty(onNoBiasBelowDirty)
-        
-        def onNoBiasBelowSpin(value):
-            logger.debug( "background priority changed to %f" % value )
-            self.topLevelOperatorView.NoBiasBelow.setValue(value)
-        self.labelingDrawerUi.noBiasBelowSpin.valueChanged.connect(onNoBiasBelowSpin)
-        
         ## save
 
         self.labelingDrawerUi.save.clicked.connect(self.onSaveButton)
@@ -268,6 +241,10 @@ class CarvingGui(LabelingGui):
         
     def onSegmentButton(self):
         logger.debug( "segment button clicked" )
+        bkPriorityValue = self.labelingDrawerUi.backgroundPrioritySpin.value()
+        self.topLevelOperatorView.BackgroundPriority.setValue(bkPriorityValue)
+        biasValue = self.labelingDrawerUi.noBiasBelowSpin.value()
+        self.topLevelOperatorView.NoBiasBelow.setValue(biasValue)
         self.topLevelOperatorView.Trigger.setDirty(slice(None))
     
     def saveAsDialog(self, name=""):

@@ -355,6 +355,9 @@ class OpPreprocessing(Operator):
          
         self.initialSigma = None  # save settings of last preprocess
         self.initialFilter = None # applied to gui by pressing reset
+        self.initialDoAgglo = None
+        self.initialSizeRegularizer = None
+        self.initialReduceTo = None
         
         self._opFilter = OpFilter(parent=self)
         self._opFilter.Input.connect( self.InputData )
@@ -515,11 +518,11 @@ class OpPreprocessing(Operator):
             return False        
         if self.Filter.value != self.initialFilter:
             return False
-        if self.DoAgglo.value != self.initalDoAgglo:
+        if self.DoAgglo.value != self.initialDoAgglo:
             return False
         if abs(self.Sigma.value - self.initialSigma)>0.005:
             return False
-        if abs(self.ReduceTo.value - self.initalReduceTo)>0.005:
+        if abs(self.ReduceTo.value - self.initialReduceTo)>0.005:
             return False
         if abs(self.SizeRegularizer.value - self.initalSizeRegularizer)>0.005:
             return False
@@ -531,9 +534,9 @@ class OpPreprocessing(Operator):
             #No values will be reused any more
             self.initialSigma = None
             self.initialFilter = None
-            self.initalDoAgglo = None
-            self.initalSizeRegularizer = None
-            self.initalReduceTo = None
+            self.initialDoAgglo = None
+            self.initialSizeRegularizer = None
+            self.initialReduceTo = None
             self._prepData = [None]
         
         ws_source_changed = False
@@ -568,5 +571,6 @@ class OpPreprocessing(Operator):
         '''reset sigma and filter to values of last preprocess'''
         self.applet._gui.setSigma(self.initialSigma)
         self.applet._gui.setFilter(self.initialFilter)
+
     
 
