@@ -90,6 +90,8 @@ class PreprocessingGui(QMainWindow):
         self.drawer.invertWatershedSourceCheckbox.toggled.connect( self.handleInvertWatershedSourceChange )
         self.drawer.writeprotectBox.stateChanged.connect(self.handleWriterprotectStateChanged)
 
+        self.parentApplet.appletStateUpdateRequested.subscribe(self.processingFinished)
+
         #FIXME: for release 0.6, disable this (the reset button made the gui even more complicated)            
         #self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
 
@@ -121,7 +123,27 @@ class PreprocessingGui(QMainWindow):
 
     def handleInvertWatershedSourceChange(self, checked):
         self.topLevelOperatorView.InvertWatershedSource.setValue( checked )
-    
+
+    def processingFinished(self):
+        """Method makes sure finished processing is communicated visually
+
+        After processing is finished it is checked whether one of the result
+        layers is visible. If not, finished processing is communicated by
+        showing the watershed layer.
+        """
+        layerStack = self.centralGui.editor.layerStack
+        watershedIndex = layerStack.findMatchingIndex(
+            lambda x: x.name == 'Watershed'
+            )
+        filteredIndex = layerStack.findMatchingIndex(
+            lambda x: x.name == 'Filtered Data'
+            )
+
+        # Only do something if none of the result layers is visible
+        if not layerStack[watershedIndex].visible:
+            if not layerStack[filteredIndex].visible:
+                layerStack[watershedIndex].visible = True
+
     @threadRouted 
     def onFailed(self, exception, exc_info):
         log_exception( logger, exc_info=exc_info )
