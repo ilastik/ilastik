@@ -90,7 +90,7 @@ class PreprocessingGui(QMainWindow):
         self.drawer.invertWatershedSourceCheckbox.toggled.connect( self.handleInvertWatershedSourceChange )
         self.drawer.writeprotectBox.stateChanged.connect(self.handleWriterprotectStateChanged)
 
-        self.parentApplet.appletStateUpdateRequested.connect(self.processingFinished)
+        self.parentApplet.appletStateUpdateRequested.subscribe(self.processingFinished)
 
         #FIXME: for release 0.6, disable this (the reset button made the gui even more complicated)            
         #self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
