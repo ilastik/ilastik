@@ -48,7 +48,7 @@ class PreprocessingViewerGui( LayerViewerGui ):
             watershedLayer = ColortableLayer(LazyflowSource(watershedSlot), colortable)
             watershedLayer.name = "Watershed"
             watershedLayer.visible = False
-            watershedLayer.opacity = 1.0
+            watershedLayer.opacity = 0.5
             layers.append(watershedLayer)
 
         ''' FIXME: disabled for 0.6 release
