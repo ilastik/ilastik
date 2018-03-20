@@ -732,6 +732,7 @@ class CarvingGui(LabelingGui):
                              "shows <b>all completed object</b>, each with a random color.</html>")
             layer.visible = False
             layer.opacity = 0.5
+            layer.colortableIsRandom = True
             self._doneSegmentationLayer = layer
             layers.append(layer)
 
@@ -750,6 +751,7 @@ class CarvingGui(LabelingGui):
                              "(undersegmentation). In this case, it will be impossible to achieve the desired " \
                              "segmentation. This layer helps you to understand these cases.</html>")
             layer.visible = False
+            layer.colortableIsRandom = True
             layer.opacity = 0.5
             layers.append(layer)
 
