@@ -697,7 +697,7 @@ class DataSelectionGui(QWidget):
         return ( dlg_state == QDialog.Accepted )
 
     @classmethod
-    def getPossibleInternalPaths(cls, absPath, min_ndim=3, max_ndim=5):
+    def getPossibleInternalPaths(cls, absPath, min_ndim=2, max_ndim=5):
         datasetNames = []
         # Open the file as a read-only so we can get a list of the internal paths
         with h5py.File(absPath, 'r') as f:
