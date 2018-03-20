@@ -67,14 +67,13 @@ class PreprocessingGui(QMainWindow):
                                 self.drawer.filter3,
                                 self.drawer.filter4,
                                 self.drawer.filter5]
-        
+
         self.correspondingSigmaMins = [0.9,0.9,0.6,0.1,0.1]
-        self.filterChoice = None
-        
+
         # Set up our handlers
         for f in self.filterbuttons:
             f.clicked.connect(self.handleFilterChanged)
-        
+
         # Init widget appearance
         self.drawer.runButton.setIcon( QIcon(ilastikIcons.Play) )
         self.drawer.watershedSourceCombo.addItem("Input Data", userData="input")
@@ -104,13 +103,12 @@ class PreprocessingGui(QMainWindow):
 
     def updateDrawerFromOperator(self, *args):
         self.filterbuttons[self.topLevelOperatorView.Filter.value].setChecked(True)
+        self.filterChoice = [f.isChecked() for f in self.filterbuttons].index(True)
         self.drawer.sigmaSpin.setValue(self.topLevelOperatorView.Sigma.value)
         sourceSetting = self.topLevelOperatorView.WatershedSource.value
         comboIndex = self.drawer.watershedSourceCombo.findData( sourceSetting )
         self.drawer.watershedSourceCombo.setCurrentIndex( comboIndex )
         self.drawer.invertWatershedSourceCheckbox.setChecked( self.topLevelOperatorView.InvertWatershedSource.value )
-    
-
 
     def handleFilterChanged(self):
         choice =  [f.isChecked() for f in self.filterbuttons].index(True)
