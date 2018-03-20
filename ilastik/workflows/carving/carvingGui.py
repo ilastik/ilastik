@@ -729,7 +729,7 @@ class CarvingGui(LabelingGui):
                              "(undersegmentation). In this case, it will be impossible to achieve the desired " \
                              "segmentation. This layer helps you to understand these cases.</html>")
             layer.visible = False
-            layer.opacity = 1.0
+            layer.opacity = 0.5
             layers.append(layer)
 
         # Visual overlay (just for easier labeling)
