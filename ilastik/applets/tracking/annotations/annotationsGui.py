@@ -806,6 +806,7 @@ class AnnotationsGui(LayerViewerGui):
                         self.divLock = False
                         self.divs = []
                         self._drawer.divEvent.setChecked(False)
+                        self._drawer.divEvent.setText("Division Event")
                         self._enableButtons(enable=True)
                         return
 
@@ -830,6 +831,7 @@ class AnnotationsGui(LayerViewerGui):
                     self.divLock = False
                     self.divs = []
                     self._drawer.divEvent.setChecked(False)
+                    self._drawer.divEvent.setText("Division Event")
                     self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=True)
             self._onSaveAnnotations(division=True)
         else:
