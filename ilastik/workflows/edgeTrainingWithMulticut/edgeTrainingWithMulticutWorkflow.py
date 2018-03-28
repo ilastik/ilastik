@@ -353,7 +353,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         batch_processing_busy = self.batchProcessingApplet.busy
 
         self._shell.setAppletEnabled( self.dataSelectionApplet,             not batch_processing_busy )
-        self._shell.setAppletEnabled( self.wsdtApplet,                      not batch_processing_busy and input_ready and not superpixels_available_from_file )
+        self._shell.setAppletEnabled( self.wsdtApplet,                      not batch_processing_busy and input_ready and opDataSelection.ImageGroup[0][1].ready() and not superpixels_available_from_file )
         self._shell.setAppletEnabled( self.edgeTrainingWithMulticutApplet,  not batch_processing_busy and input_ready and superpixels_ready )
         self._shell.setAppletEnabled( self.dataExportApplet,                not batch_processing_busy and input_ready and opEdgeTrainingWithMulticut.Output.ready())
         self._shell.setAppletEnabled( self.batchProcessingApplet,           not batch_processing_busy and input_ready )
