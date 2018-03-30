@@ -53,8 +53,9 @@ class OpArrayPiper(Operator):
             self.outputs["Output"].setDirty(slice(None))
 
     def setInSlot(self, slot, subindex, roi, value):
-        # Forward to output
+        # Implementations of this method is only needed to satisfy the flow of
+        # the __setitem__ method for input slots. Nothing needs to be done here
+        # as the input of the value slot is manipulated directly. When the
+        # output is requested, execute is called.
         assert subindex == ()
         assert slot == self.Input
-        key = roi.toSlice()
-        self.outputs["Output"][key] = value
