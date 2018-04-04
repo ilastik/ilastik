@@ -169,6 +169,13 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         # normalizing patch
         # reordered_feature_image = (reordered_feature_image - reordered_feature_image.mean()) / (reordered_feature_image.std() + 0.000001)
 
+        if len(self._tiktorch_net.get('window_size')) == 2:
+            exp_input_shape = numpy.array(self._tiktorch_net.expected_input_shape)
+            exp_input_shape = tuple(numpy.append(1, exp_input_shape))
+            print(exp_input_shape)
+        else:
+            exp_input_shape = self._tiktorch_net.expected_input_shape
+
         logger.info(
             f'input axistags are {axistags}, '
             f'Shape after reordering input is {reordered_feature_image.shape}, '
@@ -177,18 +184,19 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         slice_shape = list(reordered_feature_image.shape[1::])  # ignore z axis
         # assuming [z, y, x]
         result_roi = numpy.array(roi)
-        if slice_shape != list(self._tiktorch_net.expected_input_shape[1::]):
+        if slice_shape != list(exp_input_shape[1::]):
             logger.info(
-                f"Expected input shape is {self._tiktorch_net.expected_input_shape[1::]}, "
+                f"Expected input shape is {exp_input_shape[1::]}, "
                 f"but got {slice_shape}, reshaping...")
 
             # adding a zero border to images that have the specific shape
 
-            exp_shape = list(self._tiktorch_net.expected_input_shape)
+            exp_shape = list(self._tiktorch_net.expected_input_shape[1::])
             zero_img = numpy.zeros(exp_shape)
 
             # diff shape: cyx
-            diff_shape = numpy.array(self._tiktorch_net.expected_input_shape[1::]) - numpy.array(slice_shape)
+            diff_shape = numpy.array(exp_input_shape[1::]) - numpy.array(slice_shape)
+            # diff_shape = numpy.array(self._tiktorch_net.expected_input_shape) - numpy.array(slice_shape)
             # offset shape z, y, x, c for easy indexing, with c = 0, z = 0
             offset = numpy.array([0, 0, 0, 0])
             logger.info(f"Diff_shape {diff_shape}")
@@ -225,11 +233,9 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
 
             # reordered_feature_image = zero_img
 
-            print(offset)
-            pad_img = numpy.pad(reordered_feature_image,[(0,0),(0,0),(offset[1],self._tiktorch_net.expected_input_shape[2]-reorder_feature_image_extents[2]), 
-                (offset[2],self._tiktorch_net.expected_input_shape[3]-reorder_feature_image_extents[3])],'reflect')
+            pad_img = numpy.pad(reordered_feature_image,[(0,0),(0,0),(offset[1],exp_input_shape[2]-reorder_feature_image_extents[2]), 
+            (offset[2], exp_input_shape[3]-reorder_feature_image_extents[3])],'reflect')
 
-            print (pad_img.shape)
 
             reordered_feature_image = pad_img
 
@@ -251,6 +257,9 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             logger.info(f"batch info: {[x.shape for x in batch]}")
 
             print("batch info:", [x.shape for x in batch])
+
+            # if len(self._tiktorch_net.get('window_size')) == 2:
+            #     print("BATTCHHHHH", batch.shape)
 
             result_batch = self._tiktorch_net.forward(batch)
             logger.info(f"Resulting slices from {z} to {z + len(batch)} have shape {result_batch[0].shape}")
