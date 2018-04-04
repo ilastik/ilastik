@@ -160,9 +160,10 @@ class NNClassGui(LayerViewerGui):
             dlg = ParameterDlg(self.topLevelOperator, parent=self)
             dlg.exec_()
 
-            classifier_key = self.drawer.comboBox.currentText()
-            self.classifiers[classifier_key].HALO_SIZE = self.topLevelOperator.Halo_Size.value
-            self.classifiers[classifier_key].BATCH_SIZE = self.topLevelOperator.Batch_Size.value
+            # classifier_key = self.drawer.comboBox.currentText()
+            self.halo_size = self.topLevelOperator.Halo_Size.value
+            self.batch_size = self.topLevelOperator.Batch_Size.value
+            print(self.halo_size)
 
         set_parameter = advanced_menu.addAction("Parameters...")
         set_parameter.triggered.connect(settingParameter)
@@ -214,7 +215,6 @@ class NNClassGui(LayerViewerGui):
 
         self.batch_size = self.topLevelOperator.Batch_Size.value
         self.halo_size = self.topLevelOperator.Halo_Size.value
-
 
     def _initAppletDrawerUic(self, drawerPath=None):
         """
@@ -372,22 +372,29 @@ class NNClassGui(LayerViewerGui):
 
                 self.topLevelOperator.FreezePredictions.setValue(False)
 
-                expected_input_shape = TikTorchLazyflowClassifier(model_object, model_path,
-                 self.halo_size, self.batch_size)._tiktorch_net.expected_input_shape
+                print(self.halo_size)
 
+                model = TikTorchLazyflowClassifier(model_object, model_path,
+                 self.halo_size, self.batch_size)
+
+                expected_input_shape = model._tiktorch_net.expected_input_shape
                 input_shape = numpy.array(expected_input_shape)
-                input_shape = input_shape[1:]
-                input_shape = numpy.append(input_shape, None)
-                
-                input_shape[1:3] -= 2 * self.topLevelOperator.Halo_Size.value
 
-                channels = self.topLevelOperator.InputImage.meta.shape[3]
+                if len(model._tiktorch_net.get('window_size')) == 2:
+
+                    input_shape = numpy.append(input_shape, None)
+                else:
+
+                    input_shape = input_shape[1:]
+                    input_shape = numpy.append(input_shape, None)
+
+                input_shape[1:3] -= 2 * self.halo_size
+
 
                 self.topLevelOperator.BlockShape.setValue(input_shape)
-                self.topLevelOperator.NumClasses.setValue(channels)
+                self.topLevelOperator.NumClasses.setValue(model._tiktorch_net.get('num_output_channels'))
 
-                self.topLevelOperator.Classifier.setValue(TikTorchLazyflowClassifier(model_object, model_path,
-                 self.halo_size, self.batch_size))
+                self.topLevelOperator.Classifier.setValue(model)
 
                 self.updateAllLayers()
                 self.parentApplet.appletStateUpdateRequested()
