@@ -1526,8 +1526,16 @@ class Slot(object):
                 if self.level > 1:
                     mslot_info += " level={}".format( self.level )
             mslot_info += " ] "
-                
-        return '{}.{} {}: \t{}\n'.format( self.getRealOperator().name, self.name, mslot_info, self.meta )
+
+        # For debugging:
+        # Should actually never happen if the operator is constructed correctly,
+        # however, if it is not, the resulting error message was too cryptic
+        if self.getRealOperator() is None:
+            realOpName = 'Unassigned'
+        else:
+            realOpName = self.getRealOperator().name
+
+        return '{}.{} {}: \t{}\n'.format(realOpName, self.name, mslot_info, self.meta)
 
     def __repr__(self):
         return self.__str__()

@@ -61,7 +61,7 @@ def threadsafe(method):
 
 
 # Locking decorator similar to threadsafe() that locks per chunk. The
-# first arguent of the wrapped method must be the chunk index.
+# first argument of the wrapped method must be the chunk index.
 def _chunksynchronized(method):
     @wraps(method)
     def synchronizedmethod(self, chunkIndex, *args, **kwargs):
@@ -132,7 +132,7 @@ class _LabelManager(object):
     #           - the process numbers you will have to wait for such
     #             that all labels you requested are finalized 
     # This method must not be called without being register()'ed first,
-    # an you are _required_ to finalize the labels in the return value!
+    # and you are _required_ to finalize the labels in the return value!
     @threadsafe
     def checkoutLabels(self, chunkIndex, labels, n):
         others = set()
@@ -150,7 +150,7 @@ class _LabelManager(object):
 # =========================
 #
 # This operator provides a connected components (labeling) algorithm
-# that evaluates lazyly, i.e. you don't need to process a full volume
+# that evaluates lazily, i.e. you don't need to process a full volume
 # for getting the connected components in some ROI. The operator just
 # computes spatial connected components, channels and time slices are
 # treated independently.

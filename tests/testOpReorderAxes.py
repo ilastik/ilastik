@@ -58,12 +58,12 @@ class TestOpReorderAxes(unittest.TestCase):
 
     def setUp(self):
         self.array = None
-        self.axis = list('txyzc')
+        self.axis = list('tzyxc')
         self.tests = 20
         graph = Graph()
         self.operator = OpReorderAxes(graph=graph)
 
-    def prepareVolnOp(self, possible_axes='txyzc', num=5):
+    def prepareVolnOp(self, possible_axes='tzyxc', num=5):
         tags = random.sample(possible_axes,random.randint(2,num))
         tagStr = ''
         for s in tags:
@@ -104,8 +104,8 @@ class TestOpReorderAxes(unittest.TestCase):
             assert not isinstance(result, vigra.VigraArray), \
                 "For compatibility with generic code, output should be provided as a plain numpy array."
 
-            # Ensure the result came out in volumina order
-            assert self.operator.Output.meta.axistags == vigra.defaultAxistags('txyzc')
+            # Ensure the result came out in default order
+            assert self.operator.Output.meta.axistags == vigra.defaultAxistags('tzyxc')
 
             # Check the data
             vresult = result.view(vigra.VigraArray)
@@ -142,7 +142,7 @@ class TestOpReorderAxes(unittest.TestCase):
                 "For compatibility with generic code, output should be provided as a plain numpy array."
 
             # Ensure the result came out in volumina order
-            assert self.operator.Output.meta.axistags == vigra.defaultAxistags('txyzc')
+            assert self.operator.Output.meta.axistags == vigra.defaultAxistags('tzyxc')
 
             # Check the data
             vresult = result.view(vigra.VigraArray)
