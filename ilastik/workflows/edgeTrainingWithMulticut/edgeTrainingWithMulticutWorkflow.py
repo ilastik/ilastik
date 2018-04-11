@@ -328,6 +328,18 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opTraining.FreezeClassifier.setValue(self.freeze_classifier_status)
         opTraining.FreezeCache.setValue(self.freeze_cache_status)
 
+    def _inputReady(self, nRoles):
+        slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
+        if len(slot) > 0:
+            input_ready = True
+            for sub in slot:
+                input_ready = input_ready and \
+                            all([sub[i].ready() for i in range(nRoles)])
+        else:
+            input_ready = False
+
+        return input_ready
+
 
     def handleAppletStateUpdateRequested(self):
         """
@@ -339,9 +351,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opEdgeTrainingWithMulticut = self.edgeTrainingWithMulticutApplet.topLevelOperator
         opDataExport = self.dataExportApplet.topLevelOperator
 
-        # If no data, nothing else is ready.
-        input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
-
+        input_ready = self._inputReady(1)
         superpixels_available_from_file = False
         lane_index = self._shell.currentImageIndex
         if lane_index != -1:
