@@ -7,25 +7,19 @@
     <x>0</x>
     <y>0</y>
     <width>615</width>
-    <height>1968</height>
+    <height>1963</height>
    </rect>
   </property>
   <property name="sizePolicy">
-   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
     <horstretch>1</horstretch>
     <verstretch>0</verstretch>
    </sizepolicy>
   </property>
   <property name="minimumSize">
    <size>
-    <width>615</width>
+    <width>256</width>
     <height>0</height>
-   </size>
-  </property>
-  <property name="maximumSize">
-   <size>
-    <width>16777215</width>
-    <height>16777215</height>
    </size>
   </property>
   <property name="baseSize">
@@ -668,7 +662,7 @@
         </font>
        </property>
        <property name="text">
-        <string>Field of View</string>
+        <string>Crop</string>
        </property>
       </widget>
      </item>
