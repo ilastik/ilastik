@@ -271,7 +271,7 @@ class TestAxesOrderPreservation(object):
             assert input_axes == ''.join([a for a in opReaderResult.Output.meta.getAxisKeys() if a != 'c']), \
                 ''.join(opReaderResult.Output.meta.getAxisKeys())
 
-        self.compare_results(opReaderResult, compare_path, input_axes)
+        self.compare_results(opReaderResult, compare_path, input_axes, max_mse=0.0001)
 
     def test_autocontext(self):
         options = []
