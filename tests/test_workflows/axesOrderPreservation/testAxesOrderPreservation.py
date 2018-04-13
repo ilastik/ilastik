@@ -27,6 +27,7 @@ import numpy
 import os
 import sys
 import tempfile
+import vigra
 import warnings
 import zipfile
 
@@ -39,6 +40,20 @@ from lazyflow.utility.timer import timeLogged
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+
+def detect_edges(img):
+    img = img.squeeze().astype(numpy.uint64)
+    # transpose dimensions, in order to have sensible 2D images to perform edge detection on
+    img = img.transpose(numpy.argsort(img.shape))
+
+    def detect(img):
+        if len(img.shape) > 2:
+            return numpy.stack([detect(i) for i in img])
+
+        return vigra.analysis.regionImageToEdgeImage(img)
+
+    return detect(img)
 
 
 class TestAxesOrderPreservation(object):
@@ -115,7 +130,8 @@ class TestAxesOrderPreservation(object):
 
         return input_path
 
-    def compare_results(self, opReaderResult, compare_path, input_axes):
+    def compare_results(self, opReaderResult, compare_path, input_axes, post_process=None,
+                        max_mse=None, max_part_uneqaul=None):
         if os.path.exists(compare_path):
             result = opReaderResult.Output[:].wait()
 
@@ -127,7 +143,45 @@ class TestAxesOrderPreservation(object):
 
             compare = opReorderCompare.Output[:].wait()
 
-            assert numpy.allclose(result, compare), f'{result.shape}, {compare.shape}'
+            assert result.shape == compare.shape
+
+            if post_process:
+                result = post_process(result)
+                compare = post_process(compare)
+
+            # for easy debugging:
+            # -----------------------------------------------------------------
+            # import matplotlib.pyplot as plt
+
+            # res = result.squeeze()
+            # comp = compare.squeeze()
+            # if len(res.shape) > 2:
+            #     res = res.reshape(-1, max(res.shape))
+            #     comp = comp.reshape(-1, max(comp.shape))
+
+            # plt.figure()
+            # plt.imshow(res)
+            # plt.title(f'res {result.shape}')
+            # plt.colorbar()
+            # plt.figure()
+            # plt.imshow(comp)
+            # plt.title('comp')
+            # plt.colorbar()
+            # plt.figure()
+            # plt.imshow(res - comp)
+            # plt.title('diff')
+            # plt.colorbar()
+            # plt.show()
+            # -----------------------------------------------------------------
+
+            if max_mse:
+                assert max_mse > numpy.mean(numpy.squeeze(result - compare)), \
+                    numpy.mean(numpy.squeeze(result - compare))
+            elif max_part_uneqaul:
+                assert max_part_uneqaul > numpy.mean(~numpy.isclose(result, compare)), \
+                    numpy.mean(~numpy.isclose(result, compare))
+            else:
+                assert numpy.allclose(result, compare), f'{result.shape}, {compare.shape}'
         else:
             writer = OpFormattedDataExport(graph=Graph())
             writer.Input.connect(opReaderResult.Output)
@@ -221,7 +275,7 @@ class TestAxesOrderPreservation(object):
 
     def test_autocontext(self):
         options = []
-        # todo: single channel, without explicit channel axis not detected as 'image'
+        # todo: single channel, same as for autocontext
         # options.append((['2d'], ['xy', 'yx']))
         options.append((['2d3c'], ['cxy', 'yxc', 'xyc', 'ycx']))
         options.append((['5t2d1c'], ['tyxc', 'txcy', 'cxyt']))
@@ -361,17 +415,16 @@ class TestAxesOrderPreservation(object):
 
         self.compare_results(opReaderResult, compare_path, input_axes)
 
-    # todo: get rid of randomness
-    # def test_boundarybased_segmentation_with_multicut(self):
-    #     options = []
-    #     options.append((['3d'], ['xyz', 'zcyx', 'xycz', 'yxcz']))
-    #     # options.append((['3d1c'], ['zyxc', 'xyzc', 'cxzy']))
-    #     # options.append((['3d2c'], ['zyxc', 'xcyz', 'czxy']))
+    def test_boundarybased_segmentation_with_multicut(self):
+        options = []
+        options.append((['3d'], ['xyz', 'zcyx', 'xycz', 'yxcz']))
+        options.append((['3d1c'], ['zyxc', 'xyzc', 'cxzy']))
+        options.append((['3d2c'], ['zyxc', 'xcyz', 'czxy']))
 
-    #     for combination in options:
-    #         for dims, order in itertools.product(*combination):
-    #             yield self._test_boundarybased_segmentation_with_multicut, \
-    #                 dims, order
+        for combination in options:
+            for dims, order in itertools.product(*combination):
+                yield self._test_boundarybased_segmentation_with_multicut, \
+                    dims, order
 
     @timeLogged(logger)
     def _test_boundarybased_segmentation_with_multicut(self, dims, input_axes):
@@ -439,17 +492,19 @@ class TestAxesOrderPreservation(object):
         opReaderResult = OpInputDataReader(graph=Graph())
         opReaderResult.FilePath.setValue(output_path)
 
-        self.compare_results(opReaderResult, compare_path, input_axes)
+        self.compare_results(opReaderResult, compare_path, input_axes, post_process=detect_edges,
+                             max_part_uneqaul=0.02)
 
-    # def test_counting(self):
-    #     options = []
-    #     # todo: add 2d[1c] counting project: options.append((['2d'], ['xy', 'yx']))
-    #     # options.append((['2d', '2d3c'], ['yxc', 'cxy']))  # 'xyc', 'cxy', 'ycx
-    #     options.append((['2d3c'], ['yxc', 'xyc', 'cxy', 'ycx']))
+    def test_counting(self):
+        options = []
+        # todo: add 2d[1c] counting project (missing channel leads to 'no image data' error)
+        # options.append((['2d'], ['xy', 'yx']))
+        # options.append((['2d1', '2d3c'], ['yxc', 'cxy']))  # 'xyc', 'cxy', 'ycx
+        options.append((['2d3c'], ['yxc', 'xyc', 'cxy', 'ycx']))
 
-    #     for combination in options:
-    #         for dims, order in itertools.product(*combination):
-    #             yield self._test_counting, dims, order
+        for combination in options:
+            for dims, order in itertools.product(*combination):
+                yield self._test_counting, dims, order
 
     @timeLogged(logger)
     def _test_counting(self, dims, input_axes):
@@ -506,7 +561,92 @@ class TestAxesOrderPreservation(object):
         opReaderResult = OpInputDataReader(graph=Graph())
         opReaderResult.FilePath.setValue(output_path)
 
-        self.compare_results(opReaderResult, compare_path, input_axes)
+        self.compare_results(opReaderResult, compare_path, input_axes, max_mse=0.001)
+
+    # todo: exchange nonsense data and labels in tracking projects
+    def test_tracking_with_learning(self):
+        options = []
+        # test configurations
+        options.append((['5t2d1c', '5t2d2c'], ['_wBin'],
+                        ['tyxc', 'txyc', 'xytc']))
+        options.append((['5t3d2c'], ['_wBin'], ['tzyxc', 'xztyc']))
+
+        for combination in options:
+            for dims, variant, order in itertools.product(*combination):
+                yield self._test_tracking_with_learning, dims, variant, order
+
+    @timeLogged(logger)
+    def _test_tracking_with_learning(self, dims, variant, input_axes):
+        project = 'TrackingwLearning' + dims + variant + '.ilp'
+        try:
+            self.untested_projects.remove(project)
+        except ValueError:
+            pass
+
+        project_file = os.path.join(self.PROJECT_FILE_BASE, project)
+
+        if not os.path.exists(project_file):
+            raise IOError('project file "{}" not found'.format(
+                project_file))
+
+        args = []
+        args.append("--headless")
+        args.append("--project=" + project_file)
+
+        # Batch export options
+        # If we were actually launching from the command line, 'png sequence'
+        # would be in quotes...
+        # args.append('--output_format=png sequence')
+        args.append("--export_source=Tracking-Result")
+        args.append(
+            "--output_filename_format=" + self.dir + "/{nickname}_result" +
+            variant)
+        args.append(
+            "--output_format=hdf5")
+        args.append("--export_dtype=uint8")
+        # args.append("--output_axis_order=" + input_axes)
+
+        args.append("--pipeline_result_drange=(0,255)")
+        args.append("--export_drange=(0,255)")
+
+        # Input args
+        args.append("--input_axes={}".format(input_axes))
+        input_source_path1 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                          '{}.h5'.format(dims))
+        input_path1 = self.create_input(input_source_path1, input_axes)
+        args.append("--raw_data=" + input_path1)
+        if 'wPred' in variant:
+            input_source_path2 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                              '{}_Probabilities.h5'
+                                              .format(dims))
+            input_path2 = self.create_input(input_source_path2, input_axes)
+            args.append("--prediction_maps=" + input_path2)
+        elif 'wBin' in variant:
+            input_source_path2 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                              '{}_Binary_Segmentation.h5'
+                                              .format(dims))
+            input_path2 = self.create_input(input_source_path2, input_axes)
+            args.append("--binary_image=" + input_path2)
+        else:
+            raise NotImplementedError('variant {} unknown'.format(variant))
+
+        # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv = ['ilastik.py']
+        sys.argv += args
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        # This will execute the batch mode script
+        self.ilastik_startup.main()
+
+        output_path = input_path1.replace('.', '_result{}.'.format(variant))
+
+        opReaderResult = OpInputDataReader(graph=Graph())
+        opReaderResult.FilePath.setValue(output_path)
+
+        compare_name = os.path.abspath(os.path.join(self.dir, f'{dims}{variant}_Tracking-Result.h5'))
+
+        self.compare_results(opReaderResult, compare_name, input_axes, post_process=detect_edges,
+                             max_part_uneqaul=0.01)
 
 
 if __name__ == "__main__":
