@@ -529,7 +529,10 @@ class Slot(object):
                 if upstream_slot.level == self.level:
                     assert isinstance(upstream_slot.stype, type(self.stype)), \
                         "Can't connect slots of non-matching stypes!" \
-                        " Attempting to connect '{}' (stype: {}) to '{}' (stype: {})".format(self.name, self.stype, upstream_slot.name, upstream_slot.stype)
+                        f"Tried to connect {self.getRealOperator()} with {upstream_slot.getRealOperator()}." \
+                        " Attempting to connect '{}' (stype: {}) to '{}' (stype: {})".format(
+                            self.name, self.stype, upstream_slot.name, upstream_slot.stype)
+
                     self.upstream_slot = upstream_slot
                     notifyReady = (self.upstream_slot.meta._ready and
                                    not self.meta._ready)
