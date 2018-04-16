@@ -527,7 +527,7 @@ class Slot(object):
                 upstream_slot._sig_unready.subscribe( self._handleUpstreamUnready )
                 self._value = None
                 if upstream_slot.level == self.level:
-                    assert isinstance(upstream_slot.stype, type(self.stype)), \
+                    assert upstream_slot.stype.isCompatible(type(self.stype)), \
                         "Can't connect slots of non-matching stypes!" \
                         f"Tried to connect {self.getRealOperator()} with {upstream_slot.getRealOperator()}." \
                         " Attempting to connect '{}' (stype: {}) to '{}' (stype: {})".format(
