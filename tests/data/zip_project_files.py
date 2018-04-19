@@ -2,7 +2,7 @@ import os
 import zipfile
 
 assert len([proj for proj in os.listdir('.') if proj.endswith('.ilp')]) == \
-    27, 'unpack existing projects first in order not to overwrite them'
+    31, 'unpack existing projects first in order not to overwrite them'
 
 projects = zipfile.ZipFile('test_projects.zip',
                            mode='w',
