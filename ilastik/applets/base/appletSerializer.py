@@ -854,7 +854,7 @@ class SerialPickleableSlot(SerialSlot):
             logger.debug('No `version` attribute found.')
         if not loaded_version == self._version:
             logger.warning(
-                'PickleableSlot version mismatch detected. '
+                f'PickleableSlot version mismatch detected. (loaded: {loaded_version}, running:{self._version})'
                 'Trying to load slot value.')
         try:
             # Attempt to unpickle
