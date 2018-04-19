@@ -87,10 +87,12 @@ class TestAxesOrderPreservation(object):
         cls.ilastik_startup = imp.load_source(
             'ilastik_startup', cls.ilastik_entry_file_path)
 
+        cls.created_data = []
+
     @classmethod
     def teardownClass(cls):
         # Clean up: Delete all unzipped test projects
-        for f in cls.unzipped_project_files:
+        for f in cls.unzipped_project_files + cls.created_data:
             file = os.path.join(cls.PROJECT_FILE_BASE, f)
             try:
                 os.remove(file)
@@ -102,13 +104,30 @@ class TestAxesOrderPreservation(object):
                     ', '.join(cls.untested_projects)))
 
     @classmethod
+    def create_simple_input(cls, name, data):
+        """
+        Creates a file named '{name}_{input_axes}' from 'data' with axis order 'input_axes'
+
+
+        Args:
+            name (str): first part of the name for created h5 file (without '.h5')
+            data (numpy.ndarray, Vigra.VigraArray): data (for numpy axis order is 'tczyx')
+            input_axes (str): desired axis order. Is added to the name.
+        """
+        write_at = os.path.join(cls.PROJECT_FILE_BASE, 'inputdata', name + '_' + 'simple.h5')
+        if not os.path.exists(write_at):
+            assert isinstance(data, vigra.VigraArray)
+
+            vigra.writeHDF5(data, write_at, 'simple')
+            cls.created_data.append(write_at)
+
+        return write_at
+
+    @classmethod
     def create_input(cls, filepath, input_axes, outmin=None, outmax=None, dtype=None):
-        """
-            creates an file from the data at 'filepath' that has 'input_axes'
-        """
+        """ Creates a file from the data at 'filepath' that has 'input_axes' """
         basename = os.path.basename(filepath)
-        graph = Graph()
-        reader = OpInputDataReader(graph=graph)
+        reader = OpInputDataReader(graph=Graph())
         assert os.path.exists(filepath), '{} not found'.format(filepath)
         reader.FilePath.setValue(os.path.abspath(filepath))
 
@@ -143,7 +162,7 @@ class TestAxesOrderPreservation(object):
 
             compare = opReorderCompare.Output[:].wait()
 
-            assert result.shape == compare.shape
+            assert result.shape == compare.shape, (result.shape, compare.shape)
 
             if post_process:
                 result = post_process(result)
@@ -499,7 +518,7 @@ class TestAxesOrderPreservation(object):
         options = []
         # todo: add 2d[1c] counting project (missing channel leads to 'no image data' error)
         # options.append((['2d'], ['xy', 'yx']))
-        # options.append((['2d1', '2d3c'], ['yxc', 'cxy']))  # 'xyc', 'cxy', 'ycx
+        # options.append((['2d1c', '2d3c'], ['yxc', 'cxy']))  # 'xyc', 'cxy', 'ycx
         options.append((['2d3c'], ['yxc', 'xyc', 'cxy', 'ycx']))
 
         for combination in options:
@@ -563,12 +582,15 @@ class TestAxesOrderPreservation(object):
 
         self.compare_results(opReaderResult, compare_path, input_axes, max_mse=0.001)
 
-    # todo: exchange nonsense data and labels in tracking projects
+    # todo: exchange nonsense data and labels in tracking projects (wBin)
     def test_tracking_with_learning(self):
         options = []
         # test configurations
-        options.append((['5t2d1c', '5t2d2c'], ['_wBin'],
-                        ['tyxc', 'txyc', 'xytc']))
+        options.append((['5t2d'], ['_wPred'], ['tyx', 'txy', 'xyt']))
+        options.append((['5t2d1c'], ['_wBin', '_wPred'], ['tyxc', 'txyc', 'xytc']))
+        options.append((['5t2d2c'], ['_wBin'], ['tyxc', 'txyc', 'xytc']))
+        options.append((['5t2d3c'], ['_wPred'], ['tyxc', 'txyc', 'xytc']))
+        options.append((['5t3d'], ['_wPred'], ['tzyxc', 'xztyc']))
         options.append((['5t3d2c'], ['_wBin'], ['tzyxc', 'xztyc']))
 
         for combination in options:
@@ -611,17 +633,47 @@ class TestAxesOrderPreservation(object):
 
         # Input args
         args.append("--input_axes={}".format(input_axes))
-        input_source_path1 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
-                                          '{}.h5'.format(dims))
-        input_path1 = self.create_input(input_source_path1, input_axes)
-        args.append("--raw_data=" + input_path1)
         if 'wPred' in variant:
-            input_source_path2 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
-                                              '{}_Probabilities.h5'
-                                              .format(dims))
-            input_path2 = self.create_input(input_source_path2, input_axes)
-            args.append("--prediction_maps=" + input_path2)
+            raw = numpy.zeros((5, 3, 10, 20, 30), dtype=numpy.uint8)
+            for t in range(5):
+                raw[t, :, 0:5 + t, 9 + t:15 + t, 5:10] = 200
+                raw[t, :, 0:5 + t, t:4 + t, 20:25] = 240
+
+            raw = vigra.VigraArray(raw, axistags=vigra.defaultAxistags('tczyx'))
+            pred = numpy.zeros((5, 1, 10, 20, 30), dtype=numpy.float32)
+            for t in range(5):
+                pred[t, :, 0:5 + t, 9 + t:15 + t, 5:10] = .8
+                pred[t, :, 0:5 + t, t:4 + t, 20:25] = .9
+
+            pred = vigra.VigraArray(pred, axistags=vigra.defaultAxistags('tczyx'))
+
+            if '2d' in dims:
+                # remove z
+                raw = raw[:, :, 0]
+                pred = pred[:, :, 0]
+
+            if 'c' in dims:
+                # select only #c channels
+                c = int(dims[dims.find('c') - 1])
+                raw = raw[:, :c]
+            else:
+                # remove c
+                raw = raw[:, 0]
+
+            input_source_path1 = self.create_simple_input(dims, raw)  # create data linked in test project
+            input_source_path1 = self.create_input(input_source_path1, input_axes)  # create reordered test data
+
+            project_data_path2 = self.create_simple_input(dims + '_Probabilities',
+                                                          pred)  # create data linked in test project
+            input_source_path2 = self.create_input(project_data_path2, input_axes)  # create reordered test data
+
+            args.append("--raw_data=" + input_source_path1)
+            args.append("--prediction_maps=" + input_source_path2)
         elif 'wBin' in variant:
+            input_source_path1 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
+                                              '{}.h5'.format(dims))
+            input_source_path1 = self.create_input(input_source_path1, input_axes)
+            args.append("--raw_data=" + input_source_path1)
             input_source_path2 = os.path.join(self.PROJECT_FILE_BASE, 'inputdata',
                                               '{}_Binary_Segmentation.h5'
                                               .format(dims))
@@ -638,15 +690,18 @@ class TestAxesOrderPreservation(object):
         # This will execute the batch mode script
         self.ilastik_startup.main()
 
-        output_path = input_path1.replace('.', '_result{}.'.format(variant))
+        output_path = input_source_path1.replace('.', '_result{}.'.format(variant))
 
         opReaderResult = OpInputDataReader(graph=Graph())
         opReaderResult.FilePath.setValue(output_path)
 
         compare_name = os.path.abspath(os.path.join(self.dir, f'{dims}{variant}_Tracking-Result.h5'))
 
-        self.compare_results(opReaderResult, compare_name, input_axes, post_process=detect_edges,
-                             max_part_uneqaul=0.01)
+        if variant == '_wPred':
+            self.compare_results(opReaderResult, compare_name, input_axes)
+        else:
+            self.compare_results(opReaderResult, compare_name, input_axes, post_process=detect_edges,
+                                 max_part_uneqaul=0.01)
 
 
 if __name__ == "__main__":
@@ -657,6 +712,7 @@ if __name__ == "__main__":
     import nose
     # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nocapture")
+    sys.argv.append("--debug")
     # Don't set the logging level to DEBUG.  Leave it alone.
     sys.argv.append("--nologcapture")
     nose.run(defaultTest=__file__)
