@@ -350,7 +350,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opDataExport = self.dataExportApplet.topLevelOperator
 
         # If no data, nothing else is ready.
-        input_ready = self._inputReady(1)
+        input_ready = self._inputReady(2)
         superpixels_available_from_file = False
         lane_index = self._shell.currentImageIndex
         if lane_index != -1:
@@ -362,7 +362,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         batch_processing_busy = self.batchProcessingApplet.busy
 
         self._shell.setAppletEnabled( self.dataSelectionApplet,             not batch_processing_busy )
-        self._shell.setAppletEnabled( self.wsdtApplet,                      not batch_processing_busy and input_ready and opDataSelection.ImageGroup[0][1].ready() and not superpixels_available_from_file )
+        self._shell.setAppletEnabled( self.wsdtApplet,                      not batch_processing_busy and input_ready and not superpixels_available_from_file )
         self._shell.setAppletEnabled( self.edgeTrainingWithMulticutApplet,  not batch_processing_busy and input_ready and superpixels_ready )
         self._shell.setAppletEnabled( self.dataExportApplet,                not batch_processing_busy and input_ready and opEdgeTrainingWithMulticut.Output.ready())
         self._shell.setAppletEnabled( self.batchProcessingApplet,           not batch_processing_busy and input_ready )
