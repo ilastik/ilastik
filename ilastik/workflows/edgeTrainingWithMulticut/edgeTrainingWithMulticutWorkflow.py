@@ -350,7 +350,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opDataExport = self.dataExportApplet.topLevelOperator
 
         # If no data, nothing else is ready.
-        input_ready = self._inputReady(2)
+        input_ready = self._inputReady(2) and not self.dataSelectionApplet.busy
         superpixels_available_from_file = False
         lane_index = self._shell.currentImageIndex
         if lane_index != -1:
