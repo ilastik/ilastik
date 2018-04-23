@@ -28,6 +28,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import (
     RESTfulPrecomputedChunkedVolume
 )
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 import lazyflow.roi
 import logging
 
@@ -35,7 +36,7 @@ import numpy
 logger = logging.getLogger(__name__)
 
 
-class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
+class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
     """
     An operator to retrieve precomputed chunked volumes from a remote server.
     These types of volumes are e.g. used in neuroglancer.
@@ -54,7 +55,7 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        super(OpRESTfulPrecomputedChunkedVolumeReader, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._axes = None
         self._volume_object = None
 
@@ -70,18 +71,17 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
 
         self._axes = self._volume_object.axes
 
+        self.AvailableScales.setValue(self._volume_object.available_scales)
+        output_shape = tuple(self._volume_object.get_shape(scale=self._volume_object._use_scale))
+        self.Output.meta.shape = output_shape
+        self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
+        self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
+
+
         # scale needs to be defined for the following, so:
         # override whatever was set before to the lowest available scale:
         # is this a good idea? Triggers setupOutputs again
         self.Scale.setValue(self._volume_object._use_scale)
-        self.AvailableScales.setValue(self._volume_object.available_scales)
-
-        output_shape = tuple(self._volume_object.get_shape(scale=self.Scale.value))
-
-        self.Output.meta.shape = output_shape
-        self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
-        self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
-        self.AvailableScales.setValue(self._volume_object.available_scales)
 
     @staticmethod
     def get_intersecting_blocks(blockshape, roi, shape):
@@ -171,10 +171,50 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
         self.Output.setDirty(slice(None))
 
 
+class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
+    fixAtCurrent = InputSlot(value=False, stype='bool')
+
+    BaseUrl = InputSlot()
+
+    # There is also the scale to configure
+    Scale = InputSlot(optional=True)
+
+    # Available scales of the data
+    AvailableScales = OutputSlot()
+    # The data itself
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.RESTfulReader = OpRESTfulPrecomputedChunkedVolumeReaderNoCache(parent=self)
+        self.RESTfulReader.BaseUrl.connect(self.BaseUrl)
+        self.AvailableScales.connect(self.RESTfulReader.AvailableScales)
+        self.RESTfulReader.Scale.backpropagate_values = True
+        self.RESTfulReader.Scale.connect(self.Scale)
+
+
+        self.cache = OpBlockedArrayCache(parent=self)
+        self.cache.name = "input_image_cache"
+        self.cache.fixAtCurrent.connect(self.fixAtCurrent)
+        self.cache.Input.connect(self.RESTfulReader.Output)
+        self.Output.connect(self.cache.Output)
+
+    def setupOutputs(self):
+        # TODO: make this generic, for all dimensionalities
+        self.cache.BlockShape.setValue((1, 64, 64, 64))
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty(slice(None))
+
+    def cleanup(self):
+        self.cache.Input.disconnect()
+
+
+
 if __name__ == '__main__':
     # assumes there is a server running at localhost
     logging.basicConfig(level=logging.DEBUG)
-    volume_url = 'http://localhost:8080/precomputed/cremi'
+    volume_url = 'http://localhost:8000/cremi'
 
     from lazyflow import graph
     g = graph.Graph()
@@ -189,4 +229,7 @@ if __name__ == '__main__':
     import h5py
     with h5py.File('/tmp/temph5.h5', 'w') as f:
         f.create_dataset('exported', data=data)
-    print(data)
+
+    # get some data for the second time, check on server that it has only
+    # been requested once
+    data2 = op.Output(*roi).wait()
