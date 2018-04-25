@@ -203,7 +203,10 @@ class RESTfulPrecomputedChunkedVolume(object):
             scale = self._use_scale
 
         url, blockshape = self.generate_url(block_coordinates, scale)
-        content = self.downloading(url)
+        try:
+            content = self.downloading(url)
+        except requests.exceptions.ConnectionError:
+            return numpy.zeros(shape=blockshape, dtype=self.dtype)
         return self.decode_content(
             content,
             encoding=self.get_encoding(scale),
