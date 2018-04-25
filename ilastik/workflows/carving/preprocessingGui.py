@@ -67,13 +67,13 @@ class PreprocessingGui(QMainWindow):
                                 self.drawer.filter3,
                                 self.drawer.filter4,
                                 self.drawer.filter5]
-        
+
         self.correspondingSigmaMins = [0.9,0.9,0.6,0.1,0.1]
-        
+
         # Set up our handlers
         for f in self.filterbuttons:
             f.clicked.connect(self.handleFilterChanged)
-        
+
         # Init widget appearance
         self.drawer.runButton.setIcon( QIcon(ilastikIcons.Play) )
         self.drawer.watershedSourceCombo.addItem("Input Data", userData="input")
@@ -83,12 +83,14 @@ class PreprocessingGui(QMainWindow):
         # Initialize widget values
         self.updateDrawerFromOperator()
 
-        # Event handlers
+        # Event handlers: everything is handled once the run button is clicked, not live
         self.drawer.runButton.clicked.connect(self.handleRunButtonClicked)
-        self.drawer.sigmaSpin.valueChanged.connect(self.handleSigmaValueChanged)
+
         self.drawer.watershedSourceCombo.currentIndexChanged.connect( self.handleWatershedSourceChange )
         self.drawer.invertWatershedSourceCheckbox.toggled.connect( self.handleInvertWatershedSourceChange )
         self.drawer.writeprotectBox.stateChanged.connect(self.handleWriterprotectStateChanged)
+
+        self.parentApplet.appletStateUpdateRequested.subscribe(self.processingFinished)
 
         #FIXME: for release 0.6, disable this (the reset button made the gui even more complicated)            
         #self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
@@ -101,21 +103,19 @@ class PreprocessingGui(QMainWindow):
 
     def updateDrawerFromOperator(self, *args):
         self.filterbuttons[self.topLevelOperatorView.Filter.value].setChecked(True)
+        self.filterChoice = [f.isChecked() for f in self.filterbuttons].index(True)
         self.drawer.sigmaSpin.setValue(self.topLevelOperatorView.Sigma.value)
         sourceSetting = self.topLevelOperatorView.WatershedSource.value
         comboIndex = self.drawer.watershedSourceCombo.findData( sourceSetting )
         self.drawer.watershedSourceCombo.setCurrentIndex( comboIndex )
         self.drawer.invertWatershedSourceCheckbox.setChecked( self.topLevelOperatorView.InvertWatershedSource.value )
-    
+
     def handleFilterChanged(self):
         choice =  [f.isChecked() for f in self.filterbuttons].index(True)
-        self.topLevelOperatorView.Filter.setValue(choice)
-        
+        self.filterChoice = choice
         #update lower bound for sigma
         self.drawer.sigmaSpin.setMinimum(self.correspondingSigmaMins[choice])
-    
-    def handleSigmaValueChanged(self):
-        self.topLevelOperatorView.Sigma.setValue(self.drawer.sigmaSpin.value())
+
 
     def handleWatershedSourceChange(self, index):
         data = self.drawer.watershedSourceCombo.itemData(index)
@@ -123,7 +123,27 @@ class PreprocessingGui(QMainWindow):
 
     def handleInvertWatershedSourceChange(self, checked):
         self.topLevelOperatorView.InvertWatershedSource.setValue( checked )
-    
+
+    def processingFinished(self):
+        """Method makes sure finished processing is communicated visually
+
+        After processing is finished it is checked whether one of the result
+        layers is visible. If not, finished processing is communicated by
+        showing the watershed layer.
+        """
+        layerStack = self.centralGui.editor.layerStack
+        watershedIndex = layerStack.findMatchingIndex(
+            lambda x: x.name == 'Watershed'
+            )
+        filteredIndex = layerStack.findMatchingIndex(
+            lambda x: x.name == 'Filtered Data'
+            )
+
+        # Only do something if none of the result layers is visible
+        if not layerStack[watershedIndex].visible:
+            if not layerStack[filteredIndex].visible:
+                layerStack[watershedIndex].visible = True
+
     @threadRouted 
     def onFailed(self, exception, exc_info):
         log_exception( logger, exc_info=exc_info )
@@ -131,6 +151,12 @@ class PreprocessingGui(QMainWindow):
     
     def handleRunButtonClicked(self):
         self.setWriteprotect()
+        self.topLevelOperatorView.Filter.setValue(self.filterChoice)
+        self.topLevelOperatorView.SizeRegularizer.setValue(self.drawer.sizeRegularizerSpin.value())
+        self.topLevelOperatorView.Sigma.setValue(self.drawer.sigmaSpin.value())
+        self.topLevelOperatorView.ReduceTo.setValue(self.drawer.reduceToSpin.value())
+        self.topLevelOperatorView.DoAgglo.setValue(self.drawer.doAggloCheckBox.isChecked())
+
         r = self.topLevelOperatorView.PreprocessedData[:]
         r.notify_failed(self.onFailed)
         r.notify_finished( bind(self.parentApplet.appletStateUpdateRequested) )
@@ -144,6 +170,10 @@ class PreprocessingGui(QMainWindow):
         self.drawer.watershedSourceCombo.setEnabled(not iswriteprotect)
         self.drawer.invertWatershedSourceCheckbox.setEnabled( not iswriteprotect )
         self.drawer.runButton.setEnabled(not iswriteprotect)
+
+        self.drawer.sizeRegularizerSpin.setEnabled(not iswriteprotect)
+        self.drawer.reduceToSpin.setEnabled(not iswriteprotect)
+        self.drawer.doAggloCheckBox.setEnabled(not iswriteprotect)
     
     def enableWriteprotect(self,ew):
         self.drawer.writeprotectBox.setEnabled(ew)

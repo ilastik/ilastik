@@ -90,15 +90,15 @@ class TestOpDataSelectionGroup(object):
         the operator should automatically transpose it to be last.
         """
         weirdAxisFilename = os.path.join(self.workingDir, 'WeirdAxes.npy')
-        weirdAxisData = numpy.random.random( (3,100,100) )
-        numpy.save(weirdAxisFilename, weirdAxisData)
+        expected_data = numpy.random.random( (3,100,100) )
+        numpy.save(weirdAxisFilename, expected_data)
 
         info = DatasetInfo()
         info.filePath = weirdAxisFilename
         info.axistags = vigra.defaultAxistags('cxy')
         
         graph = Graph()
-        op = OpDataSelectionGroup( graph=graph )
+        op = OpDataSelectionGroup(graph=graph, forceAxisOrder=False)
         op.WorkingDirectory.setValue( self.workingDir )
         op.DatasetRoles.setValue( ['RoleA'] )
 
@@ -107,12 +107,10 @@ class TestOpDataSelectionGroup(object):
 
         assert op.ImageGroup[0].ready()
         
-        # Note that we expect the channel axis to be transposed to be last.
-        expected_data = weirdAxisData.transpose( 1,2,0 )
         data_from_op = op.ImageGroup[0][:].wait()
         
         assert data_from_op.dtype == expected_data.dtype 
-        assert data_from_op.shape == expected_data.shape
+        assert data_from_op.shape == expected_data.shape, (data_from_op.shape, expected_data.shape)
         assert (data_from_op == expected_data).all()
 
         # op.Image is a synonym for op.ImageGroup[0]

@@ -86,9 +86,6 @@ class OpCarving(Operator):
 
     Uncertainty = OutputSlot()
 
-    #contains an array with where all objects done so far are labeled the same
-    DoneObjects  = OutputSlot()
-
     #contains an array with the object labels done so far, one label for each
     #object
     DoneSegmentation = OutputSlot()
@@ -121,7 +118,6 @@ class OpCarving(Operator):
         self.LabelNames.setValue( ["Background", "Object"] )
         
         #supervoxels of finished and saved objects
-        self._done_lut = None
         self._done_seg_lut = None
         self._hints = None
         self._pmap = None
@@ -200,13 +196,11 @@ class OpCarving(Operator):
         if self._mst is None:
             return
         with Timer() as timer:
-            self._done_lut = numpy.zeros(self._mst.numNodes+1, dtype=numpy.int32)
             self._done_seg_lut = numpy.zeros(self._mst.numNodes+1, dtype=numpy.int32)
-            logger.info( "building 'done' luts" )
+            logger.info( "building 'done' lut" )
             for name, objectSupervoxels in self._mst.object_lut.items():
                 if name == self._currObjectName:
                     continue
-                self._done_lut[objectSupervoxels] += 1
                 assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, list(self._mst.object_names.keys()))
                 self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
         logger.info( "building the 'done' luts took {} seconds".format( timer.seconds() ) )
@@ -227,7 +221,6 @@ class OpCarving(Operator):
         self.Segmentation.meta.dtype = numpy.uint32
         
         self.Supervoxels.meta.assignFrom(self.Segmentation.meta)
-        self.DoneObjects.meta.assignFrom(self.Segmentation.meta)
         self.DoneSegmentation.meta.assignFrom(self.Segmentation.meta)
 
         self.HintOverlay.meta.assignFrom(self.InputData.meta)
@@ -625,14 +618,6 @@ class OpCarving(Operator):
             #avoid data being copied
             temp = self._mst.supervoxelUint32[sl[1:4]]
             temp.shape = (1,) + temp.shape + (1,)
-        elif slot  == self.DoneObjects:
-            #avoid data being copied
-            if self._done_lut is None:
-                result[0,:,:,:,0] = 0
-                return result
-            else:
-                temp = self._done_lut[self._mst.supervoxelUint32[sl[1:4]]]
-                temp.shape = (1,) + temp.shape + (1,)
         elif slot  == self.DoneSegmentation:
             #avoid data being copied
             if self._done_seg_lut is None:
