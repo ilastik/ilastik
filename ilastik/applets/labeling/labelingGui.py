@@ -133,7 +133,8 @@ class LabelingGui(LayerViewerGui):
             # Slot that gives a list of label names
             self.labelNames = None # labelNames.value
 
-    def __init__(self, parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
+    def __init__(self, parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None,
+                 crosshair=True, is_3d_widget_visible=False):
         """
         Constructor.
 
@@ -176,7 +177,8 @@ class LabelingGui(LayerViewerGui):
         super(LabelingGui, self).__init__(parentApplet,
                                           topLevelOperatorView,
                                           [labelingSlots.labelInput, labelingSlots.labelOutput],
-                                          crosshair=crosshair)
+                                          crosshair=crosshair,
+                                          is_3d_widget_visible=is_3d_widget_visible)
 
         self.__initShortcuts()
         self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)
@@ -303,7 +305,11 @@ class LabelingGui(LayerViewerGui):
 
             #in this case, the actual data (for example color) has changed
             color = self._labelControlUi.labelListModel[firstRow].brushColor()
-            self._colorTable16[firstRow+1] = color.rgba()
+            color_value = color.rgba()
+            color_index = firstRow + 1
+            while len(self._colorTable16) <= color_index:
+                self._colorTable16.append(color_value)
+
             self.editor.brushingModel.setBrushColor(color)
 
             # Update the label layer colortable to match the list entry

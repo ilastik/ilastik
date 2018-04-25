@@ -60,10 +60,8 @@ class CountingWorkflow(Workflow):
         ######################
 
         allowed_axis_orders = []
-        for space in itertools.combinations('xyz', 2):
-            for space_c_perm in itertools.permutations(''.join(space)  + 'c'):
-                allowed_axis_orders.append(''.join(space_c_perm))
-
+        for space in itertools.permutations('xyz', 2):
+            allowed_axis_orders.append(''.join(space) + 'c')
 
         self.dataSelectionApplet = DataSelectionApplet(self,
                                                        "Input Data",

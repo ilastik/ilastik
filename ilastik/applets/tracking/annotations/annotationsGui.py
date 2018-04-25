@@ -436,7 +436,6 @@ class AnnotationsGui(LayerViewerGui):
         self.topLevelOperatorView.Disappearances.setValue(self.topLevelOperatorView.disappearances)
 
     def _onSaveAnnotations(self, time=None, label=None, time_interval=None, delete=False, track=None, division=False):
-        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
 
         if division:
             if "divisions" not in self.topLevelOperatorView.Annotations.value.keys():

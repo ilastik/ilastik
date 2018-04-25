@@ -6,6 +6,7 @@ import ilastik.config
 from ilastik.config import cfg as ilastik_config
 
 import argparse
+import faulthandler
 import logging
 
 logger = logging.getLogger(__name__)
@@ -110,7 +111,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     if create_fn:
         postinit_funcs.append(create_fn)
 
-    _enable_faulthandler()
+    faulthandler.enable()
     _init_excepthooks(parsed_args)
     eventcapture_mode, playback_args = _prepare_test_recording_and_playback(
         parsed_args)
@@ -399,19 +400,6 @@ def _prepare_test_recording_and_playback(parsed_args):
         if parsed_args.exit_on_success:
             playback_args['finish_callback'] = QApplication.quit
     return eventcapture_mode, playback_args
-
-
-def _enable_faulthandler():
-    if sys.platform.startswith('win'):  # todo: fix
-        return
-    try:
-        # Enable full stack trace printout in case of a segfault
-        # (Requires the faulthandler module from PyPI)
-        import faulthandler
-    except ImportError:
-        return
-    else:
-        faulthandler.enable()
 
 
 def _init_excepthooks(parsed_args):

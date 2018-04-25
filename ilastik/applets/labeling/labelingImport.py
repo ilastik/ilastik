@@ -259,7 +259,7 @@ class LabelImportOptionsDlg(QDialog):
             try:
                 axisRanges += (write_seeds_tagged_shape[k] - label_data_tagged_shape[k],)
             except KeyError:
-                axisRanges += (write_seeds_tagged_shape[k],)
+                axisRanges += (0,)
 
         self.imageOffsets = LabelImportOptionsDlg._defaultImageOffsets(axisRanges, srcInputFiles, dataInputSlot)
         self.labelMapping = LabelImportOptionsDlg._defaultLabelMapping(labelInfo)
@@ -307,7 +307,7 @@ class LabelImportOptionsDlg(QDialog):
         if 0 not in labels:
             labels = [0] + list(labels)
 
-        label_mapping = collections.defaultdict(int, list(zip(labels, list(range(max_labels)))))
+        label_mapping = collections.defaultdict(int, list(zip(labels, list(range(max_labels+1)))))
         return label_mapping
 
 
@@ -329,19 +329,24 @@ class LabelImportOptionsDlg(QDialog):
         self.axesEdit.textChanged.connect(self._handleAxesEditChanged)
     
     def _handleAxesEditChanged(self):
-        state, _ = self.axesEdit.validator().validate( self.axesEdit.text(), 0 )
+        state, _ , _ = self.axesEdit.validator().validate( self.axesEdit.text(), 0 )
         self.labelMetaInfoWidget.setEnabled( state == QValidator.Acceptable )
         self.positionWidget.setEnabled( state == QValidator.Acceptable )
         self.buttonBox.button(QDialogButtonBox.Ok).setEnabled( state == QValidator.Acceptable )
-        if state != QValidator.Acceptable:
-            # Red background
-            self.axesEdit.setStyleSheet("QLineEdit { background: rgb(255, 128, 128);"
-                                        "selection-background-color: rgb(128, 128, 255); }")
-        else:
+
+        if state == QValidator.Acceptable:
             # White background
             self.axesEdit.setStyleSheet("QLineEdit { background: rgb(255, 255, 255);"
                                         "selection-background-color: rgb(128, 128, 128); }")
-        
+        elif state == QValidator.Intermediate:
+            # Yellow background
+            self.axesEdit.setStyleSheet("QLineEdit { background: rgb(255, 255, 0);"
+                                        "selection-background-color: rgb(128, 128, 128); }")
+        else:
+            # Red background
+            self.axesEdit.setStyleSheet("QLineEdit { background: rgb(255, 128, 128);"
+                                        "selection-background-color: rgb(128, 128, 255); }")
+
     class _QAxesValidator(QValidator):
         def __init__(self, expected_length, parent=None):
             super(LabelImportOptionsDlg._QAxesValidator, self).__init__( parent )
@@ -360,18 +365,18 @@ class LabelImportOptionsDlg(QDialog):
             filtered_keys = [k for k in text if k in 'txyzc']
             filtered_text = "".join(filtered_keys)
             if text != filtered_text:
-                return QValidator.Invalid, min(pos, len(filtered_text))
+                return QValidator.Invalid, text, min(pos, len(filtered_text))
             
             # Must not be longer than the dimensions in the image
             if len(text) > self.exepected_length:
-                return QValidator.Invalid, pos
+                return QValidator.Invalid, text, pos
             
             # Not ready until all axes specified
             if len(text) < self.exepected_length:
-                return QValidator.Intermediate, pos
+                return QValidator.Intermediate, text, pos
             
             # No problems.
-            return QValidator.Acceptable, pos
+            return QValidator.Acceptable, text, pos
     
 
     #**************************************************************************
@@ -397,7 +402,7 @@ class LabelImportOptionsDlg(QDialog):
     # Insertion Position / Mapping
     #**************************************************************************
     def _initInsertPositionMappingWidgets(self, *args):
-        state, _ = self.axesEdit.validator().validate( self.axesEdit.text(), 0 )
+        state, _, _ = self.axesEdit.validator().validate( self.axesEdit.text(), 0 )
         self.positionWidget.setEnabled( state == QValidator.Acceptable )
         if state != QValidator.Acceptable:
             return

@@ -23,7 +23,6 @@ from __future__ import division
 from builtins import range
 from past.utils import old_div
 import os
-import tempfile
 from functools import partial
 from collections import defaultdict
 import numpy
@@ -88,32 +87,32 @@ class CarvingGui(LabelingGui):
         self.dialogdirCOM = os.path.join(directory, 'carvingObjectManagement.ui')
         self.dialogdirSAD = os.path.join(directory, 'saveAsDialog.ui')
 
-        super(CarvingGui, self).__init__(parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath)
-        
+        # Add 3DWidget only if the data is 3D
+        is_3d = self._is_3d()
+
+        super(CarvingGui, self).__init__(parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath,
+                                         is_3d_widget_visible=is_3d)
+
         self.labelingDrawerUi.currentObjectLabel.setText("<not saved yet>")
 
         # Init special base class members
         self.minLabelNumber = 2
         self.maxLabelNumber = 2
-        
+
         mgr = ShortcutManager()
         ActionInfo = ShortcutManager.ActionInfo
-        
+
         #set up keyboard shortcuts
-        mgr.register( "3", ActionInfo( "Carving", 
-                                       "Run interactive segmentation", 
-                                       "Run interactive segmentation", 
+        mgr.register( "3", ActionInfo( "Carving",
+                                       "Run interactive segmentation",
+                                       "Run interactive segmentation",
                                        self.labelingDrawerUi.segment.click,
                                        self.labelingDrawerUi.segment,
                                        self.labelingDrawerUi.segment  ) )
 
-        
+
         # Disable 3D view by default
         self.render = False
-        tagged_shape = defaultdict(lambda: 1)
-        tagged_shape.update( topLevelOperatorView.InputData.meta.getTaggedShape() )
-        is_3d = (tagged_shape['x'] > 1 and tagged_shape['y'] > 1 and tagged_shape['z'] > 1)
-
         if is_3d:
             try:
                 self._renderMgr = RenderingManager( self.editor.view3d )
@@ -173,34 +172,7 @@ class CarvingGui(LabelingGui):
         #    self.updateAllLayers() #make sure that an added/deleted uncertainty layer is recognized
         #self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onUncertaintyCombo)
 
-        ## background priority
-        
-        def onBackgroundPrioritySpin(value):
-            logger.debug( "background priority changed to %f" % value )
-            self.topLevelOperatorView.BackgroundPriority.setValue(value)
-        self.labelingDrawerUi.backgroundPrioritySpin.valueChanged.connect(onBackgroundPrioritySpin)
 
-        def onBackgroundPriorityDirty(slot, roi):
-            oldValue = self.labelingDrawerUi.backgroundPrioritySpin.value()
-            newValue = self.topLevelOperatorView.BackgroundPriority.value
-            if  newValue != oldValue:
-                self.labelingDrawerUi.backgroundPrioritySpin.setValue(newValue)
-        self.topLevelOperatorView.BackgroundPriority.notifyDirty(onBackgroundPriorityDirty)
-        
-        ## bias
-        
-        def onNoBiasBelowDirty(slot, roi):
-            oldValue = self.labelingDrawerUi.noBiasBelowSpin.value()
-            newValue = self.topLevelOperatorView.NoBiasBelow.value
-            if  newValue != oldValue:
-                self.labelingDrawerUi.noBiasBelowSpin.setValue(newValue)
-        self.topLevelOperatorView.NoBiasBelow.notifyDirty(onNoBiasBelowDirty)
-        
-        def onNoBiasBelowSpin(value):
-            logger.debug( "background priority changed to %f" % value )
-            self.topLevelOperatorView.NoBiasBelow.setValue(value)
-        self.labelingDrawerUi.noBiasBelowSpin.valueChanged.connect(onNoBiasBelowSpin)
-        
         ## save
 
         self.labelingDrawerUi.save.clicked.connect(self.onSaveButton)
@@ -252,17 +224,27 @@ class CarvingGui(LabelingGui):
             self._doneSegmentationColortable.append(QColor(0,255,0).rgba())
         makeColortable()
         self._updateGui()
-    
+
+    def _is_3d(self):
+        tagged_shape = defaultdict(lambda: 1)
+        tagged_shape.update(self.topLevelOperatorView.InputData.meta.getTaggedShape())
+        is_3d = tagged_shape['x'] > 1 and tagged_shape['y'] > 1 and tagged_shape['z'] > 1
+        return is_3d
+
     def _after_init(self):
         super(CarvingGui, self)._after_init()
-        if self.render:self._toggleSegmentation3D()
-        
+        if self.render:
+            self._toggleSegmentation3D()
         
     def _updateGui(self):
         self.labelingDrawerUi.save.setEnabled( self.topLevelOperatorView.dataIsStorable() )
         
     def onSegmentButton(self):
         logger.debug( "segment button clicked" )
+        bkPriorityValue = self.labelingDrawerUi.backgroundPrioritySpin.value()
+        self.topLevelOperatorView.BackgroundPriority.setValue(bkPriorityValue)
+        biasValue = self.labelingDrawerUi.noBiasBelowSpin.value()
+        self.topLevelOperatorView.NoBiasBelow.setValue(biasValue)
         self.topLevelOperatorView.Trigger.setDirty(slice(None))
     
     def saveAsDialog(self, name=""):
@@ -576,8 +558,10 @@ class CarvingGui(LabelingGui):
         self._update_rendering()
 
     def _segmentation_dirty(self):
-        self._renderMgr.invalidateObject(CURRENT_SEGMENTATION_NAME)
-        self._renderMgr.removeObject(CURRENT_SEGMENTATION_NAME)
+        if self.render:
+            self._renderMgr.invalidateObject(CURRENT_SEGMENTATION_NAME)
+            self._renderMgr.removeObject(CURRENT_SEGMENTATION_NAME)
+
         self._update_rendering()
 
     def _update_rendering(self):
@@ -701,11 +685,15 @@ class CarvingGui(LabelingGui):
             layers.append(layer)
         
         #done 
-        done = self.topLevelOperatorView.DoneObjects
-        if done.ready(): 
-            colortable = [QColor(0,0,0,0).rgba(), QColor(0,0,255).rgba()]
+        doneSeg = self.topLevelOperatorView.DoneSegmentation
+        if doneSeg.ready():
+            #FIXME: if the user segments more than 255 objects, those with indices that divide by 255 will be shown as transparent
+            #both here and in the _doneSegmentationColortable
+            colortable = 254*[QColor(0, 0, 255).rgba()]
+            colortable.insert(0, QColor(0, 0, 0, 0).rgba())
+
             #have to use lazyflow because it provides dirty signals
-            layer = ColortableLayer(LazyflowSource(done), colortable, direct=True)
+            layer = ColortableLayer(LazyflowSource(doneSeg), colortable, direct=True)
             layer.name = "Completed segments (unicolor)"
             layer.setToolTip("In order to keep track of which objects you have already completed, this layer " \
                              "shows <b>all completed object</b> in one color (<b>blue</b>). " \
@@ -716,15 +704,13 @@ class CarvingGui(LabelingGui):
             layer.opacity = 0.5
             layers.append(layer)
 
-        #done seg
-        doneSeg = self.topLevelOperatorView.DoneSegmentation
-        if doneSeg.ready():
             layer = ColortableLayer(LazyflowSource(doneSeg), self._doneSegmentationColortable, direct=True)
             layer.name = "Completed segments (one color per object)"
             layer.setToolTip("<html>In order to keep track of which objects you have already completed, this layer " \
                              "shows <b>all completed object</b>, each with a random color.</html>")
             layer.visible = False
             layer.opacity = 0.5
+            layer.colortableIsRandom = True
             self._doneSegmentationLayer = layer
             layers.append(layer)
 
@@ -743,7 +729,8 @@ class CarvingGui(LabelingGui):
                              "(undersegmentation). In this case, it will be impossible to achieve the desired " \
                              "segmentation. This layer helps you to understand these cases.</html>")
             layer.visible = False
-            layer.opacity = 1.0
+            layer.colortableIsRandom = True
+            layer.opacity = 0.5
             layers.append(layer)
 
         # Visual overlay (just for easier labeling)
