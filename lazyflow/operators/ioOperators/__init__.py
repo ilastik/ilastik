@@ -37,6 +37,7 @@ from .opCachedTiledVolumeReader import OpCachedTiledVolumeReader
 from .opKlbReader import OpKlbReader
 from .opTiffReader import OpTiffReader
 from .opTiffSequenceReader import OpTiffSequenceReader
+from .opRESTfulPrecomputedChunkedVolumeReader import OpRESTfulPrecomputedChunkedVolumeReader
 
 # Try to import the dvid-related operator.
 # If it fails, that's okay.
