@@ -56,7 +56,7 @@ try:
     logger.info('Using fast filters.')
 except ImportError as e:
     WITH_FAST_FILTERS = False
-    logger.warn("Failed to import fast filters: " + str(e))
+    logger.warning("Failed to import fast filters: " + str(e))
 
 def zfill_num(n, stop):
     """ Make int strings same length.
@@ -707,7 +707,7 @@ class OpBaseFilter(Operator):
         channelsPerChannel = self.resultingChannels()
 
         if self.supportsRoi is False and largestSigma > 5:
-            logger.warn("WARNING: operator", self.name, "does not support roi !!")
+            logger.warning(f"WARNING: operator {self.name} does not support roi!!")
 
         i2 = 0
         for i in range(int(numpy.floor(1.0 * oldstart[channelAxis]/channelsPerChannel)),int(numpy.ceil(1.0 * oldstop[channelAxis]/channelsPerChannel))):

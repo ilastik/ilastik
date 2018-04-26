@@ -355,7 +355,7 @@ class TiledVolume(object):
                 raise
                 
         if r.status_code == requests.codes.not_found:
-            logger.warn("NOTFOUND: {}".format( tile_url ))
+            logger.warning("NOTFOUND: {}".format( tile_url ))
             data_out[:] = 0
         else:
             # late import

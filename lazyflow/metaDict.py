@@ -153,6 +153,12 @@ class MetaDict(defaultdict):
         assert self.axistags is not None
         return [tag.key for tag in self.axistags]
 
+    def getOriginalAxisKeys(self):
+        if self.original_axistags is None:
+            return self.getAxisKeys()
+
+        return [tag.key for tag in self.original_axistags]
+
     def getDtypeBytes(self):
         """
         For numpy dtypes only, return the size of the dtype in bytes.
@@ -170,7 +176,7 @@ class MetaDict(defaultdict):
         """
         pairs = []
         # For easy comparison, start with these in the same order every time.
-        standard_keys = ['_ready', 'NOTREADY', 'shape', 'axistags', 'dtype', 'drange', 'has_mask', '_dirty' ]
+        standard_keys = ['_ready', 'NOTREADY', 'shape', 'axistags', 'original_axistags', 'dtype', 'drange', 'has_mask', '_dirty' ]
         for key in standard_keys:
             if key in self:
                 pairs.append( key + ' : ' + repr(self[key]) )

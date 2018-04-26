@@ -53,7 +53,7 @@ class OpNpyWriter(Operator):
         # TODO: Use a lazyflow.utility.BigRequestStreamer to split up 
         #       this giant request into a series of streamed subrequests.
         
-        logger.warn("The current implementation of NPY-format data export computes the entire dataset at once, which requires lots of RAM.")
+        logger.warning("The current implementation of NPY-format data export computes the entire dataset at once, which requires lots of RAM.")
         path = self.Filepath.value
 
         self.progressSignal(0)

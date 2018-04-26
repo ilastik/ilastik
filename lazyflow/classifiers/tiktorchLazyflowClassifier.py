@@ -41,7 +41,8 @@ logger = logging.getLogger(__name__)
 try:
     from tiktorch.wrapper import TikTorch
 except ImportError as e:
-    print(e)
+    raise
+
 
 
 # FIXME: hard coded file path to a trained and pickled pytorch network!

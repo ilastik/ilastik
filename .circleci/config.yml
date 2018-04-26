@@ -1,0 +1,94 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/ilastik/lazyflow
+    parallelism: 1
+    shell: /bin/bash --login
+    # CircleCI 2.0 does not support environment variables that refer to each other the same way as 1.0 did.
+    # If any of these refer to each other, rewrite them so that they don't or see https://circleci.com/docs/2.0/env-vars/#interpolating-environment-variables-to-set-other-environment-variables .
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CONDA_ROOT: /home/ubuntu/miniconda
+      TEST_ENV_NAME: test-env
+      TEST_ENV_PREFIX: /home/ubuntu/miniconda/envs/test-env
+    # In CircleCI 1.0 we used a pre-configured image with a large number of languages and other packages.
+    # In CircleCI 2.0 you can now specify your own image, or use one of our pre-configured images.
+    # The following configuration line tells CircleCI to use the specified docker image as the runtime environment for you job.
+    # We have selected a pre-built image that mirrors the build environment we use on
+    # the 1.0 platform, but we recommend you choose an image more tailored to the needs
+    # of each job. For more information on choosing an image (or alternatively using a
+    # VM instead of a container) see https://circleci.com/docs/2.0/executor-types/
+    # To see the list of pre-built images that CircleCI provides for most common languages see
+    # https://circleci.com/docs/2.0/circleci-images/
+    docker:
+    - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
+      command: /sbin/init
+    steps:
+    # add interpolated environment variables (CircleCI 2.0 does not support direct interpolation)
+    - run: echo 'export PATH=${TEST_ENV_PREFIX}/bin:${CONDA_ROOT}/bin:${PATH}' >> $BASH_ENV
+    - run: echo 'export PYTHONPATH=${PYTHONPATH}:${TEST_ENV_PREFIX}/ilastik-meta/lazyflow' >> $BASH_ENV
+    - run: echo 'export NOSETEST_OUT_DIR=${CIRCLE_ARTIFACTS}/lazyflow-nose' >> $BASH_ENV
+    - run: echo 'export FLAKE8_OUT_DIR=${CIRCLE_ARTIFACTS}/lazyflow-flake8' >> $BASH_ENV
+    - checkout
+    # Prepare for artifact and test results  collection equivalent to how it was done on 1.0.
+    # In many cases you can simplify this from what is generated here.
+    # 'See docs on artifact collection here https://circleci.com/docs/2.0/artifacts/'
+    - run: mkdir -p $CIRCLE_ARTIFACTS $NOSETEST_OUT_DIR $FLAKE8_OUT_DIR 
+    # Dependencies
+    #   This would typically go in either a build or a build-and-test job when using workflows
+    # Restore the dependency cache
+    - restore_cache:
+        keys:
+        # This branch if available
+        - v1-dep-{{ .Branch }}-
+        # Default branch if not
+        - v1-dep-master-
+        # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
+        - v1-dep-
+    # This is based on your 1.0 configuration file or project settings
+    - run: |
+        if [[ ! -d ${CONDA_ROOT} ]]; then
+            echo "Installing Miniconda...";
+            wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh &&
+            bash Miniconda3-latest-Linux-x86_64.sh -b -p ${CONDA_ROOT};
+        else
+            echo "Using cached Miniconda install";
+        fi
+    - run: |
+        if [ ! -d ${TEST_ENV_PREFIX} ]; then
+            conda create -y -n ${TEST_ENV_NAME} -c ilastik-forge -c conda-forge python=3.6 numpy=1.12 ilastik-dependencies-no-solvers nose flake8 coverage;
+        else
+            conda install -y -n ${TEST_ENV_NAME} -c ilastik-forge -c conda-forge python=3.6 numpy=1.12 ilastik-dependencies-no-solvers nose flake8 coverage;
+        fi
+    - run: rm -rf ${TEST_ENV_PREFIX}/ilastik-meta
+    - run: git clone http://github.com/ilastik/ilastik-meta ${TEST_ENV_PREFIX}/ilastik-meta
+    - run: cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule init
+    - run: cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule update --recursive
+    - run: cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule foreach "git checkout master"
+    - run: rm -rf ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow
+    - run: ln -s `pwd` ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow
+    # Save dependency cache
+    - save_cache:
+        key: v1-dep-{{ .Branch }}-{{ epoch }}
+        paths:
+        # These cache paths were specified in the 1.0 config
+        - /home/ubuntu/miniconda
+    # Test
+    #   This would typically be a build job when using workflows, possibly combined with build
+    # This is based on your 1.0 configuration file or project settings
+    - run: |
+        cd ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow/tests && ${TEST_ENV_PREFIX}/bin/nosetests --nologcapture --ignore-files=testInterpolatedFeatures.py --with-xunit --xunit-file=${NOSETEST_OUT_DIR}/nosetests.lazyflow.xml --with-coverage --cover-xml --cover-xml-file=${NOSETEST_OUT_DIR}/.coverage.lazyflow.xml --cover-inclusive --cover-package=lazyflow .
+    - run: |
+        cd ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow/ && ${TEST_ENV_PREFIX}/bin/flake8 --statistics --config=.flake8 --exit-zero --output=${FLAKE8_OUT_DIR}/flake8.lazyflow.txt lazyflow
+    # This is based on your 1.0 configuration file or project settings
+    # - run: curl -s https://codecov.io/bash | bash -s -- -f ${NOSETEST_OUT_DIR}/.coverage.lazyflow.xml
+    # Teardown
+    #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
+    # Save test results
+    - store_test_results:
+        path: /tmp/circleci-artifacts
+    # Save artifacts
+    # - store_artifacts:
+    #     path: /tmp/circleci-artifacts
+    # - store_artifacts:
+    #     path: /tmp/circleci-test-results

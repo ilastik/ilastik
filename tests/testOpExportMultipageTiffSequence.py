@@ -79,7 +79,7 @@ class TestOpExportMultipageTiffSequence(object):
         try:
             opReader.GlobString.setValue( globstring )
     
-            # (The OpStackLoader produces txyzc order.)
+            # (The OpStackLoader might produce different order.)
             opReorderAxes = OpReorderAxes( graph=self.graph )
             try:
                 opReorderAxes.AxisOrder.setValue( self._axisorder )
