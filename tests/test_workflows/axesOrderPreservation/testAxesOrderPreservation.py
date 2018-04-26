@@ -194,8 +194,8 @@ class TestAxesOrderPreservation(object):
             # -----------------------------------------------------------------
 
             if max_mse:
-                assert max_mse > numpy.mean(numpy.squeeze(result - compare)), \
-                    numpy.mean(numpy.squeeze(result - compare))
+                assert max_mse > numpy.mean(numpy.square(result - compare)), \
+                    numpy.mean(numpy.square(result - compare))
             elif max_part_uneqaul:
                 assert max_part_uneqaul > numpy.mean(~numpy.isclose(result, compare)), \
                     numpy.mean(~numpy.isclose(result, compare))
@@ -290,7 +290,7 @@ class TestAxesOrderPreservation(object):
             assert input_axes == ''.join([a for a in opReaderResult.Output.meta.getAxisKeys() if a != 'c']), \
                 ''.join(opReaderResult.Output.meta.getAxisKeys())
 
-        self.compare_results(opReaderResult, compare_path, input_axes, max_mse=0.002)
+        self.compare_results(opReaderResult, compare_path, input_axes, max_mse=0.001)
 
     def test_autocontext(self):
         options = []
