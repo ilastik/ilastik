@@ -380,8 +380,15 @@ class NNClassGui(LayerViewerGui):
                 expected_input_shape = model._tiktorch_net.expected_input_shape
                 input_shape = numpy.array(expected_input_shape)
 
-                if len(model._tiktorch_net.get('window_size')) == 2:
+                if 'output_size' in model._tiktorch_net._configuration:
+                    output_shape = model._tiktorch_net.get('output_size')
+                    if (output_shape != input_shape):
+                        self.halo_size = int((input_shape[1] - output_shape[1])/2)
+                        model.HALO_SIZE = self.halo_size
+                        print(self.halo_size)
 
+
+                if len(model._tiktorch_net.get('window_size')) == 2:
                     input_shape = numpy.append(input_shape, None)
                 else:
 
@@ -389,7 +396,6 @@ class NNClassGui(LayerViewerGui):
                     input_shape = numpy.append(input_shape, None)
 
                 input_shape[1:3] -= 2 * self.halo_size
-
 
                 self.topLevelOperator.BlockShape.setValue(input_shape)
                 self.topLevelOperator.NumClasses.setValue(model._tiktorch_net.get('num_output_channels'))
