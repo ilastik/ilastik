@@ -9,6 +9,7 @@ import numpy
 import h5py
 import copy
 import http.server
+import socket
 import socketserver
 import nose
 
@@ -161,6 +162,9 @@ class DataSetup(object):
         self._start_server()
     
     def _start_server(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(('localhost', 8888))  # check if port 8888 is available
+
         original_cwd = os.getcwd()
         os.chdir(self.TILE_DIRECTORY)
         class Handler(http.server.SimpleHTTPRequestHandler):
