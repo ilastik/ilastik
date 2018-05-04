@@ -37,11 +37,12 @@ volume_description_text = \
  
     "tile_shape_2d_yx" : [200,200],
  
-    "tile_url_format" : "http://localhost:8888/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
+    "tile_url_format" : "http://localhost:{port}/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
     "extend_slices" : [ [40, [41]],
                         [44, [45, 46, 47]] ]
 }
 """
+port = 8888
 
 class DataSetup(object):
     """
@@ -76,6 +77,18 @@ class DataSetup(object):
         - transposed_volume_description.json
         - [lots of png tiles..]
         """        
+        global volume_description_text
+        global port
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind(('localhost', port))  # try default/previous port
+        except Exception as e:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.bind(('localhost', 0))  # find free port
+                port = sock.getsockname()[1]
+
+        volume_description_text = volume_description_text.replace('{port}', str(port))
+
         tmp = tempfile.gettempdir()
         self.TILE_DIRECTORY = os.path.join( tmp, 'testTiledVolume_data' )
         logger.debug("Using test directory: {}".format( self.TILE_DIRECTORY ))
@@ -162,9 +175,6 @@ class DataSetup(object):
         self._start_server()
     
     def _start_server(self):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.bind(('localhost', 8888))  # check if port 8888 is available
-
         original_cwd = os.getcwd()
         os.chdir(self.TILE_DIRECTORY)
         class Handler(http.server.SimpleHTTPRequestHandler):
@@ -179,7 +189,7 @@ class DataSetup(object):
         class Server(socketserver.TCPServer):
             # http://stackoverflow.com/questions/10613977/a-simple-python-server-using-simplehttpserver-and-socketserver-how-do-i-close-t
             allow_reuse_address = True
-        server = Server(("", 8888), Handler)
+        server = Server(('localhost', port), Handler)
         import threading
         server_thread = threading.Thread(target=server.serve_forever)
         server_thread.start()
