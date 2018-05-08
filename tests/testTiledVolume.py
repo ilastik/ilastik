@@ -81,9 +81,13 @@ class DataSetup(object):
         global port
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                # allow the socket port to be reused if in TIME_WAIT state
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 sock.bind(('localhost', port))  # try default/previous port
         except Exception as e:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                # allow the socket port to be reused if in TIME_WAIT state
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 sock.bind(('localhost', 0))  # find free port
                 port = sock.getsockname()[1]
 
