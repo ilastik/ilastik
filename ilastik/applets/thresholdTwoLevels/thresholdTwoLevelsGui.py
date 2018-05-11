@@ -60,7 +60,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
     def __init__(self, *args, **kwargs):
         self.__cleanup_fns = []
         super( ThresholdTwoLevelsGui, self ).__init__(*args, **kwargs)
-        self._defaultInputChannelColors = colortables.default16_new
+        self._defaultInputChannelColors = colortables.default16_new[1:] #first color is transparent
 
         self._onInputMetaChanged()
 
@@ -143,7 +143,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             input_channel_colors = [QColor(r_g_b[0],r_g_b[1],r_g_b[2]) for r_g_b in op.InputChannelColors.value]
         else:
             if self._defaultInputChannelColors is None:
-                self._defaultInputChannelColors = colortables.default16_new
+                self._defaultInputChannelColors = colortables.default16_new[1:]
             input_channel_colors = list(map(QColor, self._defaultInputChannelColors))
 
         self._drawer.inputChannelComboBox.clear()
