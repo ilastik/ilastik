@@ -169,7 +169,10 @@ class LabelingGui(LayerViewerGui):
         self.__cleanup_fns.append( partial( self._labelingSlots.labelNames.unregisterDirty, bind(self._updateLabelList) ) )
 
 
+<<<<<<< edad89c79ea401f8f3d79d2b69ae172f643457ec
         self._colorTable16 = colortables.default16_new
+=======
+>>>>>>> fixes for labeling and pixel classification gui to use the common default label colors
         self._programmaticallyRemovingLabels = False
 
         if drawerUiPath is None:
@@ -312,7 +315,11 @@ class LabelingGui(LayerViewerGui):
             color_value = color.rgba()
             color_index = firstRow + 1
             if color_index< len(self._colorTable16):
+<<<<<<< edad89c79ea401f8f3d79d2b69ae172f643457ec
                 self._colorTable16[color_index] = color_value
+=======
+                self._colorTable16[color_index] = QColor(color_value)
+>>>>>>> fixes for labeling and pixel classification gui to use the common default label colors
             else:
                 self._colorTable16.append(color_value)
             self.editor.brushingModel.setBrushColor(color)

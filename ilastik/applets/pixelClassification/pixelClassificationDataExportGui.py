@@ -168,8 +168,8 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 num_channels = 1
             if num_channels != len(names) or num_channels != len(colors):
                 names = ["Label {}".format(n) for n in range(1, num_channels+1)]
+                colors = colortables.default16_new[1:num_channels+1]
 
-                colors = colortables.default16_new[:num_channels]
         # Use a slicer to provide a separate slot for each channel layer
         opSlicer = OpMultiArraySlicer2( parent=opLane.viewed_operator().parent )
         opSlicer.Input.connect( predictionSlot )
@@ -180,7 +180,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 drange = channelSlot.meta.drange or (0.0, 1.0)
                 predictsrc = LazyflowSource(channelSlot)
                 predictLayer = AlphaModulatedLayer( predictsrc,
-                                                    tintColor=QColor(*colors[channel]),
+                                                    tintColor=colors[channel],
                                                     # FIXME: This is weird.  Why are range and normalize both set to the same thing?
                                                     range=drange,
                                                     normalize=drange )
