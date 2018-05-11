@@ -147,6 +147,8 @@ class LabelingGui(LayerViewerGui):
                              (if provided).
         """
 
+        self._colorTable16 = colortables.default16_new
+
         # Do have have all the slots we need?
         assert isinstance(labelingSlots, LabelingGui.LabelingSlots)
         assert labelingSlots.labelInput is not None, "Missing a required slot."
@@ -166,7 +168,7 @@ class LabelingGui(LayerViewerGui):
         self._labelingSlots.labelNames.notifyDirty( bind(self._updateLabelList) )
         self.__cleanup_fns.append( partial( self._labelingSlots.labelNames.unregisterDirty, bind(self._updateLabelList) ) )
 
-        self._colorTable16 = colortables.default16_new
+
         self._programmaticallyRemovingLabels = False
 
         if drawerUiPath is None:
@@ -308,9 +310,10 @@ class LabelingGui(LayerViewerGui):
             color = self._labelControlUi.labelListModel[firstRow].brushColor()
             color_value = color.rgba()
             color_index = firstRow + 1
-            while len(self._colorTable16) <= color_index:
+            if color_index< len(self._colorTable16):
+                self._colorTable16[color_index] = QColor(color_value)
+            else:
                 self._colorTable16.append(color_value)
-
             self.editor.brushingModel.setBrushColor(color)
 
             # Update the label layer colortable to match the list entry
@@ -708,8 +711,8 @@ class LabelingGui(LayerViewerGui):
     def onLabelColorChanged(self):
         """
         Subclasses can override this to respond to changes in the label colors.
+        This class gets updated before, in the _updateLabelList
         """
-        pass
     
     def onPmapColorChanged(self):
         """
