@@ -60,11 +60,15 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
     def __init__(self, *args, **kwargs):
         self.__cleanup_fns = []
         super( ThresholdTwoLevelsGui, self ).__init__(*args, **kwargs)
+<<<<<<< 82e98aa82489f011387dcc4a29fefab4d7115f5e
 <<<<<<< 0cc75154bcba04da1e80833b8320133626126a53
         self._defaultInputChannelColors = colortables.default16_new[1:] #first color is transparent
 =======
         self._defaultInputChannelColors = colortables.default16_new
 >>>>>>> make all gui classes use the colortable16 from volumina.colortables
+=======
+        self._defaultInputChannelColors = colortables.default16_new[1:] #first color is transparent
+>>>>>>> make colortable in thresholding start from 1
 
         self._onInputMetaChanged()
 
