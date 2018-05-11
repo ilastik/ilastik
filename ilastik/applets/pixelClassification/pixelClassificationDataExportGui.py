@@ -165,7 +165,9 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
             num_channels = predictionSlot.meta.getTaggedShape()['c']
             if num_channels != len(names) or num_channels != len(colors):
                 names = ["Label {}".format(n) for n in range(1, num_channels+1)]
-                colors = colortables.default16_new[1:num_channels+1]
+                colors = num_channels * [(0, 0, 0)] # it doesn't matter, if the pmaps color is not known,
+                                                    # we are either initializing and it will be rewritten or
+                                                    # something is very wrong elsewhere
 
         # Use a slicer to provide a separate slot for each channel layer
         opSlicer = OpMultiArraySlicer2( parent=opLane.viewed_operator().parent )
@@ -177,7 +179,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 drange = channelSlot.meta.drange or (0.0, 1.0)
                 predictsrc = LazyflowSource(channelSlot)
                 predictLayer = AlphaModulatedLayer( predictsrc,
-                                                    tintColor=colors[channel],
+                                                    tintColor=QColor(*colors[channel]),
                                                     # FIXME: This is weird.  Why are range and normalize both set to the same thing?
                                                     range=drange,
                                                     normalize=drange )
