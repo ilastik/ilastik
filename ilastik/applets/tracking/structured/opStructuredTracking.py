@@ -252,6 +252,7 @@ class OpStructuredTracking(OpConservationTracking):
                                         break
 
                                     # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
+                                    type=None
                                     type = self._type(time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
                                     print ("time, track",time, track, "type",type)
                                     if type == None:
