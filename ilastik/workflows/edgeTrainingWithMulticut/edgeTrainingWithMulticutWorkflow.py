@@ -245,7 +245,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
         opDataExport.Inputs[0].connect( opEdgeTrainingWithMulticut.Output )
         for slot in opDataExport.Inputs:
-            assert slot.partner is not None
+            assert slot.upstream_slot is not None
         
     def onProjectLoaded(self, projectManager):
         """

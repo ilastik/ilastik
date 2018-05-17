@@ -197,14 +197,14 @@ class OpDataExport(Operator):
             rawInfo = self.RawDatasetInfo.value
         except:
             for oslot in list(self.outputs.values()):
-                if oslot.partner is None:
+                if oslot.upstream_slot is None:
                     oslot.meta.NOTREADY = True
             return
 
         selection_index = self.InputSelection.value
         if not self.Inputs[selection_index].ready():
             for oslot in list(self.outputs.values()):
-                if oslot.partner is None:
+                if oslot.upstream_slot is None:
                     oslot.meta.NOTREADY = True
             return
         self._opFormattedExport.Input.connect( self.Inputs[selection_index] )

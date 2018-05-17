@@ -323,7 +323,7 @@ class NewAutocontextWorkflowBase(Workflow):
         opDataExport.Inputs[-1].connect( opMetadataOverride.Output )
         
         for slot in opDataExport.Inputs:
-            assert slot.partner is not None
+            assert slot.upstream_slot is not None
 
     def handleAppletStateUpdateRequested(self):
         """
