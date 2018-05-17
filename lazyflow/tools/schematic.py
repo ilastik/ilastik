@@ -96,13 +96,13 @@ class SvgSlot(DrawableABC, ConnectableABC):
     def key(self):
         return hex(id(self._slot))
 
-    def partnerKey(self):
+    def upstream_slot_key(self):
         return hex(id(self._slot.upstream_slot))
 
     def drawConnectionToPartner(self, canvas):
         if self._slot.upstream_slot in slot_registry:
             myIdStr = '#' + self.key()
-            partnerIdStr = '#' + self.partnerKey()
+            partnerIdStr = '#' + self.upstream_slot_key()
             pathName = "pathTo" + self.key()
             canvas += svg.connector_path( id_=pathName, inkscape__connection_start=partnerIdStr, inkscape__connection_end=myIdStr )
 
@@ -124,7 +124,7 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
     def key(self):
         return hex(id(self.mslot))
 
-    def partnerKey(self):
+    def upstream_slot_key(self):
         return hex(id(self.mslot.upstream_slot))
 
     def __getitem__(self, i):
@@ -144,7 +144,7 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
     def drawConnectionToPartner(self, canvas):
         if self.mslot.upstream_slot in slot_registry:
             myIdStr = '#' + self.key()
-            partnerIdStr = '#' + self.partnerKey()
+            partnerIdStr = '#' + self.upstream_slot_key()
             pathName = "pathTo" + self.key()
             canvas += svg.connector_path( id_=pathName, inkscape__connection_start=partnerIdStr, inkscape__connection_end=myIdStr )
         else:
