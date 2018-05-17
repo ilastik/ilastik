@@ -53,11 +53,11 @@ class ConnectableABC(with_metaclass(ABCMeta, object)):
         return NotImplemented
     
     @abstractmethod
-    def partnerKey(self):
+    def upstream_slot_key(self):
         return NotImplemented
 
     @classmethod
     def __subclasshook__(cls, C):
         if cls is DrawableABC:
-            return True if _has_attributes(C, ['key', 'partnerKey']) else False
+            return True if _has_attributes(C, ['key', 'upstream_slot_key']) else False
         return NotImplemented
