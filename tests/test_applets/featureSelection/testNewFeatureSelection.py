@@ -53,12 +53,12 @@ class TestCompareOpFeatureSelectionToOld(object):
 
         # Configure matrix
         tiny_sel = numpy.zeros((6, 7), dtype=bool)
-        tiny_sel[0, 1] = True  # Gaussian
-        tiny_sel[1, 0] = True  # L of G
+        tiny_sel[0, 0] = True  # Gaussian
+        tiny_sel[1, 2] = True  # L of G
         tiny_sel[2, 2] = True  # ST EVs
-        tiny_sel[3, 0] = True  # H of G EVs
+        tiny_sel[3, 1] = True  # H of G EVs
         tiny_sel[4, 2] = True  # GGM
-        tiny_sel[5, 1] = True  # Diff of G
+        tiny_sel[5, 2] = True  # Diff of G
 
         self.opFeatures.SelectionMatrix.setValue(tiny_sel)
         self.opFeaturesOld.SelectionMatrix.setValue(tiny_sel)
@@ -91,9 +91,9 @@ class TestCompareOpFeatureSelectionToOld(object):
             resultOld = outputOld[roi].wait()
 
             assert result.shape == resultOld.shape
-            assert numpy.allclose(result, resultOld, atol=1.e-4)
+            assert numpy.allclose(result, resultOld, rtol=1.e-2, atol=1.e-4), roi
 
-    def test(self):
+    def test_output(self):
         data = vigra.taggedView(
             numpy.resize(numpy.random.rand(2 * 18 * 19 * 20 * 3), (2, 18, 19, 20, 3)).astype(numpy.float32),
             'tzyxc')
@@ -104,14 +104,15 @@ class TestCompareOpFeatureSelectionToOld(object):
 
         # Configure selection matrix
         sel = numpy.zeros((6, 7), dtype=bool)
-        sel[0, 3] = True  # Gaussian
-        sel[1, 4] = True  # L of G
-        sel[2, 2] = True  # ST EVs
+        sel[0, 1] = True  # Gaussian
+        sel[1, 3] = True  # L of G
+        sel[2, 4] = True  # ST EVs
         sel[3, 3] = True  # H of G EVs
         sel[4, 5] = True  # GGM
-        sel[5, 1] = True  # Diff of G
+        sel[5, 2] = True  # Diff of G
 
         if DEBUG:
+            # set vigra filter to compare to here
             scales = [1.6]
             vigra_fn = vigra.filters.gaussianSmoothing
 
@@ -137,11 +138,11 @@ class TestCompareOpFeatureSelectionToOld(object):
             [slice(1, 2), 0, slice(None), slice(None), slice(0, 3)],
             [0, 0, slice(None), slice(None), slice(3, 6)],
             # [0, 0, slice(1, 5), slice(1, 6), slice(6, 7)],
-            [0, 0, slice(1, 5), slice(None), slice(7, 8)],
+            [0, 0, slice(None), slice(None), slice(7, 8)],
             # [0, 0, slice(None), slice(1, 6), slice(8, 11)],
             [0, 0, slice(None), slice(None), slice(11, 14)],
             # [0, 0, slice(None), slice(None), slice(14, 15)],
-            [0, 0, slice(None), slice(None), slice(15, 18)],
+            [0, 0, slice(1, 5), slice(None), slice(15, 18)],
             # [0, 0, slice(None), slice(None), slice(15, 18)],
             [0, 0, slice(None), slice(None), slice(18, 21)],
             # [0, 0, slice(None), slice(None), slice(21, 24)],
@@ -175,38 +176,133 @@ class TestCompareOpFeatureSelectionToOld(object):
                             pass
                     print(line)
 
-                result -= result.min()
-                result /= result.max()
-                resultOld -= resultOld.min()
-                resultOld /= resultOld.max()
+                display = result - result.min()
+                display /= display.max()
+                displayOld = resultOld - resultOld.min()
+                displayOld /= displayOld.max()
                 try:
-                    resultVigra -= resultVigra.min()
-                    resultVigra /= resultVigra.max()
+                    displayVigra = resultVigra - resultVigra.min()
+                    displayVigra /= displayVigra.max()
                 except Exception:
                     pass
-                print('here', result.shape)
+                print('here', display.shape)
                 plt.figure(figsize=(10, 10))
                 plt.subplot(2, 2, 1)
-                plt.imshow(result)
+                plt.imshow(display)
                 plt.title('new')
                 plt.subplot(2, 2, 2)
-                plt.imshow(resultOld)
+                plt.imshow(displayOld)
                 plt.title('old')
                 plt.subplot(2, 2, 3)
-                diff = abs(result - resultOld)
+                diff = abs(display - displayOld)
                 diff /= diff.max()
                 plt.imshow(diff)
                 plt.title('diff')
                 plt.subplot(2, 2, 4)
                 plt.title('vigra')
                 try:
-                    plt.imshow(resultVigra)
+                    plt.imshow(displayVigra)
                 except Exception:
                     pass
                 plt.show()
 
             assert result.shape == resultOld.shape
-            assert numpy.allclose(result, resultOld, rtol=1.e-3, atol=1.e-3), roi
+            assert numpy.allclose(result, resultOld, rtol=1.e-3, atol=1.e-4), roi
+
+    def test_features(self):
+        data = vigra.taggedView(
+            numpy.resize(numpy.random.rand(1 * 1 * 19 * 20 * 3), (1, 1, 19, 20, 3)).astype(numpy.float32),
+            'tzyxc')
+
+        # Set input data
+        self.opFeatures.InputImage[0].setValue(data)
+        self.opFeaturesOld.InputImage[0].setValue(data)
+
+        # Configure selection matrix
+        sel = numpy.zeros((6, 7), dtype=bool)
+        sel[0, 1] = True  # Gaussian
+        sel[1, 4] = True  # L of G
+        sel[2, 5] = True  # ST EVs
+        sel[3, 3] = True  # H of G EVs
+        sel[4, 5] = True  # GGM
+        sel[5, 2] = True  # Diff of G
+
+        if DEBUG:
+            # set vigra filter to compare to here
+            scales = [1.6]
+            vigra_fn = vigra.filters.gaussianSmoothing
+
+        self.opFeatures.SelectionMatrix.setValue(sel)
+        self.opFeaturesOld.SelectionMatrix.setValue(sel)
+
+        for output, outputOld in zip(self.opFeatures.FeatureLayers[0], self.opFeaturesOld.FeatureLayers[0]):
+            assert output.meta.shape == outputOld.meta.shape, (output.meta.shape, outputOld.meta.shape)
+            assert output.meta.axistags == outputOld.meta.axistags
+            for key in output.meta.keys():
+                if output.meta[key] != outputOld.meta[key]:
+                    print(f'{key}: {output.meta[key]}, {outputOld.meta[key]}\n')
+            assert output.meta == outputOld.meta
+            result = output[:].wait()
+            resultOld = outputOld[:].wait()
+
+            if DEBUG:
+                # restrict to 2d image with at most 3 channel
+                result = result[0, 0, ..., :3]
+                resultOld = resultOld[0, 0, ..., :3]
+
+                print('result', result.shape, result.max(), result.min(), result.mean())
+                print('resultOld', resultOld.shape, resultOld.max(), resultOld.min(), resultOld.mean())
+
+                result = result.squeeze()
+                resultOld = resultOld.squeeze()
+                try:
+                    resultVigra = vigra_fn(data[0, 0, ..., :3].squeeze(), *scales)
+                except Exception:
+                    pass
+                compare = ['result', 'resultOld', 'resultVigra']
+                print('            result       resultOld   resultVigra')
+                for i in compare:
+                    line = f'{i:12s}'
+                    for j in compare:
+                        try:
+                            line += f'{numpy.absolute(eval(i) - eval(j)).mean():1.8f}   '
+                        except Exception:
+                            pass
+                    print(line)
+
+                display = result - result.min()
+                display /= display.max()
+                displayOld = resultOld - resultOld.min()
+                displayOld /= displayOld.max()
+                try:
+                    displayVigra = resultVigra - resultVigra.min()
+                    displayVigra /= displayVigra.max()
+                except Exception:
+                    pass
+                print('here', display.shape)
+                plt.figure(figsize=(10, 10))
+                plt.subplot(2, 2, 1)
+                plt.imshow(display)
+                plt.title('new')
+                plt.subplot(2, 2, 2)
+                plt.imshow(displayOld)
+                plt.title('old')
+                plt.subplot(2, 2, 3)
+                diff = abs(display - displayOld)
+                diff /= diff.max()
+                plt.imshow(diff)
+                plt.title('diff')
+                plt.subplot(2, 2, 4)
+                plt.title('vigra')
+                try:
+                    plt.imshow(displayVigra)
+                except Exception:
+                    pass
+                plt.show()
+
+            assert result.shape == resultOld.shape
+            assert numpy.allclose(result, resultOld, rtol=1.e-3, atol=1.e-5), (output.meta.description, result.max(),
+                                                                               abs(result - resultOld).max())
 
 
 if __name__ == "__main__":
