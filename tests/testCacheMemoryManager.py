@@ -44,7 +44,7 @@ from lazyflow.operators.opCache import Cache
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opSplitRequestsBlockwise\
     import OpSplitRequestsBlockwise
-from lazyflow.operators.vigraOperators import OpGaussianSmoothing
+from lazyflow.operators.filterOperators import OpGaussianSmoothing
 
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 

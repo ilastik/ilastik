@@ -26,14 +26,14 @@ if sys.version_info.major >= 3:
 #          http://ilastik.org/license/
 ###############################################################################
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpImageReader, OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
+from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
 from .opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import (
     OpBlockwiseFilesetReader, OpKlbReader, OpRESTfulBlockwiseFilesetReader,
     OpStreamingHdf5Reader, OpStreamingHdf5SequenceReaderS,
     OpStreamingHdf5SequenceReaderM, OpTiffReader,
     OpTiffSequenceReader, OpCachedTiledVolumeReader, OpRawBinaryFileReader,
-    OpStackLoader, OpRESTfulPrecomputedChunkedVolumeReader
+    OpStackLoader, OpRESTfulPrecomputedChunkedVolumeReader, OpImageReader
 )
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import isUrl, PathComponents

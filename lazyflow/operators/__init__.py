@@ -30,7 +30,7 @@ from lazyflow.graph import Operator
 from lazyflow.utility.helpers import itersubclasses
 
 from . import generic
-from . import vigraOperators
+from . import filterOperators
 from . import classifierOperators
 from . import valueProviders
 from . import operators
@@ -58,6 +58,7 @@ from .opInterpMissingData import OpInterpMissingData
 from .opReorderAxes import OpReorderAxes
 from .opLabelVolume import OpLabelVolume
 from .opRelabelConsecutive import OpRelabelConsecutive
+from .opPixelFeaturesPresmoothed import OpPixelFeaturesPresmoothed
 
 ops = list(itersubclasses(Operator))
 '''
