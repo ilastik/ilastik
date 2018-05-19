@@ -308,7 +308,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             assert (slot_roi.stop <= self.Output.meta.shape).all()
 
             full_output_shape = self.Output.meta.shape
-            full_output_start, full_output_stop = roi.sliceToRoi(full_output_slice, full_output_shape)
+            full_output_start, full_output_stop = sliceToRoi(full_output_slice, full_output_shape)
             assert len(full_output_shape) == 5
             if self.ComputeIn2d.value:
                 axes2enlarge = (0, 1, 1)
@@ -393,10 +393,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                         presmoothed_source[j][i, ...] = self._computeGaussianSmoothing(vsa, tempSigma, droi)
 
             except RuntimeError as e:
-                if 'kernel longer than line' in e.message:
-                    message = 'Feature computation error:\nYour image is too small to apply a filter with sigma=' \
-                        f'{self.scales[j]:.1f}. Please select features with smaller sigmas.'
-                    raise RuntimeError(message)
+                if 'kernel longer than line' in str(e):
+                    raise RuntimeError('Feature computation error:\nYour image is too small to apply a filter with '
+                                       f'sigma={self.scales[j]:.1f}. Please select features with smaller sigmas.')
                 else:
                     raise e
 
@@ -444,7 +443,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                         cnt += slices
             pool = RequestPool()
             for c in closures:
-                r = pool.request(c)
+                pool.request(c)
             pool.wait()
             pool.clean()
 
@@ -452,25 +451,37 @@ class OpPixelFeaturesPresmoothed(Operator):
                 if presmoothed_source[i] is not None:
                     try:
                         presmoothed_source[i].resize((1,))
-                    except:
+                    except Exception:
                         presmoothed_source[i] = None
 
     def _computeGaussianSmoothing(self, vol, sigma, roi):
+        invalid_z = vol.shape[1] == 1 or sigma < .3 or sigma * self.WINDOW_SIZE > vol.shape[1]
+        if invalid_z and not self.ComputeIn2d.value:
+            logger.warn(
+                f'PixelFeaturesPresmoothed: Pre-smoothing in 2d for sigma {sigma:.2f} (z dimension too small)')
+
         if WITH_FAST_FILTERS:
             # Use fast filters (if available)
-            if vol.channels > 1:
-                result = numpy.zeros(vol.shape).astype(vol.dtype)
-                chInd = vol.channelIndex
-                chSlice = [slice(None) for dim in range(len(vol.shape))]
+            result = numpy.zeros(vol.shape).astype(vol.dtype)
+            assert vol.channelIndex == 0
 
-                for channel in range(vol.channels):
-                    chSlice[chInd] = slice(channel, channel + 1)
-                    result[chSlice] = fastfilters.gaussianSmoothing(vol[chSlice], sigma, window_size=self.WINDOW_SIZE)
-            else:
-                result = fastfilters.gaussianSmoothing(vol, sigma, window_size=self.WINDOW_SIZE)
+            for channel in range(vol.shape[0]):
+                c_slice = slice(channel, channel + 1)
+                if self.ComputeIn2d.value or invalid_z:
+
+                    for z in range(vol.shape[1]):
+                        result[c_slice, z:z + 1] = fastfilters.gaussianSmoothing(vol[c_slice, z: z + 1], sigma,
+                                                                                 window_size=self.WINDOW_SIZE)
+                else:
+                    result[c_slice] = fastfilters.gaussianSmoothing(vol[c_slice], sigma, window_size=self.WINDOW_SIZE)
 
             roi = roiToSlice(*roi)
             return result[roi]
         else:
             # Use Vigra's filters
-            return vigra.filters.gaussianSmoothing(vol, sigma, roi=roi, window_size=self.WINDOW_SIZE)
+            if invalid_z or self.ComputeIn2d.value:
+                sigma = (0, sigma, sigma)
+
+            # vigra's filter functions need roi without channels axis
+            vigra_roi = (roi[0][1:], roi[1][1:])
+            return vigra.filters.gaussianSmoothing(vol, sigma, roi=vigra_roi, window_size=self.WINDOW_SIZE)
