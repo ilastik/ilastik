@@ -79,6 +79,7 @@ class OpFeatureSelectionNoCache(Operator):
 
     # The following input slots are applied uniformly to all input images
     Scales = InputSlot( value=ScalesList ) # The list of possible scales to use when computing features
+    ComputeIn2d = InputSlot(value=False)
     FeatureIds = InputSlot( value=getFeatureIdOrder() ) # The list of features to compute
     SelectionMatrix = InputSlot( value=MinimalFeatures ) # A matrix of bools indicating which features to output.
                                                        # The matrix rows correspond to feature types in the order specified by the FeatureIds input.
@@ -104,6 +105,7 @@ class OpFeatureSelectionNoCache(Operator):
         # Connect our internal operators to our external inputs 
         self.opPixelFeatures.Scales.connect( self.Scales )
         self.opPixelFeatures.FeatureIds.connect( self.FeatureIds )
+        self.opPixelFeatures.ComputeIn2d.connect(self.ComputeIn2d)
         self.opReorderIn = OpReorderAxes(parent=self)
         self.opReorderIn.Input.connect(self.InputImage)
         self.opPixelFeatures.Input.connect(self.opReorderIn.Output)
@@ -121,17 +123,15 @@ class OpFeatureSelectionNoCache(Operator):
 
     def setupOutputs(self):
         # drop non-channel singleton axes
-        allAxes = 'txyzc'
-        ts = self.InputImage.meta.getTaggedShape()
-        oldAxes = "".join(list(ts.keys()))
-        newAxes = "".join([a for a in allAxes
-                           if a in ts and ts[a] > 1 or a == 'c'])
-        self.opReorderIn.AxisOrder.setValue(newAxes)
+        default_order = 'tczyx'
+        oldAxes = self.InputImage.meta.getAxisKeys()
+        self.opReorderIn.AxisOrder.setValue(default_order)
         self.opReorderOut.AxisOrder.setValue(oldAxes)
         self.opReorderLayers.AxisOrder.setValue(oldAxes)
         
         # Get features from external file
         if self.FeatureListFilename.ready() and len(self.FeatureListFilename.value) > 0:
+            raise NotImplementedError('Not simplified yet!')
                   
             self.OutputImage.disconnect()
             self.FeatureLayers.disconnect()
@@ -168,7 +168,7 @@ class OpFeatureSelectionNoCache(Operator):
             # Set the new selection matrix and check if it creates an error.
             selections = self.SelectionMatrix.value
             self.opPixelFeatures.Matrix.setValue( selections )
-            invalid_scales = self.opPixelFeatures.getInvalidScales()
+            invalid_scales, invalid_z_scales = self.opPixelFeatures.getInvalidScales()
             if invalid_scales:
                 msg = "Some of your selected feature scales are too large for your dataset.\n"\
                       "Choose smaller scales (sigma) or use a larger dataset.\n"\

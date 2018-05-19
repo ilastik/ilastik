@@ -29,13 +29,13 @@
         
         "lazyflow.operators.ioOperators.opInputDataReader.OpInputDataReader":     { "level":"INFO" },
         "lazyflow.operators.ioOperators.opStreamingHdf5Reader.OpStreamingHdf5Reader":     { "level":"INFO" },
-        "lazyflow.operators.vigraOperators.OpImageReader":                        { "level":"INFO" },
+        "lazyflow.operators.ioOperators.ioOperators.OpImageReader":                       { "level":"INFO" },
         
         "volumina.pixelpipeline.imagesources.GrayscaleImageSource":  { "level": "INFO" },
         "volumina.pixelpipeline.imagesources.GrayscaleImageRequest": { "level": "INFO" },
         
         "lazyflow.operators.cacheMemoryManager.CacheMemoryManager":  { "level":"INFO" },
-        "lazyflow.operators.vigraOperators":                        { "level":"INFO" },
+        "lazyflow.operators.filterOperators":                        { "level":"INFO" },
         "lazyflow.operators.ioOperators.ioOperators.OpH5WriterBigDataset":  	{ "level":"INFO" },
         "lazyflow.operators.classifierOperators":                   { "level":"INFO" },
         "lazyflow.operators.opCompressedCache":                     { "level":"INFO" },
