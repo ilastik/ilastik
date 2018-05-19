@@ -28,13 +28,11 @@ from lazyflow import roi
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
 
-from .generic import popFlagsFromTheKey
 
 logger = logging.getLogger(__name__)
 
 # Sven's fast filters
 try:
-    # raise ImportError
     import fastfilters
     WITH_FAST_FILTERS = True
     logger.info('Using fast filters.')
@@ -89,21 +87,12 @@ class OpBaseFilter(Operator):
 
         inputSlot = self.Input
         numChannels = self.Input.meta.shape[1]
-        inShapeWithoutChannels = popFlagsFromTheKey(
-            self.Input.meta.shape, self.Input.meta.axistags, 'c')
 
         self.Output.meta.dtype = self.output_dtype
-        at = copy.copy(inputSlot.meta.axistags)
-
-        self.Output.meta.axistags = at
-
-        resC = self.resultingChannels()
-        inShapeWithoutChannels = list(inShapeWithoutChannels)
-        inShapeWithoutChannels.insert(1, numChannels * resC)
-        self.Output.meta.shape = tuple(inShapeWithoutChannels)
-
-        if self.Output.meta.axistags.axisTypeCount(vigra.AxisType.Channels) == 0:
-            self.Output.meta.axistags.insertChannelAxis()
+        self.Output.meta.axistags = copy.copy(inputSlot.meta.axistags)
+        self.Output.meta.shape = (self.Input.meta.shape[0],
+                                  numChannels * self.resultingChannels(),
+                                  *self.Input.meta.shape[2:])
 
         # The output data range is not necessarily the same as the input data range.
         if 'drange' in self.Output.meta:
@@ -154,8 +143,6 @@ class OpBaseFilter(Operator):
         result_start = output_start - input_start
         result_stop = result_start + output_stop - output_start
         result_slice = roi.roiToSlice(result_start, result_stop)
-
-        resC = self.resultingChannels()
 
         filter_scales = {s.name: s.value for s in self.inputs.values() if s.name not in ['Input', 'ComputeIn2d']}
 
@@ -246,8 +233,10 @@ class OpBaseFilter(Operator):
             try:
                 target[tstep, target_c_start:target_c_stop, target_z_slice] = result
             except Exception:
-                logger.error(f't  : {target.shape} {target[tstep, target_c_start:target_c_stop].shape} {result.shape} {process_in_2d}')
+                logger.error(f't  : {target.shape} {target[tstep, target_c_start:target_c_stop].shape} {result.shape}')
                 raise
+
+        resC = self.resultingChannels()
 
         for tstep, t in enumerate(range(full_output_start[0], full_output_stop[0])):
             target_c_stop = 0
