@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2018, the ilastik developers
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -17,27 +16,28 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#          http://ilastik.org/license.html
 ###############################################################################
-from __future__ import division
-from builtins import range
 from past.utils import old_div
 from PyQt5.QtGui import QPixmap, QPainter, QIcon, QBrush, QColor, \
-                        QPalette, QFont, QPen, QPolygon, QImage
+    QPalette, QFont, QPen, QPolygon, QImage
 from PyQt5.QtWidgets import QVBoxLayout, QLabel, QTableWidgetItem, QItemDelegate, QStyle, \
-                            QHBoxLayout, QHeaderView, QAbstractItemView, QDialog, QToolButton, \
-                            QTableWidget, QSlider
+    QHBoxLayout, QHeaderView, QAbstractItemView, QDialog, QToolButton, \
+    QTableWidget, QSlider
 from PyQt5.QtCore import Qt, QRect, QSize, QEvent, QPoint, pyqtSignal
 
 import numpy
+
 
 class FeatureEntry(object):
     def __init__(self, name):
         self.name = name
 
-#===============================================================================
+# ==============================================================================
 # FeatureTableWidgetVHeader
-#===============================================================================
+# ==============================================================================
+
+
 class FeatureTableWidgetVHeader(QTableWidgetItem):
     def __init__(self):
         QTableWidgetItem.__init__(self)
@@ -51,37 +51,36 @@ class FeatureTableWidgetVHeader(QTableWidgetItem):
         pixmap = QPixmap(20, 20)
         pixmap.fill(Qt.transparent)
         self.setIcon(QIcon(pixmap))
-            
+
     def setExpanded(self):
         self.isExpanded = True
         self._drawIcon()
-        
+
     def setCollapsed(self):
         self.isExpanded = False
         self._drawIcon()
-        
+
     def setIconAndTextColor(self, color):
         self._drawIcon(color)
-    
+
     def setFeatureVHeader(self, feature):
         self.feature = feature
         self.vHeaderName = feature.name
         self.setText(self.vHeaderName)
 #        self.featureID = feature.id
-        
+
         pixmap = QPixmap(20, 20)
         pixmap.fill(Qt.transparent)
         self.setIcon(QIcon(pixmap))
-        
+
     def setGroupVHeader(self, name):
         self.vHeaderName = name
         self.setText(self.vHeaderName)
         self.isRootNode = True
-        
 
     def _drawIcon(self, color=Qt.black):
         self.setForeground(QBrush(color))
-        
+
         if self.isRootNode:
             pixmap = QPixmap(20, 20)
             pixmap.fill(Qt.transparent)
@@ -93,18 +92,18 @@ class FeatureTableWidgetVHeader(QTableWidgetItem):
             painter.setBrush(color)
             painter.setRenderHint(QPainter.Antialiasing)
             if not self.isExpanded:
-                arrowRightPolygon = [QPoint(6,6), QPoint(6,14), QPoint(14, 10)]
+                arrowRightPolygon = [QPoint(6, 6), QPoint(6, 14), QPoint(14, 10)]
                 painter.drawPolygon(QPolygon(arrowRightPolygon))
             else:
-                arrowDownPolygon = [QPoint(6,6), QPoint(15,6), QPoint(10, 14)]
+                arrowDownPolygon = [QPoint(6, 6), QPoint(15, 6), QPoint(10, 14)]
                 painter.drawPolygon(QPolygon(arrowDownPolygon))
             painter.end()
             self.setIcon(QIcon(pixmap))
-        
-        
-#===============================================================================
+
+
+# ==============================================================================
 # FeatureTableWidgetHHeader
-#===============================================================================
+# ==============================================================================
 class FeatureTableWidgetHHeader(QTableWidgetItem):
     def __init__(self, sigma, window_size, name=None):
         QTableWidgetItem.__init__(self)
@@ -117,22 +116,22 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
             self.setNameAndBrush(self.sigma)
         else:
             self.setText(name)
-    
+
     @property
     def brushSize(self):
-        return int(3.0*self.sigma + 0.5)*2 + 1
-        
+        return int(3.0 * self.sigma + 0.5) * 2 + 1
+
     def setNameAndBrush(self, sigma, color=Qt.black):
         self.sigma = sigma
         self.setText(u"σ={:.1f}px".format(self.sigma))
-        total_window = (1 + 2 * int(self.sigma * self.window_size + 0.5) )
-        self.setToolTip( "sigma = {:.1f} pixels, window diameter = {:.1f}".format(self.sigma, total_window) )
-        font = QFont() 
+        total_window = (1 + 2 * int(self.sigma * self.window_size + 0.5))
+        self.setToolTip("sigma = {:.1f} pixels, window diameter = {:.1f}".format(self.sigma, total_window))
+        font = QFont()
         font.setPointSize(10)
         font.setBold(True)
         self.setFont(font)
         self.setForeground(color)
-                        
+
         pixmap = QPixmap(self.pixmapSize)
         pixmap.fill(Qt.transparent)
         painter = QPainter()
@@ -141,26 +140,28 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
         painter.setPen(color)
         brush = QBrush(color)
         painter.setBrush(brush)
-        painter.drawEllipse(QRect(old_div(self.pixmapSize.width(),2) - old_div(self.brushSize,2), old_div(self.pixmapSize.height(),2) - old_div(self.brushSize,2), self.brushSize, self.brushSize))
+        painter.drawEllipse(QRect(old_div(self.pixmapSize.width(), 2) - old_div(self.brushSize, 2),
+                                  old_div(self.pixmapSize.height(), 2) - old_div(self.brushSize, 2),
+                                  self.brushSize, self.brushSize))
         painter.end()
         self.setIcon(QIcon(pixmap))
         self.setTextAlignment(Qt.AlignVCenter)
-        
+
     def setIconAndTextColor(self, color):
         self.setNameAndBrush(self.sigma, color)
-        
-        
 
-#===============================================================================
+
+# ==============================================================================
 # ItemDelegate
-#===============================================================================
+# ==============================================================================
 class ItemDelegate(QItemDelegate):
     """"
      TODO: DOKU
     """
+
     def __init__(self, parent, width, height):
         QItemDelegate.__init__(self, parent)
-        
+
         self.itemWidth = width
         self.itemHeight = height
         self.checkedIcon = None
@@ -187,9 +188,9 @@ class ItemDelegate(QItemDelegate):
         pen = QPen()
         pen.setWidth(2)
         painter.setPen(pen)
-        painter.drawRect(QRect(5,5,self.itemWidth-10, self.itemHeight-10))
+        painter.drawRect(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10))
         painter.end()
-        
+
     def drawPixmapForCkecked(self):
         self.pixmapCkecked = QPixmap(self.itemWidth, self.itemHeight)
         self.pixmapCkecked.fill(Qt.transparent)
@@ -199,13 +200,14 @@ class ItemDelegate(QItemDelegate):
         pen = QPen()
         pen.setWidth(2)
         painter.setPen(pen)
-        painter.drawRect(QRect(5,5,self.itemWidth-10, self.itemHeight-10))
+        painter.drawRect(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10))
         pen.setWidth(4)
         painter.setPen(pen)
-        painter.drawLine(old_div(self.itemWidth,2)-5, old_div(self.itemHeight,2), old_div(self.itemWidth,2), self.itemHeight-9)
-        painter.drawLine(old_div(self.itemWidth,2), self.itemHeight-9, old_div(self.itemWidth,2)+10, 2)
+        painter.drawLine(old_div(self.itemWidth, 2) - 5, old_div(self.itemHeight, 2),
+                         old_div(self.itemWidth, 2), self.itemHeight - 9)
+        painter.drawLine(old_div(self.itemWidth, 2), self.itemHeight - 9, old_div(self.itemWidth, 2) + 10, 2)
         painter.end()
-        
+
     def drawPixmapForPartiallyChecked(self):
         self.pixmapPartiallyChecked = QPixmap(self.itemWidth, self.itemHeight)
         self.pixmapPartiallyChecked.fill(Qt.transparent)
@@ -215,58 +217,61 @@ class ItemDelegate(QItemDelegate):
         pen = QPen()
         pen.setWidth(2)
         painter.setPen(pen)
-        painter.drawRect(QRect(5,5,self.itemWidth-10, self.itemHeight-10))
+        painter.drawRect(QRect(5, 5, self.itemWidth - 10, self.itemHeight - 10))
         pen.setWidth(4)
-        pen.setColor(QColor(139,137,137))
+        pen.setColor(QColor(139, 137, 137))
         painter.setPen(pen)
-        painter.drawLine(old_div(self.itemWidth,2)-5, old_div(self.itemHeight,2), old_div(self.itemWidth,2), self.itemHeight-9)
-        painter.drawLine(old_div(self.itemWidth,2), self.itemHeight-9, old_div(self.itemWidth,2)+10, 2)
+        painter.drawLine(old_div(self.itemWidth, 2) - 5, old_div(self.itemHeight, 2),
+                         old_div(self.itemWidth, 2), self.itemHeight - 9)
+        painter.drawLine(old_div(self.itemWidth, 2), self.itemHeight - 9, old_div(self.itemWidth, 2) + 10, 2)
         painter.end()
-    
+
     def paint(self, painter, option, index):
-        
+
         tableWidgetCell = self.parent().item(index.row(), index.column())
-        
+
         flags = tableWidgetCell.flags()
         if not (flags & Qt.ItemIsEnabled):
             painter.drawPixmap(option.rect, self.pixmapDisabled)
         elif tableWidgetCell.featureState == Qt.Unchecked:
-            if not self.uncheckedIcon == None: 
+            if self.uncheckedIcon is not None:
                 painter.drawImage(self.adjustRectForImage(option), self.uncheckedIcon)
             else:
                 painter.drawPixmap(option.rect, self.pixmapUnckecked)
                 option.state = QStyle.State_Off
         elif tableWidgetCell.featureState == Qt.PartiallyChecked:
-            if not self.partiallyCheckedIcon == None:
+            if self.partiallyCheckedIcon is not None:
                 painter.drawImage(self.adjustRectForImage(option), self.partiallyCheckedIcon)
             else:
-                painter.fillRect(option.rect.adjusted(3,3,-3,-3), QColor(220,220,220))
+                painter.fillRect(option.rect.adjusted(3, 3, -3, -3), QColor(220, 220, 220))
                 painter.drawPixmap(option.rect, self.pixmapPartiallyChecked)
         else:
-            if not self.checkedIcon == None:
+            if self.checkedIcon is not None:
                 painter.drawImage(self.adjustRectForImage(option), self.checkedIcon)
             else:
-                painter.fillRect(option.rect.adjusted(3,3,-3,-3), QColor(0,250,154))
+                painter.fillRect(option.rect.adjusted(3, 3, -3, -3), QColor(0, 250, 154))
                 painter.drawPixmap(option.rect, self.pixmapCkecked)
-        
-        #Be careful with this! It may call itself recursively.
-        #self.parent().update()
-        
+
+        # Be careful with this! It may call itself recursively.
+        # self.parent().update()
+
     def setCheckBoxIcons(self, checked, partiallyChecked, unchecked):
         self.checkedIcon = QImage(checked)
         self.partiallyCheckedIcon = QImage(partiallyChecked)
         self.uncheckedIcon = QImage(unchecked)
-        
+
     def adjustRectForImage(self, option):
         if self.itemWidth > self.itemHeight:
-            return option.rect.adjusted(old_div((self.itemWidth-self.itemHeight),2)+5, 5,-(old_div((self.itemWidth-self.itemHeight),2))-5,-5 )
+            return option.rect.adjusted(old_div((self.itemWidth - self.itemHeight), 2) + 5, 5,
+                                        -(old_div((self.itemWidth - self.itemHeight), 2)) - 5, -5)
         else:
-            return option.rect.adjusted(5, old_div((self.itemHeight-self.itemWidth),2)+5, -(old_div((self.itemHeight-self.itemWidth),2))-5,-5 )
+            return option.rect.adjusted(5, old_div((self.itemHeight - self.itemWidth), 2) + 5,
+                                        -(old_div((self.itemHeight - self.itemWidth), 2)) - 5, -5)
 
 
-#===============================================================================
+# ==============================================================================
 # FeatureTableWidgetItem
-#===============================================================================
+# ==============================================================================
 class FeatureTableWidgetItem(QTableWidgetItem):
     def __init__(self, feature, parent=None, featureState=Qt.Unchecked):
         QTableWidgetItem.__init__(self, parent)
@@ -274,10 +279,10 @@ class FeatureTableWidgetItem(QTableWidgetItem):
         self.isRootNode = False
         self.children = []
         self.featureState = featureState
-        
+
     def setFeatureState(self, state):
         self.featureState = state
-        
+
     def toggleState(self):
         if self.featureState == Qt.Unchecked:
             self.featureState = Qt.Checked
@@ -285,23 +290,23 @@ class FeatureTableWidgetItem(QTableWidgetItem):
             self.featureState = Qt.Unchecked
 
 
-#===============================================================================
+# ==============================================================================
 # FeatureTableWidget
-#===============================================================================
+# ==============================================================================
 class FeatureTableWidget(QTableWidget):
     brushSizeChanged = pyqtSignal(float)
-        
-    def __init__(self, parent = None):
+
+    def __init__(self, parent=None):
         QTableWidget.__init__(self, parent)
         # init
         # ------------------------------------------------
-        #FIXME: move this somewhere else maybe?
+        # FIXME: move this somewhere else maybe?
         self.tmpSelectedItems = []
-        #FIXME: what does this do? put a comment, why 30,30?
+        # FIXME: what does this do? put a comment, why 30,30?
         self._sigmaList = None
-        self._featureGroupMapping = None # Schema: [ (groupName1, [entry, entry...]),
-                                         #           (groupName2, [entry, entry...]) ]
-        #layout
+        self._featureGroupMapping = None  # Schema: [ (groupName1, [entry, entry...]),
+        #           (groupName2, [entry, entry...]) ]
+        # layout
         # ------------------------------------------------
         self.setCornerButtonEnabled(False)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -313,28 +318,27 @@ class FeatureTableWidget(QTableWidget):
         self.verticalHeader().setSectionsClickable(True)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setSectionsClickable(True)
-        
+
         self.horizontalHeader().setMouseTracking(True)
         self.horizontalHeader().installEventFilter(self)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        
+
         self.itemSelectionChanged.connect(self._tableItemSelectionChanged)
         self.cellDoubleClicked.connect(self._featureTableItemDoubleClicked)
         self.verticalHeader().sectionClicked.connect(self._expandOrCollapseVHeader)
-       
-        #FIXME: this feature is disabled for now because it needs proper support
-        #in the feature selection operator 
-        #self.horizontalHeader().sectionDoubleClicked.connect(self._hHeaderDoubleclicked)
-        
+
+        # FIXME: this feature is disabled for now because it needs proper support
+        # in the feature selection operator
+        # self.horizontalHeader().sectionDoubleClicked.connect(self._hHeaderDoubleclicked)
+
 #        self.setFeatureGroups(featureMgr.ilastikFeatureGroups.groups)
 #        self.setSigmas(self.defaultGroupScaleValues)
 #        self.createTableForFeatureDlg()
-                        
+
     # methods
     # ------------------------------------------------
-        
-        
+
     def setSelectedFeatureBoolMatrix(self, featureMatrix):
         r = 0
         for row in range(self.rowCount()):
@@ -345,15 +349,15 @@ class FeatureTableWidget(QTableWidget):
                     self.item(row, column).setFeatureState(Qt.Checked)
                 else:
                     self.item(row, column).setFeatureState(Qt.Unchecked)
-            r+=1
+            r += 1
         self._updateParentCell()
 
     def setEnableItemMask(self, mask):
         """
         Selectively enable/disable specific items in the table.
         mask - a matrix with the same dimensions as the feature bool matrix.  True means enable, False means disable.
-        
-        Note: If a cell in a column is disabled, ALL of the cells under 
+
+        Note: If a cell in a column is disabled, ALL of the cells under
               that parent in the same column must be disabled.
               Categories of partially enabled cells are not supported yet.
         """
@@ -367,7 +371,7 @@ class FeatureTableWidget(QTableWidget):
                 if self.verticalHeaderItem(row).isRootNode:
                     # Check all children
                     num_children = len(item.children)
-                    child_status = mask[r:r+num_children, column]
+                    child_status = mask[r:r + num_children, column]
                     enabled = child_status.any()
                 else:
                     enabled = mask[r][column]
@@ -378,43 +382,44 @@ class FeatureTableWidget(QTableWidget):
                 item.setFlags(flags)
 
             if not self.verticalHeaderItem(row).isRootNode:
-                r+=1
+                r += 1
 
         self._updateParentCell()
 
     def setSelectedFeatureList(self, featureList):
         for feature in featureList:
-            for r,c in self._tableEntries():
-                if feature[0] == self.verticalHeaderItem(r).vHeaderName and feature[1] == str(self.horizontalHeaderItem(c).sigma):
-                    self.item(r,c).setFeatureState(Qt.Checked)
+            for r, c in self._tableEntries():
+                if feature[0] == self.verticalHeaderItem(r).vHeaderName and \
+                        feature[1] == str(self.horizontalHeaderItem(c).sigma):
+                    self.item(r, c).setFeatureState(Qt.Checked)
         self._updateParentCell()
-    
+
     def createSelectedFeaturesBoolMatrix(self):
         i = 0
         for r in range(self.rowCount()):
             if not self.verticalHeaderItem(r).isRootNode:
-                i+=1
+                i += 1
         matrix = [[False for k in range(self.columnCount())] for j in range(i)]
-        x=0
+        x = 0
         for row in range(self.rowCount()):
             for column in range(self.columnCount()):
-                item = self.item(row,column)
-                if not item.isRootNode: 
+                item = self.item(row, column)
+                if not item.isRootNode:
                     if item.featureState == Qt.Checked:
                         matrix[x][column] = True
             if not self.verticalHeaderItem(row).isRootNode:
-                x+=1
+                x += 1
         return matrix
-    
+
     def createSelectedFeatureList(self):
         result = []
-        for r,c in self._tableEntries():
-            item = self.item(r,c)
+        for r, c in self._tableEntries():
+            item = self.item(r, c)
             if not item.isRootNode:
                 if item.featureState == Qt.Checked:
                     result.append([self.verticalHeaderItem(r).vHeaderName, str(self.horizontalHeaderItem(c).sigma)])
         return result
-    
+
     def createTableForFeatureDlg(self, featureGroups, sigmas, window_size, text=None):
         """
         featureGroups: A list with schema: [ (groupName1, [entry, entry...]),
@@ -432,7 +437,8 @@ class FeatureTableWidget(QTableWidget):
         self._setFixedSizeToHeaders()
         self._fillTabelWithItems()
         self._setSizeHintToTableWidgetItems()
-        self.itemDelegate = ItemDelegate(self, self.horizontalHeader().sizeHint().width(), self.verticalHeader().sizeHint().height())
+        self.itemDelegate = ItemDelegate(self, self.horizontalHeader().sizeHint().width(),
+                                         self.verticalHeader().sizeHint().height())
         self.setItemDelegate(self.itemDelegate)
         self._updateParentCell()
 
@@ -444,24 +450,24 @@ class FeatureTableWidget(QTableWidget):
         for c in range(self.columnCount()):
             result.append(self.horizontalHeaderItem(c).sigma)
         return result
-    
+
     def _tableEntries(self):
         for row in range(self.rowCount()):
             for column in range(self.columnCount()):
-                yield row,column
-            
+                yield row, column
+
     def sizeHint(self):
         height = super(FeatureTableWidget, self).sizeHint().height()
-        width  = self.horizontalHeader().sizeHint().width() * self.columnCount() + self.verticalHeader().sizeHint().width() + 22
+        width = self.horizontalHeader().sizeHint().width() * self.columnCount() + \
+            self.verticalHeader().sizeHint().width() + 22
         return QSize(width, height)
-    
+
     def _setSizeHintToTableWidgetItems(self):
         width = self.horizontalHeader().sizeHint().width()
         height = self.verticalHeader().sizeHint().height()
-        for r,c in self._tableEntries():
-            self.item(r,c).setSizeHint(QSize(width, height))
-        
-    
+        for r, c in self._tableEntries():
+            self.item(r, c).setSizeHint(QSize(width, height))
+
     def _setFixedSizeToHeaders(self):
         hHeaderSize = self.horizontalHeader().sizeHint()
         vHeaderSize = self.verticalHeader().sizeHint()
@@ -469,30 +475,30 @@ class FeatureTableWidget(QTableWidget):
             self.horizontalHeaderItem(i).setSizeHint(hHeaderSize)
         for j in range(self.rowCount()):
             self.verticalHeaderItem(j).setSizeHint(vHeaderSize)
-    
+
     def _hHeaderDoubleclicked(self, col):
         sliderdlg = SliderDlg(self, self.horizontalHeaderItem(col).sigma)
 #        self._highlightHeaders(col, -1)
         self.horizontalHeaderItem(col).setNameAndBrush(sliderdlg.exec_())
-   
+
     def _fillTabelWithItems(self):
         for j in range(self.columnCount()):
             for i in range(self.rowCount()):
                 item = FeatureTableWidgetItem(self, 0)
                 if self.verticalHeaderItem(i).isRootNode:
                     item.isRootNode = True
-                self.setItem(i,j, item)
+                self.setItem(i, j, item)
         for j in range(self.columnCount()):
             for i in range(self.rowCount()):
                 if self.verticalHeaderItem(i).isRootNode:
-                    parent = self.item(i,j)
+                    parent = self.item(i, j)
                     continue
-                parent.children.append(self.item(i,j))
-    
+                parent.children.append(self.item(i, j))
+
     def _expandOrCollapseVHeader(self, row):
         vHeader = self.verticalHeaderItem(row)
         if not vHeader.children == []:
-            if vHeader.isExpanded == False:
+            if not vHeader.isExpanded:
                 vHeader.setExpanded()
                 for subRow in vHeader.children:
                     self.showRow(subRow)
@@ -501,20 +507,20 @@ class FeatureTableWidget(QTableWidget):
                     self.hideRow(subRow)
                     vHeader.setCollapsed()
             self._deselectAllTableItems()
-    
+
     def _collapsAllRows(self):
         for i in range(self.rowCount()):
             if not self.verticalHeaderItem(i).isRootNode:
                 self.hideRow(i)
             else:
                 self.verticalHeaderItem(i).setCollapsed()
-    
+
     def _tableItemSelectionChanged(self):
         for item in self.selectedItems():
             if item in self.tmpSelectedItems:
                 self.tmpSelectedItems.remove(item)
             else:
-                if item.isRootNode and self.verticalHeaderItem(item.row()).isExpanded == False:
+                if item.isRootNode and not self.verticalHeaderItem(item.row()).isExpanded:
                     if item.featureState == Qt.Unchecked or item.featureState == Qt.PartiallyChecked:
                         state = Qt.Checked
                     else:
@@ -523,7 +529,7 @@ class FeatureTableWidget(QTableWidget):
                         child.setFeatureState(state)
                 else:
                     item.toggleState()
-                
+
         for item in self.tmpSelectedItems:
             if item.isRootNode and not self.verticalHeaderItem(item.row()).isExpanded:
                 if item.featureState == Qt.Unchecked or item.featureState == Qt.PartiallyChecked:
@@ -534,11 +540,10 @@ class FeatureTableWidget(QTableWidget):
                     child.setFeatureState(state)
             else:
                 item.toggleState()
-             
+
         self._updateParentCell()
         self.tmpSelectedItems = self.selectedItems()
-                
-        
+
     def _updateParentCell(self):
         for i in range(self.rowCount()):
             for j in range(self.columnCount()):
@@ -556,13 +561,12 @@ class FeatureTableWidget(QTableWidget):
                         item.featureState = Qt.PartiallyChecked
             self.viewport().update()
 
-
     def eventFilter(self, obj, event):
-        if(event.type()==QEvent.MouseButtonPress):
+        if(event.type() == QEvent.MouseButtonPress):
             if event.button() == Qt.LeftButton:
                 if self.itemAt(event.pos()):
                     self.setSelectionMode(2)
-        if(event.type()==QEvent.MouseButtonRelease):
+        if(event.type() == QEvent.MouseButtonRelease):
             if event.button() == Qt.LeftButton:
                 self.setSelectionMode(0)
                 self.tmpSelectedItems = []
@@ -574,12 +578,11 @@ class FeatureTableWidget(QTableWidget):
                 self.brushSizeChanged.emit(hHeader.brushSize)
                 self._highlightHeaders(item.column(), item.row())
         return super(FeatureTableWidget, self).eventFilter(obj, event)
-        
+
     def _deselectAllTableItems(self):
         for item in self.selectedItems():
             item.setSelected(False)
 
-    
     def _addHHeader(self, window_size, text=None):
         self.setColumnCount(len(self._sigmaList))
         for c in range(len(self._sigmaList)):
@@ -589,7 +592,6 @@ class FeatureTableWidget(QTableWidget):
                 hHeader = FeatureTableWidgetHHeader(self._sigmaList[c], window_size, text[c])
             self.setHorizontalHeaderItem(c, hHeader)
 
-    
     def _addVHeader(self):
         row = 0
         for group, features in self._featureGroupMapping:
@@ -603,13 +605,12 @@ class FeatureTableWidget(QTableWidget):
                 vFeatureHeader = FeatureTableWidgetVHeader()
                 vFeatureHeader.setFeatureVHeader(feature)
                 self.setVerticalHeaderItem(row, vFeatureHeader)
-                #Tooltip
-                #self.verticalHeaderItem(row).setData(3, j.name)
+                # Tooltip
+                # self.verticalHeaderItem(row).setData(3, j.name)
                 vGroupHeader.children.append(row)
                 row += 1
-                
-                
-    def _highlightHeaders(self, c, r):       
+
+    def _highlightHeaders(self, c, r):
         p = QPalette()
         for i in range(self.columnCount()):
             col = self.horizontalHeaderItem(i)
@@ -617,18 +618,17 @@ class FeatureTableWidget(QTableWidget):
                 col.setIconAndTextColor(p.link().color())
             else:
                 col.setIconAndTextColor(p.text().color())
-            
+
         for j in range(self.rowCount()):
             row = self.verticalHeaderItem(j)
             if j == r:
                 row.setIconAndTextColor(p.link().color())
             else:
                 row.setIconAndTextColor(p.text().color())
-        
-        
+
     def _featureTableItemDoubleClicked(self, row, column):
         item = self.item(row, column)
-        if item.isRootNode and self.verticalHeaderItem(item.row()).isExpanded == True:
+        if item.isRootNode and self.verticalHeaderItem(item.row()).isExpanded:
             if item.featureState == Qt.Unchecked or item.featureState == Qt.PartiallyChecked:
                 state = Qt.Checked
             else:
@@ -636,16 +636,15 @@ class FeatureTableWidget(QTableWidget):
             for child in item.children:
                 child.setFeatureState(state)
         self._updateParentCell()
-                
-                
-                
-#===============================================================================
+
+
+# ==============================================================================
 # SliderDlg
-#===============================================================================
+# ==============================================================================
 class SliderDlg(QDialog):
     def __init__(self, parent, sigma):
         QDialog.__init__(self, parent, Qt.FramelessWindowHint)
-        
+
         # init
         # ------------------------------------------------
         self.oldSigma = sigma
@@ -654,85 +653,82 @@ class SliderDlg(QDialog):
         self.setStyleSheet("background-color:window;")
         # widgets and layouts
         # ------------------------------------------------
-        
+
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
-        
-        labelsLayout =  QHBoxLayout()
+
+        labelsLayout = QHBoxLayout()
         self.labelSigma = QLabel("Sigma: xx")
         self.labelBrushSize = QLabel("BrushSize: xx")
         labelsLayout.addWidget(self.labelSigma)
         labelsLayout.addWidget(self.labelBrushSize)
         self.layout.addLayout(labelsLayout)
-        
+
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setMinimum(1)
         self.slider.setMaximum(100)
         self.slider.sliderMoved.connect(self.on_sliderMoved)
         self.layout.addWidget(self.slider)
-        
+
         self.buttonsLayout = QHBoxLayout()
         self.cancel = QToolButton()
         self.cancel.setText("cancel")
         self.cancel.clicked.connect(self.on_cancelClicked)
         self.buttonsLayout.addWidget(self.cancel)
-        
-        
+
         self.ok = QToolButton()
         self.ok.setText("OK")
         self.ok.clicked.connect(self.on_okClicked)
         self.buttonsLayout.addWidget(self.ok)
 
         self.layout.addLayout(self.buttonsLayout)
-        
+
         self.layout.setContentsMargins(10, 0, 10, 0)
         labelsLayout.setContentsMargins(0, 0, 0, 0)
         self.buttonsLayout.setContentsMargins(0, 0, 0, 0)
-        
+
         self.setlabelSigma()
         self.setLabelBrushSize()
         self.setSliderPosition()
-        
+
     def setlabelSigma(self):
         self.labelSigma.setText("Sigma: " + str(self.sigma))
-        
+
     def setLabelBrushSize(self):
-        self.brushSize = int(3.0*self.sigma + 0.5)*2 + 1
+        self.brushSize = int(3.0 * self.sigma + 0.5) * 2 + 1
         self.labelBrushSize.setText("BrushSize: " + str(self.brushSize))
-        
+
     def setSliderPosition(self):
-        self.slider.setSliderPosition(self.sigma*10)
-    
+        self.slider.setSliderPosition(self.sigma * 10)
+
     def on_sliderMoved(self, i):
-        self.sigma = old_div(float(i),10)
+        self.sigma = old_div(float(i), 10)
         self.setlabelSigma()
         self.setLabelBrushSize()
         self.parent().parent().parent().preView.setSizeToLabel(self.brushSize)
-    
+
     def on_cancelClicked(self):
         self.reject()
-        
+
     def on_okClicked(self):
         self.accept()
-        
+
     def exec_(self):
         if QDialog.exec_(self) == QDialog.Accepted:
             return self.sigma
         else:
             return self.oldSigma
 
+
 if __name__ == '__main__':
     from PyQt5.QtWidgets import QApplication
 
     app = QApplication([])
     t = FeatureTableWidget()
-    t.createTableForFeatureDlg( \
-        (("Color", [FeatureEntry("Banana")] ), ("Edge",  [FeatureEntry("Mango"), FeatureEntry("Cherry")] )),
+    t.createTableForFeatureDlg(
+        (("Color", [FeatureEntry("Banana")]), ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])),
         [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0],
         3.5)
     t.show()
     t.raise_()
     app.exec_()
-
-
-        
