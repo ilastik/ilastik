@@ -101,6 +101,7 @@ class PrecomputedVolumeBrowser(QDialog):
         subvolume_scale_layout.addWidget(self.combo_subvolume_scale)
         subvolume_scale_layout.setAlignment(Qt.AlignLeft)
         self.combo_subvolume_scale.setEnabled(False)
+        self.combo_subvolume_scale.currentIndexChanged.connect(self.update_volume_info)
 
         main_layout.addLayout(subvolume_scale_layout)
 
@@ -170,6 +171,12 @@ class PrecomputedVolumeBrowser(QDialog):
             self.selected_url = self.viewer_state['layers'][selected_dataset]['source']
             logger.debug(f"selected url: {self.selected_url}")
 
+        self.init_volume_info()
+        self.update_scales()
+        self.update_volume_info()
+        self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True)
+
+    def init_volume_info(self):
         url = self.selected_url.lstrip('precomputed://')
         try:
             self.rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
@@ -183,14 +190,19 @@ class PrecomputedVolumeBrowser(QDialog):
             qm.show()
             return
 
+    def update_volume_info(self, event=None):
+        if self.rv is None:
+            return
+        scale = self.combo_subvolume_scale.currentText()
+        if scale in self.rv.available_scales:
+            self.rv._use_scale = scale
+
         self.debug_text.setText(
             f"volume encoding: {self.rv.get_encoding()}\n"
             f"available scales: {self.rv.available_scales}\n"
             f"using scale: {self.rv._use_scale}\n"
             f"data shape: {self.rv.get_shape()}\n"
         )
-        self.update_scales()
-        self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True)
 
     def update_scales(self):
         combo = self.combo_subvolume_scale
