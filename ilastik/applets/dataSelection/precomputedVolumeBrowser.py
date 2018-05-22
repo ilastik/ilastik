@@ -41,6 +41,7 @@ class PrecomputedVolumeBrowser(QDialog):
         self.selected_url = None
         self.viewer_state = None
         self.rv = None
+        self.selected_scale = None
 
         self.setup_ui()
 
@@ -122,6 +123,19 @@ class PrecomputedVolumeBrowser(QDialog):
         main_layout.addWidget(self.qbuttons)
         self.setLayout(main_layout)
 
+    def clearall(self):
+        self.selected_url = None
+        self.viewer_state = None
+        self.rv = None
+        self.selected_scale = None
+
+        self.combo_subvolume.clear()
+        self.combo_subvolume_scale.clear()
+
+        self.subvolume_frame.hide()
+        self.combo_subvolume_scale.setEnabled(False)
+        self.debug_text.setText("")
+
     def update_subvolume_list(self):
         self.combo_subvolume.clear()
 
@@ -137,28 +151,20 @@ class PrecomputedVolumeBrowser(QDialog):
 
     def check_url(self, event):
         current_combo_val = self.combo.currentText()
+        self.clearall()
         try:
             url_components = RESTfulPrecomputedChunkedVolume.check_url(current_combo_val)
         except json.JSONDecodeError:
             # do what is necessary,
-            self.subvolume_frame.hide()
-            self.viewer_state = None
-            self.combo_subvolume_scale.clear()
-            self.combo_subvolume_scale.setEnabled(False)
+
             return
 
         if isinstance(url_components, str):
             self.selected_url = url_components
-            self.viewer_state = None
-            self.combo_subvolume_scale.clear()
-            self.combo_subvolume_scale.setEnabled(False)
-            self.subvolume_frame.hide()
 
         if isinstance(url_components, dict):
             self.viewer_state = url_components
             self.update_subvolume_list()
-            self.combo_subvolume_scale.clear()
-            self.combo_subvolume_scale.setEnabled(False)
             self.subvolume_frame.show()
 
     def handle_chk_button_clicked(self, event):
