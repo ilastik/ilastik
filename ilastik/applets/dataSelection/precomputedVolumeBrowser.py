@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QMessageBox,
@@ -20,8 +21,12 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
+from PyQt5.QtCore import Qt
+
+import json
 
 from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
+
 
 import logging
 
@@ -34,6 +39,7 @@ class PrecomputedVolumeBrowser(QDialog):
         super().__init__(parent)
         self._history = history or []
         self.selected_url = None
+        self.viewer_state = None
 
         self.setup_ui()
 
@@ -55,6 +61,8 @@ class PrecomputedVolumeBrowser(QDialog):
         for item in self._history:
             self.combo.addItem(item)
 
+        self.combo.editTextChanged.connect(self.check_url)
+
         combo_label = QLabel(parent=self)
         combo_label.setText("Enter volume address: ")
         combo_layout = QHBoxLayout()
@@ -66,6 +74,21 @@ class PrecomputedVolumeBrowser(QDialog):
         combo_layout.addWidget(chk_button)
 
         main_layout.addLayout(combo_layout)
+
+        # add the subvolume selection stuff (hidden)
+        self.subvolume_frame = QFrame()
+        subvolume_layout = QHBoxLayout()
+        subvolume_label = QLabel(parent=self)
+        subvolume_label.setText("Select volume: ")
+        self.combo_subvolume = QComboBox(self)
+        self.combo_subvolume.setEditable(False)
+        subvolume_layout.addWidget(subvolume_label)
+        subvolume_layout.addWidget(self.combo_subvolume)
+        subvolume_layout.setAlignment(Qt.AlignLeft)
+        self.subvolume_frame.setLayout(subvolume_layout)
+        self.subvolume_frame.hide()
+
+        main_layout.addWidget(self.subvolume_frame)
 
         # add some debug stuff
         debug_label = QLabel(self)
@@ -84,9 +107,49 @@ class PrecomputedVolumeBrowser(QDialog):
         main_layout.addWidget(self.qbuttons)
         self.setLayout(main_layout)
 
+    def update_subvolume_list(self):
+        self.combo_subvolume.clear()
+
+        if self.viewer_state is None:
+            return
+
+        if 'layers' not in self.viewer_state:
+            return
+
+        for layer in self.viewer_state['layers']:
+            self.combo_subvolume.addItem(layer)
+
+
+    def check_url(self, event):
+        current_combo_val = self.combo.currentText()
+        try:
+            url_components = RESTfulPrecomputedChunkedVolume.check_url(current_combo_val)
+        except json.JSONDecodeError:
+            # do what is necessary,
+            self.subvolume_frame.hide()
+            self.viewer_state = None
+            return
+
+        if isinstance(url_components, str):
+            self.selected_url = url_components
+            self.viewer_state = None
+            self.subvolume_frame.hide()
+
+        if isinstance(url_components, dict):
+            self.viewer_state = url_components
+            self.update_subvolume_list()
+            self.subvolume_frame.show()
+
     def handle_chk_button_clicked(self, event):
-        self.selected_url = self.combo.currentText()
-        logger.debug(f"selected url: {self.selected_url}")
+        if self.viewer_state is None:
+            self.selected_url = self.combo.currentText()
+            logger.debug(f"selected url: {self.selected_url}")
+
+        else:
+            selected_dataset = self.combo_subvolume.currentText()
+            self.selected_url = self.viewer_state['layers'][selected_dataset]['source']
+            logger.debug(f"selected url: {self.selected_url}")
+
         url = self.selected_url.lstrip('precomputed://')
         try:
             rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
@@ -116,7 +179,29 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
 
     pv = PrecomputedVolumeBrowser()
+    test_string = (
+        "https://bigbrain.humanbrainproject.org/"
+        "#!{'layers':{"
+        "'%20grey%20value:%20':{"
+        "'type':'image'_"
+        "'source':'precomputed://https://neuroglancer.humanbrainproject.org/precomputed/BigBrainRelease.2015/8bit'_"
+        "'transform':[[1_0_0_-70677184]_[0_1_0_-70010000]_[0_0_1_-58788284]_[0_0_0_1]]}_"
+        "'%20tissue%20type:%20':{"
+        "'type':'segmentation'_"
+        "'source':'precomputed://https://neuroglancer.humanbrainproject.org/precomputed/BigBrainRelease.2015/classif'_"
+        "'selectedAlpha':0_'transform':[[1_0_0_-70766600]_[0_1_0_-73010000]_[0_0_1_-58877700]_[0_0_0_1]]}}_"
+        "'navigation':{"
+        "'pose':{"
+        "'position':{"
+        "'voxelSize':[21166.666015625_20000_21166.666015625]_"
+        "'voxelCoordinates':[-21.8844051361084_16.288618087768555_28.418994903564453]}}_"
+        "'zoomFactor':28070.863049307816}_"
+        "'perspectiveOrientation':[0.3140767216682434_-0.7418519854545593_0.4988985061645508_-0.3195493221282959]_"
+        "'perspectiveZoom':1922235.5293810747}"
+    )
+
     pv.combo.addItem("test")
+    pv.combo.addItem(test_string)
     pv.show()
     app.exec_()
     print(pv.result(), pv.selected_url)
