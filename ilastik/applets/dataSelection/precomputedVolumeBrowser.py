@@ -40,6 +40,7 @@ class PrecomputedVolumeBrowser(QDialog):
         self._history = history or []
         self.selected_url = None
         self.viewer_state = None
+        self.rv = None
 
         self.setup_ui()
 
@@ -85,10 +86,23 @@ class PrecomputedVolumeBrowser(QDialog):
         subvolume_layout.addWidget(subvolume_label)
         subvolume_layout.addWidget(self.combo_subvolume)
         subvolume_layout.setAlignment(Qt.AlignLeft)
+
         self.subvolume_frame.setLayout(subvolume_layout)
         self.subvolume_frame.hide()
 
         main_layout.addWidget(self.subvolume_frame)
+
+        subvolume_scale_layout = QHBoxLayout()
+        subvolume_scale_label = QLabel(parent=self)
+        subvolume_scale_label.setText("Select scale: ")
+        self.combo_subvolume_scale = QComboBox(self)
+        self.combo_subvolume_scale.setEditable(False)
+        subvolume_scale_layout.addWidget(subvolume_scale_label)
+        subvolume_scale_layout.addWidget(self.combo_subvolume_scale)
+        subvolume_scale_layout.setAlignment(Qt.AlignLeft)
+        self.combo_subvolume_scale.setEnabled(False)
+
+        main_layout.addLayout(subvolume_scale_layout)
 
         # add some debug stuff
         debug_label = QLabel(self)
@@ -128,16 +142,22 @@ class PrecomputedVolumeBrowser(QDialog):
             # do what is necessary,
             self.subvolume_frame.hide()
             self.viewer_state = None
+            self.combo_subvolume_scale.clear()
+            self.combo_subvolume_scale.setEnabled(False)
             return
 
         if isinstance(url_components, str):
             self.selected_url = url_components
             self.viewer_state = None
+            self.combo_subvolume_scale.clear()
+            self.combo_subvolume_scale.setEnabled(False)
             self.subvolume_frame.hide()
 
         if isinstance(url_components, dict):
             self.viewer_state = url_components
             self.update_subvolume_list()
+            self.combo_subvolume_scale.clear()
+            self.combo_subvolume_scale.setEnabled(False)
             self.subvolume_frame.show()
 
     def handle_chk_button_clicked(self, event):
@@ -152,7 +172,7 @@ class PrecomputedVolumeBrowser(QDialog):
 
         url = self.selected_url.lstrip('precomputed://')
         try:
-            rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
+            self.rv = RESTfulPrecomputedChunkedVolume(volume_url=url)
         except Exception as e:
             # :<
             self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(False)
@@ -164,12 +184,21 @@ class PrecomputedVolumeBrowser(QDialog):
             return
 
         self.debug_text.setText(
-            f"volume encoding: {rv.get_encoding()}\n"
-            f"available scales: {rv.available_scales}\n"
-            f"using scale: {rv._use_scale}\n"
-            f"data shape: {rv.get_shape()}\n"
+            f"volume encoding: {self.rv.get_encoding()}\n"
+            f"available scales: {self.rv.available_scales}\n"
+            f"using scale: {self.rv._use_scale}\n"
+            f"data shape: {self.rv.get_shape()}\n"
         )
+        self.update_scales()
         self.qbuttons.button(QDialogButtonBox.Ok).setEnabled(True)
+
+    def update_scales(self):
+        combo = self.combo_subvolume_scale
+        combo.clear()
+        for scale in self.rv.available_scales:
+            combo.addItem(scale)
+
+        combo.setEnabled(True)
 
 
 if __name__ == '__main__':
