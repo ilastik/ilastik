@@ -48,7 +48,7 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QMenu, QApplication, \
                             QStackedWidget, qApp, QFileDialog, QMessageBox, \
                             QProgressBar, QInputDialog, QToolButton, QVBoxLayout, \
                             QHBoxLayout, QSizePolicy, QLabel, QDialog, QSpinBox, \
-                            QDialogButtonBox,QPushButton
+                            QDialogButtonBox
 
 # lazyflow
 from ilastik.widgets.ipcserver.tcpServerInfoWidget import TCPServerInfoWidget
