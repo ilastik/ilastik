@@ -1180,6 +1180,7 @@ class IlastikShell(QMainWindow):
         if ilastik_config.getboolean("ilastik", "debug"):
             self.menuBar().addMenu(self._debugMenu)
         self.menuBar().addMenu(self._helpMenu)
+        self.menuBar().addMenu(self._docButton)
 
     def getModelIndexFromDrawerIndex(self, drawerIndex):
         drawerTitleItem = self.appletBar.widget(drawerIndex)
