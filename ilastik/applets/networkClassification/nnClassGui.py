@@ -1,4 +1,4 @@
-#x##############################################################################
+###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
 #       Copyright (C) 2011-2014, the ilastik developers
@@ -23,26 +23,22 @@ import logging
 from functools import partial
 from collections import OrderedDict
 
-import sys
-
 import numpy
+
 import torch
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 from volumina.utility import PreferencesManager
 
-from PyQt5 import uic, QtCore, QtGui
-from PyQt5.QtCore import Qt, pyqtSlot, pyqtProperty
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, pyqtSlot
 from PyQt5.QtWidgets import QStackedWidget, QMessageBox, QFileDialog, QMenu, QLineEdit, QDialogButtonBox, QVBoxLayout, \
-     QDialog, QCheckBox, QApplication
+     QDialog, QCheckBox
 
-from ilastik.applets.networkClassification.tiktorchWizard import MagicWizard
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 
 from lazyflow.classifiers import TikTorchLazyflowClassifier
-
-from tiktorch.utils import DynamicShape
 
 
 logger = logging.getLogger(__name__)
@@ -62,10 +58,13 @@ class ParameterDlg(QDialog):
         buttonbox.accepted.connect(self.add_Parameters)
         buttonbox.rejected.connect(self.reject)
 
+        self.halo_edit = QLineEdit(self)
+        self.halo_edit.setPlaceholderText("HaloSize")
         self.batch_edit = QLineEdit(self)
         self.batch_edit.setPlaceholderText("Batch Size")
 
         layout = QVBoxLayout()
+        layout.addWidget(self.halo_edit)
         layout.addWidget(self.batch_edit)
         layout.addWidget(buttonbox)
 
@@ -75,10 +74,13 @@ class ParameterDlg(QDialog):
 
     def add_Parameters(self):
         """
-        changing Batch Size Slot Values
+        changning Halo Size and Batch Size Slot Values
         """
+
+        halo_size = int(self.halo_edit.text())
         batch_size = int(self.batch_edit.text())
 
+        self.topLevelOperator.Halo_Size.setValue(halo_size)
         self.topLevelOperator.Batch_Size.setValue(batch_size)
 
         #close dialog
@@ -153,13 +155,15 @@ class NNClassGui(LayerViewerGui):
 
         def settingParameter():
             """
-            changing BatchSize 
+            changing BatchSize and HaloSize
             """
             dlg = ParameterDlg(self.topLevelOperator, parent=self)
             dlg.exec_()
 
             # classifier_key = self.drawer.comboBox.currentText()
+            self.halo_size = self.topLevelOperator.Halo_Size.value
             self.batch_size = self.topLevelOperator.Batch_Size.value
+            print(self.halo_size)
 
         set_parameter = advanced_menu.addAction("Parameters...")
         set_parameter.triggered.connect(settingParameter)
@@ -183,14 +187,8 @@ class NNClassGui(LayerViewerGui):
 
 
         advanced_menu.addAction("Saving Options").triggered.connect(serializing_options)
+        
 
-        def object_wizard():
-            wizard = MagicWizard()
-            wizard.show()
-            wizard.exec_()
-
-        advanced_menu.addAction("make Pytorch Object").triggered.connect(object_wizard)
-                    
         menus += [advanced_menu]
 
         return menus    
@@ -216,6 +214,7 @@ class NNClassGui(LayerViewerGui):
         self.initViewerControlUi() 
 
         self.batch_size = self.topLevelOperator.Batch_Size.value
+        self.halo_size = self.topLevelOperator.Halo_Size.value
 
     def _initAppletDrawerUic(self, drawerPath=None):
         """
@@ -234,7 +233,6 @@ class NNClassGui(LayerViewerGui):
 
             self.drawer.comboBox.clear()
             self.drawer.comboBox.addItems(self.topLevelOperator.ModelPath.value)
-            print(self.topLevelOperator.ModelPath.value)
 
             self.classifiers = self.topLevelOperator.ModelPath.value
 
@@ -312,27 +310,39 @@ class NNClassGui(LayerViewerGui):
         return layers
 
 
-    def add_NN_classifiers(self, folder_path):
+    def add_NN_classifiers(self, filename):
         """
         Adds the chosen FilePath to the classifierDictionary and to the ComboBox
         """
 
         #split path string
-        modelname = os.path.basename(os.path.normpath(folder_path))
-        self.tiktorch_path = folder_path
+        modelname = os.path.basename(os.path.normpath(filename[0]))
+
+        print(filename)
+        print(filename[0])
 
         #Statement for importing the same classifier twice
         if modelname in self.classifiers.keys():
             print("Classifier already added")
             QMessageBox.critical(self, "Error loading file", "{} already added".format(modelname))
         else:
-            self.classifiers[modelname] = folder_path
+
+            #serialization problems because of group names when using the classifier function as value
+            # self.classifiers[modelname] = TikTorchLazyflowClassifier(None, filename[0], halo_size, batch_size)
+
+            #workAround
+            self.classifiers[modelname] = filename[0]
 
             #clear first the comboBox or addItems will duplicate names
             self.drawer.comboBox.clear()
             self.drawer.comboBox.addItems(self.classifiers)
 
-            self.topLevelOperator.ModelPath.setValue(self.classifiers)
+            if self.topLevelOperator.SaveFullModel.value  == True:
+                object_ = torch.load(filename[0])
+                self.topLevelOperator.FullModel.setValue(object_)
+
+            else:
+                self.topLevelOperator.ModelPath.setValue(self.classifiers)
 
 
     def pred_nn(self):
@@ -351,32 +361,22 @@ class NNClassGui(LayerViewerGui):
 
             if self.drawer.liveUpdateButton.isChecked():
 
-                # if self.topLevelOperator.FullModel.value:
+                if self.topLevelOperator.FullModel.value:
                     #if the full model object is serialized
-                # model_object = self.topLevelOperator.FullModel.value
-                self.topLevelOperator.FreezePredictions.setValue(False)
-                #zero for halo size, since its handled in tiktorch
-                self.model = TikTorchLazyflowClassifier(None, self.tiktorch_path, 0, self.batch_size)
-
-                self.set_BlockShape()
-
-                if 'output_size' in model._tiktorch_net._configuration:
-                    output_shape = model._tiktorch_net.get('output_size')
-                    if (output_shape != input_shape):
-                        self.halo_size = int((input_shape[1] - output_shape[1])/2)
-                        model.HALO_SIZE = self.halo_size
-                        print(self.halo_size)
-
-
-                if len(model._tiktorch_net.get('window_size')) == 2:
-                    input_shape = numpy.append(input_shape, None)
+                    model_object = self.topLevelOperator.FullModel.value[classifier_index]
+                    print(classifier_index)
+                    model_path = None
                 else:
-                    self.topLevelOperator.NumClasses.setValue(self.topLevelOperator.InputImage.meta.shape[3])
+                    model_object = None
+                    model_path = self.classifiers[classifier_key]
 
-                    input_shape = input_shape[1:]
-                    input_shape = numpy.append(input_shape, None)
+                self.topLevelOperator.FreezePredictions.setValue(False)
 
-                input_shape[1:3] -= 2 * self.halo_size
+
+                model = TikTorchLazyflowClassifier(model_object, model_path,
+                 self.halo_size, self.batch_size)
+
+                input_shape = self.getBlockShape(model)
 
                 self.topLevelOperator.BlockShape.setValue(input_shape)
                 self.topLevelOperator.NumClasses.setValue(model._tiktorch_net.get('num_output_channels'))
@@ -434,50 +434,71 @@ class NNClassGui(LayerViewerGui):
         else:
             defaultDirectory = os.path.expanduser('~')
 
-        fileNames = self.getFolderToOpen(self, defaultDirectory)
+        fileNames = self.getImageFileNamesToOpen(self, defaultDirectory)
 
         if len(fileNames) > 0:
             self.add_NN_classifiers(fileNames)
 
 
+    def getBlockShape(self, model):
+        """
+        calculates the input Block shape
+        """
+        expected_input_shape = model._tiktorch_net.expected_input_shape
+        input_shape = numpy.array(expected_input_shape)
 
-    def getFolderToOpen(cls, parent_window, defaultDirectory):
+        if 'output_size' in model._tiktorch_net._configuration:
+            #if the ouputsize of the model is smaller as the expected input shape
+            #the halo needs to be changed
+            output_shape = model._tiktorch_net.get('output_size')
+            if (output_shape != input_shape):
+                self.halo_size = int((input_shape[1] - output_shape[1])/2)
+                model.HALO_SIZE = self.halo_size
+
+
+        if len(model._tiktorch_net.get('window_size')) == 2:
+            input_shape = numpy.append(input_shape, None)
+        else:
+
+            input_shape = input_shape[1:]
+            input_shape = numpy.append(input_shape, None)
+
+        input_shape[1:3] -= 2 * self.halo_size
+
+        return input_shape
+
+
+    def getImageFileNamesToOpen(cls, parent_window, defaultDirectory):
         """
         opens a QFileDialog for importing files
         """
+        extensions = ['nn']
+        filter_strs = ["*." + x for x in extensions]
+        filters = ["{filt} ({filt})".format(filt=x) for x in filter_strs]
+        filt_all_str = "Image files (" + ' '.join(filter_strs) + ')'
 
-        options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
+        fileNames = []
 
-            # folder_names, _ = QFileDialog.getOpenfolder_names(parent_window, "Select Model", defaultDirectory, filt_all_str)
-        folder_names = QFileDialog.getExistingDirectory(parent_window, "Select Model", defaultDirectory, options=options)
-            
+        if ilastik_config.getboolean("ilastik", "debug"):
+            # use Qt dialog in debug mode (more portable?)
+            file_dialog = QFileDialog(parent_window, "Select Model")
+            file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+            # do not display file types associated with a filter
+            # the line for "Image files" is too long otherwise
+            file_dialog.setNameFilters([filt_all_str] + filters)
+            #file_dialog.setNameFilterDetailsVisible(False)
+            # select multiple files
+            file_dialog.setFileMode(QFileDialog.ExistingFiles)
+            file_dialog.setDirectory(defaultDirectory)
 
-        return folder_names
+            if file_dialog.exec_():
+                fileNames = file_dialog.selectedFiles()
+        else:
+            # otherwise, use native dialog of the present platform
+            fileNames, _ = QFileDialog.getOpenFileNames(parent_window, "Select Model", defaultDirectory, filt_all_str)
 
-    def set_BlockShape(self):
-        """
-        calculates the blockshape with the blocksize of the dynamic shape 
-        """
-        # dynamic_shape = model._tiktorch_net.get('dynamic_input_shape')
-        # block_size = DynamicShape(dynamic_shape).base_shape
-        inputDim = list(self.topLevelOperator.InputImage.meta.shape)
+        return fileNames
 
-        halo_block_shape = self.model._tiktorch_net.halo
-        full_shape =self.model._tiktorch_net.dry_run(inputDim[1:3])
-        
-        print(halo_block_shape)
-        print(full_shape)
 
-        # for i in range(1,20):
-        #     if img_shape//(i*block_size[0]) < 10:
-        #         block_shape = i*block_size[0]
-        #         break
 
-        block_shape = [1, full_shape[0], full_shape[1], inputDim[3]]
-        block_shape[1] -= 2 * halo_block_shape[0]
-        block_shape[2] -= 2 * halo_block_shape[1]
-
-        self.topLevelOperator.BlockShape.setValue(block_shape)
-        self.model.HALO_SIZE = halo_block_shape[0]
-        self.model.exp_input_shape = full_shape
 
