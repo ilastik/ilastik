@@ -33,6 +33,7 @@ import weakref
 import logging
 import platform
 import threading
+import webbrowser
 
 # SciPy
 import numpy
@@ -371,12 +372,14 @@ class IlastikShell(QMainWindow):
         if ilastik_config.getboolean("ilastik", "debug"):
             self._debugMenu = self._createDebugMenu()
         self._helpMenu = self._createHelpMenu()
+        self._docButton = self._createDocButton()
         self.menuBar().addMenu(self._projectMenu)
         if self._settingsMenu is not None:
             self.menuBar().addMenu(self._settingsMenu)
         if ilastik_config.getboolean("ilastik", "debug"):
             self.menuBar().addMenu(self._debugMenu)
         self.menuBar().addMenu(self._helpMenu)
+        self.menuBar().addMenu(self._docButton)
 
         assert self.thread() == QApplication.instance().thread()
         assert self.menuBar().thread() == self.thread()
@@ -625,6 +628,16 @@ class IlastikShell(QMainWindow):
         #self.startscreen.setParent(None)
         #del self.startscreen
         self.openProjectFile(path)
+
+    def _createDocButton(self):
+        pushButton = QMenu("&Check the docs!", self)
+        pushButton.setObjectName("docs_menu")
+        aboutIlastikPushAction = pushButton.addAction("&ilastik - Overview")
+        aboutIlastikPushAction.triggered.connect(self.on_pushButton_clicked)
+        return pushButton
+
+    def on_pushButton_clicked(self):
+        webbrowser.open('http://ilastik.org/documentation/', new=2)
 
     def _createHelpMenu(self):
         menu = QMenu("&Help", self)
