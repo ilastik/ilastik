@@ -148,7 +148,6 @@ class PrecomputedVolumeBrowser(QDialog):
         for layer in self.viewer_state['layers']:
             self.combo_subvolume.addItem(layer)
 
-
     def check_url(self, event):
         current_combo_val = self.combo.currentText()
         self.clearall()
@@ -199,14 +198,14 @@ class PrecomputedVolumeBrowser(QDialog):
     def update_volume_info(self, event=None):
         if self.rv is None:
             return
-        scale = self.combo_subvolume_scale.currentText()
-        if scale in self.rv.available_scales:
-            self.rv._use_scale = scale
+        self.selected_scale = self.combo_subvolume_scale.currentText()
+        if self.selected_scale in self.rv.available_scales:
+            self.rv._use_scale = self.selected_scale
 
         self.debug_text.setText(
             f"volume encoding: {self.rv.get_encoding()}\n"
             f"available scales: {self.rv.available_scales}\n"
-            f"using scale: {self.rv._use_scale}\n"
+            f"using scale: {self.selected_scale}\n"
             f"data shape: {self.rv.get_shape()}\n"
         )
 
@@ -251,4 +250,4 @@ if __name__ == '__main__':
     pv.combo.addItem(test_string)
     pv.show()
     app.exec_()
-    print(pv.result(), pv.selected_url)
+    print(pv.result(), pv.selected_url, pv.selected_scale)

@@ -447,7 +447,7 @@ class DataSelectionGui(QWidget):
                 break
         return firstNewLane
 
-    def addFileNames(self, fileNames, roleIndex, startingLane=None, rois=None):
+    def addFileNames(self, fileNames, roleIndex, startingLane=None, rois=None, scale_keys=None):
         """
         Add the given filenames to both the GUI table and the top-level operator inputs.
         If startingLane is None, the filenames will be *appended* to the role's list of files.
@@ -465,7 +465,7 @@ class DataSelectionGui(QWidget):
 
         # Create a list of DatasetInfos
         try:
-            infos = self._createDatasetInfos(roleIndex, fileNames, rois)
+            infos = self._createDatasetInfos(roleIndex, fileNames, rois, scale_keys)
         except DataSelectionGui.UserCancelledError:
             return
         
@@ -524,7 +524,7 @@ class DataSelectionGui(QWidget):
 
         return (startingLane, endingLane)
 
-    def _createDatasetInfos(self, roleIndex, filePaths, rois):
+    def _createDatasetInfos(self, roleIndex, filePaths, rois, scale_keys):
         """
         Create a list of DatasetInfos for the given filePaths and rois
         rois may be None, in which case it is ignored.
@@ -534,12 +534,12 @@ class DataSelectionGui(QWidget):
         assert len(rois) == len(filePaths)
 
         infos = []
-        for filePath, roi in zip(filePaths, rois):
-            info = self._createDatasetInfo(roleIndex, filePath, roi)
+        for filePath, roi, scale_key in zip(filePaths, rois, scale_keys):
+            info = self._createDatasetInfo(roleIndex, filePath, roi, scale_key)
             infos.append(info)
         return infos
 
-    def _createDatasetInfo(self, roleIndex, filePath, roi):
+    def _createDatasetInfo(self, roleIndex, filePath, roi, scale_key):
         """
         Create a DatasetInfo object for the given filePath and roi.
         roi may be None, in which case it is ignored.
@@ -547,6 +547,7 @@ class DataSelectionGui(QWidget):
         cwd = self.topLevelOperator.WorkingDirectory.value
         datasetInfo = DatasetInfo(filePath, cwd=cwd)
         datasetInfo.subvolume_roi = roi # (might be None)
+        datasetInfo.scaleKey = scale_key # (might be none)
                 
         absPath, relPath = getPathVariants(filePath, cwd)
         
@@ -806,7 +807,8 @@ class DataSelectionGui(QWidget):
             return
 
         precomputed_url = browser.selected_url
-        self.addFileNames([precomputed_url], roleIndex, laneIndex)
+        scale = browser.selected_scale
+        self.addFileNames([precomputed_url], roleIndex, laneIndex, scale_keys=[scale])
 
     def addDvidVolume(self, roleIndex, laneIndex):
         recent_hosts_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Hosts")

@@ -50,7 +50,7 @@ class DatasetInfo(object):
         PreloadedArray = 2
 
     def __init__(self, filepath=None, jsonNamespace=None, cwd=None,
-                 preloaded_array=None, sequence_axis=None):
+                 preloaded_array=None, sequence_axis=None, scale_key=None):
         """
         filepath: may be a globstring or a full hdf5 path+dataset
 
@@ -185,6 +185,7 @@ class DatasetInfo(object):
             self.filePath = filepath
             self.fromstack = fromstack
             self.sequenceAxis = sequence_axis
+            self.scaleKey = scale_key
 
         if jsonNamespace is not None:
             self.updateFromJson(jsonNamespace)
@@ -349,6 +350,7 @@ class OpDataSelection(Operator):
                     opReader.SubVolumeRoi.setValue(datasetInfo.subvolume_roi)
                 opReader.WorkingDirectory.setValue(self.WorkingDirectory.value)
                 opReader.SequenceAxis.setValue(datasetInfo.sequenceAxis)
+                opReader.ScaleKey.setValue(datasetInfo.scaleKey)
                 opReader.FilePath.setValue(datasetInfo.filePath)
                 providerSlot = opReader.Output
             self._opReaders.append(opReader)
@@ -399,6 +401,9 @@ class OpDataSelection(Operator):
 
             if datasetInfo.subvolume_roi is not None:
                 metadata['subvolume_roi'] = datasetInfo.subvolume_roi
+
+            if datasetInfo.scaleKey is not None:
+                metadata['scale_key'] = datasetInfo.scaleKey
 
                 # FIXME: We are overwriting the axistags metadata to intentionally allow
                 #        the user to change our interpretation of which axis is which.
