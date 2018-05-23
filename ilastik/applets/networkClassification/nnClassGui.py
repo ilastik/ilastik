@@ -372,30 +372,11 @@ class NNClassGui(LayerViewerGui):
 
                 self.topLevelOperator.FreezePredictions.setValue(False)
 
-                print(self.halo_size)
 
                 model = TikTorchLazyflowClassifier(model_object, model_path,
                  self.halo_size, self.batch_size)
 
-                expected_input_shape = model._tiktorch_net.expected_input_shape
-                input_shape = numpy.array(expected_input_shape)
-
-                if 'output_size' in model._tiktorch_net._configuration:
-                    output_shape = model._tiktorch_net.get('output_size')
-                    if (output_shape != input_shape):
-                        self.halo_size = int((input_shape[1] - output_shape[1])/2)
-                        model.HALO_SIZE = self.halo_size
-                        print(self.halo_size)
-
-
-                if len(model._tiktorch_net.get('window_size')) == 2:
-                    input_shape = numpy.append(input_shape, None)
-                else:
-
-                    input_shape = input_shape[1:]
-                    input_shape = numpy.append(input_shape, None)
-
-                input_shape[1:3] -= 2 * self.halo_size
+                input_shape = self.getBlockShape(model)
 
                 self.topLevelOperator.BlockShape.setValue(input_shape)
                 self.topLevelOperator.NumClasses.setValue(model._tiktorch_net.get('num_output_channels'))
@@ -459,6 +440,34 @@ class NNClassGui(LayerViewerGui):
             self.add_NN_classifiers(fileNames)
 
 
+    def getBlockShape(self, model):
+        """
+        calculates the input Block shape
+        """
+        expected_input_shape = model._tiktorch_net.expected_input_shape
+        input_shape = numpy.array(expected_input_shape)
+
+        if 'output_size' in model._tiktorch_net._configuration:
+            #if the ouputsize of the model is smaller as the expected input shape
+            #the halo needs to be changed
+            output_shape = model._tiktorch_net.get('output_size')
+            if (output_shape != input_shape):
+                self.halo_size = int((input_shape[1] - output_shape[1])/2)
+                model.HALO_SIZE = self.halo_size
+
+
+        if len(model._tiktorch_net.get('window_size')) == 2:
+            input_shape = numpy.append(input_shape, None)
+        else:
+
+            input_shape = input_shape[1:]
+            input_shape = numpy.append(input_shape, None)
+
+        input_shape[1:3] -= 2 * self.halo_size
+
+        return input_shape
+
+
     def getImageFileNamesToOpen(cls, parent_window, defaultDirectory):
         """
         opens a QFileDialog for importing files
@@ -489,6 +498,7 @@ class NNClassGui(LayerViewerGui):
             fileNames, _ = QFileDialog.getOpenFileNames(parent_window, "Select Model", defaultDirectory, filt_all_str)
 
         return fileNames
+
 
 
 
