@@ -22,12 +22,17 @@ from __future__ import division
 import argparse
 import logging
 
+import numpy
+
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.networkClassification import NNClassApplet, NNClassificationDataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
+from lazyflow.classifiers import TikTorchLazyflowClassifier
+
 from lazyflow.graph import Graph
+
 
 logger = logging.getLogger(__name__)
 
@@ -65,16 +70,22 @@ class NNClassificationWorkflow(Workflow):
         super(NNClassificationWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
+
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
-        # parser.add_argument('--print-labels-by-slice', help="Print the number of labels for each Z-slice of each image.", action="store_true")
+        parser.add_argument('--batch-size', help="choose the prefered batch size", type=int)
+        parser.add_argument('--halo-size', help="choose the prefered halo size", type=int)
+        parser.add_argument('--model-path', help="the neural network model for prediction")
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
 
         # Parse the cmdline args for the current session.
-        parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
-        # self.print_labels_by_slice = parsed_args.print_labels_by_slice
+        self.parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
+
+        ######################
+        # Interactive workflow
+        ######################
 
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right.\n\n"\
                             "Power users: Optionally use the 'Prediction Mask' tab to supply a binary image that tells ilastik where it should avoid computations you don't need."
@@ -191,6 +202,67 @@ class NNClassificationWorkflow(Workflow):
         busy |= self.batchProcessingApplet.busy
         self._shell.enableProjectChanges(not busy)
 
+    def onProjectLoaded(self, projectManager):
+        """
+        Overridden from Workflow base class.  Called by the Project Manager.
+
+        If the user provided command-line arguments, use them to configure
+        the workflow for batch mode and export all results.
+        (This workflow's headless mode supports only batch mode for now.)
+        """
+        # Headless batch mode.
+        if self._headless and self._batch_input_args and self._batch_export_args:
+            self.dataExportApplet.configure_operator_with_parsed_args(self._batch_export_args)
+
+            batch_size = self.parsed_args.batch_size
+            halo_size = self.parsed_args.halo_size
+            model_path = self.parsed_args.model_path
+
+            if batch_size and model_path:
+
+                model = TikTorchLazyflowClassifier(None, model_path,
+                                                   halo_size, batch_size)
+
+                input_shape = self.getBlockShape(model, halo_size)
+
+                self.nnClassificationApplet.topLevelOperator.BlockShape.setValue(input_shape)
+                self.nnClassificationApplet.topLevelOperator.NumClasses.setValue(model._tiktorch_net.get('num_output_channels'))
+
+                self.nnClassificationApplet.topLevelOperator.Classifier.setValue(model)
+
+            logger.info("Beginning Batch Processing")
+            self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
+            logger.info("Completed Batch Processing")
+
+
+    def getBlockShape(self, model, halo_size):
+        """
+        calculates the input Block shape
+        """
+        expected_input_shape = model._tiktorch_net.expected_input_shape
+        input_shape = numpy.array(expected_input_shape)
+
+        if not halo_size:
+            if 'output_size' in model._tiktorch_net._configuration:
+                #if the ouputsize of the model is smaller as the expected input shape
+                #the halo needs to be changed
+                output_shape = model._tiktorch_net.get('output_size')
+                if (output_shape != input_shape):
+                    self.halo_size = int((input_shape[1] - output_shape[1])/2)
+                    model.HALO_SIZE = self.halo_size
+                    print(self.halo_size)
+
+
+        if len(model._tiktorch_net.get('window_size')) == 2:
+            input_shape = numpy.append(input_shape, None)
+        else:
+
+            input_shape = input_shape[1:]
+            input_shape = numpy.append(input_shape, None)
+
+        input_shape[1:3] -= 2 * self.halo_size
+
+        return input_shape
 
 
 
