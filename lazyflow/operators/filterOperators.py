@@ -56,6 +56,7 @@ class OpBaseFilter(Operator):
     supports_zero_scale = False
     window_size_feature = 2
     window_size_smoother = 3.5
+    minimum_scale = .7
     output_dtype = numpy.float32
     input_dtype = numpy.float32
 
@@ -153,7 +154,7 @@ class OpBaseFilter(Operator):
         axistags = vigra.defaultAxistags('czyx')
         if self.ComputeIn2d.value or invalid_z:
             if invalid_z and not self.ComputeIn2d.value:
-                logger.warn(
+                logger.warning(
                     f'{self.name}: filtering in 2d for scales {list(filter_scales.values())} (z dimension too small)')
 
             if self.supports_anisotropic:
@@ -169,7 +170,11 @@ class OpBaseFilter(Operator):
 
         def step(tstep, target_z_slice, full_input_slice, full_result_slice):
             if sourceArray is None:
-                source = self.Input[full_input_slice].wait()
+                # no tmatter, if slices or indices are in 'full_input_slice', they wille be converted to slices => 5d
+                source = self.Input[full_input_slice].wait()[0]  # => remove singleton t dimension
+                if process_in_2d:
+                    source = source[:, 0]  # if processing in 2d, remove singleton z dimension
+
                 assert source.shape[0] == 1  # single channel axis for input
             else:
                 assert sourceArray.shape[1] == self.Input.meta.shape[1]
@@ -223,10 +228,10 @@ class OpBaseFilter(Operator):
                 #       halo) would not fit into the target (without a halo).
                 # todo: implement 'no halo exception' of above note
                 try:
-                    logger.debug(f'   : {self.name} {source.shape} {filter_kwargs}')
+                    logger.debug(f'   : {self.name} {source.shape} {filter_kwargs} {process_in_2d}')
                     result = self.filter_fn(source, **filter_kwargs)
                 except Exception:
-                    logger.error(f'   : {self.name} {source.shape} {filter_kwargs}')
+                    logger.error(f'   : {self.name} {source.shape} {filter_kwargs} {process_in_2d}')
                     raise
                 result = result[full_result_slice]
 
@@ -343,6 +348,7 @@ def coherenceOrientationOfStructureTensor(image, sigma0, sigma1, window_size, ou
 
 class OpGaussianSmoothing(OpBaseFilter):
     sigma = InputSlot()
+    minimum_scale = .3
 
     supports_window = True
 
