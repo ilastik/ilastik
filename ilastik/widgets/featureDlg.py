@@ -21,7 +21,7 @@
 import sys
 import os
 import numpy
-import preView
+from . import preView
 
 from PyQt5 import uic
 from PyQt5.QtWidgets import QDialog
@@ -43,7 +43,6 @@ class FeatureDlg(QDialog):
         self.cancel.clicked.connect(self.reject)
         self.ok.clicked.connect(self.accept)
 
-        self.featureTableWidget.brushSizeChanged.connect(self.preView.setFilledBrsuh)
         self.featureTableWidget.itemSelectionChanged.connect(self.updateOKButton)
 
     # methods
@@ -52,15 +51,15 @@ class FeatureDlg(QDialog):
     @property
     def selectedFeatureBoolMatrix(self):
         """Return the bool matrix of features that the user selected."""
-        return self.featureTableWidget.createSelectedFeaturesBoolMatrix()
+        return self.featureTableWidget.featureMatrix
 
     @selectedFeatureBoolMatrix.setter
     def selectedFeatureBoolMatrix(self, newMatrix):
         """Populate the table of selected features with the provided matrix."""
-        self.featureTableWidget.setSelectedFeatureBoolMatrix(newMatrix)
+        self.featureTableWidget.setFeatureMatrix(newMatrix)
 
-    def createFeatureTable(self, features, sigmas, window_size, brushNames=None):
-        self.featureTableWidget.createTableForFeatureDlg(features, sigmas, window_size, brushNames)
+    def createFeatureTable(self, features, sigmas, window_size):
+        self.featureTableWidget.setup(features, sigmas, window_size)
 
     def setImageToPreView(self, image):
         self.preView.setVisible(image is not None)
@@ -71,7 +70,7 @@ class FeatureDlg(QDialog):
         self.featureTableWidget.itemDelegate.setCheckBoxIcons(checked, partiallyChecked, unchecked)
 
     def updateOKButton(self):
-        num_features = numpy.sum(self.featureTableWidget.createSelectedFeaturesBoolMatrix())
+        num_features = numpy.sum(self.featureTableWidget.featureMatrix)
         self.ok.setEnabled(num_features > 0)
 
     def showEvent(self, event):
@@ -102,8 +101,7 @@ if __name__ == "__main__":
     ex = FeatureDlg()
     ex.createFeatureTable([("Color", [FeatureEntry("Banananananaana")]),
                            ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])],
-                          [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0],
-                          3.5)
+                          [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0], 3.5)
     ex.setWindowTitle("FeatureTest")
     ex.setImageToPreView(None)
 

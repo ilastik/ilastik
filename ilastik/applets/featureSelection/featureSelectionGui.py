@@ -284,16 +284,6 @@ class FeatureSelectionGui(LayerViewerGui):
 
         self.featureDlg.accepted.connect(self.onNewFeaturesFromFeatureDlg)
 
-        # Disable the first column, except for the first item.
-        # This is a slightly hacky way of fixing ilastik issue #610.
-        # Besides color, the features at a sigma of 0.3 are not valid because the 
-        #  results are overwhelmed by the inherent sampling noise of the filter.
-        # (This is a bit hacky because we ASSUME the first feature is Gaussian 
-        # Smoothing.  It works for now.)
-        enabled_item_mask = numpy.ones( defaultFeatures.shape, dtype=bool )
-        enabled_item_mask[1:,0] = False # hacky
-        self.featureDlg.setEnableItemMask( enabled_item_mask )
-
     def onUsePrecomputedFeaturesButtonClicked(self):
         options = QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):

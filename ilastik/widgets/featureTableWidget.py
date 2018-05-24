@@ -19,25 +19,32 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from past.utils import old_div
-from PyQt5.QtGui import QPixmap, QPainter, QIcon, QBrush, QColor, \
-    QPalette, QFont, QPen, QPolygon, QImage
-from PyQt5.QtWidgets import QVBoxLayout, QLabel, QTableWidgetItem, QItemDelegate, QStyle, \
-    QHBoxLayout, QHeaderView, QAbstractItemView, QDialog, QToolButton, \
-    QTableWidget, QSlider
-from PyQt5.QtCore import Qt, QRect, QSize, QEvent, QPoint, pyqtSignal
-
-import numpy
+from PyQt5.QtGui import QBrush, QColor, QFont, QIcon, QImage, QPainter, QPen, QPixmap, QPolygon
+from PyQt5.QtWidgets import QAbstractItemView, QHeaderView, QItemDelegate, QStyle, QTableWidget, QTableWidgetItem
+from PyQt5.QtCore import QPoint, QRect, QSize, Qt
 
 
 class FeatureEntry(object):
-    def __init__(self, name):
+    def __init__(self, name, minimum_sigma=.7):
         self.name = name
+        self.minimum_sigma = minimum_sigma
+
+
+# ==============================================================================
+# FeatureTableWidgetVSigmaHeader
+# ==============================================================================
+class FeatureTableWidgetVSigmaHeader(QTableWidgetItem):
+    isExpanded = False
+    children = []
+
+    def __init__(self, text='Sigma'):
+        QTableWidgetItem.__init__(self)
+        self.setText(text)
+
 
 # ==============================================================================
 # FeatureTableWidgetVHeader
 # ==============================================================================
-
-
 class FeatureTableWidgetVHeader(QTableWidgetItem):
     def __init__(self):
         QTableWidgetItem.__init__(self)
@@ -67,7 +74,6 @@ class FeatureTableWidgetVHeader(QTableWidgetItem):
         self.feature = feature
         self.vHeaderName = feature.name
         self.setText(self.vHeaderName)
-#        self.featureID = feature.id
 
         pixmap = QPixmap(20, 20)
         pixmap.fill(Qt.transparent)
@@ -105,30 +111,34 @@ class FeatureTableWidgetVHeader(QTableWidgetItem):
 # FeatureTableWidgetHHeader
 # ==============================================================================
 class FeatureTableWidgetHHeader(QTableWidgetItem):
-    def __init__(self, sigma, window_size, name=None):
+    sub_trans = str.maketrans('0123456789', '₀₁₂₃₄₅₆₇₈₉')
+
+    def __init__(self, column, sigma=None, window_size=3.5):
         QTableWidgetItem.__init__(self)
         # init
         # ------------------------------------------------
+        self.column = column
         self.sigma = sigma
         self.window_size = window_size
         self.pixmapSize = QSize(61, 61)
-        if not name:
-            self.setNameAndBrush(self.sigma)
-        else:
-            self.setText(name)
+        self.setNameAndBrush(self.sigma)
 
     @property
     def brushSize(self):
-        return int(3.0 * self.sigma + 0.5) * 2 + 1
+        if self.sigma is None:
+            return 0
+        else:
+            return int(3.0 * self.sigma + 0.5) + 1
 
     def setNameAndBrush(self, sigma, color=Qt.black):
         self.sigma = sigma
-        self.setText(u"σ={:.1f}px".format(self.sigma))
-        total_window = (1 + 2 * int(self.sigma * self.window_size + 0.5))
-        self.setToolTip("sigma = {:.1f} pixels, window diameter = {:.1f}".format(self.sigma, total_window))
+        self.setText(f'σ{self.column}'.translate(self.sub_trans))
+        if self.sigma is not None:
+            total_window = (1 + 2 * int(self.sigma * self.window_size + 0.5))
+            self.setToolTip(f'sigma = {sigma:.1f} pixels, window diameter = {total_window:.1f}')
         font = QFont()
         font.setPointSize(10)
-        font.setBold(True)
+        # font.setBold(True)
         self.setFont(font)
         self.setForeground(color)
 
@@ -174,6 +184,8 @@ class ItemDelegate(QItemDelegate):
         self.pixmapPartiallyChecked = QPixmap(self.itemWidth, self.itemHeight)
         self.drawPixmapForPartiallyChecked()
         self.drawPixmapForDisabled()
+
+        # self.itemEditorFactory().setDefaultFactory(QDoubleSpinBox)
 
     def drawPixmapForDisabled(self):
         self.pixmapDisabled = QPixmap(self.itemWidth, self.itemHeight)
@@ -227,33 +239,43 @@ class ItemDelegate(QItemDelegate):
         painter.end()
 
     def paint(self, painter, option, index):
-
         tableWidgetCell = self.parent().item(index.row(), index.column())
-
-        flags = tableWidgetCell.flags()
-        if not (flags & Qt.ItemIsEnabled):
-            painter.drawPixmap(option.rect, self.pixmapDisabled)
-        elif tableWidgetCell.featureState == Qt.Unchecked:
-            if self.uncheckedIcon is not None:
-                painter.drawImage(self.adjustRectForImage(option), self.uncheckedIcon)
+        if index.row() == 0:
+            # paint sigma row
+            painter.setRenderHint(QPainter.Antialiasing, True)
+            if isinstance(tableWidgetCell.sigma, str):
+                sigma_str = tableWidgetCell.sigma
             else:
-                painter.drawPixmap(option.rect, self.pixmapUnckecked)
-                option.state = QStyle.State_Off
-        elif tableWidgetCell.featureState == Qt.PartiallyChecked:
-            if self.partiallyCheckedIcon is not None:
-                painter.drawImage(self.adjustRectForImage(option), self.partiallyCheckedIcon)
-            else:
-                painter.fillRect(option.rect.adjusted(3, 3, -3, -3), QColor(220, 220, 220))
-                painter.drawPixmap(option.rect, self.pixmapPartiallyChecked)
+                sigma_str = f'{tableWidgetCell.sigma:.2f}'
+            painter.drawText(option.rect, Qt.AlignCenter, sigma_str)
+        elif index.column() + 1 == self.parent().columnCount():
+            # last column is always empty (exists only for adding another sigma)
+            return
         else:
-            if self.checkedIcon is not None:
-                painter.drawImage(self.adjustRectForImage(option), self.checkedIcon)
+            flags = tableWidgetCell.flags()
+            if not (flags & Qt.ItemIsEnabled):
+                painter.drawPixmap(option.rect, self.pixmapDisabled)
+            elif tableWidgetCell.featureState == Qt.Unchecked:
+                if self.uncheckedIcon is not None:
+                    painter.drawImage(self.adjustRectForImage(option), self.uncheckedIcon)
+                else:
+                    painter.drawPixmap(option.rect, self.pixmapUnckecked)
+                    option.state = QStyle.State_Off
+            elif tableWidgetCell.featureState == Qt.PartiallyChecked:
+                if self.partiallyCheckedIcon is not None:
+                    painter.drawImage(self.adjustRectForImage(option), self.partiallyCheckedIcon)
+                else:
+                    painter.fillRect(option.rect.adjusted(3, 3, -3, -3), QColor(220, 220, 220))
+                    painter.drawPixmap(option.rect, self.pixmapPartiallyChecked)
             else:
-                painter.fillRect(option.rect.adjusted(3, 3, -3, -3), QColor(0, 250, 154))
-                painter.drawPixmap(option.rect, self.pixmapCkecked)
+                if self.checkedIcon is not None:
+                    painter.drawImage(self.adjustRectForImage(option), self.checkedIcon)
+                else:
+                    painter.fillRect(option.rect.adjusted(3, 3, -3, -3), QColor(0, 250, 154))
+                    painter.drawPixmap(option.rect, self.pixmapCkecked)
 
-        # Be careful with this! It may call itself recursively.
-        # self.parent().update()
+            # Be careful with this! It may call itself recursively.
+            # self.parent().update()
 
     def setCheckBoxIcons(self, checked, partiallyChecked, unchecked):
         self.checkedIcon = QImage(checked)
@@ -270,15 +292,42 @@ class ItemDelegate(QItemDelegate):
 
 
 # ==============================================================================
+# FeatureTableWidgetSigma
+# ==============================================================================
+class FeatureTableWidgetSigma(QTableWidgetItem):
+    def __init__(self, sigma):
+        QTableWidgetItem.__init__(self)
+        self.sigma = sigma
+        flags = self.flags()
+        flags |= Qt.ItemIsEditable
+        flags &= ~Qt.ItemIsSelectable
+        self.setFlags(flags)
+
+
+# ==============================================================================
 # FeatureTableWidgetItem
 # ==============================================================================
 class FeatureTableWidgetItem(QTableWidgetItem):
-    def __init__(self, feature, parent=None, featureState=Qt.Unchecked):
-        QTableWidgetItem.__init__(self, parent)
+    def __init__(self, enabled=None, featureState=Qt.Unchecked):
+        QTableWidgetItem.__init__(self)
+        self.setFlags(self.flags() & ~Qt.ItemIsEditable)
+        if enabled is not None:
+            self.setEnabled(enabled)
 
         self.isRootNode = False
         self.children = []
         self.featureState = featureState
+
+    def __hash__(self):
+        return hash((self.row(), self.column()))
+
+    def setEnabled(self, enabled):
+        flags = self.flags()
+        if enabled:
+            flags |= Qt.ItemIsEnabled
+        else:
+            flags &= ~Qt.ItemIsEnabled
+        self.setFlags(flags)
 
     def setFeatureState(self, state):
         self.featureState = state
@@ -294,170 +343,153 @@ class FeatureTableWidgetItem(QTableWidgetItem):
 # FeatureTableWidget
 # ==============================================================================
 class FeatureTableWidget(QTableWidget):
-    brushSizeChanged = pyqtSignal(float)
-
-    def __init__(self, parent=None):
+    def __init__(self, featureGroups=[], sigmas=[], window_size=3.5, parent=None):
+        """
+        Args:
+            featureGroups: A list with schema: [ (groupName1, [entry, entry...]),
+                                                 (groupName2, [entry, entry...]), ... ]
+            sigmas: List of sigmas (applies to all features)
+        """
         QTableWidget.__init__(self, parent)
-        # init
-        # ------------------------------------------------
-        # FIXME: move this somewhere else maybe?
-        self.tmpSelectedItems = []
-        # FIXME: what does this do? put a comment, why 30,30?
-        self._sigmaList = None
-        self._featureGroupMapping = None  # Schema: [ (groupName1, [entry, entry...]),
-        #           (groupName2, [entry, entry...]) ]
-        # layout
-        # ------------------------------------------------
+
         self.setCornerButtonEnabled(False)
-        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.setSelectionMode(QAbstractItemView.NoSelection)
+        self.setEditTriggers(QAbstractItemView.AllEditTriggers)
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setShowGrid(False)
-        self.viewport().installEventFilter(self)
         self.setMouseTracking(1)
+
         self.verticalHeader().setHighlightSections(False)
         self.verticalHeader().setSectionsClickable(True)
-        self.horizontalHeader().setHighlightSections(False)
-        self.horizontalHeader().setSectionsClickable(True)
-
-        self.horizontalHeader().setMouseTracking(True)
-        self.horizontalHeader().installEventFilter(self)
-        self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-
-        self.itemSelectionChanged.connect(self._tableItemSelectionChanged)
-        self.cellDoubleClicked.connect(self._featureTableItemDoubleClicked)
+        self.verticalHeader().sectionPressed.disconnect()
         self.verticalHeader().sectionClicked.connect(self._expandOrCollapseVHeader)
 
-        # FIXME: this feature is disabled for now because it needs proper support
-        # in the feature selection operator
-        # self.horizontalHeader().sectionDoubleClicked.connect(self._hHeaderDoubleclicked)
+        self.horizontalHeader().setHighlightSections(False)
+        self.horizontalHeader().setSectionsClickable(False)
+        # self.horizontalHeader().installEventFilter(self)
+        self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
-#        self.setFeatureGroups(featureMgr.ilastikFeatureGroups.groups)
-#        self.setSigmas(self.defaultGroupScaleValues)
-#        self.createTableForFeatureDlg()
+        self.itemSelectionChanged.connect(self._itemSelectionChanged)
+        self.cellChanged.connect(self._cellChanged)
+        if featureGroups and sigmas:
+            self.setup(featureGroups, sigmas, window_size)
 
-    # methods
-    # ------------------------------------------------
+    def setup(self, featureGroups: list, sigmas: list, window_size=3.5):
+        self.window_size = window_size
+        assert featureGroups, 'featureGroups may not be empty'
+        assert isinstance(featureGroups, (list, tuple))
+        assert isinstance(featureGroups[0], (list, tuple))
+        assert isinstance(featureGroups[0][0], str)
+        assert isinstance(featureGroups[0][1], list)
+        assert all([fg[1] for fg in featureGroups]), 'all featureGroups must have entries'
 
-    def setSelectedFeatureBoolMatrix(self, featureMatrix):
-        r = 0
-        for row in range(self.rowCount()):
-            if self.verticalHeaderItem(row).isRootNode:
-                continue
-            for column in range(self.columnCount()):
-                if featureMatrix[r][column]:
-                    self.item(row, column).setFeatureState(Qt.Checked)
-                else:
-                    self.item(row, column).setFeatureState(Qt.Unchecked)
-            r += 1
-        self._updateParentCell()
-
-    def setEnableItemMask(self, mask):
-        """
-        Selectively enable/disable specific items in the table.
-        mask - a matrix with the same dimensions as the feature bool matrix.  True means enable, False means disable.
-
-        Note: If a cell in a column is disabled, ALL of the cells under
-              that parent in the same column must be disabled.
-              Categories of partially enabled cells are not supported yet.
-        """
-        featureMatrix = numpy.asarray(self.createSelectedFeaturesBoolMatrix())
-        assert mask.shape == featureMatrix.shape
-        r = 0
-        for row in range(self.rowCount()):
-            for column in range(self.columnCount()):
-                item = self.item(row, column)
-                flags = item.flags()
-                if self.verticalHeaderItem(row).isRootNode:
-                    # Check all children
-                    num_children = len(item.children)
-                    child_status = mask[r:r + num_children, column]
-                    enabled = child_status.any()
-                else:
-                    enabled = mask[r][column]
-                if enabled:
-                    flags |= Qt.ItemIsEnabled
-                else:
-                    flags &= ~Qt.ItemIsEnabled
-                item.setFlags(flags)
-
-            if not self.verticalHeaderItem(row).isRootNode:
-                r += 1
-
-        self._updateParentCell()
-
-    def setSelectedFeatureList(self, featureList):
-        for feature in featureList:
-            for r, c in self._tableEntries():
-                if feature[0] == self.verticalHeaderItem(r).vHeaderName and \
-                        feature[1] == str(self.horizontalHeaderItem(c).sigma):
-                    self.item(r, c).setFeatureState(Qt.Checked)
-        self._updateParentCell()
-
-    def createSelectedFeaturesBoolMatrix(self):
-        i = 0
-        for r in range(self.rowCount()):
-            if not self.verticalHeaderItem(r).isRootNode:
-                i += 1
-        matrix = [[False for k in range(self.columnCount())] for j in range(i)]
-        x = 0
-        for row in range(self.rowCount()):
-            for column in range(self.columnCount()):
-                item = self.item(row, column)
-                if not item.isRootNode:
-                    if item.featureState == Qt.Checked:
-                        matrix[x][column] = True
-            if not self.verticalHeaderItem(row).isRootNode:
-                x += 1
-        return matrix
-
-    def createSelectedFeatureList(self):
-        result = []
-        for r, c in self._tableEntries():
-            item = self.item(r, c)
-            if not item.isRootNode:
-                if item.featureState == Qt.Checked:
-                    result.append([self.verticalHeaderItem(r).vHeaderName, str(self.horizontalHeaderItem(c).sigma)])
-        return result
-
-    def createTableForFeatureDlg(self, featureGroups, sigmas, window_size, text=None):
-        """
-        featureGroups: A list with schema: [ (groupName1, [entry, entry...]),
-                                             (groupName2, [entry, entry...]), ... ]
-        sigmas: List of sigmas (applies to all features)
-        """
-        self._sigmaList = sigmas
-        self._featureGroupMapping = featureGroups
-        if self._sigmaList is None:
-            raise RuntimeError("No sigmas set!")
-        self._addHHeader(window_size, text)
-        if self._featureGroupMapping is None:
-            raise RuntimeError("No featuregroups set!")
-        self._addVHeader()
+        self.setSigmas(sigmas)
+        self.setFeatureGroups(featureGroups)
         self._setFixedSizeToHeaders()
-        self._fillTabelWithItems()
         self._setSizeHintToTableWidgetItems()
         self.itemDelegate = ItemDelegate(self, self.horizontalHeader().sizeHint().width(),
                                          self.verticalHeader().sizeHint().height())
         self.setItemDelegate(self.itemDelegate)
-        self._updateParentCell()
+        self._updateRootItems()
 
         # Hide fine-grain control by default
         self._collapsAllRows()
+        self._resetSelection()
 
-    def createSigmaList(self):
-        result = []
-        for c in range(self.columnCount()):
-            result.append(self.horizontalHeaderItem(c).sigma)
-        return result
+    def mouseReleaseEvent(self, e):
+        super().mouseReleaseEvent(e)
+        self._resetSelection()
+
+    def keyReleaseEvent(self, e):
+        super().keyReleaseEvent(e)
+        if e.key() == Qt.Key_Shift:
+            self.preSelectionState = {}
+            self.clearSelection()
+            self._resetSelection()
+        elif e.key() == Qt.Key_Return or e.key() == Qt.Key_Enter:
+            self.preSelectionState = {}
+            self.clearSelection()
+            self._resetSelection()
+
+    @property
+    def sigmas(self):
+        return self._sigmas
+
+    def setSigmas(self, sigmas):
+        assert isinstance(sigmas, list)
+        assert sigmas, 'sigmas cannot be empty'
+        self._sigmas = sigmas
+        self.setColumnCount(len(sigmas) + 1)
+        for column, s in enumerate(sigmas):
+            self.setHorizontalHeaderItem(column, FeatureTableWidgetHHeader(column, s, window_size=self.window_size))
+
+        column += 1
+        self.setHorizontalHeaderItem(column, FeatureTableWidgetHHeader(column))
+        self._fillTabelWithItems()
+
+    def setFeatureGroups(self, featureGroups):
+        self.setRowCount(1)
+        self.setVerticalHeaderItem(0, FeatureTableWidgetVSigmaHeader())
+        self.minimum_sigma_for_row = [None]
+        row = 1
+        for group, features in featureGroups:
+            self.insertRow(row)
+            self.minimum_sigma_for_row.append(None)
+            vGroupHeader = FeatureTableWidgetVHeader()
+            vGroupHeader.setGroupVHeader(group)
+            self.setVerticalHeaderItem(row, vGroupHeader)
+            row += 1
+            for feature in features:
+                self.insertRow(row)
+                self.minimum_sigma_for_row.append(feature.minimum_sigma)
+                vFeatureHeader = FeatureTableWidgetVHeader()
+                vFeatureHeader.setFeatureVHeader(feature)
+                self.setVerticalHeaderItem(row, vFeatureHeader)
+                vGroupHeader.children.append(row)
+                row += 1
+
+        self._fillTabelWithItems()
+
+    def row_valid_for_sigma(self, row, sigma):
+        return sigma >= self.minimum_sigma_for_row[row]
+
+    @property
+    def featureMatrix(self):
+        matrix = []
+        for row in range(1, self.rowCount()):
+            if not self.verticalHeaderItem(row).isRootNode:
+                matrix.append([self.item(row, col).featureState == Qt.Checked and
+                               bool(self.item(row, col).flags() & Qt.ItemIsEnabled)
+                               for col in range(self.columnCount() - 1)])
+
+        return matrix
+
+    def setFeatureMatrix(self, featureMatrix):
+        feautre_row = 0
+        for row in range(1, self.rowCount()):
+            if not self.verticalHeaderItem(row).isRootNode:
+                for column in range(self.columnCount() - 1):
+                    if featureMatrix[feautre_row][column]:
+                        self.item(row, column).setFeatureState(Qt.Checked)
+                    else:
+                        self.item(row, column).setFeatureState(Qt.Unchecked)
+
+                feautre_row += 1
+
+        self._updateRootItems()
+
+    def focusCell(self, row, column):
+        self._resetSelection()
+        self.setCurrentCell(row, column)
+        self.clearSelection()
 
     def _tableEntries(self):
         for row in range(self.rowCount()):
-            for column in range(self.columnCount()):
+            for column in range(self.columnCount() - 1):
                 yield row, column
 
     def sizeHint(self):
-        height = super(FeatureTableWidget, self).sizeHint().height()
+        height = super().sizeHint().height()
         width = self.horizontalHeader().sizeHint().width() * self.columnCount() + \
             self.verticalHeader().sizeHint().width() + 22
         return QSize(width, height)
@@ -471,264 +503,186 @@ class FeatureTableWidget(QTableWidget):
     def _setFixedSizeToHeaders(self):
         hHeaderSize = self.horizontalHeader().sizeHint()
         vHeaderSize = self.verticalHeader().sizeHint()
-        for i in range(self.columnCount()):
+        for i in range(self.columnCount() - 1):
             self.horizontalHeaderItem(i).setSizeHint(hHeaderSize)
         for j in range(self.rowCount()):
             self.verticalHeaderItem(j).setSizeHint(vHeaderSize)
 
-    def _hHeaderDoubleclicked(self, col):
-        sliderdlg = SliderDlg(self, self.horizontalHeaderItem(col).sigma)
-#        self._highlightHeaders(col, -1)
-        self.horizontalHeaderItem(col).setNameAndBrush(sliderdlg.exec_())
-
     def _fillTabelWithItems(self):
-        for j in range(self.columnCount()):
-            for i in range(self.rowCount()):
-                item = FeatureTableWidgetItem(self, 0)
-                if self.verticalHeaderItem(i).isRootNode:
+        for column in range(self.columnCount() - 1):
+            sigma = self.sigmas[column]
+            self.setItem(0, column, FeatureTableWidgetSigma(sigma))
+            for row in range(1, self.rowCount()):
+                item = FeatureTableWidgetItem()
+                if self.verticalHeaderItem(row).isRootNode:
                     item.isRootNode = True
-                self.setItem(i, j, item)
-        for j in range(self.columnCount()):
-            for i in range(self.rowCount()):
-                if self.verticalHeaderItem(i).isRootNode:
-                    parent = self.item(i, j)
-                    continue
-                parent.children.append(self.item(i, j))
+                    parent = item
+                else:
+                    item.setEnabled(self.row_valid_for_sigma(row, sigma))
+                    parent.children.append(item)
+
+                self.setItem(row, column, item)
+
+        column += 1
+        self.setItem(0, column, FeatureTableWidgetSigma('add'))
+        for row in range(1, self.rowCount()):
+            self.setItem(row, column, FeatureTableWidgetItem(enabled=False))
+
+        self.focusCell(1, 0)
 
     def _expandOrCollapseVHeader(self, row):
+        self._resetSelection()
         vHeader = self.verticalHeaderItem(row)
-        if not vHeader.children == []:
-            if not vHeader.isExpanded:
-                vHeader.setExpanded()
-                for subRow in vHeader.children:
-                    self.showRow(subRow)
-            else:
+        if vHeader.children:
+            if vHeader.isExpanded:
                 for subRow in vHeader.children:
                     self.hideRow(subRow)
                     vHeader.setCollapsed()
-            self._deselectAllTableItems()
+            else:
+                vHeader.setExpanded()
+                for subRow in vHeader.children:
+                    self.showRow(subRow)
 
     def _collapsAllRows(self):
-        for i in range(self.rowCount()):
+        for i in range(1, self.rowCount()):
             if not self.verticalHeaderItem(i).isRootNode:
                 self.hideRow(i)
             else:
                 self.verticalHeaderItem(i).setCollapsed()
 
-    def _tableItemSelectionChanged(self):
-        for item in self.selectedItems():
-            if item in self.tmpSelectedItems:
-                self.tmpSelectedItems.remove(item)
-            else:
-                if item.isRootNode and not self.verticalHeaderItem(item.row()).isExpanded:
-                    if item.featureState == Qt.Unchecked or item.featureState == Qt.PartiallyChecked:
-                        state = Qt.Checked
-                    else:
-                        state = Qt.Unchecked
-                    for child in item.children:
-                        child.setFeatureState(state)
+    def _cellChanged(self, row, column):
+        if row == 0:
+            item = self.item(row, column)
+            try:
+                sigma = float(item.text())
+            except ValueError:
+                sigma = -1
+            if sigma == 0:
+                # remove column
+                matrix = [r[:column] + r[column + 1:] for r in self.featureMatrix]
+                self.setSigmas(self.sigmas[:column] + self.sigmas[column + 1:])
+                self.setFeatureMatrix(matrix)
+            elif sigma >= min([s for s in self.minimum_sigma_for_row if s is not None]):
+                if column + 1 == self.columnCount():
+                    # add new column
+                    matrix = [r + [Qt.Unchecked] for r in self.featureMatrix]
+                    self.setSigmas(self.sigmas + [sigma])
+                    self.setFeatureMatrix(matrix)
                 else:
-                    item.toggleState()
+                    # change existing sigma
+                    matrix = self.featureMatrix
+                    newSigmas = self.sigmas
+                    newSigmas[column] = sigma
+                    self.setSigmas(newSigmas)
+                    self.setFeatureMatrix(matrix)
 
-        for item in self.tmpSelectedItems:
-            if item.isRootNode and not self.verticalHeaderItem(item.row()).isExpanded:
-                if item.featureState == Qt.Unchecked or item.featureState == Qt.PartiallyChecked:
-                    state = Qt.Checked
-                else:
-                    state = Qt.Unchecked
-                for child in item.children:
-                    child.setFeatureState(state)
-            else:
-                item.toggleState()
+                self.focusCell(1, column)
 
-        self._updateParentCell()
-        self.tmpSelectedItems = self.selectedItems()
+    def _resetSelection(self):
+        self.preSelectionState = {}
+        self.lastSelectedItems = []
+        self.clearSelection()
 
-    def _updateParentCell(self):
-        for i in range(self.rowCount()):
-            for j in range(self.columnCount()):
-                item = self.item(i, j)
-                if item.isRootNode:
-                    x = 0
-                    for child in item.children:
-                        if child.featureState == Qt.Checked:
-                            x += 1
-                    if len(item.children) == x:
-                        item.featureState = Qt.Checked
-                    elif x == 0:
-                        item.featureState = Qt.Unchecked
-                    else:
-                        item.featureState = Qt.PartiallyChecked
-            self.viewport().update()
-
-    def eventFilter(self, obj, event):
-        if(event.type() == QEvent.MouseButtonPress):
-            if event.button() == Qt.LeftButton:
-                if self.itemAt(event.pos()):
-                    self.setSelectionMode(2)
-        if(event.type() == QEvent.MouseButtonRelease):
-            if event.button() == Qt.LeftButton:
-                self.setSelectionMode(0)
-                self.tmpSelectedItems = []
-                self._deselectAllTableItems()
-        if event.type() == QEvent.MouseMove:
-            if self.itemAt(event.pos()) and self.underMouse():
-                item = self.itemAt(event.pos())
-                hHeader = self.horizontalHeaderItem(item.column())
-                self.brushSizeChanged.emit(hHeader.brushSize)
-                self._highlightHeaders(item.column(), item.row())
-        return super(FeatureTableWidget, self).eventFilter(obj, event)
-
-    def _deselectAllTableItems(self):
-        for item in self.selectedItems():
-            item.setSelected(False)
-
-    def _addHHeader(self, window_size, text=None):
-        self.setColumnCount(len(self._sigmaList))
-        for c in range(len(self._sigmaList)):
-            if not text:
-                hHeader = FeatureTableWidgetHHeader(self._sigmaList[c], window_size)
-            else:
-                hHeader = FeatureTableWidgetHHeader(self._sigmaList[c], window_size, text[c])
-            self.setHorizontalHeaderItem(c, hHeader)
-
-    def _addVHeader(self):
-        row = 0
-        for group, features in self._featureGroupMapping:
-            self.insertRow(row)
-            vGroupHeader = FeatureTableWidgetVHeader()
-            vGroupHeader.setGroupVHeader(group)
-            self.setVerticalHeaderItem(row, vGroupHeader)
-            row += 1
-            for feature in features:
-                self.insertRow(row)
-                vFeatureHeader = FeatureTableWidgetVHeader()
-                vFeatureHeader.setFeatureVHeader(feature)
-                self.setVerticalHeaderItem(row, vFeatureHeader)
-                # Tooltip
-                # self.verticalHeaderItem(row).setData(3, j.name)
-                vGroupHeader.children.append(row)
-                row += 1
-
-    def _highlightHeaders(self, c, r):
-        p = QPalette()
-        for i in range(self.columnCount()):
-            col = self.horizontalHeaderItem(i)
-            if i == c:
-                col.setIconAndTextColor(p.link().color())
-            else:
-                col.setIconAndTextColor(p.text().color())
-
-        for j in range(self.rowCount()):
-            row = self.verticalHeaderItem(j)
-            if j == r:
-                row.setIconAndTextColor(p.link().color())
-            else:
-                row.setIconAndTextColor(p.text().color())
-
-    def _featureTableItemDoubleClicked(self, row, column):
-        item = self.item(row, column)
-        if item.isRootNode and self.verticalHeaderItem(item.row()).isExpanded:
-            if item.featureState == Qt.Unchecked or item.featureState == Qt.PartiallyChecked:
-                state = Qt.Checked
-            else:
-                state = Qt.Unchecked
-            for child in item.children:
-                child.setFeatureState(state)
-        self._updateParentCell()
-
-
-# ==============================================================================
-# SliderDlg
-# ==============================================================================
-class SliderDlg(QDialog):
-    def __init__(self, parent, sigma):
-        QDialog.__init__(self, parent, Qt.FramelessWindowHint)
-
-        # init
-        # ------------------------------------------------
-        self.oldSigma = sigma
-        self.sigma = sigma
-        self.brushSize = 0
-        self.setStyleSheet("background-color:window;")
-        # widgets and layouts
-        # ------------------------------------------------
-
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-
-        labelsLayout = QHBoxLayout()
-        self.labelSigma = QLabel("Sigma: xx")
-        self.labelBrushSize = QLabel("BrushSize: xx")
-        labelsLayout.addWidget(self.labelSigma)
-        labelsLayout.addWidget(self.labelBrushSize)
-        self.layout.addLayout(labelsLayout)
-
-        self.slider = QSlider(Qt.Horizontal)
-        self.slider.setMinimum(1)
-        self.slider.setMaximum(100)
-        self.slider.sliderMoved.connect(self.on_sliderMoved)
-        self.layout.addWidget(self.slider)
-
-        self.buttonsLayout = QHBoxLayout()
-        self.cancel = QToolButton()
-        self.cancel.setText("cancel")
-        self.cancel.clicked.connect(self.on_cancelClicked)
-        self.buttonsLayout.addWidget(self.cancel)
-
-        self.ok = QToolButton()
-        self.ok.setText("OK")
-        self.ok.clicked.connect(self.on_okClicked)
-        self.buttonsLayout.addWidget(self.ok)
-
-        self.layout.addLayout(self.buttonsLayout)
-
-        self.layout.setContentsMargins(10, 0, 10, 0)
-        labelsLayout.setContentsMargins(0, 0, 0, 0)
-        self.buttonsLayout.setContentsMargins(0, 0, 0, 0)
-
-        self.setlabelSigma()
-        self.setLabelBrushSize()
-        self.setSliderPosition()
-
-    def setlabelSigma(self):
-        self.labelSigma.setText("Sigma: " + str(self.sigma))
-
-    def setLabelBrushSize(self):
-        self.brushSize = int(3.0 * self.sigma + 0.5) * 2 + 1
-        self.labelBrushSize.setText("BrushSize: " + str(self.brushSize))
-
-    def setSliderPosition(self):
-        self.slider.setSliderPosition(self.sigma * 10)
-
-    def on_sliderMoved(self, i):
-        self.sigma = old_div(float(i), 10)
-        self.setlabelSigma()
-        self.setLabelBrushSize()
-        self.parent().parent().parent().preView.setSizeToLabel(self.brushSize)
-
-    def on_cancelClicked(self):
-        self.reject()
-
-    def on_okClicked(self):
-        self.accept()
-
-    def exec_(self):
-        if QDialog.exec_(self) == QDialog.Accepted:
-            return self.sigma
+    def _set_new_state(self, selectedItems):
+        firstItem = selectedItems[0]
+        if firstItem.featureState == Qt.Checked:
+            self.newState = Qt.Unchecked
         else:
-            return self.oldSigma
+            self.newState = Qt.Checked
+
+    def _itemSelectionChanged(self):
+        # ignore first row (sigmas) and last column (empty for new sigma)
+        selectedItems = [item
+                         for item in self.selectedItems()
+                         if item.row() and item.column() + 1 < self.columnCount()]
+
+        if self.lastSelectedItems:
+            # some items were already selected before
+            if len(selectedItems) == 1:
+                self._set_new_state(selectedItems)
+
+            # continue selection => only process difference to previous selection
+            if all([item.isRootNode for item in selectedItems]):
+                # all items are root nodes => select all their children instead
+                selectInstead = []
+                for item in selectedItems:
+                    for child in item.children:
+                        selectInstead.append(child)
+
+                selectedItems = selectInstead
+            else:
+                # mixed selection => ignore root items
+                selectedItems = [item for item in selectedItems if not item.isRootNode]
+
+            selected = [item for item in selectedItems if item not in self.lastSelectedItems]
+            unselected = [item for item in self.lastSelectedItems if item not in selectedItems]
+
+        elif selectedItems:
+            # Start a new selection
+            self._set_new_state(selectedItems)
+            selectInstead = []
+            for item in selectedItems:
+                if item.isRootNode:
+                    selectInstead += [child for child in item.children]
+                else:
+                    selectInstead.append(item)
+
+            selectedItems = selectInstead
+            selected = selectedItems
+            unselected = []
+        else:
+            # no change in (relevant) selection
+            selected = []
+            unselected = []
+
+        for item in selected:
+            # save item state
+            self.preSelectionState[item] = item.featureState
+            item.setFeatureState(self.newState)
+
+        for item in unselected:
+            try:
+                # restore item state
+                item.setFeatureState(self.preSelectionState[item])
+            except Exception:
+                pass  # selection was reset
+
+        self.lastSelectedItems = selectedItems
+        self._updateRootItems()
+
+    def _updateRootItems(self):
+        for row in range(1, self.rowCount()):
+            for column in range(self.columnCount() - 1):
+                item = self.item(row, column)
+                if item.isRootNode:
+                    flags = item.flags()
+                    enabled_children = [child for child in item.children if child.flags() & Qt.ItemIsEnabled]
+                    if enabled_children:
+                        flags |= Qt.ItemIsEnabled
+                        children = [child.featureState == Qt.Checked for child in enabled_children]
+                        if any(children):
+                            if all(children):
+                                item.featureState = Qt.Checked
+                            else:
+                                item.featureState = Qt.PartiallyChecked
+                        else:
+                            item.featureState = Qt.Unchecked
+                    else:
+                        flags &= ~Qt.ItemIsEnabled
+
+                    item.setFlags(flags)
+
+            self.viewport().update()
 
 
 if __name__ == '__main__':
     from PyQt5.QtWidgets import QApplication
 
     app = QApplication([])
-    t = FeatureTableWidget()
-    t.createTableForFeatureDlg(
-        (("Color", [FeatureEntry("Banana")]), ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])),
-        [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0],
-        3.5)
+    t = FeatureTableWidget(
+        (("Color", [FeatureEntry("Banana", minimum_sigma=.3)]),
+         ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])),
+        [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
     t.show()
     t.raise_()
     app.exec_()
