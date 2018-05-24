@@ -630,13 +630,13 @@ class IlastikShell(QMainWindow):
         self.openProjectFile(path)
 
     def _createDocButton(self):
-        pushButton = QMenu("&Check the docs!", self)
-        pushButton.setObjectName("docs_menu")
-        aboutIlastikPushAction = pushButton.addAction("&ilastik - Overview")
-        aboutIlastikPushAction.triggered.connect(self.on_pushButton_clicked)
-        return pushButton
+        docButton = QMenu("&Check the docs!", self)
+        docButton.setObjectName("docs_menu")
+        aboutIlastikDocAction = docButton.addAction("&ilastik - Overview")
+        aboutIlastikDocAction.triggered.connect(self.on_docButton_clicked)
+        return docButton
 
-    def on_pushButton_clicked(self):
+    def on_docButton_clicked(self):
         webbrowser.open('http://ilastik.org/documentation/', new=2)
 
     def _createHelpMenu(self):
