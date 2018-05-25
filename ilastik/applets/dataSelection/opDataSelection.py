@@ -395,7 +395,7 @@ class OpDataSelection(Operator):
                 else:
                     metadata['axistags'] = datasetInfo.axistags
             if datasetInfo.original_axistags is not None:
-                metadata['original_axistags'] = datasetInfo.axistags
+                metadata['original_axistags'] = datasetInfo.original_axistags
 
             if datasetInfo.subvolume_roi is not None:
                 metadata['subvolume_roi'] = datasetInfo.subvolume_roi
