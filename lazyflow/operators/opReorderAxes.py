@@ -91,9 +91,14 @@ class OpReorderAxes(Operator):
         self.Output.meta.axistags = output_tags
         self.Output.meta.shape = tuple(output_shape)
         if self.Output.meta.original_axistags is None:
-            self.Output.meta.original_axistags = copy.copy(input_tags)
-            self.Output.meta.original_shape = self.Input.meta.shape
             assert len(input_tags) == len(self.Input.meta.shape)
+            otags = copy.copy(input_tags)
+            oshape = self.Input.meta.shape
+            if not otags.axisTypeCount(vigra.AxisType.Channels):
+                otags.insertChannelAxis()
+                oshape += (1, )
+            self.Output.meta.original_axistags = otags
+            self.Output.meta.original_shape = oshape
         if tagged_ideal_blockshape:
             self.Output.meta.ideal_blockshape = ideal_blockshape
         if tagged_max_blockshape:
