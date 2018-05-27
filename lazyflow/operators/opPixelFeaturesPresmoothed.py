@@ -99,14 +99,16 @@ class OpPixelFeaturesPresmoothed(Operator):
         """
         invalid_scales = []
         invalid_z_scales = []
-        assert self.Input.meta.getAxisKeys() == list('tczyx'), self.Input.meta.getAxisKeys()
-        z, y, x = self.Input.meta.shape[2:]
-        for j, scale in enumerate(self.scales):
-            if self.matrix[:, j].any():
-                if scale * self.WINDOW_SIZE > x or scale * self.WINDOW_SIZE > y:
-                    invalid_scales.append(scale)
-            if scale * self.WINDOW_SIZE > z:
-                invalid_z_scales.append(scale)
+        if self.Input.ready():
+            assert self.Input.meta.getAxisKeys() == list('tczyx'), self.Input.meta.getAxisKeys()
+            z, y, x = self.Input.meta.shape[2:]
+            for j, scale in enumerate(self.scales):
+                minimum_len = numpy.ceil(scale * self.WINDOW_SIZE) + 1
+                if self.matrix[:, j].any():
+                    if minimum_len > x or minimum_len > y:
+                        invalid_scales.append(scale)
+                if minimum_len > z:
+                    invalid_z_scales.append(scale)
 
         return invalid_scales, invalid_z_scales
 
@@ -169,8 +171,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                     #       to preserve backwards compatibility
                     featureNameArray[i].append(f'Difference of Gaussians (σ={self.scales[j]})')
 
-                oparray[i][j].Input.connect(self.source.Output)
+                # note: set ComputeIn2d first, to avoid a second call of setupOutputs, due to ComptueIn2d's default
                 oparray[i][j].ComputeIn2d.connect(self.ComputeIn2d)
+                oparray[i][j].Input.connect(self.source.Output)
 
         channelCount = 0
         featureCount = 0
@@ -456,8 +459,8 @@ class OpPixelFeaturesPresmoothed(Operator):
 
     def _computeGaussianSmoothing(self, vol, sigma, roi):
         invalid_z = vol.shape[1] == 1 or sigma < .3 or sigma * self.WINDOW_SIZE > vol.shape[1]
-        if invalid_z and not self.ComputeIn2d.value:
-            logger.warn(
+        if invalid_z and vol.shape[1] > 1 and not self.ComputeIn2d.value:
+            logger.warning(
                 f'PixelFeaturesPresmoothed: Pre-smoothing in 2d for sigma {sigma:.2f} (z dimension too small)')
 
         if WITH_FAST_FILTERS:
