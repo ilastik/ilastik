@@ -125,6 +125,10 @@ class OpFeatureSelectionNoCache(Operator):
         # drop non-channel singleton axes
         default_order = 'tczyx'
         oldAxes = self.InputImage.meta.getAxisKeys()
+        # make sure channel axis is present
+        if 'c' not in oldAxes:
+            oldAxes.append('c')
+
         self.opReorderIn.AxisOrder.setValue(default_order)
         self.opReorderOut.AxisOrder.setValue(oldAxes)
         self.opReorderLayers.AxisOrder.setValue(oldAxes)
