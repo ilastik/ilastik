@@ -113,7 +113,7 @@ def timed(func):
     wrapper.__wrapped__ = func # Emulate python 3 behavior of @functools.wraps
     return wrapper
 
-def timeLogged(logger, level=logging.DEBUG):
+def timeLogged(logger, level=logging.DEBUG, prefix=''):
     """
     Decorator. Times the decorated function and logs a message to the provided logger.
     
@@ -146,7 +146,7 @@ def timeLogged(logger, level=logging.DEBUG):
                 return func(*args, **kwargs)
             finally:
                 stop = time.time()
-                logger.log( level, "{} execution took {} seconds".format( func.__name__, stop - start ) )
+                logger.log(level, f'{prefix}{func.__name__} execution took {stop - start} seconds')
         return wrapper
     return _timelogged
 
