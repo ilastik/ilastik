@@ -1,4 +1,6 @@
+import logging
 import numpy
+import time
 import vigra
 
 from lazyflow.graph import Graph, OperatorWrapper
@@ -11,9 +13,12 @@ DEBUG = False
 if DEBUG:
     import matplotlib.pyplot as plt
 
+logger = logging.getLogger(__name__)
 
-class TestCompareOpFeatureSelectionToOld(object):
-    def setUp(self):
+
+class TestCompareOpFeatureSelectionToOld():
+    @classmethod
+    def setupClass(cls):
         # data = vigra.taggedView(numpy.random.random((2, 20, 25, 30, 3)), 'tzyxc')
 
         graph = Graph()
@@ -27,7 +32,7 @@ class TestCompareOpFeatureSelectionToOld(object):
         opFeaturesOld.InputImage.resize(1)
 
         # Configure scales
-        scales = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
+        scales = [0.3, 0.7, 1, 1.6, 5.0]
         opFeatures.Scales.setValue(scales)
         opFeaturesOld.Scales.setValue(scales)
 
@@ -41,18 +46,16 @@ class TestCompareOpFeatureSelectionToOld(object):
         opFeatures.FeatureIds.setValue(featureIds)
         opFeaturesOld.FeatureIds.setValue(featureIds)
 
-        self.opFeatures = opFeatures
-        self.opFeaturesOld = opFeaturesOld
+        cls.opFeatures = opFeatures
+        cls.opFeaturesOld = opFeaturesOld
+
+    def compare(self, result, resultOld):
+        assert result.shape == resultOld.shape
+        assert numpy.allclose(result, resultOld, rtol=1.e-2, atol=1.e-4)
 
     def test_tiny(self):
-        data = vigra.taggedView(numpy.resize(numpy.arange(64 * 7 * 3, dtype=numpy.float32), (1, 1, 6, 7, 3)), 'tzyxc')
-
-        # Set input data
-        self.opFeatures.InputImage[0].setValue(data)
-        self.opFeaturesOld.InputImage[0].setValue(data)
-
         # Configure matrix
-        tiny_sel = numpy.zeros((6, 7), dtype=bool)
+        tiny_sel = numpy.zeros((6, 5), dtype=bool)
         tiny_sel[0, 0] = True  # Gaussian
         tiny_sel[1, 2] = True  # L of G
         tiny_sel[2, 2] = True  # ST EVs
@@ -62,6 +65,12 @@ class TestCompareOpFeatureSelectionToOld(object):
 
         self.opFeatures.SelectionMatrix.setValue(tiny_sel)
         self.opFeaturesOld.SelectionMatrix.setValue(tiny_sel)
+
+        data = vigra.taggedView(numpy.resize(numpy.arange(64 * 7 * 3, dtype=numpy.float32), (1, 1, 6, 7, 3)), 'tzyxc')
+
+        # Set input data
+        self.opFeatures.InputImage[0].setValue(data)
+        self.opFeaturesOld.InputImage[0].setValue(data)
 
         output = self.opFeatures.OutputImage[0]
         outputOld = self.opFeaturesOld.OutputImage[0]
@@ -89,26 +98,16 @@ class TestCompareOpFeatureSelectionToOld(object):
         ]:
             result = output[roi].wait()
             resultOld = outputOld[roi].wait()
-
-            assert result.shape == resultOld.shape
-            assert numpy.allclose(result, resultOld, rtol=1.e-2, atol=1.e-4), roi
+            yield self.compare, result, resultOld
 
     def test_output(self):
-        data = vigra.taggedView(
-            numpy.resize(numpy.random.rand(2 * 18 * 19 * 20 * 3), (2, 18, 19, 20, 3)).astype(numpy.float32),
-            'tzyxc')
-
-        # Set input data
-        self.opFeatures.InputImage[0].setValue(data)
-        self.opFeaturesOld.InputImage[0].setValue(data)
-
         # Configure selection matrix
-        sel = numpy.zeros((6, 7), dtype=bool)
+        sel = numpy.zeros((6, 5), dtype=bool)
         sel[0, 1] = True  # Gaussian
         sel[1, 3] = True  # L of G
         sel[2, 4] = True  # ST EVs
         sel[3, 3] = True  # H of G EVs
-        sel[4, 5] = True  # GGM
+        sel[4, 4] = True  # GGM
         sel[5, 2] = True  # Diff of G
 
         if DEBUG:
@@ -118,6 +117,14 @@ class TestCompareOpFeatureSelectionToOld(object):
 
         self.opFeatures.SelectionMatrix.setValue(sel)
         self.opFeaturesOld.SelectionMatrix.setValue(sel)
+
+        data = vigra.taggedView(
+            numpy.resize(numpy.random.rand(2 * 18 * 19 * 20 * 3), (2, 18, 19, 20, 3)).astype(numpy.float32),
+            'tzyxc')
+
+        # Set input data
+        self.opFeatures.InputImage[0].setValue(data)
+        self.opFeaturesOld.InputImage[0].setValue(data)
 
         output = self.opFeatures.OutputImage[0]
         outputOld = self.opFeaturesOld.OutputImage[0]
@@ -206,25 +213,16 @@ class TestCompareOpFeatureSelectionToOld(object):
                     pass
                 plt.show()
 
-            assert result.shape == resultOld.shape
-            assert numpy.allclose(result, resultOld, rtol=1.e-3, atol=1.e-4), roi
+            yield self.compare, result, resultOld
 
     def test_features(self):
-        data = vigra.taggedView(
-            numpy.resize(numpy.random.rand(1 * 1 * 19 * 20 * 3), (1, 1, 19, 20, 3)).astype(numpy.float32),
-            'tzyxc')
-
-        # Set input data
-        self.opFeatures.InputImage[0].setValue(data)
-        self.opFeaturesOld.InputImage[0].setValue(data)
-
         # Configure selection matrix
-        sel = numpy.zeros((6, 7), dtype=bool)
+        sel = numpy.zeros((6, 5), dtype=bool)
         sel[0, 1] = True  # Gaussian
-        sel[1, 4] = True  # L of G
-        sel[2, 5] = True  # ST EVs
+        sel[1, 3] = True  # L of G
+        sel[2, 4] = True  # ST EVs
         sel[3, 3] = True  # H of G EVs
-        sel[4, 5] = True  # GGM
+        sel[4, 4] = True  # GGM
         sel[5, 2] = True  # Diff of G
 
         if DEBUG:
@@ -234,6 +232,14 @@ class TestCompareOpFeatureSelectionToOld(object):
 
         self.opFeatures.SelectionMatrix.setValue(sel)
         self.opFeaturesOld.SelectionMatrix.setValue(sel)
+
+        data = vigra.taggedView(
+            numpy.resize(numpy.random.rand(1 * 1 * 19 * 20 * 3), (1, 1, 19, 20, 3)).astype(numpy.float32),
+            'tzyxc')
+
+        # Set input data
+        self.opFeatures.InputImage[0].setValue(data)
+        self.opFeaturesOld.InputImage[0].setValue(data)
 
         for output, outputOld in zip(self.opFeatures.FeatureLayers[0], self.opFeaturesOld.FeatureLayers[0]):
             assert output.meta.shape == outputOld.meta.shape, (output.meta.shape, outputOld.meta.shape)
@@ -300,9 +306,69 @@ class TestCompareOpFeatureSelectionToOld(object):
                     pass
                 plt.show()
 
-            assert result.shape == resultOld.shape
-            assert numpy.allclose(result, resultOld, rtol=1.e-3, atol=1.e-5), (output.meta.description, result.max(),
-                                                                               abs(result - resultOld).max())
+            yield self.compare, result, resultOld
+
+    def test_ComputeIn2d(self):
+        # tests ComputIn2d flag on smoothing of a 3d block (smoothing across all three, or only 2 dimensions)
+        opFeatures = OpFeatureSelection(graph=Graph())
+        opFeatures.Scales.setValue([1.])
+        opFeatures.FeatureIds.setValue(['GaussianSmoothing'])
+        opFeatures.SelectionMatrix.setValue(numpy.ones((1, 1), dtype=bool))
+        opFeatures.ComputeIn2d.setValue(False)
+        shape = [5, 5, 5]
+        data = numpy.ones(shape, dtype=numpy.float32)
+        for z in range(shape[0]):
+            # make sure data is anisotropic in z
+            data[z, z, 0] = 0
+
+        data = vigra.taggedView(data, 'zyx')
+        opFeatures.InputImage.setValue(data)
+
+        res3d = opFeatures.OutputImage[:].wait()
+        opFeatures.ComputeIn2d.setValue(True)
+        res2d = opFeatures.OutputImage[:].wait()
+        assert (res3d != res2d).all()
+
+    def test_timing(self):
+        # Configure selection matrix
+        sel = numpy.ones((6, 5), dtype=bool)
+        sel[:, 0] = False  # don't compare sigma of 0.3
+        self.opFeatures.SelectionMatrix.setValue(sel)
+        self.opFeaturesOld.SelectionMatrix.setValue(sel)
+
+        shapes_orders = [
+            # ([1, 1, 20, 512, 512], 'tczyx'),
+            # ([1, 1, 20, 512, 512], 'tcxyz'),
+            ([1, 1, 1, 2048, 2048], 'tczyx'),
+            # ([1, 1, 1, 512, 512], 'tczxy'), # old is faster
+            # ([10, 3, 1, 1024, 1024], 'tczyx'),
+            # ([1, 1, 25, 67, 68], 'tczyx'),
+            # ([5, 25, 67, 68, 3], 'tzyxc'),
+            ([5, 5, 256, 256], 'tcyx'),
+            ([5, 256, 256, 1], 'tyxc'),
+            ([20, 21, 1], 'xyc'),
+        ]
+
+        for shape, order in shapes_orders:
+            data = vigra.taggedView(
+                numpy.resize(numpy.random.rand(numpy.prod(shape)), shape).astype(numpy.float32), order)
+            yield self._test_timing, data
+
+    def _test_timing(self, data):
+        self.opFeatures.InputImage[0].setValue(data)
+        self.opFeaturesOld.InputImage[0].setValue(data)
+        timeNew = 0
+        timeOld = 0
+        t0 = time.time()
+        self.opFeatures.OutputImage[0][:].wait()
+        t1 = time.time()
+        self.opFeaturesOld.OutputImage[0][:].wait()
+        t2 = time.time()
+        timeNew += t1 - t0
+        timeOld += t2 - t1
+
+        assert timeNew <= 1.1 * timeOld + .05, f'{timeNew:.2f} !<= {timeOld:.2f}'
+        logger.debug(f'{timeNew:.2f} <= {timeOld:.2f}')
 
 
 if __name__ == "__main__":
