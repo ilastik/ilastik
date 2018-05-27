@@ -28,7 +28,6 @@ from lazyflow import roi
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
 
-
 logger = logging.getLogger(__name__)
 
 # Sven's fast filters
@@ -62,15 +61,7 @@ class OpBaseFilter(Operator):
 
     def __init__(self, parent=None, graph=None, **kwargs):
         assert hasattr(self, 'filter_fn'), 'Child class needs to implement "filter_fn"'
-
-        # We use 0.7 as an approximation of not doing any smoothing.
-        if kwargs:
-            self.max_sigma = max(0.7, *kwargs.values())
-        else:
-            self.max_sigma = 0.7
-
         super().__init__(parent=parent, graph=graph)
-
         # for now, the implementation supports anisotropic filters only if zero is a valid scale value, leading to no
         # filtering across that dimension (but simple batch processing instead)
         # todo: lift the restriction that anisotropic filter are only supported, if zero is a valid scale value
@@ -81,8 +72,30 @@ class OpBaseFilter(Operator):
             self.inputs[slot].setValue(value)
 
     def setupOutputs(self):
+        self.invalid_z = False
+
         assert len(self.Input.meta.shape) == 5
         assert self.Input.meta.getAxisKeys() == list('tczyx')
+
+        filter_scales = {s.name: s.value for s in self.inputs.values() if s.name not in ['Input', 'ComputeIn2d']}
+        z_dim = self.Input.meta.shape[2]
+        self.invalid_z = z_dim == 1 or any([s * self.window_size_feature > z_dim
+                                            for s in filter_scales.values()])
+
+        if self.invalid_z and z_dim > 1 and not self.ComputeIn2d.value:
+            logger.warning(f'{self.name}: filtering in 2d for {filter_scales} (z dimension too small)')
+
+        if self.invalid_z or self.ComputeIn2d.value:
+            if self.supports_anisotropic:
+                for name, value in filter_scales.items():
+                    filter_scales[name] = (0, value, value)
+
+        # We use 0.7 as an approximation of not doing any smoothing.
+        self.max_sigma = max(0.7, *filter_scales.values())
+        self.filter_kwargs = filter_scales
+        if self.supports_window:
+            self.filter_kwargs['window_size'] = self.window_size_feature
+
         # Output meta starts with a copy of the input meta, which is then modified
         self.Output.meta.assignFrom(self.Input.meta)
 
@@ -123,18 +136,19 @@ class OpBaseFilter(Operator):
 
         full_output_shape = self.Output.meta.shape
         full_output_start, full_output_stop = roi.sliceToRoi(key, full_output_shape)
-        if self.ComputeIn2d.value:
+        if self.invalid_z or self.ComputeIn2d.value:
             axes2enlarge = (0, 1, 1)
+            process_in_2d = True
+            axistags = vigra.defaultAxistags('cyx')
         else:
             axes2enlarge = (1, 1, 1)
+            process_in_2d = False
+            axistags = vigra.defaultAxistags('czyx')
 
         output_shape = full_output_shape[2:]  # without tc
         assert output_shape == self.Input.meta.shape[2:], (output_shape, self.Input.meta.shape[2:])
         output_start = full_output_start[2:]
         output_stop = full_output_stop[2:]
-
-        full_axistags = self.Input.meta.axistags
-        assert full_axistags == vigra.defaultAxistags('tczyx')
 
         input_start, input_stop = roi.enlargeRoiForHalo(
             output_start, output_stop, output_shape, self.max_sigma, window=self.window_size_smoother,
@@ -145,28 +159,7 @@ class OpBaseFilter(Operator):
         result_stop = result_start + output_stop - output_start
         result_slice = roi.roiToSlice(result_start, result_stop)
 
-        filter_scales = {s.name: s.value for s in self.inputs.values() if s.name not in ['Input', 'ComputeIn2d']}
-
-        z_dim = input_stop[0] - input_start[0]
-        invalid_z = any([z_dim == 1 or s < .3 or s * self.window_size_feature > z_dim for s in filter_scales.values()])
-
-        process_in_2d = False
-        axistags = vigra.defaultAxistags('czyx')
-        if self.ComputeIn2d.value or invalid_z:
-            if invalid_z and not self.ComputeIn2d.value:
-                logger.warning(
-                    f'{self.name}: filtering in 2d for scales {list(filter_scales.values())} (z dimension too small)')
-
-            if self.supports_anisotropic:
-                for name, value in filter_scales.items():
-                    filter_scales[name] = (0, value, value)
-            else:
-                process_in_2d = True
-                axistags = vigra.defaultAxistags('cyx')
-
-        filter_kwargs = filter_scales
-        if self.supports_window:
-            filter_kwargs['window_size'] = self.window_size_feature
+        filter_kwargs = self.filter_kwargs
 
         def step(tstep, target_z_slice, full_input_slice, full_result_slice):
             if sourceArray is None:
@@ -204,7 +197,7 @@ class OpBaseFilter(Operator):
                         if process_in_2d:
                             subtarget = subtarget[:, 0]
 
-                        subtarget.axistags = copy.copy(axistags)  # todo: share axistags with input (no copy)?
+                        subtarget.axistags = copy.copy(axistags)
                         logger.debug(
                             f'r o: {self.name} {source.shape} {full_result_slice} {subtarget.shape} {filter_kwargs}')
 
@@ -239,6 +232,7 @@ class OpBaseFilter(Operator):
                 target[tstep, target_c_start:target_c_stop, target_z_slice] = result
             except Exception:
                 logger.error(f't  : {target.shape} {target[tstep, target_c_start:target_c_stop].shape} {result.shape}')
+                logger.error(f'tstep {tstep}  c {target_c_start},{target_c_stop}  z {target_z_slice} {result.shape}')
                 raise
 
         resC = self.resultingChannels()
@@ -274,7 +268,7 @@ class OpBaseFilter(Operator):
                          (result_c_slice, *result_slice))
 
     def _n_per_space_axis(self, n=1):
-        if self.ComputeIn2d.value:
+        if self.invalid_z or self.ComputeIn2d.value:
             space_axes = 'yx'
         else:
             space_axes = 'zyx'
@@ -293,23 +287,38 @@ class OpBaseFilter(Operator):
     # FIXME: This propagateDirty() function doesn't properly
     # expand the halo according to the sigma and window!
     ##
-    def propagateDirty(self, slot, subindex, roi):
-        key = roi.toSlice()
+    def propagateDirty(self, slot, subindex, rroi):
+        # If some input we don't know about is dirty (i.e. we are subclassed by an operator with extra inputs),
+        # then mark the entire output dirty.  This is the correct behavior for e.g. 'sigma' inputs.
+        out_dirty = slice(None)
+
         # Check for proper name because subclasses may define extra inputs.
         # (but decline to override notifyDirty)
         if slot is self.Input:
-            self.Output.setDirty(key)
-        else:
-            # If some input we don't know about is dirty (i.e. we are subclassed by an operator with extra inputs),
-            # then mark the entire output dirty.  This is the correct behavior for e.g. 'sigma' inputs.
-            self.Output.setDirty(slice(None))
+            out_dirty = list(rroi.toSlice())
+            out_dirty[1] = slice(None)  # todo: map dirty input channels to dirty output channels
 
-    def setInSlot(self, slot, subindex, roi, value):
-        # Forward to output
-        assert subindex == ()
-        assert slot == self.Input
-        key = roi.toSlice()
-        self.Output[key] = value
+            if self.invalid_z or self.ComputeIn2d.value:
+                axes2enlarge = [0, 0, 0, 1, 1]
+            else:
+                axes2enlarge = [0, 0, 1, 1, 1]
+
+            output_shape = self.Output.meta.shape
+            rroi = roi.sliceToRoi(out_dirty, output_shape)
+
+            out_dirty = roi.roiToSlice(*roi.enlargeRoiForHalo(
+                rroi[0], rroi[1], output_shape, self.max_sigma, window=self.window_size_smoother,
+                enlarge_axes=axes2enlarge))
+
+        elif slot is self.ComputeIn2d:
+            if self.invalid_z:
+                # Output is computed in 2D anyway due to a small z dimension
+                if not self.ComputeIn2d.value:
+                    logger.warning(f'{self.name}: filtering in 2d for {self.filter_scales} (z dimension too small)')
+
+                return
+
+        self.Output.setDirty(out_dirty)
 
 
 def coherenceOrientationOfStructureTensor(image, sigma0, sigma1, window_size, out=None):
