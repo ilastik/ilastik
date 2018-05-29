@@ -34,8 +34,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 
 logger = logging.getLogger(__name__)
 
-# Constants
-ScalesList = [0.3, 0.7, 1.0, 1.6, 3.5, 5.0, 10.0]
+defaultScales = [0.3, 0.7, 1.0, 1.6, 3.5, 5.0, 10.0]
 
 # Map feature groups to lists of feature IDs
 FeatureGroups = [("Color/Intensity", ["GaussianSmoothing"]),
@@ -65,24 +64,23 @@ class OpFeatureSelectionNoCache(Operator):
     name = "OpFeatureSelection"
     category = "Top-level"
 
-    ScalesList = ScalesList
     FeatureGroups = FeatureGroups
     FeatureNames = FeatureNames
 
-    MinimalFeatures = numpy.zeros((len(FeatureNames), len(ScalesList)), dtype=bool)
+    MinimalFeatures = numpy.zeros((len(FeatureNames), len(defaultScales)), dtype=bool)
     MinimalFeatures[0, 0] = True
 
     # Multiple input images
     InputImage = InputSlot()
 
     # The following input slots are applied uniformly to all input images
-    Scales = InputSlot(value=ScalesList)  # The list of possible scales to use when computing features
-    ComputeIn2d = InputSlot(value=False)
-    FeatureIds = InputSlot(value=getFeatureIdOrder())  # The list of features to compute
+    FeatureIds = InputSlot(value=getFeatureIdOrder())   # The list of features to compute
+    Scales = InputSlot(value=defaultScales)             # The list of scales to use when computing features
     SelectionMatrix = InputSlot(value=MinimalFeatures)  # A matrix of bools indicating which features to output.
-    # The matrix rows correspond to feature types in the order specified by the FeatureIds input.
+    ComputeIn2d = InputSlot(value=False)                # A flag to indicate if using 2d (xy) or 3d filter
+    # The SelectionMatrix rows correspond to feature types in the order specified by the FeatureIds input.
     #  (See OpPixelFeaturesPresmoothed for the available feature types.)
-    # The matrix columns correspond to the scales provided in the Scales input,
+    # The SelectionMatrix columns correspond to the scales provided in the Scales input,
     #  which requires that the number of matrix columns must match len(Scales.value)
 
     FeatureListFilename = InputSlot(stype="str", optional=True)
@@ -169,8 +167,7 @@ class OpFeatureSelectionNoCache(Operator):
 
         else:
             # Set the new selection matrix and check if it creates an error.
-            selections = self.SelectionMatrix.value
-            self.opPixelFeatures.Matrix.setValue(selections)
+            self.opPixelFeatures.SelectionMatrix.setValue(self.SelectionMatrix.value)
             invalid_scales, invalid_z_scales = self.opPixelFeatures.getInvalidScales()
             if invalid_scales:
                 msg = "Some of your selected feature scales are too large for your dataset.\n"\
@@ -248,31 +245,16 @@ class OpFeatureSelection(OpFeatureSelectionNoCache):
             self.CachedOutputImage.meta.assignFrom(self.OutputImage.meta)
 
         else:
-            # We choose block shapes that have only 1 channel because the channels may be
-            #  coming from different features (e.g different filters) and probably shouldn't be cached together.
-            blockDimsX = {'t': (1, 1),
-                          'z': (256, 256),
-                          'y': (256, 256),
-                          'x': (32, 32),
-                          'c': (1000, 1000)}  # Overestimate number of feature channels:
+            # Overestimate number of feature channels:
             # Cache block dimensions will be clipped to the size of the actual feature image
+            blockDimsX = {'t': 1,  'c': 1000, 'z': 256, 'y': 256, 'x': 32} 
+            blockDimsY = {'t': 1,  'c': 1000, 'z': 256, 'y': 32, 'x': 256}
+            blockDimsZ = {'t': 1,  'c': 1000, 'z': 32, 'y': 256, 'x': 256}
 
-            blockDimsY = {'t': (1, 1),
-                          'z': (256, 256),
-                          'y': (32, 32),
-                          'x': (256, 256),
-                          'c': (1000, 1000)}
-
-            blockDimsZ = {'t': (1, 1),
-                          'z': (32, 32),
-                          'y': (256, 256),
-                          'x': (256, 256),
-                          'c': (1000, 1000)}
-
-            axisOrder = [tag.key for tag in self.InputImage.meta.axistags]
-            blockShapeX = tuple(blockDimsX[k][1] for k in axisOrder)
-            blockShapeY = tuple(blockDimsY[k][1] for k in axisOrder)
-            blockShapeZ = tuple(blockDimsZ[k][1] for k in axisOrder)
+            axisOrder = self.InputImage.meta.getAxisKeys()
+            blockShapeX = tuple(blockDimsX[k] for k in axisOrder)
+            blockShapeY = tuple(blockDimsY[k] for k in axisOrder)
+            blockShapeZ = tuple(blockDimsZ[k] for k in axisOrder)
 
             # Configure the cache
             self.opPixelFeatureCache.BlockShape.setValue((blockShapeX, blockShapeY, blockShapeZ))

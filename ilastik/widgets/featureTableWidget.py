@@ -25,9 +25,9 @@ from PyQt5.QtCore import QPoint, QRect, QSize, Qt
 
 
 class FeatureEntry(object):
-    def __init__(self, name, minimum_sigma=.7):
+    def __init__(self, name, minimum_scale=.7):
         self.name = name
-        self.minimum_sigma = minimum_sigma
+        self.minimum_scale = minimum_scale
 
 
 # ==============================================================================
@@ -343,7 +343,7 @@ class FeatureTableWidgetItem(QTableWidgetItem):
 # FeatureTableWidget
 # ==============================================================================
 class FeatureTableWidget(QTableWidget):
-    def __init__(self, featureGroups=[], sigmas=[], window_size=3.5, parent=None):
+    def __init__(self, parent=None, featureGroups=[], sigmas=[], window_size=3.5):
         """
         Args:
             featureGroups: A list with schema: [ (groupName1, [entry, entry...]),
@@ -371,13 +371,13 @@ class FeatureTableWidget(QTableWidget):
 
         self.itemSelectionChanged.connect(self._itemSelectionChanged)
         self.cellChanged.connect(self._cellChanged)
-        if featureGroups and sigmas:
+        if featureGroups or sigmas:
             self.setup(featureGroups, sigmas, window_size)
 
     def setup(self, featureGroups: list, sigmas: list, window_size=3.5):
         self.window_size = window_size
         assert featureGroups, 'featureGroups may not be empty'
-        assert isinstance(featureGroups, (list, tuple))
+        assert isinstance(featureGroups, (list, tuple)), featureGroups
         assert isinstance(featureGroups[0], (list, tuple))
         assert isinstance(featureGroups[0][0], str)
         assert isinstance(featureGroups[0][1], list)
@@ -416,7 +416,7 @@ class FeatureTableWidget(QTableWidget):
         return self._sigmas
 
     def setSigmas(self, sigmas):
-        assert isinstance(sigmas, list)
+        assert isinstance(sigmas, list), type(sigmas)
         assert sigmas, 'sigmas cannot be empty'
         self._sigmas = sigmas
         self.setColumnCount(len(sigmas) + 1)
@@ -430,18 +430,18 @@ class FeatureTableWidget(QTableWidget):
     def setFeatureGroups(self, featureGroups):
         self.setRowCount(1)
         self.setVerticalHeaderItem(0, FeatureTableWidgetVSigmaHeader())
-        self.minimum_sigma_for_row = [None]
+        self.minimum_scale_for_row = [None]
         row = 1
         for group, features in featureGroups:
             self.insertRow(row)
-            self.minimum_sigma_for_row.append(None)
+            self.minimum_scale_for_row.append(None)
             vGroupHeader = FeatureTableWidgetVHeader()
             vGroupHeader.setGroupVHeader(group)
             self.setVerticalHeaderItem(row, vGroupHeader)
             row += 1
             for feature in features:
                 self.insertRow(row)
-                self.minimum_sigma_for_row.append(feature.minimum_sigma)
+                self.minimum_scale_for_row.append(feature.minimum_scale)
                 vFeatureHeader = FeatureTableWidgetVHeader()
                 vFeatureHeader.setFeatureVHeader(feature)
                 self.setVerticalHeaderItem(row, vFeatureHeader)
@@ -451,7 +451,7 @@ class FeatureTableWidget(QTableWidget):
         self._fillTabelWithItems()
 
     def row_valid_for_sigma(self, row, sigma):
-        return sigma >= self.minimum_sigma_for_row[row]
+        return sigma >= self.minimum_scale_for_row[row]
 
     @property
     def featureMatrix(self):
@@ -562,7 +562,8 @@ class FeatureTableWidget(QTableWidget):
                 matrix = [r[:column] + r[column + 1:] for r in self.featureMatrix]
                 self.setSigmas(self.sigmas[:column] + self.sigmas[column + 1:])
                 self.setFeatureMatrix(matrix)
-            elif sigma >= min([s for s in self.minimum_sigma_for_row if s is not None]):
+                self.focusCell(1, 0)
+            elif sigma >= min([s for s in self.minimum_scale_for_row if s is not None]):
                 if column + 1 == self.columnCount():
                     # add new column
                     matrix = [r + [Qt.Unchecked] for r in self.featureMatrix]
@@ -679,8 +680,8 @@ if __name__ == '__main__':
     from PyQt5.QtWidgets import QApplication
 
     app = QApplication([])
-    t = FeatureTableWidget(
-        (("Color", [FeatureEntry("Banana", minimum_sigma=.3)]),
+    t = FeatureTableWidget(None,
+        (("Color", [FeatureEntry("Banana", minimum_scale=.3)]),
          ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])),
         [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
     t.show()

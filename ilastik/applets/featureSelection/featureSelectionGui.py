@@ -31,6 +31,7 @@ from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QMessageBox
 
 # lazyflow
+import lazyflow.operators.filterOperators as filterOps
 from lazyflow.operators.generic import OpSubRegion
 
 # volumina
@@ -96,15 +97,15 @@ class FeatureSelectionGui(LayerViewerGui):
         # Init feature dialog
         self.initFeatureDlg()
 
-    def getFeatureIdOrder(self):
-        featureIrdOrder = []
-        for group, featureIds in OpFeatureSelection.FeatureGroups:
-            featureIrdOrder += featureIds
-        return featureIrdOrder
+    # def getFeatureIdOrder(self):
+    #     featureIrdOrder = []
+    #     for group, featureIds in OpFeatureSelection.FeatureGroups:
+    #         featureIrdOrder += featureIds
+    #     return featureIrdOrder
 
-    def initFeatureOrder(self):
-        self.topLevelOperatorView.Scales.setValue(OpFeatureSelection.ScalesList)
-        self.topLevelOperatorView.FeatureIds.setValue(self.getFeatureIdOrder())
+    # def initFeatureOrder(self):
+    #     self.topLevelOperatorView.Scales.setValue(OpFeatureSelection.ScalesList)
+    #     self.topLevelOperatorView.FeatureIds.setValue(self.getFeatureIdOrder())
 
     def initAppletDrawerUi(self):
         """
@@ -118,6 +119,12 @@ class FeatureSelectionGui(LayerViewerGui):
         dbg = ilastik_config.getboolean("ilastik", "debug")
         if not dbg:
             self.drawer.UsePrecomputedFeaturesButton.setHidden(True)
+
+        self.drawer.feature2dBox.clicked.connect(self.onFeature2dBoxClicked)
+        if 'z' in self.topLevelOperatorView.InputImage.meta.original_axistags:
+            self.drawer.feature2dBox.setHidden(False)
+        else:
+            self.drawer.feature2dBox.setHidden(True)
 
     def initViewerControlUi(self):
         """
@@ -169,6 +176,13 @@ class FeatureSelectionGui(LayerViewerGui):
         layerListWidget.setContextMenuPolicy(Qt.CustomContextMenu)
 
     def setupLayers(self):
+        if hasattr(self.drawer, 'feature2dBox'):  # drawer has to be initialized (initAppletDrawerUi)
+            # set hidden status of feature2dBox again (presence of z axis may have changed)
+            if 'z' in self.topLevelOperatorView.InputImage.meta.original_axistags:
+                self.drawer.feature2dBox.setHidden(False)
+            else:
+                self.drawer.feature2dBox.setHidden(True)
+
         opFeatureSelection = self.topLevelOperatorView
         inputSlot = opFeatureSelection.InputImage
 
@@ -239,7 +253,7 @@ class FeatureSelectionGui(LayerViewerGui):
         """
         Initialize the feature selection widget.
         """
-        self.initFeatureOrder()
+        # self.initFeatureOrder()
 
         self.featureDlg = FeatureDlg(parent=self)
         self.featureDlg.setWindowTitle("Features")
@@ -255,16 +269,19 @@ class FeatureSelectionGui(LayerViewerGui):
             PreferencesManager().set("featureSelection", "dialog size", s)
         self.featureDlg.accepted.connect(saveSize)
 
+        opFeatureSelection = self.topLevelOperatorView
+
         # Map from groups of feature IDs to groups of feature NAMEs
         groupedNames = []
-        for group, featureIds in OpFeatureSelection.FeatureGroups:
+        for group, featureIds in opFeatureSelection.FeatureGroups:
             featureEntries = []
             for featureId in featureIds:
-                featureName = OpFeatureSelection.FeatureNames[featureId]
-                featureEntries.append(FeatureEntry(featureName))
+                featureName = opFeatureSelection.FeatureNames[featureId]
+                minimum_scale = eval(f'filterOps.Op{featureId}').minimum_scale
+                featureEntries.append(FeatureEntry(featureName, minimum_scale))
             groupedNames.append((group, featureEntries))
-        self.featureDlg.createFeatureTable(groupedNames, OpFeatureSelection.ScalesList,
-                                           self.topLevelOperatorView.WINDOW_SIZE)
+        self.featureDlg.createFeatureTable(groupedNames, opFeatureSelection.Scales.value,
+                                           opFeatureSelection.WINDOW_SIZE)
         self.featureDlg.setImageToPreView(None)
 
         # Init with no features
@@ -348,6 +365,9 @@ class FeatureSelectionGui(LayerViewerGui):
         # Now open the feature selection dialog
         self.featureDlg.exec_()
 
+    def onFeature2dBoxClicked(self):
+        print(self.drawer.feature2dBox.checkState())
+
     def onNewFeaturesFromFeatureDlg(self):
         opFeatureSelection = self.topLevelOperatorView
         old_features = None
@@ -356,7 +376,7 @@ class FeatureSelectionGui(LayerViewerGui):
 
         if opFeatureSelection is not None:
             # Re-initialize the scales and features
-            self.initFeatureOrder()
+            # self.initFeatureOrder()
 
             # Give the new features to the pipeline (if there are any)
             featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
@@ -405,6 +425,6 @@ class FeatureSelectionGui(LayerViewerGui):
         elif fff:
             self.drawer.caption.setText("(features from files)")
         else:
-            self.initFeatureOrder()
+            # self.initFeatureOrder()
             matrix = self.topLevelOperatorView.SelectionMatrix.value
             self.drawer.caption.setText("(Selected %d features)" % numpy.sum(matrix))

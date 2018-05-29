@@ -78,9 +78,10 @@ class TestCompareOpFeatureSelectionToOld():
         assert id(output) != id(outputOld)
         assert output.meta.shape == outputOld.meta.shape, (output.meta.shape, outputOld.meta.shape)
         assert output.meta.axistags == outputOld.meta.axistags
-        for key in output.meta.keys():
-            if output.meta[key] != outputOld.meta[key]:
-                print(f'{key}: {output.meta[key]}, {outputOld.meta[key]}\n')
+        if DEBUG:
+            for key in output.meta.keys():
+                if output.meta[key] != outputOld.meta[key]:
+                    print(f'{key}: {output.meta[key]}, {outputOld.meta[key]}\n')
         assert output.meta == outputOld.meta
 
         for roi in [

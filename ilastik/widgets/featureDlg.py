@@ -74,7 +74,7 @@ class FeatureDlg(QDialog):
         self.ok.setEnabled(num_features > 0)
 
     def showEvent(self, event):
-        super(FeatureDlg, self).showEvent(event)
+        super().showEvent(event)
         self.updateOKButton()
 
     def setEnableItemMask(self, mask):
@@ -99,7 +99,7 @@ if __name__ == "__main__":
     # app.setStyle("cleanlooks")
 
     ex = FeatureDlg()
-    ex.createFeatureTable([("Color", [FeatureEntry("Banananananaana")]),
+    ex.createFeatureTable([("Color", [FeatureEntry("Banananananaana", minimum_scale=.3)]),
                            ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])],
                           [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0], 3.5)
     ex.setWindowTitle("FeatureTest")
