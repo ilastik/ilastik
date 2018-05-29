@@ -1,6 +1,3 @@
-from future import standard_library
-standard_library.install_aliases()
-from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,20 +19,21 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-#Python
 import collections
+import functools
 import logging
 import threading
-import functools
 
-#lazyflow
+from abc import ABCMeta
+
+# lazyflow
 from lazyflow.slot import InputSlot, OutputSlot, Slot
-from future.utils import with_metaclass
+
 
 class InputDict(collections.OrderedDict):
 
     def __init__(self, operator):
-        super(InputDict, self).__init__()
+        super().__init__()
         self.operator = operator
 
     def __setitem__(self, key, value):
@@ -58,18 +56,18 @@ class InputDict(collections.OrderedDict):
 class OutputDict(collections.OrderedDict):
 
     def __init__(self, operator):
-        super(OutputDict, self).__init__()
+        super().__init__()
         self.operator = operator
 
     def __setitem__(self, key, value):
         assert isinstance(value, OutputSlot), \
             ("ERROR: all elements of .outputs must be of type"
              " OutputSlot. You provided {}!".format(value))
-        return super(OutputDict, self).__setitem__(key, value)
+        return super().__setitem__(key, value)
 
     def __getitem__(self, key):
         if key in self:
-            return super(OutputDict, self).__getitem__(key)
+            return super().__getitem__(key)
         elif hasattr(self.operator, key):
             return getattr(self.operator, key)
         else:
@@ -78,11 +76,9 @@ class OutputDict(collections.OrderedDict):
                                 self.operator.name, self.operator.__class__, key, list(self.keys())))
 
 
-from abc import ABCMeta
 class OperatorMetaClass(ABCMeta):
-
     def __new__(cls, name, bases, classDict):
-        cls = super(OperatorMetaClass, cls).__new__(cls, name, bases, classDict)
+        cls = super().__new__(cls, name, bases, classDict)
 
         # this allows for definition of input-/ output-slots the following way:
         #    inputSlots = [InputSlot("MySlot"), InputSlot("MySlot2")]
@@ -137,7 +133,7 @@ class OperatorMetaClass(ABCMeta):
         return instance
 
 
-class Operator(with_metaclass(OperatorMetaClass, object)):
+class Operator(metaclass=OperatorMetaClass):
     """The base class for all Operators.
 
     Operators consist of a class inheriting from this class
