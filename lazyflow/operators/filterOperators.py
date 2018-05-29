@@ -60,6 +60,13 @@ class OpBaseFilter(Operator):
     input_dtype = numpy.float32
 
     def __init__(self, parent=None, graph=None, **kwargs):
+        """
+        If a subclass of OpBaseFilter implements any InputSlots, they have to be valid keyword arguments to the
+        filter_fn.
+        Args:
+            kwargs: may contain input slot names with an initial value. The Operator, which inherits from this base
+                    class has to implement those slots.
+        """
         assert hasattr(self, 'filter_fn'), 'Child class needs to implement "filter_fn"'
         super().__init__(parent=parent, graph=graph)
         # for now, the implementation supports anisotropic filters only if zero is a valid scale value, leading to no
@@ -128,6 +135,9 @@ class OpBaseFilter(Operator):
         #   applying filter to SOURCE yields RESULT
         #   RESULT without halo is TARGET
 
+        # note: The 'full_' variable prefix refers to the full 5D shape (tczyx), without 'full_' variables mostly
+        #       refer to the 3D space subregion (zyx)
+
         assert len(subindex) == self.Output.level == 0
         if self.supports_roi is False and self.max_sigma > 5:
             logger.warning(f"WARNING: operator {self.name} does not support roi!!")
@@ -163,7 +173,7 @@ class OpBaseFilter(Operator):
 
         def step(tstep, target_z_slice, full_input_slice, full_result_slice):
             if sourceArray is None:
-                # no tmatter, if slices or indices are in 'full_input_slice', they wille be converted to slices => 5d
+                # no tmatter, if slices or indices are in 'full_input_slice', they will be converted to slices => 5d
                 source = self.Input[full_input_slice].wait()[0]  # => remove singleton t dimension
                 if process_in_2d:
                     source = source[:, 0]  # if processing in 2d, remove singleton z dimension
@@ -259,13 +269,13 @@ class OpBaseFilter(Operator):
 
                 if process_in_2d:
                     for target_z, input_z in enumerate(range(input_start[0], input_stop[0])):
-                        step(tstep, target_z,
-                             (t, input_c_slice, input_z, *input_slice[1:3]),
-                             (result_c_slice, *result_slice[1:]))
+                        step(tstep, target_z_slice=target_z,
+                             full_input_slice=(t, input_c_slice, input_z, *input_slice[1:]),
+                             full_result_slice=(result_c_slice, *result_slice[1:]))
                 else:
-                    step(tstep, slice(None),
-                         (t, input_c_slice, *input_slice),
-                         (result_c_slice, *result_slice))
+                    step(tstep, target_z_slice=slice(None),
+                         full_input_slice=(t, input_c_slice, *input_slice),
+                         full_result_slice=(result_c_slice, *result_slice))
 
     def _n_per_space_axis(self, n=1):
         if self.invalid_z or self.ComputeIn2d.value:
@@ -281,12 +291,8 @@ class OpBaseFilter(Operator):
         return ret
 
     def resultingChannels(self):
-        raise RuntimeError('resultingChannels() not implemented')
+        raise NotImplementedError('resultingChannels() not implemented')
 
-    ##
-    # FIXME: This propagateDirty() function doesn't properly
-    # expand the halo according to the sigma and window!
-    ##
     def propagateDirty(self, slot, subindex, rroi):
         # If some input we don't know about is dirty (i.e. we are subclassed by an operator with extra inputs),
         # then mark the entire output dirty.  This is the correct behavior for e.g. 'sigma' inputs.
