@@ -82,7 +82,7 @@ class OpBaseFilter(Operator):
         self.invalid_z = False
 
         assert len(self.Input.meta.shape) == 5
-        assert self.Input.meta.getAxisKeys() == list('tczyx')
+        assert self.Input.meta.getAxisKeys() == list('tczyx'), self.Input.meta.getAxisKeys()
 
         filter_scales = {s.name: s.value for s in self.inputs.values() if s.name not in ['Input', 'ComputeIn2d']}
         z_dim = self.Input.meta.shape[2]
@@ -320,7 +320,7 @@ class OpBaseFilter(Operator):
             if self.invalid_z:
                 # Output is computed in 2D anyway due to a small z dimension
                 if not self.ComputeIn2d.value:
-                    logger.warning(f'{self.name}: filtering in 2d for {self.filter_scales} (z dimension too small)')
+                    logger.warning(f'{self.name}: filtering in 2d for {self.filter_kwargs} (z dimension too small)')
 
                 return
 

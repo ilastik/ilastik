@@ -48,21 +48,20 @@ class OpPixelFeaturesPresmoothed(Operator):
     category = "Vigra filter"
 
     Input = InputSlot()
-    Matrix = InputSlot()
     Scales = InputSlot()
-    ComputeIn2d = InputSlot()
-    FeatureIds = InputSlot()
+    SelectionMatrix = InputSlot()
+    ComputeIn2d = InputSlot(value=False)
+
+    # Specify a default set & order for the features we compute
+    FeatureIds = InputSlot(value=['GaussianSmoothing',
+                                  'LaplacianOfGaussian',
+                                  'GaussianGradientMagnitude',
+                                  'DifferenceOfGaussians',
+                                  'StructureTensorEigenvalues',
+                                  'HessianOfGaussianEigenvalues'])
 
     Output = OutputSlot()  # The entire block of features as a single image (many channels)
     Features = OutputSlot(level=1)  # Each feature image listed separately, with feature name provided in metadata
-
-    # Specify a default set & order for the features we compute
-    DefaultFeatureIds = ['GaussianSmoothing',
-                         'LaplacianOfGaussian',
-                         'GaussianGradientMagnitude',
-                         'DifferenceOfGaussians',
-                         'StructureTensorEigenvalues',
-                         'HessianOfGaussianEigenvalues']
 
     WINDOW_SIZE = 3.5
 
@@ -70,9 +69,6 @@ class OpPixelFeaturesPresmoothed(Operator):
         Operator.__init__(self, *args, **kwargs)
         self.source = OpArrayPiper(parent=self)
         self.source.Input.connect(self.Input)
-
-        # Give our feature IDs input a default value (connected out of the box, but can be changed)
-        self.FeatureIds.setValue(self.DefaultFeatureIds)
 
     def getInvalidScales(self):
         """
@@ -87,7 +83,6 @@ class OpPixelFeaturesPresmoothed(Operator):
         invalid_scales = []
         invalid_z_scales = []
         if self.Input.ready():
-            assert self.Input.meta.getAxisKeys() == list('tczyx'), self.Input.meta.getAxisKeys()
             z, y, x = self.Input.meta.shape[2:]
             for j, scale in enumerate(self.scales):
                 minimum_len = numpy.ceil(scale * self.WINDOW_SIZE) + 1
@@ -100,8 +95,9 @@ class OpPixelFeaturesPresmoothed(Operator):
         return invalid_scales, invalid_z_scales
 
     def setupOutputs(self):
+        assert self.Input.meta.getAxisKeys() == list('tczyx'), self.Input.meta.getAxisKeys()
         self.scales = self.Scales.value
-        self.matrix = self.Matrix.value
+        self.matrix = self.SelectionMatrix.value
 
         assert isinstance(self.matrix, numpy.ndarray)
 
@@ -133,7 +129,7 @@ class OpPixelFeaturesPresmoothed(Operator):
         self.Features.resize(0)
         self.featureOutputChannels = []
         channel_names = []
-        # connect individual operators
+        # create and connect individual operators
         for i, featureId in enumerate(self.FeatureIds.value):
             for j in range(dimCol):
                 if self.matrix[i, j]:
@@ -201,7 +197,11 @@ class OpPixelFeaturesPresmoothed(Operator):
                     featureNameArray[i].append(None)
 
         # We use 0.7 as an approximation of not doing any smoothing.
-        self.max_sigma = max(0.7, max(numpy.asarray(self.scales)[self.matrix.any(axis=0)]))
+        if self.matrix.any():
+            self.max_sigma = max(0.7, max(numpy.asarray(self.scales)[self.matrix.any(axis=0)]))
+        else:
+            self.max_sigma = 0.7
+
         self.featureOps = oparray
 
         # Output meta is a modified copy of the input meta
@@ -260,7 +260,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     dirtyRoi.stop[1] = stopChannel
                     self.Output.setDirty(dirtyRoi)
 
-        elif (inputSlot == self.Matrix or
+        elif (inputSlot == self.SelectionMatrix or
               inputSlot == self.Scales or
               inputSlot == self.FeatureIds or
               inputSlot == self.ComputeIn2d):
