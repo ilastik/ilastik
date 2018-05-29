@@ -61,18 +61,6 @@ except ImportError as e:
     WITH_FAST_FILTERS = False
     logger.warning("Failed to import fast filters: " + str(e))
 
-def zfill_num(n, stop):
-    """ Make int strings same length.
-
-    >>> zfill_num(1, 100) # len('99') == 2
-    '01'
-
-    >>> zfill_num(1, 101) # len('100') == 3
-    '001'
-
-    """
-    return str(n).zfill(len(str(stop - 1)))
-
 
 class OpPixelFeaturesPresmoothed(Operator):
     name="OpPixelFeaturesPresmoothed"

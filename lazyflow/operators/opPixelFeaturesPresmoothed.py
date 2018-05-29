@@ -43,19 +43,6 @@ if WITH_FAST_FILTERS:
 logger = logging.getLogger(__name__)
 
 
-def zfill_num(n, stop):
-    """ Make int strings same length.
-
-    >>> zfill_num(1, 100) # len('99') == 2
-    '01'
-
-    >>> zfill_num(1, 101) # len('100') == 3
-    '001'
-
-    """
-    return str(n).zfill(len(str(stop - 1)))
-
-
 class OpPixelFeaturesPresmoothed(Operator):
     name = "OpPixelFeaturesPresmoothed"
     category = "Vigra filter"
@@ -137,43 +124,9 @@ class OpPixelFeaturesPresmoothed(Operator):
         for j in range(dimCol):
             if self.scales[j] > 1.:
                 self.newScales.append(1.)
+                logger.debug(f'Replacing scale {self.scales[j]} with new scale {self.newScales[j]}')
             else:
                 self.newScales.append(self.scales[j])
-
-            logger.debug(f'Replacing scale {self.scales[j]} with new scale {self.newScales[j]}')
-
-        for i, featureId in enumerate(self.FeatureIds.value):
-            for j in range(dimCol):
-                if featureId == 'GaussianSmoothing':
-                    oparray[i].append(OpGaussianSmoothing(self, sigma=self.newScales[j]))
-                    featureNameArray[i].append(f'Gaussian Smoothing (σ={self.scales[j]})')
-                elif featureId == 'LaplacianOfGaussian':
-                    oparray[i].append(OpLaplacianOfGaussian(self, scale=self.newScales[j]))
-                    featureNameArray[i].append(f'Laplacian of Gaussian (σ={self.scales[j]})')
-                elif featureId == 'StructureTensorEigenvalues':
-                    oparray[i].append(OpStructureTensorEigenvalues(
-                        self, innerScale=self.newScales[j], outerScale=self.newScales[j] * 0.5))
-                    # Note: If you need to change the inner or outer scale,
-                    #       you must make a new feature (with a new feature ID) and
-                    #       leave this feature here to preserve backwards compatibility
-                    featureNameArray[i].append(f'Structure Tensor Eigenvalues (σ={self.scales[j]})')
-                elif featureId == 'HessianOfGaussianEigenvalues':
-                    oparray[i].append(OpHessianOfGaussianEigenvalues(self, scale=self.newScales[j]))
-                    featureNameArray[i].append(f'Hessian of Gaussian Eigenvalues (σ={self.scales[j]})')
-                elif featureId == 'GaussianGradientMagnitude':
-                    oparray[i].append(OpGaussianGradientMagnitude(self, sigma=self.newScales[j]))
-                    featureNameArray[i].append(f'Gaussian Gradient Magnitude (σ={self.scales[j]})')
-                elif featureId == 'DifferenceOfGaussians':
-                    oparray[i].append(OpDifferenceOfGaussians(
-                        self, sigma0=self.newScales[j], sigma1=self.newScales[j] * 0.66))
-                    # Note: If you need to change sigma0 or sigma1, you must make a new
-                    #       feature (with a new feature ID) and leave this feature here
-                    #       to preserve backwards compatibility
-                    featureNameArray[i].append(f'Difference of Gaussians (σ={self.scales[j]})')
-
-                # note: set ComputeIn2d first, to avoid a second call of setupOutputs, due to ComptueIn2d's default
-                oparray[i][j].ComputeIn2d.connect(self.ComputeIn2d)
-                oparray[i][j].Input.connect(self.source.Output)
 
         channelCount = 0
         featureCount = 0
@@ -181,25 +134,56 @@ class OpPixelFeaturesPresmoothed(Operator):
         self.featureOutputChannels = []
         channel_names = []
         # connect individual operators
-        for i in range(dimRow):
+        for i, featureId in enumerate(self.FeatureIds.value):
             for j in range(dimCol):
                 if self.matrix[i, j]:
+                    if featureId == 'GaussianSmoothing':
+                        op = OpGaussianSmoothing(self, sigma=self.newScales[j])
+                        featureName = f'Gaussian Smoothing (σ={self.scales[j]})'
+                    elif featureId == 'LaplacianOfGaussian':
+                        op = OpLaplacianOfGaussian(self, scale=self.newScales[j])
+                        featureName = f'Laplacian of Gaussian (σ={self.scales[j]})'
+                    elif featureId == 'StructureTensorEigenvalues':
+                        op = OpStructureTensorEigenvalues(
+                            self, innerScale=self.newScales[j], outerScale=self.newScales[j] * 0.5)
+                        # Note: If you need to change the inner or outer scale,
+                        #       you must make a new feature (with a new feature ID) and
+                        #       leave this feature here to preserve backwards compatibility
+                        featureName = f'Structure Tensor Eigenvalues (σ={self.scales[j]})'
+                    elif featureId == 'HessianOfGaussianEigenvalues':
+                        op = OpHessianOfGaussianEigenvalues(self, scale=self.newScales[j])
+                        featureName = f'Hessian of Gaussian Eigenvalues (σ={self.scales[j]})'
+                    elif featureId == 'GaussianGradientMagnitude':
+                        op = OpGaussianGradientMagnitude(self, sigma=self.newScales[j])
+                        featureName = f'Gaussian Gradient Magnitude (σ={self.scales[j]})'
+                    elif featureId == 'DifferenceOfGaussians':
+                        op = OpDifferenceOfGaussians(
+                            self, sigma0=self.newScales[j], sigma1=self.newScales[j] * 0.66)
+                        # Note: If you need to change sigma0 or sigma1, you must make a new
+                        #       feature (with a new feature ID) and leave this feature here
+                        #       to preserve backwards compatibility
+                        featureName = f'Difference of Gaussians (σ={self.scales[j]})'
+
+                    # note: set ComputeIn2d first, to avoid a second call of setupOutputs, due to ComptueIn2d's default
+                    op.ComputeIn2d.connect(self.ComputeIn2d)
+                    op.Input.connect(self.source.Output)
+
                     # Feature names are provided via metadata
-                    oparray[i][j].Output.meta.description = featureNameArray[i][j]
+                    op.Output.meta.description = featureName
 
                     # Prepare the individual features
                     self.Features.resize(featureCount + 1)
 
-                    featureMeta = oparray[i][j].Output.meta
-                    featureChannels = oparray[i][j].Output.meta.shape[1]
+                    featureMeta = op.Output.meta
+                    featureChannels = op.Output.meta.shape[1]
                     assert featureChannels == featureMeta.shape[1]
                     assert featureMeta.axistags.index('c') == 1
 
                     if featureChannels == 1:
-                        channel_names.append(featureNameArray[i][j])
+                        channel_names.append(featureName)
                     else:
                         for feature_channel_index in range(featureChannels):
-                            channel_names.append(featureNameArray[i][j] + " [{}]".format(feature_channel_index))
+                            channel_names.append(featureName + " [{}]".format(feature_channel_index))
 
                     self.Features[featureCount].meta.assignFrom(featureMeta)
                     # Discard any semantics related to the input channels
@@ -209,6 +193,12 @@ class OpPixelFeaturesPresmoothed(Operator):
                     self.featureOutputChannels.append((channelCount, channelCount + featureChannels))
                     channelCount += featureChannels
                     featureCount += 1
+
+                    oparray[i].append(op)
+                    featureNameArray[i].append(featureName)
+                else:
+                    oparray[i].append(None)
+                    featureNameArray[i].append(None)
 
         # We use 0.7 as an approximation of not doing any smoothing.
         self.max_sigma = max(0.7, max(numpy.asarray(self.scales)[self.matrix.any(axis=0)]))
@@ -303,6 +293,9 @@ class OpPixelFeaturesPresmoothed(Operator):
             # | | |filter frame        |  |  |  filter needs halo around target roi
             # | | |  _______________   |  |  |
             # | | | | target frame  |  |  |  |  target is given by output_roi
+
+            # note: The 'full_' variable prefix refers to the full 5D shape (tczyx), without 'full_' variables mostly
+            #       refer to the 3D space subregion (zyx)
 
             full_output_slice = slot_roi.toSlice()
 
