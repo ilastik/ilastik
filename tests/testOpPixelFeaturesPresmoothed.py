@@ -30,13 +30,13 @@ class TestOpPixelFeaturesPresmoothed(object):
                                 'DifferenceOfGaussians'
                                 ])
 
-        op.Matrix.setValue(numpy.array([[True, False, True],
-                                        [False, True, False],
-                                        [False, False, True],
-                                        [True, False, False],
-                                        [False, True, False],
-                                        [False, False, True]
-                                        ]))
+        op.SelectionMatrix.setValue(numpy.array([[True, False, True],
+                                                 [False, True, False],
+                                                 [False, False, True],
+                                                 [True, False, False],
+                                                 [False, True, False],
+                                                 [False, False, True]
+                                                 ]))
 
         # compute result over whole volume in 2d
         op.ComputeIn2d.setValue(True)
