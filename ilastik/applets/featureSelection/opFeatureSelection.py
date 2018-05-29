@@ -94,7 +94,7 @@ class OpFeatureSelectionNoCache(Operator):
     FeatureLayers = OutputSlot(level=1)
 
     def __init__(self, *args, **kwargs):
-        super(OpFeatureSelectionNoCache, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Create the operator that actually generates the features
         self.opPixelFeatures = OpPixelFeaturesPresmoothed(parent=self)
@@ -102,8 +102,10 @@ class OpFeatureSelectionNoCache(Operator):
         # Connect our internal operators to our external inputs
         self.opPixelFeatures.Scales.connect(self.Scales)
         self.opPixelFeatures.FeatureIds.connect(self.FeatureIds)
+        self.opPixelFeatures.SelectionMatrix.connect(self.SelectionMatrix)
         self.opPixelFeatures.ComputeIn2d.connect(self.ComputeIn2d)
         self.opReorderIn = OpReorderAxes(parent=self)
+        self.opReorderIn.AxisOrder.setValue('tczyx')
         self.opReorderIn.Input.connect(self.InputImage)
         self.opPixelFeatures.Input.connect(self.opReorderIn.Output)
         self.opReorderOut = OpReorderAxes(parent=self)
@@ -112,21 +114,15 @@ class OpFeatureSelectionNoCache(Operator):
                                                broadcastingSlotNames=["AxisOrder"])
         self.opReorderLayers.Input.connect(self.opPixelFeatures.Features)
 
-        # We don't connect SelectionMatrix here because we want to
-        #  check it for errors (See setupOutputs)
-        # self.opPixelFeatures.SelectionMatrix.connect( self.SelectionMatrix )
-
         self.WINDOW_SIZE = self.opPixelFeatures.WINDOW_SIZE
 
     def setupOutputs(self):
         # drop non-channel singleton axes
-        default_order = 'tczyx'
         oldAxes = self.InputImage.meta.getAxisKeys()
         # make sure channel axis is present
         if 'c' not in oldAxes:
             oldAxes.append('c')
 
-        self.opReorderIn.AxisOrder.setValue(default_order)
         self.opReorderOut.AxisOrder.setValue(oldAxes)
         self.opReorderLayers.AxisOrder.setValue(oldAxes)
 
@@ -166,8 +162,6 @@ class OpFeatureSelectionNoCache(Operator):
             self.OutputImage.meta.axistags = axistags
 
         else:
-            # Set the new selection matrix and check if it creates an error.
-            self.opPixelFeatures.SelectionMatrix.setValue(self.SelectionMatrix.value)
             invalid_scales, invalid_z_scales = self.opPixelFeatures.getInvalidScales()
             if invalid_scales:
                 msg = "Some of your selected feature scales are too large for your dataset.\n"\
@@ -218,7 +212,7 @@ class OpFeatureSelection(OpFeatureSelectionNoCache):
     CachedOutputImage = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        super(OpFeatureSelection, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Create the cache
         self.opPixelFeatureCache = OpSlicedBlockedArrayCache(parent=self)
@@ -238,7 +232,7 @@ class OpFeatureSelection(OpFeatureSelectionNoCache):
         self.opPixelFeatureCache.BlockShape.setValue(c)
 
     def setupOutputs(self):
-        super(OpFeatureSelection, self).setupOutputs()
+        super().setupOutputs()
 
         if self.FeatureListFilename.ready() and len(self.FeatureListFilename.value) > 0:
             self.CachedOutputImage.disconnect()

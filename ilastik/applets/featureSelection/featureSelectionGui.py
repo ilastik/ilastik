@@ -97,16 +97,6 @@ class FeatureSelectionGui(LayerViewerGui):
         # Init feature dialog
         self.initFeatureDlg()
 
-    # def getFeatureIdOrder(self):
-    #     featureIrdOrder = []
-    #     for group, featureIds in OpFeatureSelection.FeatureGroups:
-    #         featureIrdOrder += featureIds
-    #     return featureIrdOrder
-
-    # def initFeatureOrder(self):
-    #     self.topLevelOperatorView.Scales.setValue(OpFeatureSelection.ScalesList)
-    #     self.topLevelOperatorView.FeatureIds.setValue(self.getFeatureIdOrder())
-
     def initAppletDrawerUi(self):
         """
         Load the ui file for the applet drawer, which we own.
@@ -120,7 +110,7 @@ class FeatureSelectionGui(LayerViewerGui):
         if not dbg:
             self.drawer.UsePrecomputedFeaturesButton.setHidden(True)
 
-        self.drawer.feature2dBox.clicked.connect(self.onFeature2dBoxClicked)
+        self.drawer.feature2dBox.stateChanged.connect(self.onFeature2dBoxChanged)
         if 'z' in self.topLevelOperatorView.InputImage.meta.original_axistags:
             self.drawer.feature2dBox.setHidden(False)
         else:
@@ -288,7 +278,7 @@ class FeatureSelectionGui(LayerViewerGui):
         rows = len(self.topLevelOperatorView.FeatureIds.value)
         cols = len(self.topLevelOperatorView.Scales.value)
         defaultFeatures = numpy.zeros((rows, cols), dtype=bool)
-        self.featureDlg.selectedFeatureBoolMatrix = defaultFeatures
+        self.featureDlg.selectionMatrix = defaultFeatures
 
         self.featureDlg.accepted.connect(self.onNewFeaturesFromFeatureDlg)
 
@@ -352,7 +342,7 @@ class FeatureSelectionGui(LayerViewerGui):
                     reorderedMatrix[newrow] = matrix[oldrow]
                     newrow += 1
 
-            self.featureDlg.selectedFeatureBoolMatrix = reorderedMatrix
+            self.featureDlg.selectionMatrix = reorderedMatrix
         else:
             assert self.topLevelOperatorView.FeatureIds.ready()
             assert self.topLevelOperatorView.Scales.ready()
@@ -360,55 +350,51 @@ class FeatureSelectionGui(LayerViewerGui):
             num_rows = len(self.topLevelOperatorView.FeatureIds.value)
             num_cols = len(self.topLevelOperatorView.Scales.value)
             blank_matrix = numpy.zeros((num_rows, num_cols), dtype=bool)
-            self.featureDlg.selectedFeatureBoolMatrix = blank_matrix
+            self.featureDlg.selectionMatrix = blank_matrix
 
         # Now open the feature selection dialog
         self.featureDlg.exec_()
 
-    def onFeature2dBoxClicked(self):
-        print(self.drawer.feature2dBox.checkState())
+    def onFeature2dBoxChanged(self):
+        self.topLevelOperatorView.ComputeIn2d.setValue(bool(self.drawer.feature2dBox.checkState()))
 
     def onNewFeaturesFromFeatureDlg(self):
         opFeatureSelection = self.topLevelOperatorView
-        old_features = None
-        if opFeatureSelection.SelectionMatrix.ready():
+        if opFeatureSelection is not None:
+            # Save previous settings
+            old_scales = opFeatureSelection.Scales.value
             old_features = opFeatureSelection.SelectionMatrix.value
 
-        if opFeatureSelection is not None:
-            # Re-initialize the scales and features
-            # self.initFeatureOrder()
+            # Disable gui
+            self.parentApplet.busy = True
+            self.parentApplet.appletStateUpdateRequested()
+            QApplication.instance().setOverrideCursor(QCursor(Qt.WaitCursor))
 
-            # Give the new features to the pipeline (if there are any)
-            featureMatrix = numpy.asarray(self.featureDlg.selectedFeatureBoolMatrix)
-            if featureMatrix.any():
-                # Disable gui
-                self.parentApplet.busy = True
-                self.parentApplet.appletStateUpdateRequested()
-                QApplication.instance().setOverrideCursor(QCursor(Qt.WaitCursor))
-
-                try:
-                    opFeatureSelection.SelectionMatrix.setValue(featureMatrix)
-                except DatasetConstraintError as ex:
-                    # The user selected some scales that were too big.
-                    QMessageBox.critical(self, "Invalid selections", ex.message)
-                    if old_features is not None:
-                        opFeatureSelection.SelectionMatrix.setValue(old_features)
-                    else:
-                        opFeatureSelection.SelectionMatrix.disconnect()
-
-                # Re-enable gui
-                QApplication.instance().restoreOverrideCursor()
-                self.parentApplet.busy = False
-                self.parentApplet.appletStateUpdateRequested()
-            else:
-                # Not valid to give a matrix with no features selected.
-                # Disconnect.
+            try:
+                # Apply new settings
+                # Disconnect an input (used like a transaction slot)
                 opFeatureSelection.SelectionMatrix.disconnect()
 
-                # Notify the workflow that some applets may have changed state now.
-                # (For example, the downstream pixel classification applet can
-                #  be used now that there are features selected)
-                self.parentApplet.appletStateUpdateRequested()
+                opFeatureSelection.Scales.setValue(self.featureDlg.scales)
+                # set disconnected slot at last (used like a transaction slot)
+                opFeatureSelection.SelectionMatrix.setValue(self.featureDlg.selectionMatrix)
+            except DatasetConstraintError as ex:
+                # The user selected some scales that were too big.
+                QMessageBox.critical(self, 'Invalid selection', ex.message)
+
+                # Restore previous settings
+                opFeatureSelection.SelectionMatrix.disconnect()
+                opFeatureSelection.Scales.setValue(old_scales)
+                opFeatureSelection.SelectionMatrix.setValue(old_features)
+
+            # Re-enable gui
+            QApplication.instance().restoreOverrideCursor()
+            self.parentApplet.busy = False
+
+            # Notify the workflow that some applets may have changed state now.
+            # (For example, the downstream pixel classification applet can
+            #  be used now that there are features selected)
+            self.parentApplet.appletStateUpdateRequested()
 
     def onFeaturesSelectionsChanged(self):
         """
