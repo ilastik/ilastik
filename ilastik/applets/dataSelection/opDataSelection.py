@@ -18,12 +18,12 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-import os
 import glob
-import uuid
 import numpy
+import os
+import uuid
 import vigra
+import warnings
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.utility.jsonConfig import RoiTuple
@@ -463,7 +463,19 @@ class OpDataSelection(Operator):
                 self._opReaders.append(op5)
 
             # Connect our external outputs to the internal operators we chose
-            self.Image.connect(providerSlot)
+            try:
+                self.Image.connect(providerSlot)
+            except DatasetConstraintError as initial_exception:  # might be thrown by opFeatureSelection
+                try:
+                    workflow = self.parent.parent.parent.parent
+                    featureSelectionOp = workflow.featureSelectionApplet.topLevelOperator
+                    deselect = numpy.zeros(featureSelectionOp.SelectionMatrix.value.shape, dtype=bool)
+                    featureSelectionOp.SelectionMatrix.setValue(deselect)
+                    self.Image.connect(providerSlot)
+                    warnings.warn('Your new dataset is not compatible with previously made settings in the Feature '
+                                  'Selection applet. The feature selection has been reset.')
+                except Exception:
+                    raise initial_exception
 
             # Set the image name and usage flag
             self.AllowLabels.setValue(datasetInfo.allowLabels)
