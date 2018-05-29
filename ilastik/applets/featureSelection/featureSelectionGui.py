@@ -31,7 +31,7 @@ from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QMessageBox
 
 # lazyflow
-import lazyflow.operators.filterOperators as filterOps
+import lazyflow.operators.filterOperators as filterOps  # noqa # used in eval()
 from lazyflow.operators.generic import OpSubRegion
 
 # volumina
@@ -85,6 +85,7 @@ class FeatureSelectionGui(LayerViewerGui):
 
         self.__cleanup_fns = []
 
+        self.topLevelOperatorView.InputImage.notifyDirty(bind(self.onFeaturesSelectionsChanged))
         self.topLevelOperatorView.SelectionMatrix.notifyDirty(bind(self.onFeaturesSelectionsChanged))
         self.topLevelOperatorView.FeatureListFilename.notifyDirty(bind(self.onFeaturesSelectionsChanged))
         self.__cleanup_fns.append(partial(self.topLevelOperatorView.SelectionMatrix.unregisterDirty,
@@ -111,10 +112,6 @@ class FeatureSelectionGui(LayerViewerGui):
             self.drawer.UsePrecomputedFeaturesButton.setHidden(True)
 
         self.drawer.feature2dBox.stateChanged.connect(self.onFeature2dBoxChanged)
-        if 'z' in self.topLevelOperatorView.InputImage.meta.original_axistags:
-            self.drawer.feature2dBox.setHidden(False)
-        else:
-            self.drawer.feature2dBox.setHidden(True)
 
     def initViewerControlUi(self):
         """
@@ -243,8 +240,6 @@ class FeatureSelectionGui(LayerViewerGui):
         """
         Initialize the feature selection widget.
         """
-        # self.initFeatureOrder()
-
         self.featureDlg = FeatureDlg(parent=self)
         self.featureDlg.setWindowTitle("Features")
         try:
@@ -398,9 +393,15 @@ class FeatureSelectionGui(LayerViewerGui):
 
     def onFeaturesSelectionsChanged(self):
         """
-        Handles changes to our top-level operator's matrix of feature selections.
+        Handles changes to our top-level operator's ImageInput and matrix of feature selections.
         """
         # Update the drawer caption
+
+        ts = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
+        if 'z' in ts and ts['z'] > 1:
+            self.drawer.feature2dBox.setHidden(True)
+        else:
+            self.drawer.feature2dBox.setHidden(False)
 
         fff = (self.topLevelOperatorView.FeatureListFilename.ready() and
                len(self.topLevelOperatorView.FeatureListFilename.value) != 0)
@@ -411,6 +412,5 @@ class FeatureSelectionGui(LayerViewerGui):
         elif fff:
             self.drawer.caption.setText("(features from files)")
         else:
-            # self.initFeatureOrder()
-            matrix = self.topLevelOperatorView.SelectionMatrix.value
-            self.drawer.caption.setText("(Selected %d features)" % numpy.sum(matrix))
+            nr_feat = self.topLevelOperatorView.SelectionMatrix.value.sum()
+            self.drawer.caption.setText(f'(Selected {nr_feat} features)')
