@@ -21,12 +21,18 @@ from builtins import zip
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-import copy
-from functools import partial
 import collections
+import copy
+import logging
 import numpy
 import vigra
+
+from functools import partial
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+
+
+logger = logging.getLogger(__name__)
+
 
 class OpReorderAxes(Operator):
     Input = InputSlot()
@@ -34,6 +40,10 @@ class OpReorderAxes(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
+        if 'c' not in self.AxisOrder.value:
+            # This is helpful in order to convert our internal axis order to 'tczyx'
+            logger.debug('Reordering an array without an explicit channel axis.')
+
         if self._cleaningUp:
             self.Output.meta.NOTREADY = True
             return
