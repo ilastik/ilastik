@@ -150,9 +150,12 @@ class TestAxesOrderPreservation(object):
         return input_path
 
     def compare_results(self, opReaderResult, compare_path, input_axes, post_process=None,
-                        max_mse=None, max_part_uneqaul=None):
+                        max_mse=None, max_part_uneqaul=None, add_c=True):
         if os.path.exists(compare_path):
             result = opReaderResult.Output[:].wait()
+
+            if add_c and 'c' not in input_axes:
+                input_axes += 'c'
 
             opReaderCompare = OpInputDataReader(graph=Graph())
             opReaderCompare.FilePath.setValue(compare_path)
