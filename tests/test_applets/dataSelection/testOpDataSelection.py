@@ -17,15 +17,17 @@ from __future__ import print_function
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#          http://ilastik.org/license.html
 ###############################################################################
 import os
 import shutil
+import itertools
 from collections import defaultdict
 import numpy
 import vigra
 import lazyflow
 import h5py
+from PIL import Image
 from lazyflow.graph import OperatorWrapper
 from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -152,7 +154,7 @@ class TestOpDataSelection_Basic2D(object):
         """Test if plane 2d files are loaded correctly"""
         for fileName in self.imgFileNames2D:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -186,7 +188,7 @@ class TestOpDataSelection_Basic2D(object):
         self.compressedExtensions.append('.gif')
         for fileName in self.imgFileNames2Dc:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -207,7 +209,7 @@ class TestOpDataSelection_Basic2D(object):
             # Check the file name output
             assert reader.ImageName[0].value == fileName
             # Check raw images
-            assert imgData2Dc.shape == self.imgData2Dc.shape
+            assert imgData2Dc.shape == self.imgData2Dc.shape, (imgData2Dc.shape, self.imgData2Dc.shape)
             # skip this if image was saved compressed:
             if any(x in fileName.lower() for x in self.compressedExtensions):
                 print("Skipping raw comparison for compressed data: {}".format(fileName))
@@ -220,10 +222,10 @@ class TestOpDataSelection_Basic2D(object):
 #        reader = OpDataSelection(graph=graph)
 #        reader.ProjectFile.setValue(self.projectFile)
 #        reader.WorkingDirectory.setValue( os.getcwd() )
-#        
+#
 #        # Create a list of dataset infos . . .
 #        datasetInfos = []
-#        
+#
 #        # npy inverted
 #        info = DatasetInfo()
 #        info.location = DatasetInfo.Location.FileSystem
@@ -232,7 +234,7 @@ class TestOpDataSelection_Basic2D(object):
 #        info.invertColors = True
 #        info.convertToGrayscale = False
 #        datasetInfos.append(info)
-#        
+#
 #        # png inverted
 #        info = DatasetInfo()
 #        info.location = DatasetInfo.Location.FileSystem
@@ -252,7 +254,7 @@ class TestOpDataSelection_Basic2D(object):
 #        for x in range(invertedNpyData.shape[0]):
 #            for y in range(invertedNpyData.shape[1]):
 #                assert invertedNpyData[x,y,0] == 255-self.imgData2D[x,y]
-#        
+#
 #        assert invertedPngData.shape == self.imgData2Dc.shape
 #        for x in range(invertedPngData.shape[0]):
 #            for y in range(invertedPngData.shape[1]):
@@ -264,10 +266,10 @@ class TestOpDataSelection_Basic2D(object):
 #        reader = OpDataSelection(graph=graph)
 #        reader.ProjectFile.setValue(self.projectFile)
 #        reader.WorkingDirectory.setValue( os.getcwd() )
-#        
+#
 #        # Create a list of dataset infos . . .
 #        datasetInfos = []
-#        
+#
 #        # png grayscale
 #        info = DatasetInfo()
 #        info.location = DatasetInfo.Location.FileSystem
@@ -278,10 +280,10 @@ class TestOpDataSelection_Basic2D(object):
 #        datasetInfos.append(info)
 #
 #        reader.Dataset.setValues(datasetInfos)
-#        
+#
 #        grayscalePngData = reader.ProcessedImages[0][...].wait()
 #
-#        # Check grayscale conversion 
+#        # Check grayscale conversion
 #        assert grayscalePngData.shape == self.imgData2Dc.shape[:-1] + (1,) # Only one channel
 #        for x in range(grayscalePngData.shape[0]):
 #            for y in range(grayscalePngData.shape[1]):
@@ -294,7 +296,7 @@ class TestOpDataSelection_Basic2D(object):
 #        reader = OpDataSelection(graph=graph)
 #        reader.ProjectFile.setValue(self.projectFile)
 #        reader.WorkingDirectory.setValue( os.getcwd() )
-#        
+#
 #        # Create a list of dataset infos . . .
 #        datasetInfos = []
 #
@@ -308,25 +310,26 @@ class TestOpDataSelection_Basic2D(object):
 #        datasetInfos.append(info)
 #
 #        reader.Dataset.setValues(datasetInfos)
-#        
-#        invertedGrayscalePngData = reader.ProcessedImages[0][...].wait()
-#        
 #
-#        # Check inverted grayscale conversion 
+#        invertedGrayscalePngData = reader.ProcessedImages[0][...].wait()
+#
+#
+#        # Check inverted grayscale conversion
 #        assert invertedGrayscalePngData.shape == (100, 200, 1)
 #        for x in range(invertedGrayscalePngData.shape[0]):
 #            for y in range(invertedGrayscalePngData.shape[1]):
 #                # (See formula in OpRgbToGrayscale)
 #                assert invertedGrayscalePngData[x,y,0] == int(numpy.round(  0.299*(255-self.imgData2Dc[x,y,0])
-#                                                                          + 0.587*(255-self.imgData2Dc[x,y,1]) 
+#                                                                          + 0.587*(255-self.imgData2Dc[x,y,1])
 #                                                                          + 0.114*(255-self.imgData2Dc[x,y,2]) ))
+
     def testProjectLocalData(self):
         graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper( OpDataSelection, graph=graph )
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
         reader.ProjectFile.setValue(self.projectFile)
-        reader.WorkingDirectory.setValue( os.getcwd() )
-        reader.ProjectDataGroup.setValue( 'DataSelection/local_data' )
-        
+        reader.WorkingDirectory.setValue(os.getcwd())
+        reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
         # Create a list of dataset infos . . .
         datasetInfos = []
 
@@ -334,7 +337,7 @@ class TestOpDataSelection_Basic2D(object):
         info = DatasetInfo()
         info.location = DatasetInfo.Location.ProjectInternal
         info.filePath = "This string should be ignored..."
-        info._datasetId = 'dataset1' # (Cheating a bit here...)
+        info._datasetId = 'dataset1'  # (Cheating a bit here...)
         info.invertColors = False
         info.convertToGrayscale = False
         datasetInfos.append(info)
@@ -343,7 +346,7 @@ class TestOpDataSelection_Basic2D(object):
 
         projectInternalData = reader.Image[0][...].wait()
 
-        assert projectInternalData.shape == self.imgData2Dc.shape
+        assert projectInternalData.shape == self.imgData2Dc.shape, (projectInternalData.shape, self.imgData2Dc.shape)
         assert (projectInternalData == self.imgData2Dc).all()
 
 
@@ -433,7 +436,7 @@ class TestOpDataSelection_Basic_native_3D(object):
         """Test if plane 2d files are loaded correctly"""
         for fileName in self.imgFileNames3D:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -454,7 +457,7 @@ class TestOpDataSelection_Basic_native_3D(object):
             # Check the file name output
             assert reader.ImageName[0].value == fileName
             # Check raw images
-            assert imgData3D.shape == self.imgData3D.shape
+            assert imgData3D.shape == self.imgData3D.shape, (imgData3D.shape, self.imgData3D.shape)
             # skip this if image was saved compressed:
             numpy.testing.assert_array_equal(imgData3D, self.imgData3D)
 
@@ -462,7 +465,7 @@ class TestOpDataSelection_Basic_native_3D(object):
         """Test if 3D file with intentionally wrong axes is rejected """
         for fileName in self.imgFileNames3D:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -489,7 +492,7 @@ class TestOpDataSelection_Basic_native_3D(object):
         # For some reason vigra saves 2D+c data compressed in gifs, so skip!
         for fileName in self.imgFileNames3Dc:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -510,13 +513,13 @@ class TestOpDataSelection_Basic_native_3D(object):
             # Check the file name output
             assert reader.ImageName[0].value == fileName
             # Check raw images
-            assert imgData3Dc.shape == self.imgData3Dc.shape
+            assert imgData3Dc.shape == self.imgData3Dc.shape, (imgData3Dc.shape, self.imgData3Dc.shape)
             # skip this if image was saved compressed:
             numpy.testing.assert_array_equal(imgData3Dc, self.imgData3Dc)
 
     def testProjectLocalData(self):
         graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper(OpDataSelection, graph=graph)
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
         reader.ProjectFile.setValue(self.projectFile)
         reader.WorkingDirectory.setValue(os.getcwd())
         reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -537,7 +540,7 @@ class TestOpDataSelection_Basic_native_3D(object):
 
         projectInternalData = reader.Image[0][...].wait()
 
-        assert projectInternalData.shape == self.imgData3Dc.shape
+        assert projectInternalData.shape == self.imgData3Dc.shape, (projectInternalData.shape, self.imgData3Dc.shape)
         assert (projectInternalData == self.imgData3Dc).all()
 
 
@@ -703,7 +706,7 @@ class TestOpDataSelection_3DStacks(object):
         """Test if stacked 2d files are loaded correctly"""
         for fileName in self.imgFileNameGlobs2D:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -724,7 +727,7 @@ class TestOpDataSelection_3DStacks(object):
             # Check the file name output
             assert reader.ImageName[0].value == fileName
             # Check raw images
-            assert imgData3D.shape == self.imgData3D.shape
+            assert imgData3D.shape == self.imgData3D.shape, (imgData3D.shape, self.imgData3D.shape)
             # skip this if image was saved compressed:
             if any(x in fileName.lower() for x in self.compressedExtensions):
                 print("Skipping raw comparison for compressed data: {}".format(fileName))
@@ -735,7 +738,7 @@ class TestOpDataSelection_3DStacks(object):
         for ext, fileNames in list(self.imgFileLists2D.items()):
             fileNameString = os.path.pathsep.join(fileNames)
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -753,7 +756,7 @@ class TestOpDataSelection_3DStacks(object):
             imgData3D = reader.Image[0][...].wait()
 
             # Check raw images
-            assert imgData3D.shape == self.imgData3D.shape
+            assert imgData3D.shape == self.imgData3D.shape, (imgData3D.shape, self.imgData3D.shape)
             # skip this if image was saved compressed:
             if any(x.strip('.') in ext.lower() for x in self.compressedExtensions):
                 print("Skipping raw comparison for compressed data: {}".format(ext))
@@ -766,7 +769,7 @@ class TestOpDataSelection_3DStacks(object):
         self.compressedExtensions.append('.gif')
         for fileName in self.imgFileNameGlobs2Dc:
             graph = lazyflow.graph.Graph()
-            reader = OperatorWrapper(OpDataSelection, graph=graph)
+            reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
             reader.ProjectFile.setValue(self.projectFile)
             reader.WorkingDirectory.setValue(os.getcwd())
             reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -787,7 +790,7 @@ class TestOpDataSelection_3DStacks(object):
             # Check the file name output
             assert reader.ImageName[0].value == fileName
             # Check raw images
-            assert imgData3Dc.shape == self.imgData3Dc.shape
+            assert imgData3Dc.shape == self.imgData3Dc.shape, (imgData3Dc.shape, self.imgData3Dc.shape)
             # skip this if image was saved compressed:
             if any(x in fileName.lower() for x in self.compressedExtensions):
                 print("Skipping raw comparison for compressed data: {}".format(fileName))
@@ -837,7 +840,7 @@ class TestOpDataSelection_SingleFileH5Stacks():
 
     def test_load_single_file_with_glob(self):
         graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper(OpDataSelection, graph=graph)
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
         reader.ProjectFile.setValue(self.projectFile)
         reader.WorkingDirectory.setValue(os.getcwd())
         reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -855,13 +858,13 @@ class TestOpDataSelection_SingleFileH5Stacks():
         imgData = reader.Image[0][...].wait()
 
         # Check raw images
-        assert imgData.shape == self.imgData3Dct.shape
+        assert imgData.shape == self.imgData3Dct.shape, (imgData.shape, self.imgData3Dct.shape)
 
         numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
 
     def test_load_single_file_with_list(self):
         graph = lazyflow.graph.Graph()
-        reader = OperatorWrapper(OpDataSelection, graph=graph)
+        reader = OperatorWrapper(OpDataSelection, graph=graph, operator_kwargs={'forceAxisOrder': False})
         reader.ProjectFile.setValue(self.projectFile)
         reader.WorkingDirectory.setValue(os.getcwd())
         reader.ProjectDataGroup.setValue('DataSelection/local_data')
@@ -878,44 +881,128 @@ class TestOpDataSelection_SingleFileH5Stacks():
 
         # Read the test files using the data selection operator and verify the contents
         imgData = reader.Image[0][...].wait()
+        print('imgData', reader.Image.meta.axistags, reader.Image.meta.original_axistags)
 
         # Check raw images
-        assert imgData.shape == self.imgData3Dct.shape
+        assert imgData.shape == self.imgData3Dct.shape, (imgData.shape, self.imgData3Dct.shape)
 
         numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
+
+
+class TestOpDataSelection_stack_along_parameter():
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = tempfile.mkdtemp()
+
+        cls.rgb00c = numpy.array([[1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                  [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                  [1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                  [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                  [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=numpy.float32)
+
+        cls.rgb10c = numpy.array([[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                                  [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                  [0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                                  [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+                                  [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0]], dtype=numpy.float32)
+
+        cls.rgb20c = numpy.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                                  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+                                  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+                                  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+                                  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0]], dtype=numpy.float32)
+
+        cls.grey0c = numpy.array([[1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1],
+                                  [1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1],
+                                  [1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0],
+                                  [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0],
+                                  [1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0]], dtype=numpy.float32) / 2
+
+        cls.rgb01c = cls.rgb00c[..., None]
+        cls.rgb11c = cls.rgb10c[..., None]
+        cls.rgb21c = cls.rgb20c[..., None]
+        cls.grey1c = cls.grey0c[..., None]
+
+        cls.rgb03c = numpy.zeros((cls.rgb00c.shape[0], cls.rgb00c.shape[1], 3), dtype=numpy.float32)
+        cls.rgb13c = numpy.zeros((cls.rgb10c.shape[0], cls.rgb10c.shape[1], 3), dtype=numpy.float32)
+        cls.rgb23c = numpy.zeros((cls.rgb20c.shape[0], cls.rgb20c.shape[1], 3), dtype=numpy.float32)
+        cls.rgb03c[..., 0] = cls.rgb00c
+        cls.rgb13c[..., 1] = cls.rgb10c
+        cls.rgb23c[..., 2] = cls.rgb20c
+        cls.grey3c = numpy.repeat(cls.grey1c, 3, axis=2)
+
+        for name, c in itertools.product(['rgb0', 'rgb1', 'rgb2', 'grey'], ['0c', '1c', '3c']):
+            name += c
+            data = eval('cls.' + name)
+
+            # save as h5
+            vigra.impex.writeHDF5(data=data, filenameOrGroup=os.path.join(cls.tmpdir, f'{name}.h5'), pathInFile='data')
+
+            # save as png and tiff, if possible
+            if c == '0c':
+                im = Image.fromarray(data)
+                im.save(os.path.join(cls.tmpdir, f'{name}.tiff'))
+                vigra.impex.writeImage(image=(data.T * 255).astype(numpy.uint8),
+                                       filename=os.path.join(cls.tmpdir, f'{name}.png'))
+            elif c == '1c':
+                vigra.impex.writeImage(image=(data.transpose(1, 0, 2) * 255).astype(numpy.uint8),
+                                       filename=os.path.join(cls.tmpdir, f'{name}.png'))
+            elif c == '3c':
+                data = (data * 255).astype(numpy.uint8)
+                im = Image.fromarray(data, mode='RGB')
+                im.save(os.path.join(cls.tmpdir, f'{name}.tiff'))
+                vigra.impex.writeImage(image=data.transpose(1, 0, 2),
+                                       filename=os.path.join(cls.tmpdir, f'{name}.png'))
+            else:
+                raise NotImplementedError(f'How to create PIL/png image with c == {c}?')
+
+    def _test_stack_along(self, name, extension, sequence_axis, expected):
+        fileName = os.path.join(self.tmpdir, f'{name}{extension}')
+        graph = lazyflow.graph.Graph()
+        reader = OpDataSelection(graph=graph, forceAxisOrder=False)
+        reader.WorkingDirectory.setValue(os.getcwd())
+        info = DatasetInfo(fileName, sequence_axis=sequence_axis)
+        reader.Dataset.setValue(info)
+        read = reader.Image[...].wait()
+
+        assert numpy.allclose(read, expected), f'{name}: {read.shape}, {expected.shape}'
+
+    def test_stack_along(self):
+
+        testcases = [
+            ['rgb*0c', '.h5/data', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)],
+            ['rgb*0c', '.png    ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2).transpose(1, 0, 2
+                                                                                                               ) * 255],
+            ['rgb*0c', '.tiff   ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)],
+            ['rgb*1c', '.h5/data', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2)],
+            ['rgb*1c', '.png    ', 'c', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=2).transpose(1, 0, 2
+                                                                                                               ) * 255],
+            ['rgb*3c', '.h5/data', 'c', numpy.concatenate([self.rgb03c, self.rgb13c, self.rgb23c], axis=2)],
+            ['rgb*3c', '.png    ', 'c', numpy.concatenate([self.rgb03c, self.rgb13c, self.rgb23c], axis=2).transpose(
+                1, 0, 2) * 255],
+            ['rgb*3c', '.tiff   ', 'c', numpy.concatenate([self.rgb03c, self.rgb13c, self.rgb23c], axis=2) * 255],
+            ['rgb*0c', '.h5/data', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*0c', '.png    ', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
+            ['rgb*0c', '.tiff   ', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*1c', '.h5/data', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*1c', '.png    ', 'z', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
+            ['rgb*3c', '.h5/data', 'z', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0)],
+            ['rgb*3c', '.png    ', 'z', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
+            ['rgb*3c', '.tiff   ', 'z', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
+            ['rgb*0c', '.h5/data', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*0c', '.png    ', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
+            ['rgb*0c', '.tiff   ', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*1c', '.h5/data', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None]],
+            ['rgb*1c', '.png    ', 't', numpy.stack([self.rgb00c, self.rgb10c, self.rgb20c], axis=0)[..., None] * 255],
+            ['rgb*3c', '.h5/data', 't', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0)],
+            ['rgb*3c', '.png    ', 't', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
+            ['rgb*3c', '.tiff   ', 't', numpy.stack([self.rgb03c, self.rgb13c, self.rgb23c], axis=0) * 255],
+        ]
+
+        for name, extension, sequence_axis, expected in testcases:
+            yield self._test_stack_along, name, extension, sequence_axis, expected
+
 
 if __name__ == "__main__":
     import nose
     nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE': 1})
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

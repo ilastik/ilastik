@@ -48,6 +48,8 @@ class OpAnnotations(Operator):
     TrackImage = OutputSlot()
     Labels = OutputSlot(stype=Opaque, rtype=List)
     Divisions = OutputSlot(stype=Opaque, rtype=List)
+    Appearances = OutputSlot(stype=Opaque)
+    Disappearances = OutputSlot(stype=Opaque)
     UntrackedImage = OutputSlot()
 
     Annotations = OutputSlot(stype=Opaque)
@@ -68,10 +70,14 @@ class OpAnnotations(Operator):
         super(OpAnnotations, self).__init__(parent=parent, graph=graph)
         self.labels = {}
         self.divisions = {}
+        self.appearances = {}
+        self.disappearances = {}
 
         self.Annotations.setValue(dict())
         self.Labels.setValue({})
         self.Divisions.setValue({})
+        self.Appearances.setValue({})
+        self.Disappearances.setValue({})
 
         self.RawImage.notifyReady( self._checkConstraints )
         self.BinaryImage.notifyReady( self._checkConstraints )
@@ -96,6 +102,11 @@ class OpAnnotations(Operator):
         self.Divisions.meta.dtype = object
         self.Divisions.meta.shape = (1,)
 
+        self.Appearances.meta.dtype = object
+        self.Appearances.meta.shape = (1,)
+
+        self.Disappearances.meta.dtype = object
+        self.Disappearances.meta.shape = (1,)
 
     def initOutputs(self):
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
@@ -104,6 +115,10 @@ class OpAnnotations(Operator):
         for t in range(self.LabelImage.meta.shape[0]):
             if t not in list(self.labels.keys()):
                 self.labels[t]={}
+            if t not in list(self.appearances.keys()):
+                self.appearances[t]={}
+            if t not in list(self.disappearances.keys()):
+                self.disappearances[t]={}
 
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
@@ -168,6 +183,13 @@ class OpAnnotations(Operator):
         if slot.name == 'Annotations':
             annotations = self.Annotations[key].wait()
             result[...] = annotations
+        elif slot.name =='Appearances':
+            appearances = self.Appearances[key].wait()
+            result[...] = appearances
+        elif slot.name == 'Disappearances':
+            disappearances = self.Disappearances[key].wait()
+            result[...] = disappearances
+
 
         return result
         
@@ -175,12 +197,18 @@ class OpAnnotations(Operator):
         if slot == self.LabelImage:
             self.labels = {}
             self.divisions = {}
+            self.appearances = {}
+            self.disappearances = {}
         elif slot.name == "Annotations":
             self.Annotations.setDirty( roi )
         elif slot.name == "Labels":
             self.Labels.setDirty( roi )
         elif slot.name == "Divisions":
             self.Divisions.setDirty( roi )
+        elif slot.name == "Appearances":
+            self.Appearances.setDirty( roi )
+        elif slot.name == "Disappearances":
+            self.Disappearances.setDirty( roi )
         # else:
         #     self.Labels.setDirty( slice(None) )
         #     self.Divisions.setDirty( slice(None) )

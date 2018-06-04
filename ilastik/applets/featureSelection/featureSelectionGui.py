@@ -216,7 +216,7 @@ class FeatureSelectionGui(LayerViewerGui):
         # Determine how many channels this feature has (up to 3)
         featureChannelsPerInputChannel = numFeatureChannels // numInputChannels
         if not 0 < featureChannelsPerInputChannel <= 3:
-            logger.warn( "The feature selection Gui does not yet support features with more than three channels per input channel. Some features will not be displayed entirely." ) 
+            logger.warning( "The feature selection Gui does not yet support features with more than three channels per input channel. Some features will not be displayed entirely." ) 
 
         for inputChannel in range(numInputChannels):
             # Determine the name for this feature

@@ -99,7 +99,7 @@ class WsdtWorkflow(Workflow):
             self._data_export_args = None
 
         if unused_args:
-            logger.warn("Unused command-line args: {}".format( unused_args ))
+            logger.warning("Unused command-line args: {}".format( unused_args ))
 
     def connectLane(self, laneIndex):
         """

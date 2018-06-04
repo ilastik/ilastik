@@ -96,7 +96,9 @@ class StackFileSelectionWidget(QDialog):
     def sequence_axis(self):
         if self.stackAcrossTButton.isChecked():
             return 't'
-        return 'z'
+        elif self.stackAcrossZButton.isChecked():
+            return 'z'
+        return 'c'
 
     def _configureGui(self, mode):
         """
@@ -289,14 +291,10 @@ class StackFileSelectionWidget(QDialog):
             if len(fileNames) == 1:
                 # open the dialog for globbing:
                 file_name = fileNames[0]
-                internal_datasets = [decode_to_qstring(x) for x in self._findInternalStacks(file_name)]
-                dlg = Hdf5StackingDlg(parent=self, list_of_paths=internal_datasets)
+                dlg = Hdf5StackingDlg(parent=self, list_of_paths=self._findInternalStacks(file_name))
                 if dlg.exec_() == QDialog.Accepted:
-                    selected_datasets = [encode_from_qstring(x) for x in dlg.get_selected_datasets()]
-                    fileNames = ['{}/{}'.format(file_name, internal_path)
-                                 for internal_path in selected_datasets]
-                    globstring = '{}/{}'.format(file_name, encode_from_qstring(dlg.get_globstring()))
-                    self.patternEdit.setText(decode_to_qstring(globstring))
+                    globstring = '{}/{}'.format(file_name, dlg.get_globstring())
+                    self.patternEdit.setText(globstring)
                     self._applyPattern()
                     return None
                 else:

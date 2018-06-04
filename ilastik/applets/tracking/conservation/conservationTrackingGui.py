@@ -238,13 +238,18 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             return
 
         withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
-        numStages = 6
+        numStages = 8
+        # object features
+        # detection probabilities
         # creating traxel store
         # generating probabilities
         # insert energies
         # convexify costs
         # solver
         # compute lineages
+        if self._drawer.divisionsBox.isChecked():
+            # division probabilities
+            numStages +=1
 
         if withMergerResolution:
             numStages += 1 # merger resolution
@@ -342,6 +347,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     )
 
             except Exception as ex:
+                self.progressWindow.onTrackDone()
                 log_exception(logger, "Error during tracking.  See above error traceback.")
                 self._criticalMessage("Error during tracking.  See error log.\n\n"
                                       "Exception was:\n\n{})".format( ex ))

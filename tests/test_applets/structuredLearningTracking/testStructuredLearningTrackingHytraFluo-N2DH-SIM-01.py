@@ -62,7 +62,7 @@ class TestStructuredLearningTrackingHeadless(object):
 
     EXPECTED_TRACKING_RESULT_FILE = ilastik_tests_file_path+'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_Tracking-Result.h5'
     EXPECTED_CSV_FILE = ilastik_tests_file_path+'data/inputdata/cell_tracking_challenge_15/Fluo-N2DH-SIM/01/learningRaw-2017-01-17_CSV-Table.csv'
-    EXPECTED_SHAPE = (10, 495, 534, 1, 1) # Expected shape for tracking results HDF5 files
+    EXPECTED_SHAPE = (10, 495, 534, 1) # Expected shape for tracking results HDF5 files
     EXPECTED_NUM_LINES_TRACKING = 164 # Number of lines expected in exported csv file
     EXPECTED_NUM_DIVISIONS = 6 # Number of lines expected in exported csv file
     EXPECTED_MERGER_NUM = 0 # Number of mergers expected in exported csv file
@@ -103,7 +103,7 @@ class TestStructuredLearningTrackingHeadless(object):
         try:
             import ilastik.workflows.tracking.structured
         except ImportError as e:
-            logger.warn( "Structured learning tracking could not be imported. CPLEX is most likely missing: " + str(e) )
+            logger.warning( "Structured learning tracking could not be imported. CPLEX is most likely missing: " + str(e) )
             raise nose.SkipTest
 
         # Skip test because there are missing files
@@ -140,7 +140,7 @@ class TestStructuredLearningTrackingHeadless(object):
         try:
             import hytra
         except ImportError as e:
-            logger.warn("Hytra tracking pipeline couldn't be imported: " + str(e))
+            logger.warning("Hytra tracking pipeline couldn't be imported: " + str(e))
             raise nose.SkipTest
 
         # Skip test because there are missing files

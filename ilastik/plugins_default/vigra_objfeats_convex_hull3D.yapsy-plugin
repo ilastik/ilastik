@@ -1,0 +1,9 @@
+[Core]
+Name = 3D Convex Hull Features
+Module = vigra_objfeats_convex_hull3D
+
+[Documentation]
+Author = Jonas Massa
+Version = 0.1
+Website = todo
+Description = 3D

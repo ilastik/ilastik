@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,12 +16,11 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#           http://ilastik.org/license.html
 ##############################################################################
 
 
 # basic python modules
-from builtins import range
 import functools
 import logging
 logger = logging.getLogger(__name__)
@@ -40,10 +38,10 @@ from lazyflow.rtype import SubRegion
 from lazyflow.stype import Opaque
 from lazyflow.request import Request, RequestPool
 
-from ._OpGraphCut import segmentGC, OpGraphCut
+from _OpGraphCut import segmentGC, OpGraphCut
 
 
-## segment predictions with pre-thresholding
+# segment predictions with pre-thresholding
 #
 # This operator segments an image into foreground and background and makes use
 # of a preceding thresholding step. After thresholding, connected components
@@ -55,7 +53,7 @@ from ._OpGraphCut import segmentGC, OpGraphCut
 # of limited size and the probability map of the unaries is of high recall, but
 # possibly low precision. One particular application for this setup is
 # segmentation of synapses in anisotropic 3D Electron Microscopy image stacks.
-# 
+#
 #
 # The slot CachedOutput guarantees consistent results, the slot Output computes
 # the roi on demand.
@@ -81,13 +79,13 @@ class OpObjectsSegment(OpGraphCut):
 
     ### slots from OpGraphCut ###
 
-    ## prediction maps
+    # prediction maps
     #Prediction = InputSlot()
 
-    ## graph cut parameter
+    # graph cut parameter
     #Beta = InputSlot(value=.2)
 
-    ## labeled segmentation image
+    # labeled segmentation image
     #Output = OutputSlot()
     #CachedOutput = OutputSlot()
 
@@ -185,19 +183,19 @@ class OpObjectsSegment(OpGraphCut):
         def processSingleObject(i):
             logger.debug("processing object {}".format(i))
             # maxs are inclusive, so we need to add 1
-            zmin = max(mins[i][0]-margin_zyx[0], 0)
-            ymin = max(mins[i][1]-margin_zyx[1], 0)
-            xmin = max(mins[i][2]-margin_zyx[2], 0)
-            zmax = min(maxs[i][0]+margin_zyx[0]+1, cc.shape[0])
-            ymax = min(maxs[i][1]+margin_zyx[1]+1, cc.shape[1])
-            xmax = min(maxs[i][2]+margin_zyx[2]+1, cc.shape[2])
+            zmin = max(mins[i][0] - margin_zyx[0], 0)
+            ymin = max(mins[i][1] - margin_zyx[1], 0)
+            xmin = max(mins[i][2] - margin_zyx[2], 0)
+            zmax = min(maxs[i][0] + margin_zyx[0] + 1, cc.shape[0])
+            ymax = min(maxs[i][1] + margin_zyx[1] + 1, cc.shape[1])
+            xmax = min(maxs[i][2] + margin_zyx[2] + 1, cc.shape[2])
             ccbox = cc[zmin:zmax, ymin:ymax, xmin:xmax]
             resbox = resultZYX[zmin:zmax, ymin:ymax, xmin:xmax]
 
             nVoxels = ccbox.size
             if nVoxels > MAXBOXSIZE:
-                #problem too large to run graph cut, assign to seed
-                logger.warn("Object {} too large for graph cut.".format(i))
+                # problem too large to run graph cut, assign to seed
+                logger.warning("Object {} too large for graph cut.".format(i))
                 resbox[ccbox == i] = 1
                 return
 
@@ -213,15 +211,15 @@ class OpObjectsSegment(OpGraphCut):
             # overlaps with the object "core" or "seed", defined by the
             # pre-thresholding
             seed = ccbox == i
-            filtered = seed*ccsegm
+            filtered = seed * ccsegm
             passed = vigra.analysis.unique(filtered.astype(np.uint32))
             assert len(passed.shape) == 1
             if passed.size > 2:
-                logger.warn("ambiguous label assignment for region {}".format(
+                logger.warning("ambiguous label assignment for region {}".format(
                     (zmin, zmax, ymin, ymax, xmin, xmax)))
                 resbox[ccbox == i] = 1
             elif passed.size <= 1:
-                logger.warn(
+                logger.warning(
                     "box {} segmented out with beta {}".format(i, beta))
             else:
                 # assign to the overlap region
@@ -229,12 +227,12 @@ class OpObjectsSegment(OpGraphCut):
                 resbox[ccsegm == label] = 1
 
         pool = RequestPool()
-        #FIXME make sure that the parallel computations fit into memory
+        # FIXME make sure that the parallel computations fit into memory
         for i in range(1, nobj):
             req = Request(functools.partial(processSingleObject, i))
             pool.add(req)
 
-        logger.info("Processing {} objects ...".format(nobj-1))
+        logger.info("Processing {} objects ...".format(nobj - 1))
 
         pool.wait()
         pool.clean()
@@ -261,7 +259,7 @@ class OpObjectsSegment(OpGraphCut):
             c = (roi.start[c_ind], roi.stop[c_ind])
 
             # set output dirty
-            start = t[0:1] + (0,)*3 + c[0:1]
+            start = t[0:1] + (0,) * 3 + c[0:1]
             stop = t[1:2] + self.Output.meta.shape[1:4] + c[1:2]
             roi = SubRegion(self.Output, start=start, stop=stop)
             self.Output.setDirty(roi)

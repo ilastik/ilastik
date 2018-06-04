@@ -199,7 +199,7 @@ class ObjectClassificationWorkflow(Workflow):
         self._applets.append(self.blockwiseObjectClassificationApplet)
 
         if unused_args:
-            logger.warn("Unused command-line args: {}".format( unused_args ))
+            logger.warning("Unused command-line args: {}".format( unused_args ))
 
     @property
     def applets(self):
@@ -294,7 +294,7 @@ class ObjectClassificationWorkflow(Workflow):
             return
         
         if not (self._batch_input_args and self._batch_export_args):
-            logger.warn("Was not able to understand the batch mode command-line arguments.")
+            logger.warning("Was not able to understand the batch mode command-line arguments.")
         
         # Check for problems: Is the project file ready to use?
         opObjClassification = self.objectClassificationApplet.topLevelOperator

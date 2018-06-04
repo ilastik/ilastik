@@ -30,6 +30,7 @@ from abc import ABCMeta
 from ilastik.config import cfg as ilastik_config
 from lazyflow.utility.orderedSignal import OrderedSignal
 from ilastik.utility.maybe import maybe
+from ilastik.utility.commandLineProcessing import convertStringToList
 import os
 import sys
 import re
@@ -574,7 +575,7 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
             groupName, labelGroup = t
             assert extract_index(groupName) == index, "subgroup extraction order should be numerical order!"
             for blockRoiString, blockDataset in list(labelGroup.items()):
-                blockRoi = eval(blockRoiString)
+                blockRoi = convertStringToList(blockRoiString)
                 roiShape = TinyVector(blockRoi[1]) - TinyVector(blockRoi[0])
                 assert roiShape == blockDataset.shape
 
@@ -641,24 +642,6 @@ class SerialClassifierSlot(SerialSlot):
         # loaded. As soon as training input changes, it will be
         # retrained.)
         self.cache.forceValue( classifier )
-
-class SerialPickledValueSlot(SerialSlot):
-    """
-    For storing value slots whose data is a python object (not an array or a simple number).
-    """
-    def __init__(self, slot):
-        super(SerialPickledValueSlot, self).__init__(slot)
-    
-    @staticmethod
-    def _saveValue(group, name, value):
-        group.create_dataset(name, data=numpy.void(pickle.dumps(value, 0)))
-
-    @staticmethod
-    def _getValue(subgroup, slot):
-        val = subgroup[()]
-        if isinstance(val, numpy.void):
-            val = val.tobytes()
-        slot.setValue(pickle.loads(val, encoding='latin1'))
 
 
 class SerialCountingSlot(SerialSlot):
@@ -774,7 +757,12 @@ class SerialDictSlot(SerialSlot):
                     # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
                     v = v.encode('utf-8')
                 if isinstance(v, list):
-                    vv = [a.encode('utf-8') for a in v]
+                    vv = []
+                    for a in v:
+                        if isinstance(a, str):
+                            vv.append(a.encode('utf-8'))
+                        else:
+                            vv.append(a)
                     v = vv
                 sg.create_dataset(str(key), data=v)
 
@@ -836,7 +824,7 @@ class SerialClassifierFactorySlot(SerialSlot):
 
 
 class SerialPickleableSlot(SerialSlot):
-    def __init__(self, slot, version, default, name=None):
+    def __init__(self, slot, version, default=None, name=None):
         super( SerialPickleableSlot, self ).__init__( slot, name=name )
         self._failed_to_deserialize = False
         self._version = version
@@ -846,7 +834,7 @@ class SerialPickleableSlot(SerialSlot):
         # we pickle to a string and convert to numpy.void,
         # because HDF5 has some limitations as to which strings it can serialize
         # (see http://docs.h5py.org/en/latest/strings.html)
-        pickled = numpy.void(pickle.dumps( value, 0 ))
+        pickled = numpy.void(pickle.dumps(value, 0))
         dset = group.create_dataset(name, data=pickled)
         dset.attrs['version'] = self._version
         self._failed_to_deserialize = False
@@ -858,24 +846,32 @@ class SerialPickleableSlot(SerialSlot):
             return super(SerialPickleableSlot, self).shouldSerialize(group)
 
     def _getValue(self, dset, slot):
+        # first check that the version of the deserialized and the expected value are the same
         try:
-            # first check that the version of the deserialized and the expected value are the same
             loaded_version = dset.attrs['version']
-            assert loaded_version == self._version
-
+        except KeyError as e:
+            loaded_version = None
+            logger.debug('No `version` attribute found.')
+        if not loaded_version == self._version:
+            logger.warning(
+                f'PickleableSlot version mismatch detected. (loaded: {loaded_version}, running:{self._version})'
+                'Trying to load slot value.')
+        try:
             # Attempt to unpickle
             pickled = dset[()]
             if isinstance(pickled, numpy.void):
                 # get the numpy.void object from the HDF5 dataset and convert it to bytes
                 pickled = pickled.tobytes()
             value = pickle.loads(pickled)
-        except:
+        except Exception as e:
             self._failed_to_deserialize = True
             warnings.warn("This project file uses an old or unsupported storage format. "
-                          "When save the project the next time, it will be stored in the new format.")
+                          "When save the project the next time, it will be stored in the new format.\n"
+                          "Encountered exception:\n"
+                          "{}".format(e))
             slot.setValue(self._default)
         else:
-            slot.setValue( value )
+            slot.setValue(value)
 
 ####################################
 # the base applet serializer class #

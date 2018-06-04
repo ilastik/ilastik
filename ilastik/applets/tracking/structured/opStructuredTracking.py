@@ -30,6 +30,8 @@ except ImportError:
 class OpStructuredTracking(OpConservationTracking):
     Labels = InputSlot(stype=Opaque, rtype=List)
     Divisions = InputSlot(stype=Opaque, rtype=List)
+    Appearances = InputSlot(stype=Opaque)
+    Disappearances = InputSlot(stype=Opaque)
     Annotations = InputSlot(stype=Opaque)
     MaxNumObj = InputSlot()
     LearningHypothesesGraph = InputSlot(value={})
@@ -47,7 +49,11 @@ class OpStructuredTracking(OpConservationTracking):
 
         self.labels = {}
         self.divisions = {}
+        self.appearances = {}
+        self.disappearances = {}
         self.Annotations.setValue({})
+        self.Appearances.setValue({})
+        self.Disappearances.setValue({})
         self._ndim = 3
 
         self._parent = parent
@@ -69,6 +75,8 @@ class OpStructuredTracking(OpConservationTracking):
 
         self.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
         self.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
+        self.Appearances.notifyReady( bind(self._updateAppearancesFromOperator) )
+        self.Disappearances.notifyReady( bind(self._updateDisappearancesFromOperator) )
 
         self._solver = self.parent.parent._solver
 
@@ -77,6 +85,12 @@ class OpStructuredTracking(OpConservationTracking):
 
     def _updateDivisionsFromOperator(self):
         self.divisions = self.Divisions.value
+
+    def _updateAppearancesFromOperator(self):
+        self.appearances = self.Appearances.value
+
+    def _updateDisappearancesFromOperator(self):
+        self.disappearances = self.Disappearances.value
 
     def setupOutputs(self):
         super(OpStructuredTracking, self).setupOutputs()
@@ -93,6 +107,12 @@ class OpStructuredTracking(OpConservationTracking):
 
         elif slot is self.Divisions:
             result=self.Divisions.wait()
+
+        elif slot is self.Appearances:
+            result=self.Appearances.wait()
+
+        elif slot is self.Disappearances:
+            result=self.Disappearances.wait()
 
         else:
             super(OpStructuredTracking, self).execute(slot, subindex, roi, result)
@@ -122,7 +142,9 @@ class OpStructuredTracking(OpConservationTracking):
         self.progressVisitor=progressVisitor
         
         emptyAnnotations = False
-        empty = self.Annotations.value["divisions"]=={} and self.Annotations.value["labels"]=={}
+        empty = self.Annotations.value == {} or \
+                "divisions" in list(self.Annotations.value.keys()) and self.Annotations.value["divisions"]=={} and \
+                "labels" in self.Annotations.value.keys() and self.Annotations.value["labels"]=={}
         if empty and not withBatchProcessing:
             gui._criticalMessage("Error: Weights can not be calculated because training annotations are missing. " +\
                               "Go back to Training applet!")
@@ -185,7 +207,8 @@ class OpStructuredTracking(OpConservationTracking):
 
             logger.info("Structured Learning: Adding Training Annotations to Hypotheses Graph")
 
-            mergeMsgStr = "Your tracking annotations contradict this model assumptions! All tracks must be continuous; mergers may merge or split but all tracks in a merger appear/disappear together."
+            mergeMsgStr = "Your tracking annotations contradict this model assumptions! All tracks must be continuous; mergers may merge or split but all tracks in a merger appear/disappear together. " + \
+                "You may also have to improve division and/or object count classifier in order to match your tracking annotations with small uncertainty (see Uncertainty Layer in the classiefiers)."
             foundAllArcs = True;
             numAllAnnotatedDivisions = 0
 
@@ -253,7 +276,7 @@ class OpStructuredTracking(OpConservationTracking):
                                         sink = (time, int(label))
                                         foundAllArcs = False
                                         for edge in list(hypothesesGraph._graph.in_edges(sink)): # an edge is a tuple of source and target nodes
-                                            logger.info("Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label))
+                                            logger.debug("Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label))
                                             # print "Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label)
                                             if edge[0][0] == time-1 and edge[0][1] == int(previous_label): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
                                                 foundAllArcs = True
@@ -264,16 +287,28 @@ class OpStructuredTracking(OpConservationTracking):
                                             # print "[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS t:{} id:{}".format(time-1, int(previous_label))
                                             break
 
+                                    if type[0] in ["FIRST", "SINGLETON(FIRST_LAST)"] and time in self.appearances.keys() and label in self.appearances[time].keys() and track in self.appearances[time][label].keys() and self.appearances[time][label][track]:
+                                        # print("---> appearance",time,label,track)
+                                        if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
+                                            hypothesesGraph._graph.node[(time, int(label))]['appearance'] = True
+                                            logger.debug("[structuredTrackingGui] APPEARANCE: {} {}".format(time, int(label)))
+
+                                    elif type[0] in ["LAST", "SINGLETON(FIRST_LAST)"] and time in self.disappearances.keys() and label in self.disappearances[time].keys() and track in self.disappearances[time][label].keys() and self.disappearances[time][label][track]:
+                                        # print("---> disappearance",time,label,track)
+                                        if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
+                                            hypothesesGraph._graph.node[(time, int(label))]['disappearance'] = True
+                                            logger.debug("[structuredTrackingGui] DISAPPEARANCE: {} {}".format(time, int(label)))
+
                                 if type == None:
                                     self.raiseDatasetConstraintError(self.progressWindow, 'Structured Learning', mergeMsgStr)
 
                                 elif type[0] in ["FIRST", "LAST", "INTERMEDIATE", "SINGLETON(FIRST_LAST)"]:
                                     if (time, int(label)) in list(hypothesesGraph._graph.node.keys()):
                                         hypothesesGraph._graph.node[(time, int(label))]['value'] = trackCount
-                                        logger.info("[structuredTrackingGui] NODE: {} {}".format(time, int(label)))
+                                        logger.debug("[structuredTrackingGui] NODE: {} {}".format(time, int(label)))
                                         # print "[structuredTrackingGui] NODE: {} {} {}".format(time, int(label), int(trackCount))
                                     else:
-                                        logger.info("[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label)))
+                                        logger.debug("[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label)))
                                         # print "[structuredTrackingGui] NODE: {} {} NOT found".format(time, int(label))
 
                                         foundAllArcs = False
@@ -398,6 +433,7 @@ class OpStructuredTracking(OpConservationTracking):
         if self.DetectionWeight.value < 0.0 or self.DivisionWeight.value < 0.0 or self.TransitionWeight.value < 0.0 or \
             self.AppearanceWeight.value < 0.0 or self.DisappearanceWeight.value < 0.0:
 
+            self.progressVisitor.showProgress(0)
             model['settings']['nonNegativeWeightsOnly'] = True
             weightsDict = mht.train(model, gt)
 

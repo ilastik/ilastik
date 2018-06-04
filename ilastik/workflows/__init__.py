@@ -39,20 +39,20 @@ try:
     from .iiboostPixelClassification import IIBoostPixelClassificationWorkflow
     WORKFLOW_CLASSES += [IIBoostPixelClassificationWorkflow]
 except ImportError as e:
-    logger.warn( "Failed to import the IIBoost Synapse detection workflow.  Check IIBoost dependency." )
+    logger.warning( "Failed to import the IIBoost Synapse detection workflow.  Check IIBoost dependency." )
 
 
 try:
     from .objectClassification.objectClassificationWorkflow import ObjectClassificationWorkflowPixel, ObjectClassificationWorkflowPrediction, ObjectClassificationWorkflowBinary
     WORKFLOW_CLASSES += [ObjectClassificationWorkflowPixel, ObjectClassificationWorkflowPrediction, ObjectClassificationWorkflowBinary]
 except ImportError as e:
-    logger.warn("Failed to import object workflow; check dependencies: " + str(e))
+    logger.warning("Failed to import object workflow; check dependencies: " + str(e))
 
 try:
     from .tracking.manual.manualTrackingWorkflow import ManualTrackingWorkflow
     WORKFLOW_CLASSES += [ManualTrackingWorkflow]
 except (ImportError, AttributeError) as e:
-    logger.warn( "Failed to import tracking workflow; check pgmlink dependency: " + str(e) )
+    logger.warning( "Failed to import tracking workflow; check pgmlink dependency: " + str(e) )
 
 try:
     from .tracking.conservation.conservationTrackingWorkflow import ConservationTrackingWorkflowFromBinary, ConservationTrackingWorkflowFromPrediction
@@ -60,40 +60,56 @@ try:
     WORKFLOW_CLASSES += [ ConservationTrackingWorkflowFromBinary, ConservationTrackingWorkflowFromPrediction,
                           AnimalConservationTrackingWorkflowFromBinary, AnimalConservationTrackingWorkflowFromPrediction ]
 except ImportError as e:
-    logger.warn( "Failed to import automatic tracking workflow (conservation tracking). For this workflow, see the installation"\
+    logger.warning( "Failed to import automatic tracking workflow (conservation tracking). For this workflow, see the installation"\
                  "instructions on our website ilastik.org; check dependencies: " + str(e) )
 
 try:
     from .tracking.structured.structuredTrackingWorkflow import StructuredTrackingWorkflowFromBinary, StructuredTrackingWorkflowFromPrediction
     WORKFLOW_CLASSES += [StructuredTrackingWorkflowFromBinary, StructuredTrackingWorkflowFromPrediction]    
 except ImportError as e:
-    logger.warn( "Failed to import structured learning tracking workflow. For this workflow, see the installation"\
+    logger.warning( "Failed to import structured learning tracking workflow. For this workflow, see the installation"\
              "instructions on our website ilastik.org; check dependencies: " + str(e) )
 try:
     from .carving.carvingWorkflow import CarvingWorkflow
     WORKFLOW_CLASSES += [CarvingWorkflow]    
 except ImportError as e:
-    logger.warn( "Failed to import carving workflow; check vigra dependency: " + str(e) )
+    logger.warning( "Failed to import carving workflow; check vigra dependency: " + str(e) )
 
 # try:
 #     import multicut
 # except ImportError as e:
-#     logger.warn("Failed to import multicut workflow; check dependencies: " + str(e))
+#     logger.warning("Failed to import multicut workflow; check dependencies: " + str(e))
 
 try:
     from .edgeTrainingWithMulticut import EdgeTrainingWithMulticutWorkflow
     WORKFLOW_CLASSES += [EdgeTrainingWithMulticutWorkflow]
 except ImportError as e:
-    logger.warn("Failed to import 'Edge Training With Multicut' workflow; check dependencies: " + str(e))
+    logger.warning("Failed to import 'Edge Training With Multicut' workflow; check dependencies: " + str(e))
 
 try:
     from .counting import CountingWorkflow
     WORKFLOW_CLASSES += [CountingWorkflow]
 except ImportError as e:
-    logger.warn("Failed to import counting workflow; check dependencies: " + str(e))
+    logger.warning("Failed to import counting workflow; check dependencies: " + str(e))
 
 from .examples.dataConversion.dataConversionWorkflow import DataConversionWorkflow
 WORKFLOW_CLASSES += [DataConversionWorkflow]
+
+# network classification, check whether required modules are available:
+can_nn = True
+try:
+    import torch
+    import inferno
+    import tiktorch
+except ImportError as e:
+    can_nn = False
+    logger.debug(f"NNClassificationWorkflow: could not import required modules: {e}")
+
+if can_nn:
+    if ilastik.config.cfg.getboolean('ilastik', 'hbp', fallback=False):
+        from .nnClassification import NNClassificationWorkflow
+        WORKFLOW_CLASSES += [NNClassificationWorkflow]
+
 
 # Examples
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):

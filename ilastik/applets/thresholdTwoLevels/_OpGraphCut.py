@@ -1,4 +1,3 @@
-from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,18 +16,16 @@ from __future__ import division
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#           http://ilastik.org/license.html
 ##############################################################################
 
-
 # basic python modules
-from past.utils import old_div
 import functools
 import logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.NullHandler())
-from threading import Lock as ThreadLock
+logger = logging.getLogger(__name__)  # noqa
+logger.setLevel(logging.DEBUG)  # noqa
+logger.addHandler(logging.NullHandler())  # noqa
+# from threading import Lock as ThreadLock
 
 # required numerical modules
 import numpy as np
@@ -39,11 +36,16 @@ import opengm
 from lazyflow.operator import Operator
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
-from lazyflow.stype import Opaque
-from lazyflow.request import Request, RequestPool
+# from lazyflow.stype import Opaque
+# from lazyflow.request import Request, RequestPool
 
 # required lazyflow operators
 from lazyflow.operators.opCompressedCache import OpCompressedCache
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+
+from lazyflow.graph import Graph
+
+from lazyflow.utility.reorderAxesDecorator import reorder, reorder_options
 
 
 # This operator implements an interface to compute Graph Cut segmentations
@@ -55,6 +57,8 @@ from lazyflow.operators.opCompressedCache import OpCompressedCache
 #  - this operator assumes tzyxc axis order
 #  - only ROIs with 1 channel, 1 time slice are valid for slot Output
 #  - requests to slot CachedOutput are guaranteed to be consistent
+@reorder
+@reorder_options('tzyxc', ['Beta', 'Output', 'CachedOutput'])
 class OpGraphCut(Operator):
     name = "OpGraphCut"
 
@@ -72,6 +76,8 @@ class OpGraphCut(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpGraphCut, self).__init__(*args, **kwargs)
+        # print('supertype', type(OpGraphCut))
+        # print('superobj', self)
         self._cache = None
 
     def setupOutputs(self):
@@ -82,7 +88,7 @@ class OpGraphCut(Operator):
         tags = self.Prediction.meta.getAxisKeys()
         tags = "".join(tags)
         assert tags == 'tzyxc',\
-            "Prediction maps have wrong axes order"\
+            "Prediction maps have wrong axes order" \
             "(expected: tzyxc, got: {})".format(tags)
 
         if self._cache is not None:
@@ -112,7 +118,7 @@ class OpGraphCut(Operator):
             assert roi.stop[i] - roi.start[i] == 1,\
                 "Invalid roi for graph-cut: {}".format(str(roi))
 
-        ## request the prediction image ##
+        # request the prediction image
         pred = self.Prediction.get(roi).wait()
         pred = vigra.taggedView(pred, axistags=self.Prediction.meta.axistags)
         pred = pred.withAxes(*'zyx')
@@ -123,12 +129,13 @@ class OpGraphCut(Operator):
 
         logger.info("Executing graph cut ... (this might take a while)")
         threshold_binary = segmentGC(pred, self.Beta.value)
-        threshold_binary = vigra.taggedView( threshold_binary, 'zyx' )
+        threshold_binary = vigra.taggedView(threshold_binary, 'zyx')
         logger.info("Graph-cut done")
 
         # label the segmentation so that this operator is consistent with
         # the other thresholding operators
-        vigra.analysis.labelVolumeWithBackground(threshold_binary.astype(np.uint8), out=resView)
+        vigra.analysis.labelVolumeWithBackground(
+            threshold_binary.astype(np.uint8), out=resView)
 
     def propagateDirty(self, slot, subindex, roi):
         # all input slots affect the (global) graph cut computation
@@ -146,7 +153,7 @@ class OpGraphCut(Operator):
             c = (roi.start[c_ind], roi.stop[c_ind])
 
             # set output dirty
-            start = t[0:1] + (0,)*3 + c[0:1]
+            start = t[0:1] + (0,) * 3 + c[0:1]
             stop = t[1:2] + self.Output.meta.shape[1:4] + c[1:2]
             roi = SubRegion(self.Output, start=start, stop=stop)
             self.Output.setDirty(roi)
@@ -156,11 +163,11 @@ def segmentGC(pred, beta):
     '''
        This function implements a call to the standard Graph Cut segmentation
        in the OpenGM library (http://hci.iwr.uni-heidelberg.de/opengm2/).
-       Potts model is assumed, with a 4-neighborhood for 2D data and a 6-neighborhood 
+       Potts model is assumed, with a 4-neighborhood for 2D data and a 6-neighborhood
        for 3D data to define the pairwise terms.
        Parameters:
        -- pred - the unary terms, used directly (no Log applied, do it outside if needed)
-          This input is assumed to be 3D! 
+          This input is assumed to be 3D!
        -- beta - the weight of the pairwise potentials, usually called lambda
        Return:
        -- binary volume, as produced by OpenGM
@@ -171,31 +178,34 @@ def segmentGC(pred, beta):
     numVar = pred.size
     numLabels = 2
 
-    numberOfStates = np.ones(numVar, dtype=opengm.index_type)*numLabels
+    numberOfStates = np.ones(numVar, dtype=opengm.index_type) * numLabels
     gm = opengm.graphicalModel(numberOfStates, operator='adder')
 
-    #Adding unary function and factors
+    # Adding unary function and factors
     functions = np.zeros((numVar, 2))
     predflat = pred.reshape((numVar, 1))
     if (predflat.dtype == np.uint8):
         predflat = predflat.astype(np.float32)
-        predflat = old_div(predflat,256.)
+        predflat = predflat / 256.
 
     functions[:, 0] = predflat[:, 0]
-    functions[:, 1] = 1-predflat[:, 0]
+    functions[:, 1] = 1 - predflat[:, 0]
 
     unary_fids = gm.addFunctions(functions)
     gm.addFactors(unary_fids, np.arange(0, numVar))
 
-    #add one binary function (potts fuction)
+    # add one binary function (potts fuction)
     potts = opengm.PottsFunction([2, 2], 0.0, beta)
     binary_fid = gm.addFunction(potts)
 
-    #add binary factors
+    # add binary factors
     indices = np.arange(numVar, dtype=np.uint32).reshape((nz, ny, nx))
-    z_edges = np.concatenate([indices[:nz-1, :, :], indices[1:, :, :]]).reshape((2, (nz-1)*ny*nx)).transpose()
-    y_edges = np.concatenate([indices[:, :ny-1, :], indices[:, 1:, :]]).reshape((2, nz*(ny-1)*nx)).transpose()
-    x_edges = np.concatenate([indices[:, :, :nx-1], indices[:, :, 1:]]).reshape((2, nz*ny*(nx-1))).transpose()
+    z_edges = np.concatenate([indices[:nz - 1, :, :], indices[1:, :, :]]
+                             ).reshape((2, (nz - 1) * ny * nx)).transpose()
+    y_edges = np.concatenate([indices[:, :ny - 1, :], indices[:, 1:, :]]
+                             ).reshape((2, nz * (ny - 1) * nx)).transpose()
+    x_edges = np.concatenate([indices[:, :, :nx - 1], indices[:, :, 1:]]
+                             ).reshape((2, nz * ny * (nx - 1))).transpose()
 
     gm.addFactors(binary_fid, z_edges)
     gm.addFactors(binary_fid, y_edges)
@@ -209,3 +219,29 @@ def segmentGC(pred, beta):
     if hasattr(pred, 'axistags'):
         res = vigra.taggedView(res, pred.axistags)
     return res
+
+
+if __name__ == '__main__':
+    print('main')
+    g = Graph()
+    test = OpGraphCut(graph=g)
+    print(test.Prediction)
+    print('dict', test.__dict__)
+
+    # test2 = ReorderedOperator(OpGraphCut, graph=g)
+    # print(test2.Prediction)
+
+    print(test.name)
+    # print(test.__getitem__)
+    # print(test.__iter__)
+    # print(test._callbackInserted)
+    # print(test._callbackPreRemove)
+    # print(test._callbackPostRemoved)
+    # print(test._callbackConnect)
+    print(test.propagateDirty)
+    # print(test._insertInnerOperator)
+    # print(test.handleEarlyDisconnect)
+    # print(test._removeInnerOperator)
+    print(test._setupOutputs)
+    print(test.execute)
+    print(test.setInSlot)

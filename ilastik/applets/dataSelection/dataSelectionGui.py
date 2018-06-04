@@ -58,6 +58,7 @@ from .datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, H5VolumeSelectionDlg
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDetailedInfoTableModel
 from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
+from .precomputedVolumeBrowser import PrecomputedVolumeBrowser
 
 try:
     import libdvid
@@ -239,6 +240,8 @@ class DataSelectionGui(QWidget):
                     partial(self.addFiles, roleIndex))
             detailViewer.addStackRequested.connect(
                     partial(self.addStack, roleIndex))
+            detailViewer.addPrecomputedVolumeRequested.connect(
+                partial(self.addPrecomputedVolume, roleIndex))
             detailViewer.addRemoteVolumeRequested.connect(
                     partial(self.addDvidVolume, roleIndex))
 
@@ -697,7 +700,7 @@ class DataSelectionGui(QWidget):
         return ( dlg_state == QDialog.Accepted )
 
     @classmethod
-    def getPossibleInternalPaths(cls, absPath, min_ndim=3, max_ndim=5):
+    def getPossibleInternalPaths(cls, absPath, min_ndim=2, max_ndim=5):
         datasetNames = []
         # Open the file as a read-only so we can get a list of the internal paths
         with h5py.File(absPath, 'r') as f:
@@ -793,7 +796,18 @@ class DataSelectionGui(QWidget):
             model = view.model()
             view.setColumnHidden(DatasetDetailedInfoColumn.InternalID,
                                  not model.hasInternalPaths())
-    
+
+    def addPrecomputedVolume(self, roleIndex, laneIndex):
+        # add history...
+        history = []
+        browser = PrecomputedVolumeBrowser(history=history, parent=self)
+
+        if browser.exec_() == PrecomputedVolumeBrowser.Rejected:
+            return
+
+        precomputed_url = browser.selected_url
+        self.addFileNames([precomputed_url], roleIndex, laneIndex)
+
     def addDvidVolume(self, roleIndex, laneIndex):
         recent_hosts_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Hosts")
         recent_hosts = recent_hosts_pref.get()

@@ -70,7 +70,7 @@ class ZMQPublisherInfoWidget(QWidget):
                 action = self.change_sub_addr_action
                 msg = "subscribe"
             else:
-                logger.warn("'{}' is not a valid mode".format(mode))
+                logger.warning("'{}' is not a valid mode".format(mode))
                 return
             if value:
                 status_widget.setText("running: %s" % status["address"])
@@ -83,7 +83,7 @@ class ZMQPublisherInfoWidget(QWidget):
             toggle_widget.setEnabled(True)
             action.setEnabled(not value)
         else:
-            logger.warn("'%s' is no valid server status attribute ")
+            logger.warning("'%s' is no valid server status attribute ")
             return
         self.status[mode][attribute] = value
 

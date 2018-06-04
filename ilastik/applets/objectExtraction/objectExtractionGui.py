@@ -313,7 +313,7 @@ class FeatureSelectionDialog(QDialog):
 
     def set_margin(self):
         if self.ndim > 3 or self.ndim < 2:
-            logger.warn("wrong dimensions setting for feature selection dialog")
+            logger.warning("wrong dimensions setting for feature selection dialog")
             return
         default = [-1]*self.ndim
         margin = max_margin(self.selectedFeatures, default)

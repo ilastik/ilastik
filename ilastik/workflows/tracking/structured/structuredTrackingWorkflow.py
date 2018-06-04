@@ -32,7 +32,7 @@ from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import Threshol
 from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
 from ilastik.applets.trackingFeatureExtraction import config
 from ilastik.applets.tracking.conservation import config as configConservation
-from ilastik.applets.tracking.structured import config as configStructured
+
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
@@ -107,12 +107,12 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self.divisionDetectionApplet = ObjectClassificationApplet(workflow=self,
                                                                      name="Division Detection (optional)",
                                                                      projectFileGroupName="DivisionDetection",
-                                                                     selectedFeatures=configStructured.selectedFeaturesDiv)
+                                                                     selectedFeatures=configConservation.selectedFeaturesDiv)
 
         self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
                                                                      name="Object Count Classification",
                                                                      projectFileGroupName="CountClassification",
-                                                                     selectedFeatures=configStructured.selectedFeaturesObjectCount)
+                                                                     selectedFeatures=configConservation.selectedFeaturesObjectCount)
 
         self.trackingFeatureExtractionApplet = TrackingFeatureExtractionApplet(name="Object Feature Computation",workflow=self, interactive=False)
 
@@ -191,7 +191,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
             self.testFullAnnotations = False
 
         if unused_args:
-            logger.warn("Unused command-line args: {}".format( unused_args ))
+            logger.warning("Unused command-line args: {}".format( unused_args ))
 
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -274,6 +274,8 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opStructuredTracking.Annotations.connect (opAnnotations.Annotations)
         opStructuredTracking.Labels.connect (opAnnotations.Labels)
         opStructuredTracking.Divisions.connect (opAnnotations.Divisions)
+        opStructuredTracking.Appearances.connect (opAnnotations.Appearances)
+        opStructuredTracking.Disappearances.connect (opAnnotations.Disappearances)
         opStructuredTracking.MaxNumObj.connect (opCellClassification.MaxNumObj)
 
         opDataTrackingExport.Inputs.resize(3)
@@ -328,20 +330,21 @@ class StructuredTrackingWorkflowBase( Workflow ):
             self.trackingApplet.topLevelOperator[loaded_project_lane_index].Annotations.value)
 
         def runLearningAndTracking(withMergerResolution=True):
-            logger.info("Test: Structured Learning")
-            weights = self.trackingApplet.topLevelOperator[lane_index]._runStructuredLearning(
-                z_range,
-                parameters['maxObj'],
-                parameters['max_nearest_neighbors'],
-                parameters['maxDist'],
-                parameters['divThreshold'],
-                [parameters['scales'][0],parameters['scales'][1],parameters['scales'][2]],
-                parameters['size_range'],
-                parameters['withDivisions'],
-                parameters['borderAwareWidth'],
-                parameters['withClassifierPrior'],
-                withBatchProcessing=True)
-            logger.info("weights: {}".format(weights))
+            if self.testFullAnnotations:
+                logger.info("Test: Structured Learning")
+                weights = self.trackingApplet.topLevelOperator[lane_index]._runStructuredLearning(
+                    z_range,
+                    parameters['maxObj'],
+                    parameters['max_nearest_neighbors'],
+                    parameters['maxDist'],
+                    parameters['divThreshold'],
+                    [parameters['scales'][0],parameters['scales'][1],parameters['scales'][2]],
+                    parameters['size_range'],
+                    parameters['withDivisions'],
+                    parameters['borderAwareWidth'],
+                    parameters['withClassifierPrior'],
+                    withBatchProcessing=True)
+                logger.info("weights: {}".format(weights))
 
             logger.info("Test: Tracking")
             result = self.trackingApplet.topLevelOperator[lane_index].track(

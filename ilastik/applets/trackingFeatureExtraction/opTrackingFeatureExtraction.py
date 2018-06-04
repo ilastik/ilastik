@@ -307,7 +307,14 @@ class OpTrackingFeatureExtraction(Operator):
 
                 self.FeatureNamesVigra.setValue(filtered_features_dict)
             else:
-                self.FeatureNamesVigra.setValue(self._default_features)
+                # Filter out the 2D-only features, which helpfully have "2D" in their plugin name
+                current_dict = self._default_features
+                for plugin in list(current_dict.keys()):
+                    if not "3D" in plugin:
+                        filtered_features_dict[plugin] = current_dict[plugin]
+
+                self.FeatureNamesVigra.setValue(filtered_features_dict)
+                # self.FeatureNamesVigra.setValue(self._default_features)
 
 class OpCachedDivisionFeatures(Operator):
     """Caches the division features computed by OpDivisionFeatures."""    

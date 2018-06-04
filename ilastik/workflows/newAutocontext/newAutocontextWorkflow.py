@@ -151,7 +151,7 @@ class NewAutocontextWorkflowBase(Workflow):
             self._batch_export_args = None
 
         if unused_args:
-            logger.warn("Unused command-line args: {}".format( unused_args ))
+            logger.warning("Unused command-line args: {}".format( unused_args ))
 
     def createDataSelectionApplet(self):
         """
@@ -159,11 +159,19 @@ class NewAutocontextWorkflowBase(Workflow):
         special parameters to initialize the DataSelectionApplet.
         """
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
+
+        c_at_end = ['yxc', 'xyc']
+        for perm in itertools.permutations('tzyx', 3):
+            c_at_end.append(''.join(perm) + 'c')
+        for perm in itertools.permutations('tzyx', 4):
+            c_at_end.append(''.join(perm) + 'c')
+
         return DataSelectionApplet( self,
                                     "Input Data",
                                     "Input Data",
                                     supportIlastik05Import=False,
-                                    instructionText=data_instructions )
+                                    instructionText=data_instructions,
+                                    forceAxisOrder=c_at_end)
 
     def createFeatureSelectionApplet(self, index):
         """
@@ -419,7 +427,7 @@ class NewAutocontextWorkflowBase(Workflow):
         if self._batch_input_args:
             for pcApplet in self.pcApplets:
                 if pcApplet.topLevelOperator.classifier_cache._dirty:
-                    logger.warn("At least one of your classifiers is not yet trained.  "
+                    logger.warning("At least one of your classifiers is not yet trained.  "
                                 "A new classifier will be trained for this run.")
                     break
 

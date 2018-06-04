@@ -710,6 +710,10 @@ class OpConservationTracking(Operator):
                               with_classifier_prior=False):
 
         logger.info("generating traxels")
+
+        self.progressVisitor.showState("Object features")
+        self.progressVisitor.showProgress(0)
+
         traxelstore = ProbabilityGenerator()
         
         logger.info("fetching region features and division probabilities")
@@ -721,6 +725,8 @@ class OpConservationTracking(Operator):
                          "Uncheck divisible objects if your objects don't divide or " + \
                          "go back to the Division Detection applet and train it."
                 raise DatasetConstraintError ("Tracking",msgStr)
+            self.progressVisitor.showState("Division probabilities")
+            self.progressVisitor.showProgress(0)
             divProbs = self.DivisionProbabilities(time_range).wait()
 
         if with_local_centers:
@@ -731,6 +737,8 @@ class OpConservationTracking(Operator):
                 msgStr = "\nObject count classifier has not been trained! " + \
                          "Go back to the Object Count Classification applet and train it."
                 raise DatasetConstraintError ("Tracking",msgStr)
+            self.progressVisitor.showState("Detection probabilities")
+            self.progressVisitor.showProgress(0)
             detProbs = self.DetectionProbabilities(time_range).wait()
 
         logger.info("filling traxelstore")

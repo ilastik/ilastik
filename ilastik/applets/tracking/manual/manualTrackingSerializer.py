@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    SerialSlot, deleteIfPresent, getOrCreateGroup, SerialPickledValueSlot
+    SerialSlot, deleteIfPresent, getOrCreateGroup, SerialPickleableSlot
 
 class SerialDivisionsSlot(SerialSlot):
     def serialize(self, group):
@@ -91,13 +91,14 @@ class SerialLabelsSlot(SerialSlot):
         self.dirty = False
         
 class ManualTrackingSerializer(AppletSerializer):
-    
+
     def __init__(self, operator, projectFileGroupName):
+        self.VERSION = 1  # Make sure to bump the version in case you make any changes in the serialization
         slots = [ #SerialSlot(operator.TrackImage),
                    SerialDivisionsSlot(operator.Divisions),
                    SerialLabelsSlot(operator.Labels)]
                     
                    # FIXME: ExportSettings can't be serialized because it is technically a level-1 slot.
-                   #SerialPickledValueSlot(operator.ExportSettings)
+                   #SerialPickleableSlot(operator.ExportSettings, version=self.VERSION)
     
         super(ManualTrackingSerializer, self ).__init__(projectFileGroupName, slots=slots)

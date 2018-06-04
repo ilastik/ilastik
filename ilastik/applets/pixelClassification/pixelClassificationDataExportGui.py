@@ -160,8 +160,11 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         colors = opLane.PmapColors.value
         names = opLane.LabelNames.value
 
-        if predictionSlot.ready():        
-            num_channels = predictionSlot.meta.getTaggedShape()['c']
+        if predictionSlot.ready():
+            if 'c' in predictionSlot.meta.getAxisKeys():
+                num_channels = predictionSlot.meta.getTaggedShape()['c']
+            else:
+                num_channels = 1
             if num_channels != len(names) or num_channels != len(colors):
                 names = ["Label {}".format(n) for n in range(1, num_channels+1)]
                 colors = self._createDefault16ColorColorTable()[:num_channels]
