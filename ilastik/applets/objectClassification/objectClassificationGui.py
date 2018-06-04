@@ -17,7 +17,7 @@ from __future__ import print_function
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#          http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
 from PyQt5.QtWidgets import *
@@ -111,7 +111,7 @@ class ObjectClassificationGui(LabelingGui):
         super(ObjectClassificationGui, self).stopAndCleanUp()
 
     PREDICTION_LAYER_NAME = "Prediction"
-    
+
     #FIXME
     #temporary place for this operator, move somewhere else later
     _knime_exporter = None
@@ -128,7 +128,7 @@ class ObjectClassificationGui(LabelingGui):
 
         labelSlots.maxLabelValue = op.NumLabels
         labelSlots.labelNames = op.LabelNames
-        
+
         # We provide our own UI file (which adds an extra control for
         # interactive mode) This UI file is copied from
         # pixelClassification pipeline
@@ -155,12 +155,12 @@ class ObjectClassificationGui(LabelingGui):
 
         self.labelingDrawerUi.brushSizeComboBox.setEnabled(False)
         self.labelingDrawerUi.brushSizeComboBox.setVisible(False)
-        
+
         self.labelingDrawerUi.brushSizeCaption.setVisible(False)
 
         self._colorTable16_forpmaps = self._createDefault16ColorColorTable()
         self._colorTable16_forpmaps[15] = QColor(Qt.black).rgba() #for objects with NaNs in features
-        
+
         # button handlers
         self._interactiveMode = False
         self._showPredictions = False
@@ -170,7 +170,7 @@ class ObjectClassificationGui(LabelingGui):
             self.handleSubsetFeaturesClicked)
         self.labelingDrawerUi.labelAssistButton.clicked.connect(
             self.handleLabelAssistClicked)
-        self.labelingDrawerUi.checkInteractive.toggled.connect(
+        self.labelingDrawerUi.checkInteractive.clicked.connect(
             self.handleInteractiveModeClicked)
         self.labelingDrawerUi.checkShowPredictions.toggled.connect(
             self.handleShowPredictionsClicked)
@@ -180,18 +180,18 @@ class ObjectClassificationGui(LabelingGui):
         already_selected = None
         if self.op.ComputedFeatureNames.ready():
             cfn = self.op.ComputedFeatureNames[:].wait()
-            
+
         if self.op.SelectedFeatures.ready():
             already_selected = self.op.SelectedFeatures[:].wait()
-            
+
         if already_selected is None or len(already_selected)==0:
             if cfn is not None:
                 already_selected = cfn
-        
+
         self.op.SelectedFeatures.setValue(already_selected)
-        
+
         nfeatures = 0
-        
+
         if already_selected is not None:
             for plugin_features in already_selected.values():
                 nfeatures += len(plugin_features)
@@ -206,10 +206,10 @@ class ObjectClassificationGui(LabelingGui):
 
         self.op.NumLabels.notifyDirty(bind(self.checkEnableButtons))
         self.__cleanup_fns.append( partial( op.NumLabels.unregisterDirty, bind(self.checkEnableButtons) ) )
-        
+
         self.op.SelectedFeatures.notifyDirty(bind(self.checkEnableButtons))
         self.__cleanup_fns.append( partial( op.SelectedFeatures.unregisterDirty, bind(self.checkEnableButtons) ) )
- 
+
         if not self.op.AllowAddLabel([]).wait()[0]:
             self.labelingDrawerUi.AddLabelButton.hide()
             self.labelingDrawerUi.AddLabelButton.clicked.disconnect()
@@ -217,7 +217,7 @@ class ObjectClassificationGui(LabelingGui):
         self.badObjectBox = None
 
         self.checkEnableButtons()
-        
+
         self._labelAssistDialog = None
 
     def menus(self):
@@ -246,7 +246,7 @@ class ObjectClassificationGui(LabelingGui):
 
     @labelMode.setter
     def labelMode(self, val):
-        self.labelingDrawerUi.labelListView.allowDelete = ( val and self.op.AllowDeleteLabels([]).wait()[0] ) 
+        self.labelingDrawerUi.labelListView.allowDelete = ( val and self.op.AllowDeleteLabels([]).wait()[0] )
         self.labelingDrawerUi.AddLabelButton.setEnabled(val)
         self._labelMode = val
 
@@ -258,7 +258,7 @@ class ObjectClassificationGui(LabelingGui):
     def interactiveMode(self, val):
         logger.debug("setting interactive mode to '%r'" % val)
         self._interactiveMode = val
-        self.labelingDrawerUi.checkInteractive.setChecked(val)
+        self.labelingDrawerUi.checkShowPredictions.setChecked(val)
         if val:
             self.showPredictions = True
         self.labelMode = not val
@@ -266,7 +266,7 @@ class ObjectClassificationGui(LabelingGui):
 
     @pyqtSlot()
     def handleInteractiveModeClicked(self):
-        self.interactiveMode = self.labelingDrawerUi.checkInteractive.isChecked()
+        self.interactiveMode = True
 
     @property
     def showPredictions(self):
@@ -290,6 +290,7 @@ class ObjectClassificationGui(LabelingGui):
     @pyqtSlot()
     def handleShowPredictionsClicked(self):
         self.showPredictions = self.labelingDrawerUi.checkShowPredictions.isChecked()
+        self.labelMode = not self.labelingDrawerUi.checkShowPredictions.isChecked()
 
     @pyqtSlot()
     def handleSubsetFeaturesClicked(self):
@@ -335,7 +336,7 @@ class ObjectClassificationGui(LabelingGui):
         for pluginInfo in plugins:
             availableFeatures = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
             if len(availableFeatures) > 0:
-                if pluginInfo.name in list(self.applet._selectedFeatures.keys()): 
+                if pluginInfo.name in list(self.applet._selectedFeatures.keys()):
                     assert pluginInfo.name in list(computedFeatures.keys()), 'Object Classification: {} not found in available (computed) object features'.format(pluginInfo.name)
 
                 if not pluginInfo.name in selectedFeatures and pluginInfo.name in self.applet._selectedFeatures:
@@ -363,7 +364,7 @@ class ObjectClassificationGui(LabelingGui):
     def handleLabelAssistClicked(self):
         if self._labelAssistDialog is None:
             self._labelAssistDialog = LabelAssistDialog(self, self.topLevelOperatorView)
-        self._labelAssistDialog.show()       
+        self._labelAssistDialog.show()
 
     @pyqtSlot()
     def checkEnableButtons(self):
@@ -399,7 +400,7 @@ class ObjectClassificationGui(LabelingGui):
             self.showPredictions = False
 
         self.labelingDrawerUi.subsetFeaturesButton.setEnabled(feats_enabled)
-        self.labelingDrawerUi.checkInteractive.setEnabled(predict_enabled)
+        # self.labelingDrawerUi.checkInteractive.setEnabled(predict_enabled)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(predict_enabled)
         self.labelingDrawerUi.AddLabelButton.setEnabled(labels_enabled)
         self.labelingDrawerUi.labelListView.allowDelete = ( True and self.op.AllowDeleteLabels([]).wait()[0] )
@@ -445,7 +446,7 @@ class ObjectClassificationGui(LabelingGui):
             return self._getNext(self.topLevelOperatorView.LabelNames,
                              super(ObjectClassificationGui, self).getNextLabelName)
         else:
-            return self._getNext(self.topLevelOperatorView.LabelNames, 
+            return self._getNext(self.topLevelOperatorView.LabelNames,
                              self._getNextSuggestedLabelName)
 
     def getNextLabelColor(self):
@@ -513,7 +514,7 @@ class ObjectClassificationGui(LabelingGui):
                 # Force dirty propagation even though the list id is unchanged.
                 slot.setValue(value, check_changed=False)
 
-        
+
     def createLabelLayer(self, direct=False):
         """Return a colortable layer that displays the label slot
         data, along with its associated label source.
@@ -560,7 +561,7 @@ class ObjectClassificationGui(LabelingGui):
 
         #This is just for colors
         labels = self.labelListData
-        
+
         for channel, probSlot in enumerate(self.op.PredictionProbabilityChannels):
             if probSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
@@ -574,7 +575,7 @@ class ObjectClassificationGui(LabelingGui):
                 #False, because it's much faster to draw predictions without these layers below
                 probLayer.visible = False
                 probLayer.setToolTip("Probability that the object belongs to class {}".format(channel+1))
-                    
+
                 def setLayerColor(c, predictLayer_=probLayer, ch=channel, initializing=False):
                     if not initializing and predictLayer_ not in self.layerstack:
                         # This layer has been removed from the layerstack already.
@@ -604,10 +605,10 @@ class ObjectClassificationGui(LabelingGui):
 
             predictLayer.name = self.PREDICTION_LAYER_NAME
             predictLayer.ref_object = None
-            predictLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+            predictLayer.visible = self.labelingDrawerUi.checkShowPredictions.isChecked()
             predictLayer.opacity = 0.5
             predictLayer.setToolTip("Classification results, assigning a label to each object")
-            
+
             # This weakref stuff is a little more fancy than strictly necessary.
             # The idea is to use the weakref's callback to determine when this layer instance is destroyed by the garbage collector,
             #  and then we disconnect the signal that updates that layer.
@@ -670,7 +671,7 @@ class ObjectClassificationGui(LabelingGui):
         if binarySlot.ready():
             ct_binary = [0,
                          QColor(255, 255, 255, 255).rgba()]
-            
+
             # white foreground on transparent background, even for labeled images
             binct = [QColor(255, 255, 255, 255).rgba()]*65536
             binct[0] = 0
@@ -795,8 +796,8 @@ class ObjectClassificationGui(LabelingGui):
             act.setIconVisibleInMenu(True)
             label_actions.append(act_text)
             menu.addAction(act)
-            
-        
+
+
         action = menu.exec_(globalWindowCoordinate)
         if action is None:
             return
@@ -804,7 +805,7 @@ class ObjectClassificationGui(LabelingGui):
             numpy.set_printoptions(precision=4)
             print( "------------------------------------------------------------" )
             print( "object:         {}".format(obj) )
-            
+
             t = position5d[0]
             labels = self.op.LabelInputs([t]).wait()[t]
             if len(labels) > obj:
@@ -812,7 +813,7 @@ class ObjectClassificationGui(LabelingGui):
             else:
                 label = "none"
             print( "label:          {}".format(label) )
-            
+
             print( 'features:' )
             feats = self.op.ObjectFeatures([t]).wait()[t]
             selected = self.op.SelectedFeatures([]).wait()
@@ -833,13 +834,13 @@ class ObjectClassificationGui(LabelingGui):
                     preds = self.op.Predictions([t]).wait()[t]
                     if len(preds) >= obj:
                         pred = int(preds[obj])
-                
+
                 prob = 'none'
                 if self.op.Probabilities.ready():
                     probs = self.op.Probabilities([t]).wait()[t]
                     if len(probs) >= obj:
                         prob = probs[obj]
-    
+
                 print( "probabilities:  {}".format(prob) )
                 print( "prediction:     {}".format(pred) )
 
@@ -858,7 +859,7 @@ class ObjectClassificationGui(LabelingGui):
             self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, 0)
 
         #todo: remove old
-        elif self.applet.connected_to_knime: 
+        elif self.applet.connected_to_knime:
             if action.text()==knime_hilite:
                 data = {'command': 0, 'objectid': 'Row'+str(obj)}
                 self.applet.sendMessageToServer('knime', data)
@@ -868,7 +869,7 @@ class ObjectClassificationGui(LabelingGui):
             elif action.text()==knime_clearhilite:
                 data = {'command': 2}
                 self.applet.sendMessageToServer('knime', data)
-        
+
         else:
             try:
                 label = label_actions.index(action.text())
@@ -877,8 +878,8 @@ class ObjectClassificationGui(LabelingGui):
             topLevelOp = self.topLevelOperatorView.viewed_operator()
             imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
             self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, label+1)
-            
-            
+
+
 
 
     def setVisible(self, visible):
@@ -955,7 +956,7 @@ class ObjectClassificationGui(LabelingGui):
         return self.applet
 
     def get_export_dialog_title(self):
-    	return "Export Object Information"
+        return "Export Object Information"
 
 
 # Overload QTableWidgetItem class to allow comparisons of float instead of strings
@@ -981,32 +982,32 @@ class LabelAssistDialog(QDialog):
     """
     def __init__(self, parent, topLevelOperatorView):
         super(LabelAssistDialog, self).__init__(parent)
-        
+
         # Create thread router to populate table on main thread
         self.threadRouter = ThreadRouter(self)
-        
+
         # Set object classification operator view
         self.topLevelOperatorView = topLevelOperatorView
-        
+
         self.setWindowTitle("Label Assist")
         self.setMinimumWidth(500)
         self.setMinimumHeight(700)
 
-        layout = QGridLayout() 
+        layout = QGridLayout()
         layout.setContentsMargins(10, 10, 10, 10)
-                       
+
         # Show variable importance table
         rows = 0
         columns = 4
-        self.table = QTableWidget(rows, columns)   
+        self.table = QTableWidget(rows, columns)
         self.table.setHorizontalHeaderLabels(['Frame', 'Max Area', 'Min Area', 'Labels'])
-        self.table.verticalHeader().setVisible(False)     
-        
+        self.table.verticalHeader().setVisible(False)
+
         # Select full row on-click and call capture double click
         self.table.setSelectionBehavior(QTableView.SelectRows);
         self.table.doubleClicked.connect(self._captureDoubleClick)
-                
-        layout.addWidget(self.table, 1, 0, 3, 2) 
+
+        layout.addWidget(self.table, 1, 0, 3, 2)
 
         # Create progress bar
         self.progressBar = QProgressBar()
@@ -1019,20 +1020,20 @@ class LabelAssistDialog(QDialog):
         self.computeButton = QPushButton('Compute object info')
         self.computeButton.clicked.connect(self._triggerTableUpdate)
         layout.addWidget(self.computeButton, 5, 0)
-        
+
         # Create close button
         closeButton = QPushButton('Close')
         closeButton.clicked.connect(self.close)
         layout.addWidget(closeButton, 5, 1)
-        
+
         # Set dialog layout
-        self.setLayout(layout)       
+        self.setLayout(layout)
 
 
     def _triggerTableUpdate(self):
         # Check that object area is included in selected features
         featureNames = self.topLevelOperatorView.SelectedFeatures.value
-        
+
         if 'Standard Object Features' not in featureNames or 'Count' not in featureNames['Standard Object Features']:
             box = QMessageBox(QMessageBox.Warning,
                   'Warning',
@@ -1040,8 +1041,8 @@ class LabelAssistDialog(QDialog):
                   QMessageBox.NoButton,
                   self)
             box.show()
-            return 
-        
+            return
+
         # Clear table
         self.table.clearContents()
         self.table.setRowCount(0)
@@ -1049,25 +1050,25 @@ class LabelAssistDialog(QDialog):
         self.progressBar.show()
         self.computeButton.setEnabled(False)
 
-        def compute_features_for_frame(tIndex, t, features): 
+        def compute_features_for_frame(tIndex, t, features):
             # Compute features and labels (called in parallel from request pool)
             roi = [slice(None) for i in range(len(self.topLevelOperatorView.LabelImages.meta.shape))]
             roi[tIndex] = slice(t, t+1)
             roi = tuple(roi)
 
-            frame = self.topLevelOperatorView.SegmentationImages(roi).wait()           
+            frame = self.topLevelOperatorView.SegmentationImages(roi).wait()
             frame = frame.squeeze().astype(numpy.uint32, copy=False)
-            
+
             # Dirty trick: We don't care what we're passing here for the 'image' parameter,
             # but vigra insists that we pass *something*, so we'll cast the label image as float32.
             features[t] = vigra.analysis.extractRegionFeatures(frame.view(numpy.float32),
                                                                frame,
                                                                ['Count'],
                                                                ignoreLabel=0)
-            
+
         tIndex = self.topLevelOperatorView.SegmentationImages.meta.axistags.index('t')
-        tMax = self.topLevelOperatorView.SegmentationImages.meta.shape[tIndex]     
-        
+        tMax = self.topLevelOperatorView.SegmentationImages.meta.shape[tIndex]
+
         features = {}
         labels = {}
 
@@ -1077,10 +1078,10 @@ class LabelAssistDialog(QDialog):
             for t in range(tMax):
                 pool.add( Request( partial(compute_features_for_frame, tIndex, t, features) ) )
             pool.wait()
-            
+
         # Compute labels
         labels = self.topLevelOperatorView.LabelInputs([]).wait()
-            
+
         req = Request(compute_all_features)
         req.notify_finished( partial(self._populateTable, features, labels) )
         req.submit()
@@ -1089,58 +1090,58 @@ class LabelAssistDialog(QDialog):
     def _populateTable(self, features, labels, *args):
         self.progressBar.hide()
         self.computeButton.setEnabled(True)
-                
+
         for time, feature in features.items():
             # Insert row
             rowNum = self.table.rowCount()
             self.table.insertRow(self.table.rowCount())
-            
+
             # Get max and min object areas
             areas = feature['Count']#objectFeatures['Standard Object Features']['Count']
             maxObjArea = numpy.max(areas[numpy.nonzero(areas)])
             minObjArea = numpy.min(areas[numpy.nonzero(areas)])
-            
+
             # Get number of labeled objects
             labelNum = numpy.count_nonzero(labels[time])
-            
+
             # Load fram number
             item = QTableWidgetItem(str(time))
             item.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
-            self.table.setItem(rowNum, 0, item) 
+            self.table.setItem(rowNum, 0, item)
 
             # Load max object areas
             item = QTableWidgetItemWithFloatSorting(str("{: .02f}".format(maxObjArea)))
             item.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
             self.table.setItem(rowNum, 1, item)
-                
+
             # Load min object areas
             item = QTableWidgetItemWithFloatSorting(str("{: .02f}".format(minObjArea)))
             item.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
             self.table.setItem(rowNum, 2, item)
-            
+
             # Load label numbers
             item = QTableWidgetItemWithFloatSorting(str("{: .01f}".format(labelNum)))
             item.setFlags( Qt.ItemIsSelectable |  Qt.ItemIsEnabled )
             self.table.setItem(rowNum, 3, item)
-        
+
         # Resize column size to fit dialog size
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)   
-        
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
         # Sort by max object area
-        self.table.setSortingEnabled(True)                         
+        self.table.setSortingEnabled(True)
         self.table.sortByColumn(1, Qt.DescendingOrder)
-        
+
 
     def _captureDoubleClick(self):
         # Navigate to selected frame
         index = self.table.selectedIndexes()[0]
         frameStr = self.table.model().data(index).toString()
-        
+
         if frameStr:
             frameNum = int(frameStr)
             self.parent().editor.posModel.time = frameNum
 
-        
+
 class BadObjectsDialog(QMessageBox):
     def __init__(self, warning, parent):
         super(BadObjectsDialog, self).__init__(QMessageBox.Warning,
