@@ -40,6 +40,8 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import log_exception
 from ilastik.utility import bind
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.applets.base.applet import DatasetConstraintError
 
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
@@ -170,6 +172,42 @@ class AnnotationsGui(LayerViewerGui):
                         if int(self._drawer.activeTrackBox.itemText(i)) == track:
                             self._drawer.activeTrackBox.setCurrentIndex(i)
                             break
+
+            feats = self.mainOperator.ObjectFeatures([t]).wait()
+            rc = feats[t][default_features_key]['RegionCenter']
+            lower = feats[t][default_features_key]['Coord<Minimum>']
+            upper = feats[t][default_features_key]['Coord<Maximum>']
+
+            for idx in range(rc.shape[0]):
+                if idx == ul:
+                    # for 2d data, set z-coordinate to 0:
+                    if len(rc[idx]) == 2:
+                        x, y = rc[idx]
+                        z = 0
+                        x_lower, y_lower = lower[idx]
+                        x_upper, y_upper = upper[idx]
+                        z_lower = 0
+                        z_upper = 0
+                        dx = abs(x_upper-x_lower)/3
+                        dy = abs(y_upper-y_lower)/3
+                        d = min([dx,dy])
+                    elif len(rc[idx]) == 3:
+                        x, y, z = rc[idx]
+                        x_lower, y_lower, z_lower = lower[idx]
+                        x_upper, y_upper, z_upper = upper[idx]
+                        dx = abs(x_upper-x_lower)/3
+                        dy = abs(y_upper-y_lower)/3
+                        dz = abs(z_upper-z_lower)/3
+                        d = min([dx,dy,dz])
+                    else:
+                        raise DatasetConstraintError ("Tracking", "The RegionCenter feature must have dimensionality 2 or 3.")
+
+                    for imageView in self.editor.imageViews:
+                        imageView._croppingMarkers.crop_extents_model.setEditable(True)
+                        imageView._croppingMarkers.crop_extents_model.set_volume_shape_3d_cropped(
+                            [x_lower-d,y_lower-d,z_lower-d],[x_upper+d,y_upper+d,z_upper+d])
+                        imageView._croppingMarkers.setVisible(True)
+
             return ul, t
 
         return None, None
@@ -241,6 +279,7 @@ class AnnotationsGui(LayerViewerGui):
         return None, None
 
     def goToNextUnlabeledObjectFrame(self):
+
         labels = self.mainOperator.labels
         t = self.editor.posModel.time
 
@@ -767,6 +806,8 @@ class AnnotationsGui(LayerViewerGui):
                         self.divLock = False
                         self.divs = []
                         self._drawer.divEvent.setChecked(False)
+                        self._drawer.divEvent.setText("Division Event")
+                        self._enableButtons(enable=True)
                         return
 
                     div = [activeTrack,]
@@ -790,9 +831,14 @@ class AnnotationsGui(LayerViewerGui):
                     self.divLock = False
                     self.divs = []
                     self._drawer.divEvent.setChecked(False)
+                    self._drawer.divEvent.setText("Division Event")
                     self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=True)
             self._onSaveAnnotations(division=True)
         else:
+
+            for imageView in self.editor.imageViews:
+                imageView._croppingMarkers.setVisible(False)
+
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
             if oid == 0:
                 return
@@ -828,7 +874,10 @@ class AnnotationsGui(LayerViewerGui):
 
         if self.divLock:
             return
-                
+
+        for imageView in self.editor.imageViews:
+            imageView._croppingMarkers.setVisible(False)
+
         oid = self._getObject(self.mainOperator.LabelImage, position5d)
         if oid == 0:
             return
@@ -1347,6 +1396,14 @@ class AnnotationsGui(LayerViewerGui):
         if self._getActiveTrack() == self.misdetIdx:
             self._criticalMessage("Error: Cannot add a division event for misdetections. Release misdetection button first.")
             return
+
+        if self.divLock:
+            self._drawer.divEvent.setText("Division Event")
+            for imageView in self.editor.imageViews:
+                imageView._croppingMarkers.setVisible(False)
+        else:
+            self._drawer.divEvent.setText("Stop Division Event")
+
         self.divLock = not self.divLock             
         self._drawer.divEvent.setChecked(not self.divLock)
         self.divs = []
@@ -1882,6 +1939,11 @@ class AnnotationsGui(LayerViewerGui):
                    self._drawer.newTrack,
                    self._drawer.markMisdetection,
                    self._drawer.divEvent,
+                   self._drawer.nextUnlabeledDivision,
+                   self._drawer.nextUnlabeledMerger,
+                   self._drawer.nextUnlabeledObject,
+                   self._drawer.nextUnlabeledObjectFrame,
+                   self._drawer.exportButton
                    ]
                 
         for b in buttons:

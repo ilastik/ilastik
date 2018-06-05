@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>615</width>
-    <height>1963</height>
+    <height>1968</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -456,16 +456,6 @@
     <widget class="Line" name="line_4">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
-     </property>
-    </widget>
-   </item>
-   <item row="18" column="0">
-    <widget class="QLabel" name="label_21">
-     <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Timeout in seconds for the &lt;span style=&quot; font-weight:600;&quot;&gt;optimization&lt;/span&gt;. Leave empty for not specifying a timeout (then, the best solution will be found no matter how long it takes).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="text">
-      <string>Timeout (sec.)</string>
      </property>
     </widget>
    </item>
@@ -1020,6 +1010,16 @@
     <widget class="QLabel" name="labelSolver">
      <property name="text">
       <string>Solver</string>
+     </property>
+    </widget>
+   </item>
+   <item row="18" column="0" colspan="2">
+    <widget class="QLabel" name="label_21">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Timeout in seconds for the &lt;span style=&quot; font-weight:600;&quot;&gt;optimization&lt;/span&gt;. Leave empty for not specifying a timeout (then, the best solution will be found no matter how long it takes).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="text">
+      <string>Timeout (sec.)</string>
      </property>
     </widget>
    </item>
