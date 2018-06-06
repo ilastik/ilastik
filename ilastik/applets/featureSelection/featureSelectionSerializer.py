@@ -86,18 +86,12 @@ class FeatureSelectionSerializer(AppletSerializer):
             scales = topGroup['Scales'].value
             scales = list(map(float, scales))
 
-            featureIds = numpy.asarray(list(map(lambda s: s.decode('utf-8'), topGroup['FeatureIds'].value)))
+            featureIds = list(map(lambda s: s.decode('utf-8'), topGroup['FeatureIds'].value))
         except KeyError:
             pass
         else:
-            self.topLevelOperator.Scales.setValue(scales)
-
-            # If the main operator already has a feature ordering (provided by the GUI),
-            # then don't overwrite it.  We'll re-order the matrix to match the existing ordering.
-            if not self.topLevelOperator.FeatureIds.ready():
-                self.topLevelOperator.FeatureIds.setValue(featureIds)
-
             if 'FeatureListFilename' in topGroup:
+                raise NotImplementedError('Not simplified yet!')
                 filenames = topGroup['FeatureListFilename'][:]
                 for slot, filename in zip(self.topLevelOperator.FeatureListFilename, filenames):
                     slot.setValue(filename.decode('utf-8'))
@@ -121,18 +115,14 @@ class FeatureSelectionSerializer(AppletSerializer):
                 except KeyError:
                     pass
                 else:
-                    # If the feature order has changed since this project was last saved,
-                    #  then we need to re-order the features.
-                    # The 'new' order is provided by the operator
-                    newFeatureOrder = list(self.topLevelOperator.FeatureIds.value)
+                    # Apply saved settings
+                    # Disconnect an input (used like a transaction slot)
+                    self.topLevelOperator.SelectionMatrix.disconnect()
 
-                    newMatrixShape = (len(newFeatureOrder), len(scales))
-                    newMatrix = numpy.zeros(newMatrixShape, dtype=bool)
-                    for oldFeatureIndex, featureId in enumerate(featureIds):
-                        newFeatureIndex = newFeatureOrder.index(featureId)
-                        newMatrix[newFeatureIndex] = savedMatrix[oldFeatureIndex]
-
-                    self.topLevelOperator.SelectionMatrix.setValue(newMatrix)
+                    self.topLevelOperator.Scales.setValue(scales)
+                    self.topLevelOperator.FeatureIds.setValue(featureIds)
+                    # set disconnected slot at last (used like a transaction slot)
+                    self.topLevelOperator.SelectionMatrix.setValue(savedMatrix)
 
         self._dirty = False
 
