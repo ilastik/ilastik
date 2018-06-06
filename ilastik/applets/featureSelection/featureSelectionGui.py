@@ -31,7 +31,7 @@ from PyQt5.QtGui import QCursor
 from PyQt5.QtWidgets import QApplication, QAbstractItemView, QFileDialog, QMessageBox
 
 # lazyflow
-import lazyflow.operators.filterOperators as filterOps  # noqa # used in eval()
+import lazyflow.operators.filterOperators as filterOps
 from lazyflow.operators.generic import OpSubRegion
 
 # volumina
@@ -262,7 +262,9 @@ class FeatureSelectionGui(LayerViewerGui):
             featureEntries = []
             for featureId in featureIds:
                 featureName = opFeatureSelection.FeatureNames[featureId]
-                minimum_scale = eval(f'filterOps.Op{featureId}').minimum_scale
+                availableFilterOps = {key[2:]: value for key, value in filterOps.__dict__.items()
+                                      if key.startswith('Op')}
+                minimum_scale = availableFilterOps[featureId].minimum_scale
                 featureEntries.append(FeatureEntry(featureName, minimum_scale))
             groupedNames.append((group, featureEntries))
         self.featureDlg.createFeatureTable(groupedNames, opFeatureSelection.Scales.value,
