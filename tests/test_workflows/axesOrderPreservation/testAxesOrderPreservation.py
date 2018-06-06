@@ -718,4 +718,4 @@ if __name__ == "__main__":
     sys.argv.append("--debug")
     # Don't set the logging level to DEBUG.  Leave it alone.
     sys.argv.append("--nologcapture")
-    nose.run(defaultTest=__file__)
+    nose.main(defaultTest=__file__)
