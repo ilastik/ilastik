@@ -30,6 +30,7 @@ from ilastik.applets.networkClassification import NNClassApplet, NNClassificatio
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.classifiers import TikTorchLazyflowClassifier
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from lazyflow.graph import Graph
 
@@ -106,6 +107,9 @@ class NNClassificationWorkflow(Workflow):
         opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
         opDataExport.SelectionNames.setValue(self.EXPORT_NAMES)
 
+        # self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
+        # self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
+
         self.batchProcessingApplet = BatchProcessingApplet(self,
                                                            "Batch Processing",
                                                            self.dataSelectionApplet,
@@ -153,11 +157,16 @@ class NNClassificationWorkflow(Workflow):
         #         and -> Classification Op (for display)
         opNNclassify.InputImage.connect(opData.Image)
 
+        #ReorderAxes is needed for specifying the original_shape meta tag , hack!
+        op5Pred = OpReorderAxes(parent=self)
+        op5Pred.AxisOrder.setValue("txyzc")
+        op5Pred.Input.connect(opNNclassify.CachedPredictionProbabilities)
+
         # Data Export connections
-        opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
+        opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
-        opDataExport.Inputs[0].connect(opNNclassify.CachedPredictionProbabilities)
+        opDataExport.Inputs[0].connect(op5Pred.Output)
         # for slot in opDataExport.Inputs:
         #     assert slot.upstream_slot is not None
 
@@ -233,6 +242,25 @@ class NNClassificationWorkflow(Workflow):
             logger.info("Beginning Batch Processing")
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
+
+
+    # def prepare_for_entire_export(self):
+    #     """
+    #     Assigned to DataExportApplet.prepare_for_entire_export
+    #     (See above.)
+    #     """
+    #     print("prepare_for_entire_export")
+    #     self.freeze_status = self.nnClassificationApplet.topLevelOperator.FreezePredictions.value
+    #     self.nnClassificationApplet.topLevelOperator.FreezePredictions.setValue(False)
+
+
+    # def post_process_entire_export(self):
+    #     """
+    #     Assigned to DataExportApplet.post_process_entire_export
+    #     (See above.)
+    #     """
+    #     print("post_process_entire_export")
+    #     self.nnClassificationApplet.topLevelOperator.FreezePredictions.setValue(self.freeze_status)
 
 
     def getBlockShape(self, model, halo_size):
