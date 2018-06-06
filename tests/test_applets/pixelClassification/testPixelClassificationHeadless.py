@@ -68,9 +68,9 @@ class TestPixelClassificationHeadless(object):
             cls.using_random_data = False
         else:
             cls.using_random_data = True
-            cls.create_random_tst_data()
+            cls.create_random_data()
 
-        cls.create_new_tst_project()
+        cls.create_new_project()
 
         cls.ilastik_startup = imp.load_source( 'ilastik_startup', ilastik_entry_file_path )
 
@@ -89,7 +89,7 @@ class TestPixelClassificationHeadless(object):
                 pass
 
     @classmethod
-    def create_random_tst_data(cls):
+    def create_random_data(cls):
         cls.SAMPLE_DATA = os.path.join(cls.data_dir, 'random_data.npy')
         cls.data = numpy.random.random((1,200,200,50,1))
         cls.data *= 256
@@ -100,7 +100,7 @@ class TestPixelClassificationHeadless(object):
         numpy.save(cls.SAMPLE_MASK, cls.data.astype(numpy.uint8))
 
     @classmethod
-    def create_new_tst_project(cls):
+    def create_new_project(cls):
         # Instantiate 'shell'
         shell = HeadlessShell(  )
         
