@@ -273,4 +273,6 @@ if __name__ == "__main__":
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)
+    # nose.main will exit right after the tests are run with the correct return value
+    # (in contrast to nose.run)
+    nose.main(defaultTest=__file__)
