@@ -91,12 +91,12 @@ class TestPixelClassificationHeadless(object):
     @classmethod
     def create_random_data(cls):
         cls.SAMPLE_DATA = os.path.join(cls.data_dir, 'random_data.npy')
-        cls.data = numpy.random.random((2,200,200,5,1))
+        cls.data = numpy.random.random((2, 20, 20, 5, 1))
         cls.data *= 256
         numpy.save(cls.SAMPLE_DATA, cls.data.astype(numpy.uint8))
         
         cls.SAMPLE_MASK = os.path.join(cls.data_dir, 'mask.npy')
-        cls.data = numpy.ones((2,200,200,5,1))
+        cls.data = numpy.ones((2, 20, 20, 5, 1))
         numpy.save(cls.SAMPLE_MASK, cls.data.astype(numpy.uint8))
 
     @classmethod
