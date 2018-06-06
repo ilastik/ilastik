@@ -74,15 +74,6 @@ class OpLabelPreviewer(Operator):
             raise NotImplementedError(f'propagateDirty not implemented for slot {slot.name}')
 
 
-
-class OpLabelPreviewerRefactored(Operator):
-
-    name = "LabelPreviewer"
-
-    Images = InputSlot(level=1)
-    Output = OutputSlot(level=1)
-
-
 def checkOption(reqlist):
     for req in reqlist:
         try:
