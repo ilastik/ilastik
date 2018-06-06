@@ -368,6 +368,7 @@ class TestCompareOpFeatureSelectionToOld():
         timeNew += t1 - t0
         timeOld += t2 - t1
 
+        # The new code should (within a tolerance) run faster!
         assert timeNew <= 1.1 * timeOld + .05, f'{timeNew:.2f} !<= {timeOld:.2f}'
         logger.debug(f'{timeNew:.2f} <= {timeOld:.2f}')
 
