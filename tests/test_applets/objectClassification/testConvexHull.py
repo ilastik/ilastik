@@ -120,4 +120,4 @@ if __name__ == "__main__":
 
     import nose
 
-    nose.run(defaultTest=__file__)
+    nose.main(defaultTest=__file__)

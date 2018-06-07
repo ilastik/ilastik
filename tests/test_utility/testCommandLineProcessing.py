@@ -81,4 +81,4 @@ if __name__ == "__main__":
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
     sys.argv.append("-v")
-    nose.run(defaultTest=__file__)
+    nose.main(defaultTest=__file__)

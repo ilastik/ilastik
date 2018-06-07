@@ -97,5 +97,5 @@ class TestOpAnisotropicGaussianSmoothing5d(unittest.TestCase):
 
 if __name__ == "__main__":
     import nose
-    nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE': 1})
+    nose.main(defaultTest=__file__, env={'NOSE_NOCAPTURE': 1})
 

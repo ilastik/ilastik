@@ -140,4 +140,4 @@ if __name__ == "__main__":
     import nose
     sys.argv.append("--nocapture")
     sys.argv.append("--nologcapture")
-    nose.run(defaultTest=__file__)
+    nose.main(defaultTest=__file__)
