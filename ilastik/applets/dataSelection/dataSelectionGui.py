@@ -603,26 +603,27 @@ class DataSelectionGui(QWidget):
         for laneIndex, info in zip(list(range(startingLane, endingLane+1)), infos):
             try:
                 self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
+                return True
             except DatasetConstraintError as ex:
                 return_val = [False]
                 # Give the user a chance to fix the problem
                 self.handleDatasetConstraintError(info, info.filePath, ex, roleIndex, laneIndex, return_val)
-                if not return_val[0]:
-                    # Not successfully repaired.  Roll back the changes and give up.
-                    opTop.DatasetGroup.resize( originalSize )
-                    return False
+                if return_val[0]:
+                    # Successfully repaired graph.
+                    return True
+                else:
+                    # Not successfully repaired.  Roll back the changes
+                    opTop.DatasetGroup.resize(originalSize) 
             except OpDataSelection.InvalidDimensionalityError as ex:
                     opTop.DatasetGroup.resize( originalSize )
                     QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
-                    return False
             except Exception as ex:
                 msg = "Wasn't able to load your dataset into the workflow.  See error log for details."
                 log_exception( logger, msg )
                 QMessageBox.critical( self, "Dataset Load Error", msg )
                 opTop.DatasetGroup.resize( originalSize )
-                return False
-        
-        return True
+
+        return False
 
     def _reconfigureDatasetLocations(self, roleIndex, startingLane, endingLane):
         """
@@ -678,26 +679,31 @@ class DataSelectionGui(QWidget):
             QMessageBox.warning( self, "Can't use dataset", msg )
             return_val[0] = False
         else:
-            msg = ( "Can't use default properties for dataset:\n\n"
-                    + filename + "\n\n"
-                    + "because it violates a constraint of the {} component.\n\n".format( ex.appletName )
-                    + ex.message + "\n\n"
-                    + "If possible, fix this problem by adjusting the dataset properties in the next window, or hit 'cancel' to abort." )
-            
-            QMessageBox.warning( self, "Dataset Needs Correction", msg )
-        
+            assert isinstance(ex, DatasetConstraintError)
+            accepted = True
+            while isinstance(ex, DatasetConstraintError) and accepted:
+                msg = (
+                    f"Can't use default properties for dataset:\n\n{filename}\n\nbecause it violates a constraint of "
+                    f"the {ex.appletName} component.\n\n{ex.message}\n\nIf possible, fix this problem by adjusting "
+                    f"the applet settings and or the dataset properties in the next window(s). Hit 'cancel' to abort.")
+                QMessageBox.warning(self, "Dataset Needs Correction", msg)
+                for dlg in ex.fixing_dialogs:
+                    dlg()
+
+                accepted, ex = self.repairDatasetInfo(info, roleIndex, laneIndex)
+
             # The success of this is 'returned' via our special out-param
-            # (We can't return a value from this func because it is @threadRouted.
-            successfully_repaired = self.repairDatasetInfo( info, roleIndex, laneIndex )
-            return_val[0] = successfully_repaired
+            # (We can't return a value from this method because it is @threadRouted.
+            return_val[0] = accepted and ex is None  # successfully repaired
 
     def repairDatasetInfo(self, info, roleIndex, laneIndex):
         """Open the dataset properties editor and return True if the new properties are acceptable."""
         defaultInfos = {}
         defaultInfos[laneIndex] = info
-        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, [laneIndex], defaultInfos, show_axis_details=self.show_axis_details)
-        dlg_state = editorDlg.exec_()
-        return ( dlg_state == QDialog.Accepted )
+        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, [laneIndex], defaultInfos,
+                                            show_axis_details=self.show_axis_details)
+        dlg_state, ex = editorDlg.exec_()
+        return (dlg_state == QDialog.Accepted), ex
 
     @classmethod
     def getPossibleInternalPaths(cls, absPath, min_ndim=2, max_ndim=5):

@@ -167,7 +167,8 @@ class OpFeatureSelectionNoCache(Operator):
                 msg = "Some of your selected feature scales are too large for your dataset.\n"\
                       "Choose smaller scales (sigma) or use a larger dataset.\n"\
                       "The invalid scales are: {}".format(invalid_scales)
-                raise DatasetConstraintError("Feature Selection", msg)
+                raise DatasetConstraintError("Feature Selection", msg, fixing_dialogs=[
+                    self.parent.parent.featureSelectionApplet._gui.currentGui().onFeatureButtonClicked])
 
             # Connect our external outputs to our internal operators
             self.OutputImage.connect(self.opReorderOut.Output)

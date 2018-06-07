@@ -112,13 +112,19 @@ class Applet( with_metaclass(ABCMeta, object) ):
         # Used by the shell to ensure that Applet.__init__ was called by your subclass.
         return self._base_initialized
 
+
 class DatasetConstraintError(Exception):
-    def __init__(self, appletName, message, unfixable=False ):
-        super( DatasetConstraintError, self ).__init__()
+    def __init__(self, appletName, message, unfixable=False, fixing_dialogs=[]):
+        """
+        Args:
+            fixing_dialogs: list of functions to show dialogs which can alleviate the dataset constraint. 
+        """
+        super().__init__()
         self.appletName = appletName
         self.message = message
         self.unfixable = unfixable
-    
+        self.fixing_dialogs = fixing_dialogs
+
     def __str__(self):
         return "Constraint of '{}' applet was violated: {}".format(self.appletName, self.message)
 
