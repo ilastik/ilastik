@@ -269,8 +269,8 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             # Instantiation of the volumeEditor (+ widget)
             ###################
             self.editor = volumeEditorWidget.VolumeEditor(self.layerstack, parent=self)
-            self.viewer = volumeEditorWidget.VolumeEditorWidget()
-            self.viewer.init(self.editor)
+            self.volumeEditorWidget = volumeEditorWidget.VolumeEditorWidget()
+            self.volumeEditorWidget.init(self.editor)
 
             ###################
             # This section constructs the GUI elements that are displayed on the left side of the window
@@ -366,11 +366,11 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             upper_widget = QtWidgets.QWidget()
 
             upper_widget_layout.addWidget(left_side_panel)
-            upper_widget_layout.addWidget(self.viewer)
+            upper_widget_layout.addWidget(self.volumeEditorWidget)
             upper_widget_layout.addWidget(self.layer_widget)
 
             # make sure the volume viewer gets more space
-            upper_widget_layout.setStretchFactor(self.viewer, 8)
+            upper_widget_layout.setStretchFactor(self.volumeEditorWidget, 8)
             upper_widget_layout.setStretchFactor(left_side_panel, 3)
             upper_widget_layout.setStretchFactor(self.layer_widget, 3)
 
