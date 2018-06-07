@@ -91,13 +91,10 @@ class TestPixelClassificationHeadless(object):
     @classmethod
     def create_random_data(cls):
         cls.SAMPLE_DATA = os.path.join(cls.data_dir, 'random_data.npy')
-        cls.data = numpy.random.random((2, 20, 20, 5, 1))
-        cls.data *= 256
-        numpy.save(cls.SAMPLE_DATA, cls.data.astype(numpy.uint8))
-        
+        numpy.save(cls.SAMPLE_DATA, numpy.random.randint(0, 256, (2, 20, 20, 5, 1), dtype=numpy.uint8))
+
         cls.SAMPLE_MASK = os.path.join(cls.data_dir, 'mask.npy')
-        cls.data = numpy.ones((2, 20, 20, 5, 1))
-        numpy.save(cls.SAMPLE_MASK, cls.data.astype(numpy.uint8))
+        numpy.save(cls.SAMPLE_MASK, numpy.ones((2, 20, 20, 5, 1), dtype=numpy.uint8))
 
     @classmethod
     def create_new_project(cls):
@@ -199,7 +196,7 @@ class TestPixelClassificationHeadless(object):
             assert "/volume/pred_volume" in f
             pred_shape = f["/volume/pred_volume"].shape
             # Assume channel is last axis
-            assert pred_shape[:-1] == self.data.shape[:-1], "Prediction volume has wrong shape: {}".format( pred_shape )
+            assert pred_shape[:-1] == (2, 20, 20, 5), "Prediction volume has wrong shape: {}".format( pred_shape )
             assert pred_shape[-1] == 2, "Prediction volume has wrong shape: {}".format( pred_shape )
         
     @timeLogged(logger)
@@ -225,7 +222,7 @@ class TestPixelClassificationHeadless(object):
         args.append( "--pipeline_result_drange=(0,2)" )
         args.append( "--export_drange=(0,255)" )
  
-        args.append( "--cutout_subregion=[(0,50,50,0,0), (1, 150, 150, 50, 1)]" )
+        args.append( "--cutout_subregion=[(0,10,10,0,0), (1, 20, 20, 5, 1)]" )
         args.append( self.SAMPLE_DATA )
  
         old_sys_argv = list(sys.argv)
@@ -257,7 +254,7 @@ class TestPixelClassificationHeadless(object):
             readData = opReorderAxes.Output[:].wait()
      
             # Check basic attributes
-            assert readData.shape[:-1] == self.data[0:1, 50:150, 50:150, 0:50, 0:1].shape[:-1] # Assume channel is last axis
+            assert readData.shape[:-1] == (1, 10, 10, 5), readData.shape[:-1]  # Assume channel is last axis
             assert readData.shape[-1] == 1, "Wrong number of channels.  Expected 1, got {}".format( readData.shape[-1] )
         finally:
             # Clean-up.
