@@ -88,6 +88,7 @@ class FeatureSelectionGui(LayerViewerGui):
         self.topLevelOperatorView.InputImage.notifyDirty(bind(self.onFeaturesSelectionsChanged))
         self.topLevelOperatorView.SelectionMatrix.notifyDirty(bind(self.onFeaturesSelectionsChanged))
         self.topLevelOperatorView.FeatureListFilename.notifyDirty(bind(self.onFeaturesSelectionsChanged))
+        self.topLevelOperatorView.ComputeIn2d.notifyDirty(bind(self.onComputeIn2dChanged))
         self.__cleanup_fns.append(partial(self.topLevelOperatorView.SelectionMatrix.unregisterDirty,
                                           bind(self.onFeaturesSelectionsChanged)))
         self.__cleanup_fns.append(partial(self.topLevelOperatorView.FeatureListFilename.unregisterDirty,
@@ -111,6 +112,8 @@ class FeatureSelectionGui(LayerViewerGui):
         if not dbg:
             self.drawer.UsePrecomputedFeaturesButton.setHidden(True)
 
+        if self.topLevelOperatorView.ComputeIn2d.ready():
+            self.drawer.feature2dBox.setChecked(self.topLevelOperatorView.ComputeIn2d.value)
         self.drawer.feature2dBox.stateChanged.connect(self.onFeature2dBoxChanged)
 
     def initViewerControlUi(self):
@@ -354,6 +357,10 @@ class FeatureSelectionGui(LayerViewerGui):
 
     def onFeature2dBoxChanged(self):
         self.topLevelOperatorView.ComputeIn2d.setValue(bool(self.drawer.feature2dBox.checkState()))
+
+    def onComputeIn2dChanged(self):
+        opFeatureSelection = self.topLevelOperatorView
+        self.drawer.feature2dBox.setChecked(opFeatureSelection.ComputeIn2d.value)
 
     def onNewFeaturesFromFeatureDlg(self):
         opFeatureSelection = self.topLevelOperatorView

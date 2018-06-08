@@ -59,6 +59,7 @@ class FeatureSelectionSerializer(AppletSerializer):
         deleteIfPresent(topGroup, 'FeatureIds')
         deleteIfPresent(topGroup, 'SelectionMatrix')
         deleteIfPresent(topGroup, 'FeatureListFilename')
+        deleteIfPresent(topGroup, 'ComputeIn2d')
 
         # Store the new values (as numpy arrays)
 
@@ -77,6 +78,8 @@ class FeatureSelectionSerializer(AppletSerializer):
             if fnames:
                 fnames = map(lambda s: s.encode('utf-8'), fnames)
                 topGroup.create_dataset('FeatureListFilename', data=fnames)
+
+        topGroup.create_dataset('ComputeIn2d', data=self.topLevelOperator.ComputeIn2d.value)
 
         self._dirty = False
 
@@ -123,6 +126,13 @@ class FeatureSelectionSerializer(AppletSerializer):
                     self.topLevelOperator.FeatureIds.setValue(featureIds)
                     # set disconnected slot at last (used like a transaction slot)
                     self.topLevelOperator.SelectionMatrix.setValue(savedMatrix)
+
+        try:
+            computeIn2d = bool(topGroup['ComputeIn2d'])
+        except KeyError:
+            computeIn2d = False
+
+        self.topLevelOperator.ComputeIn2d.setValue(computeIn2d)
 
         self._dirty = False
 
