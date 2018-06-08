@@ -940,7 +940,14 @@
     </widget>
    </item>
    <item row="18" column="3">
-    <widget class="QLineEdit" name="timeoutBox"/>
+    <widget class="QLineEdit" name="timeoutBox">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+    </widget>
    </item>
    <item row="19" column="3">
     <widget class="QSpinBox" name="bordWidthBox">
