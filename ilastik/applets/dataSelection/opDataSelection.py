@@ -30,7 +30,7 @@ from lazyflow.utility.jsonConfig import RoiTuple
 from lazyflow.operators.ioOperators import (
     OpStreamingHdf5Reader, OpStreamingHdf5SequenceReaderS, OpInputDataReader
 )
-from lazyflow.operators.valueProviders import OpMetadataInjector
+from lazyflow.operators.valueProviders import OpMetadataInjector, OpZeroDefault
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -343,13 +343,23 @@ class OpDataSelection(Operator):
                 opReader.Input.setValue(preloaded_array)
                 providerSlot = opReader.Output
             else:
-                # Use a normal (filesystem) reader
-                opReader = OpInputDataReader(parent=self)
-                if datasetInfo.subvolume_roi is not None:
-                    opReader.SubVolumeRoi.setValue(datasetInfo.subvolume_roi)
-                opReader.WorkingDirectory.setValue(self.WorkingDirectory.value)
-                opReader.SequenceAxis.setValue(datasetInfo.sequenceAxis)
-                opReader.FilePath.setValue(datasetInfo.filePath)
+                if datasetInfo.filePath:
+                    # Use a normal (filesystem) reader
+                    opReader = OpInputDataReader(parent=self)
+                    if datasetInfo.subvolume_roi is not None:
+                        opReader.SubVolumeRoi.setValue(datasetInfo.subvolume_roi)
+                    opReader.WorkingDirectory.setValue(self.WorkingDirectory.value)
+                    opReader.SequenceAxis.setValue(datasetInfo.sequenceAxis)
+                    opReader.FilePath.setValue(datasetInfo.filePath)
+                else:
+                    print(">>>> Empty filePath, using OpZeroDefault as OpInputDataReader")
+                    opReader = OpZeroDefault(parent=self)
+                    # TODO: inject correct raw data shape
+                    raw_data_shape = (250, 250, 3)
+                    dummy_data = numpy.zeros(raw_data_shape, dtype='uint8')
+                    dummy_data = vigra.taggedView(dummy_data, datasetInfo.axistags)
+                    opReader.MetaInput.setValue(dummy_data)
+
                 providerSlot = opReader.Output
             self._opReaders.append(opReader)
 

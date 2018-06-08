@@ -366,6 +366,7 @@ class DataSelectionSerializer( AppletSerializer ):
         # Unready datasets are represented with an empty group.
         if len( infoGroup ) == 0:
             return None, False
+
         datasetInfo = DatasetInfo()
 
         # Make a reverse-lookup of the location storage strings
@@ -373,7 +374,11 @@ class DataSelectionSerializer( AppletSerializer ):
         datasetInfo.location = LocationLookup[ infoGroup['location'].value.decode('utf-8') ]
         
         # Write to the 'private' members to avoid resetting the dataset id
-        datasetInfo._filePath = infoGroup['filePath'].value.decode('utf-8')
+        if headless:
+            datasetInfo._filePath = ''
+        else:
+            datasetInfo._filePath = infoGroup['filePath'].value.decode('utf-8')
+
         datasetInfo._datasetId = infoGroup['datasetId'].value.decode('utf-8')
 
         try:
@@ -428,22 +433,28 @@ class DataSelectionSerializer( AppletSerializer ):
 
         dirty = False
         # If the data is supposed to exist outside the project, make sure it really does.
-        if datasetInfo.location == DatasetInfo.Location.FileSystem and not isUrl(datasetInfo.filePath):
-            pathData = PathComponents( datasetInfo.filePath, os.path.split(projectFilePath)[0])
+        if self._check_dataset_path(datasetInfo, headless):
+            pathData = PathComponents(datasetInfo.filePath,
+                                      os.path.split(projectFilePath)[0])
             filePath = pathData.externalPath
             if not os.path.exists(filePath):
                 if headless:
                     raise RuntimeError("Could not find data at " + filePath)
-                filt = "Image files (" + ' '.join('*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
+                filt = "Image files (" + ' '.join(
+                    '*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
                 newpath = self.repairFile(filePath, filt)
                 if pathData.internalPath is not None:
                     newpath += pathData.internalPath
-                datasetInfo._filePath = getPathVariants(newpath , os.path.split(projectFilePath)[0])[0]
+                datasetInfo._filePath = \
+                getPathVariants(newpath, os.path.split(projectFilePath)[0])[0]
                 dirty = True
         
         return datasetInfo, dirty
-                
-    
+
+    def _check_dataset_path(self, datasetInfo, headless):
+        return datasetInfo.location == DatasetInfo.Location.FileSystem and \
+               not isUrl(datasetInfo.filePath) and not headless
+
     def updateWorkingDirectory(self,newpath,oldpath):
         newdir = PathComponents(newpath).externalDirectory
         olddir = PathComponents(oldpath).externalDirectory
