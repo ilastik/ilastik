@@ -86,7 +86,7 @@ class OpBaseFilter(Operator):
 
         filter_scales = {s.name: s.value for s in self.inputs.values() if s.name not in ['Input', 'ComputeIn2d']}
         z_dim = self.Input.meta.shape[2]
-        self.invalid_z = z_dim == 1 or any([s * self.window_size_feature > z_dim
+        self.invalid_z = z_dim == 1 or any([numpy.ceil(s * self.window_size_feature) + 1 > z_dim
                                             for s in filter_scales.values()])
 
         if self.invalid_z and z_dim > 1 and not self.ComputeIn2d.value:
