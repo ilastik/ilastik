@@ -76,8 +76,9 @@ class OpFeatureSelectionNoCache(Operator):
     # The following input slots are applied uniformly to all input images
     FeatureIds = InputSlot(value=getFeatureIdOrder())   # The list of features to compute
     Scales = InputSlot(value=defaultScales)             # The list of scales to use when computing features
-    SelectionMatrix = InputSlot(value=MinimalFeatures)  # A matrix of bools indicating which features to output.
-    ComputeIn2d = InputSlot(value=False)                # A flag to indicate if using 2d (xy) or 3d filter
+    SelectionMatrix = InputSlot(value=MinimalFeatures)  # A matrix of bools indicating which features to output
+    # A list of flags to indicate weather to use a 2d (xy) or a 3d filter for each scale in Scales
+    ComputeIn2d = InputSlot(value=[False] * len(defaultScales))
     # The SelectionMatrix rows correspond to feature types in the order specified by the FeatureIds input.
     #  (See OpPixelFeaturesPresmoothed for the available feature types.)
     # The SelectionMatrix columns correspond to the scales provided in the Scales input,
@@ -163,10 +164,16 @@ class OpFeatureSelectionNoCache(Operator):
 
         else:
             invalid_scales, invalid_z_scales = self.opPixelFeatures.getInvalidScales()
-            if invalid_scales:
-                msg = "Some of your selected feature scales are too large for your dataset.\n"\
-                      "Choose smaller scales (sigma) or use a larger dataset.\n"\
-                      "The invalid scales are: {}".format(invalid_scales)
+            if invalid_scales or invalid_z_scales:
+                invalid_z_scales = [s for s in invalid_z_scales if s not in invalid_scales]  # 'do not complain twice'
+                msg = 'Some of your selected feature scales are too large for your dataset.\n'
+                if invalid_scales:
+                    msg += f'Reduce or remove these scales:\n{invalid_scales}\n\n'
+
+                if invalid_z_scales:
+                    msg += f'Reduce, remove or switch to 2D computation for these scales:\n{invalid_z_scales}\n\n'
+
+                msg += 'Alternatively use another dataset.'
                 raise DatasetConstraintError("Feature Selection", msg, fixing_dialogs=[
                     self.parent.parent.featureSelectionApplet._gui.currentGui().onFeatureButtonClicked])
 

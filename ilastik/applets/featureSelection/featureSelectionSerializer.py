@@ -45,6 +45,7 @@ class FeatureSelectionSerializer(AppletSerializer):
 
         self.topLevelOperator.FeatureIds.notifyDirty(bind(handleDirty))
         self.topLevelOperator.Scales.notifyDirty(bind(handleDirty))
+        self.topLevelOperator.ComputeIn2d.notifyDirty(bind(handleDirty))
         self.topLevelOperator.SelectionMatrix.notifyDirty(bind(handleDirty))
         self.topLevelOperator.FeatureListFilename.notifyDirty(bind(handleDirty))
 
@@ -79,7 +80,8 @@ class FeatureSelectionSerializer(AppletSerializer):
                 fnames = map(lambda s: s.encode('utf-8'), fnames)
                 topGroup.create_dataset('FeatureListFilename', data=fnames)
 
-        topGroup.create_dataset('ComputeIn2d', data=self.topLevelOperator.ComputeIn2d.value)
+        if self.topLevelOperator.ComputeIn2d.ready():
+            topGroup.create_dataset('ComputeIn2d', data=self.topLevelOperator.ComputeIn2d.value)
 
         self._dirty = False
 
@@ -88,6 +90,15 @@ class FeatureSelectionSerializer(AppletSerializer):
         try:
             scales = topGroup['Scales'].value
             scales = list(map(float, scales))
+
+            # Restoring 'feature computation in 2d' only makes sense, if scales were recovered...
+            try:
+                computeIn2d = topGroup['ComputeIn2d'].value
+                computeIn2d = list(map(bool, computeIn2d))
+            except KeyError:
+                # older ilastik versions did not support feature computation in 2d
+                computeIn2d = [False] * len(scales)
+            self.topLevelOperator.ComputeIn2d.setValue(computeIn2d)
 
             featureIds = list(map(lambda s: s.decode('utf-8'), topGroup['FeatureIds'].value))
         except KeyError:
@@ -127,12 +138,6 @@ class FeatureSelectionSerializer(AppletSerializer):
                     # set disconnected slot at last (used like a transaction slot)
                     self.topLevelOperator.SelectionMatrix.setValue(savedMatrix)
 
-        try:
-            computeIn2d = bool(topGroup['ComputeIn2d'])
-        except KeyError:
-            computeIn2d = False
-
-        self.topLevelOperator.ComputeIn2d.setValue(computeIn2d)
 
         self._dirty = False
 

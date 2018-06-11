@@ -88,16 +88,15 @@ class FeatureSelectionGui(LayerViewerGui):
         self.topLevelOperatorView.InputImage.notifyDirty(bind(self.onFeaturesSelectionsChanged))
         self.topLevelOperatorView.SelectionMatrix.notifyDirty(bind(self.onFeaturesSelectionsChanged))
         self.topLevelOperatorView.FeatureListFilename.notifyDirty(bind(self.onFeaturesSelectionsChanged))
-        self.topLevelOperatorView.ComputeIn2d.notifyDirty(bind(self.onComputeIn2dChanged))
         self.__cleanup_fns.append(partial(self.topLevelOperatorView.SelectionMatrix.unregisterDirty,
                                           bind(self.onFeaturesSelectionsChanged)))
         self.__cleanup_fns.append(partial(self.topLevelOperatorView.FeatureListFilename.unregisterDirty,
                                           bind(self.onFeaturesSelectionsChanged)))
 
-        self.onFeaturesSelectionsChanged()
-
         # Init feature dialog
         self.initFeatureDlg()
+
+        self.onFeaturesSelectionsChanged()
 
     def initAppletDrawerUi(self):
         """
@@ -111,10 +110,6 @@ class FeatureSelectionGui(LayerViewerGui):
         dbg = ilastik_config.getboolean("ilastik", "debug")
         if not dbg:
             self.drawer.UsePrecomputedFeaturesButton.setHidden(True)
-
-        if self.topLevelOperatorView.ComputeIn2d.ready():
-            self.drawer.feature2dBox.setChecked(self.topLevelOperatorView.ComputeIn2d.value)
-        self.drawer.feature2dBox.stateChanged.connect(self.onFeature2dBoxChanged)
 
     def initViewerControlUi(self):
         """
@@ -256,30 +251,7 @@ class FeatureSelectionGui(LayerViewerGui):
             s = (size.width(), size.height())
             PreferencesManager().set("featureSelection", "dialog size", s)
         self.featureDlg.accepted.connect(saveSize)
-
-        opFeatureSelection = self.topLevelOperatorView
-
-        # Map from groups of feature IDs to groups of feature NAMEs
-        groupedNames = []
-        for group, featureIds in opFeatureSelection.FeatureGroups:
-            featureEntries = []
-            for featureId in featureIds:
-                featureName = opFeatureSelection.FeatureNames[featureId]
-                availableFilterOps = {key[2:]: value for key, value in filterOps.__dict__.items()
-                                      if key.startswith('Op')}
-                minimum_scale = availableFilterOps[featureId].minimum_scale
-                featureEntries.append(FeatureEntry(featureName, minimum_scale))
-            groupedNames.append((group, featureEntries))
-        self.featureDlg.createFeatureTable(groupedNames, opFeatureSelection.Scales.value,
-                                           opFeatureSelection.WINDOW_SIZE)
         self.featureDlg.setImageToPreView(None)
-
-        # Init with no features
-        rows = len(self.topLevelOperatorView.FeatureIds.value)
-        cols = len(self.topLevelOperatorView.Scales.value)
-        defaultFeatures = numpy.zeros((rows, cols), dtype=bool)
-        self.featureDlg.selectionMatrix = defaultFeatures
-
         self.featureDlg.accepted.connect(self.onNewFeaturesFromFeatureDlg)
 
     def onUsePrecomputedFeaturesButtonClicked(self):
@@ -327,46 +299,54 @@ class FeatureSelectionGui(LayerViewerGui):
         for slot in self.parentApplet.topLevelOperator.FeatureListFilename:
             slot.disconnect()
 
-        # Refresh the feature matrix in case it has changed since the last time we were opened
+        # Slots need to be ready (they also should, as they have default values)
+        assert self.topLevelOperatorView.FeatureIds.ready()
+        assert self.topLevelOperatorView.Scales.ready()
+        assert self.topLevelOperatorView.ComputeIn2d.ready()
+        assert self.topLevelOperatorView.SelectionMatrix.ready()
+
+        # Refresh the dialog data in case it has changed since the last time we were opened
         # (e.g. if the user loaded a project from disk)
-        if self.topLevelOperatorView.SelectionMatrix.ready() and self.topLevelOperatorView.FeatureIds.ready():
-            # Re-order the feature matrix using the loaded feature ids
-            matrix = self.topLevelOperatorView.SelectionMatrix.value
-            featureOrdering = self.topLevelOperatorView.FeatureIds.value
+        # This also ensures to restore the selection after previously canceling the feature dialog
+        opFeatureSelection = self.topLevelOperatorView
 
-            reorderedMatrix = numpy.zeros(matrix.shape, dtype=bool)
-            newrow = 0
-            for group, featureIds in OpFeatureSelection.FeatureGroups:
-                for featureId in featureIds:
-                    oldrow = featureOrdering.index(featureId)
-                    reorderedMatrix[newrow] = matrix[oldrow]
-                    newrow += 1
+        # Map from groups of feature IDs to groups of feature NAMEs
+        groupedNames = []
+        for group, featureIds in opFeatureSelection.FeatureGroups:
+            featureEntries = []
+            for featureId in featureIds:
+                featureName = opFeatureSelection.FeatureNames[featureId]
+                availableFilterOps = {key[2:]: value for key, value in filterOps.__dict__.items()
+                                      if key.startswith('Op')}
+                minimum_scale = availableFilterOps[featureId].minimum_scale
+                featureEntries.append(FeatureEntry(featureName, minimum_scale))
+            groupedNames.append((group, featureEntries))
+        self.featureDlg.createFeatureTable(groupedNames, opFeatureSelection.Scales.value,
+                                           opFeatureSelection.ComputeIn2d.value, opFeatureSelection.WINDOW_SIZE)
 
-            self.featureDlg.selectionMatrix = reorderedMatrix
-        else:
-            assert self.topLevelOperatorView.FeatureIds.ready()
-            assert self.topLevelOperatorView.Scales.ready()
+        matrix = opFeatureSelection.SelectionMatrix.value
+        featureOrdering = opFeatureSelection.FeatureIds.value
 
-            num_rows = len(self.topLevelOperatorView.FeatureIds.value)
-            num_cols = len(self.topLevelOperatorView.Scales.value)
-            blank_matrix = numpy.zeros((num_rows, num_cols), dtype=bool)
-            self.featureDlg.selectionMatrix = blank_matrix
+        # Re-order the feature matrix using the loaded feature ids
+        reorderedMatrix = numpy.zeros(matrix.shape, dtype=bool)
+        newrow = 0
+        for group, featureIds in OpFeatureSelection.FeatureGroups:
+            for featureId in featureIds:
+                oldrow = featureOrdering.index(featureId)
+                reorderedMatrix[newrow] = matrix[oldrow]
+                newrow += 1
+
+        self.featureDlg.selectionMatrix = reorderedMatrix
 
         # Now open the feature selection dialog
         self.featureDlg.exec_()
-
-    def onFeature2dBoxChanged(self):
-        self.topLevelOperatorView.ComputeIn2d.setValue(bool(self.drawer.feature2dBox.checkState()))
-
-    def onComputeIn2dChanged(self):
-        opFeatureSelection = self.topLevelOperatorView
-        self.drawer.feature2dBox.setChecked(opFeatureSelection.ComputeIn2d.value)
 
     def onNewFeaturesFromFeatureDlg(self):
         opFeatureSelection = self.topLevelOperatorView
         if opFeatureSelection is not None:
             # Save previous settings
             old_scales = opFeatureSelection.Scales.value
+            old_computeIn2d = opFeatureSelection.ComputeIn2d.value
             old_features = opFeatureSelection.SelectionMatrix.value
 
             # Disable gui
@@ -380,15 +360,20 @@ class FeatureSelectionGui(LayerViewerGui):
                 opFeatureSelection.SelectionMatrix.disconnect()
 
                 opFeatureSelection.Scales.setValue(self.featureDlg.scales)
+                opFeatureSelection.ComputeIn2d.setValue(self.featureDlg.computeIn2d)
                 # set disconnected slot at last (used like a transaction slot)
                 opFeatureSelection.SelectionMatrix.setValue(self.featureDlg.selectionMatrix)
-            except DatasetConstraintError as ex:
+            except (DatasetConstraintError, RuntimeError) as ex:
                 # The user selected some scales that were too big.
-                QMessageBox.critical(self, 'Invalid selection', ex.message)
+                if isinstance(ex, DatasetConstraintError):
+                    QMessageBox.critical(self, 'Invalid selection', ex.message)
+                else:
+                    QMessageBox.critical(self, 'Invalid selection', 'You selected the exact same feature twice.')
 
                 # Restore previous settings
                 opFeatureSelection.SelectionMatrix.disconnect()
                 opFeatureSelection.Scales.setValue(old_scales)
+                opFeatureSelection.ComputeIn2d.setValue(old_computeIn2d)
                 opFeatureSelection.SelectionMatrix.setValue(old_features)
 
             # Re-enable gui
@@ -404,14 +389,12 @@ class FeatureSelectionGui(LayerViewerGui):
         """
         Handles changes to our top-level operator's ImageInput and matrix of feature selections.
         """
+        # update feature dialog to show/hide z dimension specific 'compute in 2d' flags
+        if self.topLevelOperatorView.InputImage.ready():
+            ts = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
+            self.featureDlg.setComputeIn2dHidden('z' not in ts or ts['z'] == 1)
+
         # Update the drawer caption
-
-        ts = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
-        if 'z' in ts and ts['z'] > 1:
-            self.drawer.feature2dBox.setHidden(True)
-        else:
-            self.drawer.feature2dBox.setHidden(False)
-
         fff = (self.topLevelOperatorView.FeatureListFilename.ready() and
                len(self.topLevelOperatorView.FeatureListFilename.value) != 0)
 

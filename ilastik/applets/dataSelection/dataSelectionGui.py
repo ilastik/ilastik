@@ -754,6 +754,8 @@ class DataSelectionGui(QWidget):
                     # Give the user a chance to repair the problem.
                     filename = files[0] + "\n...\n" + files[-1]
                     return_val = [False]
+                    self.parentApplet.busy = False  # required for possible fixing dialogs from DatasetConstraintError
+                    self.parentApplet.appletStateUpdateRequested()
                     self.handleDatasetConstraintError( info, filename, ex, roleIndex, laneIndex, return_val )
                     if not return_val[0]:
                         # Not successfully repaired.  Roll back the changes and give up.

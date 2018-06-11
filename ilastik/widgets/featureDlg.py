@@ -53,6 +53,11 @@ class FeatureDlg(QDialog):
         return self.featureTableWidget.sigmas
 
     @property
+    def computeIn2d(self):
+        """Return the list of scale values that the user might have edited."""
+        return self.featureTableWidget.computeIn2d
+
+    @property
     def selectionMatrix(self):
         """Return the bool matrix of features that the user selected."""
         return numpy.asarray(self.featureTableWidget.featureMatrix)
@@ -62,16 +67,16 @@ class FeatureDlg(QDialog):
         """Populate the table of selected features with the provided matrix."""
         self.featureTableWidget.setFeatureMatrix(newMatrix)
 
-    def createFeatureTable(self, features, sigmas, window_size):
-        self.featureTableWidget.setup(features, sigmas, window_size)
+    def createFeatureTable(self, features, sigmas, computeIn2d, window_size):
+        self.featureTableWidget.setup(features, sigmas, computeIn2d, window_size)
 
     def setImageToPreView(self, image):
         self.preView.setVisible(image is not None)
         if image is not None:
             self.preView.setPreviewImage(qimage2ndarray.array2qimage(image))
 
-    def setIconsToTableWidget(self, checked, partiallyChecked, unchecked):
-        self.featureTableWidget.itemDelegate.setCheckBoxIcons(checked, partiallyChecked, unchecked)
+    def setIconsToTableWidget(self, checked=None, partiallyChecked=None, unchecked=None, icon2d=None, icon3d=None):
+        self.featureTableWidget.itemDelegate.setCheckBoxIcons(checked, partiallyChecked, unchecked, icon2d, icon3d)
 
     def updateOKButton(self):
         num_features = numpy.sum(self.featureTableWidget.featureMatrix)
@@ -84,6 +89,12 @@ class FeatureDlg(QDialog):
     def setEnableItemMask(self, mask):
         # See comments in FeatureTableWidget.setEnableItemMask()
         self.featureTableWidget.setEnableItemMask(mask)
+
+    def setComputeIn2dHidden(self, hidden):
+        if hidden:
+            self.featureTableWidget.hideRow(0)
+        else:
+            self.featureTableWidget.showRow(0)
 
 
 if __name__ == "__main__":
@@ -105,7 +116,7 @@ if __name__ == "__main__":
     ex = FeatureDlg()
     ex.createFeatureTable([("Color", [FeatureEntry("Banananananaana", minimum_scale=.3)]),
                            ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])],
-                          [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0], 3.5)
+                          [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0], [False, False, False, False, True, True, True], 3.5)
     ex.setWindowTitle("FeatureTest")
     ex.setImageToPreView(None)
 
