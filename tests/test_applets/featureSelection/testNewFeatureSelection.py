@@ -78,11 +78,14 @@ class TestCompareOpFeatureSelectionToOld():
         assert id(output) != id(outputOld)
         assert output.meta.shape == outputOld.meta.shape, (output.meta.shape, outputOld.meta.shape)
         assert output.meta.axistags == outputOld.meta.axistags
-        if DEBUG:
-            for key in output.meta.keys():
-                if output.meta[key] != outputOld.meta[key]:
-                    print(f'{key}: {output.meta[key]}, {outputOld.meta[key]}\n')
-        assert output.meta == outputOld.meta
+        for key in output.meta.keys():
+            if key in ['description', 'channel_names']:
+                continue
+            if DEBUG and output.meta[key] != outputOld.meta[key]:
+                print(f'{key}: {output.meta[key]}, {outputOld.meta[key]}\n')
+            if output.meta[key] != outputOld.meta[key]:
+                print(f'{key}: {output.meta[key]}, {outputOld.meta[key]}\n')
+            assert output.meta[key] == outputOld.meta[key], key
 
         for roi in [
             [0, 0, slice(None), slice(None), slice(0, 3)],
@@ -102,13 +105,15 @@ class TestCompareOpFeatureSelectionToOld():
             yield self.compare, result, resultOld
 
     def test_output(self):
+        self.opFeatures.InputImage[0].disconnect()
+
         # Configure selection matrix
         sel = numpy.zeros((6, 5), dtype=bool)
         sel[0, 1] = True  # Gaussian
-        sel[1, 3] = True  # L of G
-        sel[2, 4] = True  # ST EVs
-        sel[3, 3] = True  # H of G EVs
-        sel[4, 4] = True  # GGM
+        sel[1, 2] = True  # L of G
+        sel[2, 3] = True  # ST EVs
+        sel[3, 2] = True  # H of G EVs
+        sel[4, 3] = True  # GGM
         sel[5, 2] = True  # Diff of G
 
         if DEBUG:
@@ -117,6 +122,7 @@ class TestCompareOpFeatureSelectionToOld():
             vigra_fn = vigra.filters.gaussianSmoothing
 
         self.opFeatures.SelectionMatrix.setValue(sel)
+        self.opFeatures.ComputeIn2d.setValue([False] * 6)
         self.opFeaturesOld.SelectionMatrix.setValue(sel)
 
         data = vigra.taggedView(
@@ -134,9 +140,11 @@ class TestCompareOpFeatureSelectionToOld():
         assert output.meta.shape == outputOld.meta.shape, (output.meta.shape, outputOld.meta.shape)
         assert output.meta.axistags == outputOld.meta.axistags
         for key in output.meta.keys():
-            if output.meta[key] != outputOld.meta[key]:
+            if key in ['description', 'channel_names']:
+                continue
+            if DEBUG and output.meta[key] != outputOld.meta[key]:
                 print(f'{key}: {output.meta[key]}, {outputOld.meta[key]}\n')
-        assert output.meta == outputOld.meta
+            assert output.meta[key] == outputOld.meta[key], key
 
         for roi in [
             [slice(0, 1), slice(0, 1), slice(None), slice(None), slice(0, 1)],
@@ -232,6 +240,7 @@ class TestCompareOpFeatureSelectionToOld():
             vigra_fn = vigra.filters.gaussianSmoothing
 
         self.opFeatures.SelectionMatrix.setValue(sel)
+        self.opFeatures.ComputeIn2d.setValue([True] * 6)
         self.opFeaturesOld.SelectionMatrix.setValue(sel)
 
         data = vigra.taggedView(
@@ -246,9 +255,11 @@ class TestCompareOpFeatureSelectionToOld():
             assert output.meta.shape == outputOld.meta.shape, (output.meta.shape, outputOld.meta.shape)
             assert output.meta.axistags == outputOld.meta.axistags
             for key in output.meta.keys():
-                if output.meta[key] != outputOld.meta[key]:
+                if key in ['description', 'channel_names']:
+                    continue
+                if DEBUG and output.meta[key] != outputOld.meta[key]:
                     print(f'{key}: {output.meta[key]}, {outputOld.meta[key]}\n')
-            assert output.meta == outputOld.meta
+                assert output.meta[key] == outputOld.meta[key], key
             result = output[:].wait()
             resultOld = outputOld[:].wait()
 
@@ -315,7 +326,7 @@ class TestCompareOpFeatureSelectionToOld():
         opFeatures.Scales.setValue([1.])
         opFeatures.FeatureIds.setValue(['GaussianSmoothing'])
         opFeatures.SelectionMatrix.setValue(numpy.ones((1, 1), dtype=bool))
-        opFeatures.ComputeIn2d.setValue(False)
+        opFeatures.ComputeIn2d.setValue([False])
         shape = [5, 5, 5]
         data = numpy.ones(shape, dtype=numpy.float32)
         for z in range(shape[0]):
@@ -326,11 +337,12 @@ class TestCompareOpFeatureSelectionToOld():
         opFeatures.InputImage.setValue(data)
 
         res3d = opFeatures.OutputImage[:].wait()
-        opFeatures.ComputeIn2d.setValue(True)
+        opFeatures.ComputeIn2d.setValue([True])
         res2d = opFeatures.OutputImage[:].wait()
         assert (res3d != res2d).all()
 
     def test_timing(self):
+        self.opFeatures.InputImage[0].disconnect()
         # Configure selection matrix
         sel = numpy.ones((6, 5), dtype=bool)
         sel[:, 0] = False  # don't compare sigma of 0.3
@@ -338,24 +350,25 @@ class TestCompareOpFeatureSelectionToOld():
         self.opFeaturesOld.SelectionMatrix.setValue(sel)
 
         shapes_orders = [
-            # ([1, 1, 20, 512, 512], 'tczyx'),
-            # ([1, 1, 20, 512, 512], 'tcxyz'),
-            ([1, 1, 1, 2048, 2048], 'tczyx'),
-            # ([1, 1, 1, 512, 512], 'tczxy'), # old is faster
-            # ([10, 3, 1, 1024, 1024], 'tczyx'),
-            # ([1, 1, 25, 67, 68], 'tczyx'),
-            # ([5, 25, 67, 68, 3], 'tzyxc'),
-            ([5, 5, 256, 256], 'tcyx'),
-            ([5, 256, 256, 1], 'tyxc'),
-            ([20, 21, 1], 'xyc'),
+            # ([1, 1, 20, 512, 512], 'tczyx', False),
+            # ([1, 1, 20, 512, 512], 'tcxyz', False),
+            ([1, 1, 1, 2048, 2048], 'tczyx', True),
+            # ([1, 1, 1, 512, 512], 'tczxy', True), # old is faster
+            # ([10, 3, 1, 1024, 1024], 'tczyx', True),
+            # ([1, 1, 25, 67, 68], 'tczyx', False),
+            # ([5, 25, 67, 68, 3], 'tzyxc', False),
+            ([5, 5, 256, 256], 'tcyx', True),
+            ([5, 256, 256, 1], 'tyxc', True),
+            ([25, 26, 1], 'xyc', True),
         ]
 
-        for shape, order in shapes_orders:
+        for shape, order, in2d in shapes_orders:
             data = vigra.taggedView(
                 numpy.resize(numpy.random.rand(numpy.prod(shape)), shape).astype(numpy.float32), order)
-            yield self._test_timing, data
+            yield self._test_timing, data, in2d
 
-    def _test_timing(self, data):
+    def _test_timing(self, data, in2d):
+        self.opFeatures.ComputeIn2d.setValue([in2d] * 6)
         self.opFeatures.InputImage[0].setValue(data)
         self.opFeaturesOld.InputImage[0].setValue(data)
         timeNew = 0
