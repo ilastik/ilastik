@@ -65,6 +65,14 @@ def format_known_keys(s, entries, strict=True):
     
     >>> format_known_keys("Hello, {first_name:}, my name is {my_name}!", {"first_name" : [1,2,2]})
     'Hello, [1, 2, 2], my name is {my_name}!'
+
+    >>> format_known_keys("Hello, {first_name}, my name is {my_name", {'first_name' : 'Jim'})  # doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+      ...
+    ValueError: ...
+
+    >>> format_known_keys("Hello, {first_name}, my name is {my_name", {'first_name' : 'Jim'}, strict=False)
+    'Hello, {first_name}, my name is {my_name'
     """
     if strict:
         return format_known_keys_strict(s, entries)
