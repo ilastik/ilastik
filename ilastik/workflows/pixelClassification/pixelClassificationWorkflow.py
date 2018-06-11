@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 import numpy
 
 from ilastik.config import cfg as ilastik_config
+from ilastik.utility.commandLineProcessing import format_workflow_usage
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
@@ -58,6 +59,45 @@ class PixelClassificationWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
+    @classmethod
+    def getWorkflowCmdlineParser(cls):
+        usage = format_workflow_usage(cls)
+        parser = argparse.ArgumentParser(usage=usage)
+        parser.add_argument(
+            '--print-labels-by-slice',
+            help="Print the number of labels for each Z-slice of each image.",
+            action="store_true")
+        parser.add_argument(
+            '--label-search-value',
+            help="If provided, only this value is considered when using --print-labels-by-slice",
+            default=0,
+            type=int)
+        parser.add_argument(
+            '--generate-random-labels',
+            help="Add random labels to the project file.",
+            action="store_true")
+        parser.add_argument(
+            '--random-label-value',
+            help="The label value to use injecting random labels",
+            default=1,
+            type=int)
+        parser.add_argument(
+            '--random-label-count',
+            help="The number of random labels to inject via --generate-random-labels",
+            default=2000,
+            type=int)
+        parser.add_argument(
+            '--retrain',
+            help="Re-train the classifier based on labels stored in project file, and re-save.",
+            action="store_true")
+        parser.add_argument('--tree-count', help='Number of trees for Vigra RF classifier.', type=int)
+        parser.add_argument('--variable-importance-path', help='Location of variable-importance table.', type=str)
+        parser.add_argument(
+            '--label-proportion',
+            help='Proportion of feature-pixels used to train the classifier.',
+            type=float)
+        return parser
+
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
@@ -66,17 +106,7 @@ class PixelClassificationWorkflow(Workflow):
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
         # Parse workflow-specific command-line args
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--print-labels-by-slice', help="Print the number of labels for each Z-slice of each image.", action="store_true")
-        parser.add_argument('--label-search-value', help="If provided, only this value is considered when using --print-labels-by-slice", default=0, type=int)
-        parser.add_argument('--generate-random-labels', help="Add random labels to the project file.", action="store_true")
-        parser.add_argument('--random-label-value', help="The label value to use injecting random labels", default=1, type=int)
-        parser.add_argument('--random-label-count', help="The number of random labels to inject via --generate-random-labels", default=2000, type=int)
-        parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file, and re-save.", action="store_true")
-        parser.add_argument('--tree-count', help='Number of trees for Vigra RF classifier.', type=int)
-        parser.add_argument('--variable-importance-path', help='Location of variable-importance table.', type=str)
-        parser.add_argument('--label-proportion', help='Proportion of feature-pixels used to train the classifier.', type=float)
-
+        parser = self.getWorkflowCmdlineParser()
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
 

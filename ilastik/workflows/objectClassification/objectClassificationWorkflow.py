@@ -30,6 +30,7 @@ import numpy
 import h5py
 
 from ilastik.workflow import Workflow
+from ilastik.utility.commandLineProcessing import format_workflow_usage
 from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet
@@ -72,6 +73,23 @@ class ObjectClassificationWorkflow(Workflow):
     workflowName = "Object Classification Workflow Base"
     defaultAppletIndex = 0 # show DataSelection by default
 
+    @classmethod
+    def getWorkflowCmdlineParser(cls):
+        usage = format_workflow_usage(cls)
+        parser = argparse.ArgumentParser(usage=usage)
+        parser.add_argument(
+            '--fillmissing',
+            help="use 'fill missing' applet with chosen detection method",
+            choices=['classic', 'svm', 'none'],
+            default='none')
+        parser.add_argument(
+            '--nobatch',
+            help="do not append batch applets",
+            action='store_true',
+            default=False)
+
+        return parser
+
     def __init__(self, shell, headless,
                  workflow_cmdline_args,
                  project_creation_args,
@@ -84,10 +102,7 @@ class ObjectClassificationWorkflow(Workflow):
         self.stored_object_classifier = None
 
         # Parse workflow-specific command-line args
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--fillmissing', help="use 'fill missing' applet with chosen detection method", choices=['classic', 'svm', 'none'], default='none')
-        parser.add_argument('--nobatch', help="do not append batch applets", action='store_true', default=False)
-
+        parser = self.getWorkflowCmdlineParser()
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
 
         self.fillMissing = parsed_creation_args.fillmissing
