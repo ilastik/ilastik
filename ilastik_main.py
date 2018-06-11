@@ -26,8 +26,12 @@ parser.add_argument(
     '--new_project', help='Create a new project with the specified name. '
     'Must also specify --workflow.', required=False)
 parser.add_argument(
-    '--workflow', help='When used with --new_project, specifies the workflow '
-    'to use.', required=False)
+    '--workflow',
+    help=(
+        'When used with --new_project, specifies the workflow to use.\n'
+        'When used with --extended_help, workflow-specific options will be shown.'
+    ),
+    required=False)
 
 parser.add_argument(
     '--clean_paths', help='Remove ilastik-unrelated directories from PATH and '
@@ -68,6 +72,11 @@ parser.add_argument(
 parser.add_argument(
     '--hbp', help='Enable HBP-specific functionality.',
     action='store_true', default=False)
+parser.add_argument(
+    '--extended_help',
+    help='',
+    action='store_true')
+
 
 def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     """
@@ -88,6 +97,11 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
         _init_logging(parsed_args)  # Initialize logging before anything else
 
     _init_configfile(parsed_args)
+
+    # check for the extended help mode _after_ some configuration has been done
+    # this way it is possible to see the currently "active" workflows:
+    # applies for the --hbp related and the --debug workflows
+    _check_for_extended_help(parsed_args)
 
     _init_threading_logging_monkeypatch()
     _validate_arg_compatibility(parsed_args)
@@ -248,6 +262,41 @@ def _init_threading_logging_monkeypatch():
         threading.Thread.start = logged_start
 
 
+def _check_for_extended_help(parsed_args):
+    """Check if we are in extended help mode:
+
+    In extended help mode all available workflows are checked for installed
+    parsers, and respective help texts are shown.
+    """
+    if not parsed_args.extended_help:
+        return
+
+    parser.print_help()
+
+    print(f'\n## Workflow-specific command line options\n')
+
+    if parsed_args.workflow:
+        workflow_class = _workflow_class_from_parsed_args(parsed_args)
+        print_workflow_help(parsed_args.workflow, workflow_class)
+    else:
+        from ilastik.workflow import getAvailableWorkflows
+        available_workflows = list(getAvailableWorkflows())  # W, wname, W.workflowDisplayName
+        for w, wname, workflowDisplayName in available_workflows:
+            print_workflow_help(wname, w)
+
+    sys.exit(0)
+
+
+def print_workflow_help(workflow_name, workflow_class):
+    workflow_parser = workflow_class.getWorkflowCmdlineParser()
+    if workflow_parser is None:
+        return
+    help_intro = f'\n### {workflow_name} specific command line options:\n'
+    print(help_intro)
+    workflow_parser.print_help()
+    print('')
+
+
 def _validate_arg_compatibility(parsed_args):
     # Check for bad input options
     if parsed_args.workflow is not None and parsed_args.new_project is None:
@@ -363,6 +412,17 @@ def _prepare_auto_open_project(parsed_args):
     return loadProject
 
 
+def _workflow_class_from_parsed_args(parsed_args):
+    import ilastik.workflows  # noqa
+    from ilastik.workflow import getWorkflowFromName
+    workflow_class = getWorkflowFromName(parsed_args.workflow)
+    if workflow_class is None:
+        raise ValueError(
+            f"'{parsed_args.workflow}' is not a valid workflow type.")
+
+    return workflow_class
+
+
 def _prepare_auto_create_new_project(parsed_args):
     if parsed_args.new_project is None:
         return None
@@ -372,13 +432,7 @@ def _prepare_auto_create_new_project(parsed_args):
     path = PathComponents(parsed_args.new_project).totalPath()
 
     def createNewProject(shell):
-        import ilastik.workflows # noqa
-        from ilastik.workflow import getWorkflowFromName
-        workflow_class = getWorkflowFromName(parsed_args.workflow)
-        if workflow_class is None:
-            raise Exception(
-                "'{parsed_args.workflow}' is not a valid workflow type.")
-        # This should work for both the IlastikShell and the HeadlessShell
+        workflow_class = _workflow_class_from_parsed_args(parsed_args)
         shell.createAndLoadNewProject(path, workflow_class)
     return createNewProject
 

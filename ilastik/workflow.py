@@ -131,6 +131,16 @@ class Workflow( Operator ):
     def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
         pass
 
+    @classmethod
+    def getWorkflowCmdlineParser(cls):
+        """Return workflow comandline Argparser
+
+        If the workflow consumes command line args, provide the parser here, in
+        your subclass.
+        This enables displaying the command line help for individual workflows.
+        """
+        return None
+
     ##################
     # Public methods #
     ##################

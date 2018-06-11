@@ -98,3 +98,16 @@ if __name__ == '__main__':
 
     # this will raise
     args = parser.parse_args(["(0, 1"])
+
+
+def format_workflow_usage(workflow_class):
+    """Returns usage format string for specific workflow
+
+    In order to suppress the auto-magic of argparse
+    """
+    # TODO: do this properly, there seems to be a lot of fuss around workflow
+    # names in the code. See Workflow.getWorkflowName, workflow.getAvailableWorkflows ...
+    workflow_name = workflow_class.workflowName
+
+    usage = f"ilastik.py ... [{workflow_name}-options]"
+    return usage
