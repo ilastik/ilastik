@@ -74,11 +74,11 @@ def format_known_keys(s, entries, strict=True):
     >>> format_known_keys("Hello, {first_name}, my name is {my_name", {'first_name' : 'Jim'}, strict=False)
     'Hello, {first_name}, my name is {my_name'
     """
-    if strict:
-        return format_known_keys_strict(s, entries)
     try:
-        format_known_keys_strict(s, entries)
+        return format_known_keys_strict(s, entries)
     except ValueError:
+        if strict:
+            raise
         return s
 
 
