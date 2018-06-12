@@ -302,7 +302,7 @@ class FeatureSelectionGui(LayerViewerGui):
         # Slots need to be ready (they also should, as they have default values)
         assert self.topLevelOperatorView.FeatureIds.ready()
         assert self.topLevelOperatorView.Scales.ready()
-        assert self.topLevelOperatorView.ComputeIn2d.ready()
+        assert self.topLevelOperatorView.ComputeIn2d.ready(), self.topLevelOperatorView.ComputeIn2d.value
         assert self.topLevelOperatorView.SelectionMatrix.ready()
 
         # Refresh the dialog data in case it has changed since the last time we were opened
@@ -323,6 +323,11 @@ class FeatureSelectionGui(LayerViewerGui):
             groupedNames.append((group, featureEntries))
         self.featureDlg.createFeatureTable(groupedNames, opFeatureSelection.Scales.value,
                                            opFeatureSelection.ComputeIn2d.value, opFeatureSelection.WINDOW_SIZE)
+        # update feature dialog to show/hide z dimension specific 'compute in 2d' flags
+        if self.topLevelOperatorView.InputImage.ready() and self.topLevelOperatorView.ComputeIn2d.value:
+            ts = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
+            hide = ('z' not in ts or ts['z'] == 1) and all(self.topLevelOperatorView.ComputeIn2d.value)
+            self.featureDlg.setComputeIn2dHidden(hide)
 
         matrix = opFeatureSelection.SelectionMatrix.value
         featureOrdering = opFeatureSelection.FeatureIds.value
@@ -389,11 +394,6 @@ class FeatureSelectionGui(LayerViewerGui):
         """
         Handles changes to our top-level operator's ImageInput and matrix of feature selections.
         """
-        # update feature dialog to show/hide z dimension specific 'compute in 2d' flags
-        if self.topLevelOperatorView.InputImage.ready():
-            ts = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
-            self.featureDlg.setComputeIn2dHidden('z' not in ts or ts['z'] == 1)
-
         # Update the drawer caption
         fff = (self.topLevelOperatorView.FeatureListFilename.ready() and
                len(self.topLevelOperatorView.FeatureListFilename.value) != 0)

@@ -78,7 +78,7 @@ class OpFeatureSelectionNoCache(Operator):
     Scales = InputSlot(value=defaultScales)             # The list of scales to use when computing features
     SelectionMatrix = InputSlot(value=MinimalFeatures)  # A matrix of bools indicating which features to output
     # A list of flags to indicate weather to use a 2d (xy) or a 3d filter for each scale in Scales
-    ComputeIn2d = InputSlot(value=[False] * len(defaultScales))
+    ComputeIn2d = InputSlot(value=[])
     # The SelectionMatrix rows correspond to feature types in the order specified by the FeatureIds input.
     #  (See OpPixelFeaturesPresmoothed for the available feature types.)
     # The SelectionMatrix columns correspond to the scales provided in the Scales input,
@@ -174,8 +174,14 @@ class OpFeatureSelectionNoCache(Operator):
                     msg += f'Reduce, remove or switch to 2D computation for these scales:\n{invalid_z_scales}\n\n'
 
                 msg += 'Alternatively use another dataset.'
-                raise DatasetConstraintError("Feature Selection", msg, fixing_dialogs=[
-                    self.parent.parent.featureSelectionApplet._gui.currentGui().onFeatureButtonClicked])
+                if self.parent.parent.featureSelectionApplet._gui is None:
+                    # headless
+                    fix_dlgs = []
+                else:
+                    fix_dlgs = [self.parent.parent.featureSelectionApplet._gui.currentGui(
+                        fallback_imageLaneIndex=0).onFeatureButtonClicked]
+
+                raise DatasetConstraintError("Feature Selection", msg, fixing_dialogs=fix_dlgs)
 
             # Connect our external outputs to our internal operators
             self.OutputImage.connect(self.opReorderOut.Output)

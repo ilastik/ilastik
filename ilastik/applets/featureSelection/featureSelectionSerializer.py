@@ -95,10 +95,9 @@ class FeatureSelectionSerializer(AppletSerializer):
             try:
                 computeIn2d = topGroup['ComputeIn2d'].value
                 computeIn2d = list(map(bool, computeIn2d))
+                self.topLevelOperator.ComputeIn2d.setValue(computeIn2d)
             except KeyError:
-                # older ilastik versions did not support feature computation in 2d
-                computeIn2d = [False] * len(scales)
-            self.topLevelOperator.ComputeIn2d.setValue(computeIn2d)
+                pass  # older ilastik versions did not support feature computation in 2d
 
             featureIds = list(map(lambda s: s.decode('utf-8'), topGroup['FeatureIds'].value))
         except KeyError:
@@ -137,7 +136,6 @@ class FeatureSelectionSerializer(AppletSerializer):
                     self.topLevelOperator.FeatureIds.setValue(featureIds)
                     # set disconnected slot at last (used like a transaction slot)
                     self.topLevelOperator.SelectionMatrix.setValue(savedMatrix)
-
 
         self._dirty = False
 
