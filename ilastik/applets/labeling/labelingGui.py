@@ -311,7 +311,7 @@ class LabelingGui(LayerViewerGui):
             color_value = color.rgba()
             color_index = firstRow + 1
             if color_index< len(self._colorTable16):
-                self._colorTable16[color_index] = QColor(color_value)
+                self._colorTable16[color_index] = color_value
             else:
                 self._colorTable16.append(color_value)
             self.editor.brushingModel.setBrushColor(color)
