@@ -179,7 +179,7 @@ class OpFeatureSelectionNoCache(Operator):
                     fix_dlgs = []
                 else:
                     fix_dlgs = [self.parent.parent.featureSelectionApplet._gui.currentGui(
-                        fallback_imageLaneIndex=0).onFeatureButtonClicked]
+                        fallback_on_lane_0=True).onFeatureButtonClicked]
 
                 raise DatasetConstraintError("Feature Selection", msg, fixing_dialogs=fix_dlgs)
 

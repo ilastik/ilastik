@@ -31,16 +31,16 @@ class SingleToMultiGuiAdapter( object ):
         self.topLevelOperator = topLevelOperator
         self._enabled = False
 
-    def currentGui(self, fallback_on_lane_0=None):
+    def currentGui(self, fallback_on_lane_0=False):
         """
         Return the single-image GUI for the currently selected image lane.
         If it doesn't exist yet, create it.
         """
         if self._imageLaneIndex is None:
-            if fallback_imageLaneIndex is None:
-                return None
+            if fallback_on_lane_0:
+                self._imageLaneIndex = 0
             else:
-                self._imageLaneIndex = fallback_imageLaneIndex
+                return None
 
         # Create first if necessary
         if self._guis[self._imageLaneIndex] is None:
