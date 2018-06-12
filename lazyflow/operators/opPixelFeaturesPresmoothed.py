@@ -84,9 +84,9 @@ class OpPixelFeaturesPresmoothed(Operator):
         invalid_z_scales = []
         if self.Input.ready():
             z, y, x = self.Input.meta.shape[2:]
-            for j, scale in enumerate(self.scales):
+            for j, scale in enumerate(self.Scales.value):
                 minimum_len = numpy.ceil(scale * self.WINDOW_SIZE) + 1
-                if self.matrix[:, j].any():
+                if self.SelectionMatrix.value[:, j].any():
                     if minimum_len > x or minimum_len > y:
                         invalid_scales.append(scale)
                     if minimum_len > z and not self.ComputeIn2d.value[j]:
@@ -95,6 +95,12 @@ class OpPixelFeaturesPresmoothed(Operator):
         return invalid_scales, invalid_z_scales
 
     def setupOutputs(self):
+        if not self.ComputeIn2d.value:
+            if self.Input.meta.shape[2] == 1:
+                self.parent.ComputeIn2d.setValue([True] * len(self.Scales.value))
+            else:
+                self.parent.ComputeIn2d.setValue([False] * len(self.Scales.value))
+
         assert self.Input.meta.getAxisKeys() == list('tczyx'), self.Input.meta.getAxisKeys()
         assert isinstance(self.ComputeIn2d.value, list), type(self.ComputeIn2d.value)
         self.scales = self.Scales.value
