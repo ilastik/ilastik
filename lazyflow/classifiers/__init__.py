@@ -12,11 +12,3 @@ except ImportError:
 
 # Testing
 from .vigraRfPixelwiseClassifier import VigraRfPixelwiseClassifier, VigraRfPixelwiseClassifierFactory
-
-# IIBoost
-try:
-    from .iiboostLazyflowClassifier import IIBoostLazyflowClassifier, IIBoostLazyflowClassifierFactory
-except (ImportError, OSError) as _ex:
-    import warnings
-    warnings.warn("Couldn't import IIBoost classifier.")
-    
