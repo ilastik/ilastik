@@ -105,7 +105,9 @@ def main():
     #parsed_args.workflow = 'Object Classification (from pixel classification)'
     #parsed_args.workflow = 'Carving'
 
-    ilastik_main.main(parsed_args, workflow_cmdline_args)
+    hShell = ilastik_main.main(parsed_args, workflow_cmdline_args)
+    # in headless mode the headless shell is returned and its project manager still has an open project file
+    hShell.closeCurrentProject()
 
 if __name__ == "__main__":
     # Examples:
