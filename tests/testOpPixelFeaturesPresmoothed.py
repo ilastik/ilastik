@@ -39,7 +39,7 @@ class TestOpPixelFeaturesPresmoothed(object):
                                                  ]))
 
         # compute result over whole volume in 2d
-        op.ComputeIn2d.setValue(True)
+        op.ComputeIn2d.setValue([True] * 3)
         op.Input.setValue(self.data)
         computed_whole = op.Output[:].wait()
 

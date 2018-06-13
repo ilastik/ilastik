@@ -50,7 +50,7 @@ class OpPixelFeaturesPresmoothed(Operator):
     Input = InputSlot()
     Scales = InputSlot()
     SelectionMatrix = InputSlot()
-    ComputeIn2d = InputSlot(value=False)
+    ComputeIn2d = InputSlot()
 
     # Specify a default set & order for the features we compute
     FeatureIds = InputSlot(value=['GaussianSmoothing',
@@ -84,18 +84,25 @@ class OpPixelFeaturesPresmoothed(Operator):
         invalid_z_scales = []
         if self.Input.ready():
             z, y, x = self.Input.meta.shape[2:]
-            for j, scale in enumerate(self.scales):
+            for j, scale in enumerate(self.Scales.value):
                 minimum_len = numpy.ceil(scale * self.WINDOW_SIZE) + 1
-                if self.matrix[:, j].any():
+                if self.SelectionMatrix.value[:, j].any():
                     if minimum_len > x or minimum_len > y:
                         invalid_scales.append(scale)
-                if minimum_len > z:
-                    invalid_z_scales.append(scale)
+                    if minimum_len > z and not self.ComputeIn2d.value[j]:
+                        invalid_z_scales.append(scale)
 
         return invalid_scales, invalid_z_scales
 
     def setupOutputs(self):
+        if not self.ComputeIn2d.value:
+            if self.Input.meta.shape[2] == 1:
+                self.parent.ComputeIn2d.setValue([True] * len(self.Scales.value))
+            else:
+                self.parent.ComputeIn2d.setValue([False] * len(self.Scales.value))
+
         assert self.Input.meta.getAxisKeys() == list('tczyx'), self.Input.meta.getAxisKeys()
+        assert isinstance(self.ComputeIn2d.value, list), type(self.ComputeIn2d.value)
         self.scales = self.Scales.value
         self.matrix = self.SelectionMatrix.value
 
@@ -160,8 +167,11 @@ class OpPixelFeaturesPresmoothed(Operator):
                         #       to preserve backwards compatibility
                         featureName = f'Difference of Gaussians (σ={self.scales[j]})'
 
+                    if self.ComputeIn2d.value[j]:
+                        featureName += ' in 2D'
+
                     # note: set ComputeIn2d first, to avoid a second call of setupOutputs, due to ComptueIn2d's default
-                    op.ComputeIn2d.connect(self.ComputeIn2d)
+                    op.ComputeIn2d.setValue(self.ComputeIn2d.value[j])
                     op.Input.connect(self.source.Output)
 
                     # Feature names are provided via metadata
@@ -179,7 +189,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                         channel_names.append(featureName)
                     else:
                         for feature_channel_index in range(featureChannels):
-                            channel_names.append(featureName + " [{}]".format(feature_channel_index))
+                            channel_names.append(featureName + f' [{feature_channel_index}]')
 
                     self.Features[featureCount].meta.assignFrom(featureMeta)
                     # Discard any semantics related to the input channels
@@ -229,8 +239,8 @@ class OpPixelFeaturesPresmoothed(Operator):
         # request all channels at once to only pre-smooth once for all input channels and filters.
         c = self.Output.meta.shape[1]
 
-        # If features are computed in 2d or z is singleton axis, requesting single z slices is ideal.
-        if self.ComputeIn2d.value or self.Output.meta.shape[2] == 1:
+        # If all features are computed in 2d or z is singleton axis, requesting single z slices is ideal.
+        if all(self.ComputeIn2d.value) or self.Output.meta.shape[2] == 1:
             ideal = (t, c, 1, 0, 0)  # 2d filter
         else:
             ideal = (t, c, 0, 0, 0)  # 3d filter
@@ -306,7 +316,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             full_output_shape = self.Output.meta.shape
             full_output_start, full_output_stop = sliceToRoi(full_output_slice, full_output_shape)
             assert len(full_output_shape) == 5
-            if self.ComputeIn2d.value:
+            if all(self.ComputeIn2d.value):  # todo: check for this particular slice
                 axes2enlarge = (0, 1, 1)
             else:
                 axes2enlarge = (1, 1, 1)
@@ -386,7 +396,8 @@ class OpPixelFeaturesPresmoothed(Operator):
                     droi = ((0, *tuple(smooth_filter_start._asint())),
                             (sourceV.shape[1], *tuple(smooth_filter_stop._asint())))
                     for i, vsa in enumerate(sourceV.timeIter()):
-                        presmoothed_source[j][i, ...] = self._computeGaussianSmoothing(vsa, tempSigma, droi)
+                        presmoothed_source[j][i, ...] = self._computeGaussianSmoothing(vsa, tempSigma, droi,
+                                                                                       in2d=self.ComputeIn2d.value[j])
 
             except RuntimeError as e:
                 if 'kernel longer than line' in str(e):
@@ -450,12 +461,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     except Exception:
                         presmoothed_source[i] = None
 
-    def _computeGaussianSmoothing(self, vol, sigma, roi):
-        invalid_z = vol.shape[1] == 1 or sigma < .3 or sigma * self.WINDOW_SIZE > vol.shape[1]
-        if invalid_z and vol.shape[1] > 1 and not self.ComputeIn2d.value:
-            logger.warning(
-                f'PixelFeaturesPresmoothed: Pre-smoothing in 2d for sigma {sigma:.2f} (z dimension too small)')
-
+    def _computeGaussianSmoothing(self, vol, sigma, roi, in2d):
         if WITH_FAST_FILTERS:
             # Use fast filters (if available)
             result = numpy.zeros(vol.shape).astype(vol.dtype)
@@ -463,7 +469,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             for channel in range(vol.shape[0]):
                 c_slice = slice(channel, channel + 1)
-                if self.ComputeIn2d.value or invalid_z:
+                if in2d:
 
                     for z in range(vol.shape[1]):
                         result[c_slice, z:z + 1] = fastfilters.gaussianSmoothing(vol[c_slice, z: z + 1], sigma,
@@ -475,7 +481,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             return result[roi]
         else:
             # Use Vigra's filters
-            if invalid_z or self.ComputeIn2d.value:
+            if in2d:
                 sigma = (0, sigma, sigma)
 
             # vigra's filter functions need roi without channels axis
