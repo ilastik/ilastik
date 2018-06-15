@@ -107,7 +107,7 @@ class BatchProcessingApplet(Applet):
             # Call customization hook
             self.dataExportApplet.prepare_for_entire_export()
 
-            batch_lane_index = len(self.dataSelectionApplet.topLevelOperator) - 1
+            batch_lane_index = len(self.dataSelectionApplet.topLevelOperator)
             for batch_dataset_index, role_input_datas in enumerate(datas_by_batch_index):
                 # Add a lane to the end of the workflow for batch processing
                 # (Expanding OpDataSelection by one has the effect of expanding the whole workflow.)
@@ -219,7 +219,6 @@ class BatchProcessingApplet(Applet):
 
         # Apply new settings for each role
         for role_index, data_for_role in enumerate(role_input_datas):
-            print(f">>> role_index {role_index}, data_for_role {data_for_role}")
             if not data_for_role:
                 continue
 

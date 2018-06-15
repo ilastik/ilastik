@@ -26,6 +26,7 @@ import vigra
 import warnings
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+from lazyflow.metaDict import MetaDict
 from lazyflow.utility.jsonConfig import RoiTuple
 from lazyflow.operators.ioOperators import (
     OpStreamingHdf5Reader, OpStreamingHdf5SequenceReaderS, OpInputDataReader
@@ -80,6 +81,9 @@ class DatasetInfo(object):
         self.nickname = ""
         self.axistags = None
         self.original_axistags = None
+        # Necessary in headless mode in order to recover the shape of the raw data
+        self.laneShape = None
+        self.laneDtype = None
         self.subvolume_roi = None
         self.location = Location.FileSystem
         self.display_mode = 'default'  # choices: default, grayscale, rgba, random-colortable, binary-mask.
@@ -343,23 +347,26 @@ class OpDataSelection(Operator):
                 opReader.Input.setValue(preloaded_array)
                 providerSlot = opReader.Output
             else:
-                if datasetInfo.filePath:
-                    # Use a normal (filesystem) reader
+                workflow = self.parent.parent.parent.parent
+                headless = False
+                if(hasattr(workflow, '_headless')):
+                    headless = workflow._headless
+
+                if not headless:
+                # Use a normal (filesystem) reader
                     opReader = OpInputDataReader(parent=self)
                     if datasetInfo.subvolume_roi is not None:
-                        opReader.SubVolumeRoi.setValue(datasetInfo.subvolume_roi)
+                        opReaderReal.SubVolumeRoi.setValue(datasetInfo.subvolume_roi)
                     opReader.WorkingDirectory.setValue(self.WorkingDirectory.value)
                     opReader.SequenceAxis.setValue(datasetInfo.sequenceAxis)
                     opReader.FilePath.setValue(datasetInfo.filePath)
                 else:
-                    print(">>>> Empty filePath, using OpZeroDefault as OpInputDataReader")
                     opReader = OpZeroDefault(parent=self)
-                    # TODO: inject correct raw data shape
-                    raw_data_shape = (250, 250, 3)
-                    dummy_data = numpy.zeros(raw_data_shape, dtype='uint8')
-                    dummy_data = vigra.taggedView(dummy_data, datasetInfo.axistags)
-                    opReader.MetaInput.setValue(dummy_data)
-
+                    opReader.MetaInput.meta = MetaDict(shape=datasetInfo.laneShape,
+                                             dtype=datasetInfo.laneDtype,
+                                             drange=datasetInfo.drange,
+                                             axistags=datasetInfo.axistags)
+                    opReader.MetaInput.setValue(numpy.zeros(datasetInfo.laneShape, dtype=datasetInfo.laneDtype))
                 providerSlot = opReader.Output
             self._opReaders.append(opReader)
 

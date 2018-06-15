@@ -34,6 +34,7 @@ from lazyflow.operators.ioOperators.opStreamingHdf5SequenceReaderS import (
 
 import os
 import vigra
+import numpy
 from lazyflow.utility import PathComponents
 from lazyflow.utility.timer import timeLogged
 from ilastik.utility import bind
@@ -182,10 +183,15 @@ class DataSelectionSerializer( AppletSerializer ):
                     # Pull the axistags from the NonTransposedImage, 
                     #  which is what the image looks like before 'forceAxisOrder' is applied, 
                     #  and before 'c' is automatically appended
-                    axistags = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex].meta.axistags
+                    image_group_meta = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex].meta
+                    axistags = image_group_meta.axistags
                     infoGroup.create_dataset('axistags', data=axistags.toJSON().encode('utf-8'))
                     axisorder = "".join(tag.key for tag in axistags).encode('utf-8')
                     infoGroup.create_dataset('axisorder', data=axisorder)
+                    # serialize shape/dtype so that we could re-create the metadata
+                    # for the raw data in the headless mode -> no need for raw data in headless
+                    infoGroup.create_dataset('shape', data=image_group_meta.shape)
+                    infoGroup.create_dataset('dtype', data=str(numpy.dtype(image_group_meta.dtype)).encode('utf-8'))
                     if datasetInfo.subvolume_roi is not None:
                         infoGroup.create_dataset('subvolume_roi', data=datasetInfo.subvolume_roi)
 
@@ -374,10 +380,7 @@ class DataSelectionSerializer( AppletSerializer ):
         datasetInfo.location = LocationLookup[ infoGroup['location'].value.decode('utf-8') ]
         
         # Write to the 'private' members to avoid resetting the dataset id
-        if headless:
-            datasetInfo._filePath = ''
-        else:
-            datasetInfo._filePath = infoGroup['filePath'].value.decode('utf-8')
+        datasetInfo._filePath = infoGroup['filePath'].value.decode('utf-8')
 
         datasetInfo._datasetId = infoGroup['datasetId'].value.decode('utf-8')
 
@@ -390,7 +393,17 @@ class DataSelectionSerializer( AppletSerializer ):
             datasetInfo.drange = tuple( infoGroup['drange'].value )
         except KeyError:
             pass
-        
+
+        try:
+            datasetInfo.laneShape = tuple(infoGroup['shape'].value)
+        except KeyError:
+            pass
+
+        try:
+            datasetInfo.laneDtype = numpy.dtype(infoGroup['dtype'].value.decode('utf-8'))
+        except KeyError:
+            pass
+
         try:
             datasetInfo.display_mode = infoGroup['display_mode'].value.decode('utf-8')
         except KeyError:
@@ -434,6 +447,7 @@ class DataSelectionSerializer( AppletSerializer ):
         dirty = False
         # If the data is supposed to exist outside the project, make sure it really does.
         if self._check_dataset_path(datasetInfo, headless):
+            # TODO: check for the retrain flag
             pathData = PathComponents(datasetInfo.filePath,
                                       os.path.split(projectFilePath)[0])
             filePath = pathData.externalPath
