@@ -35,12 +35,6 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     from .newAutocontext.newAutocontextWorkflow import AutocontextThreeStage, AutocontextFourStage
     WORKFLOW_CLASSES += [AutocontextThreeStage, AutocontextFourStage]
 
-try:
-    from .iiboostPixelClassification import IIBoostPixelClassificationWorkflow
-    WORKFLOW_CLASSES += [IIBoostPixelClassificationWorkflow]
-except ImportError as e:
-    logger.warning( "Failed to import the IIBoost Synapse detection workflow.  Check IIBoost dependency." )
-
 
 try:
     from .objectClassification.objectClassificationWorkflow import ObjectClassificationWorkflowPixel, ObjectClassificationWorkflowPrediction, ObjectClassificationWorkflowBinary
