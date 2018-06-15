@@ -176,7 +176,14 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.handleInteractiveModeClicked)
 
-        #select all the features in the beginning
+        # Add two permanent labels because it makes no sense to have less here
+        self._addNewLabel()
+        self._addNewLabel()
+        self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
+        self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
+        self.labelingDrawerUi.labelListView.shrinkToMinimum()
+
+        # select all the features in the beginning
         cfn = None
         already_selected = None
         if self.op.ComputedFeatureNames.ready():

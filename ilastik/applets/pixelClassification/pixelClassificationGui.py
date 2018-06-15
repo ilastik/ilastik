@@ -415,7 +415,7 @@ class PixelClassificationGui(LabelingGui):
 
         # Base class init
         super(PixelClassificationGui, self).__init__( parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath )
-        
+
         self.topLevelOperatorView = topLevelOperatorView
 
         self.interactiveModeActive = False
@@ -435,6 +435,13 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_feature_selection_dialog)
         self.featSelDlg.accepted.connect(self.update_features_from_dialog)
         self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
+
+        # Add two permanent labels because it makes no sense to have less here
+        self._addNewLabel()
+        self._addNewLabel()
+        self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
+        self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
+        self.labelingDrawerUi.labelListView.shrinkToMinimum()
 
         self.topLevelOperatorView.LabelNames.notifyDirty( bind(self.handleLabelSelectionChange) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
