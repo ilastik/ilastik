@@ -38,19 +38,40 @@ from lazyflow.operators import OpPixelOperator
 from ilastik.applets.counting.countingsvr import SVR
 
 
-from lazyflow.operators.vigraOperators import OpGaussianSmoothing
+from lazyflow.operators.filterOperators import OpGaussianSmoothing
+from lazyflow.operators import OpReorderAxes
 
 
-class OpLabelPreviewer(OpGaussianSmoothing):
+class OpLabelPreviewer(Operator):
     name = "LabelPreviewer"
+    Input = InputSlot()
+    sigma = InputSlot()
+    Output = OutputSlot()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.smoothing = OpGaussianSmoothing(parent=self)
+        self.inReorder = OpReorderAxes(parent=self)
+        self.outReorder = OpReorderAxes(parent=self)
 
-class OpLabelPreviewerRefactored(Operator):
+    def setupOutputs(self):
+        self.smoothing.sigma.connect(self.sigma)
+        self.inReorder.AxisOrder.setValue('tczyx')
+        self.outReorder.AxisOrder.setValue(''.join(self.Input.meta.getAxisKeys()))
 
-    name = "LabelPreviewer"
+        self.inReorder.Input.connect(self.Input)
+        self.smoothing.Input.connect(self.inReorder.Output)
 
-    Images = InputSlot(level=1)
-    Output = OutputSlot(level=1)
+        self.outReorder.Input.connect(self.smoothing.Output)
+        self.Output.connect(self.outReorder.Output)
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.Input:
+            self.Output.setDirty(roi)
+        elif slot == self.sigma:
+            self.Output.setDirty(slice(None))
+        else:
+            raise NotImplementedError(f'propagateDirty not implemented for slot {slot.name}')
 
 
 def checkOption(reqlist):
@@ -170,7 +191,8 @@ class OpTrainCounter(Operator):
 
         for i,labels in enumerate(self.inputs["ForegroundLabels"]):
             if labels.meta.shape is not None:
-                opGaussian = OpGaussianSmoothing(parent = self, graph = self.graph)
+                opGaussian = OpLabelPreviewer(parent=self)
+                opGaussian.name = 'ManuallyGuardedOpGaussianSmoothing'
                 opGaussian.sigma.setValue(self.Sigma.value)
                 opGaussian.Input.connect(self.ForegroundLabels[i])
                 blocks = self.inputs["nonzeroLabelBlocks"][i][0].wait()

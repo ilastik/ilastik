@@ -18,12 +18,12 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
-import os
 import glob
-import uuid
 import numpy
+import os
+import uuid
 import vigra
+import warnings
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.utility.jsonConfig import RoiTuple
@@ -465,7 +465,6 @@ class OpDataSelection(Operator):
             # Connect our external outputs to the internal operators we chose
             self.Image.connect(providerSlot)
 
-            # Set the image name and usage flag
             self.AllowLabels.setValue(datasetInfo.allowLabels)
 
             # If the reading operator provides a nickname, use it.

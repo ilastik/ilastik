@@ -119,8 +119,6 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             
             # Set some features
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
-            opFeatures.FeatureIds.setValue( OpPixelFeaturesPresmoothed.DefaultFeatureIds )
-            opFeatures.Scales.setValue( [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0] )
             #                    sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
             selections = numpy.array( [[True, True, True, True, True, True, False],
                                        [True, True, True, True, True, True, False],
