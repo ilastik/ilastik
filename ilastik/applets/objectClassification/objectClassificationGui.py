@@ -171,16 +171,24 @@ class ObjectClassificationGui(LabelingGui):
             self.handleSubsetFeaturesClicked)
         self.labelingDrawerUi.labelAssistButton.clicked.connect(
             self.handleLabelAssistClicked)
+
         self.labelingDrawerUi.liveUpdateButton.setEnabled(False)
         self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.handleInteractiveModeClicked)
+
+        self.labelingDrawerUi.checkInteractive.toggled.connect(
+            self.handleInteractiveModeClicked)
+        self.labelingDrawerUi.checkShowPredictions.toggled.connect(
+            self.handleShowPredictionsClicked)
+
 
         # Add two permanent labels because it makes no sense to have less here
         self._addNewLabel()
         self._addNewLabel()
         self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
         self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
+
 
         # select all the features in the beginning
         cfn = None
