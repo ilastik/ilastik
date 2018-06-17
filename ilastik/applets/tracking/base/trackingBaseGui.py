@@ -94,7 +94,7 @@ class TrackingBaseGui( LayerViewerGui ):
 
         self.merger_colortable = colortables.create_default_16bit()
         for i in range(7):
-            self.merger_colortable[i] = self.mergerColors[i].rgba()
+            self.merger_colortable[i] = self.mergerColors[i]
 
         if "MergerOutput" in self.topLevelOperatorView.outputs:
             parameters = self.mainOperator.Parameters.value
@@ -252,7 +252,7 @@ class TrackingBaseGui( LayerViewerGui ):
     # is no longer needed. The merger colors are now determined by the track id
     # and therefore by the colormap of the tracking layer.
     def _initColors(self):
-        self.mergerColors = colortables.default16_new
+        self.mergerColors = list(colortables.default16_new)
         self.mergerColors.insert(0, QColor(0, 0, 0, 0).rgba()) # 0 and 1 must be transparent
 
     def _labelSetStyleSheet(self, qlabel, qcolor):
