@@ -147,7 +147,7 @@ class LabelingGui(LayerViewerGui):
                              (if provided).
         """
 
-        self._colorTable16 = colortables.default16_new
+        self._colorTable16 = list(colortables.default16_new)
 
         # Do have have all the slots we need?
         assert isinstance(labelingSlots, LabelingGui.LabelingSlots)
