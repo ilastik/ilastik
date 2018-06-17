@@ -481,11 +481,15 @@ class ObjectClassificationGui(LabelingGui):
                                         l.pmapColor().blue()),
                              self.topLevelOperatorView.PmapColors)
 
+
     def _onLabelRemoved(self, parent, start, end):
         # Don't respond unless this actually came from the GUI
         if self._programmaticallyRemovingLabels:
             return
 
+        # Base class
+        super(ObjectClassificationGui, self)._onLabelRemoved(parent, start, end)
+        '''
         # update the pmap colors. copied from labelingGui._onLabelRemoved
         # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
         oldcount = self._labelControlUi.labelListModel.rowCount() + 1
@@ -497,9 +501,8 @@ class ObjectClassificationGui(LabelingGui):
         layer_index = self.layerstack.findMatchingIndex(lambda x: x.name == self.PREDICTION_LAYER_NAME)
         predictLayer = self.layerstack[layer_index]
         predictLayer.colorTable = self._colorTable16_forpmaps
+        '''
 
-        # Base class
-        super(ObjectClassificationGui, self)._onLabelRemoved(parent, start, end)
 
         op = self.topLevelOperatorView
         op.removeLabel(start)
@@ -724,6 +727,7 @@ class ObjectClassificationGui(LabelingGui):
         self._setPredictionColorTableForRow(predictLayer, row)
 
     def _setPredictionColorTableForRow(self, predictLayer, row):
+
         if row >= 0 and row < self._labelControlUi.labelListModel.rowCount():
             element = self._labelControlUi.labelListModel[row]
             oldcolor = self._colorTable16_forpmaps[row+1]
