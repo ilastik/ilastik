@@ -54,14 +54,22 @@ parser.add_argument('--fullscreen', help='Show Window in fullscreen mode.',
                     action='store_true', default=False)
 
 parser.add_argument(
-    '--start_recording', help='Open the recorder controls and immediately '
-    'start recording', action='store_true', default=False)
-parser.add_argument('--playback_script',
-                    help='An event recording to play back after the main '
-                    'window has opened.', required=False)
-parser.add_argument('--playback_speed',
-                    help='Speed to play the playback script.', default=1.0,
-                    type=float)
+    '--start_recording',
+    # help='Open the recorder controls and immediately start recording',
+    help=argparse.SUPPRESS,
+    action='store_true',
+    default=False)
+parser.add_argument(
+    '--playback_script',
+    # help='An event recording to play back after the main window has opened.',
+    help=argparse.SUPPRESS,
+    required=False)
+parser.add_argument(
+    '--playback_speed',
+    # help='Speed to play the playback script.',
+    help=argparse.SUPPRESS,
+    default=1.0,
+    type=float)
 parser.add_argument(
     '--exit_on_failure',
     help='Immediately call exit(1) if an unhandled exception occurs.',
