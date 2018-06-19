@@ -189,7 +189,6 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
         self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
 
-
         # select all the features in the beginning
         cfn = None
         already_selected = None
