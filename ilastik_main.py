@@ -97,6 +97,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     preinit_funcs = []
     # Must be first (or at least before vigra).
     preinit_funcs.append(_import_opengm)
+    preinit_funcs.append(_instantiate_cache_manager)
 
     lazyflow_config_fn = _prepare_lazyflow_config(parsed_args)
     if lazyflow_config_fn:
@@ -287,6 +288,14 @@ def _import_opengm():
         import opengm # noqa
     except ImportError:
         pass
+
+
+def _instantiate_cache_manager():
+    """Ensure that the CacheMemoryManager thread is started during setup.
+    """
+    import lazyflow
+    from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
+    CacheMemoryManager()
 
 
 def _prepare_lazyflow_config(parsed_args):
