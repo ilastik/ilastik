@@ -188,12 +188,12 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             gui.currentGui().editor.posModel.slicingPos = (0,0,0)
 
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
-            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 0, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
             
-            # Add label classes
-            for i in range(3):
-                gui.currentGui()._labelControlUi.AddLabelButton.click()
-                assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == i+1, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
+            # Add label classes. we want three for the following tests. Two are initially added by the constructors.
+            # Add one to the two existing ones:
+            gui.currentGui()._labelControlUi.AddLabelButton.click()
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 3, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
 
             # Select the brush
             gui.currentGui()._labelControlUi.paintToolButton.click()
@@ -253,8 +253,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
                 "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
 
             # Make sure that it's okay to delete a row even if the deleted label is selected.
-            gui.currentGui()._labelControlUi.labelListModel.select(1)
-            gui.currentGui()._labelControlUi.labelListModel.removeRow(1)
+            gui.currentGui()._labelControlUi.labelListModel.select(2)
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(2)
 
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, \
                 "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
@@ -272,14 +272,14 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.waitForViews(gui.currentGui().editor.imageViews)
 
             # Check the actual rendering of the two views with remaining labels
-            for i in [0,2]:
+            for i in [0,1]:
                 imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 expectedColor = originalLabelColors[i]
                 assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
 
-            # Make sure we actually deleted the middle label (it should no longer be visible)
-            for i in [1]:
+            # Make sure we actually deleted the third label(it should no longer be visible)
+            for i in [2]:
                 imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 oldColor = originalLabelColors[i]
@@ -361,8 +361,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             labelData = opPix.LabelImages[0][:].wait()            
             assert labelData.max() == 2, "Max label value was wrong. Expected 2, got {}".format( labelData.max()  )
             
-            # Use the third view for this test (which has the max label value)
-            imgView = gui.currentGui().editor.imageViews[2]
+            # Use the second view for this test (which has the max label value)
+            imgView = gui.currentGui().editor.imageViews[1]
 
             # Sanity check: There should be labels in the view that we can erase
             self.waitForViews([imgView])

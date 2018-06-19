@@ -441,7 +441,6 @@ class PixelClassificationGui(LabelingGui):
         self._addNewLabel()
         self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
         self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
-        self.labelingDrawerUi.labelListView.shrinkToMinimum()
 
         self.topLevelOperatorView.LabelNames.notifyDirty( bind(self.handleLabelSelectionChange) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange) ) )

@@ -181,7 +181,6 @@ class ObjectClassificationGui(LabelingGui):
         self._addNewLabel()
         self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
         self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
-        self.labelingDrawerUi.labelListView.shrinkToMinimum()
 
         # select all the features in the beginning
         cfn = None
