@@ -430,11 +430,8 @@ class ProjectManager(object):
                         assert serializer.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
                         serializer.ignoreDirty = True
 
-                        if serializer.caresOfHeadless:
-                            serializer.deserializeFromHdf5(self.currentProjectFile, projectFilePath, self._headless)
-                        else:
-                            serializer.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
-    
+                        serializer.deserializeFromHdf5(self.currentProjectFile, projectFilePath, self._headless)
+
                         serializer.ignoreDirty = False
                 logger.debug('Deserializing applet "{}" took {} seconds'.format( aplt.name, timer.seconds() ))
             

@@ -30,7 +30,7 @@ class PredictionViewerSerializer(AppletSerializer):
     def serializeToHdf5(self, hdf5File, projectFilePath):
         pass
     
-    def deserializeFromHdf5(self, hdf5File, projectFilePath):
+    def deserializeFromHdf5(self, hdf5File, projectFilePath, headless=False):
         try:
             predictionGroup = hdf5File[self._predictionGroupName]
         except:

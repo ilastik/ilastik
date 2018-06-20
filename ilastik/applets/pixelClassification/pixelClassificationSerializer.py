@@ -53,7 +53,7 @@ class PixelClassificationSerializer(AppletSerializer):
         super(PixelClassificationSerializer, self).__init__(projectFileGroupName, slots, operator)
         
     
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
         """
         Override from AppletSerializer.
         Implement any additional deserialization that wasn't already accomplished by our list of serializable slots.
@@ -133,7 +133,7 @@ class Ilastik05ImportDeserializer(AppletSerializer):
         """Not implemented. (See above.)"""
         pass
 
-    def deserializeFromHdf5(self, hdf5File, projectFilePath):
+    def deserializeFromHdf5(self, hdf5File, projectFilePath, headless=False):
         """If (and only if) the given hdf5Group is the root-level group of an
            ilastik 0.5 project, then the project is imported.  The pipeline is updated
            with the saved parameters and datasets."""
@@ -195,7 +195,7 @@ class Ilastik05ImportDeserializer(AppletSerializer):
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         assert False
 
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
         # This deserializer is a special-case.
         # It doesn't make use of the serializer base class, which makes assumptions about the file structure.
         # Instead, if overrides the public serialize/deserialize functions directly

@@ -30,8 +30,7 @@ class PreprocessingSerializer( AppletSerializer ):
     def __init__(self, preprocessingTopLevelOperator, *args, **kwargs):
         super(PreprocessingSerializer, self).__init__(*args, **kwargs)
         self._o = preprocessingTopLevelOperator 
-        self.caresOfHeadless = True
-        
+
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         preproc = topGroup
         
@@ -62,7 +61,7 @@ class PreprocessingSerializer( AppletSerializer ):
             
             opPre._unsavedData = False
             
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath,headless = False):
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
         
         assert "sigma" in list(topGroup.keys())
         assert "filter" in list(topGroup.keys())

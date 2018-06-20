@@ -39,7 +39,7 @@ class FillMissingSlicesSerializer(AppletSerializer):
         for s in self._operator.innerOperators:
             s.resetDirty()
 
-    def _deserializeFromHdf5(self, topGroup, version, h5file, projectFilePath):
+    def _deserializeFromHdf5(self, topGroup, version, h5file, projectFilePath, headless=False):
         svm = self._operator.OverloadDetector.setValue(
             self._getDataset(topGroup, 'SVM'))
         for s in self._operator.innerOperators:
