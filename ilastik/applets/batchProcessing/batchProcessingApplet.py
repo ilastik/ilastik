@@ -227,15 +227,16 @@ class BatchProcessingApplet(Applet):
                 info = data_for_role
             else:
                 # Copy the template info, but override filepath, etc.
-                default_info = DatasetInfo(data_for_role)
-                info = copy.copy(template_infos[role_index])
-                info.filePath = default_info.filePath
-                info.location = default_info.location
-                info.nickname = default_info.nickname
+                template_info = template_infos[role_index]
+                info = DatasetInfo.from_file_path(template_info, data_for_role)
 
+            # Force real data source when in headless mode.
+            # If raw data doesn't exist in headless mode, we use fake data reader
+            # (datasetInfo.realDataSource = False). Now we need to ensure that
+            # the flag is set to True for new image lanes.
+            info.realDataSource = True
             # Apply to the data selection operator
-            opDataSelectionBatchLaneView.DatasetGroup[role_index].setValue(
-                info)
+            opDataSelectionBatchLaneView.DatasetGroup[role_index].setValue(info)
 
         # Make sure nothing went wrong
         opDataExportBatchlaneView = self.dataExportApplet.topLevelOperator.getLane(

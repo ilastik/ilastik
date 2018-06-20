@@ -61,8 +61,7 @@ class DataSelectionSerializer( AppletSerializer ):
         super( DataSelectionSerializer, self ).__init__(projectFileGroupName)
         self.topLevelOperator = topLevelOperator
         self._dirty = False
-        self.caresOfHeadless = True
-        
+
         self._projectFilePath = None
         
         self.version = '0.2'
@@ -381,7 +380,6 @@ class DataSelectionSerializer( AppletSerializer ):
         
         # Write to the 'private' members to avoid resetting the dataset id
         datasetInfo._filePath = infoGroup['filePath'].value.decode('utf-8')
-
         datasetInfo._datasetId = infoGroup['datasetId'].value.decode('utf-8')
 
         try:
@@ -445,29 +443,34 @@ class DataSelectionSerializer( AppletSerializer ):
                 raise RuntimeError("Corrupt project file.  Could not find data for " + infoGroup.name)
 
         dirty = False
+
         # If the data is supposed to exist outside the project, make sure it really does.
-        if self._check_dataset_path(datasetInfo, headless):
-            # TODO: check for the retrain flag
-            pathData = PathComponents(datasetInfo.filePath,
-                                      os.path.split(projectFilePath)[0])
+        if datasetInfo.location == DatasetInfo.Location.FileSystem \
+                and not isUrl(datasetInfo.filePath):
+            pathData = PathComponents(datasetInfo.filePath, os.path.split(projectFilePath)[0])
             filePath = pathData.externalPath
             if not os.path.exists(filePath):
                 if headless:
-                    raise RuntimeError("Could not find data at " + filePath)
-                filt = "Image files (" + ' '.join(
-                    '*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
-                newpath = self.repairFile(filePath, filt)
-                if pathData.internalPath is not None:
-                    newpath += pathData.internalPath
-                datasetInfo._filePath = \
-                getPathVariants(newpath, os.path.split(projectFilePath)[0])[0]
-                dirty = True
+                    if self._shouldRetrain():
+                        raise RuntimeError(
+                            "Retrain was passed in headless mode, "
+                            "but could not find data at " + filePath)
+                    else:
+                        assert datasetInfo.laneShape, \
+                            "Headless mode without raw data not supported in old (pre 1.3.2) project files"
+                        # Raw data does not exist in headless, use fake data provider
+                        datasetInfo.realDataSource = False
+                else:
+                    # Try to get a new path for the lost file from the user
+                    filt = "Image files (" + ' '.join('*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
+                    newpath = self.repairFile(filePath, filt)
+                    if pathData.internalPath is not None:
+                        newpath += pathData.internalPath
+                    datasetInfo._filePath = \
+                    getPathVariants(newpath, os.path.split(projectFilePath)[0])[0]
+                    dirty = True
         
         return datasetInfo, dirty
-
-    def _check_dataset_path(self, datasetInfo, headless):
-        return datasetInfo.location == DatasetInfo.Location.FileSystem and \
-               not isUrl(datasetInfo.filePath) and not headless
 
     def updateWorkingDirectory(self,newpath,oldpath):
         newdir = PathComponents(newpath).externalDirectory
@@ -517,6 +520,16 @@ class DataSelectionSerializer( AppletSerializer ):
                 (e.g. not all items could be deserialized properly due to a corrupted ilp)
             This way we can avoid invalid state due to a partially loaded project. """ 
         self.topLevelOperator.DatasetGroup.resize( 0 )
+
+    def _shouldRetrain(self):
+        """
+        Check if '--retrain' flag was passed via workflow command line arguments
+        """
+        workflow = self.topLevelOperator.parent
+        if hasattr(workflow, 'retrain'):
+            return workflow.retrain
+        else:
+            return False
 
 
 class Ilastik05DataSelectionDeserializer(AppletSerializer):
@@ -584,7 +597,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         assert False
 
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
         # This deserializer is a special-case.
         # It doesn't make use of the serializer base class, which makes assumptions about the file structure.
         # Instead, if overrides the public serialize/deserialize functions directly

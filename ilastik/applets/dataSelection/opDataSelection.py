@@ -23,11 +23,10 @@ import numpy
 import os
 import uuid
 import vigra
-import warnings
+import copy
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.metaDict import MetaDict
-from lazyflow.utility.jsonConfig import RoiTuple
 from lazyflow.operators.ioOperators import (
     OpStreamingHdf5Reader, OpStreamingHdf5SequenceReaderS, OpInputDataReader
 )
@@ -84,6 +83,9 @@ class DatasetInfo(object):
         # Necessary in headless mode in order to recover the shape of the raw data
         self.laneShape = None
         self.laneDtype = None
+        # A flag indicating whether the dataset is backed by a real source (e.g. file)
+        # or by the fake provided (e.g. in headless mode when raw data are not necessary)
+        self.realDataSource = True
         self.subvolume_roi = None
         self.location = Location.FileSystem
         self.display_mode = 'default'  # choices: default, grayscale, rgba, random-colortable, binary-mask.
@@ -207,19 +209,6 @@ class DatasetInfo(object):
     def datasetId(self):
         return self._datasetId
 
-    DatasetInfoSchema = \
-        {
-            "_schema_name": "dataset-info",
-            "_schema_version": 0.1,
-
-            "filepath": str,
-            "drange": tuple,
-            "nickname": str,
-            "axistags": str,
-            "original_axistags": str,
-            "subvolume_roi": RoiTuple()
-        }
-
     def __str__(self):
         s = "{ "
         s += "filepath: {},\n".format(self.filePath)
@@ -252,6 +241,18 @@ class DatasetInfo(object):
             self.axistags = vigra.defaultAxistags(namespace.axistags)
         self.subvolume_roi = namespace.subvolume_roi or self.subvolume_roi
 
+    @classmethod
+    def from_file_path(cls, instance, file_path):
+        """
+        Creates a shallow copy of a given DatasetInfo instance
+        with filePath and related attributes overridden
+        """
+        default_info = cls(file_path)
+        result = copy.copy(instance)
+        result.filePath = default_info.filePath
+        result.location = default_info.location
+        result.nickname = default_info.nickname
+        return result
 
 class OpDataSelection(Operator):
     """
@@ -347,20 +348,17 @@ class OpDataSelection(Operator):
                 opReader.Input.setValue(preloaded_array)
                 providerSlot = opReader.Output
             else:
-                workflow = self.parent.parent.parent.parent
-                headless = False
-                if(hasattr(workflow, '_headless')):
-                    headless = workflow._headless
-
-                if not headless:
-                # Use a normal (filesystem) reader
+                if datasetInfo.realDataSource:
+                    # Use a normal (filesystem) reader
                     opReader = OpInputDataReader(parent=self)
                     if datasetInfo.subvolume_roi is not None:
-                        opReaderReal.SubVolumeRoi.setValue(datasetInfo.subvolume_roi)
+                        opReader.SubVolumeRoi.setValue(datasetInfo.subvolume_roi)
                     opReader.WorkingDirectory.setValue(self.WorkingDirectory.value)
                     opReader.SequenceAxis.setValue(datasetInfo.sequenceAxis)
                     opReader.FilePath.setValue(datasetInfo.filePath)
                 else:
+                    # Use fake reader: allows to run the project in a headless
+                    # mode without the raw data
                     opReader = OpZeroDefault(parent=self)
                     opReader.MetaInput.meta = MetaDict(shape=datasetInfo.laneShape,
                                              dtype=datasetInfo.laneDtype,

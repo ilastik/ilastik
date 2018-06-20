@@ -43,7 +43,7 @@ class ThresholdTwoLevelsSerializer(AppletSerializer):
 
         super(self.__class__, self).__init__(projectFileGroupName, slots, operator)
 
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
         """
         Override from AppletSerializer.
         Implement any additional deserialization that wasn't already accomplished by our list of serializable slots.
