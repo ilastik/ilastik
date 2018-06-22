@@ -451,7 +451,7 @@ class DataSelectionSerializer( AppletSerializer ):
             filePath = pathData.externalPath
             if not os.path.exists(filePath):
                 if headless:
-                    if self._shouldRetrain():
+                    if self._shouldRetrain:
                         raise RuntimeError(
                             "Retrain was passed in headless mode, "
                             "but could not find data at " + filePath)
@@ -521,6 +521,7 @@ class DataSelectionSerializer( AppletSerializer ):
             This way we can avoid invalid state due to a partially loaded project. """ 
         self.topLevelOperator.DatasetGroup.resize( 0 )
 
+    @property
     def _shouldRetrain(self):
         """
         Check if '--retrain' flag was passed via workflow command line arguments
