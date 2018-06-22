@@ -360,10 +360,11 @@ class OpDataSelection(Operator):
                     # Use fake reader: allows to run the project in a headless
                     # mode without the raw data
                     opReader = OpZeroDefault(parent=self)
-                    opReader.MetaInput.meta = MetaDict(shape=datasetInfo.laneShape,
-                                             dtype=datasetInfo.laneDtype,
-                                             drange=datasetInfo.drange,
-                                             axistags=datasetInfo.axistags)
+                    opReader.MetaInput.meta = MetaDict(
+                        shape=datasetInfo.laneShape,
+                        dtype=datasetInfo.laneDtype,
+                        drange=datasetInfo.drange,
+                        axistags=datasetInfo.axistags)
                     opReader.MetaInput.setValue(numpy.zeros(datasetInfo.laneShape, dtype=datasetInfo.laneDtype))
                 providerSlot = opReader.Output
             self._opReaders.append(opReader)
