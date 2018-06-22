@@ -37,8 +37,6 @@ from ilastik.shell.projectManager import ProjectManager
 from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 
-from ilastik.config import cfg as ilastik_config
-
 import logging
 logger = logging.getLogger(__name__)
 #logger.setLevel(logging.DEBUG)
@@ -49,7 +47,11 @@ class TestPixelClassificationHeadless(object):
     project_dir = tempfile.mkdtemp()
     data_dir = tempfile.mkdtemp()
     PROJECT_FILE = os.path.join(project_dir, 'test_project.ilp')
-    #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
+    PROJECT_FILE_RAW_DATA = os.path.join(project_dir, 'test_project_raw_data.ilp')
+    # To be deleted after creating the project file in order to test headless with no raw data
+    RAW_DATA = os.path.join(data_dir, 'raw_data.npy')
+    SAMPLE_DATA = os.path.join(data_dir, 'random_data.npy')
+    SAMPLE_MASK = os.path.join(data_dir, 'mask.npy')
 
     @classmethod
     def setupClass(cls):
@@ -64,13 +66,12 @@ class TestPixelClassificationHeadless(object):
         cls.original_cwd = os.getcwd()
         os.chdir(cls.data_dir)
 
-        if hasattr(cls, 'SAMPLE_DATA'):
-            cls.using_random_data = False
-        else:
-            cls.using_random_data = True
-            cls.create_random_data()
+        cls.create_random_data(cls.RAW_DATA)
+        cls.create_random_data(cls.SAMPLE_DATA)
+        cls.create_mask(cls.SAMPLE_MASK)
 
-        cls.create_new_project()
+        cls.create_new_project(cls.PROJECT_FILE, cls.SAMPLE_DATA)
+        cls.create_new_project(cls.PROJECT_FILE_RAW_DATA, cls.RAW_DATA)
 
         cls.ilastik_startup = imp.load_source( 'ilastik_startup', ilastik_entry_file_path )
 
@@ -78,9 +79,7 @@ class TestPixelClassificationHeadless(object):
     def teardownClass(cls):
         os.chdir(cls.original_cwd)
         # Clean up: Delete any test files we generated
-        removeFiles = [ TestPixelClassificationHeadless.PROJECT_FILE ]
-        if cls.using_random_data:
-            removeFiles += [ TestPixelClassificationHeadless.SAMPLE_DATA ]
+        removeFiles = [cls.PROJECT_FILE, cls.PROJECT_FILE_RAW_DATA, cls.SAMPLE_DATA, cls.SAMPLE_MASK]
 
         for f in removeFiles:
             try:
@@ -89,29 +88,28 @@ class TestPixelClassificationHeadless(object):
                 pass
 
     @classmethod
-    def create_random_data(cls):
-        cls.SAMPLE_DATA = os.path.join(cls.data_dir, 'random_data.npy')
-        numpy.save(cls.SAMPLE_DATA, numpy.random.randint(0, 256, (2, 20, 20, 5, 1), dtype=numpy.uint8))
-
-        cls.SAMPLE_MASK = os.path.join(cls.data_dir, 'mask.npy')
-        numpy.save(cls.SAMPLE_MASK, numpy.ones((2, 20, 20, 5, 1), dtype=numpy.uint8))
+    def create_random_data(cls, file_path):
+        numpy.save(file_path, numpy.random.randint(0, 256, (2, 20, 20, 5, 1), dtype=numpy.uint8))
 
     @classmethod
-    def create_new_project(cls):
+    def create_mask(cls, file_path):
+        numpy.save(file_path, numpy.ones((2, 20, 20, 5, 1), dtype=numpy.uint8))
+
+    @classmethod
+    def create_new_project(cls, project_file_path, dataset_path):
         # Instantiate 'shell'
-        shell = HeadlessShell(  )
+        shell = HeadlessShell()
         
         # Create a blank project file and load it.
-        newProjectFilePath = cls.PROJECT_FILE
-        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, PixelClassificationWorkflow, [])
+        newProjectFile = ProjectManager.createBlankProjectFile(project_file_path, PixelClassificationWorkflow, [])
         newProjectFile.close()
-        shell.openProjectFile(newProjectFilePath)
+        shell.openProjectFile(project_file_path)
         workflow = shell.workflow
         
         # Add a file
         from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
         info = DatasetInfo()
-        info.filePath = cls.SAMPLE_DATA
+        info.filePath = dataset_path
         opDataSelection = workflow.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetGroup.resize(1)
         opDataSelection.DatasetGroup[0][0].setValue(info)
@@ -260,6 +258,43 @@ class TestPixelClassificationHeadless(object):
             # Clean-up.
             opReorderAxes.cleanUp()
             opReader.cleanUp()
+
+    def testHeadlessNoRawData(self):
+        # Delete raw data first
+        os.remove(self.RAW_DATA)
+
+        args = []
+        # Use the project with RAW_DATA
+        args.append("--project=" + self.PROJECT_FILE_RAW_DATA)
+        args.append("--headless")
+
+        # Batch export options
+        args.append("--export_source=Simple Segmentation")
+        args.append("--output_internal_path=volume/segm_volume")
+        args.append("--output_format=hdf5")
+        args.append("--output_filename_format={dataset_dir}/{nickname}_segm.h5")
+        args.append("--export_dtype=uint8")
+        args.append(self.SAMPLE_DATA)
+
+        old_sys_argv = list(sys.argv)
+        sys.argv = ['ilastik.py']
+        sys.argv += args
+
+        # Start up the ilastik.py entry script as if we had launched it from the command line
+        try:
+            self.ilastik_startup.main()
+        finally:
+            sys.argv = old_sys_argv
+
+        # Examine the output for basic attributes
+        output_path = self.SAMPLE_DATA[:-4] + "_segm.h5"
+        with h5py.File(output_path, 'r') as f:
+            assert "/volume/segm_volume" in f
+            segm_shape = f["/volume/segm_volume"].shape
+            # Assume channel is last axis
+            assert segm_shape[:-1] == (2, 20, 20, 5), "Segmentation volume has wrong shape: {}".format(segm_shape)
+            assert segm_shape[-1] == 1, "Segmentation volume has wrong shape: {}".format(segm_shape)
+
 
 if __name__ == "__main__":
     #make the program quit on Ctrl+C
