@@ -78,7 +78,7 @@ class OpInputDataReader(Operator):
     name = "OpInputDataReader"
     category = "Input"
 
-    videoExts = ['ufmf', 'mmf', 'avi']
+    videoExts = ['ufmf', 'mmf']
     h5Exts = ['h5', 'hdf5', 'ilp']
     klbExts = ['klb']
     npyExts = ['npy']
