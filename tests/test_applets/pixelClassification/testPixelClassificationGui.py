@@ -326,7 +326,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.waitForViews([imgView])
             rawDataColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             assert rawDataColor != labelColor, "Pixel color was not correct after label was hidden.  rawDataColor: {}, labelColor: {}".format(hex(rawDataColor), hex(labelColor))
-            
+
             # Show labels
             labelLayer.visible = True
             # Select the eraser and brush size
