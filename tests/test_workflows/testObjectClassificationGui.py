@@ -24,7 +24,8 @@ import shutil
 import sys
 import tempfile
 
-from ilastik.workflows import ObjectClassificationWorkflowPixel
+from ilastik.workflows import ObjectClassificationWorkflowPrediction
+from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 
 from lazyflow.utility.timer import Timer
 from tests.helpers import ShellGuiTestCaseBase
@@ -45,7 +46,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
     """
     @classmethod
     def workflowClass(cls):
-        return ObjectClassificationWorkflowPixel
+        return ObjectClassificationWorkflowPrediction
 
     @classmethod
     def setupClass(cls):
@@ -54,13 +55,18 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
         # input files:
         current_dir = os.path.split(__file__)[0]
-        cls.sample_data_raw = os.path.join(current_dir, '../data/inputdata/3d.h5')
-        cls.sample_data_prob = os.path.join(current_dir, '../data/inputdata/3d_Probabilities.h5')
+        cls.sample_data_raw = os.path.abspath(os.path.join(current_dir, '../data/inputdata/3d.h5'))
+        cls.sample_data_prob = os.path.abspath(
+            os.path.join(current_dir, '../data/inputdata/3d_Probabilities.h5'))
 
         # output files:
-        cls.tmp_dir = tempfile.mkdtemp()
-        cls.project_file = os.path.join(cls.tmp_dir, 'test_project_oc.ilp')
-        cls.output_file = os.path.join(cls.tmp_dir, '3d_Object_Probabilities_out.h5')
+        # cls.temp_dir = tempfile.mkdtemp()
+        cls.temp_dir = os.path.expanduser('~/tmp')
+        if os.path.exists(cls.temp_dir):
+            shutil.rmtree(cls.temp_dir)  # TODO: cleanup when dev is done
+        os.makedirs(cls.temp_dir)  # TODO: cleanup when dev is done
+        cls.project_file = os.path.join(cls.temp_dir, 'test_project_oc.ilp')
+        cls.output_file = os.path.join(cls.temp_dir, '3d_Object_Probabilities_out.h5')
 
         # Start the timer
         cls.timer = Timer()
@@ -75,7 +81,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         super().teardownClass()
 
         # Clean up: Delete any test files we generated
-        shutil.rmtree(cls.tmp_dir)
+        # shutil.rmtree(cls.temp_dir)  # TODO: cleanup when dev is done
 
     def test_00_check_preconditions(self):
         """Make sure the needed files exist"""
@@ -85,6 +91,35 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         ]
         for f in needed_files:
             assert os.path.exists(f), f"File {f} does not exist!"
+
+    def test_01_createProject(self):
+        """
+        Create a blank project, manipulate few couple settings, and save it.
+        """
+        def impl():
+            projFilePath = self.project_file
+            shell = self.shell
+
+            # New project
+            shell.createAndLoadNewProject(projFilePath, self.workflowClass())
+            workflow = shell.projectManager.workflow
+
+            # Add our input files:
+            opDataSelection = workflow.dataSelectionApplet.topLevelOperator
+            opDataSelection.DatasetGroup.resize(1)
+            info_raw = DatasetInfo()
+            info_raw.filePath = self.sample_data_raw
+            opDataSelection.DatasetGroup[0][0].setValue(info_raw)
+            info_prob = DatasetInfo()
+            info_prob.filePath = self.sample_data_prob
+            opDataSelection.DatasetGroup[0][1].setValue(info_prob)
+
+            # Save and close
+            shell.projectManager.saveProject()
+            shell.ensureNoCurrentProject(assertClean=True)
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
 
 
 if __name__ == "__main__":
