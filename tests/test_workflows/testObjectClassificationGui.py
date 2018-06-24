@@ -24,6 +24,8 @@ import shutil
 import sys
 import tempfile
 
+import numpy
+
 from ilastik.workflows import ObjectClassificationWorkflowPrediction
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 
@@ -114,14 +116,83 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             info_prob.filePath = self.sample_data_prob
             opDataSelection.DatasetGroup[0][1].setValue(info_prob)
 
-            # Save and close
+            # Save
             shell.projectManager.saveProject()
-            shell.ensureNoCurrentProject(assertClean=True)
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    def test_02_doThreshold(self):
+        """
+        Create a blank project, manipulate few couple settings, and save it.
+        """
+        def impl():
+            shell = self.shell
+            workflow = shell.projectManager.workflow
+            threshold_applet = workflow.thresholdingApplet
+            gui = threshold_applet.getMultiLaneGui()
+            op_threshold = threshold_applet.topLevelOperator.getLane(0)
+
+            # activate the thresholding applet
+            shell.setSelectedAppletDrawer(1)
+
+            # set the required values
+            # self.sendkeys(gui.currentGui()._drawer.inputChannelComboBox, '1')
+            sigmas = {'x': 2.0, 'y': 2.1, 'z': 1.9}
+            gui.currentGui()._drawer.sigmaSpinBox_X.setValue(sigmas['x'])
+            gui.currentGui()._drawer.sigmaSpinBox_Y.setValue(sigmas['y'])
+            gui.currentGui()._drawer.sigmaSpinBox_Z.setValue(sigmas['z'])
+            threshold = 0.7
+            gui.currentGui()._drawer.lowThresholdSpinBox.setValue(threshold)
+
+            # get the final layer and check that it is not visible yet
+            layermatch = [x.name.startswith('Final') for x in gui.currentGui().layerstack]
+            assert sum(layermatch) == 1, "Only a single layer with 'Final' in the name expected."
+            final_layer = gui.currentGui().layerstack[layermatch.index(True)]
+            assert not final_layer.visible, (
+                "Expected the final layer not to be visible before apply is triggered.")
+
+            gui.currentGui()._drawer.applyButton.click()
+            # Save the project
+            saveThread = self.shell.onSaveProjectActionTriggered()
+            saveThread.join()
+
+            assert final_layer.visible
+
+            op_sigmas = op_threshold.SmootherSigma.value
+            for k in sigmas.keys():
+                assert sigmas[k] == op_sigmas[k], f"Sigma for '{k}' did not match."
+
+            assert op_threshold.LowThreshold.value == threshold
+
+            # now get the object count
+            n_objects_expected = 23  # including the background object
+            output = op_threshold.Output[:].wait()
+            n_objects = len(numpy.unique(output))
+            assert n_objects == n_objects_expected, (
+                f"Number of objects mismatch, expected {n_objects_expected}, got {n_objects}")
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
 
+# features: all
+
+
+# add two labels
+
+# mark two objects: 10 -> Label1 ; 9: Label2
+
+# Export image settings: File: tmp_folder/{nickname}_{result_type}.h5
+
+# Export table settings: tmp_folder/exported_data.csv; features: all
+
+# Export all
+
+# Export table settings: tmp_folder/exported_data.h5; features: all
+
+
+# Done
 if __name__ == "__main__":
     from tests.helpers.shellGuiTestCaseBase import run_shell_nosetest
     run_shell_nosetest(__file__)
