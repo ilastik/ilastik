@@ -177,6 +177,20 @@ def flatten_dict(dict_, object_count):
 
 
 def prepare_list(list_, names, dtypes=None):
+    """Handle lists for export
+
+    Args:
+        list_ (list): list of iterables, [(),(),...], will do automagic for
+          list of strings [str, str, str]
+        names (tuple,): Description
+        dtypes (iterable, optional): iterable of dtypes, or something that can
+          be understood as dtypes
+
+    Returns:
+        ndarray: data as numpy array with named dtypes. dtypes are derived from
+          data if not given explicitly in optional `dtypes` argument
+
+    """
     n_items = len(list_)
 
     # make sure inner items are iterables
