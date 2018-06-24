@@ -177,25 +177,28 @@ def flatten_dict(dict_, object_count):
 
 
 def prepare_list(list_, names, dtypes=None):
-    shape = (len(list_),)
-    if dtypes is None:
-        first_row = list_[0]
-        if isinstance(first_row, str) or not isinstance(first_row, collections.Iterable):
-            list_ = list(zip(*[list_]))
-            first_row = list_[0]
+    n_items = len(list_)
 
+    # make sure inner items are iterables
+    first_row = list_[0]
+    if isinstance(first_row, str) or not isinstance(first_row, collections.Iterable):
+        list_ = [(x,) for x in list_]
+        first_row = list_[0]
+
+    if dtypes is None:
+        # generate a list of structured dtypes:
         dtypes = []
-        for col, item in enumerate(first_row):
-            dtype_name = np.dtype(type(item)).name
-            if dtype_name == 'string':
-                maxlen = 1
-                for r_index, row_data in enumerate(list_):
-                    maxlen = max(maxlen, len(row_data[col]))
-                dtype_name = 'S{}'.format(maxlen)
-            dtypes.append(dtype_name)
-    
-    array = np.zeros(shape, ",".join(dtypes))
-    array.dtype = np.dtype([(names[i], dtypes[i]) for i in range(len(names))])
+        for col, (item, col_name) in enumerate(zip(first_row, names)):
+            item_dtype = np.dtype(type(item))
+            col_dtype = (col_name, item_dtype)
+            if item_dtype == np.str:
+                maxlen = max(len(row_data[col]) for row_data in list_)
+                col_dtype = (col_name, item_dtype, maxlen)
+            dtypes.append(col_dtype)
+
+    assert isinstance(dtypes, collections.Iterable)
+    assert len(first_row) == len(dtypes)
+    array = np.zeros((n_items,), dtype=dtypes)
     array[:] = list_
     return array
 
