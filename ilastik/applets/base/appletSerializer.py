@@ -929,7 +929,6 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         self.topGroupName = topGroupName
         self.serialSlots = maybe(slots, [])
         self.operator = operator
-        self.caresOfHeadless = False # should _deserializeFromHdf5 should be called with headless-argument?
         self._ignoreDirty = False
 
     def isDirty(self):
@@ -1053,10 +1052,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
                     self.progressSignal(inc)
 
                 # Call the subclass to do remaining work
-                if self.caresOfHeadless:
-                    self._deserializeFromHdf5(topGroup, groupVersion, hdf5File, projectFilePath, headless)
-                else:
-                    self._deserializeFromHdf5(topGroup, groupVersion, hdf5File, projectFilePath)
+                self._deserializeFromHdf5(topGroup, groupVersion, hdf5File, projectFilePath, headless)
             else:
                 self.initWithoutTopGroup(hdf5File, projectFilePath)
         finally:

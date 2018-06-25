@@ -23,7 +23,7 @@ import h5py
 import vigra
 import numpy
 import tempfile
-from lazyflow.graph import Graph, OperatorWrapper
+from lazyflow.graph import Graph
 from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
 
@@ -31,19 +31,18 @@ import logging
 logger = logging.getLogger(__name__)
 
 class TestDataSelectionSerializer(object):
-    
+
     def setUp(self):
         self.tmpDir = tempfile.mkdtemp()
-        self.tmpFilePath = self.tmpDir + "/testDataSelection.npy"
-    
-        self.testProjectName = 'test_project.ilp'
-        self.testProjectName = os.path.split(__file__)[0] + '/' + self.testProjectName
-        
+        self.tmpFilePath = os.path.join(self.tmpDir, "testDataSelection.npy")
+
+        self.testProjectName = os.path.join(self.tmpDir, 'test_project.ilp')
+
         self.cleanupFiles = [self.tmpFilePath, self.testProjectName]
 
         data = numpy.indices((1,10,10,10,2)).sum(0)
         numpy.save(self.tmpFilePath, data)
-        
+
     def tearDown(self):
         for f in self.cleanupFiles:
             try:
@@ -55,7 +54,7 @@ class TestDataSelectionSerializer(object):
             os.removedirs(self.tmpDir)
         except:
             pass
-    
+
     def test06(self):
         """
         Test the basic functionality of the v0.6 project format serializer.
@@ -63,78 +62,117 @@ class TestDataSelectionSerializer(object):
         # Create an empty project
         with h5py.File(self.testProjectName) as testProject:
             testProject.create_dataset("ilastikVersion", data=b"1.0.0")
-            
+
             ##
             ## Serialization
             ##
-        
+
             # Create an operator to work with and give it some input
             graph = Graph()
-            operatorToSave = OpMultiLaneDataSelectionGroup( graph=graph )
-            serializer = DataSelectionSerializer(operatorToSave, 'DataSelectionTest')
-            assert serializer.base_initialized
-        
-            operatorToSave.ProjectFile.setValue(testProject)
-            operatorToSave.WorkingDirectory.setValue( os.path.split(__file__)[0] )
-            operatorToSave.ProjectDataGroup.setValue( serializer.topGroupName + '/local_data' )
-            
-            info = DatasetInfo()
-            info.filePath = self.tmpFilePath
-            info.location = DatasetInfo.Location.ProjectInternal
+            groupName = 'DataSelectionTest'
+            info = self._createDatasetInfo()
+            operatorToSave = self._createOperatorToSave(graph, testProject,
+                                                        info, groupName)
 
-            operatorToSave.DatasetRoles.setValue( ['Raw Data'] )
-            operatorToSave.DatasetGroup.resize(1)
-            operatorToSave.DatasetGroup[0][0].setValue(info)
-            
+            serializer = DataSelectionSerializer(operatorToSave, groupName)
+            assert serializer.base_initialized
+
             # Now serialize!
             serializer.serializeToHdf5(testProject, self.testProjectName)
-            
+
             # Check for dataset existence
             datasetInternalPath = serializer.topGroupName + '/local_data/' + info.datasetId
             dataset = testProject[datasetInternalPath][...]
-            
+
             # Check axistags attribute
             assert 'axistags' in testProject[datasetInternalPath].attrs
             axistags_json = testProject[datasetInternalPath].attrs['axistags']
             axistags = vigra.AxisTags.fromJSON(axistags_json)
-            
-            # Debug info...
-            #logging.basicConfig(level=logging.DEBUG)
-            logger.debug('dataset.shape = ' + str(dataset.shape))
-            logger.debug('should be ' + str(operatorToSave.Image[0].meta.shape))
-            logger.debug('dataset axistags:')
-            logger.debug(axistags)
-            logger.debug('should be:')
-            logger.debug(operatorToSave.Image[0].meta.axistags)
-        
+
             originalShape = operatorToSave.Image[0].meta.shape
             originalAxisTags = operatorToSave.Image[0].meta.axistags
-            
+
             # Now we can directly compare the shape and axis ordering
             assert dataset.shape == originalShape
             assert axistags == originalAxisTags
-            
+
             ##
             ## Deserialization
             ##
-        
+
             # Create an empty operator
             graph = Graph()
             operatorToLoad = OpMultiLaneDataSelectionGroup( graph=graph )
             operatorToLoad.DatasetRoles.setValue( ['Raw Data'] )
-            
+
             deserializer = DataSelectionSerializer(operatorToLoad, serializer.topGroupName) # Copy the group name from the serializer we used.
             assert deserializer.base_initialized
             deserializer.deserializeFromHdf5(testProject, self.testProjectName)
-            
+
             assert len(operatorToLoad.DatasetGroup) == len(operatorToSave.DatasetGroup)
             assert len(operatorToLoad.Image) == len(operatorToSave.Image)
-            
+
             assert operatorToLoad.Image[0].meta.shape == operatorToSave.Image[0].meta.shape
             assert operatorToLoad.Image[0].meta.axistags == operatorToSave.Image[0].meta.axistags
 
-        os.remove(self.testProjectName)
-    
+    def testShapeAndDtypeSerialization(self):
+        """
+        Test the serialization of additional shape and dtype attributes added
+        in order to re-create the metadata in headless mode with no raw data
+        """
+        # Create an empty project
+        with h5py.File(self.testProjectName) as testProject:
+            # Create an operator to work with and give it some input
+            graph = Graph()
+            groupName = 'DataSelectionTest'
+            info = self._createDatasetInfo()
+            operatorToSave = self._createOperatorToSave(graph, testProject,
+                                                        info, groupName)
+
+            # Serialize
+            serializer = DataSelectionSerializer(operatorToSave, groupName)
+            serializer.serializeToHdf5(testProject, self.testProjectName)
+
+            # Assert lane's dtype and shape attributes exist
+            rawDataPath = groupName + '/infos/lane0000/Raw Data'
+            assert 'shape' in testProject[rawDataPath]
+            assert 'dtype' in testProject[rawDataPath]
+
+            # Assert their values are correct
+            assert tuple(testProject[rawDataPath + '/shape'].value) == operatorToSave.Image[0].meta.shape
+            assert numpy.dtype(testProject[rawDataPath + '/dtype'].value.decode('utf-8')) == operatorToSave.Image[0].meta.dtype
+
+            # Deserialize and check datasetInfo
+            graph = Graph()
+            operatorToLoad = OpMultiLaneDataSelectionGroup(graph=graph)
+            operatorToLoad.DatasetRoles.setValue(['Raw Data'])
+
+            deserializer = DataSelectionSerializer(operatorToLoad, groupName)
+            deserializer.deserializeFromHdf5(testProject, self.testProjectName)
+
+            datasetInfo = operatorToLoad.DatasetGroup[0][0][:].wait()[0]
+
+            assert datasetInfo.laneShape == operatorToLoad.Image[0].meta.shape
+            assert datasetInfo.laneDtype == operatorToLoad.Image[0].meta.dtype
+
+
+    def _createOperatorToSave(self, graph, projectFile, info, groupName):
+        operatorToSave = OpMultiLaneDataSelectionGroup(graph=graph)
+        operatorToSave.ProjectFile.setValue(projectFile)
+        operatorToSave.WorkingDirectory.setValue(os.path.split(__file__)[0])
+        operatorToSave.ProjectDataGroup.setValue(f'{groupName}/local_data')
+        operatorToSave.DatasetRoles.setValue(['Raw Data'])
+        operatorToSave.DatasetGroup.resize(1)
+        operatorToSave.DatasetGroup[0][0].setValue(info)
+        return operatorToSave
+
+    def _createDatasetInfo(self):
+        info = DatasetInfo()
+        info.filePath = self.tmpFilePath
+        info.location = DatasetInfo.Location.ProjectInternal
+        return info
+
+
 if __name__ == "__main__":
     import sys
     import nose

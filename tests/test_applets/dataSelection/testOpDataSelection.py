@@ -889,6 +889,97 @@ class TestOpDataSelection_SingleFileH5Stacks():
         numpy.testing.assert_array_equal(imgData, self.imgData3Dct)
 
 
+class TestOpDataSelection_FakeDataReader():
+    """
+    Test whether OpDataSelection uses the real or fake dataset reader depending
+    on the DatasetInfo.realDataSource attribute
+    """
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = tempfile.mkdtemp()
+        cls.projectFileName = os.path.join(cls.tmpdir, 'testProject.ilp')
+        # generate some test data 'tczyx'
+        cls.imgData = numpy.random.randint(0, 256, (5, 3, 10, 10, 10)).astype(numpy.uint8)
+
+        # save as raw data file
+        cls.testRawDataFileName = os.path.join(cls.tmpdir, "testRawData.npy")
+        numpy.save(cls.testRawDataFileName, cls.imgData)
+
+        # Create a 'project' file and give it some data
+        cls.projectFile = h5py.File(cls.projectFileName)
+        cls.projectFile.create_group('DataSelection')
+        cls.projectFile['DataSelection'].create_group('local_data')
+        # Use the same data as the 2d+c data (above)
+        cls.projectFile['DataSelection/local_data'].create_dataset('dataset1', data=cls.imgData)
+        cls.projectFile.flush()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.projectFile.close()
+        try:
+            shutil.rmtree(cls.tmpdir)
+        except OSError as e:
+            print('Exception caught while deleting temporary files: {}'.format(e))
+
+    def test_real_data_source(self):
+        graph = lazyflow.graph.Graph()
+        reader = OperatorWrapper(OpDataSelection, graph=graph,
+                                 operator_kwargs={'forceAxisOrder': False})
+        reader.ProjectFile.setValue(self.projectFile)
+        reader.WorkingDirectory.setValue(os.getcwd())
+        reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
+        info = DatasetInfo()
+        # Will be read from the filesystem since the data won't be found in the project file.
+        info.location = DatasetInfo.Location.ProjectInternal
+        info.filePath = self.testRawDataFileName
+        info.internalPath = ""
+        info.invertColors = False
+        info.convertToGrayscale = False
+        #Use real data source
+        info.realDataSource = True
+
+        reader.Dataset.setValues([info])
+
+        # Read the test file using the data selection operator and verify the contents
+        imgData = reader.Image[0][...].wait()
+
+        assert imgData.shape == self.imgData.shape
+        numpy.testing.assert_array_equal(imgData, self.imgData)
+
+    def test_fake_data_source(self):
+        graph = lazyflow.graph.Graph()
+        reader = OperatorWrapper(OpDataSelection, graph=graph,
+                                 operator_kwargs={'forceAxisOrder': False})
+        reader.ProjectFile.setValue(self.projectFile)
+        reader.WorkingDirectory.setValue(os.getcwd())
+        reader.ProjectDataGroup.setValue('DataSelection/local_data')
+
+        info = DatasetInfo()
+        # Will be read from the filesystem since the data won't be found in the project file.
+        info.location = DatasetInfo.Location.ProjectInternal
+        info.filePath = self.testRawDataFileName
+        info.internalPath = ""
+        info.invertColors = False
+        info.convertToGrayscale = False
+        # Use *fake* data source
+        info.realDataSource = False
+        info.axistags = vigra.defaultAxistags('tczyx')
+        info.laneShape = self.imgData.shape
+        info.laneDtype = self.imgData.dtype
+
+        reader.Dataset.setValues([info])
+
+        # Verify that now data selection operator returns fake data
+        # with expected shape and type
+        imgData = reader.Image[0][...].wait()
+
+        assert imgData.shape == self.imgData.shape
+        assert imgData.dtype == self.imgData.dtype
+        expected_fake_data = numpy.zeros(info.laneShape, dtype=info.laneDtype)
+        numpy.testing.assert_array_equal(imgData, expected_fake_data)
+
+
 class TestOpDataSelection_stack_along_parameter():
     @classmethod
     def setUpClass(cls):

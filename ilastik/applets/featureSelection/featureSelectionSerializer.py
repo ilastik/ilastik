@@ -86,7 +86,7 @@ class FeatureSelectionSerializer(AppletSerializer):
         self._dirty = False
 
     @timeLogged(logger, logging.DEBUG)
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
         try:
             scales = topGroup['Scales'].value
             scales = list(map(float, scales))
@@ -162,7 +162,7 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
         # This class is only for DEserialization
         pass
 
-    def deserializeFromHdf5(self, hdf5File, filePath):
+    def deserializeFromHdf5(self, hdf5File, filePath, headless=False):
         # Check the overall file version
         ilastikVersion = hdf5File["ilastikVersion"].value
 
@@ -237,7 +237,7 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         assert False
 
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
         # This deserializer is a special-case.
         # It doesn't make use of the serializer base class, which makes assumptions about the file structure.
         # Instead, if overrides the public serialize/deserialize functions directly

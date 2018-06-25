@@ -107,7 +107,7 @@ class CarvingSerializer( AppletSerializer ):
 
             logger.info( "saved seeds" )
         
-    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
+    def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
         obj = topGroup["objects"]
         for imageIndex, opCarving in enumerate( self._o.innerOperators ):
             mst = opCarving._mst 
