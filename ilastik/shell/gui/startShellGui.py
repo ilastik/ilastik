@@ -34,7 +34,7 @@ from . import splashScreen
 import ilastik.config
 shell = None
 
-def startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, preinit_funcs, postinit_funcs):
+def startShellGui(workflow_cmdline_args, preinit_funcs, postinit_funcs):
     """
     Create an application and launch the shell in it.
     """
@@ -53,13 +53,7 @@ def startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, prein
     if ilastik.config.cfg.getboolean("ilastik", "debug"):
         QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
 
-    if eventcapture_mode is not None:
-        # Only use a special QApplication subclass if we are recording.
-        # Otherwise, it's a performance penalty for every event processed by Qt.
-        from eventcapture.eventRecordingApp import EventRecordingApp
-        app = EventRecordingApp.create_app(eventcapture_mode, **playback_args)
-    else:
-        app = QApplication([])
+    app = QApplication([])
     _applyStyleSheet(app)
 
     splashScreen.showSplashScreen()
