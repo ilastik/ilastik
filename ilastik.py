@@ -112,7 +112,6 @@ def main():
 if __name__ == "__main__":
     # Examples:
     # python ilastik.py --headless --project=MyProject.ilp --output_format=hdf5 raw_input.h5/volumes/data
-    # python ilastik.py --playback_speed=2.0 --exit_on_failure --exit_on_success --debug --playback_script=my_recording.py
 
     ## Multicut headless test
     #sys.argv += "--headless".split()
