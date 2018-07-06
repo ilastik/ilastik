@@ -429,12 +429,34 @@ class ExportFile(object):
 
     @staticmethod
     def _make_h5_dataset(fout, table_name, table, meta, compression):
+
+        sanitized_table = ExportFile._sanitize_table_for_hdf5_export(table)
         try:
-            dset = fout.create_dataset(table_name, table.shape, data=table, **compression)
+            dset = fout.create_dataset(table_name, sanitized_table.shape, data=sanitized_table, **compression)
         except TypeError:
-            dset = fout.create_dataset(table_name, table.shape, data=table)
+            dset = fout.create_dataset(table_name, sanitized_table.shape, data=sanitized_table)
         for k, v in meta.items():
             dset.attrs[k] = v
+
+    @staticmethod
+    def _sanitize_table_for_hdf5_export(table):
+        # sanitize the dtypes, this makes a temporary copy of the table :/
+        # but this is needed, unfortunately due to hdf5 not having unicode support
+        names = table.dtype.names
+        if names is None:
+            return table
+        hasstrings = [name for name in names if table[name].dtype.type == np.str_]
+        if not hasstrings:
+            return table
+        table_copy = {name: table[name] for name in names}
+        dtypes = {name: table_copy[name].dtype for name in names}
+        for string_column in hasstrings:
+            column = np.core.defchararray.encode(table[string_column], 'utf-8')
+            dtypes[string_column] = column.dtype
+            table_copy[string_column] = column
+
+        return np.array(list(zip(*[table_copy[name] for name in names])), dtype=[(name, dtypes[name]) for name in names])
+
 
     @staticmethod
     def _make_csv_table(fout, table):
