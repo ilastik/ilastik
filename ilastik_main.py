@@ -48,22 +48,9 @@ parser.add_argument(
     'ilastik settings.', required=False)
 parser.add_argument('--fullscreen', help='Show Window in fullscreen mode.',
                     action='store_true', default=False)
-
-parser.add_argument(
-    '--start_recording', help='Open the recorder controls and immediately '
-    'start recording', action='store_true', default=False)
-parser.add_argument('--playback_script',
-                    help='An event recording to play back after the main '
-                    'window has opened.', required=False)
-parser.add_argument('--playback_speed',
-                    help='Speed to play the playback script.', default=1.0,
-                    type=float)
 parser.add_argument(
     '--exit_on_failure',
     help='Immediately call exit(1) if an unhandled exception occurs.',
-    action='store_true', default=False)
-parser.add_argument(
-    '--exit_on_success', help='Quit the app when the playback is complete.',
     action='store_true', default=False)
 parser.add_argument(
     '--hbp', help='Enable HBP-specific functionality.',
@@ -191,10 +178,7 @@ def _redirect_output(parsed_args):
 
 def _update_debug_mode(parsed_args):
     # Force debug mode if any of these flags are active.
-    if parsed_args.debug \
-            or parsed_args.start_recording \
-            or parsed_args.playback_script \
-            or ilastik_config.getboolean('ilastik', 'debug'):
+    if parsed_args.debug or ilastik_config.getboolean('ilastik', 'debug'):
         # There are two places that debug mode can be checked.
         # Make sure both are set.
         ilastik_config.set('ilastik', 'debug', 'true')
@@ -264,11 +248,8 @@ def _validate_arg_compatibility(parsed_args):
         sys.exit(1)
 
     if parsed_args.headless and \
-       (parsed_args.start_recording or
-        parsed_args.playback_script or
-        parsed_args.fullscreen or
-        parsed_args.exit_on_failure or
-            parsed_args.exit_on_success):
+           (parsed_args.fullscreen or
+            parsed_args.exit_on_failure):
         sys.stderr.write(
             "Some of the command-line options you provided are not supported "
             "in headless mode.  Exiting.")
