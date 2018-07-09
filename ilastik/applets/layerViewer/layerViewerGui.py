@@ -220,7 +220,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                     # Name the layer after the slot name.
                     if isinstance( multiLayerSlot.getRealOperator(), OpWrapSlot ):
                         # We attached an 'upleveling' operator, so look upstream for the real slot.
-                        layer.name = multiLayerSlot.getRealOperator().Input.partner.name
+                        layer.name = multiLayerSlot.getRealOperator().Input.upstream_slot.name
                     else:
                         layer.name = multiLayerSlot.name + " " + str(j)
                     layers.append(layer)

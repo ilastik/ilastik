@@ -74,7 +74,7 @@ class ThresholdMaskingWorkflow(Workflow):
 
         # following assertion was copied from pixelClassificationWorkflow
         for slot in opDataExport.Inputs:
-            assert slot.partner is not None
+            assert slot.upstream_slot is not None
 
     @property
     def applets(self):

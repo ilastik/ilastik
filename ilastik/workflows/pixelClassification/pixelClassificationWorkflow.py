@@ -231,7 +231,7 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.Inputs[3].connect( opClassify.FeatureImages )
         opDataExport.Inputs[4].connect( opClassify.LabelImages )
         for slot in opDataExport.Inputs:
-            assert slot.partner is not None
+            assert slot.upstream_slot is not None
 
     def handleAppletStateUpdateRequested(self):
         """
