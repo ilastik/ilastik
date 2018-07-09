@@ -497,9 +497,9 @@ class Slot(object):
                 self.disconnect()
                 return
 
-            assert isinstance(upstream_slot, Slot), ("Slot.connect() can only be used to"
-                                               " connect other Slots.  Did you mean"
-                                               " to use Slot.setValue()?")
+            assert isinstance(upstream_slot, Slot), (
+                "Slot.connect() can only be used to connect other Slots. Did "
+                "you mean to use Slot.setValue()?")
             assert self.allow_mask or (not upstream_slot.meta.has_mask), \
                         "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"," \
                         " from the output slot, \"%s\", on operator, \"%s\". This is currently not supported." \
