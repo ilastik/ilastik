@@ -286,7 +286,7 @@ class Operator(metaclass=OperatorMetaClass):
         for i in sorted(self.inputSlots, key=lambda s: s._global_slot_id):
             if i.name not in self.inputs:
                 ii = i._getInstance(self)
-                ii.connect(i.partner)
+                ii.connect(i.upstream_slot)
                 self.inputs[i.name] = ii
 
         for k, v in list(self.inputs.items()):
@@ -330,7 +330,7 @@ class Operator(metaclass=OperatorMetaClass):
 
     def _setDefaultInputValues(self):
         for i in list(self.inputs.values()):
-            if (i.partner is None and
+            if (i.upstream_slot is None and
                 i._value is None and
                 i._defaultValue is not None):
                 i.setValue(i._defaultValue)
@@ -356,8 +356,8 @@ class Operator(metaclass=OperatorMetaClass):
     #  FIXME: Unused function?
     def disconnectFromDownStreamPartners(self):
         for slot in list(self.inputs.values()) + list(self.outputs.values()):
-            partners = list(slot.partners)
-            for p in partners:
+            downstream_slots = list(slot.downstream_slots)
+            for p in downstream_slots:
                 p.disconnect()
 
     def _initCleanup(self):
@@ -376,14 +376,14 @@ class Operator(metaclass=OperatorMetaClass):
 
         for s in list(self.inputs.values()) + list(self.outputs.values()):
             # See note about the externally_managed flag in Operator.__init__
-            partners = list(p for p in s.partners
+            downstream_slots = list(p for p in s.downstream_slots
                             if p.getRealOperator() is not None and
                             not p.getRealOperator().externally_managed)
-            if len(partners) > 0:
+            if len(downstream_slots) > 0:
                 msg = ("Cannot clean up this operator ({}): Slot '{}'"
                        " is still providing data to downstream"
                        " operators!\n".format( self.name, s.name))
-                for i, p in enumerate(s.partners):
+                for i, p in enumerate(s.downstream_slots):
                     msg += "Downstream Partner {}: {}.{}".format(
                         i, p.getRealOperator().name, p.name)
                 raise RuntimeError(msg)
@@ -461,7 +461,7 @@ class Operator(metaclass=OperatorMetaClass):
         try:
             # Determine new "ready" flags
             for k, oslot in list(self.outputs.items()):
-                if oslot.partner is None:
+                if oslot.upstream_slot is None:
                     # Special case, operators can flag an output as not actually being ready yet,
                     #  in which case we do NOT notify downstream connections.
                     if oslot.meta.NOTREADY:
@@ -484,7 +484,7 @@ class Operator(metaclass=OperatorMetaClass):
             # Something went wrong
             # Make the operator-supplied outputs unready again
             for k, oslot in list(self.outputs.items()):
-                if oslot.partner is None:
+                if oslot.upstream_slot is None:
                     oslot.disconnect() # Forces unready state
             raise
 
@@ -498,9 +498,9 @@ class Operator(metaclass=OperatorMetaClass):
         def set_output_unready(s):
             for ss in s._subSlots:
                 set_output_unready(ss)
-            if s.partner is None and s._value is None:
+            if s.upstream_slot is None and s._value is None:
                 was_ready = s.meta._ready
-                s.meta._ready &= (s.partner is not None)
+                s.meta._ready &= (s.upstream_slot is not None)
                 if was_ready and not s.meta._ready:
                     newly_unready_slots.append(s)
 
@@ -531,8 +531,8 @@ class Operator(metaclass=OperatorMetaClass):
             #  you probably need to override this method.
             # If your subclass provides an implementation of this method, there 
             #  is no need for it to call super().setupOutputs()
-            assert slot.partner is not None, \
-                "Output slot '{}' of operator '{}' has no upstream partner, " \
+            assert slot.upstream_slot is not None, \
+                "Output slot '{}' of operator '{}' has no upstream_slot, " \
                 "so you must override setupOutputs()".format( slot.name, self.name )
 
     def execute(self, slot, subindex, roi, result):

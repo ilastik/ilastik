@@ -79,8 +79,8 @@ class TestMultiSlotResize(object):
         opB.Inputs.connect( opA.Inputs )
         opA.Inputs.resize(2)
         assert len(opB.Inputs) == 2
-        assert opB.Inputs[0].partner == opA.Inputs[0]
-        assert opB.Inputs[1].partner == opA.Inputs[1]
+        assert opB.Inputs[0].upstream_slot == opA.Inputs[0]
+        assert opB.Inputs[1].upstream_slot == opA.Inputs[1]
                 
 
 if __name__ == "__main__":
