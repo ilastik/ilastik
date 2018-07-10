@@ -85,6 +85,7 @@ class FeatureSelectionDialog(QDialog):
         self.ui.buttonBox.rejected.connect(self.reject)
 
         self.ui.allButton.pressed.connect(self.handleAll)
+        self.ui.allButLocationButton.pressed.connect(self.handleAllButLocation)
         self.ui.noneButton.pressed.connect(self.handleNone)
 
         # Must intercept events from the viewport, since the TreeWidget apparently
@@ -177,6 +178,7 @@ class FeatureSelectionDialog(QDialog):
                 parameters = features[name]
                 if "group" in parameters:
                     item = QTreeWidgetItem(gr_items[parameters["group"]])
+                    item.group_name = parameters["group"]
                 else:
                     item = QTreeWidgetItem(parent)
                 if 'displaytext' in parameters:
@@ -209,14 +211,19 @@ class FeatureSelectionDialog(QDialog):
         #self.ui.treeWidget.resizeColumnToContents(1)
 
     @staticmethod
-    def recursiveCheckChildren(twitem, val):
+    def recursiveCheckChildren(twitem, val, location=True):
         # check or uncheck all children of an item at the lowest level of the hierarchy
         for child_id in range(twitem.childCount()):
             child = twitem.child(child_id)
-            if child.childCount()>0:
-                FeatureSelectionDialog.recursiveCheckChildren(child, val)
+            if child.childCount() > 0:
+                FeatureSelectionDialog.recursiveCheckChildren(child, val, location)
             else:
-                child.setCheckState(0, val)
+                if location:
+                    child.setCheckState(0, val)
+                else:
+                    if getattr(child, 'group_name', ''):
+                        if child.group_name != 'Location':
+                            child.setCheckState(0, val)
 
     def updateTree(self, item, col):
         # Clicking on the CheckBox OR Text of a QTreeWidgetItem should change the check.
@@ -367,22 +374,33 @@ class FeatureSelectionDialog(QDialog):
                 selectedFeatures[plugin_name] = features
         self.selectedFeatures = selectedFeatures
 
-    def _setAll(self, val):
+    def _setAll(self, val, location=True):
+        """Alter state all checkboxes
+
+        Args:
+            val (Qt.CheckState): {Qt.Checked, Qt.Unchecked}
+            location (bool, optional): if set to True, will also visit items
+              from the location group. If false, these will not be changed.
+        """
         root = self.ui.treeWidget.invisibleRootItem()
         for plugin_id in range(root.childCount()):
             plugin = root.child(plugin_id)
             plugin.setCheckState(0, val)
-            FeatureSelectionDialog.recursiveCheckChildren(plugin, val)
+            FeatureSelectionDialog.recursiveCheckChildren(plugin, val, location)
 
-            pluginName=str(plugin.text(0))
+            pluginName = str(plugin.text(0))
             if val == Qt.Checked:
-                self.countChecked[pluginName]=self.countAll[pluginName]
+                self.countChecked[pluginName] = self.countAll[pluginName]
             else:
-                self.countChecked[pluginName]=0
+                self.countChecked[pluginName] = 0
             self.updateToolTip(plugin)
 
     def handleAll(self):
         self._setAll(Qt.Checked)
+
+    def handleAllButLocation(self):
+        self._setAll(Qt.Unchecked)
+        self._setAll(Qt.Checked, location=False)
 
     def handleNone(self):
         self._setAll(Qt.Unchecked)
