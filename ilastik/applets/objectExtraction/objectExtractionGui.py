@@ -544,7 +544,8 @@ class ObjectExtractionGui(LayerViewerGui):
 
         featureDict, ndim = self._populate_feature_dict(mainOperator)
         dlg = FeatureSelectionDialog(featureDict=featureDict,
-                                     selectedFeatures=selectedFeatures, ndim=ndim)
+                                     selectedFeatures=selectedFeatures,
+                                     ndim=ndim)
         dlg.exec_()
 
         if dlg.result() == QDialog.Accepted:

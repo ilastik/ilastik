@@ -94,7 +94,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         for f in needed_files:
             assert os.path.exists(f), f"File {f} does not exist!"
 
-    def test_01_createProject(self):
+    def test_01_create_project(self):
         """
         Create a blank project, manipulate few couple settings, and save it.
         """
@@ -122,9 +122,10 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
-    def test_02_doThreshold(self):
+    def test_02_do_threshold(self):
         """
-        Create a blank project, manipulate few couple settings, and save it.
+        Go to the second applet and adjust some thresholding settings.
+        Apply and check the outcome.
         """
         def impl():
             shell = self.shell
@@ -175,8 +176,53 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
+    def test_03_select_object_features(self):
+        """
+        Select a some object features.
+        """
+        def impl():
+            shell = self.shell
+            workflow = shell.projectManager.workflow
+            object_feature_selection_applet = workflow.objectExtractionApplet
+            gui = object_feature_selection_applet.getMultiLaneGui()
+            op_object_features = object_feature_selection_applet.topLevelOperator.getLane(0)
 
-# features: all
+            # activate the feature selection applet
+            shell.setSelectedAppletDrawer(2)
+
+            # make sure some preconditions are met:
+            assert op_object_features.RawImage.ready()
+            assert op_object_features.BinaryImage.ready()
+
+            # we cannot test the feature-selection dialog here, as it's modal.
+            # we therefore select a set of object features (all of them) and
+            # supply them to the operator directly
+            features, _ = gui.currentGui()._populate_feature_dict(op_object_features)
+            op_object_features.Features.setValue(features)
+            # now trigger computation of features
+            gui.currentGui()._calculateFeatures()
+
+            # Save the project
+            saveThread = self.shell.onSaveProjectActionTriggered()
+            saveThread.join()
+
+            # check the number of computed features:
+            # dictionary has the format {time_slice: {plugin_name: {feature_name: [...]}}}
+            computed_features = op_object_features.RegionFeatures[0].wait()[0]
+            assert isinstance(computed_features, dict)
+            for plugin in features:
+                assert plugin in computed_features, f"Could not find plugin {plugin}"
+                for feature_name in features[plugin]:
+                    # feature names are altered in the operator:
+                    feature_name_in_result = feature_name.split(' ')[0]
+                    assert feature_name_in_result in computed_features[plugin], (
+                        f"Could not find feature {feature_name_in_result}"
+                        f"\n{computed_features[plugin].keys()}")
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+
 
 
 # add two labels
