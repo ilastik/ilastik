@@ -54,41 +54,17 @@ def fill_feature_description(features):
             if feature == "InputCenter":
                 features[feature]["displaytext"] = "Object Center"
                 features[feature]["detailtext"] = "Centroid of this object. The axes order is x, y, z"
+                features[feature]["group"] = "Location"
 
             if feature == "HullCenter":
                 features[feature]["displaytext"] = "Convex Hull Center"
                 features[feature]["detailtext"] = "Centroid of the convex hull of this object. The axes order is x, y, z"
+                features[feature]["group"] = "Location"
 
-            if feature == "Defect Center":
+            if feature == "DefectCenter":
                 features[feature]["displaytext"] = "Defect Center"
                 features[feature]["detailtext"] = "Combined centroid of convexity defects, which are defined as areas of the " \
                                                   "convex hull, not covered by the original object."
-
-                                                  
-        ## OLD CONVEX HULL FEATURES, NO LONGER AVAILABLE IN VIGRA
-        ##
-
-        #             if feature == "Perimeter":
-        #                 features[feature]["displaytext"] = "Convex Hull Perimeter"
-        #                 features[feature]["detailtext"] = "Perimeter of the convex hull of this object, computed from its interpixel contour."
-
-        #             if feature == "Rugosity":
-        #                 features[feature]["displaytext"] = "Rugosity"
-        #                 features[feature]["detailtext"] = "The ratio between the perimeters of the convex hull and this object object (>= 1)"
-
-        #             if feature == "Input Perimeter":
-        #                 features[feature]["displaytext"] = "Object Perimeter"
-        #                 features[feature]["detailtext"] = "Perimeter of the object, computed from the interpixel contour."
-
-        #             if feature == "Input Count":
-        #                 features[feature]["displaytext"] = "Object Size in Pixels"
-        #                 features[feature]["detailtext"] = "Size of this object in pixels."
-        #                 features[feature]["advanced"] = True #hide this feature, all it has to say is already contained in area
-
-        #             if feature == "Defect Area List":
-        #                 features[feature]["displaytext"] = "Largest Defect Area"
-        #                 features[feature]["detailtext"] = "Areas of the three largest defects. Defects are defined as connected components in the area of the " \
-        #                                                   "convex hull, not covered by the original object."
-
+                features[feature]["group"] = "Location"
 
         return features
