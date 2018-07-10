@@ -29,7 +29,7 @@ from PyQt5.QtCore import Qt, QEvent
 from lazyflow.rtype import SubRegion
 import os
 import sys
-from collections import defaultdict
+from collections import defaultdict, Counter
 from copy import deepcopy
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -505,52 +505,62 @@ class ObjectExtractionGui(LayerViewerGui):
         self.applet = self.topLevelOperatorView.parent.parent.objectExtractionApplet
 
     def _selectFeaturesButtonPressed(self):
-        featureDict = {}
         mainOperator = self.topLevelOperatorView
         if not mainOperator.RawImage.ready():
-            mexBox=QMessageBox()
+            mexBox = QMessageBox()
             mexBox.setText("Please add the raw data before selecting features")
             mexBox.exec_()
             return
-        
+
         if not mainOperator.BinaryImage.ready():
-            mexBox=QMessageBox()
+            mexBox = QMessageBox()
             mexBox.setText("Please add binary (segmentation) data before selecting features ")
             mexBox.exec_()
             return
-        
+
         slot = mainOperator.Features
         if slot.ready():
             selectedFeatures = mainOperator.Features([]).wait()
         else:
             selectedFeatures = None
 
+        featureDict, ndim = self._populate_feature_dict(mainOperator)
+        dlg = FeatureSelectionDialog(featureDict=featureDict,
+                                     selectedFeatures=selectedFeatures, ndim=ndim)
+        dlg.exec_()
+
+        if dlg.result() == QDialog.Accepted:
+            mainOperator.Features.setValue(dlg.selectedFeatures)
+            self._calculateFeatures()
+
+    def _populate_feature_dict(self, mainOperator):
+        featureDict = {}
         plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
         taggedShape = mainOperator.RawImage.meta.getTaggedShape()
         fakeimgshp = [taggedShape['x'], taggedShape['y']]
         fakelabelsshp = [taggedShape['x'], taggedShape['y']]
         ndim = 3
-        if 'z' in taggedShape and taggedShape['z']>1:
+        if 'z' in taggedShape and taggedShape['z'] > 1:
             fakeimgshp.append(taggedShape['z'])
             fakelabelsshp.append(taggedShape['z'])
             ndim = 3
         else:
             ndim = 2
-        if 'c' in taggedShape and taggedShape['c']>1:
+        if 'c' in taggedShape and taggedShape['c'] > 1:
             fakeimgshp.append(taggedShape['c'])
-        
+
         fakeimg = numpy.empty(fakeimgshp, dtype=numpy.float32)
         fakelabels = numpy.empty(fakelabelsshp, dtype=numpy.uint32)
-        
-        if ndim==3:
+
+        if ndim == 3:
             fakelabels = vigra.taggedView(fakelabels, 'xyz')
-            if len(fakeimgshp)==4:
+            if len(fakeimgshp) == 4:
                 fakeimg = vigra.taggedView(fakeimg, 'xyzc')
             else:
                 fakeimg = vigra.taggedView(fakeimg, 'xyz')
-        if ndim==2:
+        if ndim == 2:
             fakelabels = vigra.taggedView(fakelabels, 'xy')
-            if len(fakeimgshp)==3:
+            if len(fakeimgshp) == 3:
                 fakeimg = vigra.taggedView(fakeimg, 'xyc')
             else:
                 fakeimg = vigra.taggedView(fakeimg, 'xy')
@@ -562,23 +572,17 @@ class ObjectExtractionGui(LayerViewerGui):
 
         # Make sure no plugins use the same feature names.
         # (Currently, our feature export implementation doesn't support repeated column names.)
-        all_feature_names = chain(*[list(plugin_dict.keys()) for plugin_dict in list(featureDict.values())])
-        feature_set = set()
-        for name in all_feature_names:
-            assert name not in feature_set, \
-                "Feature name '{}' is used by more than one feature plugin.\n"\
-                "All plugins must produce uniquely named features.\n"\
-                "The plugins and feature names we found are:\n{}"\
-                .format(name, featureDict)
-            feature_set.add(name)
-
-        dlg = FeatureSelectionDialog(featureDict=featureDict,
-                                     selectedFeatures=selectedFeatures, ndim=ndim)
-        dlg.exec_()
-
-        if dlg.result() == QDialog.Accepted:
-            mainOperator.Features.setValue(dlg.selectedFeatures)
-            self._calculateFeatures()
+        all_feature_names = chain(
+            *[list(plugin_dict.keys()) for plugin_dict in list(featureDict.values())])
+        feature_set = Counter(all_feature_names)
+        # remove all elements with a count of 1
+        feature_set = feature_set - Counter(feature_set.keys())
+        if feature_set:
+            offending_feature_names = feature_set.keys()
+            raise ValueError(
+                'Feature names used in multiple plugins. '
+                f'Offending feature names: {list(offending_feature_names)}')
+        return featureDict, ndim
 
     def _calculateFeatures(self, interactive=True):
         mainOperator = self.topLevelOperatorView
