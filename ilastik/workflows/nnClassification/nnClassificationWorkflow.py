@@ -144,6 +144,31 @@ class NNClassificationWorkflow(Workflow):
                                    supportIlastik05Import=True,
                                    instructionText=data_instructions)
 
+    # def prepareForNewLane(self, laneIndex):
+    #     """
+    #     Overridden from Workflow base class.
+    #     Called immediately before a new lane is added to the workflow.
+    #     """
+    #     # When the new lane is added, dirty notifications will propagate throughout the entire graph.
+    #     # This means the classifier will be marked 'dirty' even though it is still usable.
+    #     # Before that happens, let's store the classifier, so we can restore it in handleNewLanesAdded(), below.
+    #     opNNClassification = self.nnClassificationApplet.topLevelOperator.getRealOperator()
+    #     print(dir(opNNClassification))
+    #     if opNNClassification.model_cache.ready():
+    #         self.stored_classifier = opNNClassification.model_cache.Output.value
+    #     else:
+    #         self.stored_classifier = None
+
+    # def handleNewLanesAdded(self):
+    #     """
+    #     Overridden from Workflow base class.
+    #     Called immediately after a new lane is added to the workflow and initialized.
+    #     """
+    #     # Restore classifier we saved in prepareForNewLane() (if any)
+    #     if self.stored_classifier:
+    #         self.nnClassificationApplet.topLevelOperator.model_cache.forceValue(self.stored_classifier)
+    #         # Release reference
+    #         self.stored_classifier = None
 
     def connectLane(self, laneIndex):
         """
