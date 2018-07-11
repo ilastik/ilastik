@@ -23,7 +23,7 @@ from __future__ import print_function
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.classifierOperators import OpPixelwiseClassifierPredict
-from lazyflow.operators import OpMultiArraySlicer2
+from lazyflow.operators import OpMultiArraySlicer2, OpValueCache
 from ilastik.utility.operatorSubView import OperatorSubView
 
 
