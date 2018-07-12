@@ -35,6 +35,7 @@ from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from lazyflow.utility.timer import Timer
 from tests.helpers import ShellGuiTestCaseBase
 
+from volumina.layer import AlphaModulatedLayer
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
@@ -288,6 +289,48 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             numpy.testing.assert_array_equal(label_list, expected_labels)
 
         # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    def test_05_live_update_mode(self):
+        def impl():
+            shell = self.shell
+            workflow = shell.projectManager.workflow
+            object_classification_applet = workflow.objectClassificationApplet
+            gui = object_classification_applet.getMultiLaneGui()
+            op_object_classification = object_classification_applet.topLevelOperator.getLane(0)
+
+            # activate the object classification applet
+            shell.setSelectedAppletDrawer(3)
+
+            with Timer() as timer:
+                # Enable interactive mode
+                assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() is False
+                gui.currentGui()._labelControlUi.liveUpdateButton.click()
+                # Do to the way we wait for the views to finish rendering, the GUI hangs while we wait.
+                self.waitForViews(gui.currentGui().editor.imageViews)
+            logger.debug(f"Interactive Mode Rendering Time: {timer.seconds()}")
+
+            # Disable iteractive mode.
+            gui.currentGui()._labelControlUi.liveUpdateButton.click()
+
+            # There should be a prediction layer for each label
+            labelNames = [label.name for label in gui.currentGui().labelListData]
+            labelColors = gui.currentGui()._colorTable16[1:4]
+            for i, labelName in enumerate(labelNames):
+                try:
+                    index = gui.currentGui().layerstack.findMatchingIndex(
+                        lambda layer: labelName in layer.name)
+                    layer = gui.currentGui().layerstack[index]
+
+                    # Check the color
+                    assert isinstance(layer, AlphaModulatedLayer), f"layer is {layer}"
+                    assert layer.tintColor.rgba() == labelColors[i], (
+                        f"Expected {hex(labelColors[i])}, got {hex(layer.tintColor.rgba())}")
+                except ValueError:
+                    assert False, "Could not find layer for label with name: {}".format(labelName)
+
+            self.waitForViews(gui.currentGui().editor.imageViews)
+
         self.exec_in_shell(impl)
 
 # Export image settings: File: tmp_folder/{nickname}_{result_type}.h5
