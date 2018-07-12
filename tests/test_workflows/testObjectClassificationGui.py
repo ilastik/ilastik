@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
+from collections import namedtuple
 import logging
 import os
 import shutil
@@ -228,12 +229,66 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
 
+    def test_04_do_labeling(self):
+        """
+        Label some objects
+        """
+        def impl():
+            shell = self.shell
+            workflow = shell.projectManager.workflow
+            object_classification_applet = workflow.objectClassificationApplet
+            gui = object_classification_applet.getMultiLaneGui()
+            op_object_classification = object_classification_applet.topLevelOperator.getLane(0)
 
+            # activate the object classification applet
+            shell.setSelectedAppletDrawer(3)
 
+            # Do our tests at position 0, 0, 0
+            gui.currentGui().editor.posModel.slicingPos = (0, 0, 0)
 
-# add two labels
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() is False
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 0, (
+                "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount()))
 
-# mark two objects: 10 -> Label1 ; 9: Label2
+            # Add label classes
+            for i in range(2):
+                gui.currentGui()._labelControlUi.AddLabelButton.click()
+                assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == i + 1, (
+                    f"Got {gui.currentGui()._labelControlUi.labelListModel.rowCount()} rows")
+
+            assert op_object_classification.NumLabels.value == 2
+            # Add some labels, we use onClick directly in order to bypass problems with painting
+            # on different screen resolutions
+            # position: t, x, y, z, c
+            label_position = namedtuple('label_position', ['label', 'position'])
+            label_positions = [
+                label_position(0, (0, 10, 10, 10, 0)),  # obj 1
+                label_position(1, (0, 48, 10, 48, 0)),  # obj 14
+                label_position(1, (0, 15, 59, 48, 0)),  # obj 21
+            ]
+            for lp in label_positions:
+                gui.currentGui()._labelControlUi.labelListModel.select(lp.label)
+                gui.currentGui().onClick(layer='unused', pos5d=lp.position, pos='unused')
+            # Let the GUI catch up: Process all events
+            QApplication.processEvents()
+
+            self.waitForViews(gui.currentGui().editor.imageViews)
+
+            # Save the project
+            saveThread = self.shell.onSaveProjectActionTriggered()
+            saveThread.join()
+
+            label_list = op_object_classification.LabelInputs[0].wait()[0]
+            expected_labels = numpy.zeros_like(label_list)
+            layer = gui.currentGui().getLayer('Labels')
+            for lp in label_positions:
+                obj = gui.currentGui()._getObject(layer.segmentationImageSlot, lp.position)
+                expected_labels[obj] = lp.label + 1
+
+            numpy.testing.assert_array_equal(label_list, expected_labels)
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
 
 # Export image settings: File: tmp_folder/{nickname}_{result_type}.h5
 
