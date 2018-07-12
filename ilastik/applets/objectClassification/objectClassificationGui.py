@@ -170,7 +170,7 @@ class ObjectClassificationGui(LabelingGui):
             self.handleSubsetFeaturesClicked)
         self.labelingDrawerUi.labelAssistButton.clicked.connect(
             self.handleLabelAssistClicked)
-        self.labelingDrawerUi.checkInteractive.toggled.connect(
+        self.labelingDrawerUi.checkInteractive.clicked.connect(
             self.handleInteractiveModeClicked)
         self.labelingDrawerUi.checkShowPredictions.toggled.connect(
             self.handleShowPredictionsClicked)
@@ -258,7 +258,7 @@ class ObjectClassificationGui(LabelingGui):
     def interactiveMode(self, val):
         logger.debug("setting interactive mode to '%r'" % val)
         self._interactiveMode = val
-        self.labelingDrawerUi.checkInteractive.setChecked(val)
+        self.labelingDrawerUi.checkShowPredictions.setChecked(val)
         if val:
             self.showPredictions = True
         self.labelMode = not val
@@ -266,7 +266,7 @@ class ObjectClassificationGui(LabelingGui):
 
     @pyqtSlot()
     def handleInteractiveModeClicked(self):
-        self.interactiveMode = self.labelingDrawerUi.checkInteractive.isChecked()
+        self.interactiveMode = True
 
     @property
     def showPredictions(self):
@@ -290,6 +290,7 @@ class ObjectClassificationGui(LabelingGui):
     @pyqtSlot()
     def handleShowPredictionsClicked(self):
         self.showPredictions = self.labelingDrawerUi.checkShowPredictions.isChecked()
+        self.labelMode = not self.labelingDrawerUi.checkShowPredictions.isChecked()
 
     @pyqtSlot()
     def handleSubsetFeaturesClicked(self):
@@ -399,7 +400,7 @@ class ObjectClassificationGui(LabelingGui):
             self.showPredictions = False
 
         self.labelingDrawerUi.subsetFeaturesButton.setEnabled(feats_enabled)
-        self.labelingDrawerUi.checkInteractive.setEnabled(predict_enabled)
+#         self.labelingDrawerUi.checkInteractive.setEnabled(predict_enabled)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(predict_enabled)
         self.labelingDrawerUi.AddLabelButton.setEnabled(labels_enabled)
         self.labelingDrawerUi.labelListView.allowDelete = ( True and self.op.AllowDeleteLabels([]).wait()[0] )
@@ -604,7 +605,7 @@ class ObjectClassificationGui(LabelingGui):
 
             predictLayer.name = self.PREDICTION_LAYER_NAME
             predictLayer.ref_object = None
-            predictLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
+            predictLayer.visible = self.labelingDrawerUi.checkShowPredictions.isChecked()
             predictLayer.opacity = 0.5
             predictLayer.setToolTip("Classification results, assigning a label to each object")
             
