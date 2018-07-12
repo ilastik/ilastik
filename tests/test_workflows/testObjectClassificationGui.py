@@ -24,6 +24,8 @@ import shutil
 import sys
 import tempfile
 
+from PyQt5.QtWidgets import QApplication
+
 import numpy
 
 from ilastik.workflows import ObjectClassificationWorkflowPrediction
@@ -198,10 +200,14 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # we therefore select a set of object features (all of them) and
             # supply them to the operator directly
             features, _ = gui.currentGui()._populate_feature_dict(op_object_features)
+            features = {
+                plugin: features[plugin] for plugin in features if 'test' not in plugin.lower()}
             op_object_features.Features.setValue(features)
             # now trigger computation of features
             gui.currentGui()._calculateFeatures()
 
+            # Let the GUI catch up: Process all events
+            QApplication.processEvents()
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()
             saveThread.join()
