@@ -40,9 +40,6 @@ DIALOG_FILTERS = {
     "any": "Any (*.*)",
 }
 
-import sys
-if sys.version_info.major >= 3:
-    unicode = str
 
 class ExportObjectInfoDialog(QDialog):
     """
@@ -144,7 +141,7 @@ class ExportObjectInfoDialog(QDialog):
             pattern = r"([^/]+)\://(.*)"
             match = re.findall(pattern, data.text())
             if match:
-                text = unicode(match[0][1]).strip()
+                text = str(match[0][1]).strip()
             else:
                 text = data.text()
             self.ui.exportPath.setText(text)
@@ -208,7 +205,7 @@ class ExportObjectInfoDialog(QDialog):
             self.ui.toolBox.setCurrentIndex(0)
             return
         else:
-            path = unicode(self.ui.exportPath.text())
+            path = str(self.ui.exportPath.text())
             if not self.is_valid_path(path):
                 title = "Warning"
                 text = "No file extension or invalid file extension ( %s )\nAllowed: %s"
@@ -237,7 +234,7 @@ class ExportObjectInfoDialog(QDialog):
         current_filter = DIALOG_FILTERS[current_extension]
         path, _filter = QFileDialog.getSaveFileName(self.parent(), "Save File", self.ui.exportPath.text(), filters,
                                            current_filter)
-        path = unicode(path)
+        path = str(path)
         if path != "":
             match = path.rsplit(".", 1)
             if len(match) == 1:
@@ -264,7 +261,7 @@ class ExportObjectInfoDialog(QDialog):
 
     # slot is called from combobox.indexchanged
     def file_format_changed(self, index):
-        path = unicode(self.ui.exportPath.text())
+        path = str(self.ui.exportPath.text())
         match = path.rsplit(".", 1)
         path = "%s.%s" % (match[0], FILE_TYPES[index])
         self.ui.exportPath.setText(path)
