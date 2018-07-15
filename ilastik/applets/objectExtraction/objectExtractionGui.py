@@ -73,7 +73,6 @@ class FeatureSelectionDialog(QDialog):
         """
         QDialog.__init__(self, parent)
         self.featureDict = featureDict
-        self.displayNamesDict = {}
         if selectedFeatures is None or len(selectedFeatures) == 0:
             selectedFeatures = defaultdict(list)
         self.selectedFeatures = selectedFeatures
@@ -186,8 +185,8 @@ class FeatureSelectionDialog(QDialog):
                 else:
                     itemtext = name
                 item.setText(0, itemtext)
+                item.feature_id = name
 
-                self.displayNamesDict[itemtext] = name
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
                 if 'tooltip' in parameters:
                     item.setToolTip(0, parameters['tooltip'])
@@ -306,11 +305,10 @@ class FeatureSelectionDialog(QDialog):
             pluginItem = item.parent().parent()
 
         pluginName=str(pluginItem.text(0))
-        itemName=str(item.text(0))
+        feature_id = item.feature_id
 
-        plugin_feature_name = self.displayNamesDict[itemName]
         try:
-            self.ui.textBrowser.setText(self.featureDict[pluginName][plugin_feature_name]["detailtext"])
+            self.ui.textBrowser.setText(self.featureDict[pluginName][feature_id]["detailtext"])
         except KeyError:
             self.ui.textBrowser.setText("Sorry, no detailed description is available for this feature")
 
@@ -349,27 +347,26 @@ class FeatureSelectionDialog(QDialog):
                 child = plug.child(child_id)
                 if child.childCount()>0:
                     #it's a group, take its features
-                    for feature_id in range(child.childCount()):
-                        feature_item = child.child(feature_id)
+                    for child_id in range(child.childCount()):
+                        feature_item = child.child(child_id)
                         if feature_item.checkState(0) == Qt.Checked:
-                            featnames.append(str(feature_item.text(0)))
+                            featnames.append(feature_item.feature_id)
                 else:
                     if child.checkState(0) == Qt.Checked:
-                        featnames.append(str(child.text(0)))
+                        featnames.append(child.feature_id)
 
             if len(featnames) > 0:
                 # we are building the dictionary again, have to transfer all the properties
                 features = {}
-                for ff in featnames:
+                for feature_id in featnames:
                     #do the reverse lookup from displayed names to names in the plugin
-                    plugin_feature_name = self.displayNamesDict[ff]
-                    features[plugin_feature_name] = {}
+                    features[feature_id] = {}
                     # properties other than margin have not changed, copy them over
-                    for prop_name, prop_value in self.featureDict[plugin_name][plugin_feature_name].items():
-                        features[plugin_feature_name][prop_name] = prop_value
+                    for prop_name, prop_value in self.featureDict[plugin_name][feature_id].items():
+                        features[feature_id][prop_name] = prop_value
                     # update the margin
-                    if 'margin' in self.featureDict[plugin_name][plugin_feature_name]:
-                        features[plugin_feature_name]['margin'] = margin
+                    if 'margin' in self.featureDict[plugin_name][feature_id]:
+                        features[feature_id]['margin'] = margin
 
                 selectedFeatures[plugin_name] = features
         self.selectedFeatures = selectedFeatures
