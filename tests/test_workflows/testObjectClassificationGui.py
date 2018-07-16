@@ -202,8 +202,21 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # we therefore select a set of object features (all of them) and
             # supply them to the operator directly
             features, _ = gui.currentGui()._populate_feature_dict(op_object_features)
+
+            # don't use test features
             features = {
-                plugin: features[plugin] for plugin in features if 'test' not in plugin.lower()}
+                plugin: features[plugin]
+                for plugin in features if 'test' not in plugin.lower()}
+
+            print(features)
+            # don't use advanced features
+            features = {
+                plugin: {feature: features[plugin][feature]
+                         for feature in features[plugin]
+                         if not features[plugin][feature].get('advanced', False)}
+                for plugin in features
+            }
+
             op_object_features.Features.setValue(features)
             # now trigger computation of features
             gui.currentGui()._calculateFeatures()
