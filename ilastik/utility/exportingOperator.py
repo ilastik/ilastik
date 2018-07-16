@@ -24,14 +24,14 @@ class ExportingOperator(object):
         """
         Initialize progress displays and start the actual export in a new thread
         using the lazyflow.request framework
-        
+
         Args:
             lane_index (int): Index of the lane to be exported
             show_gui (bool, optional): boolean to determine whether or not to
               show gui
             filename_suffix (str, optional): If provided, appended to the
               filename (before the extension)
-        
+
         Returns:
             lazyflow.request.Request: Request object from which the result can
               be obtained.
@@ -157,12 +157,13 @@ class ExportingGui(object):
         
         op = self.get_exporting_operator()
         settings, selected_features = op.get_table_export_settings()
-        
-        filename = None
-        if settings is not None and 'file path' in settings:
-            filename = settings['file path']
 
-        dialog = ExportObjectInfoDialog(dimensions, feature_names, selected_features=selected_features, title=self.get_export_dialog_title(), filename=filename)
+        dialog = ExportObjectInfoDialog(
+            dimensions,
+            feature_names,
+            selected_features=selected_features,
+            title=self.get_export_dialog_title(),
+            initial_settings=settings)
         if not dialog.exec_():
             return (None, None)
 

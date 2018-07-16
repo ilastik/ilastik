@@ -53,10 +53,18 @@ class ExportObjectInfoDialog(QDialog):
     :type req_features: list or None
     :param parent: the parent QWidget for this dialog
     :type parent: QWidget or None
-    :param filename: The filename to use as default
-    :type filename: str or None
+    :param initial_settings: The initial_settings to use as default
+    :type initial_settings: dict, or None
     """
-    def __init__(self, dimensions, feature_table, req_features=None, selected_features=None, title=None, parent=None, filename=None):
+    def __init__(
+            self,
+            dimensions,
+            feature_table,
+            req_features=None,
+            selected_features=None,
+            title=None,
+            parent=None,
+            initial_settings=None):
         super(ExportObjectInfoDialog, self).__init__(parent)
 
         ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/exportObjectInfoDialog.ui")
@@ -75,14 +83,9 @@ class ExportObjectInfoDialog(QDialog):
             selected_features = []
 
         self._setup_features(feature_table, req_features, selected_features)
+        self._setup_settings(initial_settings or {})
         self.ui.featureView.setHeaderLabels(("Select Features",))
         self.ui.featureView.expandAll()
-
-        if filename is not None and self.is_valid_path(filename):
-            self.ui.exportPath.setText(filename)
-            self.ui.fileFormat.setCurrentIndex(self._get_file_type_index_from_filename(filename))
-        else:
-            self.ui.exportPath.setText(os.path.expanduser("~") + "/exported_data.h5")
             
         self.ui.exportPath.dropEvent = self._drop_event
         # self.ui.forceUniqueIds.setEnabled(dimensions[0] > 1)
@@ -103,10 +106,8 @@ class ExportObjectInfoDialog(QDialog):
         flags = QTreeWidgetItemIterator.Checked
         it = QTreeWidgetItemIterator(self.ui.featureView, flags)
         while it.value():
-            text = str(it.value().text(0))
-            if text[-len(REQ_MSG):] == REQ_MSG:
-                text = text[:-len(REQ_MSG)]
-            yield text
+            feature_id = it.value().feature_id
+            yield feature_id
             it += 1
 
     def settings(self):
@@ -121,8 +122,8 @@ class ExportObjectInfoDialog(QDialog):
         :rtype: dict
         """
         s = {
-            "file type": unicode(FILE_TYPES[self.ui.fileFormat.currentIndex()]),
-            "file path": unicode(self.ui.exportPath.text()),
+            "file type": str(FILE_TYPES[self.ui.fileFormat.currentIndex()]),
+            "file path": str(self.ui.exportPath.text()),
             "compression": {}
         }
 
@@ -145,6 +146,52 @@ class ExportObjectInfoDialog(QDialog):
             else:
                 text = data.text()
             self.ui.exportPath.setText(text)
+
+    def _setup_settings(self, initial_settings):
+        """Load previously active settings.
+
+        Args:
+            initial_settings (dict): Dictionary with settings values, see
+                ExportObjectInfoDialog.settings for structure
+        """
+        file_type = initial_settings.get('file_type', None)
+        if file_type is not None:
+            assert file_type in ['csv', 'h5']
+            index = FILE_TYPES.index(file_type)
+            self.ui.fileFormat.setCurrentIndex(index)
+
+        file_path = initial_settings.get('file path', None)
+        if file_path is not None and self.is_valid_path(file_path):
+            self.ui.exportPath.setText(file_path)
+            self.ui.fileFormat.setCurrentIndex(self._get_file_type_index_from_filename(file_path))
+        else:
+            self.ui.exportPath.setText(os.path.expanduser("~") + "/exported_data.h5")
+
+        if file_type == 'h5':
+            # TODO: what about normalize?
+            margin = initial_settings.get('margin', None)
+            if margin is not None:
+                self.ui.addMargin.setValue(margin)
+            include_raw = initial_settings.get('include_raw', None)
+            if include_raw is not None:
+                self.ui.includeRaw.setChecked(include_raw)
+            # TODO: compression seems not to be implemented atm.
+            compression_settings = initial_settings.get('compression', None)
+            if compression_settings is not None:
+                compression_type = compression_settings.get('compression', None)
+                if compression_type is not None:
+                    self.ui.compressionType.setText(compression_type)
+                shuffle = compression_settings.get('shuffle', None)
+                if shuffle is not None:
+                    self.ui.enableShuffling.setChecked(shuffle)
+                    if compression_type == 'gzip':
+                        compression_rate = compression_settings.get('compression_opts', None)
+                        if compression_rate is not None:
+                            assert compression_rate >= 1 and compression_rate <= 9
+                            self.ui.gzipRate.setValue(compression_rate)
+                        else:
+                            # set to maximum per default
+                            self.ui.gzipRate.setValue(9)
 
     def _setup_features(self, features, req_features, selected_features, max_depth=2, parent=None):
         if max_depth == 2 and not features:
@@ -174,6 +221,7 @@ class ExportObjectInfoDialog(QDialog):
                     item.setDisabled(True)
                     item.setText(0, "%s%s" % (item.text(0), REQ_MSG))
                 item.setCheckState(0, state)
+                item.feature_id = entry
 
     # slot is called from button.click
     def select_all_features(self):
@@ -269,6 +317,7 @@ class ExportObjectInfoDialog(QDialog):
         for widget in (self.ui.includeRaw, self.ui.marginLabel, self.ui.addMargin):
             widget.setEnabled(FILE_TYPES[index] != "csv")
 
+    # TODO: check whether this is implemented at all
     def _compression_settings(self):
         settings = {}
         if self.ui.enableCompression.checkState() == Qt.Checked:
