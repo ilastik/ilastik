@@ -175,7 +175,9 @@ class ExportObjectInfoDialog(QDialog):
             include_raw = initial_settings.get('include_raw', None)
             if include_raw is not None:
                 self.ui.includeRaw.setChecked(include_raw)
-            # TODO: compression seems not to be implemented atm.
+            # different compression settings are not working and hidden in the
+            # UI. We will, however, always set these settings as they come from
+            # the config (so in future, it will just work)
             compression_settings = initial_settings.get('compression', None)
             if compression_settings is not None:
                 compression_type = compression_settings.get('compression', None)
