@@ -72,7 +72,9 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             shutil.rmtree(cls.temp_dir)  # TODO: cleanup when dev is done
         os.makedirs(cls.temp_dir)  # TODO: cleanup when dev is done
         cls.project_file = os.path.join(cls.temp_dir, 'test_project_oc.ilp')
-        cls.output_file = os.path.join(cls.temp_dir, '3d_Object_Probabilities_out.h5')
+        cls.output_file = os.path.join(cls.temp_dir, 'out_object_prediction.h5')
+        cls.table_h5_file = os.path.join(cls.temp_dir, 'table.h5')
+        cls.table_csv_file = os.path.join(cls.temp_dir, 'table.csv')
 
         # Start the timer
         cls.timer = Timer()
@@ -118,6 +120,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             opDataSelection.DatasetGroup[0][0].setValue(info_raw)
             info_prob = DatasetInfo()
             info_prob.filePath = self.sample_data_prob
+            info_raw.nickname = 'test_data'
             opDataSelection.DatasetGroup[0][1].setValue(info_prob)
 
             # Save
@@ -140,6 +143,8 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
             # activate the thresholding applet
             shell.setSelectedAppletDrawer(1)
+            # let the gui catch up
+            QApplication.processEvents()
 
             # set the required values
             # self.sendkeys(gui.currentGui()._drawer.inputChannelComboBox, '1')
@@ -193,6 +198,8 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
             # activate the feature selection applet
             shell.setSelectedAppletDrawer(2)
+            # let the gui catch up
+            QApplication.processEvents()
 
             # make sure some preconditions are met:
             assert op_object_features.RawImage.ready()
@@ -208,7 +215,6 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
                 plugin: features[plugin]
                 for plugin in features if 'test' not in plugin.lower()}
 
-            print(features)
             # don't use advanced features
             features = {
                 plugin: {feature: features[plugin][feature]
@@ -218,6 +224,14 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             }
 
             op_object_features.Features.setValue(features)
+            # save a flattened list of feature names for the export applet
+            # we should really use the same format in all the applets
+            TestObjectClassificationGui.selected_feature_ids = [
+                feature_id
+                for plugin in features
+                for feature_id in features[plugin].keys()
+            ]
+
             # now trigger computation of features
             gui.currentGui()._calculateFeatures()
 
@@ -256,6 +270,8 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
             # activate the object classification applet
             shell.setSelectedAppletDrawer(3)
+            # let the gui catch up
+            QApplication.processEvents()
 
             # Do our tests at position 0, 0, 0
             gui.currentGui().editor.posModel.slicingPos = (0, 0, 0)
@@ -314,17 +330,21 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
             # activate the object classification applet
             shell.setSelectedAppletDrawer(3)
+            # let the gui catch up
+            QApplication.processEvents()
 
             with Timer() as timer:
                 # Enable interactive mode
                 assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() is False
                 gui.currentGui()._labelControlUi.liveUpdateButton.click()
+                assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() is True
                 # Do to the way we wait for the views to finish rendering, the GUI hangs while we wait.
                 self.waitForViews(gui.currentGui().editor.imageViews)
             logger.debug(f"Interactive Mode Rendering Time: {timer.seconds()}")
 
             # Disable iteractive mode.
             gui.currentGui()._labelControlUi.liveUpdateButton.click()
+            assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() is False
 
             # There should be a prediction layer for each label
             labelNames = [label.name for label in gui.currentGui().labelListData]
@@ -346,13 +366,88 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
         self.exec_in_shell(impl)
 
-# Export image settings: File: tmp_folder/{nickname}_{result_type}.h5
+    def test_06_export(self):
+        def impl():
+            shell = self.shell
+            workflow = shell.projectManager.workflow
+            object_export_applet = workflow.dataExportApplet
+            gui = object_export_applet.getMultiLaneGui()
+            op_object_export = object_export_applet.topLevelOperator.getLane(0)
+            object_classification_applet = workflow.objectClassificationApplet
+            op_object_classification = object_classification_applet.topLevelOperator.getLane(0)
+            op_object_export_tlo = object_export_applet.topLevelOperator
 
-# Export table settings: tmp_folder/exported_data.csv; features: all
+            # activate the object information export applet
+            shell.setSelectedAppletDrawer(4)
+            # let the gui catch up
+            QApplication.processEvents()
 
-# Export all
+            op_object_export.OutputFilenameFormat.setValue(self.output_file)
+            op_object_export.OutputFormat.setValue('hdf5')
+            op_object_export.OutputInternalPath.setValue('exported_data')
 
-# Export table settings: tmp_folder/exported_data.h5; features: all
+            table_export_settings = {
+                "file type": 'csv',
+                "file path": self.table_csv_file,
+                "normalize": True,  # self.ui.normalizeLabeling.checkState() == Qt.Checked,
+                "margin": 3,
+                "include raw": False,
+                # compression settings cannot be edited in the gui atm.
+                # values here are assumed defaults (taken from exportObjectInfoDialog.ui)
+                'compression': {
+                    'compression': 'gzip',
+                    'shuffle': False,
+                    'compression_opts': 9
+                }
+            }
+
+            # here is some awkwardness of the csv output, which will alter the
+            # table name: some_name.csv -> some_name_test_data_table.csv
+            base, ext = os.path.splitext(self.table_csv_file)
+            csv_out = f"{base}-test_data_table{ext}"
+
+            export_features = self.selected_feature_ids
+            op_object_classification.configure_table_export_settings(
+                table_export_settings,
+                export_features)
+
+            # self.configure_export_dialog(op_object_export_tlo)
+
+            with Timer() as timer:
+                # this will not properly wait for the export to finish.
+                # gui.drawer.exportAllButton.click()
+                gui.exportSlots(op_object_export_tlo)
+
+            assert object_export_applet.busy is False
+            assert os.path.exists(csv_out), f"Could not find {csv_out}"
+            assert os.path.exists(self.output_file)
+            logger.debug(f"Export time (data + csv): {timer.seconds()}")
+
+            table_export_settings.update({
+                "file type": 'h5',
+                "file path": self.table_h5_file
+            })
+
+            # here is some awkwardness of the h5 output, which will alter the
+            # table name: some_name.h5 -> some_name_test_data.h5
+            base, ext = os.path.splitext(self.table_h5_file)
+            h5_out = f"{base}-test_data{ext}"
+
+            op_object_classification.configure_table_export_settings(
+                table_export_settings,
+                export_features)
+
+            with Timer() as timer:
+                # this will not properly wait for the export to finish.
+                # gui.drawer.exportAllButton.click()
+                gui.exportSlots(op_object_export_tlo)
+
+            assert object_export_applet.busy is False
+            assert os.path.exists(h5_out), f"Could not find {h5_out}"
+            assert os.path.exists(self.output_file)
+            logger.debug(f"Export time (data + h5): {timer.seconds()}")
+
+        self.exec_in_shell(impl)
 
 
 # Done
