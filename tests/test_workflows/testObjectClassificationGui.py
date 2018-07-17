@@ -19,6 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from collections import namedtuple
+import csv
 import logging
 import os
 import shutil
@@ -498,7 +499,62 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             reference_data_file.close()
             generated_data_file.close()
 
-# Done
+    def test_08_verify_exported_csv_table(self):
+        try:
+            reference_csv_file = open(self.reference_files['csv_table'], 'r')
+            reference_csv = csv.DictReader(reference_csv_file)
+            generated_csv_file = open(self.table_csv_file_exported, 'r')
+            generated_csv = csv.DictReader(generated_csv_file)
+
+            # fieldnames are not necessarily in the same order
+            # maybe I'm setting the export fieldnames wrong in test_06
+            assert len(reference_csv.fieldnames) == len(generated_csv.fieldnames)
+            for field_name in reference_csv.fieldnames:
+                assert field_name in generated_csv.fieldnames, f"{field_name} not in the generated table"
+
+            for row_a, row_b in zip(generated_csv, reference_csv):
+                for field_name in reference_csv.fieldnames:
+                    compare_values(row_a[field_name], row_b[field_name])
+        finally:
+            reference_csv_file.close()
+            generated_csv_file.close()
+
+
+def compare_values(test_value, reference_value):
+    """Assumes all values come in as strings, but could also hold numbers
+    Args:
+        test_value: value to test against test_value
+        reference_value: reference value to compare to, type here determines
+          type of comparison
+    """
+    rval, rtype = try_convert_to_numeric(reference_value)
+    tval = rtype(test_value)
+
+    decimals = 2
+    if rtype in (str, int):
+        assert tval == rval, f"{tval} != {rval}"
+    elif isinstance(reference_value, float):
+        numpy.testing.assert_almost_equal(test_value, reference_value, decimal=decimals)
+
+
+def try_convert_to_numeric(val):
+    try:
+        ret_val = int(val)
+        ret_type = int
+        return ret_val, ret_type
+    except ValueError:
+        pass
+
+    try:
+        ret_val = float(val)
+        ret_type = float
+        return ret_val, ret_type
+    except ValueError:
+        pass
+
+    return val, str
+
+
 if __name__ == "__main__":
     from tests.helpers.shellGuiTestCaseBase import run_shell_nosetest
     run_shell_nosetest(__file__)
