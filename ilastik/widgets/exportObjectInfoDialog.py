@@ -122,7 +122,7 @@ class ExportObjectInfoDialog(QDialog):
         :rtype: dict
         """
         s = {
-            "file type": str(FILE_TYPES[self.ui.fileFormat.currentIndex()]),
+            "file type": FILE_TYPES[self.ui.fileFormat.currentIndex()],
             "file path": str(self.ui.exportPath.text()),
             "compression": {}
         }
@@ -148,13 +148,13 @@ class ExportObjectInfoDialog(QDialog):
             self.ui.exportPath.setText(text)
 
     def _setup_settings(self, initial_settings):
-        """Load previously active settings.
+        """Load previously active settinitial_settingsings.
 
         Args:
             initial_settings (dict): Dictionary with settings values, see
                 ExportObjectInfoDialog.settings for structure
         """
-        file_type = initial_settings.get('file_type', None)
+        file_type = initial_settings.get('file type', None)
         if file_type is not None:
             assert file_type in ['csv', 'h5']
             index = FILE_TYPES.index(file_type)
@@ -172,7 +172,7 @@ class ExportObjectInfoDialog(QDialog):
             margin = initial_settings.get('margin', None)
             if margin is not None:
                 self.ui.addMargin.setValue(margin)
-            include_raw = initial_settings.get('include_raw', None)
+            include_raw = initial_settings.get('include raw', None)
             if include_raw is not None:
                 self.ui.includeRaw.setChecked(include_raw)
             # different compression settings are not working and hidden in the
@@ -182,7 +182,9 @@ class ExportObjectInfoDialog(QDialog):
             if compression_settings is not None:
                 compression_type = compression_settings.get('compression', None)
                 if compression_type is not None:
-                    self.ui.compressionType.setText(compression_type)
+                    index = self.ui.compressionType.findText(compression_type)
+                    if index != -1:
+                        self.ui.compressionType.setCurrentIndex(index)
                 shuffle = compression_settings.get('shuffle', None)
                 if shuffle is not None:
                     self.ui.enableShuffling.setChecked(shuffle)
