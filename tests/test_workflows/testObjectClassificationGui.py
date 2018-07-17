@@ -319,6 +319,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             label_position = namedtuple('label_position', ['label', 'position'])
             label_positions = [
                 label_position(0, (0, 10, 10, 10, 0)),  # obj 1
+                label_position(1, (0, 50, 5, 5, 0)),    # obj 2
                 label_position(1, (0, 48, 10, 48, 0)),  # obj 14
                 label_position(1, (0, 15, 59, 48, 0)),  # obj 21
             ]
@@ -386,6 +387,10 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
                         f"Expected {hex(labelColors[i])}, got {hex(layer.tintColor.rgba())}")
                 except ValueError:
                     assert False, "Could not find layer for label with name: {}".format(labelName)
+
+            # Save the project
+            saveThread = self.shell.onSaveProjectActionTriggered()
+            saveThread.join()
 
             self.waitForViews(gui.currentGui().editor.imageViews)
 
@@ -474,6 +479,10 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             assert os.path.exists(self.output_file)
             logger.debug(f"Export time (data + h5): {timer.seconds()}")
 
+            # Save the project
+            saveThread = self.shell.onSaveProjectActionTriggered()
+            saveThread.join()
+
         self.exec_in_shell(impl)
 
     def test_07_verify_exported_data(self):
@@ -484,7 +493,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         generated_data = generated_data_file['exported_data']
 
         try:
-            numpy.testing.assert_array_almost_equal(generated_data, reference_data)
+            numpy.testing.assert_array_almost_equal(generated_data, reference_data, decimal=5)
         finally:
             reference_data_file.close()
             generated_data_file.close()
