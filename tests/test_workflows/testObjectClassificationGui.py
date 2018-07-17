@@ -519,6 +519,27 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             reference_csv_file.close()
             generated_csv_file.close()
 
+    def test_09_verify_exported_h5_table(self):
+        try:
+            reference_h5_file = h5py.File(self.reference_files['h5_table'], 'r')
+            generated_h5_file = h5py.File(self.table_h5_file_exported, 'r')
+
+            def compare(name, obj):
+                assert name in reference_h5_file
+                if not isinstance(obj, h5py.Dataset):
+                    return
+                if 'images' in name:
+                    robj = reference_h5_file[name]
+                    numpy.testing.assert_array_almost_equal(obj, robj)
+                # TODO: compare values
+                # TODO: fix sequence of table first
+
+            generated_h5_file.visititems(compare)
+
+        finally:
+            reference_h5_file.close()
+            generated_h5_file.close()
+
 
 def compare_values(test_value, reference_value):
     """Assumes all values come in as strings, but could also hold numbers
