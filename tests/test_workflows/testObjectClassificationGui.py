@@ -24,9 +24,11 @@ import os
 import shutil
 import sys
 import tempfile
+import zipfile
 
 from PyQt5.QtWidgets import QApplication
 
+import h5py
 import numpy
 
 from ilastik.workflows import ObjectClassificationWorkflowPrediction
@@ -74,7 +76,31 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         cls.project_file = os.path.join(cls.temp_dir, 'test_project_oc.ilp')
         cls.output_file = os.path.join(cls.temp_dir, 'out_object_prediction.h5')
         cls.table_h5_file = os.path.join(cls.temp_dir, 'table.h5')
+        cls.table_h5_file_exported = None  # Will be filled in test_06
         cls.table_csv_file = os.path.join(cls.temp_dir, 'table.csv')
+        cls.table_csv_file_exported = None  # Will be filled in test_06
+
+        # reference files
+        # unzip the zip-file ;)
+        cls.reference_zip_file = os.path.join(
+            current_dir, '../data/outputdata/testObjectClassificationGuiReference.zip')
+        cls.reference_path = os.path.join(cls.temp_dir, 'reference')
+        cls.reference_files = {
+            'csv_table': os.path.join(
+                cls.reference_path, 'testObjectClassificationGuiReference/table-test_data_table.csv'),
+            'h5_table': os.path.join(
+                cls.reference_path, 'testObjectClassificationGuiReference/table-test_data.h5'),
+            'predictions_h5': os.path.join(
+                cls.reference_path, 'testObjectClassificationGuiReference/reference_out_object_prediction.h5')
+        }
+        os.makedirs(cls.reference_path)  # TODO: cleanup when dev is done
+        with zipfile.ZipFile(cls.reference_zip_file, mode='r') as zip_file:
+            zip_file.extractall(path=cls.reference_path)
+        cls.unzipped_reference_files = [os.path.join(cls.reference_path, fp)
+                                        for fp in zip_file.namelist()]
+
+        for file_name in cls.reference_files.values():
+            assert os.path.exists(file_name)
 
         # Start the timer
         cls.timer = Timer()
@@ -326,7 +352,6 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             workflow = shell.projectManager.workflow
             object_classification_applet = workflow.objectClassificationApplet
             gui = object_classification_applet.getMultiLaneGui()
-            op_object_classification = object_classification_applet.topLevelOperator.getLane(0)
 
             # activate the object classification applet
             shell.setSelectedAppletDrawer(3)
@@ -405,6 +430,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # table name: some_name.csv -> some_name_test_data_table.csv
             base, ext = os.path.splitext(self.table_csv_file)
             csv_out = f"{base}-test_data_table{ext}"
+            TestObjectClassificationGui.table_csv_file_exported = csv_out
 
             export_features = self.selected_feature_ids
             op_object_classification.configure_table_export_settings(
@@ -432,6 +458,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # table name: some_name.h5 -> some_name_test_data.h5
             base, ext = os.path.splitext(self.table_h5_file)
             h5_out = f"{base}-test_data{ext}"
+            TestObjectClassificationGui.table_h5_file_exported = h5_out
 
             op_object_classification.configure_table_export_settings(
                 table_export_settings,
@@ -449,6 +476,18 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
         self.exec_in_shell(impl)
 
+    def test_07_verify_exported_data(self):
+        reference_data_file = h5py.File(self.reference_files['predictions_h5'], 'r')
+        reference_data = reference_data_file['exported_data']
+        generated_data_file = h5py.File(self.output_file, 'r')
+        assert 'exported_data' in generated_data_file
+        generated_data = generated_data_file['exported_data']
+
+        try:
+            numpy.testing.assert_array_almost_equal(generated_data, reference_data)
+        finally:
+            reference_data_file.close()
+            generated_data_file.close()
 
 # Done
 if __name__ == "__main__":
