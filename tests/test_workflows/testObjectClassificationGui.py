@@ -560,6 +560,37 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             reference_h5_file.close()
             generated_h5_file.close()
 
+    def test_10_compare_h5_and_csv_export(self):
+        try:
+            generated_h5_file = h5py.File(self.table_h5_file_exported, 'r')
+            generated_csv_file = open(self.table_csv_file_exported, 'r')
+            generated_csv = csv.DictReader(generated_csv_file)
+
+            generated_csv_table = {col_name: [] for col_name in generated_csv.fieldnames}
+            for row in generated_csv:
+                for k, v in row.items():
+                    generated_csv_table[k].append(v)
+
+            # Now compare the table dataset
+            generated_h5_table = generated_h5_file['table']
+            types = generated_h5_table.dtype.fields
+            for col_name, col_type in types.items():
+                assert col_name in generated_csv_table
+                if col_type[0].type == numpy.string_:
+                    numpy.testing.assert_array_equal(
+                        generated_h5_table[col_name],
+                        numpy.array(generated_csv_table[col_name], dtype=col_type[0]))
+                else:
+                    assert numpy.allclose(
+                        generated_h5_table[col_name],
+                        numpy.array(generated_csv_table[col_name], dtype=col_type[0]),
+                        atol=0.001), (
+                        f"found erros in column {col_name}",)
+
+        finally:
+            generated_csv_file.close()
+            generated_h5_file.close()
+
     def configure_export_dialog(self, gui, initial_settings):
         dimensions = gui.get_raw_shape()
         feature_names = gui.get_feature_names()
