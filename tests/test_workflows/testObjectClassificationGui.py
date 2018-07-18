@@ -529,6 +529,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             reference_h5_file = h5py.File(self.reference_files['h5_table'], 'r')
             generated_h5_file = h5py.File(self.table_h5_file_exported, 'r')
 
+            # use this to compare image masks of the exported regions
             def compare(name, obj):
                 assert name in reference_h5_file
                 if not isinstance(obj, h5py.Dataset):
@@ -536,10 +537,22 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
                 if 'images' in name:
                     robj = reference_h5_file[name]
                     numpy.testing.assert_array_almost_equal(obj, robj)
-                # TODO: compare values
-                # TODO: fix sequence of table first
 
             generated_h5_file.visititems(compare)
+
+            # Now compare the table dataset
+            reference_h5_table = reference_h5_file['table']
+            generated_h5_table = generated_h5_file['table']
+            types = reference_h5_table.dtype.fields
+            for col_name, col_type in types.items():
+                if col_type[0].type == numpy.string_:
+                    numpy.testing.assert_array_equal(
+                        generated_h5_table[col_name], reference_h5_table[col_name])
+                else:
+                    # will not work with higher precision, this is most likely
+                    # due to small training set
+                    numpy.testing.assert_array_almost_equal(
+                        generated_h5_table[col_name], reference_h5_table[col_name], decimal=1)
 
         finally:
             reference_h5_file.close()
