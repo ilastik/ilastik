@@ -552,8 +552,9 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
                 else:
                     # will not work with higher precision, this is most likely
                     # due to small training set
-                    numpy.testing.assert_array_almost_equal(
-                        generated_h5_table[col_name], reference_h5_table[col_name], decimal=1)
+                    assert numpy.allclose(
+                        generated_h5_table[col_name], reference_h5_table[col_name], atol=0.2), (
+                        f"column_name; {col_name}")
 
         finally:
             reference_h5_file.close()
@@ -617,11 +618,10 @@ def compare_values(test_value, reference_value):
     rval, rtype = try_convert_to_numeric(reference_value)
     tval = rtype(test_value)
 
-    decimals = 2
     if rtype in (str, int):
         assert tval == rval, f"{tval} != {rval}"
     elif isinstance(reference_value, float):
-        numpy.testing.assert_almost_equal(test_value, reference_value, decimal=decimals)
+        assert numpy.allclose(test_value, reference_value, atol=0.2)
 
 
 def try_convert_to_numeric(val):
