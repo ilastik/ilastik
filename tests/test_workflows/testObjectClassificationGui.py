@@ -71,11 +71,12 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             os.path.join(current_dir, '../data/inputdata/3d_Probabilities.h5'))
 
         # output files:
-        # cls.temp_dir = tempfile.mkdtemp()
-        cls.temp_dir = os.path.expanduser('~/tmp')
-        if os.path.exists(cls.temp_dir):
-            shutil.rmtree(cls.temp_dir)  # TODO: cleanup when dev is done
-        os.makedirs(cls.temp_dir)  # TODO: cleanup when dev is done
+        cls.temp_dir = tempfile.mkdtemp()
+        # uncomment for debugging
+        # cls.temp_dir = os.path.expanduser('~/tmp')
+        # if os.path.exists(cls.temp_dir):
+        #     shutil.rmtree(cls.temp_dir)
+        # os.makedirs(cls.temp_dir)
         cls.project_file = os.path.join(cls.temp_dir, 'test_project_oc.ilp')
         cls.output_file = os.path.join(cls.temp_dir, 'out_object_prediction.h5')
         cls.table_h5_file = os.path.join(cls.temp_dir, 'table.h5')
@@ -96,7 +97,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             'predictions_h5': os.path.join(
                 cls.reference_path, 'testObjectClassificationGuiReference/reference_out_object_prediction.h5')
         }
-        os.makedirs(cls.reference_path)  # TODO: cleanup when dev is done
+        os.makedirs(cls.reference_path)
         with zipfile.ZipFile(cls.reference_zip_file, mode='r') as zip_file:
             zip_file.extractall(path=cls.reference_path)
         cls.unzipped_reference_files = [os.path.join(cls.reference_path, fp)
