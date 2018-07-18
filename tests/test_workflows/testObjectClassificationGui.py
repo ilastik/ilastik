@@ -34,6 +34,8 @@ import numpy
 
 from ilastik.workflows import ObjectClassificationWorkflowPrediction
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
+from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog, FILE_TYPES
+
 
 from lazyflow.utility.timer import Timer
 from tests.helpers import ShellGuiTestCaseBase
@@ -417,7 +419,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             op_object_export.OutputFormat.setValue('hdf5')
             op_object_export.OutputInternalPath.setValue('exported_data')
 
-            table_export_settings = {
+            initial_table_export_settings = {
                 "file type": 'csv',
                 "file path": self.table_csv_file,
                 "normalize": True,  # self.ui.normalizeLabeling.checkState() == Qt.Checked,
@@ -431,14 +433,14 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
                     'compression_opts': 9
                 }
             }
-
+            table_export_settings, export_features = self.configure_export_dialog(
+                gui, initial_table_export_settings)
             # here is some awkwardness of the csv output, which will alter the
             # table name: some_name.csv -> some_name_test_data_table.csv
             base, ext = os.path.splitext(self.table_csv_file)
             csv_out = f"{base}-test_data_table{ext}"
             TestObjectClassificationGui.table_csv_file_exported = csv_out
 
-            export_features = self.selected_feature_ids
             op_object_classification.configure_table_export_settings(
                 table_export_settings,
                 export_features)
@@ -455,10 +457,13 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             assert os.path.exists(self.output_file)
             logger.debug(f"Export time (data + csv): {timer.seconds()}")
 
-            table_export_settings.update({
+            initial_table_export_settings.update({
                 "file type": 'h5',
                 "file path": self.table_h5_file
             })
+
+            table_export_settings, export_features = self.configure_export_dialog(
+                gui, initial_table_export_settings)
 
             # here is some awkwardness of the h5 output, which will alter the
             # table name: some_name.h5 -> some_name_test_data.h5
@@ -539,6 +544,53 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         finally:
             reference_h5_file.close()
             generated_h5_file.close()
+
+    def configure_export_dialog(self, gui, initial_settings):
+        dimensions = gui.get_raw_shape()
+        feature_names = gui.get_feature_names()
+        op = gui.get_exporting_operator()
+        settings, selected_features = op.get_table_export_settings()
+
+        dialog = ExportObjectInfoDialog(
+            dimensions,
+            feature_names,
+            selected_features=selected_features,
+            title=gui.get_export_dialog_title(),
+            initial_settings=settings)
+
+        dialog.show()
+        QApplication.processEvents()
+        # do the interaction with the dialog
+        file_type = initial_settings['file type']
+        index = FILE_TYPES.index(file_type)
+        dialog.ui.fileFormat.setCurrentIndex(index)
+
+        file_path = initial_settings['file path']
+        dialog.ui.exportPath.setText(file_path)
+
+        if file_type == 'h5':
+            # TODO: what about normalize?
+            margin = initial_settings['margin']
+            dialog.ui.addMargin.setValue(margin)
+            include_raw = initial_settings['include raw']
+            dialog.ui.includeRaw.setChecked(include_raw)
+            compression_settings = initial_settings['compression']
+            compression_type = compression_settings['compression']
+            index = dialog.ui.compressionType.findText(compression_type)
+            dialog.ui.compressionType.setCurrentIndex(index)
+            shuffle = compression_settings['shuffle']
+            dialog.ui.enableShuffling.setChecked(shuffle)
+            compression_rate = compression_settings['compression_opts']
+            dialog.ui.gzipRate.setValue(compression_rate)
+
+        dialog.ui.selectAllFeatures.click()
+        QApplication.processEvents()
+
+        dialog.close()
+        QApplication.processEvents()
+        settings = dialog.settings()
+        selected_features = list(dialog.checked_features())
+        return settings, selected_features
 
 
 def compare_values(test_value, reference_value):
