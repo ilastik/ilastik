@@ -1,7 +1,7 @@
 # Contributing
 
 Thank you for considering contributing to ilastik, we really appreciate it.
-The following text equips you with knowledge that makes contribution to ilastik easier.
+The following text equips you with knowledge that makes contributing to ilastik easier.
 
 ## Setting up a development environment
 
@@ -51,8 +51,8 @@ You can confirm this, e.g. by
 git remote -v
 
 # Which should give you an output like
-origin  https://github.com/<your_githug_username>/ilastik (fetch)
-origin  https://github.com/<your_githug_username>/ilastik (push)
+origin  https://github.com/<your_github_username>/ilastik (fetch)
+origin  https://github.com/<your_github_username>/ilastik (push)
 ```
 
 ### Add upstream repositories from the ilastik organization
@@ -104,7 +104,7 @@ If you invoke this alias from the `ilastik-meta` repository, it will update all 
 
 ```bash
 # in ~/sources/ilastik-meta
-git renew-ilastik
+git sync-forks
 ```
 
 ### Installing packages via conda
