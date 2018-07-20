@@ -143,7 +143,13 @@ class ShellGuiTestCaseBase(object):
         finished = threading.Event()
         cls.shell.thunkEventHandler.post(teardown_impl)
         cls.shell.thunkEventHandler.post(finished.set)
-        finished.wait()
+        # Sometimes the GUI tests halt, which is an open problem
+        # in order not to block the CI we give here a super generous timeout
+        # (usually this takes no time at all) of 10 seconds
+        finished.wait(timeout=10.0)
+        if not finished.is_set():
+            # Raise an AssertionError if timeout occurred!
+            assert False, "Timeout hit while tearing down the shell!"
 
     @classmethod
     def exec_in_shell(cls, func):
