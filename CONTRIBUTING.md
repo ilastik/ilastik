@@ -193,6 +193,10 @@ and adapt to it while working on this particular file.
 
 For new files, we adhere to [the google python style guide](https://github.com/google/styleguide/blob/gh-pages/pyguide.md).
 
+__Note__: please refrain from including changes by some automatic tools on existing code in your PRs.
+We would like to preserve the history there.
+But please run those tools on the code you are contributing :)
+
 ## Tests
 
 After making changes, please confirm that nothing else got broken by running the tests:
