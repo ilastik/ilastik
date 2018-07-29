@@ -698,6 +698,13 @@ class ObjectClassificationGui(LabelingGui):
                     rawLayer = layer
                     break
 
+            # the flag window_leveling is used to determine if the contrast
+            # of the layer is adjustable
+            if isinstance(rawLayer, GrayscaleLayer):
+                rawLayer.window_leveling = True
+            else:
+                rawLayer.window_leveling = False
+
             def toggleTopToBottom():
                 index = self.layerstack.layerIndex( rawLayer )
                 self.layerstack.selectRow( index )

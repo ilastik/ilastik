@@ -51,6 +51,10 @@ from ilastik.applets.labeling.labelingImport import import_labeling_layer
 
 from volumina.api import \
     GrayscaleLayer, ColortableLayer, LazyflowSinkSource
+<<<<<<< HEAD
+=======
+
+>>>>>>> Add window-leveling to object classification, labeling and counting
 
 # Loggers
 logger = logging.getLogger(__name__)

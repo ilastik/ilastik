@@ -665,6 +665,13 @@ class CountingGui(LabelingGui):
             else:
                 inputLayer.window_leveling = False
 
+            # the flag window_leveling is used to determine if the contrast
+            # of the layer is adjustable
+            if isinstance(inputLayer, GrayscaleLayer):
+                inputLayer.window_leveling = True
+            else:
+                inputLayer.window_leveling = False
+
             def toggleTopToBottom():
                 index = self.layerstack.layerIndex( inputLayer )
                 self.layerstack.selectRow( index )
@@ -680,6 +687,12 @@ class CountingGui(LabelingGui):
                                                         toggleTopToBottom,
                                                         self.viewerControlWidget(),
                                                         inputLayer ) )
+
+            # The thresholding button can only be used if the data is displayed as grayscale.
+            if inputLayer.window_leveling:
+                self.labelingDrawerUi.thresToolButton.show()
+            else:
+                self.labelingDrawerUi.thresToolButton.hide()
 
             # The thresholding button can only be used if the data is displayed as grayscale.
             if inputLayer.window_leveling:
