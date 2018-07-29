@@ -54,6 +54,9 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter
 from ilastik.applets.base.appletSerializer import SerialListSlot
 
+from volumina.api import \
+    LazyflowSource, GrayscaleLayer, ColortableLayer, AlphaModulatedLayer, \
+    ClickableColortableLayer, LazyflowSinkSource
 
 # Loggers
 logger = logging.getLogger(__name__)
@@ -652,6 +655,13 @@ class CountingGui(LabelingGui):
             inputLayer.visible = True
             inputLayer.opacity = 1.0
 
+            # the flag window_leveling is used to determine if the contrast
+            # of the layer is adjustable
+            if isinstance(inputLayer, GrayscaleLayer):
+                inputLayer.window_leveling = True
+            else:
+                inputLayer.window_leveling = False
+
             def toggleTopToBottom():
                 index = self.layerstack.layerIndex( inputLayer )
                 self.layerstack.selectRow( index )
@@ -668,6 +678,12 @@ class CountingGui(LabelingGui):
                                                         self.viewerControlWidget(),
                                                         inputLayer ) )
             layers.append(inputLayer)
+
+            # The thresholding button can only be used if the data is displayed as grayscale.
+            if inputLayer.window_leveling:
+                self.labelingDrawerUi.thresToolButton.show()
+            else:
+                self.labelingDrawerUi.thresToolButton.hide()
 
         self.handleLabelSelectionChange()
         return layers
@@ -979,6 +995,7 @@ class CountingGui(LabelingGui):
         modeNames = { Tool.Navigation   : "navigation",
                       Tool.Paint        : "brushing",
                       Tool.Erase        : "brushing",
+                      Tool.Threshold    : "thresholding",
                       Tool.Box          : "navigation"
                     }
 
@@ -1022,6 +1039,16 @@ class CountingGui(LabelingGui):
             self.editor.brushingModel.setBrushSize(eraserSize)
             # update GUI
             self._gui_setErasing()
+            self.setCursor(Qt.ArrowCursor)
+
+        elif toolId == Tool.Threshold:
+            # If necessary, tell the brushing model to stop erasing
+            if self.editor.brushingModel.erasing:
+                self.editor.brushingModel.disableErasing()
+            # display a curser that is static while moving arrow
+            self.editor.brushingModel.setBrushSize(1)
+
+            self._gui_setThresholding()
             self.setCursor(Qt.ArrowCursor)
 
         elif toolId == Tool.Box:

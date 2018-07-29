@@ -694,6 +694,13 @@ class ObjectClassificationGui(LabelingGui):
             rawLayer = self.createStandardLayerFromSlot(rawSlot)
             rawLayer.name = "Raw data"
 
+            # the flag window_leveling is used to determine if the contrast
+            # of the layer is adjustable
+            if isinstance(rawLayer, GrayscaleLayer):
+                rawLayer.window_leveling = True
+            else:
+                rawLayer.window_leveling = False
+
             def toggleTopToBottom():
                 index = self.layerstack.layerIndex( rawLayer )
                 self.layerstack.selectRow( index )
@@ -711,6 +718,12 @@ class ObjectClassificationGui(LabelingGui):
                                                                 rawLayer ) )
 
             layers.append(rawLayer)
+
+            # The thresholding button can only be used if the data is displayed as grayscale.
+            if rawLayer.window_leveling:
+                self.labelingDrawerUi.thresToolButton.show()
+            else:
+                self.labelingDrawerUi.thresToolButton.hide()
 
         # since we start with existing labels, it makes sense to start
         # with the first one selected. This would make more sense in

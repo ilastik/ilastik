@@ -66,7 +66,8 @@ class Tool(object):
     Navigation = 0 # Arrow
     Paint      = 1
     Erase      = 2
-    Box        = 3
+    Threshold  = 3
+    Box        = 4
 
 #===============================================================================
 # Graphics Classes
@@ -173,7 +174,7 @@ class ResizeHandle(QGraphicsRectItem):
 
     def itemChange(self, change,value):
         """
-        Enforce that the hadle stays in the region of the scene
+        Enforce that the handle stays in the region of the scene
 
         """
 

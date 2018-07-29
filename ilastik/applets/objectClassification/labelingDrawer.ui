@@ -153,6 +153,13 @@
          </property>
         </widget>
        </item>
+	   <item>
+		<widget class="QToolButton" name="thresToolButton">
+		 <property name="text">
+		  <string>...</string>
+		 </property>
+		</widget>
+	   </item>
        <item>
         <spacer name="horizontalSpacer_3">
          <property name="orientation">

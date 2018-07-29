@@ -49,6 +49,9 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from ilastik.applets.labeling.labelingImport import import_labeling_layer
 
+from volumina.api import \
+    GrayscaleLayer, ColortableLayer, LazyflowSinkSource
+
 
 # Loggers
 logger = logging.getLogger(__name__)
@@ -515,7 +518,14 @@ class LabelingGui(LayerViewerGui):
             # update GUI 
             self._gui_setErasing()
         elif toolId == Tool.Threshold:
+            # If necessary, tell the brushing model to stop erasing
+            if self.editor.brushingModel.erasing:
+                self.editor.brushingModel.disableErasing()
+            # display a curser that is static while moving arrow
+            self.editor.brushingModel.setBrushSize(1)
+
             self._gui_setThresholding()
+            self.setCursor(Qt.ArrowCursor)
 
         self.editor.setInteractionMode( modeNames[toolId] )
         self._toolId = toolId
@@ -879,7 +889,20 @@ class LabelingGui(LayerViewerGui):
             layer.visible = True
             layer.opacity = 1.0
 
+            # the flag window_leveling is used to determine if the contrast
+            # of the layer is adjustable
+            if isinstance(layer, GrayscaleLayer):
+                layer.window_leveling = True
+            else:
+                layer.window_leveling = False
+
             layers.append(layer)
+
+            # The thresholding button can only be used if the data is displayed as grayscale.
+            if layer.window_leveling:
+                self.labelingDrawerUi.thresToolButton.show()
+            else:
+                self.labelingDrawerUi.thresToolButton.hide()
 
         return layers
 
