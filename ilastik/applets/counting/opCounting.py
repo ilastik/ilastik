@@ -423,7 +423,11 @@ class OpCounting( Operator ):
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
-    
+
+    def clearLabel(self, label_value):
+        for laneIndex in range(len(self.InputImages)):
+            self.getLane( laneIndex ).opLabelPipeline.opLabelArray.clearLabel(label_value)
+
     def _checkConstraints(self, laneIndex):
         """
         Ensure that all input images must be 2D and have the same number of channels
