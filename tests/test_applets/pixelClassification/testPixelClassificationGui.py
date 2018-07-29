@@ -194,7 +194,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Add one to the two existing ones:
             gui.currentGui()._labelControlUi.AddLabelButton.click()
 
-            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 3, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
+            gui.currentGui()._labelControlUi.AddLabelButton.click()
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 4, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
 
             # Select the brush
             gui.currentGui()._labelControlUi.paintToolButton.click()
@@ -256,6 +257,15 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Make sure that it's okay to delete a row even if the deleted label is selected.
             gui.currentGui()._labelControlUi.labelListModel.select(2)
             gui.currentGui()._labelControlUi.labelListModel.removeRow(2)
+            # Delete a unselected row
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(2)
+
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, \
+                "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
+
+            # Make sure, the remaining two labels cannot be deleted
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(0)
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(1)
 
 
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, \
