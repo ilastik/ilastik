@@ -193,7 +193,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             # Add label classes. we want three for the following tests. Two are initially added by the constructors.
             # Add one to the two existing ones:
             gui.currentGui()._labelControlUi.AddLabelButton.click()
-            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 3, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
+            gui.currentGui()._labelControlUi.AddLabelButton.click()
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 4, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
 
             # Select the brush
             gui.currentGui()._labelControlUi.paintToolButton.click()
@@ -246,15 +247,24 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             originalLabelColors = gui.currentGui()._colorTable16[1:4]
             originalLabelNames = [label.name for label in gui.currentGui().labelListData]
 
-            # We assume that there are three labels to start with (see previous test)
+            # We assume that there are three of the 4 labels drawn to start with (see previous test)
             labelData = opPix.LabelImages[0][:].wait()
             assert labelData.max() == 3, "Max label value was {}".format( labelData.max() )
-            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 3, \
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 4, \
                 "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
 
             # Make sure that it's okay to delete a row even if the deleted label is selected.
             gui.currentGui()._labelControlUi.labelListModel.select(2)
             gui.currentGui()._labelControlUi.labelListModel.removeRow(2)
+            # Delete a unselected row
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(2)
+
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, \
+                "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
+
+            # Make sure, the remaining two labels cannot be deleted
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(0)
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(1)
 
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, \
                 "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
@@ -420,9 +430,9 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             gui = pixClassApplet.getMultiLaneGui()
 
             # Clear all the labels
-            while len(gui.currentGui()._labelControlUi.labelListModel) > 0:
-                gui.currentGui()._labelControlUi.labelListModel.removeRow(0)
-                
+            while len(gui.currentGui()._labelControlUi.labelListModel) > 2:
+                gui.currentGui()._labelControlUi.labelListModel.removeRow(2)
+
             # Re-add all labels
             self.test_4_AddLabels()
             
@@ -442,7 +452,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # There should be a prediction layer for each label
             labelNames = [label.name for label in gui.currentGui().labelListData]
-            labelColors = gui.currentGui()._colorTable16[1:4]
+            labelColors = gui.currentGui()._colorTable16[1:5]
             for i, labelName in enumerate(labelNames):
                 try:
                     index = gui.currentGui().layerstack.findMatchingIndex(lambda layer: labelName in layer.name)
