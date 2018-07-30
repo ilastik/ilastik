@@ -406,6 +406,11 @@ class CarvingGui(LabelingGui):
         if confirm == QMessageBox.Ok:
             self.topLevelOperatorView.clearCurrentLabeling()
 
+    def _clearLabelListGui(self):
+        # Remove rows until we have the right number
+        while self._labelControlUi.labelListModel.rowCount() > 2:
+            self._removeLastLabel()
+
     def _onContextMenuExportMesh(self, _name):
         """
         Export a single object mesh to a user-specified filename.

@@ -900,6 +900,11 @@ class PixelClassificationGui(LabelingGui):
                 # Force dirty propagation even though the list id is unchanged.
                 slot.setValue(value, check_changed=False)
 
+    def _clearLabelListGui(self):
+        # Remove rows until we have the right number
+        while self._labelControlUi.labelListModel.rowCount() > 2:
+            self._removeLastLabel()
+
     def getNextLabelName(self):
         return self._getNext(self.topLevelOperatorView.LabelNames,
                              super(PixelClassificationGui, self).getNextLabelName)

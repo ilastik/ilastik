@@ -887,6 +887,11 @@ class CountingGui(LabelingGui):
             value.pop(start)
             slot.setValue(value)
 
+    def _clearLabelListGui(self):
+        # Remove rows until we have the right number
+        while self._labelControlUi.labelListModel.rowCount() > 2:
+            self._removeLastLabel()
+
     def getNextLabelName(self):
         return self._getNext(self.topLevelOperatorView.LabelNames,
                              super(CountingGui, self).getNextLabelName)
