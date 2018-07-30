@@ -82,6 +82,8 @@ class LabelListView(ListView):
             self.model.setData(modelIndex, (self._colorDialog.brushColor(),self._colorDialog.pmapColor ()))
     
     def tableViewCellClicked(self, modelIndex):
+        if modelIndex.row() in self.model.unremovable_rows:
+            return
         if (modelIndex.column() == self.model.ColumnID.Delete and
             not self.model.flags(modelIndex) == Qt.NoItemFlags):
             current_row = modelIndex.row()
