@@ -5,6 +5,9 @@ The following text equips you with knowledge that makes contributing to ilastik 
 
 ## Setting up a development environment
 
+For all our repositories, we follow the GitHub Flow.
+You can read about it in [this guide on github.com](https://guides.github.com/introduction/flow/).
+
 Contributing to ilastik is a little bit more involved than just cloning the repo and committing.
 The three main repositories; ilastik, lazyflow, and volumina are governed by ilastik-meta as submodules.
 Furthermore, in order to be able to run the code, all dependencies have to be installed.
@@ -110,7 +113,7 @@ git sync-forks
 ### Installing packages via conda
 
 ilastik depends on ~120 packages - some of which pure python packages but also compiled C++ ones.
-[Conda](TODO_MINICONDA_LINK) allows for isolated python environments and for distribution of pre-build binary packages and a lot of
+[Conda](https://conda.io/miniconda.html) allows for isolated python environments and for distribution of pre-build binary packages and a lot of
 our dependencies are already built by the community around conda.
 The remaining packages we maintain ourselves in our _ilastik-forge_ conda channel.
 
@@ -183,7 +186,11 @@ More information on conda, and building the ilastik packages yourself:
  * [conda build docs](https://conda.io/docs/commands/build/conda-build.html)
  * [On building ilastik packages with conda-build](https://github.com/ilastik/ilastik-publish-packages)
 
-## Coding style
+## Coding
+
+In order to follow the [GitHub Flow](https://guides.github.com/introduction/flow/), please always start from a current master (see the above section on how to sync your forks) and create a feature branch that you will push to your own fork.
+
+### Coding style
 
 Many users with different backgrounds have contributed to ilastik in the past.
 Code quality and coding styles can be quite different throughout the code-base.
@@ -193,11 +200,11 @@ and adapt to it while working on this particular file.
 
 For new files, we adhere to [the google python style guide](https://github.com/google/styleguide/blob/gh-pages/pyguide.md).
 
-__Note__: please refrain from including changes by some automatic tools on existing code in your PRs.
+__Note__: please refrain from including changes by some automatic tools on existing code in your pull requests.
 We would like to preserve the history there.
 But please run those tools on the code you are contributing :)
 
-## Tests
+### Tests
 
 After making changes, please confirm that nothing else got broken by running the tests:
 
@@ -221,3 +228,12 @@ After making changes, please confirm that nothing else got broken by running the
    ./run-each-until-fail.sh
    ```
    * please also run the ilastik tests (see above)
+
+
+### Pull requests
+
+In order to get your changes from the feature branch in your fork to the master branch of the upstream repository, you have to open a [pull request (PR)](https://help.github.com/articles/about-pull-requests/).
+You can open PRs as early as you want if you want feedback on preliminary work.
+In this case, please prefix the title with "[wip]" (for work in progress).
+Please try to give the PR a meaningful title and summarize the changes made in your PR, explain the motivation and reference relevant issues that this PR addresses in the message.
+At least one of the core developers will have a look and give you feedback.
