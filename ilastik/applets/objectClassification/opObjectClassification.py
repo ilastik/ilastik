@@ -607,7 +607,6 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         """
         import json
         import collections
-        from functools import partial
 
         logger.info("Exporting label information as json to: {}".format( file_path ))
 
@@ -636,8 +635,8 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
                 json_data_this_time = collections.OrderedDict()
                 bounding_boxes = collections.OrderedDict()
                 # Convert from numpy array to list (for json)
-                bounding_boxes["Coord<Minimum>"] = list(map( partial(map, int), min_coords ))
-                bounding_boxes["Coord<Maximum>"] = list(map( partial(map, int), max_coords ))
+                bounding_boxes["Coord<Minimum>"] = min_coords.tolist()
+                bounding_boxes["Coord<Maximum>"] = max_coords.tolist()
                 
                 json_data_this_time["bounding_boxes"] = bounding_boxes
                 json_data_this_time["labels"] = list(map(int, labels))
