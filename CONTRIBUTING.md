@@ -22,7 +22,7 @@ You should begin by forking the three main ilastik repositories, that make up th
 * https://github.com/ilastik/lazyflow
 * https://github.com/ilastik/volumina
 
-### Clone ilastik-meta
+#### Clone ilastik-meta
 
 Having done that, you should clone our `ilastik-meta` repository with:
 
@@ -31,7 +31,7 @@ Having done that, you should clone our `ilastik-meta` repository with:
 git clone https://github.com/ilastik/ilastik-meta
 ```
 
-### Initialize the source tree with your own forks
+#### Initialize the source tree with your own forks
 
 Examining the created folder, e.g. `~/sources/ilastik-meta`, you can find the `.gitmodules` file.
 Check out a new branch in ilastik-meta, e.g. `git checkout -b my-forks` and edit the `.gitmodules`
@@ -58,7 +58,7 @@ origin  https://github.com/<your_github_username>/ilastik (fetch)
 origin  https://github.com/<your_github_username>/ilastik (push)
 ```
 
-### Add upstream repositories from the ilastik organization
+#### Add upstream repositories from the ilastik organization
 
 In order to stay up to date with the overall ilastik developments, you need to synchronize your
 forks with the upstream repositories.
@@ -110,7 +110,7 @@ If you invoke this alias from the `ilastik-meta` repository, it will update all 
 git sync-forks
 ```
 
-### Installing packages via conda
+### Installing dependencies via conda
 
 ilastik depends on ~120 packages - some of which pure python packages but also compiled C++ ones.
 [Conda](https://conda.io/miniconda.html) allows for isolated python environments and for distribution of pre-build binary packages and a lot of
@@ -135,6 +135,10 @@ bash Miniconda3-latest-MacOSX-x86_64.sh
 source ~/.bash_rc  # Linux
 source ~/.bash_profile  # MAC
 ```
+
+**Note:** the following steps guide you through the manual process of creating a development environment.
+For convenience, there is a script that achieves the same effect located in `ilastik-meta/ilastik/scripts`.
+You can create a development environment (given miniconda is installed) by invoking `./create-devenv.sh idev ../../` from within `ilastik-meta/ilastik/scripts`.
 
 Create the ilastik development environment (we assume that the dev-environment will have the name _idev_, but you can, of course choose a name to your liking):
 ```bash
