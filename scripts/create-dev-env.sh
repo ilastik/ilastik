@@ -69,19 +69,21 @@ echo "creating environment ${ENV_NAME}"
 echo "Using the following channels: ${CHANNELS}"
 echo "installing the following packages ${PACKAGES}"
 
-conda create -y -n "${ENV_NAME}" "${CHANNELS}" "${PACKAGES}"
+eval "conda create -y -n ${ENV_NAME} ${CHANNELS} ${PACKAGES}"
 
 
 if [ "${ILASTIK_META_SOURCE}" != "" ]
 then
+    ILASTIK_META_SOURCE=$(readlink -m "${ILASTIK_META_SOURCE}")
     echo "linking to existing sources in ${ILASTIK_META_SOURCE}"
     DEV_PREFIX=${CONDA_ROOT}/envs/${ENV_NAME}
-    conda remove -y -n "${ENV_NAME}" ilastik-meta
+    eval "conda remove -y -n ${ENV_NAME} ilastik-meta"
     # Re-install ilastik-meta.pth
     cat > "${DEV_PREFIX}"/lib/python3.6/site-packages/ilastik-meta.pth << EOF
 ../../../ilastik-meta/lazyflow
 ../../../ilastik-meta/volumina
 ../../../ilastik-meta/ilastik
 EOF
-    cd "${DEV_PREFIX}" && ln -s "${ILASTIK_META_SOURCE}"
+
+    cd "${DEV_PREFIX}" && ln -s "${ILASTIK_META_SOURCE}" ilastik-meta
 fi
