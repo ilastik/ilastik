@@ -3,6 +3,19 @@
 Thank you for considering contributing to ilastik, we really appreciate it.
 The following text equips you with knowledge that makes contributing to ilastik easier.
 
+## Overview
+
+* [Setting up a development environment](#setting-up-a-development-environment)
+  * [Fork the relevant repositories](#fork-the-relevant-repositories)
+  * [Clone ilastik-meta](#clone-ilastik-meta)
+  * [Initialize the source tree own forks](#initialize-the-source-tree-with-your-own-forks)
+  * [Add upstream repositories](#add-upstream-repositories-from-the-ilastik-organization)
+  * [Install dependencies via conda](#installing-dependencies-via-conda)
+* [Coding](#coding)
+  * [Coding style](#coding-style)
+  * [Tests](#tests)
+  * [Pull requests](#pull-requests)
+
 ## Setting up a development environment
 
 For all our repositories, we follow the GitHub Flow.
