@@ -631,7 +631,7 @@ class LabelingGui(LayerViewerGui):
                    )
         label.nameChanged.connect(self._updateLabelShortcuts)
         label.nameChanged.connect(self.onLabelNameChanged)
-        label.colorChanged.connect(self.onLabelColorChanged)
+        label.colorChanged.connect(self._onLabelColorChanged)
         label.pmapColorChanged.connect(self.onPmapColorChanged)
 
         newRow = self._labelControlUi.labelListModel.rowCount()
@@ -722,12 +722,37 @@ class LabelingGui(LayerViewerGui):
         """
         pass
 
+    def _onLabelColorChanged(self):
+        """
+        Precondition len(labelLayer.colorTable) > len(self.labelListData)
+        """
+        oldColors = self.topLevelOperatorView.LabelColors.value
+        newColors = [l.brushColor() for l in self.labelListData]
+        labelLayer = self._getLabelLayer()
+
+        diff = diff_list(oldColors, newColors)
+        if not (labelLayer and diff):
+            # Avoiding unnecessary redraw if colors are the same
+            return
+
+        colorTable = labelLayer.colorTable
+        assert len(colorTable) > len(newColors)
+
+        for idx in diff:
+            if idx < len(newColors):
+                colorTable[idx + 1] = newColors[idx].rgba()
+
+        labelLayer.colorTable = colorTable
+
+        self.onLabelColorChanged()
+
     def onLabelColorChanged(self):
         """
         Subclasses can override this to respond to changes in the label colors.
         This class gets updated before, in the _updateLabelList
         """
-    
+        pass
+
     def onPmapColorChanged(self):
         """
         Subclasses can override this to respond to changes in a label associated probability color.
@@ -903,3 +928,20 @@ class LabelingGui(LayerViewerGui):
         self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
 
         self._forceAtLeastTwoLabels = enabled
+
+
+def diff_list(old, new):
+    """
+    :param list old:
+    :param list new:
+    :return: indicies of changed elements
+    """
+    fill = object()
+    indicies = []
+
+    for idx, pair in enumerate(itertools.zip_longest(old, new, fillvalue=fill)):
+        old_el, new_el = pair
+        if old_el != new_el:
+            indicies.append(idx)
+
+    return indicies
