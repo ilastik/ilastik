@@ -23,12 +23,15 @@ from __future__ import division
 from builtins import range
 from past.utils import old_div
 import sys
+import os
 import nose
 import threading
 import traceback
 import atexit
 import platform
 from functools import partial
+
+from nose.plugins.errorclass import ErrorClass, ErrorClassPlugin
 
 from PyQt5.QtCore import Qt, QEvent, QPoint, QTimer
 from PyQt5.QtGui import QPixmap, QMouseEvent
@@ -47,6 +50,38 @@ def quitApp():
     if qApp is not None:
         qApp.quit()
 
+
+class ShutdownTimeout(Exception):
+    """
+    Should only be raised in ShellGuiTestCaseBase.teardownClass to signal that
+    ilastik didn't close in time.
+
+    See: https://github.com/ilastik/ilastik/pull/1801
+    """
+    pass
+
+
+class ShutdownTimeoutPlugin(ErrorClassPlugin):
+    """Tiny nose plugin to inform about shutdown timeouts during teardown
+
+    we don't consider time-outs during ShellGuiTestCaseBase.teardownClass an
+    error. So this plugin just marks the test with the timeout.
+    """
+    enabled = True
+    name = 'ShutdownTimeoutPlugin'
+    timeout = ErrorClass(ShutdownTimeout,
+                         label='TIMEOUT',
+                         isfailure=False)
+
+    def options(self, parser, env=os.environ):
+        """Mandatory interface method"""
+        pass
+
+    def configure(self, options, conf):
+        """Mandatory interface method"""
+        pass
+
+
 def run_shell_nosetest(filename):
     """
     Launch nosetests from a separate thread, and pause this thread while the test runs the GUI in it.
@@ -57,7 +92,7 @@ def run_shell_nosetest(filename):
     def run_nose():
         sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
         sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-        nose.run(defaultTest=filename)
+        nose.run(defaultTest=filename, addplugins=[ShutdownTimeoutPlugin()])
 
     noseThread = threading.Thread(target=run_nose)
     noseThread.start()
@@ -148,8 +183,7 @@ class ShellGuiTestCaseBase(object):
         # (usually this takes no time at all) of 10 seconds
         finished.wait(timeout=10.0)
         if not finished.is_set():
-            # Raise an AssertionError if timeout occurred!
-            assert False, "Timeout hit while tearing down the shell!"
+            raise ShutdownTimeout()
 
     @classmethod
     def exec_in_shell(cls, func):
