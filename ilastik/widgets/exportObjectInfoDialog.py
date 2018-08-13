@@ -132,7 +132,7 @@ class ExportObjectInfoDialog(QDialog):
                 "normalize": True,  # self.ui.normalizeLabeling.checkState() == Qt.Checked,
                 "margin": self.ui.addMargin.value(),
                 "compression": self._compression_settings(),
-                "include raw": self.ui.includeRaw.checkState(),
+                "include raw": self.ui.includeRaw.checkState() == Qt.Checked,
             })
         return s
 
