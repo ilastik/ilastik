@@ -56,11 +56,21 @@ parser.add_argument(
     '--hbp', help='Enable HBP-specific functionality.',
     action='store_true', default=False)
 
+
 def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
     """
     init_logging: Skip logging config initialization by setting this to False.
                   (Useful when opening multiple projects in a Python script.)
     """
+    if parsed_args.headless:
+        # If any applet imports the GUI in headless mode, that's a mistake.
+        # To help developers catch such mistakes, we replace PyQt with a dummy
+        #  module, so we'll see import errors.
+        import ilastik
+        dummy_module_dir = os.path.join(
+            os.path.split(ilastik.__file__)[0], "headless_dummy_modules")
+        sys.path.insert(0, dummy_module_dir)
+
     this_path = os.path.dirname(__file__)
     ilastik_dir = os.path.abspath(
         os.path.join(this_path, "..%s.." % os.path.sep))
@@ -116,14 +126,6 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
 
     # Headless launch
     if parsed_args.headless:
-        # If any applet imports the GUI in headless mode, that's a mistake.
-        # To help developers catch such mistakes, we replace PyQt with a dummy
-        #  module, so we'll see import errors.
-        import ilastik
-        dummy_module_dir = os.path.join(os.path.split(ilastik.__file__)[
-                                        0], "headless_dummy_modules")
-        sys.path.insert(0, dummy_module_dir)
-
         # Run pre-init
         for f in preinit_funcs:
             f()
