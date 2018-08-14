@@ -319,8 +319,9 @@ class OpObjectExtraction(Operator):
     ObjectCenterImage = OutputSlot()
 
     # the computed features.
-    # nested dictionary with format:
-    # dict[plugin_name][feature_name] = feature_value
+    # dict[time_slice][plugin_name][feature_name] = feature_value
+    # by requesting from this slot with indices, the corresponding indices will be added to the dict
+    # -> RegionFeatures[0].wait() -> {0: {...}}
     RegionFeatures = OutputSlot(stype=Opaque, rtype=List)
 
     BlockwiseRegionFeatures = OutputSlot() # For compatibility with tracking workflow, the RegionFeatures output

@@ -55,6 +55,7 @@ logger = logging.getLogger(__name__)
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.shell.gui.iconMgr import ilastikIcons
 
 import volumina.colortables as colortables
 from volumina.api import \
@@ -170,10 +171,10 @@ class ObjectClassificationGui(LabelingGui):
             self.handleSubsetFeaturesClicked)
         self.labelingDrawerUi.labelAssistButton.clicked.connect(
             self.handleLabelAssistClicked)
-        self.labelingDrawerUi.checkInteractive.toggled.connect(
-            self.handleInteractiveModeClicked)
-        self.labelingDrawerUi.checkShowPredictions.toggled.connect(
-            self.handleShowPredictionsClicked)
+        self.labelingDrawerUi.liveUpdateButton.setEnabled(False)
+        self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
+        self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.handleInteractiveModeClicked)
 
         #select all the features in the beginning
         cfn = None
@@ -258,7 +259,7 @@ class ObjectClassificationGui(LabelingGui):
     def interactiveMode(self, val):
         logger.debug("setting interactive mode to '%r'" % val)
         self._interactiveMode = val
-        self.labelingDrawerUi.checkInteractive.setChecked(val)
+        self.labelingDrawerUi.liveUpdateButton.setChecked(val)
         if val:
             self.showPredictions = True
         self.labelMode = not val
@@ -266,7 +267,7 @@ class ObjectClassificationGui(LabelingGui):
 
     @pyqtSlot()
     def handleInteractiveModeClicked(self):
-        self.interactiveMode = self.labelingDrawerUi.checkInteractive.isChecked()
+        self.interactiveMode = self.labelingDrawerUi.liveUpdateButton.isChecked()
 
     @property
     def showPredictions(self):
@@ -275,7 +276,6 @@ class ObjectClassificationGui(LabelingGui):
     @showPredictions.setter
     def showPredictions(self, val):
         self._showPredictions = val
-        self.labelingDrawerUi.checkShowPredictions.setChecked(val)
         for layer in self.layerstack:
             if "Prediction" in layer.name:
                 layer.visible = val
@@ -399,9 +399,8 @@ class ObjectClassificationGui(LabelingGui):
             self.showPredictions = False
 
         self.labelingDrawerUi.subsetFeaturesButton.setEnabled(feats_enabled)
-        self.labelingDrawerUi.checkInteractive.setEnabled(predict_enabled)
-        self.labelingDrawerUi.checkShowPredictions.setEnabled(predict_enabled)
         self.labelingDrawerUi.AddLabelButton.setEnabled(labels_enabled)
+        self.labelingDrawerUi.liveUpdateButton.setEnabled(predict_enabled)
         self.labelingDrawerUi.labelListView.allowDelete = ( True and self.op.AllowDeleteLabels([]).wait()[0] )
         self.allowDeleteLastLabelOnly(False or self.op.AllowDeleteLastLabelOnly([]).wait()[0])
 
@@ -604,7 +603,6 @@ class ObjectClassificationGui(LabelingGui):
 
             predictLayer.name = self.PREDICTION_LAYER_NAME
             predictLayer.ref_object = None
-            predictLayer.visible = self.labelingDrawerUi.checkInteractive.isChecked()
             predictLayer.opacity = 0.5
             predictLayer.setToolTip("Classification results, assigning a label to each object")
             

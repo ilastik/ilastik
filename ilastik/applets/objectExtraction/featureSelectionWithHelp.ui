@@ -102,6 +102,13 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
+      <widget class="QPushButton" name="allButLocationButton">
+       <property name="text">
+        <string>All excl. Location</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="allButton">
        <property name="text">
         <string>All</string>

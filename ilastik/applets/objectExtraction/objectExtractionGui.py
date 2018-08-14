@@ -29,7 +29,7 @@ from PyQt5.QtCore import Qt, QEvent
 from lazyflow.rtype import SubRegion
 import os
 import sys
-from collections import defaultdict
+from collections import defaultdict, Counter
 from copy import deepcopy
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -73,7 +73,6 @@ class FeatureSelectionDialog(QDialog):
         """
         QDialog.__init__(self, parent)
         self.featureDict = featureDict
-        self.displayNamesDict = {}
         if selectedFeatures is None or len(selectedFeatures) == 0:
             selectedFeatures = defaultdict(list)
         self.selectedFeatures = selectedFeatures
@@ -85,6 +84,7 @@ class FeatureSelectionDialog(QDialog):
         self.ui.buttonBox.rejected.connect(self.reject)
 
         self.ui.allButton.pressed.connect(self.handleAll)
+        self.ui.allButLocationButton.pressed.connect(self.handleAllButLocation)
         self.ui.noneButton.pressed.connect(self.handleNone)
 
         # Must intercept events from the viewport, since the TreeWidget apparently
@@ -177,6 +177,7 @@ class FeatureSelectionDialog(QDialog):
                 parameters = features[name]
                 if "group" in parameters:
                     item = QTreeWidgetItem(gr_items[parameters["group"]])
+                    item.group_name = parameters["group"]
                 else:
                     item = QTreeWidgetItem(parent)
                 if 'displaytext' in parameters:
@@ -184,8 +185,8 @@ class FeatureSelectionDialog(QDialog):
                 else:
                     itemtext = name
                 item.setText(0, itemtext)
+                item.feature_id = name
 
-                self.displayNamesDict[itemtext] = name
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
                 if 'tooltip' in parameters:
                     item.setToolTip(0, parameters['tooltip'])
@@ -209,14 +210,19 @@ class FeatureSelectionDialog(QDialog):
         #self.ui.treeWidget.resizeColumnToContents(1)
 
     @staticmethod
-    def recursiveCheckChildren(twitem, val):
+    def recursiveCheckChildren(twitem, val, location=True):
         # check or uncheck all children of an item at the lowest level of the hierarchy
         for child_id in range(twitem.childCount()):
             child = twitem.child(child_id)
-            if child.childCount()>0:
-                FeatureSelectionDialog.recursiveCheckChildren(child, val)
+            if child.childCount() > 0:
+                FeatureSelectionDialog.recursiveCheckChildren(child, val, location)
             else:
-                child.setCheckState(0, val)
+                if location:
+                    child.setCheckState(0, val)
+                else:
+                    if getattr(child, 'group_name', ''):
+                        if child.group_name != 'Location':
+                            child.setCheckState(0, val)
 
     def updateTree(self, item, col):
         # Clicking on the CheckBox OR Text of a QTreeWidgetItem should change the check.
@@ -299,11 +305,10 @@ class FeatureSelectionDialog(QDialog):
             pluginItem = item.parent().parent()
 
         pluginName=str(pluginItem.text(0))
-        itemName=str(item.text(0))
+        feature_id = item.feature_id
 
-        plugin_feature_name = self.displayNamesDict[itemName]
         try:
-            self.ui.textBrowser.setText(self.featureDict[pluginName][plugin_feature_name]["detailtext"])
+            self.ui.textBrowser.setText(self.featureDict[pluginName][feature_id]["detailtext"])
         except KeyError:
             self.ui.textBrowser.setText("Sorry, no detailed description is available for this feature")
 
@@ -342,47 +347,57 @@ class FeatureSelectionDialog(QDialog):
                 child = plug.child(child_id)
                 if child.childCount()>0:
                     #it's a group, take its features
-                    for feature_id in range(child.childCount()):
-                        feature_item = child.child(feature_id)
+                    for child_id in range(child.childCount()):
+                        feature_item = child.child(child_id)
                         if feature_item.checkState(0) == Qt.Checked:
-                            featnames.append(str(feature_item.text(0)))
+                            featnames.append(feature_item.feature_id)
                 else:
                     if child.checkState(0) == Qt.Checked:
-                        featnames.append(str(child.text(0)))
+                        featnames.append(child.feature_id)
 
             if len(featnames) > 0:
                 # we are building the dictionary again, have to transfer all the properties
                 features = {}
-                for ff in featnames:
+                for feature_id in featnames:
                     #do the reverse lookup from displayed names to names in the plugin
-                    plugin_feature_name = self.displayNamesDict[ff]
-                    features[plugin_feature_name] = {}
+                    features[feature_id] = {}
                     # properties other than margin have not changed, copy them over
-                    for prop_name, prop_value in self.featureDict[plugin_name][plugin_feature_name].items():
-                        features[plugin_feature_name][prop_name] = prop_value
+                    for prop_name, prop_value in self.featureDict[plugin_name][feature_id].items():
+                        features[feature_id][prop_name] = prop_value
                     # update the margin
-                    if 'margin' in self.featureDict[plugin_name][plugin_feature_name]:
-                        features[plugin_feature_name]['margin'] = margin
+                    if 'margin' in self.featureDict[plugin_name][feature_id]:
+                        features[feature_id]['margin'] = margin
 
                 selectedFeatures[plugin_name] = features
         self.selectedFeatures = selectedFeatures
 
-    def _setAll(self, val):
+    def _setAll(self, val, location=True):
+        """Alter state all checkboxes
+
+        Args:
+            val (Qt.CheckState): {Qt.Checked, Qt.Unchecked}
+            location (bool, optional): if set to True, will also visit items
+              from the location group. If false, these will not be changed.
+        """
         root = self.ui.treeWidget.invisibleRootItem()
         for plugin_id in range(root.childCount()):
             plugin = root.child(plugin_id)
             plugin.setCheckState(0, val)
-            FeatureSelectionDialog.recursiveCheckChildren(plugin, val)
+            FeatureSelectionDialog.recursiveCheckChildren(plugin, val, location)
 
-            pluginName=str(plugin.text(0))
+            pluginName = str(plugin.text(0))
             if val == Qt.Checked:
-                self.countChecked[pluginName]=self.countAll[pluginName]
+                self.countChecked[pluginName] = self.countAll[pluginName]
             else:
-                self.countChecked[pluginName]=0
+                self.countChecked[pluginName] = 0
             self.updateToolTip(plugin)
 
     def handleAll(self):
         self._setAll(Qt.Checked)
+
+    def handleAllButLocation(self):
+        self._setAll(Qt.Unchecked)
+        self._setAll(Qt.Checked, location=False)
 
     def handleNone(self):
         self._setAll(Qt.Unchecked)
@@ -505,52 +520,63 @@ class ObjectExtractionGui(LayerViewerGui):
         self.applet = self.topLevelOperatorView.parent.parent.objectExtractionApplet
 
     def _selectFeaturesButtonPressed(self):
-        featureDict = {}
         mainOperator = self.topLevelOperatorView
         if not mainOperator.RawImage.ready():
-            mexBox=QMessageBox()
+            mexBox = QMessageBox()
             mexBox.setText("Please add the raw data before selecting features")
             mexBox.exec_()
             return
-        
+
         if not mainOperator.BinaryImage.ready():
-            mexBox=QMessageBox()
+            mexBox = QMessageBox()
             mexBox.setText("Please add binary (segmentation) data before selecting features ")
             mexBox.exec_()
             return
-        
+
         slot = mainOperator.Features
         if slot.ready():
             selectedFeatures = mainOperator.Features([]).wait()
         else:
             selectedFeatures = None
 
+        featureDict, ndim = self._populate_feature_dict(mainOperator)
+        dlg = FeatureSelectionDialog(featureDict=featureDict,
+                                     selectedFeatures=selectedFeatures,
+                                     ndim=ndim)
+        dlg.exec_()
+
+        if dlg.result() == QDialog.Accepted:
+            mainOperator.Features.setValue(dlg.selectedFeatures)
+            self._calculateFeatures()
+
+    def _populate_feature_dict(self, mainOperator):
+        featureDict = {}
         plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
         taggedShape = mainOperator.RawImage.meta.getTaggedShape()
         fakeimgshp = [taggedShape['x'], taggedShape['y']]
         fakelabelsshp = [taggedShape['x'], taggedShape['y']]
         ndim = 3
-        if 'z' in taggedShape and taggedShape['z']>1:
+        if 'z' in taggedShape and taggedShape['z'] > 1:
             fakeimgshp.append(taggedShape['z'])
             fakelabelsshp.append(taggedShape['z'])
             ndim = 3
         else:
             ndim = 2
-        if 'c' in taggedShape and taggedShape['c']>1:
+        if 'c' in taggedShape and taggedShape['c'] > 1:
             fakeimgshp.append(taggedShape['c'])
-        
+
         fakeimg = numpy.empty(fakeimgshp, dtype=numpy.float32)
         fakelabels = numpy.empty(fakelabelsshp, dtype=numpy.uint32)
-        
-        if ndim==3:
+
+        if ndim == 3:
             fakelabels = vigra.taggedView(fakelabels, 'xyz')
-            if len(fakeimgshp)==4:
+            if len(fakeimgshp) == 4:
                 fakeimg = vigra.taggedView(fakeimg, 'xyzc')
             else:
                 fakeimg = vigra.taggedView(fakeimg, 'xyz')
-        if ndim==2:
+        if ndim == 2:
             fakelabels = vigra.taggedView(fakelabels, 'xy')
-            if len(fakeimgshp)==3:
+            if len(fakeimgshp) == 3:
                 fakeimg = vigra.taggedView(fakeimg, 'xyc')
             else:
                 fakeimg = vigra.taggedView(fakeimg, 'xy')
@@ -562,23 +588,17 @@ class ObjectExtractionGui(LayerViewerGui):
 
         # Make sure no plugins use the same feature names.
         # (Currently, our feature export implementation doesn't support repeated column names.)
-        all_feature_names = chain(*[list(plugin_dict.keys()) for plugin_dict in list(featureDict.values())])
-        feature_set = set()
-        for name in all_feature_names:
-            assert name not in feature_set, \
-                "Feature name '{}' is used by more than one feature plugin.\n"\
-                "All plugins must produce uniquely named features.\n"\
-                "The plugins and feature names we found are:\n{}"\
-                .format(name, featureDict)
-            feature_set.add(name)
-
-        dlg = FeatureSelectionDialog(featureDict=featureDict,
-                                     selectedFeatures=selectedFeatures, ndim=ndim)
-        dlg.exec_()
-
-        if dlg.result() == QDialog.Accepted:
-            mainOperator.Features.setValue(dlg.selectedFeatures)
-            self._calculateFeatures()
+        all_feature_names = chain(
+            *[list(plugin_dict.keys()) for plugin_dict in list(featureDict.values())])
+        feature_set = Counter(all_feature_names)
+        # remove all elements with a count of 1
+        feature_set = feature_set - Counter(feature_set.keys())
+        if feature_set:
+            offending_feature_names = feature_set.keys()
+            raise ValueError(
+                'Feature names used in multiple plugins. '
+                f'Offending feature names: {list(offending_feature_names)}')
+        return featureDict, ndim
 
     def _calculateFeatures(self, interactive=True):
         mainOperator = self.topLevelOperatorView

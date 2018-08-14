@@ -22,13 +22,19 @@ class ExportingOperator(object):
 
     def export_object_data(self, lane_index, show_gui=False, filename_suffix=""):
         """
-        Initialize progress displays and start the actual export in a new thread using the lazyflow.request framework
-        :param settings: the settings from the GUI export dialog
-        :type settings: dict
-        :param selected_features: the features to export from the GUI dialog
-        :type selected_features: list
-        :param gui: the Progress bar and callbacks for finish/fail/cancel see ExportingGui.show_export_dialog
-        :type gui: dict
+        Initialize progress displays and start the actual export in a new thread
+        using the lazyflow.request framework
+
+        Args:
+            lane_index (int): Index of the lane to be exported
+            show_gui (bool, optional): boolean to determine whether or not to
+              show gui
+            filename_suffix (str, optional): If provided, appended to the
+              filename (before the extension)
+
+        Returns:
+            lazyflow.request.Request: Request object from which the result can
+              be obtained.
         """
         settings, selected_features = self.get_table_export_settings()
 
@@ -151,12 +157,13 @@ class ExportingGui(object):
         
         op = self.get_exporting_operator()
         settings, selected_features = op.get_table_export_settings()
-        
-        filename = None
-        if settings is not None and 'file path' in settings:
-            filename = settings['file path']
 
-        dialog = ExportObjectInfoDialog(dimensions, feature_names, selected_features=selected_features, title=self.get_export_dialog_title(), filename=filename)
+        dialog = ExportObjectInfoDialog(
+            dimensions,
+            feature_names,
+            selected_features=selected_features,
+            title=self.get_export_dialog_title(),
+            initial_settings=settings)
         if not dialog.exec_():
             return (None, None)
 

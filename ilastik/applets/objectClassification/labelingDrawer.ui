@@ -94,12 +94,9 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_3">
        <item>
-        <widget class="QCheckBox" name="checkInteractive">
-         <property name="enabled">
-          <bool>true</bool>
-         </property>
+        <widget class="QToolButton" name="liveUpdateButton">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
@@ -107,15 +104,11 @@
          <property name="text">
           <string>Live Update</string>
          </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="checkShowPredictions">
-         <property name="text">
-          <string>Show Predictions</string>
+         <property name="checkable">
+          <bool>true</bool>
          </property>
-         <property name="tristate">
-          <bool>false</bool>
+         <property name="toolButtonStyle">
+          <enum>Qt::ToolButtonTextBesideIcon</enum>
          </property>
         </widget>
        </item>
