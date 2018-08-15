@@ -114,20 +114,24 @@ class DataExportApplet( Applet ):
         arg_parser = starting_parser or argparse.ArgumentParser()
         arg_parser.add_argument(
             '--cutout_subregion',
-            help='Subregion to export (start,stop), e.g. [(0,0,0,0,0), (1,100,200,20,3)]',
+            help=(
+                'Subregion to export (start,stop), e.g. [(0,0,0,0,0),(1,100,200,20,3)]. '
+                'Note, that the subregion has to be specified in 5D with the axisorder '
+                '(t,c,z,y,x).'
+            ),
             required=False,
             action=ParseListFromString,
         )
 
         arg_parser.add_argument(
             '--pipeline_result_drange',
-            help='Pipeline result data range (min,max) BEFORE normalization, e.g. (0.0, 1.0)',
+            help='Pipeline result data range (min,max) BEFORE normalization, e.g. (0.0,1.0)',
             required=False,
             action=ParseListFromString,
         )
         arg_parser.add_argument(
             '--export_drange',
-            help='Exported data range (min,max) AFTER normalization, e.g. (0, 255)',
+            help='Exported data range (min,max) AFTER normalization, e.g. (0,255)',
             required=False,
             action=ParseListFromString,
         )
