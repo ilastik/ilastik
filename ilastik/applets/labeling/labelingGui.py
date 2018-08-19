@@ -52,7 +52,6 @@ from ilastik.applets.labeling.labelingImport import import_labeling_layer
 from volumina.api import \
     GrayscaleLayer, ColortableLayer, LazyflowSinkSource
 
-
 # Loggers
 logger = logging.getLogger(__name__)
 
@@ -170,10 +169,7 @@ class LabelingGui(LayerViewerGui):
 
         self._labelingSlots.labelNames.notifyDirty( bind(self._updateLabelList) )
         self.__cleanup_fns.append( partial( self._labelingSlots.labelNames.unregisterDirty, bind(self._updateLabelList) ) )
-
-
         self._colorTable16 = colortables.default16_new
-
         self._programmaticallyRemovingLabels = False
 
         if drawerUiPath is None:
@@ -289,7 +285,7 @@ class LabelingGui(LayerViewerGui):
             self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
                                  Tool.Paint      : _labelControlUi.paintToolButton,
                                  Tool.Erase      : _labelControlUi.eraserToolButton}
-            
+
         self.brushSizes = [ 1, 3, 5, 7, 11, 23, 31, 61 ]
 
         for size in self.brushSizes:
@@ -385,14 +381,14 @@ class LabelingGui(LayerViewerGui):
                                            self.labelingDrawerUi.thresToolButton.click,
                                            self.labelingDrawerUi.thresToolButton,
                                            self.labelingDrawerUi.thresToolButton ) )
-        
+
 
         self._labelShortcuts = []
 
     def _tweakBrushSize(self, increase):
         """
         Increment or decrement the paint brush size or eraser size (depending on which is currently selected).
-        
+
         increase: Bool. If True, increment.  Otherwise, decrement.
         """
         if self._toolId == Tool.Erase:
@@ -421,7 +417,7 @@ class LabelingGui(LayerViewerGui):
         # Add any shortcuts we don't have yet.
         for i in range(numShortcuts,numRows):
             toolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, i)
-            action_info = ActionInfo( "Labeling", 
+            action_info = ActionInfo( "Labeling",
                                       "Select Label {}".format(i+1),
                                       "Select Label {}".format(i+1),
                                       partial(self._labelControlUi.labelListView.selectRow, i),
@@ -492,12 +488,12 @@ class LabelingGui(LayerViewerGui):
 
         e = self._labelControlUi.labelListModel.rowCount() > 0
         self._gui_enableLabeling(e)
-        
+
         # Update the applet bar caption
         if toolId == Tool.Navigation:
-            # update GUI 
+            # update GUI
             self._gui_setNavigation()
-            
+
         elif toolId == Tool.Paint:
             # If necessary, tell the brushing model to stop erasing
             if self.editor.brushingModel.erasing:
@@ -505,7 +501,7 @@ class LabelingGui(LayerViewerGui):
             # Set the brushing size
             brushSize = self.brushSizes[self.paintBrushSizeIndex]
             self.editor.brushingModel.setBrushSize(brushSize)
-            # update GUI 
+            # update GUI
             self._gui_setBrushing()
 
         elif toolId == Tool.Erase:
@@ -515,7 +511,7 @@ class LabelingGui(LayerViewerGui):
             # Set the brushing size
             eraserSize = self.brushSizes[self.eraserSizeIndex]
             self.editor.brushingModel.setBrushSize(eraserSize)
-            # update GUI 
+            # update GUI
             self._gui_setErasing()
         elif toolId == Tool.Threshold:
             # If necessary, tell the brushing model to stop erasing
@@ -523,13 +519,12 @@ class LabelingGui(LayerViewerGui):
                 self.editor.brushingModel.disableErasing()
             # display a curser that is static while moving arrow
             self.editor.brushingModel.setBrushSize(1)
-
             self._gui_setThresholding()
             self.setCursor(Qt.ArrowCursor)
 
         self.editor.setInteractionMode( modeNames[toolId] )
         self._toolId = toolId
-        
+
     def _gui_setThresholding(self):
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
@@ -618,20 +613,20 @@ class LabelingGui(LayerViewerGui):
             for i in range(self._labelControlUi.labelListModel.rowCount()):
                 if self._labelControlUi.labelListModel[i].name not in names:
                     indices_to_remove.append( i )
-        
+
             for i in reversed(indices_to_remove):
                 self._labelControlUi.labelListModel.removeRow(i)
 
         # synchronize labelNames
         for i,n in enumerate(names):
             self._labelControlUi.labelListModel[i].name = n
-                
+
         if hasattr(self._labelControlUi, "AddLabelButton"):
             self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
 
     def _addNewLabel(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)
-        
+
         """
         Add a new label to the label list GUI control.
         Return the new number of labels in the control.
@@ -687,10 +682,10 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.labelListModel.select(selectedRow)
 
         self._updateLabelShortcuts()
-       
+
         e = self._labelControlUi.labelListModel.rowCount() > 0
         self._gui_enableLabeling(e)
-        
+
         QApplication.restoreOverrideCursor()
 
     def getNextLabelName(self):
@@ -737,7 +732,8 @@ class LabelingGui(LayerViewerGui):
         Subclasses can override this to respond to changes in the label colors.
         This class gets updated before, in the _updateLabelList
         """
-    
+        pass
+
     def onPmapColorChanged(self):
         """
         Subclasses can override this to respond to changes in a label associated probability color.
@@ -819,7 +815,7 @@ class LabelingGui(LayerViewerGui):
             if self._labelControlUi.labelListModel.rowCount() == 2:
                 self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
                 self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
-       
+
     def getLayer(self, name):
         """find a layer by name"""
         try:

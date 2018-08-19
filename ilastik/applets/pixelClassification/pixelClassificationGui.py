@@ -415,7 +415,9 @@ class PixelClassificationGui(LabelingGui):
             labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
 
         # Base class init
-        super(PixelClassificationGui, self).__init__( parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath )
+        super(PixelClassificationGui, self).__init__( parentApplet, labelSlots,
+                                                      topLevelOperatorView, labelingDrawerUiPath,
+                                                      topLevelOperatorView.InputImages)
 
         self.topLevelOperatorView = topLevelOperatorView
 
@@ -719,17 +721,12 @@ class PixelClassificationGui(LabelingGui):
 
         # Add the raw data last (on the bottom)
         inputDataSlot = self.topLevelOperatorView.InputImages        
-        if inputDataSlot.ready():                        
-            inputLayer = self.createStandardLayerFromSlot( inputDataSlot )
-            inputLayer.name = "Input Data"
-            inputLayer.visible = True
-            inputLayer.opacity = 1.0
-            # the flag window_leveling is used to determine if the contrast 
-            # of the layer is adjustable
-            if isinstance( inputLayer, GrayscaleLayer ):
-                inputLayer.window_leveling = True
-            else:
-                inputLayer.window_leveling = False
+        if inputDataSlot.ready():
+            inputLayer = None
+            for layer in layers:
+                if layer.name == "Raw Input":
+                    inputLayer = layer
+                    break
 
             def toggleTopToBottom():
                 index = self.layerstack.layerIndex( inputLayer )
@@ -745,13 +742,6 @@ class PixelClassificationGui(LabelingGui):
                                                                  toggleTopToBottom,
                                                                  self.viewerControlWidget(),
                                                                  inputLayer ) )
-            layers.append(inputLayer)
-            
-            # The thresholding button can only be used if the data is displayed as grayscale.
-            if inputLayer.window_leveling:
-                self.labelingDrawerUi.thresToolButton.show()
-            else:
-                self.labelingDrawerUi.thresToolButton.hide()
         
         self.handleLabelSelectionChange()
         return layers

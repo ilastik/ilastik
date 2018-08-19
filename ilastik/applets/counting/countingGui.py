@@ -143,7 +143,8 @@ class CountingGui(LabelingGui):
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/countingDrawer.ui'
 
         # Base class init
-        super(CountingGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath )
+        super(CountingGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView,
+                                          labelingDrawerUiPath, topLevelOperatorView.InputImages)
 
         self.op = topLevelOperatorView
 
@@ -650,10 +651,12 @@ class CountingGui(LabelingGui):
 
         inputDataSlot = self.topLevelOperatorView.InputImages
         if inputDataSlot.ready():
-            inputLayer = self.createStandardLayerFromSlot( inputDataSlot )
-            inputLayer.name = "Input Data"
-            inputLayer.visible = True
-            inputLayer.opacity = 1.0
+            inputLayer = None
+            for i in range(len(layers)):
+                if layers[i].name == "Raw Input":
+                    inputLayer = layers[i]
+                    layers[i], layers[-1] = layers[-1], layers[i]
+                    break
 
             # the flag window_leveling is used to determine if the contrast
             # of the layer is adjustable
@@ -677,7 +680,6 @@ class CountingGui(LabelingGui):
                                                         toggleTopToBottom,
                                                         self.viewerControlWidget(),
                                                         inputLayer ) )
-            layers.append(inputLayer)
 
             # The thresholding button can only be used if the data is displayed as grayscale.
             if inputLayer.window_leveling:
@@ -1047,7 +1049,6 @@ class CountingGui(LabelingGui):
                 self.editor.brushingModel.disableErasing()
             # display a curser that is static while moving arrow
             self.editor.brushingModel.setBrushSize(1)
-
             self._gui_setThresholding()
             self.setCursor(Qt.ArrowCursor)
 
@@ -1101,11 +1102,6 @@ class CountingGui(LabelingGui):
     def _onLabelSelected(self, row):
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
 
-
-
-
-
-
         self.toolButtons[Tool.Paint].setEnabled(True)
         #elf.toolButtons[Tool.Box].setEnabled(False)
         self.toolButtons[Tool.Paint].click()
@@ -1121,8 +1117,7 @@ class CountingGui(LabelingGui):
 
 
         if row==0: #foreground
-
-            self._cachedBrushSizeIndex= self._labelControlUi.brushSizeComboBox.currentIndex()
+            self._cachedBrushSizeIndex = self._labelControlUi.brushSizeComboBox.currentIndex()
             self._labelControlUi.SigmaBox.setEnabled(True)
             self._labelControlUi.brushSizeComboBox.setEnabled(False)
             self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
