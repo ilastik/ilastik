@@ -54,8 +54,11 @@ from volumina.api import \
 <<<<<<< HEAD
 =======
 
+<<<<<<< HEAD
 >>>>>>> Add window-leveling to object classification, labeling and counting
 
+=======
+>>>>>>> moved window leveling setup to base class <labelingGui>
 # Loggers
 logger = logging.getLogger(__name__)
 
