@@ -468,7 +468,6 @@ class DataSelectionGui(QWidget):
             infos = self._createDatasetInfos(roleIndex, fileNames, rois)
         except DataSelectionGui.UserCancelledError:
             return
-        
         # If no exception was thrown so far, set up the operator now
         loaded_all = self._configureOpWithInfos(roleIndex, startingLane, endingLane, infos)
         
@@ -599,31 +598,35 @@ class DataSelectionGui(QWidget):
         if len( opTop.DatasetGroup ) < endingLane+1:
             opTop.DatasetGroup.resize( endingLane+1 )
         
+        ret_val = False
         # Configure each subslot
         for laneIndex, info in zip(list(range(startingLane, endingLane+1)), infos):
             try:
                 self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
-                return True
+                ret_val = True
             except DatasetConstraintError as ex:
                 return_val = [False]
                 # Give the user a chance to fix the problem
                 self.handleDatasetConstraintError(info, info.filePath, ex, roleIndex, laneIndex, return_val)
                 if return_val[0]:
                     # Successfully repaired graph.
-                    return True
+                    ret_val = True
                 else:
                     # Not successfully repaired.  Roll back the changes
-                    opTop.DatasetGroup.resize(originalSize) 
+                    opTop.DatasetGroup.resize(originalSize)
+                    return False
             except OpDataSelection.InvalidDimensionalityError as ex:
                     opTop.DatasetGroup.resize( originalSize )
                     QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
+                    return False
             except Exception as ex:
                 msg = "Wasn't able to load your dataset into the workflow.  See error log for details."
                 log_exception( logger, msg )
                 QMessageBox.critical( self, "Dataset Load Error", msg )
                 opTop.DatasetGroup.resize( originalSize )
+                return False
 
-        return False
+        return ret_val
 
     def _reconfigureDatasetLocations(self, roleIndex, startingLane, endingLane):
         """
