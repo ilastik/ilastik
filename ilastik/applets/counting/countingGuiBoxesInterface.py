@@ -1098,7 +1098,7 @@ def RandomColorGenerator(seed=42):
     while 1:
         i+=1
         if i<16:
-            yield default[i]
+            yield QColor(default[i])
         else:
             hue=np.random.rand()*360
 
