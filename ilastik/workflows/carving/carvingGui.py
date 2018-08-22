@@ -671,7 +671,9 @@ class CarvingGui(LabelingGui):
         if seg.ready():
             #source = RelabelingArraySource(seg)
             #source.setRelabeling(numpy.arange(256, dtype=numpy.uint8))
-            colortable = [QColor(0,0,0,0).rgba(), QColor(0,0,0,0).rgba(), QColor(0,255,0).rgba()]
+
+            # assign to the object label color, 0 is transparent, 1 is background
+            colortable = [QColor(0,0,0,0).rgba(), QColor(0,0,0,0).rgba(), labellayer._colorTable[2]]
             for i in range(256-len(colortable)):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
@@ -689,7 +691,7 @@ class CarvingGui(LabelingGui):
         if doneSeg.ready():
             #FIXME: if the user segments more than 255 objects, those with indices that divide by 255 will be shown as transparent
             #both here and in the _doneSegmentationColortable
-            colortable = 254*[QColor(0, 0, 255).rgba()]
+            colortable = 254*[QColor(230, 25, 75).rgba()]
             colortable.insert(0, QColor(0, 0, 0, 0).rgba())
 
             #have to use lazyflow because it provides dirty signals
