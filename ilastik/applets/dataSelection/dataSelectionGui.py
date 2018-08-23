@@ -597,20 +597,18 @@ class DataSelectionGui(QWidget):
         # Resize the slot if necessary            
         if len( opTop.DatasetGroup ) < endingLane+1:
             opTop.DatasetGroup.resize( endingLane+1 )
-        
-        ret_val = False
+
         # Configure each subslot
         for laneIndex, info in zip(list(range(startingLane, endingLane+1)), infos):
             try:
                 self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
-                ret_val = True
             except DatasetConstraintError as ex:
                 return_val = [False]
                 # Give the user a chance to fix the problem
                 self.handleDatasetConstraintError(info, info.filePath, ex, roleIndex, laneIndex, return_val)
                 if return_val[0]:
                     # Successfully repaired graph.
-                    ret_val = True
+                    continue
                 else:
                     # Not successfully repaired.  Roll back the changes
                     opTop.DatasetGroup.resize(originalSize)
@@ -626,7 +624,7 @@ class DataSelectionGui(QWidget):
                 opTop.DatasetGroup.resize( originalSize )
                 return False
 
-        return ret_val
+        return True
 
     def _reconfigureDatasetLocations(self, roleIndex, startingLane, endingLane):
         """
