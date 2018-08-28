@@ -24,7 +24,6 @@ from functools import partial
 from collections import OrderedDict
 
 import numpy
-
 import torch
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer
@@ -39,6 +38,7 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 
 from lazyflow.classifiers import TikTorchLazyflowClassifier
+from tiktorch.wrapper import TikTorch
 
 
 logger = logging.getLogger(__name__)
@@ -310,16 +310,21 @@ class NNClassGui(LayerViewerGui):
         return layers
 
 
-    def add_NN_classifiers(self, filename):
+    def add_NN_classifiers(self, folder_path):
         """
         Adds the chosen FilePath to the classifierDictionary and to the ComboBox
         """
 
         #split path string
-        modelname = os.path.basename(os.path.normpath(filename[0]))
+        modelname = os.path.basename(os.path.normpath(folder_path))
+        print(modelname)
 
-        print(filename)
-        print(filename[0])
+        self.tiktorch = TikTorch(folder_path)
+        self.tiktorch.load_model()
+
+        print(self.tiktorch._model)
+
+
 
         #Statement for importing the same classifier twice
         if modelname in self.classifiers.keys():
@@ -328,21 +333,16 @@ class NNClassGui(LayerViewerGui):
         else:
 
             #serialization problems because of group names when using the classifier function as value
-            # self.classifiers[modelname] = TikTorchLazyflowClassifier(None, filename[0], halo_size, batch_size)
+            # self.classifiers[modelname] = TikTorchLazyflowClassifier(None, folder_path[0], halo_size, batch_size)
 
             #workAround
-            self.classifiers[modelname] = filename[0]
+            self.classifiers[modelname] = folder_path
 
             #clear first the comboBox or addItems will duplicate names
             self.drawer.comboBox.clear()
             self.drawer.comboBox.addItems(self.classifiers)
 
-            if self.topLevelOperator.SaveFullModel.value  == True:
-                object_ = torch.load(filename[0])
-                self.topLevelOperator.FullModel.setValue(object_)
-
-            else:
-                self.topLevelOperator.ModelPath.setValue(self.classifiers)
+            self.topLevelOperator.FullModel.setValue(self.tiktorch._model)
 
 
     def pred_nn(self):
@@ -361,14 +361,10 @@ class NNClassGui(LayerViewerGui):
 
             if self.drawer.liveUpdateButton.isChecked():
 
-                if self.topLevelOperator.FullModel.value:
+                # if self.topLevelOperator.FullModel.value:
                     #if the full model object is serialized
-                    model_object = self.topLevelOperator.FullModel.value[classifier_index]
-                    print(classifier_index)
-                    model_path = None
-                else:
-                    model_object = None
-                    model_path = self.classifiers[classifier_key]
+                model_object = self.topLevelOperator.FullModel.value
+                model_path = None
 
                 self.topLevelOperator.FreezePredictions.setValue(False)
 
@@ -376,10 +372,9 @@ class NNClassGui(LayerViewerGui):
                 model = TikTorchLazyflowClassifier(model_object, model_path,
                  self.halo_size, self.batch_size)
 
-                input_shape = self.getBlockShape(model)
-
-                self.topLevelOperator.BlockShape.setValue(input_shape)
-                self.topLevelOperator.NumClasses.setValue(model._tiktorch_net.get('num_output_channels'))
+                self.topLevelOperator.BlockShape.setValue(self.topLevelOperator.InputImage.meta.shape)
+                print(self.topLevelOperator.InputImage.meta.shape)
+                self.topLevelOperator.NumClasses.setValue(self.topLevelOperator.InputImage.meta.shape[3])
 
                 self.topLevelOperator.Classifier.setValue(model)
 
@@ -434,7 +429,7 @@ class NNClassGui(LayerViewerGui):
         else:
             defaultDirectory = os.path.expanduser('~')
 
-        fileNames = self.getImageFileNamesToOpen(self, defaultDirectory)
+        fileNames = self.getFolderToOpen(self, defaultDirectory)
 
         if len(fileNames) > 0:
             self.add_NN_classifiers(fileNames)
@@ -468,37 +463,15 @@ class NNClassGui(LayerViewerGui):
         return input_shape
 
 
-    def getImageFileNamesToOpen(cls, parent_window, defaultDirectory):
+    def getFolderToOpen(cls, parent_window, defaultDirectory):
         """
         opens a QFileDialog for importing files
         """
-        extensions = ['nn']
-        filter_strs = ["*." + x for x in extensions]
-        filters = ["{filt} ({filt})".format(filt=x) for x in filter_strs]
-        filt_all_str = "Image files (" + ' '.join(filter_strs) + ')'
 
-        fileNames = []
+        options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
 
-        if ilastik_config.getboolean("ilastik", "debug"):
-            # use Qt dialog in debug mode (more portable?)
-            file_dialog = QFileDialog(parent_window, "Select Model")
-            file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-            # do not display file types associated with a filter
-            # the line for "Image files" is too long otherwise
-            file_dialog.setNameFilters([filt_all_str] + filters)
-            #file_dialog.setNameFilterDetailsVisible(False)
-            # select multiple files
-            file_dialog.setFileMode(QFileDialog.ExistingFiles)
-            file_dialog.setDirectory(defaultDirectory)
+            # folder_names, _ = QFileDialog.getOpenfolder_names(parent_window, "Select Model", defaultDirectory, filt_all_str)
+        folder_names = QFileDialog.getExistingDirectory(parent_window, "Select Model", defaultDirectory, options=options)
+            
 
-            if file_dialog.exec_():
-                fileNames = file_dialog.selectedFiles()
-        else:
-            # otherwise, use native dialog of the present platform
-            fileNames, _ = QFileDialog.getOpenFileNames(parent_window, "Select Model", defaultDirectory, filt_all_str)
-
-        return fileNames
-
-
-
-
+        return folder_names
