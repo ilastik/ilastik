@@ -86,7 +86,12 @@ class FeatureSelectionResult(object):
 
 
 class FeatureSelectionDialog(QtWidgets.QDialog):
-    def __init__(self, current_opFeatureSelection, current_opPixelClassification):
+    def __init__(
+            self,
+            current_opFeatureSelection,
+            current_opPixelClassification,
+            labels_list_data
+        ):
         '''
 
         :param current_opFeatureSelection: opFeatureSelection from ilastik
@@ -149,7 +154,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         self._gui_initialized = False #  is set to true once gui is initialized, prevents multiple initialization
         self._feature_selection_results = []
 
-        self.colortable = colortables.default16
+        self.labels_list_data = labels_list_data
         self.layerstack = layerwidget.LayerStackModel()
 
         # this initializes the actual GUI
@@ -181,7 +186,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         currently being viewed in ilastik
 
         """
-
+        self.colortable = [lab.pmapColor().rgba() for lab in self.labels_list_data]
         #FIXME: the editor should return the current view coordinates without such workarounds
         if self.opPixelClassification.name == "OpPixelClassification":
             ilastik_editor = self.opPixelClassification.parent.pcApplet.getMultiLaneGui().currentGui().editor
