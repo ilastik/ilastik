@@ -20,8 +20,6 @@ from __future__ import division
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
-from builtins import range
-from past.utils import old_div
 import os
 from functools import partial
 from collections import defaultdict
@@ -601,7 +599,7 @@ class CarvingGui(LabelingGui):
 
         for name, label in self._shownObjects3D.items():
             color = QColor(ctable[op.MST.value.object_names[name]])
-            color = (old_div(color.red(), 255.0), old_div(color.green(), 255.0), old_div(color.blue(), 255.0))
+            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
             self._renderMgr.setColor(label, color)
 
         if self._showSegmentationIn3D and self._segmentation_3d_label is not None:
