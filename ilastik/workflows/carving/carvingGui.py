@@ -299,7 +299,7 @@ class CarvingGui(LabelingGui):
             msgBox.setIcon(2)
             msgBox.exec_()
             logger.error( "object not saved due to faulty data." )
-    
+
     def onShowObjectNames(self):
         '''show object names and allow user to load/delete them'''
         dialog = uic.loadUi(self.dialogdirCOM)
@@ -594,6 +594,7 @@ class CarvingGui(LabelingGui):
         self._renderMgr.update()
 
     def _update_colors(self):
+        """Update colors of objects in 3D viewport"""
         op = self.topLevelOperatorView
         ctable = self._doneSegmentationLayer.colorTable
 
@@ -603,7 +604,15 @@ class CarvingGui(LabelingGui):
             self._renderMgr.setColor(label, color)
 
         if self._showSegmentationIn3D and self._segmentation_3d_label is not None:
-            self._renderMgr.setColor(self._segmentation_3d_label, (0.0, 1.0, 0.0)) # Green
+            # color of the foreground label from label list data
+            labels = self.labelListData
+            assert len(labels) == 2
+            fg_label = labels[1]
+            color = fg_label.pmapColor()  # 2 is the foreground index
+            self._renderMgr.setColor(
+                self._segmentation_3d_label,
+                (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+            )
 
     def _getNext(self, slot, parentFun, transform=None):
         numLabels = self.labelListData.rowCount()
