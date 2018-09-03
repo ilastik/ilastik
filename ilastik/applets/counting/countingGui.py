@@ -681,12 +681,6 @@ class CountingGui(LabelingGui):
                                                         self.viewerControlWidget(),
                                                         inputLayer ) )
 
-            # The thresholding button can only be used if the data is displayed as grayscale.
-            if inputLayer.window_leveling:
-                self.labelingDrawerUi.thresToolButton.show()
-            else:
-                self.labelingDrawerUi.thresToolButton.hide()
-
         self.handleLabelSelectionChange()
         return layers
 
