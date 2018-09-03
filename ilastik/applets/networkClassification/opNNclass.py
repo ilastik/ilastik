@@ -49,7 +49,7 @@ class OpNNClassification(Operator):
     #Gui only (not part of the pipeline)
     ModelPath = InputSlot() # Path 
     FullModel = InputSlot(value=[]) # When full model serialization is enabled
-    Halo_Size = InputSlot(value=32)
+    Halo_Size = InputSlot(value=0)
     Batch_Size = InputSlot(value=3)
     SaveFullModel = InputSlot(stype='bool', value=False, nonlane=True)
 
