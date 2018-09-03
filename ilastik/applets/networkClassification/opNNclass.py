@@ -50,7 +50,11 @@ class OpNNClassification(Operator):
     ModelPath = InputSlot() # Path 
     FullModel = InputSlot(value=[]) # When full model serialization is enabled
     Halo_Size = InputSlot(value=0)
+<<<<<<< HEAD
     Batch_Size = InputSlot(value=1)
+=======
+    Batch_Size = InputSlot(value=3)
+>>>>>>> added wizard in advanced drowpdown, removed parameters, set halo to zero
     SaveFullModel = InputSlot(stype='bool', value=False, nonlane=True)
 
     def __init__(self, *args, **kwargs):

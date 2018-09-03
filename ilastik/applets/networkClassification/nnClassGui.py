@@ -23,22 +23,26 @@ import logging
 from functools import partial
 from collections import OrderedDict
 
+import sys
+
 import numpy
 import torch
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 from volumina.utility import PreferencesManager
 
-from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5 import uic, QtCore, QtGui
+from PyQt5.QtCore import Qt, pyqtSlot, pyqtProperty
 from PyQt5.QtWidgets import QStackedWidget, QMessageBox, QFileDialog, QMenu, QLineEdit, QDialogButtonBox, QVBoxLayout, \
-     QDialog, QCheckBox
+     QDialog, QCheckBox, QApplication
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 
 from lazyflow.classifiers import TikTorchLazyflowClassifier
 from tiktorch.wrapper import TikTorch
+
+from ilastik.applets.networkClassification.tiktorchWizard import MagicWizard
 
 
 logger = logging.getLogger(__name__)
@@ -58,13 +62,10 @@ class ParameterDlg(QDialog):
         buttonbox.accepted.connect(self.add_Parameters)
         buttonbox.rejected.connect(self.reject)
 
-        self.halo_edit = QLineEdit(self)
-        self.halo_edit.setPlaceholderText("HaloSize")
         self.batch_edit = QLineEdit(self)
         self.batch_edit.setPlaceholderText("Batch Size")
 
         layout = QVBoxLayout()
-        layout.addWidget(self.halo_edit)
         layout.addWidget(self.batch_edit)
         layout.addWidget(buttonbox)
 
@@ -74,13 +75,10 @@ class ParameterDlg(QDialog):
 
     def add_Parameters(self):
         """
-        changning Halo Size and Batch Size Slot Values
+        changing Batch Size Slot Values
         """
-
-        halo_size = int(self.halo_edit.text())
         batch_size = int(self.batch_edit.text())
 
-        self.topLevelOperator.Halo_Size.setValue(halo_size)
         self.topLevelOperator.Batch_Size.setValue(batch_size)
 
         #close dialog
@@ -155,15 +153,13 @@ class NNClassGui(LayerViewerGui):
 
         def settingParameter():
             """
-            changing BatchSize and HaloSize
+            changing BatchSize 
             """
             dlg = ParameterDlg(self.topLevelOperator, parent=self)
             dlg.exec_()
 
             # classifier_key = self.drawer.comboBox.currentText()
-            self.halo_size = self.topLevelOperator.Halo_Size.value
             self.batch_size = self.topLevelOperator.Batch_Size.value
-            print(self.halo_size)
 
         set_parameter = advanced_menu.addAction("Parameters...")
         set_parameter.triggered.connect(settingParameter)
@@ -187,8 +183,14 @@ class NNClassGui(LayerViewerGui):
 
 
         advanced_menu.addAction("Saving Options").triggered.connect(serializing_options)
-        
 
+        def object_wizard():
+            wizard = MagicWizard()
+            wizard.show()
+            wizard.exec_()
+
+        advanced_menu.addAction("make Pytorch Object").triggered.connect(object_wizard)
+                    
         menus += [advanced_menu]
 
         return menus    
@@ -214,7 +216,6 @@ class NNClassGui(LayerViewerGui):
         self.initViewerControlUi() 
 
         self.batch_size = self.topLevelOperator.Batch_Size.value
-        self.halo_size = self.topLevelOperator.Halo_Size.value
 
     def _initAppletDrawerUic(self, drawerPath=None):
         """
@@ -332,9 +333,6 @@ class NNClassGui(LayerViewerGui):
             QMessageBox.critical(self, "Error loading file", "{} already added".format(modelname))
         else:
 
-            #serialization problems because of group names when using the classifier function as value
-            # self.classifiers[modelname] = TikTorchLazyflowClassifier(None, folder_path[0], halo_size, batch_size)
-
             #workAround
             self.classifiers[modelname] = folder_path
 
@@ -368,9 +366,8 @@ class NNClassGui(LayerViewerGui):
 
                 self.topLevelOperator.FreezePredictions.setValue(False)
 
-
-                model = TikTorchLazyflowClassifier(model_object, model_path,
-                 self.halo_size, self.batch_size)
+                #zero for halo size, since its handled in tiktorch
+                model = TikTorchLazyflowClassifier(model_object, model_path, 0, self.batch_size)
 
                 self.topLevelOperator.BlockShape.setValue(self.topLevelOperator.InputImage.meta.shape)
                 print(self.topLevelOperator.InputImage.meta.shape)
@@ -434,33 +431,6 @@ class NNClassGui(LayerViewerGui):
         if len(fileNames) > 0:
             self.add_NN_classifiers(fileNames)
 
-
-    def getBlockShape(self, model):
-        """
-        calculates the input Block shape
-        """
-        expected_input_shape = model._tiktorch_net.expected_input_shape
-        input_shape = numpy.array(expected_input_shape)
-
-        if 'output_size' in model._tiktorch_net._configuration:
-            #if the ouputsize of the model is smaller as the expected input shape
-            #the halo needs to be changed
-            output_shape = model._tiktorch_net.get('output_size')
-            if (output_shape != input_shape):
-                self.halo_size = int((input_shape[1] - output_shape[1])/2)
-                model.HALO_SIZE = self.halo_size
-
-
-        if len(model._tiktorch_net.get('window_size')) == 2:
-            input_shape = numpy.append(input_shape, None)
-        else:
-
-            input_shape = input_shape[1:]
-            input_shape = numpy.append(input_shape, None)
-
-        input_shape[1:3] -= 2 * self.halo_size
-
-        return input_shape
 
 
     def getFolderToOpen(cls, parent_window, defaultDirectory):
