@@ -177,12 +177,6 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.handleInteractiveModeClicked)
 
-        self.labelingDrawerUi.checkInteractive.toggled.connect(
-            self.handleInteractiveModeClicked)
-        self.labelingDrawerUi.checkShowPredictions.toggled.connect(
-            self.handleShowPredictionsClicked)
-
-
         # Add two permanent labels because it makes no sense to have less here
         self._addNewLabel()
         self._addNewLabel()
