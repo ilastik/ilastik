@@ -201,7 +201,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                              self._drawer.merg6,
                              self._drawer.merg7]
         for i in range(len(self.mergerLabels)):
-            self._labelSetStyleSheet(self.mergerLabels[i], self.mergerColors[i+1])
+            self._labelSetStyleSheet(self.mergerLabels[i], QColor(self.mergerColors[i+1]))
         
         self._onMaxObjectsBoxChanged()
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
