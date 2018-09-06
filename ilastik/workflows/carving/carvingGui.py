@@ -20,8 +20,6 @@ from __future__ import division
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
-from builtins import range
-from past.utils import old_div
 import os
 from functools import partial
 from collections import defaultdict
@@ -301,7 +299,7 @@ class CarvingGui(LabelingGui):
             msgBox.setIcon(2)
             msgBox.exec_()
             logger.error( "object not saved due to faulty data." )
-    
+
     def onShowObjectNames(self):
         '''show object names and allow user to load/delete them'''
         dialog = uic.loadUi(self.dialogdirCOM)
@@ -596,16 +594,25 @@ class CarvingGui(LabelingGui):
         self._renderMgr.update()
 
     def _update_colors(self):
+        """Update colors of objects in 3D viewport"""
         op = self.topLevelOperatorView
         ctable = self._doneSegmentationLayer.colorTable
 
         for name, label in self._shownObjects3D.items():
             color = QColor(ctable[op.MST.value.object_names[name]])
-            color = (old_div(color.red(), 255.0), old_div(color.green(), 255.0), old_div(color.blue(), 255.0))
+            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
             self._renderMgr.setColor(label, color)
 
         if self._showSegmentationIn3D and self._segmentation_3d_label is not None:
-            self._renderMgr.setColor(self._segmentation_3d_label, (0.0, 1.0, 0.0)) # Green
+            # color of the foreground label from label list data
+            labels = self.labelListData
+            assert len(labels) == 2
+            fg_label = labels[1]
+            color = fg_label.pmapColor()  # 2 is the foreground index
+            self._renderMgr.setColor(
+                self._segmentation_3d_label,
+                (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+            )
 
     def _getNext(self, slot, parentFun, transform=None):
         numLabels = self.labelListData.rowCount()
@@ -671,7 +678,9 @@ class CarvingGui(LabelingGui):
         if seg.ready():
             #source = RelabelingArraySource(seg)
             #source.setRelabeling(numpy.arange(256, dtype=numpy.uint8))
-            colortable = [QColor(0,0,0,0).rgba(), QColor(0,0,0,0).rgba(), QColor(0,255,0).rgba()]
+
+            # assign to the object label color, 0 is transparent, 1 is background
+            colortable = [QColor(0,0,0,0).rgba(), QColor(0,0,0,0).rgba(), labellayer._colorTable[2]]
             for i in range(256-len(colortable)):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
@@ -689,7 +698,7 @@ class CarvingGui(LabelingGui):
         if doneSeg.ready():
             #FIXME: if the user segments more than 255 objects, those with indices that divide by 255 will be shown as transparent
             #both here and in the _doneSegmentationColortable
-            colortable = 254*[QColor(0, 0, 255).rgba()]
+            colortable = 254*[QColor(230, 25, 75).rgba()]
             colortable.insert(0, QColor(0, 0, 0, 0).rgba())
 
             #have to use lazyflow because it provides dirty signals

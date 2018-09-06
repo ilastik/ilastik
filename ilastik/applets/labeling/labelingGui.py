@@ -40,6 +40,7 @@ from volumina.utility import ShortcutManager, PreferencesManager
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
+from volumina import colortables
 
 # ilastik
 from ilastik.utility import bind, log_exception
@@ -146,6 +147,8 @@ class LabelingGui(LayerViewerGui):
                              (if provided).
         """
 
+        self._colorTable16 = list(colortables.default16_new)
+
         # Do have have all the slots we need?
         assert isinstance(labelingSlots, LabelingGui.LabelingSlots)
         assert labelingSlots.labelInput is not None, "Missing a required slot."
@@ -164,8 +167,10 @@ class LabelingGui(LayerViewerGui):
 
         self._labelingSlots.labelNames.notifyDirty( bind(self._updateLabelList) )
         self.__cleanup_fns.append( partial( self._labelingSlots.labelNames.unregisterDirty, bind(self._updateLabelList) ) )
-        
-        self._colorTable16 = self._createDefault16ColorColorTable()
+
+
+        self._colorTable16 = colortables.default16_new
+
         self._programmaticallyRemovingLabels = False
 
         if drawerUiPath is None:
@@ -307,9 +312,12 @@ class LabelingGui(LayerViewerGui):
             color = self._labelControlUi.labelListModel[firstRow].brushColor()
             color_value = color.rgba()
             color_index = firstRow + 1
-            while len(self._colorTable16) <= color_index:
-                self._colorTable16.append(color_value)
+            if color_index< len(self._colorTable16):
 
+                self._colorTable16[color_index] = color_value
+
+            else:
+                self._colorTable16.append(color_value)
             self.editor.brushingModel.setBrushColor(color)
 
             # Update the label layer colortable to match the list entry
@@ -707,8 +715,8 @@ class LabelingGui(LayerViewerGui):
     def onLabelColorChanged(self):
         """
         Subclasses can override this to respond to changes in the label colors.
+        This class gets updated before, in the _updateLabelList
         """
-        pass
     
     def onPmapColorChanged(self):
         """
@@ -855,32 +863,6 @@ class LabelingGui(LayerViewerGui):
             layers.append(layer)
 
         return layers
-
-    @staticmethod
-    def _createDefault16ColorColorTable():
-        colors = []
-        # Transparent for the zero label
-        colors.append(QColor(0,0,0,0))
-        # ilastik v0.5 colors
-        colors.append( QColor( Qt.red ) )
-        colors.append( QColor( Qt.green ) )
-        colors.append( QColor( Qt.yellow ) )
-        colors.append( QColor( Qt.blue ) )
-        colors.append( QColor( Qt.magenta ) )
-        colors.append( QColor( Qt.darkYellow ) )
-        colors.append( QColor( Qt.lightGray ) )
-        # Additional colors
-        colors.append( QColor(255, 105, 180) ) #hot pink
-        colors.append( QColor(102, 205, 170) ) #dark aquamarine
-        colors.append( QColor(165,  42,  42) ) #brown
-        colors.append( QColor(0, 0, 128) )     #navy
-        colors.append( QColor(255, 165, 0) )   #orange
-        colors.append( QColor(173, 255,  47) ) #green-yellow
-        colors.append( QColor(128,0, 128) )    #purple
-        colors.append( QColor(240, 230, 140) ) #khaki
-        assert len(colors) == 16
-        return [c.rgba() for c in colors]
-
 
     def allowDeleteLastLabelOnly(self, enabled):
         """

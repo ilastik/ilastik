@@ -2,6 +2,7 @@ from __future__ import division
 from builtins import range
 from past.utils import old_div
 from PyQt5 import uic, QtWidgets, QtCore
+from PyQt5.QtGui import QColor
 
 import os
 import logging
@@ -185,7 +186,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.merg7]
 
         for i in range(len(self.mergerLabels)):
-            self._labelSetStyleSheet(self.mergerLabels[i], self.mergerColors[i+1])
+            self._labelSetStyleSheet(self.mergerLabels[i], QColor(self.mergerColors[i+1]))
         
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
         self._drawer.mergerResolutionBox.stateChanged.connect(self._onMaxObjectsBoxChanged)

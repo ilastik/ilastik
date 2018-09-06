@@ -343,16 +343,10 @@ class OpPixelClassification( Operator ):
             self.LabelNames.setValue(new_names)
 
             # Make some default colors, too
-            default_colors = [(255,0,0),
-                              (0,255,0),
-                              (0,0,255),
-                              (255,255,0),
-                              (255,0,255),
-                              (0,255,255),
-                              (128,128,128),
-                              (255, 105, 180),
-                              (255, 165, 0),
-                              (240, 230, 140) ]
+            # FIXME: take the colors from default16_new
+            from volumina import colortables
+            default_colors = colortables.default16_new
+            
             label_colors = self.LabelColors.value
             pmap_colors = self.PmapColors.value
             

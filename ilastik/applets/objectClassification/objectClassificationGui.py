@@ -159,7 +159,7 @@ class ObjectClassificationGui(LabelingGui):
         
         self.labelingDrawerUi.brushSizeCaption.setVisible(False)
 
-        self._colorTable16_forpmaps = self._createDefault16ColorColorTable()
+        self._colorTable16_forpmaps = list(colortables.default16_new)
         self._colorTable16_forpmaps[15] = QColor(Qt.black).rgba() #for objects with NaNs in features
         
         # button handlers
@@ -481,11 +481,15 @@ class ObjectClassificationGui(LabelingGui):
                                         l.pmapColor().blue()),
                              self.topLevelOperatorView.PmapColors)
 
+
     def _onLabelRemoved(self, parent, start, end):
         # Don't respond unless this actually came from the GUI
         if self._programmaticallyRemovingLabels:
             return
 
+        # Base class
+        super(ObjectClassificationGui, self)._onLabelRemoved(parent, start, end)
+        '''
         # update the pmap colors. copied from labelingGui._onLabelRemoved
         # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
         oldcount = self._labelControlUi.labelListModel.rowCount() + 1
@@ -497,9 +501,8 @@ class ObjectClassificationGui(LabelingGui):
         layer_index = self.layerstack.findMatchingIndex(lambda x: x.name == self.PREDICTION_LAYER_NAME)
         predictLayer = self.layerstack[layer_index]
         predictLayer.colorTable = self._colorTable16_forpmaps
+        '''
 
-        # Base class
-        super(ObjectClassificationGui, self)._onLabelRemoved(parent, start, end)
 
         op = self.topLevelOperatorView
         op.removeLabel(start)
@@ -605,7 +608,7 @@ class ObjectClassificationGui(LabelingGui):
             predictLayer.ref_object = None
             predictLayer.opacity = 0.5
             predictLayer.setToolTip("Classification results, assigning a label to each object")
-            
+
             # This weakref stuff is a little more fancy than strictly necessary.
             # The idea is to use the weakref's callback to determine when this layer instance is destroyed by the garbage collector,
             #  and then we disconnect the signal that updates that layer.
@@ -724,12 +727,14 @@ class ObjectClassificationGui(LabelingGui):
         self._setPredictionColorTableForRow(predictLayer, row)
 
     def _setPredictionColorTableForRow(self, predictLayer, row):
+
         if row >= 0 and row < self._labelControlUi.labelListModel.rowCount():
             element = self._labelControlUi.labelListModel[row]
             oldcolor = self._colorTable16_forpmaps[row+1]
             if oldcolor != element.pmapColor().rgba():
                 self._colorTable16_forpmaps[row+1] = element.pmapColor().rgba()
                 predictLayer.colorTable = self._colorTable16_forpmaps
+
 
     @staticmethod
     def _getObject(slot, pos5d):
