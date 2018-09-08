@@ -145,7 +145,7 @@ bash Miniconda3-latest-MacOSX-x86_64.sh
 
 # During the installation, conda edits your .bashrc to add its paths
 # Either re-open the terminal, or
-source ~/.bash_rc  # Linux
+source ~/.bashrc  # Linux
 source ~/.bash_profile  # MAC
 ```
 
