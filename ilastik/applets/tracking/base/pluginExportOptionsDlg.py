@@ -123,7 +123,7 @@ class PluginExportOptionsDlg(QDialog):
 
     def eventFilter(self, watched, event):
         # Apply the new path if the user presses 
-        #  'enter' or clicks outside the filepathe editbox
+        #  'enter' or clicks outside the filepath editbox
         if watched == self.filepathEdit:
             if event.type() == QEvent.FocusOut or \
                ( event.type() == QEvent.KeyPress and \
@@ -145,15 +145,23 @@ class PluginExportOptionsDlg(QDialog):
         ## meta-info display widgets
         plugin = pluginManager.getPluginByName(self.pluginName, category="TrackingExportFormats")
         self.metaInfoTextEdit.setHtml(plugin.description)
+        if self.pluginName == 'Fiji-MaMuT':
+            self.bdvFileWidget.setVisible(True)
+        else:
+            self.bdvFileWidget.setVisible(False)
 
     #**************************************************************************
     # File path selection and options
     #**************************************************************************
     def _initFileOptions(self):
         self._filepathSlot = self._topLevelOp.OutputFilenameFormat
-        self.fileSelectButton.clicked.connect( self._browseForFilepath )
+        self.fileSelectButton.clicked.connect(self._browseForFilepath)
 
-        self._file_filter = ''
+        # init BDV file selection
+        self._bdvFilepathSlot = self._topLevelOp.BigDataViewerFilepath
+        self.bdvFileSelectButton.clicked.connect(self._browseForBdvFile)
+        if self.pluginName == 'Fiji-MaMuT':
+            self.bdvFileWidget.setVisible(True)
 
     def showEvent(self, event):
         super(PluginExportOptionsDlg, self).showEvent(event)
@@ -163,17 +171,36 @@ class PluginExportOptionsDlg(QDialog):
         if self._filepathSlot.ready():
             file_path = self._filepathSlot.value
             file_path = os.path.splitext(file_path)[0]
-            self.filepathEdit.setText( file_path )
+            self.filepathEdit.setText(file_path)
             
             # Re-configure the slot in case we changed the extension
-            self._filepathSlot.setValue( file_path )
-    
+            self._filepathSlot.setValue(file_path)
+
+        if self._bdvFilepathSlot.ready():
+            bdv_file_path = self._bdvFilepathSlot.value
+            self.bdvFilepath.setText(bdv_file_path)
+
+    def _browseForBdvFile(self):
+        """Browse for BigDataViewer file"""
+        starting_dir = self._topLevelOp.WorkingDirectory.value
+        if self._bdvFilepathSlot.ready():
+            starting_dir = os.path.split(self._bdvFilepathSlot.value)[0]
+
+        dlg = QFileDialog(self, "BigDataViewer File Location", starting_dir, "XML files (*.xml)")
+        dlg.setAcceptMode(QFileDialog.AcceptOpen)
+        if not dlg.exec_():
+            return
+
+        bdvFilepath = dlg.selectedFiles()[0]
+        self._bdvFilepathSlot.setValue(bdvFilepath)
+        self.bdvFilepath.setText(bdvFilepath)
+
     def _browseForFilepath(self):
         starting_dir = os.path.expanduser("~")
         if self._filepathSlot.ready():
             starting_dir = os.path.split(self._filepathSlot.value)[-1]
         
-        dlg = QFileDialog( self, "Export Location", starting_dir, self._file_filter )
+        dlg = QFileDialog(self, "Export Location", starting_dir)
         dlg.setAcceptMode(QFileDialog.AcceptSave)
         if not dlg.exec_():
             return
