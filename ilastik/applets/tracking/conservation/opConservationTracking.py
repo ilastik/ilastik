@@ -612,9 +612,8 @@ class OpConservationTracking(Operator):
         opRelabeledRegionFeatures.FeatureNames.setValue(feature_names_vigra)
 
         return opRelabeledRegionFeatures
-                     
 
-    def exportPlugin(self, filename, plugin, checkOverwriteFiles=False):
+    def exportPlugin(self, filename, plugin, checkOverwriteFiles=False, bdvFilepath=None):
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False
 
@@ -663,7 +662,8 @@ class OpConservationTracking(Operator):
             # do not export if we would otherwise overwrite files
             return False
 
-        if not plugin.export(filename, hypothesesGraph, object_feature_slot, label_image, self.RawImage):
+        if not plugin.export(filename, hypothesesGraph, object_feature_slot,
+                             label_image, self.RawImage, bdvFilepath):
             raise RuntimeError('Exporting tracking solution with plugin failed')
         else:
             return True
