@@ -91,18 +91,18 @@ else:
             ''' Check whether the files we want to export are already present '''
             return os.path.exists(filename)
     
-        def export(self, filename, hypothesesGraph, **kwargs):
+        def export(self, filename, hypothesesGraph, labelImageSlot, **kwargs):
             """Export the tracking solution stored in the hypotheses graph as a sequence of H5 files,
             one per frame, containing the label image of that frame and which objects were part
             of a move or a division.
     
             :param filename: string of the FOLDER where to save the result
             :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-            :param kwargs: dict, containing labelImageSlot and additional context info
+            :param labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
+            :param kwargs: dict, additional contextual info
 
             :returns: True on success, False otherwise
             """
-            labelImageSlot = kwargs['labelImageSlot']
             traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hypothesesGraph.getMappingsBetweenUUIDsAndTraxels()
             timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
     

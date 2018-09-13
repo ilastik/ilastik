@@ -13,18 +13,18 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename + '.csv')
 
-    def export(self, filename, hypothesesGraph, **kwargs):
+    def export(self, filename, hypothesesGraph, objectFeaturesSlot, **kwargs):
         """
         Export the features of all objects together with their tracking information into a table
 
         :param filename: string of the FILE where to save the resulting CSV file
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-        :param kwargs: dict, containing objectFeaturesSlot (lazyflow.graph.InputSlot), connected to the RegionFeaturesAll output
+        :param objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output
                of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
+        :param kwargs: dict, additional contextual info
 
         :returns: True on success, False otherwise
         """
-        objectFeaturesSlot = kwargs['objectFeaturesSlot']
         features = objectFeaturesSlot([]).wait()  # this is a dict of structure: {frame: {category: {featureNames}}}
         graph = hypothesesGraph._graph
         headers = ['frame', 'labelimageId', 'trackId', 'lineageId', 'parentTrackId', 'mergerLabelId']

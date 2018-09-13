@@ -20,21 +20,19 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename + '.outline')
 
-    def export(self, filename, hypothesesGraph, **kwargs):
+    def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, **kwargs):
         """
         Export the Multi-Worm-Tracker .summary and .blobs files.
 
         :param filename: string of the FILE where to save the result (different .xml files were)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-        :param kwargs: dict containing objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output
+        :param objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output
                of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
-               and labelImageSlot
+        :param labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
+        :param kwargs: dict, additional contextual info
 
         :returns: True on success, False otherwise
         """
-
-        objectFeaturesSlot = kwargs['objectFeaturesSlot']
-        labelImageSlot = kwargs['labelImageSlot']
         # Get object features
         features = objectFeaturesSlot([]).wait()
         

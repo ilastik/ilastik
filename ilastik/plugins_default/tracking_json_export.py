@@ -26,8 +26,6 @@ else:
 
             :param filename: string of the FILE where to save the result (will be appended with _graph.json and _result.json)
             :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-            :param objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output
-                   of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
             :param kwargs: dict, additional contextual info
 
             :returns: True on success, False otherwise
