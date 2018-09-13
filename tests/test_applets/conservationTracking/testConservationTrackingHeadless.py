@@ -42,6 +42,7 @@ class TestConservationTrackingHeadless(object):
 
     PROJECT_FILE = ilastik_tests_file_path+'data/inputdata/smallVideoConservationTracking.ilp'
     RAW_DATA_FILE = ilastik_tests_file_path+'data/inputdata/smallVideo.h5'
+    BDV_XML_FILE = ilastik_tests_file_path+'data/inputdata/smallVideoBdv.xml'
     BINARY_SEGMENTATION_FILE = ilastik_tests_file_path+'data/inputdata/smallVideoSimpleSegmentation.h5'
 
     EXPECTED_TRACKING_RESULT_FILE = ilastik_tests_file_path+'data/inputdata/smallVideo_Tracking-Result.h5'
@@ -248,6 +249,7 @@ class TestConservationTrackingHeadless(object):
         args += ' --export_plugin=Fiji-MaMuT'
         args += ' --raw_data ' + self.RAW_DATA_FILE + '/data'
         args += ' --segmentation_image ' + self.BINARY_SEGMENTATION_FILE + '/exported_data'
+        args += ' --big_data_viewer_xml_file=' + self.BDV_XML_FILE
 
         sys.argv = ['ilastik.py']  # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args.split()
@@ -256,9 +258,7 @@ class TestConservationTrackingHeadless(object):
         self.ilastik_startup.main()
 
         # check output files exist
-        files = [os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_mamut.xml'), 
-                 os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_bdv.xml'), 
-                 os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_raw.h5')]
+        files = [os.path.join(self.ilastik_tests_file_path, 'data', 'inputdata', 'smallVideo_Fiji-MaMuT_mamut.xml')]
         
         for f in files:
             assert os.path.exists(f)
