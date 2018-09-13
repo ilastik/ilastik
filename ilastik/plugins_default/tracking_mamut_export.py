@@ -39,7 +39,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename + '_mamut.xml') or os.path.exists(filename + '_bdv.xml') or os.path.exists(filename + '_raw.h5')
 
-    def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot, bigDataViewerFile):
+    def export(self, filename, hypothesesGraph, **kwargs):
         """Export the tracking solution stored in the hypotheses graph to MaMuT XML file.
         Creates an _mamut.xml file that contains the tracks for visualization and proof-reading in MaMuT.
         For parameter description see `TrackingExportFormatPlugin.export`
@@ -47,6 +47,9 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
 
         builder = MamutXmlBuilder()
         graph = hypothesesGraph._graph
+
+        objectFeaturesSlot = kwargs['objectFeaturesSlot']
+        bdvFilepathSlot = kwargs['bdvFilepathSlot']
 
         features = objectFeaturesSlot([]).wait() # this is a dict of structure: {frame: {category: {featureNames}}}
 
@@ -139,6 +142,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                 featureDict['LabelimageId'] = label
                 builder.addSpot(frame, 'track-{}'.format(trackId), graph.node[node]['id'], xpos, ypos, zpos, radius, featureDict)
 
+        bigDataViewerFile = bdvFilepathSlot.value
         builder.setBigDataViewerImagePath(os.path.dirname(bigDataViewerFile), os.path.basename(bigDataViewerFile))
         builder.writeToFile(filename + '_mamut.xml')
 

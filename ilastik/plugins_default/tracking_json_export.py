@@ -20,7 +20,7 @@ else:
             ''' Check whether the files we want to export are already present '''
             return os.path.exists(filename + '_graph.json') or os.path.exists(filename + '_result.json')
 
-        def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
+        def export(self, filename, hypothesesGraph, **kwargs):
             """
             Export the tracking model and result
 
@@ -28,6 +28,7 @@ else:
             :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
             :param objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output
                    of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
+            :param kwargs: dict, additional contextual info
 
             :returns: True on success, False otherwise
             """

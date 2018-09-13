@@ -445,7 +445,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         if self.dataExportTrackingApplet.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName:
             logger.info("Export source plugin selected!")
             selectedPlugin = self.dataExportTrackingApplet.topLevelOperator.SelectedPlugin.value
-            bdvFilepath = self._getBdvFilepath(selectedPlugin)
+            bdvFilepathSlot = self.dataExportTrackingApplet.topLevelOperator.BigDataViewerFilepath
 
             exportPluginInfo = pluginManager.getPluginByName(selectedPlugin, category="TrackingExportFormats")
             if exportPluginInfo is None:
@@ -471,7 +471,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
                 exportStatus = self.trackingApplet.topLevelOperator\
                     .getLane(lane_index)\
                     .exportPlugin(filename, exportPlugin,
-                                  checkOverwriteFiles, bdvFilepath)
+                                  checkOverwriteFiles, bdvFilepathSlot)
                 self.dataExportTrackingApplet.progressSignal(100)
 
                 if not exportStatus:
@@ -499,11 +499,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
         # use partial formatting to fill in non-coordinate name fields
         partially_formatted_name = format_known_keys(path_format_string, known_keys)
         return partially_formatted_name
-
-    def _getBdvFilepath(self, selectedPlugin):
-        if selectedPlugin == 'Fiji-MaMuT':
-            return self.dataExportTrackingApplet.topLevelOperator.BigDataViewerFilepath.value
-        return None
 
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup

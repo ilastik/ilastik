@@ -16,14 +16,13 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename)
 
-    def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
+    def export(self, filename, hypothesesGraph, **kwargs):
         """
         Export the tracking model and result
 
         :param filename: string of the FOLDER where to save the result (will be filled with a res_track.txt and segmentation masks for each frame)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-        :param objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output
-               of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
+        :param kwargs: dict, additional contextual info
 
         :returns: True on success, False otherwise
         """
@@ -34,6 +33,7 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
         tracks = {} # stores a list of timeframes per track, so that we can find from<->to per track
         trackParents = {} # store the parent trackID of a track if known
         gapTrackParents = {}
+        labelImageSlot = kwargs['labelImageSlot']
 
         for n in hypothesesGraph.nodeIterator():
             frameMapping = mappings.setdefault(n[0], {})
