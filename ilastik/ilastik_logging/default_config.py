@@ -238,15 +238,12 @@ def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, l
     # Preserve pre-existing handlers
     for handler in original_root_handlers:
         logging.getLogger().addHandler(handler)
-    
+
     # Update from the user's customizations
     loggingHelpers.updateFromConfigFile()
-    
+
     # Capture warnings from the warnings module
     logging.captureWarnings(True)
-    
-    # Warnings module warnings are shown only once
-    warnings.filterwarnings("once")
 
     # Don't warn about pending deprecations (PyQt generates some of these)
     warnings.filterwarnings("ignore", category=PendingDeprecationWarning)
