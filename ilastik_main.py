@@ -257,17 +257,19 @@ def _validate_arg_compatibility(parsed_args):
     if parsed_args.workflow is not None and parsed_args.new_project is None:
         sys.stderr.write(
             "The --workflow argument may only be used with the --new_project "
-            "argument.")
+            "argument. "
+            "Please invoke ilastik with --help for more information. Exiting.\n")
         sys.exit(1)
     if parsed_args.workflow is None and parsed_args.new_project is not None:
         sys.stderr.write(
             "No workflow specified.  The --new_project argument must be used "
-            "in conjunction with the --workflow argument.")
+            "in conjunction with the --workflow argument. "
+            "Please invoke ilastik with --help for more information. Exiting.\n")
         sys.exit(1)
     if parsed_args.project is not None and parsed_args.new_project is not None:
         sys.stderr.write(
             "The --project and --new_project settings cannot be used together."
-            " Choose one (or neither).")
+            " Choose one (or neither). Please invoke ilastik with --help for more information. Exiting.\n")
         sys.exit(1)
 
     if parsed_args.headless and \
@@ -275,8 +277,16 @@ def _validate_arg_compatibility(parsed_args):
             parsed_args.exit_on_failure):
         sys.stderr.write(
             "Some of the command-line options you provided are not supported "
-            "in headless mode.  Exiting.")
+            "in headless mode. Please invoke ilastik with --help for more information. Exiting.\n")
         sys.exit(1)
+
+    if parsed_args.headless and not parsed_args.project:
+        if not (parsed_args.new_project and parsed_args.workflow):
+            sys.stderr.write(
+                "You have to supply at least --project, or --new_project and workflow when invoking "
+                "ilastik in headless mode. "
+                "Please invoke ilastik with --help for more information. Exiting.\n")
+            sys.exit(1)
 
 
 def _import_opengm():
