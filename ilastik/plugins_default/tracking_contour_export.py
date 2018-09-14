@@ -18,7 +18,7 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename + '.outline')
 
-    def export(self, filename, hypothesesGraph, labelImageSlot, **kwargs):
+    def export(self, filename, hypothesesGraph, *, labelImageSlot, **kwargs):
         """
         Export the contours and corresponding IDs for all objects on the video
         

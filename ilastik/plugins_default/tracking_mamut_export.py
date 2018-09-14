@@ -1,5 +1,4 @@
 import os.path
-from builtins import range
 
 import numpy as np
 from ilastik.plugins import TrackingExportFormatPlugin
@@ -39,11 +38,11 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename + '_mamut.xml') or os.path.exists(filename + '_bdv.xml') or os.path.exists(filename + '_raw.h5')
 
-    def export(self, filename, hypothesesGraph, objectFeaturesSlot, bdvFilepathSlot, **kwargs):
+    def export(self, filename, hypothesesGraph, *, objectFeaturesSlot, bdvFilepathSlot, **kwargs):
         """Export the tracking solution stored in the hypotheses graph to MaMuT XML file.
         Creates an _mamut.xml file that contains the tracks for visualization and proof-reading in MaMuT.
 
-        :param filename: string of the FILE where to save the result (different .xml files were)
+        :param filename: string of the FILE where to save the result (*_mamut.xml file)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
         :param objectFeaturesSlot (lazyflow.graph.InputSlot): connected to the RegionFeaturesAll
             output of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction

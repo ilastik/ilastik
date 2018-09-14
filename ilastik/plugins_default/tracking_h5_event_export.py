@@ -91,7 +91,7 @@ else:
             ''' Check whether the files we want to export are already present '''
             return os.path.exists(filename)
     
-        def export(self, filename, hypothesesGraph, labelImageSlot, **kwargs):
+        def export(self, filename, hypothesesGraph, *, labelImageSlot, **kwargs):
             """Export the tracking solution stored in the hypotheses graph as a sequence of H5 files,
             one per frame, containing the label image of that frame and which objects were part
             of a move or a division.

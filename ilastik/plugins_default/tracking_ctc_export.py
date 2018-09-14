@@ -16,7 +16,7 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename)
 
-    def export(self, filename, hypothesesGraph, labelImageSlot, **kwargs):
+    def export(self, filename, hypothesesGraph, *, labelImageSlot, **kwargs):
         """
         Export the tracking model and result
 

@@ -392,10 +392,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
                     return True
 
                 self.dataExportApplet.progressSignal(-1)
-                exportStatus = self.trackingApplet.topLevelOperator\
-                    .getLane(lane_index)\
-                    .exportPlugin(filename, exportPlugin,
-                                  checkOverwriteFiles, bdvFilepathSlot)
+                exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(
+                    filename, exportPlugin, checkOverwriteFiles, bdvFilepathSlot)
                 self.dataExportApplet.progressSignal(100)
 
                 if not exportStatus:

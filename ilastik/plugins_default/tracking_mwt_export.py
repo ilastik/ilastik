@@ -20,7 +20,7 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename + '.outline')
 
-    def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, **kwargs):
+    def export(self, filename, hypothesesGraph, *, objectFeaturesSlot, labelImageSlot, **kwargs):
         """
         Export the Multi-Worm-Tracker .summary and .blobs files.
 

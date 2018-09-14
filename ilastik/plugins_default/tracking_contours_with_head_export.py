@@ -20,7 +20,7 @@ class TrackingContoursBodyPartsPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename + '.contours')
 
-    def export(self, filename, hypothesesGraph, labelImageSlot, rawImageSlot, **kwargs):
+    def export(self, filename, hypothesesGraph, *, labelImageSlot, rawImageSlot, **kwargs):
         """
         Export the contours, head index, and corresponding IDs for all objects on the video.
         
