@@ -754,8 +754,8 @@ class LabelingGui(LayerViewerGui):
 
         if self._allowDeleteLastLabelOnly:
             # make previous label removable again
-            if oldcount >= 2:
-                self._labelControlUi.labelListModel.makeRowRemovable(oldcount - 2)
+            if oldcount > 2:
+                self._labelControlUi.labelListModel.makeRowRemovable(oldcount - 1)
 
         # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
         oldColor = self._colorTable16.pop(row+1)
