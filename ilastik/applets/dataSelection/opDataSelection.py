@@ -459,12 +459,17 @@ class OpDataSelection(Operator):
 
                 output_order = sorted(candidate_orders, key=len)[0]  # the shortest one
                 output_order = "".join(output_order)
+            else:
+                # No forced axisorder is supplied. Use original axisorder as
+                # output order: it is assumed by the export-applet, that the
+                # an OpReorderAxes operator is added in the beginning
+                output_order = "".join([x for x in providerSlot.meta.axistags.keys()])
 
-                op5 = OpReorderAxes(parent=self)
-                op5.AxisOrder.setValue(output_order)
-                op5.Input.connect(providerSlot)
-                providerSlot = op5.Output
-                self._opReaders.append(op5)
+            op5 = OpReorderAxes(parent=self)
+            op5.AxisOrder.setValue(output_order)
+            op5.Input.connect(providerSlot)
+            providerSlot = op5.Output
+            self._opReaders.append(op5)
 
             # If the channel axis is missing, add it as last axis
             if 'c' not in providerSlot.meta.axistags:
