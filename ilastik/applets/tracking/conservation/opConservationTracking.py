@@ -613,7 +613,7 @@ class OpConservationTracking(Operator):
 
         return opRelabeledRegionFeatures
 
-    def exportPlugin(self, filename, plugin, checkOverwriteFiles=False, bdvFilepathSlot=None):
+    def exportPlugin(self, filename, plugin, checkOverwriteFiles=False, additionalPluginArgumentsSlot=None):
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False
 
@@ -664,7 +664,7 @@ class OpConservationTracking(Operator):
                              objectFeaturesSlot=object_feature_slot,
                              labelImageSlot=label_image_slot,
                              rawImageSlot=self.RawImage,
-                             bdvFilepathSlot=bdvFilepathSlot):
+                             additionalPluginArgumentsSlot=additionalPluginArgumentsSlot):
             raise RuntimeError('Exporting tracking solution with plugin failed')
         else:
             return True

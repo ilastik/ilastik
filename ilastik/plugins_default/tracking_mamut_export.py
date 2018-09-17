@@ -38,7 +38,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename + '_mamut.xml') or os.path.exists(filename + '_bdv.xml') or os.path.exists(filename + '_raw.h5')
 
-    def export(self, filename, hypothesesGraph, *, objectFeaturesSlot, bdvFilepathSlot, **kwargs):
+    def export(self, filename, hypothesesGraph, *, objectFeaturesSlot, additionalPluginArgumentsSlot, **kwargs):
         """Export the tracking solution stored in the hypotheses graph to MaMuT XML file.
         Creates an _mamut.xml file that contains the tracks for visualization and proof-reading in MaMuT.
 
@@ -46,7 +46,8 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
         :param objectFeaturesSlot (lazyflow.graph.InputSlot): connected to the RegionFeaturesAll
             output of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
-        :param bdvFilepathSlot (lazyflow.graph.InputSlot): BigDataViewer file path slot
+        :param additionalPluginArgumentsSlot (lazyflow.graph.InputSlot): additional arguments passed to the plugin
+            in this it provides BigDataViewer file path
         :param kwargs: dict containing additional context info
 
         :returns: True on success, False otherwise
@@ -146,7 +147,9 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                 featureDict['LabelimageId'] = label
                 builder.addSpot(frame, 'track-{}'.format(trackId), graph.node[node]['id'], xpos, ypos, zpos, radius, featureDict)
 
-        bigDataViewerFile = bdvFilepathSlot.value
+        additional_plugin_args = additionalPluginArgumentsSlot.value
+        assert 'bdvFilepath' in additional_plugin_args, "'bdvFilepath' must be present in 'additionalPluginArgumentsSlot'"
+        bigDataViewerFile = additional_plugin_args['bdvFilepath']
         builder.setBigDataViewerImagePath(os.path.dirname(bigDataViewerFile), os.path.basename(bigDataViewerFile))
         builder.writeToFile(filename + '_mamut.xml')
 

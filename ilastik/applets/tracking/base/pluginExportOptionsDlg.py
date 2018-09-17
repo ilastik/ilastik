@@ -69,12 +69,13 @@ class PluginExportOptionsDlg(QDialog):
         # connect the Ok cancel buttons
         def onOkClicked():
             if self.pluginName == 'Fiji-MaMuT':
-                if self._bdvFilepathSlot.ready():
+                if self._additionalPluginArgumentsSlot.ready() and \
+                        'bdvFilepath' in self._additionalPluginArgumentsSlot.value:
                     self.accept()
                 else:
                     msg = QMessageBox()
                     msg.setIcon(QMessageBox.Information)
-                    msg.setText(f"Please provide BigDataViewer file path")
+                    msg.setText("Please provide BigDataViewer file path")
                     msg.setWindowTitle("Fiji-MaMuT export")
                     msg.setStandardButtons(QMessageBox.Ok)
                     msg.exec_()
@@ -169,7 +170,7 @@ class PluginExportOptionsDlg(QDialog):
 
     def _initBdvFileSelection(self):
         # init BigDataViewer file selection widget
-        self._bdvFilepathSlot = self._topLevelOp.BigDataViewerFilepath
+        self._additionalPluginArgumentsSlot = self._topLevelOp.AdditionalPluginArguments
         self.bdvFileSelectButton.clicked.connect(self._browseForBdvFile)
         self._updateBdvWidget()
 
@@ -194,8 +195,8 @@ class PluginExportOptionsDlg(QDialog):
             # Re-configure the slot in case we changed the extension
             self._filepathSlot.setValue(file_path)
 
-        if self._bdvFilepathSlot.ready():
-            bdv_file_path = self._bdvFilepathSlot.value
+        if self._additionalPluginArgumentsSlot.ready():
+            bdv_file_path = self._additionalPluginArgumentsSlot.value.get('bdvFilepath')
             self.bdvFilepath.setText(bdv_file_path)
 
     def _browseForFilepath(self):
@@ -213,11 +214,13 @@ class PluginExportOptionsDlg(QDialog):
         self.filepathEdit.setText( exportPath )
 
     def _browseForBdvFile(self):
-        """Browse for BigDataViewer file"""
-        if self._bdvFilepathSlot.ready():
-            starting_dir = os.path.split(self._bdvFilepathSlot.value)[0]
-        else:
-            starting_dir = self._topLevelOp.WorkingDirectory.value
+        """Browse for BigDataViewer file and add the its path to the additionalPluginArgumentsSlot"""
+        starting_dir = self._topLevelOp.WorkingDirectory.value
+        additional_args_ready = self._additionalPluginArgumentsSlot.ready()
+        if additional_args_ready:
+            bdv_file_path = self._additionalPluginArgumentsSlot.value.get('bdvFilepath')
+            if bdv_file_path is not None:
+                starting_dir = os.path.split(bdv_file_path)[0]
 
         dlg = QFileDialog(self, "BigDataViewer File Location", starting_dir, "XML files (*.xml)")
         dlg.setAcceptMode(QFileDialog.AcceptOpen)
@@ -225,7 +228,12 @@ class PluginExportOptionsDlg(QDialog):
             return
 
         bdv_file_path = dlg.selectedFiles()[0]
-        self._bdvFilepathSlot.setValue(bdv_file_path)
+        if additional_args_ready:
+            additional_args = self._additionalPluginArgumentsSlot.value
+        else:
+            additional_args = {}
+        additional_args['bdvFilepath'] = bdv_file_path
+        self._additionalPluginArgumentsSlot.setValue(additional_args)
         self.bdvFilepath.setText(bdv_file_path)
 
 #**************************************************************************

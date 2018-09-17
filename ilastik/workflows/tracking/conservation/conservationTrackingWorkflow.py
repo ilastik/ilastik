@@ -369,7 +369,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         if self.dataExportApplet.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName:
             logger.info("Export source plugin selected!")
             selectedPlugin = self.dataExportApplet.topLevelOperator.SelectedPlugin.value
-            bdvFilepathSlot = self.dataExportApplet.topLevelOperator.BigDataViewerFilepath
+            additionalPluginArgumentsSlot = self.dataExportApplet.topLevelOperator.AdditionalPluginArguments
 
             exportPluginInfo = pluginManager.getPluginByName(selectedPlugin, category="TrackingExportFormats")
             if exportPluginInfo is None:
@@ -393,7 +393,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
 
                 self.dataExportApplet.progressSignal(-1)
                 exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(
-                    filename, exportPlugin, checkOverwriteFiles, bdvFilepathSlot)
+                    filename, exportPlugin, checkOverwriteFiles, additionalPluginArgumentsSlot)
                 self.dataExportApplet.progressSignal(100)
 
                 if not exportStatus:

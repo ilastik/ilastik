@@ -151,7 +151,12 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
             if parsed_args.export_source == OpTrackingBaseDataExport.PluginOnlyName:
                 opTrackingDataExport.SelectedPlugin.setValue(parsed_args.export_plugin)
                 if parsed_args.export_plugin == 'Fiji-MaMuT':
-                    opTrackingDataExport.BigDataViewerFilepath.setValue(parsed_args.big_data_viewer_xml_file)
+                    if opTrackingDataExport.AdditionalPluginArguments.ready():
+                        additional_plugin_args = opTrackingDataExport.AdditionalPluginArguments.value
+                    else:
+                        additional_plugin_args = {}
+                    additional_plugin_args['bdvFilepath'] = parsed_args.big_data_viewer_xml_file
+                    opTrackingDataExport.AdditionalPluginArguments.setValue(additional_plugin_args)
 
                 # if a plugin was selected, the only thing we need is the export name
                 if parsed_args.output_filename_format:
