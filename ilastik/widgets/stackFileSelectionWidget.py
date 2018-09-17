@@ -34,7 +34,7 @@ import vigra
 from volumina.utility import PreferencesManager
 
 import ilastik.config
-from ilastik.widgets.hdf5SubvolumeSelectionDialog import Hdf5StackingDlg, H5VolumeSelectionDlg
+from ilastik.widgets.hdf5SubvolumeSelectionDialog import Hdf5StackingDlg, H5N5VolumeSelectionDlg
 
 from lazyflow.operators.ioOperators import (
     OpStackLoader, OpStreamingHdf5SequenceReaderM,
@@ -177,7 +177,7 @@ class StackFileSelectionWidget(QDialog):
                         globstring = '{}/{}'.format(globstring, internal_paths[0])
                     elif len(internal_paths) > 1:
                         # Ask the user which dataset to choose
-                        dlg = H5VolumeSelectionDlg(internal_paths, self)
+                        dlg = H5N5VolumeSelectionDlg(internal_paths, self)
                         if dlg.exec_() == QDialog.Accepted:
                             selected_index = dlg.combo.currentIndex()
                             selected_dataset = str(internal_paths[selected_index])
@@ -312,7 +312,7 @@ class StackFileSelectionWidget(QDialog):
                     fileNames = ['{}/{}'.format(fn, internal_paths[0]) for fn in fileNames]
                 else:
                     # Ask the user which dataset to choose
-                    dlg = H5VolumeSelectionDlg(internal_paths, self)
+                    dlg = H5N5VolumeSelectionDlg(internal_paths, self)
                     if dlg.exec_() == QDialog.Accepted:
                         selected_index = dlg.combo.currentIndex()
                         selected_dataset = str(internal_paths[selected_index])

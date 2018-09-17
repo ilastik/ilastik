@@ -27,6 +27,7 @@ import os
 import sys
 import threading
 import h5py
+import z5py
 import numpy
 from functools import partial
 import logging
@@ -55,7 +56,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from .opDataSelection import OpDataSelection, DatasetInfo
 from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from .datasetInfoEditorWidget import DatasetInfoEditorWidget
-from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, H5VolumeSelectionDlg
+from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, H5N5VolumeSelectionDlg
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDetailedInfoTableModel
 from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 from .precomputedVolumeBrowser import PrecomputedVolumeBrowser
@@ -156,7 +157,7 @@ class DataSelectionGui(QWidget):
         self._cleaning_up = False
         self.parentApplet = parentApplet
         self._max_lanes = max_lanes
-        self._default_h5_volumes = {}
+        self._default_h5n5_volumes = {}
         self.show_axis_details = show_axis_details
 
         self._viewerControls = QWidget()
@@ -428,8 +429,14 @@ class DataSelectionGui(QWidget):
             file_dialog.setFileMode(QFileDialog.ExistingFiles)
             file_dialog.setDirectory( defaultDirectory )
 
+            # @TODO for N5 files we select the attributes.json in the .n5- directory.
+            # This might not be the best solution due to the induced latency and also a selection of multiple N5 files in one directory is not possible
             if file_dialog.exec_():
                 fileNames = file_dialog.selectedFiles()
+                # For the n5 extension the attributes.json file has to be selected in the file dialog. However we need just the *.n5 file.
+                for i in range(len(fileNames)):
+                    if ".n5/attributes.json" in fileNames[i]:
+                        fileNames[i] = fileNames[i].replace("/attributes.json", "")
         else:
             # otherwise, use native dialog of the present platform
             fileNames, _filter = QFileDialog.getOpenFileNames(parent_window, "Select Images", defaultDirectory, filt_all_str)
@@ -532,6 +539,7 @@ class DataSelectionGui(QWidget):
             rois = [None]*len(filePaths)
         assert len(rois) == len(filePaths)
 
+        a = zip(filePaths, rois);
         infos = []
         for filePath, roi in zip(filePaths, rois):
             info = self._createDatasetInfo(roleIndex, filePath, roi)
@@ -555,28 +563,32 @@ class DataSelectionGui(QWidget):
             datasetInfo.filePath = relPath
             
         h5Exts = ['.ilp', '.h5', '.hdf5']
-        if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
-            datasetNames = self.getPossibleInternalPaths( absPath )
+        n5Exts = ['.n5']
+        if os.path.splitext(datasetInfo.filePath)[1] in h5Exts + n5Exts:
+            if os.path.splitext(datasetInfo.filePath)[1] in n5Exts:
+                datasetNames = self.getPossibleN5InternalPaths( absPath )
+            else:
+                datasetNames = self.getPossibleH5InternalPaths( absPath )
             if len(datasetNames) == 0:
                 raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
             elif len(datasetNames) == 1:
                 datasetInfo.filePath += str(datasetNames[0])
             else:
                 # If exactly one of the file's datasets matches a user's previous choice, use it.
-                if roleIndex not in self._default_h5_volumes:
-                    self._default_h5_volumes[roleIndex] = set()
-                previous_selections = self._default_h5_volumes[roleIndex]
+                if roleIndex not in self._default_h5n5_volumes:
+                    self._default_h5n5_volumes[roleIndex] = set()
+                previous_selections = self._default_h5n5_volumes[roleIndex]
                 possible_auto_selections = previous_selections.intersection(datasetNames)
                 if len(possible_auto_selections) == 1:
                     datasetInfo.filePath += str(list(possible_auto_selections)[0])
                 else:
                     # Ask the user which dataset to choose
-                    dlg = H5VolumeSelectionDlg(datasetNames, self)
+                    dlg = H5N5VolumeSelectionDlg(datasetNames, self)
                     if dlg.exec_() == QDialog.Accepted:
                         selected_index = dlg.combo.currentIndex()
                         selected_dataset = str(datasetNames[selected_index])
                         datasetInfo.filePath += selected_dataset
-                        self._default_h5_volumes[roleIndex].add( selected_dataset )
+                        self._default_h5n5_volumes[roleIndex].add(selected_dataset)
                     else:
                         raise DataSelectionGui.UserCancelledError()
 
@@ -707,7 +719,7 @@ class DataSelectionGui(QWidget):
         return (dlg_state == QDialog.Accepted), ex
 
     @classmethod
-    def getPossibleInternalPaths(cls, absPath, min_ndim=2, max_ndim=5):
+    def getPossibleH5InternalPaths(cls, absPath, min_ndim=2, max_ndim=5):
         datasetNames = []
         # Open the file as a read-only so we can get a list of the internal paths
         with h5py.File(absPath, 'r') as f:
@@ -717,6 +729,21 @@ class DataSelectionGui(QWidget):
                     datasetNames.append( '/' + name )
             # Visit every group/dataset in the file
             f.visititems(accumulateDatasetPaths)
+        return datasetNames
+
+    @classmethod
+    def getPossibleN5InternalPaths(cls, absPath, min_ndim=2, max_ndim=5):
+        datasetNames = []
+        """
+        Returns the name of all datasets in the file with at least 2 axes.
+        """
+        # Open the file as a read-only so we can get a list of the internal paths
+        with z5py.N5File(absPath, mode='r+') as f:
+            def accumulate_names(name, val):
+                if type(val) == z5py.dataset.Dataset and 2 <= len(val.shape):
+                    datasetNames.append(name)
+
+        f.visititems(accumulate_names, '')
         return datasetNames
 
     def addStack(self, roleIndex, laneIndex):

@@ -28,13 +28,13 @@ from PyQt5.QtCore import Qt
 from lazyflow.utility import globList
 
 
-class H5VolumeSelectionDlg(QDialog):
+class H5N5VolumeSelectionDlg(QDialog):
     """
     A window to ask the user to choose between multiple HDF5 datasets in a single file.
     """
     def __init__(self, datasetNames, parent):
-        super(H5VolumeSelectionDlg, self).__init__(parent)
-        label = QLabel("Your HDF5 File contains multiple image volumes.\n"
+        super(H5N5VolumeSelectionDlg, self).__init__(parent)
+        label = QLabel("Your HDF5/N5 File contains multiple image volumes.\n"
                        "Please select the one you would like to open.")
 
         self.combo = QComboBox()
