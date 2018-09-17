@@ -429,8 +429,6 @@ class DataSelectionGui(QWidget):
             file_dialog.setFileMode(QFileDialog.ExistingFiles)
             file_dialog.setDirectory( defaultDirectory )
 
-            # @TODO for N5 files we select the attributes.json in the .n5- directory.
-            # This might not be the best solution due to the induced latency and also a selection of multiple N5 files in one directory is not possible
             if file_dialog.exec_():
                 fileNames = file_dialog.selectedFiles()
                 # For the n5 extension the attributes.json file has to be selected in the file dialog. However we need just the *.n5 file.
