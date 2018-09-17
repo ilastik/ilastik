@@ -1,0 +1,137 @@
+###############################################################################
+#   lazyflow: data flow based lazy parallel computation framework
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the Lesser GNU General Public License
+# as published by the Free Software Foundation; either version 2.1
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Lesser General Public License for more details.
+#
+# See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
+# GNU Lesser General Public License version 2.1 and 3 respectively.
+# This information is also available on the ilastik web site at:
+#		   http://ilastik.org/license/
+###############################################################################
+# Python
+import logging
+import time
+
+import numpy
+import vigra
+
+from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.utility import Timer
+from lazyflow.utility.helpers import get_default_axisordering
+
+logger = logging.getLogger(__name__)
+
+
+class OpStreamingN5Reader(Operator):
+    """
+    The top-level operator for the data selection applet.
+    """
+    name = "OpStreamingN5Reader"
+    category = "Reader"
+
+    N5File = InputSlot(stype='n5File')
+
+    # The internal path for project-local datasets
+    InternalPath = InputSlot(stype='string')
+
+    # Output data
+    OutputImage = OutputSlot()
+
+    class DatasetReadError(Exception):
+        def __init__(self, internalPath):
+            self.internalPath = internalPath
+            self.msg = "Unable to open N5 dataset: {}".format(internalPath)
+            super(OpStreamingN5Reader.DatasetReadError, self).__init__(self.msg)
+
+    def __init__(self, *args, **kwargs):
+        super(OpStreamingN5Reader, self).__init__(*args, **kwargs)
+        self._n5File = None
+
+    def setupOutputs(self):
+        # Read the dataset meta-info from the N5 dataset
+        self._n5File = self.N5File.value
+        internalPath = self.InternalPath.value
+
+        if internalPath not in self._n5File:
+            raise OpStreamingN5Reader.DatasetReadError(internalPath)
+
+        dataset = self._n5File[internalPath]
+
+        try:
+            # Read the axistags property without actually importing the data
+            axistagsJson = dataset.attrs['axistags']  # Throws KeyError if 'axistags' can't be found
+            axistags = vigra.AxisTags.fromJSON(axistagsJson)
+            axisorder = ''.join(tag.key for tag in axistags)
+            if '?' in axisorder:
+                raise KeyError('?')
+        except KeyError:
+            # No axistags found.
+            axisorder = get_default_axisordering(dataset.shape)
+            axistags = vigra.defaultAxistags(str(axisorder))
+
+        assert len(axistags) == len(dataset.shape), \
+            "Mismatch between shape {} and axisorder {}".format(dataset.shape, axisorder)
+
+        # Configure our slot meta-info
+        self.OutputImage.meta.dtype = dataset.dtype.type
+        self.OutputImage.meta.shape = dataset.shape
+        self.OutputImage.meta.axistags = axistags
+
+        # If the dataset specifies a datarange, add it to the slot metadata
+        if 'drange' in dataset.attrs:
+            self.OutputImage.meta.drange = tuple(dataset.attrs['drange'])
+
+        # Same for display_mode
+        if 'display_mode' in dataset.attrs:
+            self.OutputImage.meta.display_mode = str(dataset.attrs['display_mode'])
+
+        total_volume = numpy.prod(numpy.array(dataset.shape))
+        chunks = dataset.chunks
+        if not chunks and total_volume > 1e8:
+            self.OutputImage.meta.inefficient_format = True
+            logger.warning("This dataset ({}{}) is NOT chunked.  "
+                           "Performance for 3D access patterns will be bad!"
+                           .format(self._n5File.filename, internalPath))
+        if chunks:
+            self.OutputImage.meta.ideal_blockshape = chunks
+
+    def execute(self, slot, subindex, roi, result):
+        t = time.time()
+        assert self._n5File is not None
+        # Read the desired data directly from the Z5File
+        key = roi.toSlice()
+        N5File = self._n5File
+        internalPath = self.InternalPath.value
+
+        timer = None
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Reading N5 block: [{}, {}]".format(roi.start, roi.stop))
+            timer = Timer()
+            timer.unpause()
+
+        if result.flags.c_contiguous:
+            N5File[internalPath].read_direct(result[...], key)
+        else:
+            result[...] = N5File[internalPath][key]
+        if logger.getEffectiveLevel() >= logging.DEBUG:
+            t = 1000.0 * (time.time() - t)
+            logger.debug("took %f msec." % t)
+
+        if timer:
+            timer.pause()
+            logger.debug("Completed Z5 read in {} seconds: [{}, {}]".format(timer.seconds(), roi.start, roi.stop))
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.N5File or slot == self.InternalPath:
+            self.OutputImage.setDirty(slice(None))

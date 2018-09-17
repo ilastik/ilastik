@@ -28,6 +28,7 @@ from .opStreamingUfmfReader import OpStreamingUfmfReader
 from .opRawBinaryFileReader import OpRawBinaryFileReader
 from .opNpyFileReader import OpNpyFileReader
 from .opStreamingHdf5Reader import OpStreamingHdf5Reader
+from .opStreamingN5Reader import OpStreamingN5Reader
 from .opStreamingHdf5SequenceReaderS import OpStreamingHdf5SequenceReaderS
 from .opStreamingHdf5SequenceReaderM import OpStreamingHdf5SequenceReaderM
 from .opBlockwiseFilesetReader import OpBlockwiseFilesetReader

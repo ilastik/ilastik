@@ -30,7 +30,7 @@ from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector, OpSubReg
 from .opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import (
     OpBlockwiseFilesetReader, OpKlbReader, OpRESTfulBlockwiseFilesetReader,
-    OpStreamingHdf5Reader, OpStreamingHdf5SequenceReaderS,
+    OpStreamingHdf5Reader, OpStreamingN5Reader, OpStreamingHdf5SequenceReaderS,
     OpStreamingHdf5SequenceReaderM, OpTiffReader,
     OpTiffSequenceReader, OpCachedTiledVolumeReader, OpRawBinaryFileReader,
     OpStackLoader, OpRESTfulPrecomputedChunkedVolumeReader, OpImageReader
@@ -62,6 +62,7 @@ except ImportError as ex:
     _supports_h5blockreader = False
 
 import h5py
+import z5py
 import vigra
 import os
 import re
@@ -80,6 +81,8 @@ class OpInputDataReader(Operator):
 
     videoExts = ['ufmf', 'mmf']
     h5Exts = ['h5', 'hdf5', 'ilp']
+    n5Exts = ['n5']
+    n5Selection = ['json']          # The n5 standard keeps files in a directory, which stores a attributes.json file.
     klbExts = ['klb']
     npyExts = ['npy']
     npzExts = ['npz']
@@ -89,8 +92,8 @@ class OpInputDataReader(Operator):
     tiffExts = ['tif', 'tiff']
     vigraImpexExts = vigra.impex.listExtensions().split()
 
-    SupportedExtensions = h5Exts + npyExts + npzExts + rawExts + \
-        vigraImpexExts + blockwiseExts + videoExts + klbExts
+    SupportedExtensions = h5Exts + n5Exts + npyExts + npzExts + rawExts + \
+                          vigraImpexExts + blockwiseExts + videoExts + klbExts
 
     if _supports_dvid:
         dvidExts = ['dvidvol']
@@ -173,6 +176,7 @@ class OpInputDataReader(Operator):
                      self._attemptOpenAsTiffStack,
                      self._attemptOpenAsStack,
                      self._attemptOpenAsHdf5,
+                     self._attemptOpenAsN5,
                      self._attemptOpenAsNpy,
                      self._attemptOpenAsRawBinary,
                      self._attemptOpenAsTiledVolume,
@@ -357,6 +361,7 @@ class OpInputDataReader(Operator):
         # Open the h5 file in read-only mode
         try:
             h5File = h5py.File(externalPath, 'r')
+            a = 1
         except OpInputDataReader.DatasetReadError:
             raise
         except Exception as e:
@@ -410,6 +415,77 @@ class OpInputDataReader(Operator):
 
         return ([h5Reader], h5Reader.OutputImage)
 
+    def _attemptOpenAsN5(self, filePath):
+        # Check for an z5 extension
+        pathComponents = PathComponents(filePath)
+        ext = pathComponents.extension
+        if ext not in (".%s" % x for x in OpInputDataReader.n5Exts):
+            return ([], None)
+
+        externalPath = pathComponents.externalPath
+        internalPath = pathComponents.internalPath
+
+        if not os.path.exists(externalPath):
+            raise OpInputDataReader.DatasetReadError(
+                "Input file does not exist: " + externalPath)
+
+        # Open the n5 file in read-only mode
+        try:
+            n5File = z5py.N5File(externalPath, 'r+')
+        except OpInputDataReader.DatasetReadError:
+            raise
+        except Exception as e:
+            msg = "Unable to open N5 File: {}\n{}".format(
+                  externalPath, str(e))
+            raise OpInputDataReader.DatasetReadError(msg)
+        else:
+            if not internalPath:
+                possible_internal_paths = self._get_n5_dataset_names(n5File)
+                if len(possible_internal_paths) == 1:
+                    internalPath = possible_internal_paths[0]
+                elif len(possible_internal_paths) == 0:
+                    n5File.close()
+                    msg = "N5 file contains no datasets: {}".format(
+                        externalPath)
+                    raise OpInputDataReader.DatasetReadError(msg)
+                else:
+                    n5File.close()
+                    msg = "When using N5, you must append the N5 internal path to the " \
+                          "data set to your filename, e.g. myfile.n5/volume/data  " \
+                          "No internal path provided for dataset in file: {}".format(
+                        externalPath)
+                    raise OpInputDataReader.DatasetReadError(msg)
+
+            # @TODO The multiprocess-loading when we have a compressed N5 file will later be included
+            # try:
+            #     compression_setting = n5File[internalPath].compression
+            # except Exception as e:
+            #     n5File.close()
+            #     msg = "Error reading N5 File: {}\n{}".format(externalPath, e)
+            #     raise OpInputDataReader.DatasetReadError(msg)
+            #
+            # # If the n5 dataset is compressed, we'll have better performance
+            # #  with a multi-process N5 access object.
+            # # (Otherwise, single-process is faster.)
+            # allow_multiprocess_n5 = "LAZYFLOW_MULTIPROCESS_N5" in os.environ and os.environ[
+            #     "LAZYFLOW_MULTIPROCESS_N5"] != ""
+            # if compression_setting is not None and allow_multiprocess_n5:
+            #     n5File.close()
+            #     n5File = MultiProcessN5File(externalPath, 'r')
+
+        self._file = n5File
+
+        n5Reader = OpStreamingN5Reader(parent=self)
+        n5Reader.N5File.setValue(n5File)
+
+        try:
+            n5Reader.InternalPath.setValue(internalPath)
+        except OpStreamingN5Reader.DatasetReadError as e:
+            msg = "Error reading n5 File: {}\n{}".format(externalPath, e.msg)
+            raise OpInputDataReader.DatasetReadError(msg)
+
+        return ([n5Reader], n5Reader.OutputImage)
+
     @staticmethod
     def _get_hdf5_dataset_names(h5_file):
         """
@@ -422,6 +498,20 @@ class OpInputDataReader(Operator):
             if type(val) == h5py._hl.dataset.Dataset and 2 <= len(val.shape):
                 dataset_names.append('/' + name)
         h5_file.visititems(accumulate_names)
+        return dataset_names
+
+    @staticmethod
+    def _get_n5_dataset_names(n5_file):
+        """
+        Helper function for _attemptOpenAsN5().
+        Returns the name of all datasets in the file with at least 2 axes.
+        """
+        dataset_names = []
+
+        def accumulate_names(name, val):
+            if type(val) == z5py.dataset.Dataset and 2 <= len(val.shape):
+                dataset_names.append(name)
+        n5_file.visititems(accumulate_names, '')
         return dataset_names
 
     def _attemptOpenAsNpy(self, filePath):
