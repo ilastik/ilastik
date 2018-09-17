@@ -618,7 +618,7 @@ class CountingGui(LabelingGui):
         Called by our base class when one of our data slots has changed.
         This function creates a layer for each slot we want displayed in the volume editor.
         """
-        # Base class provides the label layer.
+        # Base class provides the label layer and the raw layer.
         layers = super(CountingGui, self).setupLayers()
 
         slots = {'Prediction': (self.op.Density, 0.5),
@@ -648,38 +648,6 @@ class CountingGui(LabelingGui):
 
         layers.append(boxlabellayer)
         self.boxlabelsrc = boxlabelsrc
-
-        inputDataSlot = self.topLevelOperatorView.InputImages
-        if inputDataSlot.ready():
-            inputLayer = None
-            for i in range(len(layers)):
-                if layers[i].name == "Raw Input":
-                    inputLayer = layers[i]
-                    layers[i], layers[-1] = layers[-1], layers[i]
-                    break
-
-            # the flag window_leveling is used to determine if the contrast
-            # of the layer is adjustable
-            if isinstance(inputLayer, GrayscaleLayer):
-                inputLayer.window_leveling = True
-            else:
-                inputLayer.window_leveling = False
-
-            def toggleTopToBottom():
-                index = self.layerstack.layerIndex( inputLayer )
-                self.layerstack.selectRow( index )
-                if index == 0:
-                    self.layerstack.moveSelectedToBottom()
-                else:
-                    self.layerstack.moveSelectedToTop()
-
-            inputLayer.shortcutRegistration = ( "i", ShortcutManager.ActionInfo(
-                                                        "Prediction Layers",
-                                                        "Bring Input To Top/Bottom",
-                                                        "Bring Input To Top/Bottom",
-                                                        toggleTopToBottom,
-                                                        self.viewerControlWidget(),
-                                                        inputLayer ) )
 
         self.handleLabelSelectionChange()
         return layers

@@ -907,6 +907,22 @@ class LabelingGui(LayerViewerGui):
             else:
                 self.labelingDrawerUi.thresToolButton.hide()
 
+            def toggleTopToBottom():
+                index = self.layerstack.layerIndex( layer )
+                self.layerstack.selectRow( index )
+                if index == 0:
+                    self.layerstack.moveSelectedToBottom()
+                else:
+                    self.layerstack.moveSelectedToTop()
+
+            layer.shortcutRegistration = ( "i", ShortcutManager.ActionInfo(
+                                                "Prediction Layers",
+                                                "Bring Input To Top/Bottom",
+                                                "Bring Input To Top/Bottom",
+                                                toggleTopToBottom,
+                                                self.viewerControlWidget(),
+                                                layer ) )
+
         return layers
 
     def allowDeleteLastLabelOnly(self, enabled):

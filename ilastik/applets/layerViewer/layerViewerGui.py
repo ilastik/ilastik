@@ -425,7 +425,15 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
 
         # Ask for the updated layer list (usually provided by the subclass)
         newGuiLayers = self.setupLayers()
-        
+
+        # The order of the initial layerstack has to be static, where the "Raw Input" layer is at the stacks last positoin
+        for i in range(len(newGuiLayers)):
+            if newGuiLayers[i].name == "Raw Input":
+                rlayer = newGuiLayers[i]
+                newGuiLayers.remove(rlayer)
+                newGuiLayers.append(rlayer)
+                break
+
         for layer in newGuiLayers:
             assert not [l for l in self.layerstack if l is layer], \
                 "You are attempting to re-use a layer ({}).  " \

@@ -581,7 +581,7 @@ class PixelClassificationGui(LabelingGui):
         Called by our base class when one of our data slots has changed.
         This function creates a layer for each slot we want displayed in the volume editor.
         """
-        # Base class provides the label layer.
+        # Base class provides the label layer and the raw layer
         layers = super(PixelClassificationGui, self).setupLayers()
 
         ActionInfo = ShortcutManager.ActionInfo
@@ -718,30 +718,6 @@ class PixelClassificationGui(LabelingGui):
                 ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setPredLayerName)
                 layers.append(predictLayer)
-
-        # Add the raw data last (on the bottom)
-        inputDataSlot = self.topLevelOperatorView.InputImages        
-        if inputDataSlot.ready():
-            inputLayer = None
-            for layer in layers:
-                if layer.name == "Raw Input":
-                    inputLayer = layer
-                    break
-
-            def toggleTopToBottom():
-                index = self.layerstack.layerIndex( inputLayer )
-                self.layerstack.selectRow( index )
-                if index == 0:
-                    self.layerstack.moveSelectedToBottom()
-                else:
-                    self.layerstack.moveSelectedToTop()
-
-            inputLayer.shortcutRegistration = ( "i", ActionInfo( "Prediction Layers",
-                                                                 "Bring Input To Top/Bottom",
-                                                                 "Bring Input To Top/Bottom",
-                                                                 toggleTopToBottom,
-                                                                 self.viewerControlWidget(),
-                                                                 inputLayer ) )
         
         self.handleLabelSelectionChange()
         return layers

@@ -560,14 +560,11 @@ class ObjectClassificationGui(LabelingGui):
             return labellayer, labelsrc
 
     def setupLayers(self):
-
-        # Base class provides the label layer.
+        # Base class provides the label layer and the raw layer
         layers = super(ObjectClassificationGui, self).setupLayers()
 
         binarySlot = self.op.BinaryImages
         segmentedSlot = self.op.SegmentationImages
-        rawSlot = self.op.RawImages
-
         #This is just for colors
         labels = self.labelListData
         
@@ -679,7 +676,7 @@ class ObjectClassificationGui(LabelingGui):
         if binarySlot.ready():
             ct_binary = [0,
                          QColor(255, 255, 255, 255).rgba()]
-            
+
             # white foreground on transparent background, even for labeled images
             binct = [QColor(255, 255, 255, 255).rgba()]*65536
             binct[0] = 0
@@ -690,29 +687,6 @@ class ObjectClassificationGui(LabelingGui):
             binLayer.opacity = 1.0
             binLayer.setToolTip("Segmentation results as a binary mask")
             layers.append(binLayer)
-
-        if rawSlot.ready():
-            rawLayer = None
-            for layer in layers:
-                if layer.name == "Raw Input":
-                    rawLayer = layer
-                    break
-
-            def toggleTopToBottom():
-                index = self.layerstack.layerIndex( rawLayer )
-                self.layerstack.selectRow( index )
-                if index == 0:
-                    self.layerstack.moveSelectedToBottom()
-                else:
-                    self.layerstack.moveSelectedToTop()
-
-            ActionInfo = ShortcutManager.ActionInfo
-            rawLayer.shortcutRegistration = ( "i", ActionInfo( "Prediction Layers",
-                                                               "Bring Input To Top/Bottom",
-                                                               "Bring Input To Top/Bottom",
-                                                                toggleTopToBottom,
-                                                                self.viewerControlWidget(),
-                                                                rawLayer ) )
 
         # since we start with existing labels, it makes sense to start
         # with the first one selected. This would make more sense in
