@@ -83,6 +83,10 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
                                 help='Plugin name for exporting tracking results',
                                 required=False,
                                 default=None)
+        arg_parser.add_argument('--big_data_viewer_xml_file',
+                                help='Path to BigDataViewer XML file. Required if export_plugin=Fiji-MaMuT',
+                                required=False,
+                                default=None)
         return arg_parser
 
     @classmethod
@@ -110,6 +114,11 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
 
         if parsed_args.export_source is not None and parsed_args.export_source.lower() == "plugin" and parsed_args.export_plugin is None:
                 msg += "export_plugin MUST be specified if export_source is set to Plugin!"
+                raise Exception(msg)
+
+        if parsed_args.export_plugin == 'Fiji-MaMuT':
+            if parsed_args.big_data_viewer_xml_file is None:
+                msg += "'big_data_viewer_xml_file' MUST be specified if 'export_plugin' is set to 'Fiji-MaMuT'"
                 raise Exception(msg)
 
         # configure parent applet
@@ -141,6 +150,8 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
 
             if parsed_args.export_source == OpTrackingBaseDataExport.PluginOnlyName:
                 opTrackingDataExport.SelectedPlugin.setValue(parsed_args.export_plugin)
+                if parsed_args.export_plugin == 'Fiji-MaMuT':
+                    opTrackingDataExport.BigDataViewerFilepath.setValue(parsed_args.big_data_viewer_xml_file)
 
                 # if a plugin was selected, the only thing we need is the export name
                 if parsed_args.output_filename_format:

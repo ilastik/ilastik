@@ -161,15 +161,18 @@ class TrackingExportFormatPlugin(IPlugin):
         ''' Check whether the files we want to export (when appending the base filename) are already present '''
         return False
 
-    def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
+    def export(self, filename, hypothesesGraph, *, objectFeaturesSlot, labelImageSlot, rawImageSlot, bdvFilepathSlot):
         """Export the tracking solution stored in the hypotheses graph's "value" and "divisionValue"
         attributes (or the "lineageId" and "trackId" attribs). See https://github.com/chaubold/hytra for more details.
 
         :param filename: string of the file where to save the result (or folder where to put the export files)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-        :param objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output 
-               of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
-        
+        :param objectFeaturesSlot (lazyflow.graph.InputSlot): connected to the RegionFeaturesAll
+            output of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
+        :param labelImageSlot (lazyflow.graph.InputSlot): labeled image slot
+        :param rawImageSlot (lazyflow.graph.InputSlot): raw image slot
+        :param bdvFilepathSlot (lazyflow.graph.InputSlot): BigDataViewer file path slot
+
         :returns: True on success, False otherwise
         """
         return False

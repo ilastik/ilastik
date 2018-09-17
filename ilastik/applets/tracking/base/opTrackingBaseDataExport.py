@@ -30,6 +30,10 @@ class OpTrackingBaseDataExport(OpDataExport):
     SelectedPlugin = InputSlot(value=None)
     SelectedExportSource = InputSlot(value=None)
 
+    # Optional BigDataViewer file path slot required by the Fiji-MaMuT plugin only
+    # Gets populated from within `PluginExportOptionsDlg`
+    BigDataViewerFilepath = InputSlot(value=None, optional=True)
+
     def __init__(self, *args, **kwargs):
         super(OpTrackingBaseDataExport, self).__init__(*args, **kwargs)
 

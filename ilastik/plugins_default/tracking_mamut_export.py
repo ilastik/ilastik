@@ -1,10 +1,9 @@
-from builtins import range
 import os.path
+
 import numpy as np
 from ilastik.plugins import TrackingExportFormatPlugin
 from mamutexport.mamutxmlbuilder import MamutXmlBuilder
-from mamutexport.bigdataviewervolumeexporter import BigDataViewerVolumeExporter
-import h5py
+
 
 def convertKeyName(key):
     key = key.replace('<', '_')
@@ -39,32 +38,19 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename + '_mamut.xml') or os.path.exists(filename + '_bdv.xml') or os.path.exists(filename + '_raw.h5')
 
-    def export(self, filename, hypothesesGraph, objectFeaturesSlot, labelImageSlot, rawImageSlot):
-        """Export the tracking solution stored in the hypotheses graph to three files: 
-        Firstly, a _raw.h5 file containing the data, and a _bdv.xml file
-        that allows the raw data to be be displayed in Fiji's BigDataViewer.
-        Secondly, it exports an _mamut.xml file that contains the tracks for visualization and proof-reading in MaMuT. 
+    def export(self, filename, hypothesesGraph, *, objectFeaturesSlot, bdvFilepathSlot, **kwargs):
+        """Export the tracking solution stored in the hypotheses graph to MaMuT XML file.
+        Creates an _mamut.xml file that contains the tracks for visualization and proof-reading in MaMuT.
 
-        :param filename: string of the FILE where to save the result (different .xml files and a .h5 file with suffixes)
+        :param filename: string of the FILE where to save the result (*_mamut.xml file)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-        :param objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output 
-               of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
-        
+        :param objectFeaturesSlot (lazyflow.graph.InputSlot): connected to the RegionFeaturesAll
+            output of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
+        :param bdvFilepathSlot (lazyflow.graph.InputSlot): BigDataViewer file path slot
+        :param kwargs: dict containing additional context info
+
         :returns: True on success, False otherwise
         """
-        bigDataViewerFile = filename + '_bdv.xml'
-
-        rawImage = rawImageSlot([]).wait()
-        rawImage = np.swapaxes(rawImage, 1, 3)
-        with h5py.File(filename + '_raw.h5', 'w') as f:
-            f.create_dataset('exported_data', data=rawImage)
-        
-        bve = BigDataViewerVolumeExporter(filename + '_raw.h5', 'exported_data', rawImage.shape[1:4])
-        for t in range(rawImage.shape[0]):
-            bve.addTimePoint(t)
-        bve._finalizeTimepoints()
-        MamutXmlBuilder.indent(bve.root)
-        bve.writeToFile(filename + '_bdv.xml')
 
         builder = MamutXmlBuilder()
         graph = hypothesesGraph._graph
@@ -160,6 +146,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                 featureDict['LabelimageId'] = label
                 builder.addSpot(frame, 'track-{}'.format(trackId), graph.node[node]['id'], xpos, ypos, zpos, radius, featureDict)
 
+        bigDataViewerFile = bdvFilepathSlot.value
         builder.setBigDataViewerImagePath(os.path.dirname(bigDataViewerFile), os.path.basename(bigDataViewerFile))
         builder.writeToFile(filename + '_mamut.xml')
 

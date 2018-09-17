@@ -6,4 +6,9 @@ Module = tracking_mamut_export
 Author = Carsten Haubold
 Version = 0.1
 Website = ilastik.org
-Description = Plugin to export the ilastik tracking results to Fiji's MaMuT <br> <br> <b>Usage: </b> Select the folder where three files will be saved: <ul> <li> <b>MaMut Export </b> to be opened with FiJi Mamut Plugin in order to visualise the tracking results. Has the <i> _mamut.xml </i> extension <li> Raw image saved in hdf5 format with the <i> _raw.h5 </i> extension <li> BigDataViewer file needed for the MaMut Plugin in Fiji with the <i> _bdv.xml </i> extension </ul> <br><br> To open the saved result with Fiji's MaMuT you must have the MaMuT and the ilastik plugin installed in Fiji. In Fiji, click <i>Plugins->MaMuT->Load MaMuT File</i> and select the exported file with the <i> _mamut.xml </i> suffix.
+Description = Plugin to export the ilastik tracking results to Fiji's MaMuT <br> <br> <b>Usage: </b>
+    Select the folder where the MaMuT XML file will be saved and provide the path to the BigDataViewer XML file
+    (if you don't have one already export your dataset in Fiji first with <i>Plugins->BigDataViewer->Export Current Image as XML/HDF5</i>):
+    <ul> <li> <b>MaMut Export </b> to be opened with FiJi Mamut Plugin in order to visualise the tracking results.
+    Has the <i> _mamut.xml </i> extension </ul> <br><br> To open the saved result in Fiji, click <i>Plugins->MaMuT->Open MaMuT annotation</i>
+    and select the exported file with the <i> _mamut.xml </i> suffix.

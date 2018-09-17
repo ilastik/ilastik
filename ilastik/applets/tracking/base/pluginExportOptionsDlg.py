@@ -20,14 +20,11 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import os
-import collections
-from functools import partial
 
 import numpy
-
 from PyQt5 import uic
-from PyQt5.QtCore import Qt, QObject, QEvent
-from PyQt5.QtWidgets import QDialog, QComboBox, QLabel, QHBoxLayout, QVBoxLayout, QFrame, QFileDialog
+from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox
 from ilastik.plugins import pluginManager
 
 try:
@@ -41,7 +38,7 @@ except:
 # DataExportOptionsDlg
 #**************************************************************************
 class PluginExportOptionsDlg(QDialog):
-    
+
     def __init__(self, parent, topLevelOp=None):
         """
         Constructor.
@@ -64,18 +61,33 @@ class PluginExportOptionsDlg(QDialog):
             self._topLevelOp = topLevelOp
 
         self.pluginName = self._topLevelOp.SelectedPlugin.value
-        
+
         # Connect the 'transaction slot'.
         # All slot changes will occur immediately
         self._topLevelOp.TransactionSlot.setValue(True)
 
         # connect the Ok cancel buttons
-        self.buttonBox.accepted.connect(self.accept)
+        def onOkClicked():
+            if self.pluginName == 'Fiji-MaMuT':
+                if self._bdvFilepathSlot.ready():
+                    self.accept()
+                else:
+                    msg = QMessageBox()
+                    msg.setIcon(QMessageBox.Information)
+                    msg.setText(f"Please provide BigDataViewer file path")
+                    msg.setWindowTitle("Fiji-MaMuT export")
+                    msg.setStandardButtons(QMessageBox.Ok)
+                    msg.exec_()
+            else:
+                self.accept()
+
+        self.buttonBox.accepted.connect(onOkClicked)
         self.buttonBox.rejected.connect(self.reject)
 
         # Init child widgets
         self._initMetaInfoText()
         self._initFileOptions()
+        self._initBdvFileSelection()
 
         # See self.eventFilter()
         self.filepathEdit.installEventFilter(self)
@@ -87,10 +99,12 @@ class PluginExportOptionsDlg(QDialog):
 
         # Plugin Dropdown
         availableExportPlugins = self.getAvailablePlugins()
+
         def onSelectedExportPluginChanged(pluginText):
             self._topLevelOp.SelectedPlugin.setValue(pluginText)
             self.pluginName = self._topLevelOp.SelectedPlugin.value
             self._initMetaInfoText()
+            self._updateBdvWidget()
 
         self.pluginDropdown = self.comboBox
         self.pluginDropdown.addItems(availableExportPlugins)
@@ -123,7 +137,7 @@ class PluginExportOptionsDlg(QDialog):
 
     def eventFilter(self, watched, event):
         # Apply the new path if the user presses 
-        #  'enter' or clicks outside the filepathe editbox
+        #  'enter' or clicks outside the filepath editbox
         if watched == self.filepathEdit:
             if event.type() == QEvent.FocusOut or \
                ( event.type() == QEvent.KeyPress and \
@@ -151,36 +165,68 @@ class PluginExportOptionsDlg(QDialog):
     #**************************************************************************
     def _initFileOptions(self):
         self._filepathSlot = self._topLevelOp.OutputFilenameFormat
-        self.fileSelectButton.clicked.connect( self._browseForFilepath )
+        self.fileSelectButton.clicked.connect(self._browseForFilepath)
 
-        self._file_filter = ''
+    def _initBdvFileSelection(self):
+        # init BigDataViewer file selection widget
+        self._bdvFilepathSlot = self._topLevelOp.BigDataViewerFilepath
+        self.bdvFileSelectButton.clicked.connect(self._browseForBdvFile)
+        self._updateBdvWidget()
+
+    def _updateBdvWidget(self):
+        """Show/Hide BigDataViewer file widget"""
+        is_visible = self.pluginName == 'Fiji-MaMuT'
+        for i in range(self.gridLayout.count()):
+            widget = self.gridLayout.itemAt(i).widget()
+            if widget.objectName().startswith('bdv'):
+                widget.setVisible(is_visible)
 
     def showEvent(self, event):
         super(PluginExportOptionsDlg, self).showEvent(event)
         self.updateFromSlot()
-        
+
     def updateFromSlot(self):
         if self._filepathSlot.ready():
             file_path = self._filepathSlot.value
             file_path = os.path.splitext(file_path)[0]
-            self.filepathEdit.setText( file_path )
-            
+            self.filepathEdit.setText(file_path)
+
             # Re-configure the slot in case we changed the extension
-            self._filepathSlot.setValue( file_path )
-    
+            self._filepathSlot.setValue(file_path)
+
+        if self._bdvFilepathSlot.ready():
+            bdv_file_path = self._bdvFilepathSlot.value
+            self.bdvFilepath.setText(bdv_file_path)
+
     def _browseForFilepath(self):
         starting_dir = os.path.expanduser("~")
         if self._filepathSlot.ready():
             starting_dir = os.path.split(self._filepathSlot.value)[-1]
-        
-        dlg = QFileDialog( self, "Export Location", starting_dir, self._file_filter )
+
+        dlg = QFileDialog(self, "Export Location", starting_dir)
         dlg.setAcceptMode(QFileDialog.AcceptSave)
         if not dlg.exec_():
             return
-        
+
         exportPath = dlg.selectedFiles()[0]
         self._filepathSlot.setValue( exportPath )
         self.filepathEdit.setText( exportPath )
+
+    def _browseForBdvFile(self):
+        """Browse for BigDataViewer file"""
+        if self._bdvFilepathSlot.ready():
+            starting_dir = os.path.split(self._bdvFilepathSlot.value)[0]
+        else:
+            starting_dir = self._topLevelOp.WorkingDirectory.value
+
+        dlg = QFileDialog(self, "BigDataViewer File Location", starting_dir, "XML files (*.xml)")
+        dlg.setAcceptMode(QFileDialog.AcceptOpen)
+        if not dlg.exec_():
+            return
+
+        bdv_file_path = dlg.selectedFiles()[0]
+        self._bdvFilepathSlot.setValue(bdv_file_path)
+        self.bdvFilepath.setText(bdv_file_path)
 
 #**************************************************************************
 # Quick debug
@@ -202,9 +248,9 @@ if __name__ == "__main__":
     op.SelectedPlugin.setValue(availablePlugins[0])
     op.SelectedExportSource.setValue(OpTrackingBaseDataExport.PluginOnlyName)
     op.TransactionSlot.setValue(True)
-    
+
     app = QApplication([])
     w = PluginExportOptionsDlg(None, topLevelOp=op)
     w.show()
-    
+
     app.exec_()

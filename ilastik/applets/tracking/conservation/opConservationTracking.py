@@ -612,16 +612,13 @@ class OpConservationTracking(Operator):
         opRelabeledRegionFeatures.FeatureNames.setValue(feature_names_vigra)
 
         return opRelabeledRegionFeatures
-                     
 
-    def exportPlugin(self, filename, plugin, checkOverwriteFiles=False):
+    def exportPlugin(self, filename, plugin, checkOverwriteFiles=False, bdvFilepathSlot=None):
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False
 
         # Create opRegionFeatures to extract features of relabeled volume
         if with_merger_resolution:
-            parameters = self.Parameters.value
-            
             # Use simple relabeled merger feature slot configuration instead of opRelabeledMergerFeatureExtraction
             # This is faster for videos with few mergers and few number of objects per frame
             if False:#'withAnimalTracking' in parameters and parameters['withAnimalTracking']:  
@@ -646,16 +643,16 @@ class OpConservationTracking(Operator):
                 opRelabeledRegionFeatures = self._setupRelabeledFeatureSlot(self.ObjectFeatures)
                 object_feature_slot = opRelabeledRegionFeatures.RegionFeatures                
             
-            label_image = self.RelabeledImage
+            label_image_slot = self.RelabeledImage
 
         # Use ObjectFeaturesWithDivFeatures slot
         elif with_divisions:
             object_feature_slot = self.ObjectFeaturesWithDivFeatures
-            label_image = self.LabelImage
+            label_image_slot = self.LabelImage
         # Use ObjectFeatures slot only
         else:
             object_feature_slot = self.ObjectFeatures
-            label_image = self.LabelImage
+            label_image_slot = self.LabelImage
         
         hypothesesGraph = self.HypothesesGraph.value
 
@@ -663,7 +660,11 @@ class OpConservationTracking(Operator):
             # do not export if we would otherwise overwrite files
             return False
 
-        if not plugin.export(filename, hypothesesGraph, object_feature_slot, label_image, self.RawImage):
+        if not plugin.export(filename, hypothesesGraph,
+                             objectFeaturesSlot=object_feature_slot,
+                             labelImageSlot=label_image_slot,
+                             rawImageSlot=self.RawImage,
+                             bdvFilepathSlot=bdvFilepathSlot):
             raise RuntimeError('Exporting tracking solution with plugin failed')
         else:
             return True
