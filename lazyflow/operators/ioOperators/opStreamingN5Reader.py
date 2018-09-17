@@ -109,7 +109,7 @@ class OpStreamingN5Reader(Operator):
     def execute(self, slot, subindex, roi, result):
         t = time.time()
         assert self._n5File is not None
-        # Read the desired data directly from the Z5File
+        # Read the desired data directly from the N5File
         key = roi.toSlice()
         N5File = self._n5File
         internalPath = self.InternalPath.value
@@ -120,10 +120,10 @@ class OpStreamingN5Reader(Operator):
             timer = Timer()
             timer.unpause()
 
-        if result.flags.c_contiguous:
-            N5File[internalPath].read_direct(result[...], key)
-        else:
-            result[...] = N5File[internalPath][key]
+        #read_subarray(start, stop)
+        #unlike h5, the n5 lib does not differentiate if result is c_contiguous or not
+        result[...] = N5File[internalPath].read_subarray(roi.start, roi.stop)
+
         if logger.getEffectiveLevel() >= logging.DEBUG:
             t = 1000.0 * (time.time() - t)
             logger.debug("took %f msec." % t)

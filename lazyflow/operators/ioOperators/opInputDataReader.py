@@ -456,23 +456,6 @@ class OpInputDataReader(Operator):
                         externalPath)
                     raise OpInputDataReader.DatasetReadError(msg)
 
-            # @TODO The multiprocess-loading when we have a compressed N5 file will later be included
-            # try:
-            #     compression_setting = n5File[internalPath].compression
-            # except Exception as e:
-            #     n5File.close()
-            #     msg = "Error reading N5 File: {}\n{}".format(externalPath, e)
-            #     raise OpInputDataReader.DatasetReadError(msg)
-            #
-            # # If the n5 dataset is compressed, we'll have better performance
-            # #  with a multi-process N5 access object.
-            # # (Otherwise, single-process is faster.)
-            # allow_multiprocess_n5 = "LAZYFLOW_MULTIPROCESS_N5" in os.environ and os.environ[
-            #     "LAZYFLOW_MULTIPROCESS_N5"] != ""
-            # if compression_setting is not None and allow_multiprocess_n5:
-            #     n5File.close()
-            #     n5File = MultiProcessN5File(externalPath, 'r')
-
         self._file = n5File
 
         n5Reader = OpStreamingN5Reader(parent=self)
