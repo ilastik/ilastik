@@ -119,8 +119,8 @@ class ClassifierSelectionDlg(QDialog):
             from sklearn.naive_bayes import GaussianNB
             from sklearn.tree import DecisionTreeClassifier
             from sklearn.neighbors import KNeighborsClassifier
-            from sklearn.lda import LDA
-            from sklearn.qda import QDA
+            from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+            from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis as QDA
             from sklearn.svm import SVC, NuSVC
             classifiers["Random Forest (scikit-learn)"] = SklearnLazyflowClassifierFactory( RandomForestClassifier, 100 )
             classifiers["Gaussian Naive Bayes (scikit-learn)"] = SklearnLazyflowClassifierFactory( GaussianNB )
@@ -131,9 +131,9 @@ class ClassifierSelectionDlg(QDialog):
             classifiers["QDA (scikit-learn)"] = SklearnLazyflowClassifierFactory( QDA )
             classifiers["SVM C-Support (scikit-learn)"] = SklearnLazyflowClassifierFactory( SVC, probability=True )
             classifiers["SVM Nu-Support (scikit-learn)"] = SklearnLazyflowClassifierFactory( NuSVC, probability=True )
-        except ImportError:
+        except ImportError as e:
             import warnings
-            warnings.warn("Couldn't import sklearn. Scikit-learn classifiers not available.")
+            warnings.warn(f"Couldn't import sklearn. Scikit-learn classifiers not available. Error encountered at {e}")
 
         # Debug classifiers
         classifiers["Parallel Random Forest with Variable Importance (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(100, variable_importance_enabled=True)        
