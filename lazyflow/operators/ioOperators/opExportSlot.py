@@ -24,17 +24,19 @@ from builtins import object
 #		   http://ilastik.org/license/
 ###############################################################################
 import os
+import shutil
 import collections
 from functools import partial
 
 import numpy
 import vigra
 import h5py
+import z5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape
 from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents, mkdir_p
-from lazyflow.operators.ioOperators import OpH5WriterBigDataset, OpNpyWriter, OpExport2DImage, OpStackWriter, \
+from lazyflow.operators.ioOperators import OpH5WriterBigDataset, OpN5WriterBigDataset, OpNpyWriter, OpExport2DImage, OpStackWriter, \
                                            OpExportMultipageTiff, OpExportMultipageTiffSequence, OpExportToArray
 
 try:
@@ -72,6 +74,8 @@ class OpExportSlot(Operator):
     _4d_sequence_formats = [ FormatInfo('multipage tiff sequence', 'tiff', 4, 4) ]
     nd_format_formats = [ FormatInfo('hdf5', 'h5', 0, 5),
                           FormatInfo('compressed hdf5', 'h5', 0, 5),
+                          FormatInfo('n5', 'n5', 0, 5),
+                          FormatInfo('compressed n5', 'n5', 0, 5),
                           FormatInfo('numpy', 'npy', 0, 5),
                           FormatInfo('dvid', '', 2, 5),
                           FormatInfo('blockwise hdf5', 'json', 0, 5) ]
@@ -87,6 +91,8 @@ class OpExportSlot(Operator):
         export_impls = {}
         export_impls['hdf5'] = ('h5', self._export_hdf5)
         export_impls['compressed hdf5'] = ('h5', partial(self._export_hdf5, True))
+        export_impls['n5'] = ('n5', self._export_n5)
+        export_impls['compressed n5'] = ('n5', partial(self._export_n5, True))
         export_impls['numpy'] = ('npy', self._export_npy)
         export_impls['dvid'] = ('', self._export_dvid)
         export_impls['blockwise hdf5'] = ('json', self._export_blockwise_hdf5)
@@ -273,6 +279,45 @@ class OpExportSlot(Operator):
             sys.stderr.write(msg)
             raise
 
+    def _export_n5(self, compress=False):
+        self.progressSignal(0)
+
+        # Create and open the n5 file
+        export_components = PathComponents(self.ExportPath.value)
+        try:
+            if os.path.isdir(export_components.externalPath):
+                shutil.rmtree(export_components.externalPath)
+            else:
+                os.remove(export_components.externalPath)
+        except OSError as ex:
+            # It's okay if the file isn't there.
+            if ex.errno != 2:
+                raise
+        try:
+            with z5py.N5File(export_components.externalPath, 'w') as n5File:
+                # Create a temporary operator to do the work for us
+                opN5Writer = OpN5WriterBigDataset(parent=self)
+                try:
+                    #opN5Writer.CompressionEnabled.setValue(compress)
+                    opN5Writer.n5File.setValue(n5File)
+                    opN5Writer.n5Path.setValue(export_components.internalPath)
+                    opN5Writer.Image.connect(self.Input)
+
+                    # The N5 Writer provides it's own progress signal, so just connect ours to it.
+                    opN5Writer.progressSignal.subscribe(self.progressSignal)
+
+                    # Perform the export and block for it in THIS THREAD.
+                    opN5Writer.WriteImage[:].wait()
+                finally:
+                    opN5Writer.cleanUp()
+                    self.progressSignal(100)
+        except IOError as ex:
+            import sys
+            msg = "\nException raised when attempting to export to {}: {}\n" \
+                .format(export_components.externalPath, str(ex))
+            sys.stderr.write(msg)
+            raise
+
     def _export_npy(self):
         self.progressSignal(0)
         export_path = self.ExportPath.value
@@ -406,6 +451,12 @@ class FormatValidity(object):
               'compressed hdf5': (np.uint8, np.uint16, np.uint32, np.uint64,
                        np.int8, np.int16, np.int32, np.int64,
                        np.float32, np.float64,),
+              'n5': (np.uint8, np.uint16, np.uint32, np.uint64,
+                       np.int8, np.int16, np.int32, np.int64,
+                       np.float32, np.float64,),
+              'compressed n5': (np.uint8, np.uint16, np.uint32, np.uint64,
+                                  np.int8, np.int16, np.int32, np.int64,
+                                  np.float32, np.float64,),
               }
 
     # { extension : (min_ndim, max_ndim) } 
@@ -423,6 +474,8 @@ class FormatValidity(object):
             'numpy': (0, 5),
             'hdf5': (0, 5),
             'compressed hdf5': (0, 5),
+            'n5': (0, 5),
+            'compressed n5': (0, 5),
             }
 
     # { extension : [allowed_num_channels] }
@@ -440,6 +493,8 @@ class FormatValidity(object):
               'numpy': (),  # empty means "no restriction on number of channels"
               'hdf5': (), # ditto
               'compressed hdf5': (), # ditto
+              'n5': (),  # ditto
+              'compressed n5': (),  # ditto
               }
 
     @classmethod
