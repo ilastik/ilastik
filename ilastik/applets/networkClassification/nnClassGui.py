@@ -36,13 +36,13 @@ from PyQt5.QtCore import Qt, pyqtSlot, pyqtProperty
 from PyQt5.QtWidgets import QStackedWidget, QMessageBox, QFileDialog, QMenu, QLineEdit, QDialogButtonBox, QVBoxLayout, \
      QDialog, QCheckBox, QApplication
 
+from ilastik.applets.networkClassification.tiktorchWizard import MagicWizard
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 
 from lazyflow.classifiers import TikTorchLazyflowClassifier
-from tiktorch.wrapper import TikTorch
 
-from ilastik.applets.networkClassification.tiktorchWizard import MagicWizard
+from tiktorch.utils import DynamicShape
 
 
 logger = logging.getLogger(__name__)
@@ -320,12 +320,7 @@ class NNClassGui(LayerViewerGui):
         modelname = os.path.basename(os.path.normpath(folder_path))
         print(modelname)
 
-        self.tiktorch = TikTorch(folder_path)
-        self.tiktorch.load_model()
-
-        print(self.tiktorch._model)
-
-
+        self.tiktorch_path = folder_path
 
         #Statement for importing the same classifier twice
         if modelname in self.classifiers.keys():
@@ -340,7 +335,7 @@ class NNClassGui(LayerViewerGui):
             self.drawer.comboBox.clear()
             self.drawer.comboBox.addItems(self.classifiers)
 
-            self.topLevelOperator.FullModel.setValue(self.tiktorch._model)
+            # self.topLevelOperator.FullModel.setValue(self.tiktorch._model)
 
 
     def pred_nn(self):
@@ -361,20 +356,22 @@ class NNClassGui(LayerViewerGui):
 
                 # if self.topLevelOperator.FullModel.value:
                     #if the full model object is serialized
-                model_object = self.topLevelOperator.FullModel.value
-                model_path = None
-
+                # model_object = self.topLevelOperator.FullModel.value
                 self.topLevelOperator.FreezePredictions.setValue(False)
-
                 #zero for halo size, since its handled in tiktorch
-                model = TikTorchLazyflowClassifier(model_object, model_path, 0, self.batch_size)
+                model = TikTorchLazyflowClassifier(None, self.tiktorch_path, 0, self.batch_size)
 
-                self.topLevelOperator.BlockShape.setValue(self.topLevelOperator.InputImage.meta.shape)
-                print(self.topLevelOperator.InputImage.meta.shape)
-                self.topLevelOperator.NumClasses.setValue(self.topLevelOperator.InputImage.meta.shape[3])
+                dynamic_shape = model._tiktorch_net.get('dynamic_input_shape')
+                block_shape = set_BlockShape(self.topLevelOperator.InputImage.meta.shape, dynamic_shape)
+                # self.topLevelOperator.BlockShape.setValue(self.topLevelOperator.InputImage.meta.shape)
+                self.topLevelOperator.BlockShape.setValue(block_shape)
+
+                if len(self.topLevelOperator.InputImage.meta.shape) == 3:
+                    self.topLevelOperator.NumClasses.setValue(self.topLevelOperator.InputImage.meta.shape[2])
+                else:
+                    self.topLevelOperator.NumClasses.setValue(self.topLevelOperator.InputImage.meta.shape[3])
 
                 self.topLevelOperator.Classifier.setValue(model)
-
                 self.updateAllLayers()
                 self.parentApplet.appletStateUpdateRequested()
 
@@ -445,3 +442,18 @@ class NNClassGui(LayerViewerGui):
             
 
         return folder_names
+
+def set_BlockShape(inputDim, dynamic_shape):
+    """
+    calculates the blockshape with the blocksize of the dynamic shape 
+    """
+    block_size = DynamicShape(dynamic_shape).base_shape
+    img_shape = inputDim[1]
+
+    for i in range(1,20):
+        if img_shape//(i*block_size[0]) < 10:
+            block_shape = i*block_size[0]
+            break
+
+    return [1, block_shape, block_shape, inputDim[3]]
+
