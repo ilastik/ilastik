@@ -34,6 +34,8 @@ from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwis
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.graph import Graph
 from lazyflow.roi import roiToSlice
+from inferno.io.transform import Compose
+from inferno.io.transform.generic import Normalize, Cast, AsTorchBatch
 
 import logging
 logger = logging.getLogger(__name__)
@@ -42,12 +44,6 @@ try:
     from tiktorch.wrapper import TikTorch
 except ImportError as e:
     raise
-
-
-# FIXME: hard coded file path to a trained and pickled pytorch network!
-# PYTORCH_MODEL_FILE_PATH = '/Users/chaubold/opt/miniconda/envs/ilastik-py3/src/tiktorch/test3.nn'
-# PYTORCH_MODEL_FILE_PATH = '/Users/jmassa/Downloads/dnunet-cpu-chaubold.nn'
-
 
 class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     # The version is used to determine compatibility of pickled classifier factories.
@@ -117,7 +113,7 @@ assert issubclass(TikTorchLazyflowClassifierFactory, LazyflowPixelwiseClassifier
 class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     HDF5_GROUP_FILENAME = 'pytorch_network_path'
 
-    def __init__(self, tiktorch_net, filename=None, HALO_SIZE=32, BATCH_SIZE=3):
+    def __init__(self, tiktorch_net, filename=None, HALO_SIZE=0, BATCH_SIZE=3):
         """
         Args:
             tiktorch_net (tiktorch): tiktorch object to be loaded into this
@@ -128,18 +124,13 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         if self._filename is None:
             self._filename = ""
 
-        self.HALO_SIZE = HALO_SIZE
         self.BATCH_SIZE = BATCH_SIZE
-
+        self.HALO_SIZE = HALO_SIZE
 
         if tiktorch_net is None:
             print (self._filename)
-            tiktorch_net = TikTorch.unserialize(self._filename)
-
-        # print (self._filename)
-
-        # assert tiktorch_net.return_hypercolumns == False
-        # print('blah')
+            # tiktorch_net = TikTorch.unserialize(self._filename)
+            tiktorch_net = TikTorch(filename)
 
         self._tiktorch_net = tiktorch_net
 
@@ -148,150 +139,30 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
 
     def predict_probabilities_pixelwise(self, feature_image, roi, axistags=None):
         """
-        Implicitly assumes that feature_image is includes the surrounding HALO!
-        roi must be chosen accordingly
+        forward function for tiktorch, roi handling happens in tiktorch
+        so its set to 0
         """
-        logger.info(f'predicting using pytorch network for image of shape {feature_image.shape} and roi {roi}')
-        logger.info(f"Stats of input: min={feature_image.min()}, max={feature_image.max()}, mean={feature_image.mean()}")
-        logger.info(f'expected pytorch input shape is {self._tiktorch_net.expected_input_shape}')
-        logger.info(f'expected pytorch output shape is {self._tiktorch_net.expected_output_shape}')
-
-        # print(self._tiktorch_net.expected_input_shape)
-        # print(self._tiktorch_net.expected_output_shape)
-
-        num_channels = len(self.known_classes)
-        expected_shape = [stop - start for start, stop in zip(roi[0], roi[1])] + [num_channels]
-
         self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_image, axistags=axistags))
         self._opReorderAxes.AxisOrder.setValue('zcyx')
         reordered_feature_image = self._opReorderAxes.Output([]).wait()
-
-        # normalizing patch
-        # reordered_feature_image = (reordered_feature_image - reordered_feature_image.mean()) / (reordered_feature_image.std() + 0.000001)
-
-        if len(self._tiktorch_net.get('window_size')) == 2:
-            exp_input_shape = numpy.array(self._tiktorch_net.expected_input_shape)
-            exp_input_shape = tuple(numpy.append(1, exp_input_shape))
-            print(exp_input_shape)
-        else:
-            exp_input_shape = self._tiktorch_net.expected_input_shape
-
-        logger.info(
-            f'input axistags are {axistags}, '
-            f'Shape after reordering input is {reordered_feature_image.shape}, '
-            f'axistags are {self._opReorderAxes.Output.meta.axistags}')
-
-        slice_shape = list(reordered_feature_image.shape[1::])  # ignore z axis
-        # assuming [z, y, x]
-        result_roi = numpy.array(roi)
-        if slice_shape != list(exp_input_shape[1::]):
-            logger.info(
-                f"Expected input shape is {exp_input_shape[1::]}, "
-                f"but got {slice_shape}, reshaping...")
-
-            # adding a zero border to images that have the specific shape
-
-            exp_shape = list(self._tiktorch_net.expected_input_shape[1::])
-            zero_img = numpy.zeros(exp_shape)
-
-            # diff shape: cyx
-            diff_shape = numpy.array(exp_input_shape[1::]) - numpy.array(slice_shape)
-            # diff_shape = numpy.array(self._tiktorch_net.expected_input_shape) - numpy.array(slice_shape)
-            # offset shape z, y, x, c for easy indexing, with c = 0, z = 0
-            offset = numpy.array([0, 0, 0, 0])
-            logger.info(f"Diff_shape {diff_shape}")
-
-            # at least one of y, x (diff_shape[1], diff_shape[2]) should be off
-            # let's determine how to adjust the offset -> offset[2] and offset[3]
-            # caveat: this code assumes that image requests were tiled in a regular
-            # pattern starting from left upper corner.
-            # We use a blocked array-cache to achieve that
-            # y-offset:
-            if diff_shape[1] > 0:
-                # was the halo added to the upper side of the feature image?
-                # HACK: this only works because we assume the data to be in zyx!!!
-                if roi[0][1] == 0:
-                    # no, doesn't seem like it
-                    offset[1] = self.HALO_SIZE
-
-            # x-offsets:
-            if diff_shape[2] > 0:
-                # was the halo added to the upper side of the feature image?
-                # HACK: this only works because we assume the data to be in zyx!!!
-                if roi[0][2] == 0:
-                    # no, doesn't seem like it
-                    offset[2] = self.HALO_SIZE
-
-            # HACK: still assuming zyxc
-            result_roi[0] += offset[0:3]
-            result_roi[1] += offset[0:3]
-            reorder_feature_image_extents = numpy.array(reordered_feature_image.shape)
-            # add the offset:
-            reorder_feature_image_extents[2:4] += offset[1:3]
-            # zero_img[:, :, offset[1]:reorder_feature_image_extents[2], offset[2]:reorder_feature_image_extents[3]] = \
-            #     reordered_feature_image
-
-            # reordered_feature_image = zero_img
-
-            pad_img = numpy.pad(reordered_feature_image,[(0,0),(0,0),(offset[1],exp_input_shape[2]-reorder_feature_image_extents[2]), 
-            (offset[2], exp_input_shape[3]-reorder_feature_image_extents[3])],'reflect')
-
-
-            reordered_feature_image = pad_img
-
-            logger.info(f"New Image shape {reordered_feature_image.shape}")
-
-        result = numpy.zeros(
-            [reordered_feature_image.shape[0], num_channels] + list(reordered_feature_image.shape[2:]))
+        transform = Compose(Normalize())
+        reordered_feature_image = transform(reordered_feature_image)
+        orig_shape = reordered_feature_image.shape
 
         logger.info(f"forward")
-
-        # we always predict in 2D, per z-slice, so we loop over z
-        for z in range(0, reordered_feature_image.shape[0], self.BATCH_SIZE):
-            # logger.warning("Dumping to {}".format('"/Users/chaubold/Desktop/dump.h5"'))
-            # vigra.impex.writeHDF5(reordered_feature_image[z,...], "data", "/Users/chaubold/Desktop/dump.h5")
-
-            # create batch of desired num slices. Multiple slices can be processed on multiple GPUs!
-            batch = [reordered_feature_image[zi:zi + 1, ...].reshape(self._tiktorch_net.expected_input_shape)
-                     for zi in range(z, min(z + self.BATCH_SIZE, reordered_feature_image.shape[0]))]
-            logger.info(f"batch info: {[x.shape for x in batch]}")
-
-            print("batch info:", [x.shape for x in batch])
-
-            # if len(self._tiktorch_net.get('window_size')) == 2:
-            #     print("BATTCHHHHH", batch.shape)
-
-            result_batch = self._tiktorch_net.forward(batch)
-            logger.info(f"Resulting slices from {z} to {z + len(batch)} have shape {result_batch[0].shape}")
-
-            print("Resulting slices from ",z ," to ", z + len(batch), " have shape ",result_batch[0].shape)
-
-            for i, zi in enumerate(range(z, (z + len(batch)))):
-                result[zi:(zi + 1), ...] = result_batch[i]
+        input_tensor = [reordered_feature_image[z] for z in range(reordered_feature_image.shape[0])]
+        result = self._tiktorch_net.forward(input_tensor)
 
         logger.info(f"Obtained a predicted block of shape {result.shape}")
-
-        print ("Obtained a predicted block of shape ", result.shape)
-
         self._opReorderAxes.Input.setValue(vigra.VigraArray(result, axistags=vigra.makeAxistags('zcyx')))
         # axistags is vigra.AxisTags, but opReorderAxes expects a string
         self._opReorderAxes.AxisOrder.setValue(''.join(axistags.keys()))
         result = self._opReorderAxes.Output([]).wait()
         logger.info(f"Reordered result to shape {result.shape}")
 
-        # FIXME: not needed for real neural net results:
-        logger.info(f"Stats of result: min={result.min()}, max={result.max()}, mean={result.mean()}")
+        result = result[:, :orig_shape[2],:orig_shape[3], :]
 
-        # cut out the required roi
-        logger.info(f"Roi shape {result_roi}")
-
-        # crop away halo and reorder axes to match "axistags"
-        # crop in X and Y:
-        cropped_result = result[roiToSlice(*result_roi)]
-
-        logger.info(f"cropped the predicted block to shape {cropped_result.shape}")
-
-        return cropped_result
+        return result
 
     @property
     def known_classes(self):
