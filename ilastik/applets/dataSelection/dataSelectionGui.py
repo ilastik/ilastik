@@ -737,11 +737,12 @@ class DataSelectionGui(QWidget):
         """
         # Open the file as a read-only so we can get a list of the internal paths
         with z5py.N5File(absPath, mode='r+') as f:
-            def accumulate_names(name, val):
-                if type(val) == z5py.dataset.Dataset and 2 <= len(val.shape):
+            def accumulate_names(path, val):
+                if isinstance(val, z5py.dataset.Dataset) and 2 <= len(val.shape):
+                    name = path.replace(absPath, '') # Need only the internal path here
                     datasetNames.append(name)
 
-        f.visititems(accumulate_names, '')
+        f.visititems(accumulate_names)
         return datasetNames
 
     def addStack(self, roleIndex, laneIndex):
