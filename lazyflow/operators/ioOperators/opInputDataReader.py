@@ -361,7 +361,6 @@ class OpInputDataReader(Operator):
         # Open the h5 file in read-only mode
         try:
             h5File = h5py.File(externalPath, 'r')
-            a = 1
         except OpInputDataReader.DatasetReadError:
             raise
         except Exception as e:
@@ -489,13 +488,15 @@ class OpInputDataReader(Operator):
         Helper function for _attemptOpenAsN5().
         Returns the name of all datasets in the file with at least 2 axes.
         """
-        dataset_names = []
+        datasetNames = []
 
-        def accumulate_names(name, val):
-            if type(val) == z5py.dataset.Dataset and 2 <= len(val.shape):
-                dataset_names.append(name)
+        def accumulate_names(path, val):
+            if isinstance(val, z5py.dataset.Dataset) and 2 <= len(val.shape):
+                name = path.replace(n5_file.path, '')  # Need only the internal path here
+                datasetNames.append(name)
+
         n5_file.visititems(accumulate_names, '')
-        return dataset_names
+        return datasetNames
 
     def _attemptOpenAsNpy(self, filePath):
         pathComponents = PathComponents(filePath)

@@ -134,7 +134,7 @@ class OpExportSlot(Operator):
             path_format += '.' + file_extension
 
         # Provide the TOTAL path (including dataset name)
-        if self.OutputFormat.value in ('hdf5', 'compressed hdf5'):
+        if self.OutputFormat.value in ('hdf5', 'compressed hdf5', 'n5', 'compressed n5'):
             path_format += '/' + self.OutputInternalPath.value
 
         roi = numpy.array( roiFromShape(self.Input.meta.shape) )
@@ -294,15 +294,14 @@ class OpExportSlot(Operator):
             if ex.errno != 2:
                 raise
         try:
-            with z5py.N5File(export_components.externalPath, 'w') as n5File:
+            with z5py.N5File(export_components.externalPath, mode='w') as n5File:
                 # Create a temporary operator to do the work for us
                 opN5Writer = OpN5WriterBigDataset(parent=self)
                 try:
-                    #opN5Writer.CompressionEnabled.setValue(compress)
+                    opN5Writer.CompressionEnabled.setValue(compress)
                     opN5Writer.n5File.setValue(n5File)
                     opN5Writer.n5Path.setValue(export_components.internalPath)
                     opN5Writer.Image.connect(self.Input)
-
                     # The N5 Writer provides it's own progress signal, so just connect ours to it.
                     opN5Writer.progressSignal.subscribe(self.progressSignal)
 

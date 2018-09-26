@@ -752,13 +752,12 @@ class OpN5WriterBigDataset(Operator):
     n5File = InputSlot() # Must be an already-open n5File (or group) for writing to
     n5Path = InputSlot()
     Image = InputSlot()
-    #@TODO this might not be necessary
-    #CompressionEnabled = InputSlot(value=False)
+    CompressionEnabled = InputSlot(value=False) # h5py uses single-threaded gzip comression, which really slows down export.
     BatchSize = InputSlot(optional=True)
 
     WriteImage = OutputSlot()
 
-    loggingName = __name__ + ".OpN5WriterBigDataset"
+    loggingName = __name__ + ".OpH5WriterBigDataset"
     logger = logging.getLogger(loggingName)
     traceLogger = logging.getLogger("TRACE." + loggingName)
 
@@ -794,7 +793,9 @@ class OpN5WriterBigDataset(Operator):
             else:
                 g = self.f.create_group(n5GroupName)
 
-        dataShape=self.Image.meta.shape
+        # n5 stores its attributes in the json format which does not accept data types like intXX
+        dataShape = convertToIntTuple(self.Image.meta.shape)
+
         self.logger.info( "Data shape: {}".format(dataShape))
 
         dtype = self.Image.meta.dtype
@@ -814,7 +815,7 @@ class OpN5WriterBigDataset(Operator):
         if 'c' in tagged_maxshape:
             tagged_maxshape['c'] = 1
 
-        self.chunkShape = determineBlockShape( list(tagged_maxshape.values()), 512000.0 / dtypeBytes )
+        self.chunkShape = convertToIntTuple( determineBlockShape( list(tagged_maxshape.values()), 512000.0 / dtypeBytes ) )
 
         if datasetName in list(g.keys()):
             del g[datasetName]
@@ -826,7 +827,8 @@ class OpN5WriterBigDataset(Operator):
         self.d=g.create_dataset(datasetName, **kwargs)
 
         if self.Image.meta.drange is not None:
-            self.d.attrs['drange'] = self.Image.meta.drange
+            # n5 stores its attributes in the json format which does not accept data types like intXX
+            self.d.attrs['drange'] = convertToIntTuple(self.Image.meta.drange)
         if self.Image.meta.display_mode is not None:
             self.d.attrs['display_mode'] = self.Image.meta.display_mode
 
@@ -837,7 +839,11 @@ class OpN5WriterBigDataset(Operator):
         self.d.attrs['axistags'] = self.Image.meta.axistags.toJSON()
 
         def handle_block_result(roi, data):
-            self.d.write_subarray(roi.start, data.view(numpy.ndarray))
+            slicing = roiToSlice(*roi)
+            if data.flags.c_contiguous:
+                self.d.write_subarray(roi[0], data.view(numpy.ndarray))
+            else:
+                self.d[slicing] = data
         batch_size = None
         if self.BatchSize.ready():
             batch_size = self.BatchSize.value
@@ -845,9 +851,6 @@ class OpN5WriterBigDataset(Operator):
         requester.resultSignal.subscribe( handle_block_result )
         requester.progressSignal.subscribe( self.progressSignal )
         requester.execute()
-
-        # Be paranoid: Flush right now.
-        self.f.file.flush()
 
         # We're finished.
         result[0] = True
@@ -859,6 +862,15 @@ class OpN5WriterBigDataset(Operator):
         # If someone is using it that way, we'll assume that the user wants to know that
         #  the input image has become dirty and may need to be written to disk again.
         self.WriteImage.setDirty(slice(None))
+
+
+def convertToIntTuple(in_tuple):
+    # If the data type of @param in_tuple is accepted by the function int(),
+    # this method returns in_tuple converted to a tuple of ints
+    dataShape_list = []
+    for member in in_tuple:
+        dataShape_list.append(int(member))
+    return tuple(dataShape_list)
 
 if __name__ == '__main__':
     from lazyflow.graph import Graph
