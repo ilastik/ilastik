@@ -183,6 +183,12 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
         self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
 
+        # @TODO layerstack needs to be updated with this applets layers before we select a label.
+        # Otherwise volumina throws exception when we start labeling. This is just a workaround with initLabelSelected.
+        # Without this parameter updateAllLayers will not be executed.
+        super(LabelingGui, self).updateAllLayers(initLabelSelected=True)
+        self.selectLabel(0)
+
         # select all the features in the beginning
         cfn = None
         already_selected = None

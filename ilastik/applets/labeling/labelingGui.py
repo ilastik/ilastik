@@ -638,7 +638,7 @@ class LabelingGui(LayerViewerGui):
 
         if self._allowDeleteLastLabelOnly:
             # make previous label unremovable
-            if newRow > 0:
+            if newRow > 2:
                 self._labelControlUi.labelListModel.makeRowPermanent(newRow - 1)
 
         newColorIndex = self._labelControlUi.labelListModel.index(newRow, 0)
