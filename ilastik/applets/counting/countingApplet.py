@@ -22,6 +22,7 @@ from __future__ import absolute_import
 from ilastik.applets.base.standardApplet import StandardApplet
 
 from .opCounting import OpCounting
+from .countingGui import CountingGui
 from .countingSerializer import CountingSerializer
 
 class CountingApplet(StandardApplet):
@@ -29,6 +30,7 @@ class CountingApplet(StandardApplet):
                  name="Counting",
                  workflow=None,
                  projectFileGroupName="Counting"):
+        self._label_was_initialized = False
         self._topLevelOperator = OpCounting(parent=workflow)
         super(CountingApplet, self).__init__(name=name, workflow=workflow)
 
@@ -40,6 +42,19 @@ class CountingApplet(StandardApplet):
 
         self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
 
+    def getMultiLaneGui(self):
+        """
+        Override from base class. The label that is initially selected needs to be selected after volumina knows
+        the current layer stack. Which is only the case when the gui objects LayerViewerGui.updateAllLayers run at least once after object init.
+        """
+        gui_obj = super(CountingApplet, self).getMultiLaneGui()
+        if not self._label_was_initialized:
+            for gui in gui_obj.getGuis():
+                if isinstance(gui, CountingGui):
+                    gui.initLabelSelesction()
+                    self._label_was_initialized = True
+        return gui_obj
+
     @property
     def topLevelOperator(self):
         return self._topLevelOperator
@@ -50,5 +65,4 @@ class CountingApplet(StandardApplet):
 
     @property
     def singleLaneGuiClass(self):
-        from .countingGui import CountingGui
         return CountingGui

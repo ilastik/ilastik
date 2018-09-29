@@ -22,6 +22,7 @@ from __future__ import absolute_import
 from ilastik.applets.base.standardApplet import StandardApplet
 
 from .opObjectClassification import OpObjectClassification
+from .objectClassificationGui import ObjectClassificationGui
 from .objectClassificationSerializer import ObjectClassificationSerializer
 
 
@@ -32,6 +33,7 @@ class ObjectClassificationApplet(StandardApplet):
                  workflow=None,
                  projectFileGroupName="ObjectClassification",
                  selectedFeatures=dict()):
+        self._label_was_initialized = False
         self._topLevelOperator = OpObjectClassification(parent=workflow)
         self.connected_to_knime = False
         self._selectedFeatures = selectedFeatures
@@ -42,6 +44,18 @@ class ObjectClassificationApplet(StandardApplet):
             ObjectClassificationSerializer(projectFileGroupName,
                                            self.topLevelOperator)]
 
+    def getMultiLaneGui(self):
+        """
+        Override from base class. The label that is initially selected needs to be selected after volumina knows
+        the current layer stack. Which is only the case when the gui objects LayerViewerGui.updateAllLayers run at least once after object init.
+        """
+        gui_obj = super(ObjectClassificationApplet, self).getMultiLaneGui()
+        if not self._label_was_initialized:
+            for gui in gui_obj.getGuis():
+                if isinstance(gui, ObjectClassificationGui):
+                    gui.initLabelSelesction()
+                    self._label_was_initialized = True
+        return gui_obj
 
     @property
     def topLevelOperator(self):
@@ -53,5 +67,4 @@ class ObjectClassificationApplet(StandardApplet):
 
     @property
     def singleLaneGuiClass(self):
-        from .objectClassificationGui import ObjectClassificationGui
         return ObjectClassificationGui

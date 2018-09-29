@@ -414,10 +414,9 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             return None # means autoNormalize
 
     @threadRouted
-    def updateAllLayers(self, slot=None, initLabelSelected=False):
-        if not initLabelSelected:
-            if self._stopped or not self._initialized:
-                 return
+    def updateAllLayers(self, slot=None):
+        if self._stopped or not self._initialized:
+             return
         if slot is not None and slot.ready() and slot.meta.axistags is None:
             # Don't update in response to value slots.
             return

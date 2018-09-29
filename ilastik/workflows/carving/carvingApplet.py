@@ -23,6 +23,7 @@ from ilastik.applets.labeling.labelingApplet import LabelingApplet
 
 from ilastik.utility import OpMultiLaneWrapper
 from .opCarving import OpCarving
+from .carvingGui import CarvingGui
 from .carvingSerializer import CarvingSerializer
 
 class CarvingApplet(LabelingApplet):
@@ -31,6 +32,7 @@ class CarvingApplet(LabelingApplet):
     workflowDescription = "this is obviously self-explanatory"
     
     def __init__(self, workflow, projectFileGroupName,  hintOverlayFile=None, pmapOverlayFile=None):
+        self._label_was_initialized = False
         if hintOverlayFile is not None:
             assert isinstance(hintOverlayFile, str)
 
@@ -44,6 +46,19 @@ class CarvingApplet(LabelingApplet):
         super(CarvingApplet, self).__init__(workflow, projectFileGroupName)
         self._projectFileGroupName = projectFileGroupName
         self._serializers = None
+
+    def getMultiLaneGui(self):
+        """
+        Override from base class. The label that is initially selected needs to be selected after volumina knows
+        the current layer stack. Which is only the case when the gui objects LayerViewerGui.updateAllLayers run at least once after object init.
+        """
+        gui_obj = super(LabelingApplet, self).getMultiLaneGui()
+        if not self._label_was_initialized:
+            for gui in gui_obj.getGuis():
+                if isinstance(gui, CarvingGui):
+                    gui.initLabelSelesction()
+                    self._label_was_initialized = True
+        return gui_obj
 
     @property
     def dataSerializers(self):
@@ -60,5 +75,4 @@ class CarvingApplet(LabelingApplet):
     
     @property
     def singleLaneGuiClass(self):
-        from .carvingGui import CarvingGui
         return CarvingGui

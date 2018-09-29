@@ -21,6 +21,7 @@ from __future__ import absolute_import
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 from .opPixelClassification import OpPixelClassification
+from .pixelClassificationGui import PixelClassificationGui
 from .pixelClassificationSerializer import PixelClassificationSerializer, Ilastik05ImportDeserializer
 
 class PixelClassificationApplet( StandardApplet ):
@@ -28,6 +29,7 @@ class PixelClassificationApplet( StandardApplet ):
     Implements the pixel classification "applet", which allows the ilastik shell to use it.
     """
     def __init__( self, workflow, projectFileGroupName ):
+        self._label_was_initialized = False
         self._topLevelOperator = OpPixelClassification( parent=workflow )
         
         def on_classifier_changed(slot, roi):
@@ -58,6 +60,19 @@ class PixelClassificationApplet( StandardApplet ):
         #  we'll need to aggregate the progress updates.
         self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
 
+    def getMultiLaneGui(self):
+        """
+        Override from base class. The label that is initially selected needs to be selected after volumina knows
+        the current layer stack. Which is only the case when the gui objects LayerViewerGui.updateAllLayers run at least once after object init.
+        """
+        gui_obj = super(PixelClassificationApplet, self).getMultiLaneGui()
+        if not self._label_was_initialized:
+            for gui in gui_obj.getGuis():
+                if isinstance(gui, PixelClassificationGui):
+                    gui.initLabelSelesction()
+                    self._label_was_initialized = True
+        return gui_obj
+
     @property
     def topLevelOperator(self):
         return self._topLevelOperator
@@ -68,5 +83,4 @@ class PixelClassificationApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        from .pixelClassificationGui import PixelClassificationGui
         return PixelClassificationGui

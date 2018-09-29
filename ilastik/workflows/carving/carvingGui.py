@@ -791,3 +791,8 @@ class CarvingGui(LabelingGui):
             layers.append(layer)
 
         return layers
+
+    def initLabelSelesction(self):
+        # before we select a label the new layerstack need to be introduced
+        super(LabelingGui, self).updateAllLayers()
+        self.selectLabel(0)

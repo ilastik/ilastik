@@ -441,7 +441,6 @@ class PixelClassificationGui(LabelingGui):
         self._addNewLabel()
         self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
         self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
-        self.selectLabel(0)
 
 
         self.topLevelOperatorView.LabelNames.notifyDirty( bind(self.handleLabelSelectionChange) )
@@ -759,6 +758,11 @@ class PixelClassificationGui(LabelingGui):
         
         self.handleLabelSelectionChange()
         return layers
+
+    def initLabelSelesction(self):
+        # before we select a label the new layerstack need to be introduced
+        super(LabelingGui, self).updateAllLayers()
+        self.selectLabel(0)
 
     def toggleInteractive(self, checked):
         logger.debug("toggling interactive mode to '%r'" % checked)
