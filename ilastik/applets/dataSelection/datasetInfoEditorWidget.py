@@ -452,9 +452,7 @@ class DatasetInfoEditorWidget(QDialog):
         # This portion was added in order to handle the OpDataSelection adding
         # a channel axis when encountering data without one.
         # check if channel was added and not present in original:
-        axistags = firstOp._NonTransposedImage.meta.original_axistags
-        if axistags is None:
-            axistags = firstOp._NonTransposedImage.meta.axistags
+        axistags = firstOp._NonTransposedImage.meta.getOriginalAxisKeys()
 
         if 'c' not in axistags:
             newAxisOrder = newAxisOrder.replace('c', '')
