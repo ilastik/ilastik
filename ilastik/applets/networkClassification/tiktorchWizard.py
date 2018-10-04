@@ -83,10 +83,10 @@ class Page1(QtWidgets.QWizardPage):
         self.code_path = str(self.code_path_textbox.text())
         self.model_class_name = str(self.model_class_name_textbox.text())
         self.state_path = str(self.state_path_textbox.text())
-        self.input_shape = [ int(x) for x in self.input_shape_textbox.text().split(',') ]
-        self.output_shape = [ int(x) for x in self.output_shape_textbox.text().split(',') ]
+        self.input_shape = list(self.input_shape_textbox.text())
+        self.output_shape = list(self.output_shape_textbox.text())
         self.dynamic_input_shape = str(self.dynamic_input_shape_textbox.text())
-        self.devices = [x for x in str(self.devices_textbox.text()).split(',')]
+        self.devices = str(self.devices_textbox.text())
         self.model_init_kwargs = yaml.load(str(self.model_init_kwargs_textbox.text()))
         self.model_path = str(self.model_path_textbox.text())
 
