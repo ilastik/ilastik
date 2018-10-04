@@ -38,10 +38,11 @@ from ilastik.widgets.hdf5SubvolumeSelectionDialog import Hdf5StackingDlg, H5N5Vo
 
 from lazyflow.operators.ioOperators import (
     OpStackLoader, OpStreamingHdf5SequenceReaderM,
-    OpStreamingHdf5SequenceReaderS
+    OpStreamingHdf5SequenceReaderS, OpInputDataReader
 )
-from lazyflow.utility import lsHdf5, PathComponents
+from lazyflow.utility import lsHdf5, lsN5, PathComponents
 import h5py
+import z5py
 
 
 class StackFileSelectionWidget(QDialog):
@@ -153,6 +154,7 @@ class StackFileSelectionWidget(QDialog):
         msg = ''
         h5exts = [x.lstrip('.') for x in OpStreamingHdf5SequenceReaderM.H5EXTS]
         exts = vigra.impex.listExtensions().split()
+        exts.extend(OpInputDataReader.n5Exts)
         exts.extend(h5exts)
         for ext in exts:
             fullGlob = directory + '/*.' + ext
@@ -164,9 +166,12 @@ class StackFileSelectionWidget(QDialog):
                 prefix = os.path.commonprefix(new_filenames)
                 globstring = prefix + '*.' + ext
                 # Special handling for h5-files: Try to add internal path
-                if ext in h5exts:
+                if ext in h5exts+OpInputDataReader.n5Exts:
                     # be even more helpful and try to find a common internal path
-                    internal_paths = self._findCommonInternal(new_filenames)
+                    if ext in h5exts:
+                        internal_paths = self._h5FindCommonInternal(new_filenames)
+                    else:
+                        internal_paths = self._n5FindCommonInternal(new_filenames)
                     if len(internal_paths) == 0:
                         msg += 'Could not find a unique common internal path in'
                         msg += directory + '\n'
@@ -207,7 +212,7 @@ class StackFileSelectionWidget(QDialog):
         return os.path.pathsep.join(globstrings)
 
     @staticmethod
-    def _findCommonInternal(h5Files):
+    def _h5FindCommonInternal(h5Files):
         """Tries to find common internal path (containing data)
 
         Method is used, when a directory is selected and the internal path is,
@@ -226,6 +231,30 @@ class StackFileSelectionWidget(QDialog):
             h5 = h5py.File(h5File, 'r')
             # get all files with with at least 2D shape
             tmp = set([x['name'] for x in lsHdf5(h5, minShape=2)])
+            internal_paths = internal_paths.intersection(tmp)
+
+        return list(internal_paths)
+
+    @staticmethod
+    def _n5FindCommonInternal(n5Files):
+        """Tries to find common internal path (containing data)
+
+        Method is used, when a directory is selected and the internal path is,
+        thus, unclear.
+
+        Args:
+            n5Files (list of strings): n5 files to be globbed internally
+
+        Returns:
+            list of internal paths
+        """
+        n5 = z5py.N5File(n5Files[0], mode='r')
+        internal_paths = set([x['name'] for x in lsN5(n5, minShape=2)])
+        n5.close()
+        for n5File in n5Files[1::]:
+            n5 = z5py.N5File(n5File, 'r+')
+            # get all files with with at least 2D shape
+            tmp = set([x['name'] for x in lsN5(n5, minShape=2)])
             internal_paths = internal_paths.intersection(tmp)
 
         return list(internal_paths)
@@ -301,7 +330,7 @@ class StackFileSelectionWidget(QDialog):
                     return None
             else:
                 # check for internal paths
-                internal_paths = self._findCommonInternal(fileNames)
+                internal_paths = self._h5FindCommonInternal(fileNames)
 
                 if len(internal_paths) == 0:
                     msg += 'Could not find a unique common internal path in'

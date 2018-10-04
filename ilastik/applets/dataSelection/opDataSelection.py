@@ -146,6 +146,7 @@ class DatasetInfo(object):
                     # The following is necessary for h5 as well as npz-files
                     internalPathExts = (
                         OpInputDataReader.h5Exts +
+                        OpInputDataReader.n5Exts +
                         OpInputDataReader.npzExts
                     )
                     internalPathExts = [".{}".format(ipx) for ipx in internalPathExts]
