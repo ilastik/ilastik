@@ -31,6 +31,12 @@ from lazyflow.operators.ioOperators.opStreamingHdf5SequenceReaderM import (
 from lazyflow.operators.ioOperators.opStreamingHdf5SequenceReaderS import (
     OpStreamingHdf5SequenceReaderS
 )
+from lazyflow.operators.ioOperators.opStreamingN5SequenceReaderM import (
+    OpStreamingN5SequenceReaderM
+)
+from lazyflow.operators.ioOperators.opStreamingN5SequenceReaderS import (
+    OpStreamingN5SequenceReaderS
+)
 
 import os
 import vigra
@@ -253,6 +259,37 @@ class DataSelectionSerializer( AppletSerializer ):
                 opLoader = OpStreamingHdf5SequenceReaderS(parent=self.topLevelOperator.parent)
             elif isMultiFile:
                 opLoader = OpStreamingHdf5SequenceReaderM(parent=self.topLevelOperator.parent)
+
+            opLoader.SequenceAxis.setValue(sequence_axis)
+            opLoader.GlobString.setValue(globstring)
+            data_slot = opLoader.OutputImage
+        elif firstPathParts.extension.lower() in OpStreamingN5SequenceReaderM.N5EXTS:
+            # Now use the .checkGlobString method of the stack readers
+            isSingleFile = True
+            try:
+                OpStreamingN5SequenceReaderS.checkGlobString(globstring)
+            except (OpStreamingN5SequenceReaderS.NoInternalPlaceholderError,
+                    OpStreamingN5SequenceReaderS.NotTheSameFileError,
+                    OpStreamingN5SequenceReaderS.ExternalPlaceholderError):
+                isSingleFile = False
+
+            isMultiFile = True
+            try:
+                OpStreamingN5SequenceReaderM.checkGlobString(globstring)
+            except (OpStreamingN5SequenceReaderM.NoExternalPlaceholderError,
+                    OpStreamingN5SequenceReaderM.SameFileError,
+                    OpStreamingN5SequenceReaderM.InternalPlaceholderError):
+                isMultiFile = False
+
+            assert (not(isMultiFile and isSingleFile)), (
+                "Something is wrong, glob string shouldn't allow both")
+            assert (isMultiFile or isSingleFile), (
+                "Glob string doesn't conform to h5 stack glob string rules")
+
+            if isSingleFile:
+                opLoader = OpStreamingN5SequenceReaderS(parent=self.topLevelOperator.parent)
+            elif isMultiFile:
+                opLoader = OpStreamingN5SequenceReaderM(parent=self.topLevelOperator.parent)
 
             opLoader.SequenceAxis.setValue(sequence_axis)
             opLoader.GlobString.setValue(globstring)
