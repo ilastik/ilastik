@@ -31,7 +31,8 @@ from .opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import (
     OpBlockwiseFilesetReader, OpKlbReader, OpRESTfulBlockwiseFilesetReader,
     OpStreamingHdf5Reader, OpStreamingN5Reader, OpStreamingHdf5SequenceReaderS,
-    OpStreamingHdf5SequenceReaderM, OpTiffReader,
+    OpStreamingHdf5SequenceReaderM, OpStreamingN5SequenceReaderS,
+    OpStreamingN5SequenceReaderM, OpTiffReader,
     OpTiffSequenceReader, OpCachedTiledVolumeReader, OpRawBinaryFileReader,
     OpStackLoader, OpRESTfulPrecomputedChunkedVolumeReader, OpImageReader
 )
@@ -92,7 +93,7 @@ class OpInputDataReader(Operator):
     tiffExts = ['tif', 'tiff']
     vigraImpexExts = vigra.impex.listExtensions().split()
 
-    SupportedExtensions = h5Exts + n5Exts + npyExts + npzExts + rawExts + \
+    SupportedExtensions = h5Exts + n5Exts + n5Selection + npyExts + npzExts + rawExts + \
                           vigraImpexExts + blockwiseExts + videoExts + klbExts
 
     if _supports_dvid:
@@ -177,6 +178,7 @@ class OpInputDataReader(Operator):
                      self._attemptOpenAsStack,
                      self._attemptOpenAsHdf5,
                      self._attemptOpenAsN5,
+                     self._attemptOpenAsN5Stack,
                      self._attemptOpenAsNpy,
                      self._attemptOpenAsRawBinary,
                      self._attemptOpenAsTiledVolume,
@@ -319,6 +321,46 @@ class OpInputDataReader(Operator):
             return ([opReader], opReader.OutputImage)
         except (OpStreamingHdf5SequenceReaderM.WrongFileTypeError,
                 OpStreamingHdf5SequenceReaderS.WrongFileTypeError):
+            return ([], None)
+        else:
+            return ([], None)
+
+    def _attemptOpenAsN5Stack(self, filePath):
+        if not ('*' in filePath or os.path.pathsep in filePath):
+            return ([], None)
+
+        # Now use the .checkGlobString method of the stack readers
+        isSingleFile = True
+        try:
+            OpStreamingN5SequenceReaderS.checkGlobString(filePath)
+        except OpStreamingN5SequenceReaderS.WrongFileTypeError:
+            return ([], None)
+        except (OpStreamingN5SequenceReaderS.NoInternalPlaceholderError,
+                OpStreamingN5SequenceReaderS.NotTheSameFileError,
+                OpStreamingN5SequenceReaderS.ExternalPlaceholderError):
+            isSingleFile = False
+
+        isMultiFile = True
+        try:
+            OpStreamingN5SequenceReaderM.checkGlobString(filePath)
+        except (OpStreamingN5SequenceReaderM.NoExternalPlaceholderError,
+                OpStreamingN5SequenceReaderM.SameFileError,
+                OpStreamingN5SequenceReaderM.InternalPlaceholderError):
+            isMultiFile = False
+
+        assert(not(isMultiFile and isSingleFile))
+
+        if isSingleFile is True:
+            opReader = OpStreamingN5SequenceReaderS(parent=self)
+        elif isMultiFile is True:
+            opReader = OpStreamingN5SequenceReaderM(parent=self)
+
+        try:
+            opReader.SequenceAxis.connect(self.SequenceAxis)
+            opReader.GlobString.setValue(filePath)
+            return ([opReader], opReader.OutputImage)
+        except (OpStreamingN5SequenceReaderM.WrongFileTypeError,
+                OpStreamingN5SequenceReaderS.WrongFileTypeError):
             return ([], None)
         else:
             return ([], None)

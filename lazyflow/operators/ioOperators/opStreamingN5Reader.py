@@ -48,6 +48,8 @@ class OpStreamingN5Reader(Operator):
     # Output data
     OutputImage = OutputSlot()
 
+    N5EXTS = ['.n5']
+
     class DatasetReadError(Exception):
         def __init__(self, internalPath):
             self.internalPath = internalPath
@@ -120,8 +122,14 @@ class OpStreamingN5Reader(Operator):
             timer = Timer()
             timer.unpause()
 
-        #read_subarray(start, stop)
-        #unlike h5, the n5 lib does not differentiate if result is c_contiguous or not
+
+        # a = N5File[internalPath]
+        # for i in range(len(N5File[internalPath].shape)):
+        #     if roi.stop[i] > N5File[internalPath].shape[i]:
+        #         roi.stop[i] = N5File[internalPath].shape[i]
+        #     if roi.start[i] > N5File[internalPath].shape[i]:
+        #         roi.start[i] = N5File[internalPath].shape[i]
+
         result[...] = N5File[internalPath].read_subarray(roi.start, roi.stop)
 
         if logger.getEffectiveLevel() >= logging.DEBUG:
@@ -130,7 +138,7 @@ class OpStreamingN5Reader(Operator):
 
         if timer:
             timer.pause()
-            logger.debug("Completed Z5 read in {} seconds: [{}, {}]".format(timer.seconds(), roi.start, roi.stop))
+            logger.debug("Completed N5 read in {} seconds: [{}, {}]".format(timer.seconds(), roi.start, roi.stop))
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.N5File or slot == self.InternalPath:

@@ -25,6 +25,8 @@ import fnmatch
 import errno
 
 import h5py
+import z5py
+
 
 
 class PathComponents(object):
@@ -352,18 +354,42 @@ def lsHdf5(hdf5FileObject, minShape=2, maxShape=5):
 
     return listOfDatasets
 
+def lsN5(N5FileObject, minShape=2, maxShape=5):
+    """Generates dataset list of given z5py n5 file object
 
-def globHdf5(hdf5FileObject, globString):
-    """globs a hdf5 file like a file system for datasets
+    Args:
+        n5FileObject (z5py.N5FIle): Opened N5 file
+        minShape (int, optional): minimum shape of data
+
+    Returns:
+        list of datasets inside the given file object
+    """
+    listOfDatasets = []
+
+    def addObjectNames(objectPath, obj):
+        if isinstance(obj, z5py.dataset.Dataset):
+            if (len(obj.shape) >= minShape) and (len(obj.shape) <= maxShape):
+                listOfDatasets.append({
+                    'name': objectPath.replace(N5FileObject.path, ''),
+                    'object': obj
+                })
+
+    N5FileObject.visititems(addObjectNames)
+
+    return listOfDatasets
+
+
+def globHdf5N5(fileObject, globString):
+    """globs a hdf5/n5 file like a file system for datasets
 
     Note: does not glob Attributes, only data sets.
 
-    Recurses through the hdf5 tree using .visititems and matches the provided
+    Recurses through the hdf5/n5 tree using .visititems and matches the provided
     globstring to the respective object names using the fnmatch standard module.
 
 
     Args:
-        hdf5FileObject: h5py.File object
+        fileObject: h5py.File/z5py.N5File object
         globString: String describing the internal path of the dataset(s) with
             glob-like placeholders
 
@@ -371,7 +397,10 @@ def globHdf5(hdf5FileObject, globString):
         A sorted list of matched object names. This list is empty if no
         matches occurred.
     """
-    pathlist = [x['name'] for x in lsHdf5(hdf5FileObject)]
+    if isinstance(fileObject, h5py.File):
+        pathlist = [x['name'] for x in lsHdf5(hdf5FileObject)]
+    else:
+        pathlist = [x['name'] for x in lsN5(hdf5FileObject)]
     matches = globList(pathlist, globString)
     return sorted(matches)
 

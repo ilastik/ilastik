@@ -20,23 +20,25 @@
 #          http://ilastik.org/license/
 ###############################################################################
 import os
-import h5py
+import glob
+
+import z5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.generic import OpMultiArrayStacker
-from lazyflow.operators.ioOperators.opStreamingHdf5Reader import OpStreamingHdf5Reader
-from lazyflow.utility.pathHelpers import PathComponents, globHdf5N5
+from lazyflow.operators.ioOperators.opStreamingN5Reader import OpStreamingN5Reader
+from lazyflow.utility.pathHelpers import PathComponents
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-class OpStreamingHdf5SequenceReaderS(Operator):
+class OpStreamingN5SequenceReaderM(Operator):
     """
-    Imports a sequence of (ND) volumes inside one hdf5 file into a single volume (ND+1)
+    Imports a sequence of (ND) volumes inside multiple n5 file into a single volume (ND+1)
 
-    The 'S' at the end of the file name implies that this class handles multiple
-    volumes in a single file.
+    The 'M' at the end of the file name implies that this class handles multiple
+    volumes in a multiple files.
 
     :param globstring: A glob string as defined by the glob module. We
         also support the following special extension to globstring
@@ -51,41 +53,47 @@ class OpStreamingHdf5SequenceReaderS(Operator):
         is parsed as
 
             ['/a/b/c.txt', '/d/e/f.txt', '../g/i/h.txt']
-
     """
     GlobString = InputSlot()
-    # The project hdf5 File object (already opened)
     SequenceAxis = InputSlot(optional=True)  # The axis to stack across.
     OutputImage = OutputSlot()
+
+    N5EXTS = OpStreamingN5Reader.N5EXTS
 
     class WrongFileTypeError(Exception):
         def __init__(self, globString):
             self.filename = globString
-            self.msg = "File is not a HDF5: {}".format(globString)
-            super(OpStreamingHdf5SequenceReaderS.WrongFileTypeError, self).__init__(self.msg)
+            self.msg = "File is not a N5: {}".format(globString)
+            super(OpStreamingN5SequenceReaderM.WrongFileTypeError, self).__init__(self.msg)
 
-    class NotTheSameFileError(Exception):
-        def __init__(self, globString):
-            self.globString = globString
-            self.msg = "Glob string encompasses more than one HDF5 file: {}".format(globString)
-            super(OpStreamingHdf5SequenceReaderS.NotTheSameFileError, self).__init__(self.msg)
-
-    class NoInternalPlaceholderError(Exception):
+    class NoExternalPlaceholderError(Exception):
         def __init__(self, globString):
             self.globString = globString
             self.msg = "Glob string does not contain a placeholder: {}".format(globString)
-            super(OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError, self).__init__(self.msg)
+            super(OpStreamingN5SequenceReaderM.NoExternalPlaceholderError, self).__init__(self.msg)
 
-    class ExternalPlaceholderError(Exception):
+    class SameFileError(Exception):
         def __init__(self, globString):
             self.globString = globString
-            self.msg = ("Glob string does contains an external placeholder "
+            self.msg = "This reader only works with multiple n5 files: {}".format(globString)
+            super(OpStreamingN5SequenceReaderM.SameFileError, self).__init__(self.msg)
+
+    class FileOpenError(Exception):
+        def __init__(self, fileName):
+            self.fileName = fileName
+            self.msg = "Could not read file: {}".format(fileName)
+            super(OpStreamingN5SequenceReaderM.FileOpenError, self).__init__(self.msg)
+
+    class InternalPlaceholderError(Exception):
+        def __init__(self, globString):
+            self.globString = globString
+            self.msg = ("Glob string does contains an internal placeholder "
                         "(not supported!): {}".format(globString))
-            super(OpStreamingHdf5SequenceReaderS.ExternalPlaceholderError, self).__init__(self.msg)
+            super(OpStreamingN5SequenceReaderM.InternalPlaceholderError, self).__init__(self.msg)
 
     def __init__(self, *args, **kwargs):
-        super(OpStreamingHdf5SequenceReaderS, self).__init__(*args, **kwargs)
-        self._hdf5File = None
+        super(OpStreamingN5SequenceReaderM, self).__init__(*args, **kwargs)
+        self._n5Files = []
         self._readers = []
         self._opStacker = OpMultiArrayStacker(parent=self)
         self._opStacker.AxisIndex.setValue(0)
@@ -94,20 +102,17 @@ class OpStreamingHdf5SequenceReaderS(Operator):
         self._opStacker.Images.resize(0)
         for opReader in self._readers:
             opReader.cleanUp()
-        if self._hdf5File is not None:
-            assert isinstance(self._hdf5File, h5py.File), (
-                "_hdf5File should not be of any other type")
-            self._hdf5File.close()
-
-        super(OpStreamingHdf5SequenceReaderS, self).cleanUp()
+        for n5File in self._n5Files:
+            n5File.close()
+        self._n5Files = None
+        super(OpStreamingN5SequenceReaderM, self).cleanUp()
 
     def setupOutputs(self):
-        pcs = PathComponents(self.GlobString.value.split(os.path.pathsep)[0])
-        self._hdf5File = h5py.File(pcs.externalPath, mode='r')
         self.checkGlobString(self.GlobString.value)
-        file_paths = self.expandGlobStrings(self._hdf5File, self.GlobString.value)
+        external_paths, internal_paths = self.expandGlobStrings(
+            self.GlobString.value)
 
-        num_files = len(file_paths)
+        num_files = len(external_paths)
         if num_files == 0:
             self.OutputImage.disconnect()
             self.OutputImage.meta.NOTREADY = True
@@ -116,14 +121,16 @@ class OpStreamingHdf5SequenceReaderS(Operator):
         self.OutputImage.connect(self._opStacker.Output)
         # Get slice axes from first image
         try:
-            opFirstImg = OpStreamingHdf5Reader(parent=self)
-            opFirstImg.InternalPath.setValue(file_paths[0])
-            opFirstImg.Hdf5File.setValue(self._hdf5File)
+            n5FirstImage = z5py.N5File(external_paths[0], mode='r+')
+            opFirstImg = OpStreamingN5Reader(parent=self)
+            opFirstImg.InternalPath.setValue(internal_paths[0])
+            opFirstImg.N5File.setValue(n5FirstImage)
             slice_axes = opFirstImg.OutputImage.meta.getAxisKeys()
             opFirstImg.cleanUp()
+            n5FirstImage.close()
         except RuntimeError as e:
             logger.error(str(e))
-            raise OpStreamingHdf5SequenceReaderS.FileOpenError(file_paths[0])
+            raise OpStreamingN5SequenceReaderM.FileOpenError(external_paths[0])
 
         # Use given new axis or try to do something sensible
         if self.SequenceAxis.ready():
@@ -148,97 +155,96 @@ class OpStreamingHdf5SequenceReaderS(Operator):
         for opReader in self._readers:
             opReader.cleanUp()
 
+        self._n5Files = []
         self._readers = []
-        for filename, stacker_slot in zip(file_paths, self._opStacker.Images):
-            opReader = OpStreamingHdf5Reader(parent=self)
+        for external_path, internal_path, stacker_slot in zip(
+                external_paths, internal_paths, self._opStacker.Images):
+            opReader = OpStreamingN5Reader(parent=self)
             try:
-                opReader.InternalPath.setValue(filename)
-                opReader.Hdf5File.setValue(self._hdf5File)
+                n5File = z5py.N5File(external_path, 'r+')
+                opReader.InternalPath.setValue(internal_path)
+                opReader.N5File.setValue(n5File)
             except RuntimeError as e:
                 logger.error(str(e))
-                raise OpStreamingHdf5SequenceReaderS.FileOpenError(file_paths[0])
+                raise OpStreamingN5SequenceReaderM.FileOpenError(external_path)
             else:
                 stacker_slot.connect(opReader.OutputImage)
                 self._readers.append(opReader)
+                self._n5Files.append(n5File)
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.GlobString or slot == self.SequenceAxis:
+        if slot == self.SequenceAxis or slot == self.GlobString:
             self.OutputImage.setDirty(slice(None))
 
     @staticmethod
-    def expandGlobStrings(hdf5File, globStrings):
+    def expandGlobStrings(globStrings):
         """Matches a list of globStrings to internal paths of files
 
         Args:
-            hdf5File: h5py.File object, or path(string). If a string is given,
-              the file is opened and closed in this method.
             globStrings: string. glob or path strings delimited by os.pathsep
 
         Returns:
             List of internal paths matching the globstrings that were found in
-            the provided h5py.File object
-        """
-        if not isinstance(hdf5File, h5py.File):
-            with h5py.File(hdf5File, mode='r') as f:
-                ret = OpStreamingHdf5SequenceReaderS.expandGlobStrings(f, globStrings)
-            return ret
+            the provided z5py.N5File object
 
-        ret = []
+        """
+        external_paths = []
+        internal_paths = []
         # Parse list into separate globstrings and combine them
         for globString in globStrings.split(os.path.pathsep):
             s = globString.strip()
             components = PathComponents(s)
-            ret += sorted(
-                globHdf5N5(
-                    hdf5File, components.internalPath.lstrip('/')))
-        return ret
+            tmp = sorted(glob.glob(components.externalPath))
+            external_paths.extend(tmp)
+            internal_paths.extend(
+                [components.internalPath for i in range(len(tmp))])
+        return external_paths, internal_paths
 
     @staticmethod
     def checkGlobString(globString):
         """Checks whether globString is valid for this class
 
         Rules for globString:
-            * must only contain one distinct external path
-            * multiple internal paths, or placeholder '*' must be contained
+            * must contain multiple external paths or
+            * placeholder '*' in external path
+            * must not contain placeholders in internal paths (for now)
 
         Args:
             globString (string): String, one or multiple paths separated with
               os.path.pathsep and possibly containing '*' as a placeholder.
 
         Raises:
-            OpStreamingHdf5SequenceReaderS.ExternalPlaceholderError: External
-              placeholders are not supported.
-            OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError: This
-              exception is raised if only a single path is provided ->
-              OpStreamingHdf5Reader should be used in this case.
-            OpStreamingHdf5SequenceReaderS.NotTheSameFileError: if multiple
-              hdf5 files are (possibly) referenced in the globstring, this
-              Exception is raised -> OpStreamingHdf5SequenceReaderM should
-              be used in this case.
-            OpStreamingHdf5SequenceReaderS.WrongFileTypeError:If file-
-                extensions are not among the known H5 extensions, this error is
-                raised (see OpStreamingHdf5Reader.H5EXTS)
+            OpStreamingN5SequenceReaderM.InternalPlaceholderError: Raised if
+              an internal placeholder is encountered!
+            OpStreamingN5SequenceReaderM.NoExternalPlaceholderError: Raised if
+              only a single path is supplied and no '*'-placeholder can be
+              found. -> OpStreamingN5Reader should be used in this case.
+            OpStreamingN5SequenceReaderM.SameFileError: If multiple volumes
+              point to the same file this error is raised.
+              -> OpStreamingN5SequenceReaderS should be used in this case.
+            OpStreamingN5SequenceReaderM.WrongFileTypeError: If file-
+              extensions are not among the known N5 extensions, this error is
+              raised (see OpStreamingN5Reader.N5EXTS).
         """
         pathStrings = globString.split(os.path.pathsep)
 
         pathComponents = [PathComponents(p.strip()) for p in pathStrings]
         assert len(pathComponents) > 0
 
-        if not all(p.extension in OpStreamingHdf5Reader.H5EXTS
+        if not all(p.extension in OpStreamingN5Reader.N5EXTS
                    for p in pathComponents):
-            raise OpStreamingHdf5SequenceReaderS.WrongFileTypeError(globString)
+            raise OpStreamingN5SequenceReaderM.WrongFileTypeError(globString)
 
         if len(pathComponents) == 1:
-            if pathComponents[0].internalPath is None:
-                raise OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError(globString)
-            if '*' not in pathComponents[0].internalPath:
-                raise OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError(globString)
-            if '*' in pathComponents[0].externalPath:
-                raise OpStreamingHdf5SequenceReaderS.ExternalPlaceholderError(globString)
+            if '*' in pathComponents[0].internalPath:
+                raise OpStreamingN5SequenceReaderM.InternalPlaceholderError(globString)
+            if '*' not in pathComponents[0].externalPath:
+                raise OpStreamingN5SequenceReaderM.NoExternalPlaceholderError(globString)
         else:
-            sameExternal = all(pathComponents[0].externalPath == x.externalPath
+            sameExternal = any(pathComponents[0].externalPath == x.externalPath
                                for x in pathComponents[1::])
-            if sameExternal is not True:
-                raise OpStreamingHdf5SequenceReaderS.NotTheSameFileError(globString)
-            if '*' in pathComponents[0].externalPath:
-                raise OpStreamingHdf5SequenceReaderS.ExternalPlaceholderError(globString)
+            if sameExternal is True:
+                raise OpStreamingN5SequenceReaderM.SameFileError(globString)
+            internalPlaceHolder = any('*' in x.internalPath for x in pathComponents[1::])
+            if internalPlaceHolder is True:
+                raise OpStreamingN5SequenceReaderM.InternalPlaceholderError(globString)

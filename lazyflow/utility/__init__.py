@@ -31,7 +31,7 @@ from .fileLock import FileLock
 from .tracer import Tracer, traceLogged
 from .pathHelpers import (
     PathComponents, getPathVariants, isUrl, make_absolute, 
-    globHdf5, globList, mkdir_p, lsHdf5)
+    globHdf5N5, globList, mkdir_p, lsHdf5, lsN5)
 
 from .roiRequestBatch import RoiRequestBatch
 from .bigRequestStreamer import BigRequestStreamer
