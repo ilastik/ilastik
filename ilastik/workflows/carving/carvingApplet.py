@@ -32,7 +32,6 @@ class CarvingApplet(LabelingApplet):
     workflowDescription = "this is obviously self-explanatory"
     
     def __init__(self, workflow, projectFileGroupName,  hintOverlayFile=None, pmapOverlayFile=None):
-        self._label_was_initialized = False
         if hintOverlayFile is not None:
             assert isinstance(hintOverlayFile, str)
 
@@ -52,13 +51,11 @@ class CarvingApplet(LabelingApplet):
         Override from base class. The label that is initially selected needs to be selected after volumina knows
         the current layer stack. Which is only the case when the gui objects LayerViewerGui.updateAllLayers run at least once after object init.
         """
-        gui_obj = super(LabelingApplet, self).getMultiLaneGui()
-        if not self._label_was_initialized:
-            for gui in gui_obj.getGuis():
-                if isinstance(gui, CarvingGui):
-                    gui.initLabelSelesction()
-                    self._label_was_initialized = True
-        return gui_obj
+        multi_lane_gui = super(LabelingApplet, self).getMultiLaneGui()
+        guis = multi_lane_gui.getGuis()
+        if len(guis)>0 and isinstance(guis[0], CarvingGui):
+            guis[0].selectLabel(0)
+        return multi_lane_gui
 
     @property
     def dataSerializers(self):

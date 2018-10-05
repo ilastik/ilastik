@@ -671,11 +671,6 @@ class CountingGui(LabelingGui):
         self.handleLabelSelectionChange()
         return layers
 
-    def initLabelSelesction(self):
-        # before we select a label the new layerstack need to be introduced
-        super(LabelingGui, self).updateAllLayers()
-        self.selectLabel(0)
-
     @traceLogged(traceLogger)
     def toggleInteractive(self, checked):
         """

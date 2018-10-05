@@ -30,7 +30,6 @@ class CountingApplet(StandardApplet):
                  name="Counting",
                  workflow=None,
                  projectFileGroupName="Counting"):
-        self._label_was_initialized = False
         self._topLevelOperator = OpCounting(parent=workflow)
         super(CountingApplet, self).__init__(name=name, workflow=workflow)
 
@@ -47,13 +46,12 @@ class CountingApplet(StandardApplet):
         Override from base class. The label that is initially selected needs to be selected after volumina knows
         the current layer stack. Which is only the case when the gui objects LayerViewerGui.updateAllLayers run at least once after object init.
         """
-        gui_obj = super(CountingApplet, self).getMultiLaneGui()
-        if not self._label_was_initialized:
-            for gui in gui_obj.getGuis():
-                if isinstance(gui, CountingGui):
-                    gui.initLabelSelesction()
-                    self._label_was_initialized = True
-        return gui_obj
+        multi_lane_gui = super(CountingApplet, self).getMultiLaneGui()
+        guis = multi_lane_gui.getGuis()
+
+        if len(guis)>0 and isinstance(guis[0], CountingGui):
+            guis[0].selectLabel(0)
+        return multi_lane_gui
 
     @property
     def topLevelOperator(self):

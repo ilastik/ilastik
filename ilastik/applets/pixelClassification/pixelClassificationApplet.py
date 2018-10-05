@@ -29,7 +29,6 @@ class PixelClassificationApplet( StandardApplet ):
     Implements the pixel classification "applet", which allows the ilastik shell to use it.
     """
     def __init__( self, workflow, projectFileGroupName ):
-        self._label_was_initialized = False
         self._topLevelOperator = OpPixelClassification( parent=workflow )
         
         def on_classifier_changed(slot, roi):
@@ -65,13 +64,11 @@ class PixelClassificationApplet( StandardApplet ):
         Override from base class. The label that is initially selected needs to be selected after volumina knows
         the current layer stack. Which is only the case when the gui objects LayerViewerGui.updateAllLayers run at least once after object init.
         """
-        gui_obj = super(PixelClassificationApplet, self).getMultiLaneGui()
-        if not self._label_was_initialized:
-            for gui in gui_obj.getGuis():
-                if isinstance(gui, PixelClassificationGui):
-                    gui.initLabelSelesction()
-                    self._label_was_initialized = True
-        return gui_obj
+        multi_lane_gui = super(PixelClassificationApplet, self).getMultiLaneGui()
+        guis = multi_lane_gui.getGuis()
+        if len(guis)>0 and isinstance(guis[0], PixelClassificationGui):
+            guis[0].selectLabel(0)
+        return multi_lane_gui
 
     @property
     def topLevelOperator(self):

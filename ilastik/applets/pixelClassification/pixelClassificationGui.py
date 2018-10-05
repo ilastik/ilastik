@@ -759,11 +759,6 @@ class PixelClassificationGui(LabelingGui):
         self.handleLabelSelectionChange()
         return layers
 
-    def initLabelSelesction(self):
-        # before we select a label the new layerstack need to be introduced
-        super(LabelingGui, self).updateAllLayers()
-        self.selectLabel(0)
-
     def toggleInteractive(self, checked):
         logger.debug("toggling interactive mode to '%r'" % checked)
 

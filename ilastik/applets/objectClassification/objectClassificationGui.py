@@ -163,7 +163,7 @@ class ObjectClassificationGui(LabelingGui):
         self._colorTable16_forpmaps[15] = QColor(Qt.black).rgba() #for objects with NaNs in features
         
         # button handlers
-        self._interactiveMode = False
+        self.interactiveMode = False
         self._showPredictions = False
         self._labelMode = True
 
@@ -723,11 +723,6 @@ class ObjectClassificationGui(LabelingGui):
         #self.selectLabel(0)
 
         return layers
-
-    def initLabelSelesction(self):
-        # before we select a label the new layerstack need to be introduced
-        super(LabelingGui, self).updateAllLayers()
-        self.selectLabel(0)
 
     def _disconnect_dataChange_callback(self, colortable_changed_callback, *args ):
         """
