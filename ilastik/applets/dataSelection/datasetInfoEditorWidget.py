@@ -454,7 +454,7 @@ class DatasetInfoEditorWidget(QDialog):
         # check if channel was added and not present in original:
         axistags = firstOp._NonTransposedImage.meta.getOriginalAxisKeys()
 
-        if 'c' not in axistags:
+        if 'c' not in axistags and len(newAxisOrder) == numaxes + 1:
             newAxisOrder = newAxisOrder.replace('c', '')
 
         try:
