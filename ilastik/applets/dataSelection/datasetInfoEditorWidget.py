@@ -259,14 +259,35 @@ class DatasetInfoEditorWidget(QDialog):
                 realSlot.setValue(info)
         except DatasetConstraintError as ex:
             ret = ex
-            # Try to revert everything back to the previous state
-            try:
-                for laneIndex, info in list(originalInfos.items()):
-                    realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
-                    if realSlot is not None:
+            if hasattr(ex, 'fixing_dialogs') and ex.fixing_dialogs:
+                msg = (
+                    f"Can't use given properties for current dataset, because it violates a constraint of "
+                    f"the {ex.appletName} component.\n\n{ex.message}\n\nIf possible, fix this problem by adjusting "
+                    f"the applet settings in the next window(s).")
+                QMessageBox.warning(self, "Applet Settings Need Correction", msg)
+                for dlg in ex.fixing_dialogs:
+                    dlg()
+                try:
+                    for laneIndex, op in list(self.tempOps.items()):
+                        info = copy.copy(op.Dataset.value)
+                        realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
                         realSlot.setValue(info)
-            except Exception:
-                pass
+
+                    # fixed DatasetConstraintError and there are no other errors
+                    ret = None
+                except Exception as ex:
+                    # Maybe we fixed DatasetConstraintError, but there is still an(other) Exception
+                    ret = ex
+
+            if ret is not None:
+                # Try to revert everything back to the previous state
+                try:
+                    for laneIndex, info in list(originalInfos.items()):
+                        realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+                        if realSlot is not None:
+                            realSlot.setValue(info)
+                except Exception:
+                    pass
             # msg = "Failed to apply your new settings to the workflow " \
             #       "because they violate a constraint of the {} applet.\n\n".format( ex.appletName ) + \
             #       ex.message
