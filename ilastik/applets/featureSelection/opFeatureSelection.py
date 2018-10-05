@@ -68,15 +68,14 @@ class OpFeatureSelectionNoCache(Operator):
     FeatureNames = FeatureNames
 
     MinimalFeatures = numpy.zeros((len(FeatureNames), len(defaultScales)), dtype=bool)
-    MinimalFeatures[0, 0] = True
 
     # Multiple input images
     InputImage = InputSlot()
 
     # The following input slots are applied uniformly to all input images
+    SelectionMatrix = InputSlot()  # A matrix of bools indicating which features to output
     FeatureIds = InputSlot(value=getFeatureIdOrder())   # The list of features to compute
     Scales = InputSlot(value=defaultScales)             # The list of scales to use when computing features
-    SelectionMatrix = InputSlot(value=MinimalFeatures)  # A matrix of bools indicating which features to output
     # A list of flags to indicate weather to use a 2d (xy) or a 3d filter for each scale in Scales
     ComputeIn2d = InputSlot(value=[])
     # The SelectionMatrix rows correspond to feature types in the order specified by the FeatureIds input.
