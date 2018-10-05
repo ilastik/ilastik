@@ -11,6 +11,7 @@ usage ()
   echo "valid options (each can be invoked multiple times:"
   echo "  -a <additional_package>"
   echo "  -c <additional_channel>  # additional channels have higher priority"
+  echo "  -s install with solvers"
   echo
   echo "If ILASTIK-META_LOCAL_SOURCE_PATH is not given, package"
   echo "    ilastik-meta"
@@ -25,11 +26,12 @@ ADDITIONAL_PACKAGES=()
 CHANNELS=""
 PACKAGES="ilastik-dependencies-no-solvers"
 
-while getopts ":c:a:h" flag; do
+while getopts ":c:a:h:s" flag; do
   case "$flag" in
     c) NEW_CHANNELS+=("$OPTARG");;
     a) ADDITIONAL_PACKAGES+=("$OPTARG");;
     h) usage; exit 0;;
+    s) PACKAGES="ilastik-dependencies";;
     \?) echo "unknown option"; usage; exit 1;;
   esac
 done
