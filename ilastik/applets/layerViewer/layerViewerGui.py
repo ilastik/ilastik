@@ -416,7 +416,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     @threadRouted
     def updateAllLayers(self, slot=None):
         if self._stopped or not self._initialized:
-             return
+            return
         if slot is not None and slot.ready() and slot.meta.axistags is None:
             # Don't update in response to value slots.
             return
