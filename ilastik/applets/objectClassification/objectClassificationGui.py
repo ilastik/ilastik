@@ -118,6 +118,7 @@ class ObjectClassificationGui(LabelingGui):
     _knime_exporter = None
 
     def __init__(self, parentApplet, op):
+        self.isInitialized = False    # need this flag in objectClassificationApplet where initialization is terminated with label selection
         self.__cleanup_fns = []
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()

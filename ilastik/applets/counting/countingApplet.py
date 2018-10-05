@@ -48,9 +48,10 @@ class CountingApplet(StandardApplet):
         """
         multi_lane_gui = super(CountingApplet, self).getMultiLaneGui()
         guis = multi_lane_gui.getGuis()
-
-        if len(guis)>0 and isinstance(guis[0], CountingGui):
+        if len(guis)>0 and isinstance(guis[0], CountingGui) and not guis[0].isInitialized:
             guis[0].selectLabel(0)
+            guis[0].isInitialized = True
+
         return multi_lane_gui
 
     @property
