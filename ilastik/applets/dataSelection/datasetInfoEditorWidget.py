@@ -442,17 +442,12 @@ class DatasetInfoEditorWidget(QDialog):
         newAxisOrder = str(self.axesEdit.text())
         # Check for errors
         firstOp = list(self.tempOps.values())[0]
-        shape = firstOp._NonTransposedImage.meta.shape
-        original_shape = firstOp._NonTransposedImage.meta.original_shape
-        if original_shape is not None:
-            numaxes = len(original_shape)
-        else:
-            numaxes = len(shape)
 
         # This portion was added in order to handle the OpDataSelection adding
         # a channel axis when encountering data without one.
         # check if channel was added and not present in original:
         axistags = firstOp._NonTransposedImage.meta.getOriginalAxisKeys()
+        numaxes = len(axistags)
 
         if 'c' not in axistags and len(newAxisOrder) == numaxes + 1:
             newAxisOrder = newAxisOrder.replace('c', '')
