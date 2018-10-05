@@ -120,9 +120,7 @@ class OpFeatureSelectionNoCache(Operator):
     def setupOutputs(self):
         # drop non-channel singleton axes
         oldAxes = self.InputImage.meta.getAxisKeys()
-        # make sure channel axis is present
-        if 'c' not in oldAxes:
-            oldAxes.append('c')
+        assert 'c' in oldAxes
 
         self.opReorderOut.AxisOrder.setValue(oldAxes)
         self.opReorderLayers.AxisOrder.setValue(oldAxes)

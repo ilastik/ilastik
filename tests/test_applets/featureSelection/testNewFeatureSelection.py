@@ -333,7 +333,7 @@ class TestCompareOpFeatureSelectionToOld():
             # make sure data is anisotropic in z
             data[z, z, 0] = 0
 
-        data = vigra.taggedView(data, 'zyx')
+        data = vigra.taggedView(data[None, ...], 'czyx')
         opFeatures.InputImage.setValue(data)
 
         res3d = opFeatures.OutputImage[:].wait()
