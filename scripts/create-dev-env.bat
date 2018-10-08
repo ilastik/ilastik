@@ -17,7 +17,7 @@ goto :init
     echo.  -e, --verbose            show detailed output
     echo.  -s, --solvers            install ilastik with solvers
     echo.  -a, additional package   install additional package
-    echo.  -c, conda channel        use additional conda channel
+    echo.  -c, conda channel        use additional conda channel (default: only conda-forge)
     goto :eof
 
 :version
@@ -48,7 +48,7 @@ goto :init
     set "IlastikMetaPath="
     set "BasePackage=ilastik-dependencies-no-solvers"
     set "Packages="
-    set "Channels="
+    set "Channels=-c conda-forge"
 
 :parse
     if "%~1"=="" goto :validate
@@ -70,7 +70,7 @@ goto :init
     if /i "%~1"=="--solvers"  set "BasePackage=ilastik-dependencies"  & shift & goto :parse
 
     if /i "%~1"=="-a"         set "Packages=%Packages%%~2 "    & shift & shift & goto :parse
-    if /i "%~1"=="-c"         set "Channels=%Channels%-c %~2 " & shift & shift & goto :parse
+    if /i "%~1"=="-c"         set "Channels=%Channels% -c %~2" & shift & shift & goto :parse
 
     if not defined EnvName         set "EnvName=%~1"         & shift & goto :parse
     if not defined IlastikMetaPath set "IlastikMetaPath=%~1" & shift & goto :parse
@@ -93,10 +93,7 @@ goto :init
     set "Packages=%BasePackage% %Packages%"
 
                                    echo          new environment name: %EnvName%
-
-    if defined Channels            echo           additional Channels: %Channels%
-    if not defined Channels        echo           additional Channels: not provided
-
+                                   echo                using Channels: %Channels%
                                    echo           installing Packages: %Packages%
 
     if defined IlastikMetaPath     echo linking to existing directory: %IlastikMetaPath%
