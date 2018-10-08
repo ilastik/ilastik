@@ -134,15 +134,20 @@ goto :init
     if %errorlevel% neq 0 goto :end
     if defined OptVerbose(echo writing custom ilastik-meta.pth done)
 
-    set hasIlastikrc=exists %HOME%\.ilastikrc
-    if defined OptVerbose(if not %hasIlastikrc% echo writing ilastikrc)
-    if not %hasIlastikrc% (
+    set "hasIlastikrc="
+    if exist "%HOME%\.ilastikrc" set "hasIlastikrc=yes"
+
+    if defined OptVerbose (
+        if defined hasIlastikrc echo .ilastikrc found
+        if not defined hasIlastikrc echo writing ilastikrc...
+    )
+    if not defined hasIlastikrc (
       echo [ilastik]
       echo debug: true
       echo plugin_directories: ~\.ilastik\plugins,
     ) > %HOME%\.ilastikrc
     if %errorlevel% neq 0 goto :end
-    if defined OptVerbose(if not %hasIlastikrc% echo writing ilastikrc done)
+    if defined OptVerbose (if not defined hasIlastikrc echo writing ilastikrc done)
 
 :end
     call :cleanup
