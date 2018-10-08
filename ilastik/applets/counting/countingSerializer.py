@@ -212,43 +212,65 @@ class SerialBoxSlot(SerialSlot):
 class CountingSerializer(AppletSerializer):
     """Encapsulate the serialization scheme for pixel classification
     workflow parameters and datasets.
-
     """
+
     def __init__(self, operator, projectFileGroupName):
-        self.predictionSlot = SerialPredictionSlot(operator.PredictionProbabilities,
-                                                   operator,
-                                                   name='Predictions',
-                                                   subname='predictions{:04d}',)
-        slots = [SerialListSlot(operator.LabelNames),
-                 SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
-                 SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
-                 SerialBlockSlot(operator.LabelImages,
-                                 operator.LabelInputs,
-                                 operator.NonzeroLabelBlocks,
-                                 name='LabelSets',
-                                 subname='labels{:0}',
-                                 selfdepends=False),
-                 self.predictionSlot, 
-                 SerialBoxSlot(operator.opTrain.BoxConstraintRois,operator.opTrain,
-                              name="Rois",
-                               subname="rois{:04d}"),
-                 SerialBoxSlot(operator.opTrain.BoxConstraintValues,operator.opTrain,
-                              name="Values",
-                               subname="values{:04d}"),
-                 SerialSlot(operator.opTrain.Sigma, name="Sigma"),
-                 SerialBoxSlot(operator.boxViewer.rois, operator.boxViewer,
-                              name="ViewRois",
-                              subname="viewrois{:04d}"),
-                 SerialCountingSlot(operator.Classifier,
-                                      operator.classifier_cache,
-                                      name="CountingWrappers")
-                ]
-                
+        self.predictionSlot = SerialPredictionSlot(
+            operator.PredictionProbabilities,
+            operator,
+            name='Predictions',
+            subname='predictions{:04d}',
+        )
 
+        slots = [
+            SerialListSlot(
+                operator.LabelNames,
+            ),
+            SerialListSlot(
+                operator.LabelColors,
+                transform=lambda x: tuple(x.flat),
+            ),
+            SerialListSlot(
+                operator.PmapColors,
+                transform=lambda x: tuple(x.flat),
+            ),
+            SerialBlockSlot(
+                operator.LabelImages,
+                operator.LabelInputs,
+                operator.NonzeroLabelBlocks,
+                name='LabelSets',
+                subname='labels{:0}',
+                selfdepends=False,
+            ),
+            self.predictionSlot,
+            SerialBoxSlot(
+                operator.opTrain.BoxConstraintRois,operator.opTrain,
+                name='Rois',
+                subname='rois{:04d}',
+            ),
+            SerialBoxSlot(
+                operator.opTrain.BoxConstraintValues,operator.opTrain,
+                name='Values',
+                subname='values{:04d}',
+            ),
+            SerialSlot(
+                operator.opTrain.Sigma,
+                name='Sigma',
+            ),
+            SerialBoxSlot(
+                operator.boxViewer.rois,
+                operator.boxViewer,
+                name='ViewRois',
+                subname='viewrois{:04d}',
+            ),
+            SerialCountingSlot(
+                operator.Classifier,
+                operator.classifier_cache,
+                name='CountingWrappers',
+            ),
+        ]
 
-        super(CountingSerializer, self).__init__(projectFileGroupName,
-                                                            slots=slots)
-
+        super(CountingSerializer, self).__init__(projectFileGroupName, slots=slots)
         self.predictionSlot.progressSignal.subscribe(self.progressSignal)
 
     @property
