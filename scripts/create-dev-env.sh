@@ -11,7 +11,7 @@ usage ()
   echo "valid options (each can be invoked multiple times:"
   echo "  -a <additional_package>"
   echo "  -c <additional_channel>  # additional channels have higher priority"
-  echo "  -s install with solvers"
+  echo "  -s install with solvers (on Linux both solvers, CPLEX and Gurobi, have to be available)"
   echo
   echo "If ILASTIK-META_LOCAL_SOURCE_PATH is not given, package"
   echo "    ilastik-meta"
