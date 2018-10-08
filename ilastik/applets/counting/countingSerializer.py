@@ -235,6 +235,7 @@ class CountingSerializer(AppletSerializer):
                  SerialBoxSlot(operator.opTrain.BoxConstraintValues,operator.opTrain,
                               name="Values",
                                subname="values{:04d}"),
+                 SerialSlot(operator.opTrain.Sigma, name="Sigma"),
                  SerialBoxSlot(operator.boxViewer.rois, operator.boxViewer,
                               name="ViewRois",
                               subname="viewrois{:04d}"),
