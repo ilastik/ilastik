@@ -49,7 +49,7 @@ class TestFeatureSelectionSerializer(object):
             featureIds = operatorToSave.FeatureIds.value
 
             # All False (no features selected)
-            selectionMatrix = operatorToSave.SelectionMatrix.value.copy()
+            selectionMatrix = operatorToSave.MinimalFeatures
         
             # Change a few to True
             selectionMatrix[0,0] = True
