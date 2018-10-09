@@ -83,6 +83,7 @@ goto :init
 :validate
     if not defined EnvName call :missing_argument & goto :end
     if defined IlastikMetaPath (
+        set IlastikMetaPath=%IlastikMetaPath:/=\%
         if not exist %IlastikMetaPath% echo invalid path: %IlastikMetaPath% & goto :end
     )
 :main
