@@ -244,12 +244,14 @@ class CountingSerializer(AppletSerializer):
             ),
             self.predictionSlot,
             SerialBoxSlot(
-                operator.opTrain.BoxConstraintRois,operator.opTrain,
+                operator.opTrain.BoxConstraintRois,
+                operator.opTrain,
                 name='Rois',
                 subname='rois{:04d}',
             ),
             SerialBoxSlot(
-                operator.opTrain.BoxConstraintValues,operator.opTrain,
+                operator.opTrain.BoxConstraintValues,
+                operator.opTrain,
                 name='Values',
                 subname='values{:04d}',
             ),
