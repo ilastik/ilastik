@@ -10,8 +10,8 @@ usage ()
   echo
   echo "valid options (each can be invoked multiple times:"
   echo "  -a <additional_package>"
-  echo "  -c <additional_channel>  # additional channels have higher priority"
-  echo "  -s install with solvers (on Linux both solvers, CPLEX and Gurobi, have to be available)"
+  echo "  -c <additional_channel>  use additional conda channel (default: only conda-forge)"
+  echo "  -s                       install with solvers (on Linux both solvers, CPLEX and Gurobi, have to be available)"
   echo
   echo "If ILASTIK-META_LOCAL_SOURCE_PATH is not given, package"
   echo "    ilastik-meta"
@@ -41,8 +41,6 @@ then
   for ch in "${NEW_CHANNELS[@]}"; do
     CHANNELS+="-c ${ch} "
   done
-else
-  CHANNELS+="-c ilastik-forge "
 fi
 CHANNELS+="-c conda-forge"
 
