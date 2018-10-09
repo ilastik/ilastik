@@ -5,10 +5,10 @@ about: Create a report to help us improve
 ---
 
 **Describe the bug**
-A clear and concise description of what the bug is.
+Please add a clear and concise description of what the bug is.
 
 **Expected behavior**
-A clear and concise description of what you expected to happen.
+Please add a clear and concise description of what you expected to happen.
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -19,9 +19,8 @@ Within the ... workflow
 4. ...
 
 **Error message/traceback**
-If applicable, add screenshots to help explain your problem.
 
-please add tracebacks with formatting, such as
+If applicable, please add tracebacks with formatting, such as
 
 ```pytb
 ERROR 2018-08-29 10:04:59,901 excepthooks 3936 140154429757184 Unhandled exception in thread: 'Worker #3'
@@ -38,7 +37,7 @@ NotImplementedError
 
 
 **Screenshots**
-If applicable, add screenshots to help explain your problem.
+If applicable, please add screenshots to help explain your problem.
 
 
 **Desktop (please complete the following information):**
