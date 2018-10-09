@@ -29,9 +29,9 @@ goto :init
     call :header
     call :usage
     echo.
-    echo ****                                    ****
-    echo ****   No environment name specified!   ****
-    echo ****                                    ****
+    echo ****                                   ****
+    echo ****   No environment name specified   ****
+    echo ****                                   ****
     echo.
     goto :eof
 
