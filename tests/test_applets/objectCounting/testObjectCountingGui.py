@@ -48,10 +48,6 @@ logger.addHandler( logging.StreamHandler(sys.stdout) )
 logger.setLevel(logging.DEBUG)
 
 
-# Sample Sigma value for OpCounting.opTrain (OpTrainCounter).
-COUNTING_SIGMA = 4.2
-
-
 class TestObjectCountingGui(ShellGuiTestCaseBase):
     """
     Run a set of GUI-based tests on the object counting workflow.
@@ -85,6 +81,9 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             data = numpy.random.random((200,200,3))
             data *= 256
             numpy.save(cls.SAMPLE_DATA, data.astype(numpy.uint8))
+
+        # Sample Sigma value for OpCounting.opTrain (OpTrainCounter).
+        cls.COUNTING_SIGMA = 4.2
         
         # Start the timer
         cls.timer = Timer()
@@ -148,7 +147,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             gui = countingClassApplet.getMultiLaneGui()
             opCount = countingClassApplet.topLevelOperator
 
-            opCount.opTrain.Sigma.setValue(COUNTING_SIGMA)
+            opCount.opTrain.Sigma.setValue(type(self).COUNTING_SIGMA)
  
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
@@ -182,7 +181,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             assert self.shell.projectManager.currentProjectFile is not None
             assert isinstance(self.shell.workflow.applets[COUNTING_APPLET_INDEX], CountingApplet)
             opCount = self.shell.projectManager.workflow.countingApplet.topLevelOperator
-            assert opCount.opTrain.Sigma.value == COUNTING_SIGMA
+            assert opCount.opTrain.Sigma.value == type(self).COUNTING_SIGMA
   
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
