@@ -147,7 +147,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             gui = countingClassApplet.getMultiLaneGui()
             opCount = countingClassApplet.topLevelOperator
 
-            opCount.opTrain.Sigma.setValue(type(self).COUNTING_SIGMA)
+            opCount.opTrain.Sigma.setValue(self.COUNTING_SIGMA)
  
             # Select the labeling drawer
             self.shell.setSelectedAppletDrawer(COUNTING_APPLET_INDEX)
@@ -181,7 +181,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             assert self.shell.projectManager.currentProjectFile is not None
             assert isinstance(self.shell.workflow.applets[COUNTING_APPLET_INDEX], CountingApplet)
             opCount = self.shell.projectManager.workflow.countingApplet.topLevelOperator
-            assert opCount.opTrain.Sigma.value == type(self).COUNTING_SIGMA
+            assert opCount.opTrain.Sigma.value == self.COUNTING_SIGMA
   
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
