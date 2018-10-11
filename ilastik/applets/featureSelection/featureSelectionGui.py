@@ -299,11 +299,15 @@ class FeatureSelectionGui(LayerViewerGui):
         for slot in self.parentApplet.topLevelOperator.FeatureListFilename:
             slot.disconnect()
 
-        # Slots need to be ready (they also should, as they have default values)
+        # The first time we open feature selection, the minimal set of features should be set. Afterwards, if the
+        # data input is changed, the feature selection dialog should appear, if adjustments are necessary
+        if not self.topLevelOperatorView.SelectionMatrix.ready():
+            self.topLevelOperatorView.SelectionMatrix.setValue(self.topLevelOperatorView.MinimalFeatures)
+
+        # Other slots need to be ready (they also should, as they have default values)
         assert self.topLevelOperatorView.FeatureIds.ready()
         assert self.topLevelOperatorView.Scales.ready()
         assert self.topLevelOperatorView.ComputeIn2d.ready(), self.topLevelOperatorView.ComputeIn2d.value
-        assert self.topLevelOperatorView.SelectionMatrix.ready()
 
         # Refresh the dialog data in case it has changed since the last time we were opened
         # (e.g. if the user loaded a project from disk)

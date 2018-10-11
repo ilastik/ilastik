@@ -259,14 +259,35 @@ class DatasetInfoEditorWidget(QDialog):
                 realSlot.setValue(info)
         except DatasetConstraintError as ex:
             ret = ex
-            # Try to revert everything back to the previous state
-            try:
-                for laneIndex, info in list(originalInfos.items()):
-                    realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
-                    if realSlot is not None:
+            if hasattr(ex, 'fixing_dialogs') and ex.fixing_dialogs:
+                msg = (
+                    f"Can't use given properties for current dataset, because it violates a constraint of "
+                    f"the {ex.appletName} component.\n\n{ex.message}\n\nIf possible, fix this problem by adjusting "
+                    f"the applet settings in the next window(s).")
+                QMessageBox.warning(self, "Applet Settings Need Correction", msg)
+                for dlg in ex.fixing_dialogs:
+                    dlg()
+                try:
+                    for laneIndex, op in list(self.tempOps.items()):
+                        info = copy.copy(op.Dataset.value)
+                        realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
                         realSlot.setValue(info)
-            except Exception:
-                pass
+
+                    # fixed DatasetConstraintError and there are no other errors
+                    ret = None
+                except Exception as ex:
+                    # Maybe we fixed DatasetConstraintError, but there is still an(other) Exception
+                    ret = ex
+
+            if ret is not None:
+                # Try to revert everything back to the previous state
+                try:
+                    for laneIndex, info in list(originalInfos.items()):
+                        realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
+                        if realSlot is not None:
+                            realSlot.setValue(info)
+                except Exception:
+                    pass
             # msg = "Failed to apply your new settings to the workflow " \
             #       "because they violate a constraint of the {} applet.\n\n".format( ex.appletName ) + \
             #       ex.message
@@ -442,12 +463,15 @@ class DatasetInfoEditorWidget(QDialog):
         newAxisOrder = str(self.axesEdit.text())
         # Check for errors
         firstOp = list(self.tempOps.values())[0]
-        shape = firstOp.Image.meta.shape
-        original_shape = firstOp.Image.meta.original_shape
-        if original_shape is not None:
-            numaxes = len(original_shape)
-        else:
-            numaxes = len(shape)
+
+        # This portion was added in order to handle the OpDataSelection adding
+        # a channel axis when encountering data without one.
+        # check if channel was added and not present in original:
+        axistags = firstOp._NonTransposedImage.meta.getOriginalAxisKeys()
+        numaxes = len(axistags)
+
+        if 'c' not in axistags and len(newAxisOrder) == numaxes + 1:
+            newAxisOrder = newAxisOrder.replace('c', '')
 
         try:
             # Remove the event filter while this function executes because we don't 

@@ -684,9 +684,9 @@ class DataSelectionGui(QWidget):
             accepted = True
             while isinstance(ex, DatasetConstraintError) and accepted:
                 msg = (
-                    f"Can't use default properties for dataset:\n\n{filename}\n\nbecause it violates a constraint of "
+                    f"Can't use given properties for dataset:\n\n{filename}\n\nbecause it violates a constraint of "
                     f"the {ex.appletName} component.\n\n{ex.message}\n\nIf possible, fix this problem by adjusting "
-                    f"the applet settings and or the dataset properties in the next window(s). Hit 'cancel' to abort.")
+                    f"the applet settings and or the dataset properties in the next window(s).")
                 QMessageBox.warning(self, "Dataset Needs Correction", msg)
                 for dlg in ex.fixing_dialogs:
                     dlg()
