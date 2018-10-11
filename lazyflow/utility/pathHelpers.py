@@ -398,9 +398,9 @@ def globHdf5N5(fileObject, globString):
         matches occurred.
     """
     if isinstance(fileObject, h5py.File):
-        pathlist = [x['name'] for x in lsHdf5(hdf5FileObject)]
+        pathlist = [x['name'] for x in lsHdf5(fileObject)]
     else:
-        pathlist = [x['name'] for x in lsN5(hdf5FileObject)]
+        pathlist = [x['name'] for x in lsN5(fileObject)]
     matches = globList(pathlist, globString)
     return sorted(matches)
 

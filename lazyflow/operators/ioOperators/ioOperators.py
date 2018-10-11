@@ -771,6 +771,7 @@ def convertToIntTuple(in_tuple):
         dataShape_list.append(int(member))
     return tuple(dataShape_list)
 
+
 if __name__ == '__main__':
     from lazyflow.graph import Graph
     import h5py
@@ -792,17 +793,4 @@ if __name__ == '__main__':
     opStackToH5.hdf5Path.setValue(internalPath)
 
     success = opStackToH5.WriteImage.value
-    assert success
-
-    f = z5py.N5File('/tmp/flyem_sample_stack.n5')
-    internalPath = 'volume/data'
-
-    # OpStackToH5Writer
-    graph = Graph()
-    opStackToN5 = OpStackToN5Writer()
-    opStackToN5.GlobString.setValue('/tmp/flyem_sample_stack/*.png')
-    opStackToN5.n5Group.setValue(f)
-    opStackToN5.n5Path.setValue(internalPath)
-
-    success = opStackToN5.WriteImage.value
     assert success

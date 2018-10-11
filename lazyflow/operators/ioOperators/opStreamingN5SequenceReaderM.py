@@ -66,6 +66,18 @@ class OpStreamingN5SequenceReaderM(Operator):
             self.msg = "File is not a N5: {}".format(globString)
             super(OpStreamingN5SequenceReaderM.WrongFileTypeError, self).__init__(self.msg)
 
+    class InconsistentShape(Exception):
+        def __init__(self, fileName, datasetName):
+            self.fileName = fileName
+            self.msg = "Cannot stack dataset: {} because its shape differs from the shape of the previous datasets".format(fileName+datasetName)
+            super(OpStreamingN5SequenceReaderM.InconsistentShape, self).__init__(self.msg)
+
+    class InconsistentDType(Exception):
+        def __init__(self, fileName, datasetName):
+            self.fileName = fileName
+            self.msg = "Cannot stack dataset: {} because its data type differs from the type of the previous datasets".format(fileName+datasetName)
+            super(OpStreamingN5SequenceReaderM.InconsistentDType, self).__init__(self.msg)
+
     class NoExternalPlaceholderError(Exception):
         def __init__(self, globString):
             self.globString = globString
@@ -157,11 +169,21 @@ class OpStreamingN5SequenceReaderM(Operator):
 
         self._n5Files = []
         self._readers = []
+        dtype = None
+        shape = None
         for external_path, internal_path, stacker_slot in zip(
                 external_paths, internal_paths, self._opStacker.Images):
             opReader = OpStreamingN5Reader(parent=self)
             try:
                 n5File = z5py.N5File(external_path, 'r+')
+                if dtype is None:
+                    dtype = n5File[internal_path].dtype
+                    shape = n5File[internal_path].shape
+                else:
+                    if dtype is not n5File[internal_path].dtype:
+                        raise OpStreamingN5SequenceReaderM.InconsistentDType(external_path, internal_path)
+                    if shape is not n5File[internal_path].shape:
+                        raise OpStreamingN5SequenceReaderM.InconsistentShape(external_path, internal_path)
                 opReader.InternalPath.setValue(internal_path)
                 opReader.N5File.setValue(n5File)
             except RuntimeError as e:
