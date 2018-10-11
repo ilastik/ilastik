@@ -489,6 +489,14 @@ class ObjectClassificationGui(LabelingGui):
                                         l.pmapColor().blue()),
                              self.topLevelOperatorView.PmapColors)
 
+    def _addNewLabel(self):
+        # Call the base class to update the operator.
+        super(ObjectClassificationGui, self)._addNewLabel()
+
+        # if there are only two labels remaining make the unremovable
+        if self._labelControlUi.labelListModel.rowCount() == 3:
+            self.labelingDrawerUi.labelListModel.makeRowRemovable(0)
+            self.labelingDrawerUi.labelListModel.makeRowRemovable(1)
 
     def _onLabelRemoved(self, parent, start, end):
         # Don't respond unless this actually came from the GUI
@@ -522,6 +530,11 @@ class ObjectClassificationGui(LabelingGui):
                 value.pop(start)
                 # Force dirty propagation even though the list id is unchanged.
                 slot.setValue(value, check_changed=False)
+
+        # if there are only two labels remaining make the unremovable
+        if self._labelControlUi.labelListModel.rowCount() == 2:
+            self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
+            self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
 
     def _clearLabelListGui(self):
         # Remove rows until we have the right number

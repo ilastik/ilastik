@@ -885,8 +885,7 @@ class PixelClassificationGui(LabelingGui):
         super(PixelClassificationGui, self)._addNewLabel()
 
         # if there are only two labels remaining make the unremovable
-        numLabels = self._labelControlUi.labelListModel.rowCount()
-        if numLabels == 3:
+        if self._labelControlUi.labelListModel.rowCount() == 3:
             self.labelingDrawerUi.labelListModel.makeRowRemovable(0)
             self.labelingDrawerUi.labelListModel.makeRowRemovable(1)
 
