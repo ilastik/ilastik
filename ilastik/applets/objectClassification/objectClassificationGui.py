@@ -177,12 +177,8 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.handleInteractiveModeClicked)
-
-        # Add two permanent labels because it makes no sense to have less here
-        self._addNewLabel()
-        self._addNewLabel()
-        self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
-        self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
+        # Here it makes no sense to have less than two labels
+        self.defTwoInitialLabels(True)
 
         # select all the features in the beginning
         cfn = None
@@ -489,15 +485,6 @@ class ObjectClassificationGui(LabelingGui):
                                         l.pmapColor().blue()),
                              self.topLevelOperatorView.PmapColors)
 
-    def _addNewLabel(self):
-        # Call the base class to update the operator.
-        super(ObjectClassificationGui, self)._addNewLabel()
-
-        # if there are only two labels remaining make the unremovable
-        if self._labelControlUi.labelListModel.rowCount() == 3:
-            self.labelingDrawerUi.labelListModel.makeRowRemovable(0)
-            self.labelingDrawerUi.labelListModel.makeRowRemovable(1)
-
     def _onLabelRemoved(self, parent, start, end):
         # Don't respond unless this actually came from the GUI
         if self._programmaticallyRemovingLabels:
@@ -518,8 +505,6 @@ class ObjectClassificationGui(LabelingGui):
         predictLayer = self.layerstack[layer_index]
         predictLayer.colorTable = self._colorTable16_forpmaps
         '''
-
-
         op = self.topLevelOperatorView
         op.removeLabel(start)
         # Keep colors in sync with names
@@ -530,11 +515,6 @@ class ObjectClassificationGui(LabelingGui):
                 value.pop(start)
                 # Force dirty propagation even though the list id is unchanged.
                 slot.setValue(value, check_changed=False)
-
-        # if there are only two labels remaining make the unremovable
-        if self._labelControlUi.labelListModel.rowCount() == 2:
-            self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
-            self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
 
     def _clearLabelListGui(self):
         # Remove rows until we have the right number

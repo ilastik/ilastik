@@ -93,16 +93,17 @@ class ListModel(QAbstractTableModel):
         self.unremovable_rows=[] #rows in this list cannot be removed from the gui,
                                  # to add to this list call self.makeRowPermanent(int)
                                  # to remove make the self.makeRowRemovable(int)
-    def makeRowPermanent(self,rowindex):
+    def makeRowPermanent(self, rowIndex):
         """
         The rowindex cannot be removed from gui
         to remove this index use self.makeRowRemovable
         """
 
-        self.unremovable_rows.append(rowindex)
+        self.unremovable_rows.append(rowIndex)
 
-    def makeRowRemovable(self,rowindex):
-        self.unremovable_rows.remove(rowindex)
+    def makeRowRemovable(self, rowIndex):
+        # @param rowIndex is the index for the label of interest in self.unremovable_rows
+        self.unremovable_rows.remove(rowIndex)
 
     def __len__(self):
         return len(self._elements)

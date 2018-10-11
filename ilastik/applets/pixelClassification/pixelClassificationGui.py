@@ -438,10 +438,7 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
 
         # Add two permanent labels because it makes no sense to have less here
-        self._addNewLabel()
-        self._addNewLabel()
-        self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
-        self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
+        self.defTwoInitialLabels(True)
 
         self.topLevelOperatorView.LabelNames.notifyDirty( bind(self.handleLabelSelectionChange) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
@@ -880,15 +877,6 @@ class PixelClassificationGui(LabelingGui):
         else:
             return parentFun()
 
-    def _addNewLabel(self):
-        # Call the base class to update the operator.
-        super(PixelClassificationGui, self)._addNewLabel()
-
-        # if there are only two labels remaining make the unremovable
-        if self._labelControlUi.labelListModel.rowCount() == 3:
-            self.labelingDrawerUi.labelListModel.makeRowRemovable(0)
-            self.labelingDrawerUi.labelListModel.makeRowRemovable(1)
-
     def _onLabelChanged(self, parentFun, mapf, slot):
         parentFun()
         new = list(map(mapf, self.labelListData))
@@ -908,11 +896,6 @@ class PixelClassificationGui(LabelingGui):
                 value.pop(start)
                 # Force dirty propagation even though the list id is unchanged.
                 slot.setValue(value, check_changed=False)
-
-        # if there are only two labels remaining make the unremovable
-        if self._labelControlUi.labelListModel.rowCount() == 2:
-            self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
-            self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
 
     def _clearLabelListGui(self):
         # Remove rows until we have the right number

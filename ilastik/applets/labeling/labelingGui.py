@@ -188,6 +188,7 @@ class LabelingGui(LayerViewerGui):
         self.__initShortcuts()
         self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)
         self._allowDeleteLastLabelOnly = False
+        self._defTwoInitialLabels = False
 
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
@@ -636,10 +637,19 @@ class LabelingGui(LayerViewerGui):
         newRow = self._labelControlUi.labelListModel.rowCount()
         self._labelControlUi.labelListModel.insertRow( newRow, label )
 
-        if self._allowDeleteLastLabelOnly:
-            # make previous label unremovable
+        if self._allowDeleteLastLabelOnly and self._defTwoInitialLabels:
+            # make previous label unremovable when we have at least three labels
             if newRow > 2:
                 self._labelControlUi.labelListModel.makeRowPermanent(newRow - 1)
+        elif self._allowDeleteLastLabelOnly:
+            # make previous label unremovable
+            if newRow > 0:
+                self._labelControlUi.labelListModel.makeRowPermanent(newRow - 1)
+        elif self._defTwoInitialLabels:
+            # if there are only two labels remaining make the unremovable
+            if self._labelControlUi.labelListModel.rowCount() == 3:
+                self.labelingDrawerUi.labelListModel.makeRowRemovable(0)
+                self.labelingDrawerUi.labelListModel.makeRowRemovable(1)
 
         newColorIndex = self._labelControlUi.labelListModel.index(newRow, 0)
         self.onLabelListDataChanged(newColorIndex, newColorIndex) # Make sure label layer colortable is in sync with the new color
@@ -752,10 +762,19 @@ class LabelingGui(LayerViewerGui):
         oldcount = self._labelControlUi.labelListModel.rowCount() + 1
         logger.debug("removing label {} out of {}".format( row, oldcount ))
 
-        if self._allowDeleteLastLabelOnly:
+        if self._defTwoInitialLabels and self._allowDeleteLastLabelOnly:
             # make previous label removable again
-            if oldcount > 2:
-                self._labelControlUi.labelListModel.makeRowRemovable(oldcount - 1)
+            if oldcount > 3:
+                self._labelControlUi.labelListModel.makeRowRemovable(oldcount - 2)
+        elif self._allowDeleteLastLabelOnly:
+            # make previous label removable again
+            if oldcount > 1:
+                self._labelControlUi.labelListModel.makeRowRemovable(oldcount - 2)
+        elif self._defTwoInitialLabels:
+            # if there are only two labels remaining make them unremovable
+            if self._labelControlUi.labelListModel.rowCount() == 2:
+                self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
+                self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
 
         # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
         oldColor = self._colorTable16.pop(row+1)
@@ -871,3 +890,13 @@ class LabelingGui(LayerViewerGui):
         assume that all previous cell counts are given.
         """
         self._allowDeleteLastLabelOnly = enabled
+
+    def defTwoInitialLabels(self, enabled):
+        # in some workflows wen need always at least two labels to function correctly.
+        # setting enabled to True restricts having less than two labels
+        self._addNewLabel()
+        self._addNewLabel()
+        self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
+        self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
+
+        self._defTwoInitialLabels = enabled
