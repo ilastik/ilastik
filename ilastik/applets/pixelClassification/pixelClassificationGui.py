@@ -880,6 +880,16 @@ class PixelClassificationGui(LabelingGui):
         else:
             return parentFun()
 
+    def _addNewLabel(self):
+        # Call the base class to update the operator.
+        super(PixelClassificationGui, self)._addNewLabel()
+
+        # if there are only two labels remaining make the unremovable
+        numLabels = self._labelControlUi.labelListModel.rowCount()
+        if numLabels == 3:
+            self.labelingDrawerUi.labelListModel.makeRowRemovable(0)
+            self.labelingDrawerUi.labelListModel.makeRowRemovable(1)
+
     def _onLabelChanged(self, parentFun, mapf, slot):
         parentFun()
         new = list(map(mapf, self.labelListData))
@@ -899,6 +909,11 @@ class PixelClassificationGui(LabelingGui):
                 value.pop(start)
                 # Force dirty propagation even though the list id is unchanged.
                 slot.setValue(value, check_changed=False)
+
+        # if there are only two labels remaining make the unremovable
+        if self._labelControlUi.labelListModel.rowCount() == 2:
+            self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
+            self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
 
     def _clearLabelListGui(self):
         # Remove rows until we have the right number

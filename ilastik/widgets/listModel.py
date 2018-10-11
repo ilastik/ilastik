@@ -102,7 +102,7 @@ class ListModel(QAbstractTableModel):
         self.unremovable_rows.append(rowindex)
 
     def makeRowRemovable(self,rowindex):
-        self.unremovable_rows.pop(rowindex)
+        self.unremovable_rows.remove(rowindex)
 
     def __len__(self):
         return len(self._elements)
