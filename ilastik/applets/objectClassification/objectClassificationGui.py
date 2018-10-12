@@ -164,7 +164,8 @@ class ObjectClassificationGui(LabelingGui):
         self._colorTable16_forpmaps[15] = QColor(Qt.black).rgba() #for objects with NaNs in features
         
         # button handlers
-        self.interactiveMode = False
+        self._interactiveMode = False
+        self.interactiveMode = False      # This calls the setter function: interactiveMode(self, val)
         self._showPredictions = False
         self._labelMode = True
 

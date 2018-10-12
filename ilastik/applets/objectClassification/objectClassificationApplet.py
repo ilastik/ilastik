@@ -22,7 +22,6 @@ from __future__ import absolute_import
 from ilastik.applets.base.standardApplet import StandardApplet
 
 from .opObjectClassification import OpObjectClassification
-from .objectClassificationGui import ObjectClassificationGui
 from .objectClassificationSerializer import ObjectClassificationSerializer
 
 
@@ -44,13 +43,14 @@ class ObjectClassificationApplet(StandardApplet):
                                            self.topLevelOperator)]
 
     def getMultiLaneGui(self):
+        from .objectClassificationGui import ObjectClassificationGui  # prevent imports of QT classes in headless mode
         """
         Override from base class. The label that is initially selected needs to be selected after volumina knows
         the current layer stack. Which is only the case when the gui objects LayerViewerGui.updateAllLayers run at least once after object init.
         """
         multi_lane_gui = super(ObjectClassificationApplet, self).getMultiLaneGui()
         guis = multi_lane_gui.getGuis()
-        if len(guis)>0 and isinstance(guis[0], ObjectClassificationGui) and not guis[0].isInitialized:
+        if len(guis) > 0 and isinstance(guis[0], ObjectClassificationGui) and not guis[0].isInitialized:
             guis[0].selectLabel(0)
             guis[0].isInitialized = True
         return multi_lane_gui
@@ -65,4 +65,5 @@ class ObjectClassificationApplet(StandardApplet):
 
     @property
     def singleLaneGuiClass(self):
+        from .objectClassificationGui import ObjectClassificationGui  # prevent imports of QT classes in headless mode
         return ObjectClassificationGui
