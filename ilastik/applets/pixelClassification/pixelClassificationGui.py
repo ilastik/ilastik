@@ -399,7 +399,7 @@ class PixelClassificationGui(LabelingGui):
 
     def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None ):
         self.parentApplet = parentApplet
-        self.isInitialized = False    # need this flag in pixelClassificationApplet where initialization is terminated with label selection
+        self.isInitialized = False  # need this flag in pixelClassificationApplet where initialization is terminated with label selection
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs

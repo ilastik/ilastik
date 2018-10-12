@@ -59,7 +59,7 @@ class PixelClassificationApplet( StandardApplet ):
         self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
 
     def getMultiLaneGui(self):
-        from .pixelClassificationGui import PixelClassificationGui     # prevent imports of QT classes in headless mode
+        from .pixelClassificationGui import PixelClassificationGui  # Prevent imports of QT classes in headless mode
         """
         Override from base class. The label that is initially selected needs to be selected after volumina knows
         the current layer stack. Which is only the case when the gui objects LayerViewerGui.updateAllLayers run at least once after object init.
@@ -81,5 +81,5 @@ class PixelClassificationApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        from .pixelClassificationGui import PixelClassificationGui      # prevent imports of QT classes in headless mode
+        from .pixelClassificationGui import PixelClassificationGui  # prevent imports of QT classes in headless mode
         return PixelClassificationGui

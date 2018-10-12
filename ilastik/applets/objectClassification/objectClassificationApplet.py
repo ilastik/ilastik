@@ -43,7 +43,7 @@ class ObjectClassificationApplet(StandardApplet):
                                            self.topLevelOperator)]
 
     def getMultiLaneGui(self):
-        from .objectClassificationGui import ObjectClassificationGui  # prevent imports of QT classes in headless mode
+        from .objectClassificationGui import ObjectClassificationGui  # Prevent imports of QT classes in headless mode
         """
         Override from base class. The label that is initially selected needs to be selected after volumina knows
         the current layer stack. Which is only the case when the gui objects LayerViewerGui.updateAllLayers run at least once after object init.
@@ -65,5 +65,5 @@ class ObjectClassificationApplet(StandardApplet):
 
     @property
     def singleLaneGuiClass(self):
-        from .objectClassificationGui import ObjectClassificationGui  # prevent imports of QT classes in headless mode
+        from .objectClassificationGui import ObjectClassificationGui  # Prevent imports of QT classes in headless mode
         return ObjectClassificationGui

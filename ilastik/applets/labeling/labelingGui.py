@@ -638,7 +638,7 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.labelListModel.insertRow( newRow, label )
 
         newColorIndex = self._labelControlUi.labelListModel.index(newRow, 0)
-        self.onLabelListDataChanged(newColorIndex, newColorIndex) # Make sure label layer colortable is in sync with the new color
+        self.onLabelListDataChanged(newColorIndex, newColorIndex)  # Make sure label layer colortable is in sync with the new color
 
         # Update operator with new name
         operator_names = self._labelingSlots.labelNames.value
