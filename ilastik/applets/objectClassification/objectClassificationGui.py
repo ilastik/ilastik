@@ -177,8 +177,9 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.handleInteractiveModeClicked)
-        # Here it makes no sense to have less than two labels
-        self.defTwoInitialLabels(True)
+
+        # Always force at least two labels because it makes no sense to have less here
+        self.forceAtLeastTwoLabels(True)
 
         # select all the features in the beginning
         cfn = None

@@ -188,7 +188,7 @@ class LabelingGui(LayerViewerGui):
         self.__initShortcuts()
         self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)
         self._allowDeleteLastLabelOnly = False
-        self._defTwoInitialLabels = False
+        self._forceAtLeastTwoLabels = False
 
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
@@ -637,20 +637,6 @@ class LabelingGui(LayerViewerGui):
         newRow = self._labelControlUi.labelListModel.rowCount()
         self._labelControlUi.labelListModel.insertRow( newRow, label )
 
-        if self._allowDeleteLastLabelOnly and self._defTwoInitialLabels:
-            # make previous label unremovable when we have at least three labels
-            if newRow > 2:
-                self._labelControlUi.labelListModel.makeRowPermanent(newRow - 1)
-        elif self._allowDeleteLastLabelOnly:
-            # make previous label unremovable
-            if newRow > 0:
-                self._labelControlUi.labelListModel.makeRowPermanent(newRow - 1)
-        elif self._defTwoInitialLabels:
-            # if there are only two labels remaining make the unremovable
-            if self._labelControlUi.labelListModel.rowCount() == 3:
-                self.labelingDrawerUi.labelListModel.makeRowRemovable(0)
-                self.labelingDrawerUi.labelListModel.makeRowRemovable(1)
-
         newColorIndex = self._labelControlUi.labelListModel.index(newRow, 0)
         self.onLabelListDataChanged(newColorIndex, newColorIndex) # Make sure label layer colortable is in sync with the new color
 
@@ -665,6 +651,20 @@ class LabelingGui(LayerViewerGui):
                 # Print it out before it's too late!
                 log_exception( logger, "Logged the above exception just in case PyQt loses it." )
                 raise
+
+        if self._allowDeleteLastLabelOnly and self._forceAtLeastTwoLabels:
+            # make previous label permanent, when we have at least three labels since the first two are always permanent
+            if newRow > 2:
+                self._labelControlUi.labelListModel.makeRowPermanent(newRow - 1)
+        elif self._allowDeleteLastLabelOnly:
+            # make previous label permanent
+            if newRow > 0:
+                self._labelControlUi.labelListModel.makeRowPermanent(newRow - 1)
+        elif self._forceAtLeastTwoLabels:
+            # if a third label is added make all labels removable
+            if self._labelControlUi.labelListModel.rowCount() == 3:
+                self.labelingDrawerUi.labelListModel.makeRowRemovable(0)
+                self.labelingDrawerUi.labelListModel.makeRowRemovable(1)
 
         # Call the 'changed' callbacks immediately to initialize any listeners
         self.onLabelNameChanged()
@@ -762,20 +762,6 @@ class LabelingGui(LayerViewerGui):
         oldcount = self._labelControlUi.labelListModel.rowCount() + 1
         logger.debug("removing label {} out of {}".format( row, oldcount ))
 
-        if self._defTwoInitialLabels and self._allowDeleteLastLabelOnly:
-            # make previous label removable again
-            if oldcount > 3:
-                self._labelControlUi.labelListModel.makeRowRemovable(oldcount - 2)
-        elif self._allowDeleteLastLabelOnly:
-            # make previous label removable again
-            if oldcount > 1:
-                self._labelControlUi.labelListModel.makeRowRemovable(oldcount - 2)
-        elif self._defTwoInitialLabels:
-            # if there are only two labels remaining make them unremovable
-            if self._labelControlUi.labelListModel.rowCount() == 2:
-                self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
-                self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
-
         # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
         oldColor = self._colorTable16.pop(row+1)
 
@@ -800,15 +786,29 @@ class LabelingGui(LayerViewerGui):
             # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
             #  to search through the entire list of labels and delete the entries for the matching label.
             self._labelingSlots.labelDelete.setValue(row+1)
-    
+
             # We need to "reset" the deleteLabel input to -1 when we're finished.
             #  Otherwise, you can never delete the same label twice in a row.
             #  (Only *changes* to the input are acted upon.)
             self._labelingSlots.labelDelete.setValue(-1)
-            
+
             labelNames = self._labelingSlots.labelNames.value
             labelNames.pop(start)
             self._labelingSlots.labelNames.setValue(labelNames, check_changed=False)
+
+        if self._forceAtLeastTwoLabels and self._allowDeleteLastLabelOnly:
+            # make previous label removable again and always leave at least two permanent labels
+            if oldcount > 3:
+                self._labelControlUi.labelListModel.makeRowRemovable(oldcount - 2)
+        elif self._allowDeleteLastLabelOnly:
+            # make previous label removable again
+            if oldcount > 1:
+                self._labelControlUi.labelListModel.makeRowRemovable(oldcount - 2)
+        elif self._forceAtLeastTwoLabels:
+            # if there are only two labels remaining make them permanent
+            if self._labelControlUi.labelListModel.rowCount() == 2:
+                self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
+                self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
        
     def getLayer(self, name):
         """find a layer by name"""
@@ -891,12 +891,15 @@ class LabelingGui(LayerViewerGui):
         """
         self._allowDeleteLastLabelOnly = enabled
 
-    def defTwoInitialLabels(self, enabled):
-        # in some workflows wen need always at least two labels to function correctly.
-        # setting enabled to True restricts having less than two labels
+    def forceAtLeastTwoLabels(self, enabled):
+        """
+        in some workflows it makes no sense to have less than two labels.
+        This setting forces to have always at least two labels.
+        If there are exaclty two, they will be made unremovable
+        """
         self._addNewLabel()
         self._addNewLabel()
         self.labelingDrawerUi.labelListModel.makeRowPermanent(0)
         self.labelingDrawerUi.labelListModel.makeRowPermanent(1)
 
-        self._defTwoInitialLabels = enabled
+        self._forceAtLeastTwoLabels = enabled
