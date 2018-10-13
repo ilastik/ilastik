@@ -519,11 +519,10 @@ class ObjectClassificationGui(LabelingGui):
                 slot.setValue(value, check_changed=False)
 
     def _clearLabelListGui(self):
-        # Remove rows until we have the right number
+        """Remove rows until we have the right number"""
         while self._labelControlUi.labelListModel.rowCount() > 2:
             self._removeLastLabel()
 
-        
     def createLabelLayer(self, direct=False):
         """Return a colortable layer that displays the label slot
         data, along with its associated label source.

@@ -885,7 +885,7 @@ class CountingGui(LabelingGui):
             slot.setValue(value)
 
     def _clearLabelListGui(self):
-        # Remove rows until we have the right number
+        """Remove rows until we have the right number"""
         while self._labelControlUi.labelListModel.rowCount() > 2:
             self._removeLastLabel()
 

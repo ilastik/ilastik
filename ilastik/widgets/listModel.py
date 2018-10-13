@@ -102,7 +102,9 @@ class ListModel(QAbstractTableModel):
         self.unremovable_rows.append(rowIndex)
 
     def makeRowRemovable(self, rowIndex):
-        # @param rowIndex is the index for the label of interest in the current gui setting
+        """
+        :param rowIndex: is the index for the label of interest in the current gui setting
+        """
         self.unremovable_rows.remove(rowIndex)
 
     def __len__(self):

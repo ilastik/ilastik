@@ -46,11 +46,12 @@ class CarvingApplet(LabelingApplet):
         self._serializers = None
 
     def getMultiLaneGui(self):
-        from .carvingGui import CarvingGui  # Prevent imports of QT classes in headless mode
         """
         Override from base class. The label that is initially selected needs to be selected after volumina knows
-        the current layer stack. Which is only the case when the gui objects LayerViewerGui.updateAllLayers run at least once after object init.
+        the current layer stack. Which is only the case when the gui objects LayerViewerGui.updateAllLayers run at
+        least once after object init.
         """
+        from .carvingGui import CarvingGui  # Prevent imports of QT classes in headless mode
         multi_lane_gui = super(LabelingApplet, self).getMultiLaneGui()
         guis = multi_lane_gui.getGuis()
         if len(guis) > 0 and isinstance(guis[0], CarvingGui) and not guis[0].isInitialized:

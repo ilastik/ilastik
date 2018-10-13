@@ -319,10 +319,11 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             # Now delete the last two labels again
             gui.currentGui()._labelControlUi.labelListModel.removeRow(3)
             gui.currentGui()._labelControlUi.labelListModel.removeRow(2)
+            assert op_object_classification.NumLabels.value == 2
 
+            # Now check that the remaining two labels cannot be deleted:
             gui.currentGui()._labelControlUi.labelListModel.removeRow(1)
             gui.currentGui()._labelControlUi.labelListModel.removeRow(0)
-
             assert op_object_classification.NumLabels.value == 2
             # Add some labels, we use onClick directly in order to bypass problems with painting
             # on different screen resolutions
