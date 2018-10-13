@@ -133,3 +133,6 @@ class SingleToMultiGuiAdapter( object ):
 
     def isEnabled(self):
         return self._enabled
+
+    def getGuis(self):
+        return self._guis

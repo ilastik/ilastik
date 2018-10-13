@@ -118,6 +118,7 @@ class ObjectClassificationGui(LabelingGui):
     _knime_exporter = None
 
     def __init__(self, parentApplet, op):
+        self.isInitialized = False  # Need this flag in objectClassificationApplet where initialization is terminated with label selection
         self.__cleanup_fns = []
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
@@ -164,6 +165,7 @@ class ObjectClassificationGui(LabelingGui):
         
         # button handlers
         self._interactiveMode = False
+        self.interactiveMode = False  # This calls the setter function: interactiveMode(self, val)
         self._showPredictions = False
         self._labelMode = True
 
@@ -171,12 +173,16 @@ class ObjectClassificationGui(LabelingGui):
             self.handleSubsetFeaturesClicked)
         self.labelingDrawerUi.labelAssistButton.clicked.connect(
             self.handleLabelAssistClicked)
+
         self.labelingDrawerUi.liveUpdateButton.setEnabled(False)
         self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.handleInteractiveModeClicked)
 
-        #select all the features in the beginning
+        # Always force at least two labels because it makes no sense to have less here
+        self.forceAtLeastTwoLabels(True)
+
+        # select all the features in the beginning
         cfn = None
         already_selected = None
         if self.op.ComputedFeatureNames.ready():
@@ -481,7 +487,6 @@ class ObjectClassificationGui(LabelingGui):
                                         l.pmapColor().blue()),
                              self.topLevelOperatorView.PmapColors)
 
-
     def _onLabelRemoved(self, parent, start, end):
         # Don't respond unless this actually came from the GUI
         if self._programmaticallyRemovingLabels:
@@ -502,8 +507,6 @@ class ObjectClassificationGui(LabelingGui):
         predictLayer = self.layerstack[layer_index]
         predictLayer.colorTable = self._colorTable16_forpmaps
         '''
-
-
         op = self.topLevelOperatorView
         op.removeLabel(start)
         # Keep colors in sync with names
@@ -515,7 +518,11 @@ class ObjectClassificationGui(LabelingGui):
                 # Force dirty propagation even though the list id is unchanged.
                 slot.setValue(value, check_changed=False)
 
-        
+    def _clearLabelListGui(self):
+        """Remove rows until we have the right number"""
+        while self._labelControlUi.labelListModel.rowCount() > 2:
+            self._removeLastLabel()
+
     def createLabelLayer(self, direct=False):
         """Return a colortable layer that displays the label slot
         data, along with its associated label source.

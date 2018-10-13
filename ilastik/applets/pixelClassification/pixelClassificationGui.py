@@ -399,6 +399,7 @@ class PixelClassificationGui(LabelingGui):
 
     def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None ):
         self.parentApplet = parentApplet
+        self.isInitialized = False  # need this flag in pixelClassificationApplet where initialization is terminated with label selection
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
@@ -415,7 +416,7 @@ class PixelClassificationGui(LabelingGui):
 
         # Base class init
         super(PixelClassificationGui, self).__init__( parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath )
-        
+
         self.topLevelOperatorView = topLevelOperatorView
 
         self.interactiveModeActive = False
@@ -435,6 +436,9 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_feature_selection_dialog)
         self.featSelDlg.accepted.connect(self.update_features_from_dialog)
         self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
+
+        # Always force at least two labels because it makes no sense to have less here
+        self.forceAtLeastTwoLabels(True)
 
         self.topLevelOperatorView.LabelNames.notifyDirty( bind(self.handleLabelSelectionChange) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
@@ -892,6 +896,11 @@ class PixelClassificationGui(LabelingGui):
                 value.pop(start)
                 # Force dirty propagation even though the list id is unchanged.
                 slot.setValue(value, check_changed=False)
+
+    def _clearLabelListGui(self):
+        """Remove rows until we have the right number"""
+        while self._labelControlUi.labelListModel.rowCount() > 2:
+            self._removeLastLabel()
 
     def getNextLabelName(self):
         return self._getNext(self.topLevelOperatorView.LabelNames,

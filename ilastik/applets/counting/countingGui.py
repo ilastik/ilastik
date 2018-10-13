@@ -121,6 +121,7 @@ class CountingGui(LabelingGui):
 
     @traceLogged(traceLogger)
     def __init__(self, parentApplet, topLevelOperatorView):
+        self.isInitialized = False  # need this flag in countingApplet where initialization is terminated with label selection
         self.parentApplet = parentApplet
 
         # Tell our base class which slots to monitor
@@ -208,7 +209,6 @@ class CountingGui(LabelingGui):
         self._addNewLabel()
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
-        self.selectLabel(0)
 
 
 
@@ -672,9 +672,6 @@ class CountingGui(LabelingGui):
         self.handleLabelSelectionChange()
         return layers
 
-
-
-
     @traceLogged(traceLogger)
     def toggleInteractive(self, checked):
         """
@@ -886,6 +883,11 @@ class CountingGui(LabelingGui):
             value = slot.value
             value.pop(start)
             slot.setValue(value)
+
+    def _clearLabelListGui(self):
+        """Remove rows until we have the right number"""
+        while self._labelControlUi.labelListModel.rowCount() > 2:
+            self._removeLastLabel()
 
     def getNextLabelName(self):
         return self._getNext(self.topLevelOperatorView.LabelNames,

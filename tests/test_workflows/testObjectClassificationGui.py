@@ -307,15 +307,23 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             gui.currentGui().editor.posModel.slicingPos = (0, 0, 0)
 
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() is False
-            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 0, (
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, (
                 "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount()))
 
             # Add label classes
-            for i in range(2):
+            for i in range(3, 5):
                 gui.currentGui()._labelControlUi.AddLabelButton.click()
-                assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == i + 1, (
+                assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == i, (
                     f"Got {gui.currentGui()._labelControlUi.labelListModel.rowCount()} rows")
 
+            # Now delete the last two labels again
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(3)
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(2)
+            assert op_object_classification.NumLabels.value == 2
+
+            # Now check that the remaining two labels cannot be deleted:
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(1)
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(0)
             assert op_object_classification.NumLabels.value == 2
             # Add some labels, we use onClick directly in order to bypass problems with painting
             # on different screen resolutions

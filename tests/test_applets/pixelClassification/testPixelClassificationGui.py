@@ -188,12 +188,14 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             gui.currentGui().editor.posModel.slicingPos = (0,0,0)
 
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
-            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 0, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
             
-            # Add label classes
-            for i in range(3):
-                gui.currentGui()._labelControlUi.AddLabelButton.click()
-                assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == i+1, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
+            # Add label classes. we want three for the following tests. Two are initially added by the constructors.
+            # Add one to the two existing ones:
+            gui.currentGui()._labelControlUi.AddLabelButton.click()
+
+            gui.currentGui()._labelControlUi.AddLabelButton.click()
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 4, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
 
             # Select the brush
             gui.currentGui()._labelControlUi.paintToolButton.click()
@@ -246,15 +248,25 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             originalLabelColors = gui.currentGui()._colorTable16[1:4]
             originalLabelNames = [label.name for label in gui.currentGui().labelListData]
 
-            # We assume that there are three labels to start with (see previous test)
+            # We assume that there are three of the 4 labels drawn to start with (see previous test)
             labelData = opPix.LabelImages[0][:].wait()
             assert labelData.max() == 3, "Max label value was {}".format( labelData.max() )
-            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 3, \
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 4, \
                 "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
 
             # Make sure that it's okay to delete a row even if the deleted label is selected.
-            gui.currentGui()._labelControlUi.labelListModel.select(1)
+            gui.currentGui()._labelControlUi.labelListModel.select(2)
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(2)
+            # Delete a unselected row
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(2)
+
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, \
+                "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
+
+            # Make sure, the remaining two labels cannot be deleted
+            gui.currentGui()._labelControlUi.labelListModel.removeRow(0)
             gui.currentGui()._labelControlUi.labelListModel.removeRow(1)
+
 
             assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2, \
                 "Row count was {}".format( gui.currentGui()._labelControlUi.labelListModel.rowCount() )
@@ -272,14 +284,14 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.waitForViews(gui.currentGui().editor.imageViews)
 
             # Check the actual rendering of the two views with remaining labels
-            for i in [0,2]:
+            for i in [0,1]:
                 imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 expectedColor = originalLabelColors[i]
                 assert observedColor == expectedColor, "Label was not drawn correctly.  Expected {}, got {}".format( hex(expectedColor), hex(observedColor) )                
 
-            # Make sure we actually deleted the middle label (it should no longer be visible)
-            for i in [1]:
+            # Make sure we actually deleted the third label(it should no longer be visible)
+            for i in [2]:
                 imgView = gui.currentGui().editor.imageViews[i]
                 observedColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
                 oldColor = originalLabelColors[i]
@@ -324,7 +336,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.waitForViews([imgView])
             rawDataColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             assert rawDataColor != labelColor, "Pixel color was not correct after label was hidden.  rawDataColor: {}, labelColor: {}".format(hex(rawDataColor), hex(labelColor))
-            
+
             # Show labels
             labelLayer.visible = True
             # Select the eraser and brush size
@@ -361,8 +373,8 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             labelData = opPix.LabelImages[0][:].wait()            
             assert labelData.max() == 2, "Max label value was wrong. Expected 2, got {}".format( labelData.max()  )
             
-            # Use the third view for this test (which has the max label value)
-            imgView = gui.currentGui().editor.imageViews[2]
+            # Use the second view for this test (which has the max label value)
+            imgView = gui.currentGui().editor.imageViews[1]
 
             # Sanity check: There should be labels in the view that we can erase
             self.waitForViews([imgView])
@@ -377,7 +389,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             self.waitForViews([imgView])
             rawDataColor = self.getPixelColor(imgView, self.LABEL_SAMPLE)
             assert rawDataColor != labelColor, "Pixel color was not correct after label was hidden.  rawDataColor: {}, labelColor: {}".format(hex(rawDataColor), hex(labelColor))
-            
+
             # Show labels
             labelLayer.visible = True
             # Select the eraser and brush size
@@ -420,9 +432,9 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
             gui = pixClassApplet.getMultiLaneGui()
 
             # Clear all the labels
-            while len(gui.currentGui()._labelControlUi.labelListModel) > 0:
-                gui.currentGui()._labelControlUi.labelListModel.removeRow(0)
-                
+            while len(gui.currentGui()._labelControlUi.labelListModel) > 2:
+                gui.currentGui()._labelControlUi.labelListModel.removeRow(2)
+
             # Re-add all labels
             self.test_4_AddLabels()
             
@@ -442,7 +454,7 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
             # There should be a prediction layer for each label
             labelNames = [label.name for label in gui.currentGui().labelListData]
-            labelColors = gui.currentGui()._colorTable16[1:4]
+            labelColors = gui.currentGui()._colorTable16[1:5]
             for i, labelName in enumerate(labelNames):
                 try:
                     index = gui.currentGui().layerstack.findMatchingIndex(lambda layer: labelName in layer.name)
