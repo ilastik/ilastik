@@ -433,8 +433,8 @@ class DataSelectionGui(QWidget):
                 fileNames = file_dialog.selectedFiles()
                 # For the n5 extension the attributes.json file has to be selected in the file dialog. However we need just the *.n5 file.
                 for i in range(len(fileNames)):
-                    if ".n5/attributes.json" in fileNames[i]:
-                        fileNames[i] = fileNames[i].replace("/attributes.json", "")
+                    if os.path.join("n5", "attributes.json") in fileNames[i]:
+                        fileNames[i] = fileNames[i].replace(os.path.sep + "attributes.json", "")
         else:
             # otherwise, use native dialog of the present platform
             fileNames, _filter = QFileDialog.getOpenFileNames(parent_window, "Select Images", defaultDirectory, filt_all_str)
@@ -537,7 +537,6 @@ class DataSelectionGui(QWidget):
             rois = [None]*len(filePaths)
         assert len(rois) == len(filePaths)
 
-        a = zip(filePaths, rois);
         infos = []
         for filePath, roi in zip(filePaths, rois):
             info = self._createDatasetInfo(roleIndex, filePath, roi)
