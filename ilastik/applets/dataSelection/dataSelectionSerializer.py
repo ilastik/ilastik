@@ -284,7 +284,7 @@ class DataSelectionSerializer( AppletSerializer ):
             assert (not(isMultiFile and isSingleFile)), (
                 "Something is wrong, glob string shouldn't allow both")
             assert (isMultiFile or isSingleFile), (
-                "Glob string doesn't conform to h5 stack glob string rules")
+                "Glob string doesn't conform to n5 stack glob string rules")
 
             if isSingleFile:
                 opLoader = OpStreamingN5SequenceReaderS(parent=self.topLevelOperator.parent)
