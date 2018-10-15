@@ -57,7 +57,6 @@ class OpStreamingN5SequenceReaderM(Operator):
     GlobString = InputSlot()
     SequenceAxis = InputSlot(optional=True)  # The axis to stack across.
     OutputImage = OutputSlot()
-
     N5EXTS = OpStreamingN5Reader.N5EXTS
 
     class WrongFileTypeError(Exception):
@@ -69,13 +68,13 @@ class OpStreamingN5SequenceReaderM(Operator):
     class InconsistentShape(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
-            self.msg = "Cannot stack dataset: {} because its shape differs from the shape of the previous datasets".format(fileName+datasetName)
+            self.msg = "Cannot stack dataset: {} because its shape differs from the shape of the previous datasets".format(os.path.join(fileName, datasetName))
             super(OpStreamingN5SequenceReaderM.InconsistentShape, self).__init__(self.msg)
 
     class InconsistentDType(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
-            self.msg = "Cannot stack dataset: {} because its data type differs from the type of the previous datasets".format(fileName+datasetName)
+            self.msg = "Cannot stack dataset: {} because its data type differs from the type of the previous datasets".format(os.path.join(fileName, datasetName))
             super(OpStreamingN5SequenceReaderM.InconsistentDType, self).__init__(self.msg)
 
     class NoExternalPlaceholderError(Exception):
@@ -176,13 +175,14 @@ class OpStreamingN5SequenceReaderM(Operator):
             opReader = OpStreamingN5Reader(parent=self)
             try:
                 n5File = z5py.N5File(external_path, 'r+')
+                # Abort if the image-stack has no consistent dtype or shape
                 if dtype is None:
                     dtype = n5File[internal_path].dtype
                     shape = n5File[internal_path].shape
                 else:
                     if dtype is not n5File[internal_path].dtype:
                         raise OpStreamingN5SequenceReaderM.InconsistentDType(external_path, internal_path)
-                    if shape is not n5File[internal_path].shape:
+                    if shape != n5File[internal_path].shape:
                         raise OpStreamingN5SequenceReaderM.InconsistentShape(external_path, internal_path)
                 opReader.InternalPath.setValue(internal_path)
                 opReader.N5File.setValue(n5File)

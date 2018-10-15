@@ -370,7 +370,7 @@ def lsN5(N5FileObject, minShape=2, maxShape=5):
         if isinstance(obj, z5py.dataset.Dataset):
             if (len(obj.shape) >= minShape) and (len(obj.shape) <= maxShape):
                 listOfDatasets.append({
-                    'name': objectPath.replace(N5FileObject.path, ''),
+                    'name': objectPath.replace(N5FileObject.path + os.path.sep, ''),
                     'object': obj
                 })
 

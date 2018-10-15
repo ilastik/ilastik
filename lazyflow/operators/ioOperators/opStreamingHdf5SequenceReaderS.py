@@ -190,7 +190,7 @@ class OpStreamingHdf5SequenceReaderS(Operator):
             components = PathComponents(s)
             ret += sorted(
                 globHdf5N5(
-                    hdf5File, components.internalPath.lstrip('/')))
+                    hdf5File, components.internalPath.lstrip(os.path.sep)))
         return ret
 
     @staticmethod

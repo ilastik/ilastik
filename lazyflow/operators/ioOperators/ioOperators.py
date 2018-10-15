@@ -651,7 +651,7 @@ class OpN5WriterBigDataset(Operator):
     n5File = InputSlot() # Must be an already-open n5File (or group) for writing to
     n5Path = InputSlot()
     Image = InputSlot()
-    CompressionEnabled = InputSlot(value=False) # h5py uses single-threaded gzip comression, which really slows down export.
+    CompressionEnabled = InputSlot(value=False)
     BatchSize = InputSlot(optional=True)
 
     WriteImage = OutputSlot()
@@ -668,7 +668,7 @@ class OpN5WriterBigDataset(Operator):
 
     def cleanUp(self):
         super( OpN5WriterBigDataset, self ).cleanUp()
-        # Discard the reference to the dataset, to ensure that hdf5 can close the file.
+        # Discard the reference to the dataset, to ensure that z5 can close the file.
         self.d = None
         self.f = None
         self.progressSignal.clean()
@@ -692,7 +692,7 @@ class OpN5WriterBigDataset(Operator):
             else:
                 g = self.f.create_group(n5GroupName)
 
-        # n5 stores its attributes in the json format which does not accept data types like intXX
+        # n5 stores its attributes in the json format which does not accept data types like intXX but only int
         dataShape = convertToIntTuple(self.Image.meta.shape)
 
         self.logger.info( "Data shape: {}".format(dataShape))
@@ -718,15 +718,15 @@ class OpN5WriterBigDataset(Operator):
 
         if datasetName in list(g.keys()):
             del g[datasetName]
-        kwargs = { 'shape' : dataShape, 'dtype' : dtype,
-            'chunks' : self.chunkShape }
+        kwargs = {'shape': dataShape, 'dtype': dtype, 'chunks': self.chunkShape}
+
         if self.CompressionEnabled.value:
-            kwargs['compression'] = 'gzip' # <-- Would be nice to use lzf compression here, but that is h5py-specific.
-            kwargs['compression_opts'] = 1 # <-- Optimize for speed, not disk space.
-        self.d=g.create_dataset(datasetName, **kwargs)
+            kwargs['compression'] = 'gzip'
+            kwargs['level'] = 1  # <-- Optimize for speed, not disk space.
+        self.d = g.create_dataset(datasetName, **kwargs)
 
         if self.Image.meta.drange is not None:
-            # n5 stores its attributes in the json format which does not accept data types like intXX
+            # z5 stores its attributes in the json format which does not accept data types like intXX
             self.d.attrs['drange'] = convertToIntTuple(self.Image.meta.drange)
         if self.Image.meta.display_mode is not None:
             self.d.attrs['display_mode'] = self.Image.meta.display_mode

@@ -62,7 +62,19 @@ class OpStreamingN5SequenceReaderS(Operator):
         def __init__(self, globString):
             self.filename = globString
             self.msg = "File is not a N5: {}".format(globString)
-            super(OpStreamingHd5SequenceReaderS.WrongFileTypeError, self).__init__(self.msg)
+            super(OpStreamingN5SequenceReaderS.WrongFileTypeError, self).__init__(self.msg)
+
+    class InconsistentShape(Exception):
+        def __init__(self, fileName, datasetName):
+            self.fileName = fileName
+            self.msg = "Cannot stack dataset: {} because its shape differs from the shape of the previous datasets".format(os.path.join(fileName, datasetName))
+            super(OpStreamingN5SequenceReaderS.InconsistentShape, self).__init__(self.msg)
+
+    class InconsistentDType(Exception):
+        def __init__(self, fileName, datasetName):
+            self.fileName = fileName
+            self.msg = "Cannot stack dataset: {} because its data type differs from the type of the previous datasets".format(os.path.join(fileName, datasetName))
+            super(OpStreamingN5SequenceReaderS.InconsistentDType, self).__init__(self.msg)
 
     class NotTheSameFileError(Exception):
         def __init__(self, globString):
@@ -103,7 +115,7 @@ class OpStreamingN5SequenceReaderS(Operator):
 
     def setupOutputs(self):
         pcs = PathComponents(self.GlobString.value.split(os.path.pathsep)[0])
-        self._n5File = z5py.N5File(pcs.externalPath, mode='r')
+        self._n5File = z5py.N5File(pcs.externalPath, mode='r+')
         self.checkGlobString(self.GlobString.value)
         file_paths = self.expandGlobStrings(self._n5File, self.GlobString.value)
 
@@ -118,7 +130,7 @@ class OpStreamingN5SequenceReaderS(Operator):
         try:
             opFirstImg = OpStreamingN5Reader(parent=self)
             opFirstImg.InternalPath.setValue(file_paths[0])
-            opFirstImg.n5File.setValue(self._n5File)
+            opFirstImg.N5File.setValue(self._n5File)
             slice_axes = opFirstImg.OutputImage.meta.getAxisKeys()
             opFirstImg.cleanUp()
         except RuntimeError as e:
@@ -149,11 +161,25 @@ class OpStreamingN5SequenceReaderS(Operator):
             opReader.cleanUp()
 
         self._readers = []
+        dtype = None
+        shape = None
+
         for filename, stacker_slot in zip(file_paths, self._opStacker.Images):
             opReader = OpStreamingN5Reader(parent=self)
             try:
+                # Abort if the image-stack has no consistent dtype or shape
+                if dtype is None:
+                    dtype = self._n5File[filename].dtype
+                    shape = self._n5File[filename].shape
+                else:
+                    if dtype is not self._n5File[filename].dtype:
+                        raise OpStreamingN5SequenceReaderS.InconsistentDType(pcs.externalPath, filename)
+                    if shape != self._n5File[filename].shape:
+                        raise OpStreamingN5SequenceReaderS.InconsistentShape(pcs.externalPath, filename)
+
                 opReader.InternalPath.setValue(filename)
-                opReader.n5File.setValue(self._n5File)
+                opReader.N5File.setValue(self._n5File)
+
             except RuntimeError as e:
                 logger.error(str(e))
                 raise OpStreamingN5SequenceReaderS.FileOpenError(file_paths[0])
@@ -179,7 +205,7 @@ class OpStreamingN5SequenceReaderS(Operator):
             the provided z5py.N5File object
         """
         if not isinstance(n5File, z5py.N5File):
-            with z5py.N5File(n5File, mode='r') as f:
+            with z5py.N5File(n5File, mode='r+') as f:
                 ret = OpStreamingN5SequenceReaderS.expandGlobStrings(f, globStrings)
             return ret
 
@@ -188,9 +214,8 @@ class OpStreamingN5SequenceReaderS(Operator):
         for globString in globStrings.split(os.path.pathsep):
             s = globString.strip()
             components = PathComponents(s)
-            ret += sorted(
-                globHdf5N5(
-                    n5File, components.internalPath.lstrip('/')))
+            ret += sorted(globHdf5N5(
+                n5File, components.internalPath.lstrip(os.path.sep)))
         return ret
 
     @staticmethod
