@@ -83,7 +83,7 @@ class OpInputDataReader(Operator):
     videoExts = ['ufmf', 'mmf']
     h5Exts = ['h5', 'hdf5', 'ilp']
     n5Exts = ['n5']
-    n5Selection = ['json']          # The n5 standard keeps files in a directory, which stores a attributes.json file.
+    n5Selection = ['json']  # n5 stores data in a directory, containing a json-file which we use to select the n5-file
     klbExts = ['klb']
     npyExts = ['npy']
     npzExts = ['npz']
@@ -174,11 +174,11 @@ class OpInputDataReader(Operator):
                      self._attemptOpenAsRESTfulPrecomputedChunkedVolume,
                      self._attemptOpenAsDvidVolume,
                      self._attemptOpenAsHdf5Stack,
+                     self._attemptOpenAsN5Stack,
                      self._attemptOpenAsTiffStack,
                      self._attemptOpenAsStack,
                      self._attemptOpenAsHdf5,
                      self._attemptOpenAsN5,
-                     self._attemptOpenAsN5Stack,
                      self._attemptOpenAsNpy,
                      self._attemptOpenAsRawBinary,
                      self._attemptOpenAsTiledVolume,
@@ -322,8 +322,6 @@ class OpInputDataReader(Operator):
         except (OpStreamingHdf5SequenceReaderM.WrongFileTypeError,
                 OpStreamingHdf5SequenceReaderS.WrongFileTypeError):
             return ([], None)
-        else:
-            return ([], None)
 
     def _attemptOpenAsN5Stack(self, filePath):
         if not ('*' in filePath or os.path.pathsep in filePath):
@@ -361,8 +359,6 @@ class OpInputDataReader(Operator):
             return ([opReader], opReader.OutputImage)
         except (OpStreamingN5SequenceReaderM.WrongFileTypeError,
                 OpStreamingN5SequenceReaderS.WrongFileTypeError):
-            return ([], None)
-        else:
             return ([], None)
 
     def _attemptOpenAsTiffStack(self, filePath):
@@ -457,7 +453,7 @@ class OpInputDataReader(Operator):
         return ([h5Reader], h5Reader.OutputImage)
 
     def _attemptOpenAsN5(self, filePath):
-        # Check for an z5 extension
+        # Check for an n5 extension
         pathComponents = PathComponents(filePath)
         ext = pathComponents.extension
         if ext not in (".%s" % x for x in OpInputDataReader.n5Exts):

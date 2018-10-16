@@ -67,13 +67,15 @@ class OpStreamingN5SequenceReaderS(Operator):
     class InconsistentShape(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
-            self.msg = "Cannot stack dataset: {} because its shape differs from the shape of the previous datasets".format(os.path.join(fileName, datasetName))
+            self.msg = "Cannot stack dataset: {} because its shape differs from the shape of the previous" \
+                       " datasets".format(fileName + '/' + datasetName)
             super(OpStreamingN5SequenceReaderS.InconsistentShape, self).__init__(self.msg)
 
     class InconsistentDType(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
-            self.msg = "Cannot stack dataset: {} because its data type differs from the type of the previous datasets".format(os.path.join(fileName, datasetName))
+            self.msg = "Cannot stack dataset: {} because its data type differs from the type of the previous" \
+                       " datasets".format(fileName + '/' + datasetName)
             super(OpStreamingN5SequenceReaderS.InconsistentDType, self).__init__(self.msg)
 
     class NotTheSameFileError(Exception):
@@ -215,7 +217,7 @@ class OpStreamingN5SequenceReaderS(Operator):
             s = globString.strip()
             components = PathComponents(s)
             ret += sorted(globHdf5N5(
-                n5File, components.internalPath.lstrip(os.path.sep)))
+                n5File, components.internalPath.lstrip('/')))
         return ret
 
     @staticmethod

@@ -648,7 +648,7 @@ class OpN5WriterBigDataset(Operator):
     name = "N5 File Writer BigDataset"
     category = "Output"
 
-    n5File = InputSlot() # Must be an already-open n5File (or group) for writing to
+    n5File = InputSlot()  # Must be an already-open n5File (or group) for writing to
     n5Path = InputSlot()
     Image = InputSlot()
     CompressionEnabled = InputSlot(value=False)
@@ -656,7 +656,7 @@ class OpN5WriterBigDataset(Operator):
 
     WriteImage = OutputSlot()
 
-    loggingName = __name__ + ".OpH5WriterBigDataset"
+    loggingName = __name__ + ".OpN5WriterBigDataset"
     logger = logging.getLogger(loggingName)
     traceLogger = logging.getLogger("TRACE." + loggingName)
 
@@ -692,7 +692,6 @@ class OpN5WriterBigDataset(Operator):
             else:
                 g = self.f.create_group(n5GroupName)
 
-        # n5 stores its attributes in the json format which does not accept data types like intXX but only int
         dataShape = convertToIntTuple(self.Image.meta.shape)
 
         self.logger.info( "Data shape: {}".format(dataShape))
@@ -700,7 +699,7 @@ class OpN5WriterBigDataset(Operator):
         dtype = self.Image.meta.dtype
         if isinstance(dtype, numpy.dtype):
             # Make sure we're dealing with a type (e.g. numpy.float64),
-            #  not a numpy.dtype
+            # not a numpy.dtype
             dtype = dtype.type
         # Set up our chunk shape: Aim for a cube that's roughly 512k in size
         dtypeBytes = dtype().nbytes
@@ -708,7 +707,7 @@ class OpN5WriterBigDataset(Operator):
         tagged_maxshape = self.Image.meta.getTaggedShape()
         if 't' in tagged_maxshape:
             # Assume that chunks should not span multiple t-slices,
-            #  and channels are often handled separately, too.
+            # and channels are often handled separately, too.
             tagged_maxshape['t'] = 1
 
         if 'c' in tagged_maxshape:
@@ -726,7 +725,6 @@ class OpN5WriterBigDataset(Operator):
         self.d = g.create_dataset(datasetName, **kwargs)
 
         if self.Image.meta.drange is not None:
-            # z5 stores its attributes in the json format which does not accept data types like intXX
             self.d.attrs['drange'] = convertToIntTuple(self.Image.meta.drange)
         if self.Image.meta.display_mode is not None:
             self.d.attrs['display_mode'] = self.Image.meta.display_mode
@@ -753,24 +751,23 @@ class OpN5WriterBigDataset(Operator):
 
         # We're finished.
         result[0] = True
-
         self.progressSignal(100)
 
     def propagateDirty(self, slot, subindex, roi):
         # The output from this operator isn't generally connected to other operators.
         # If someone is using it that way, we'll assume that the user wants to know that
-        #  the input image has become dirty and may need to be written to disk again.
+        # the input image has become dirty and may need to be written to disk again.
         self.WriteImage.setDirty(slice(None))
 
 
 def convertToIntTuple(in_tuple):
     # If the data type of @param in_tuple is accepted by the function int(),
-    # this method returns in_tuple converted to a tuple of ints
+    # this method returns in_tuple converted to a tuple of ints. This is needed for the N5 format. Which stores its
+    # attributes in the json format which does not accept datatypes like intXX but only int.
     dataShape_list = []
     for member in in_tuple:
         dataShape_list.append(int(member))
     return tuple(dataShape_list)
-
 
 if __name__ == '__main__':
     from lazyflow.graph import Graph
@@ -794,3 +791,4 @@ if __name__ == '__main__':
 
     success = opStackToH5.WriteImage.value
     assert success
+

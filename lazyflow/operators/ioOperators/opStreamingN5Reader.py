@@ -122,14 +122,6 @@ class OpStreamingN5Reader(Operator):
             timer = Timer()
             timer.unpause()
 
-
-        # a = N5File[internalPath]
-        # for i in range(len(N5File[internalPath].shape)):
-        #     if roi.stop[i] > N5File[internalPath].shape[i]:
-        #         roi.stop[i] = N5File[internalPath].shape[i]
-        #     if roi.start[i] > N5File[internalPath].shape[i]:
-        #         roi.start[i] = N5File[internalPath].shape[i]
-
         result[...] = N5File[internalPath].read_subarray(roi.start, roi.stop)
 
         if logger.getEffectiveLevel() >= logging.DEBUG:

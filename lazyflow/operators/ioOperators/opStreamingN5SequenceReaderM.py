@@ -38,7 +38,7 @@ class OpStreamingN5SequenceReaderM(Operator):
     Imports a sequence of (ND) volumes inside multiple n5 file into a single volume (ND+1)
 
     The 'M' at the end of the file name implies that this class handles multiple
-    volumes in a multiple files.
+    volumes in multiple files.
 
     :param globstring: A glob string as defined by the glob module. We
         also support the following special extension to globstring
@@ -68,13 +68,15 @@ class OpStreamingN5SequenceReaderM(Operator):
     class InconsistentShape(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
-            self.msg = "Cannot stack dataset: {} because its shape differs from the shape of the previous datasets".format(os.path.join(fileName, datasetName))
+            self.msg = "Cannot stack dataset: {} because its shape differs from the shape of the previous " \
+                       "datasets".format(fileName + '/' + datasetName)
             super(OpStreamingN5SequenceReaderM.InconsistentShape, self).__init__(self.msg)
 
     class InconsistentDType(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
-            self.msg = "Cannot stack dataset: {} because its data type differs from the type of the previous datasets".format(os.path.join(fileName, datasetName))
+            self.msg = "Cannot stack dataset: {} because its data type differs from the type of the previous " \
+                       "datasets".format(fileName + '/' + datasetName)
             super(OpStreamingN5SequenceReaderM.InconsistentDType, self).__init__(self.msg)
 
     class NoExternalPlaceholderError(Exception):

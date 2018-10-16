@@ -28,7 +28,6 @@ import h5py
 import z5py
 
 
-
 class PathComponents(object):
     """
     Provides a convenient access to path components of a combined external/internal path to a dataset.
@@ -370,7 +369,7 @@ def lsN5(N5FileObject, minShape=2, maxShape=5):
         if isinstance(obj, z5py.dataset.Dataset):
             if (len(obj.shape) >= minShape) and (len(obj.shape) <= maxShape):
                 listOfDatasets.append({
-                    'name': objectPath.replace(N5FileObject.path + os.path.sep, ''),
+                    'name': objectPath.replace(N5FileObject.path + '/', ''),
                     'object': obj
                 })
 

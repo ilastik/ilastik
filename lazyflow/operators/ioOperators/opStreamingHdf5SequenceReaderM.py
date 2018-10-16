@@ -66,6 +66,20 @@ class OpStreamingHdf5SequenceReaderM(Operator):
             self.msg = "File is not a HDF5: {}".format(globString)
             super(OpStreamingHdf5SequenceReaderM.WrongFileTypeError, self).__init__(self.msg)
 
+    class InconsistentShape(Exception):
+        def __init__(self, fileName, datasetName):
+            self.fileName = fileName
+            self.msg = "Cannot stack dataset: {} because its shape differs from the shape of the previous " \
+                       "datasets".format(fileName + '/' + datasetName)
+            super(OpStreamingHdf5SequenceReaderM.InconsistentShape, self).__init__(self.msg)
+
+    class InconsistentDType(Exception):
+        def __init__(self, fileName, datasetName):
+            self.fileName = fileName
+            self.msg = "Cannot stack dataset: {} because its data type differs from the type of the previous " \
+                       "datasets".format(fileName + '/' + datasetName)
+            super(OpStreamingHdf5SequenceReaderM.InconsistentDType, self).__init__(self.msg)
+
     class NoExternalPlaceholderError(Exception):
         def __init__(self, globString):
             self.globString = globString
@@ -157,11 +171,21 @@ class OpStreamingHdf5SequenceReaderM(Operator):
 
         self._hdf5Files = []
         self._readers = []
+        dtype = None
+        shape = None
         for external_path, internal_path, stacker_slot in zip(
                 external_paths, internal_paths, self._opStacker.Images):
             opReader = OpStreamingHdf5Reader(parent=self)
             try:
                 hdfFile = h5py.File(external_path, 'r')
+                if dtype is None:
+                    dtype = hdfFile[internal_path].dtype
+                    shape = hdfFile[internal_path].shape
+                else:
+                    if dtype is not hdfFile[internal_path].dtype:
+                        raise OpStreamingHdf5SequenceReaderM.InconsistentDType(external_path, internal_path)
+                    if shape != hdfFile[internal_path].shape:
+                        raise OpStreamingHdf5SequenceReaderM.InconsistentShape(external_path, internal_path)
                 opReader.InternalPath.setValue(internal_path)
                 opReader.Hdf5File.setValue(hdfFile)
             except RuntimeError as e:
