@@ -431,9 +431,10 @@ class DataSelectionGui(QWidget):
 
             if file_dialog.exec_():
                 fileNames = file_dialog.selectedFiles()
-                # For the n5 extension the attributes.json file has to be selected in the file dialog. However we need just the *.n5 file.
+                # For the n5 extension the attributes.json file has to be selected in the file dialog.
+                # However we need just the *.n5 directory-file.
                 for i in range(len(fileNames)):
-                    if os.path.join("n5", "attributes.json") in fileNames[i]:
+                    if os.path.join(".n5", "attributes.json") in fileNames[i]:
                         fileNames[i] = fileNames[i].replace(os.path.sep + "attributes.json", "")
         else:
             # otherwise, use native dialog of the present platform
@@ -738,7 +739,7 @@ class DataSelectionGui(QWidget):
         with z5py.N5File(absPath, mode='r+') as f:
             def accumulate_names(path, val):
                 if isinstance(val, z5py.dataset.Dataset) and 2 <= len(val.shape):
-                    name = path.replace(absPath, '') # Need only the internal path here
+                    name = path.replace(absPath, '')  # Need only the internal path here
                     datasetNames.append(name)
 
         f.visititems(accumulate_names)
