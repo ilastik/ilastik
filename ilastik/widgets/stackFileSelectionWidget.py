@@ -154,6 +154,7 @@ class StackFileSelectionWidget(QDialog):
 
         msg = ''
         h5exts = [x.lstrip('.') for x in OpStreamingHdf5SequenceReaderM.H5EXTS]
+        n5exts = [x.lstrip('.') for x in OpStreamingN5SequenceReaderM.N5EXTS]
         exts = vigra.impex.listExtensions().split()
         exts.extend(OpInputDataReader.n5Exts)
         exts.extend(h5exts)
@@ -167,7 +168,7 @@ class StackFileSelectionWidget(QDialog):
                 prefix = os.path.commonprefix(new_filenames)
                 globstring = prefix + '*.' + ext
                 # Special handling for h5-files: Try to add internal path
-                if ext in h5exts+OpInputDataReader.n5Exts:
+                if ext in h5exts + n5exts:
                     # be even more helpful and try to find a common internal path
                     if ext in h5exts:
                         internal_paths = self._h5FindCommonInternal(new_filenames)
@@ -273,12 +274,13 @@ class StackFileSelectionWidget(QDialog):
         Returns:
             list of internal stacks
         """
-        if isinstance(h5n5File, h5py.File):
+        pathComponents = PathComponents(h5n5File)
+        if pathComponents.extension in OpStreamingHdf5SequenceReaderM.H5EXTS:
             # get all internal paths
             with h5py.File(h5n5File, mode='r') as h5:
                 internal_paths = lsHdf5(h5, minShape=2)
             return [x['name'] for x in internal_paths]
-        elif isinstance(h5n5File, z5py.N5File):
+        elif pathComponents.extension in OpStreamingN5SequenceReaderM.N5EXTS:
             # get all internal paths
             with z5py.N5File(h5n5File, mode='r') as n5:
                 internal_paths = lsN5(n5, minShape=2)
@@ -308,8 +310,8 @@ class StackFileSelectionWidget(QDialog):
         fileNames, _filter = QFileDialog.getOpenFileNames( 
                      self, "Select Images for Stack", defaultDirectory, filt, options=options )
 
-        # For the n5 extension the attributes.json file has to be selected in the file dialog.
-        # However we need just the *.n5 file.
+        # For the n5 extension, the attributes.json file has to be selected in the file dialog.
+        # However we need just the n5 directory-file.
         for i in range(len(fileNames)):
             if os.path.join("n5", "attributes.json") in fileNames[i]:
                 fileNames[i] = fileNames[i].replace(os.path.sep + "attributes.json", "")
