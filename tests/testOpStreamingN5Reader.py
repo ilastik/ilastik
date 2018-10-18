@@ -49,7 +49,7 @@ class TestOpStreamingN5Reader(object):
             pass
 
     def test_plain(self):
-        # Write the dataset to an n5 file
+        """Write the dataset to an n5 file"""
         self.n5File['volume'].create_dataset('data', data=self.data)
 
         # Read the data with an operator
@@ -60,7 +60,7 @@ class TestOpStreamingN5Reader(object):
         assert self.op.OutputImage[0,1,2,1,0].wait() == 4
 
     def test_withAxisTags(self):
-        # Write it again, this time with weird axistags
+        """Write it again, this time with weird axistags"""
         axistags = vigra.AxisTags(
             vigra.AxisInfo('x',vigra.AxisType.Space),
             vigra.AxisInfo('y',vigra.AxisType.Space),

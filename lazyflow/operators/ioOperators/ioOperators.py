@@ -754,16 +754,20 @@ class OpN5WriterBigDataset(Operator):
         self.progressSignal(100)
 
     def propagateDirty(self, slot, subindex, roi):
-        # The output from this operator isn't generally connected to other operators.
-        # If someone is using it that way, we'll assume that the user wants to know that
-        # the input image has become dirty and may need to be written to disk again.
+        """
+        The output from this operator isn't generally connected to other operators.
+        If someone is using it that way, we'll assume that the user wants to know that
+        the input image has become dirty and may need to be written to disk again.
+        """
         self.WriteImage.setDirty(slice(None))
 
 
 def convertToIntTuple(in_tuple):
-    # If the data type of @param in_tuple is accepted by the function int(),
-    # this method returns in_tuple converted to a tuple of ints. This is needed for the N5 format. Which stores its
-    # attributes in the json format which does not accept datatypes like intXX but only int.
+    """
+    If the data type of @param in_tuple is accepted by the function int(),
+    this method returns in_tuple converted to a tuple of ints. This is needed for the N5 format. Which stores its
+    attributes in the json format which does not accept datatypes like intXX but only int.
+    """
     dataShape_list = []
     for member in in_tuple:
         dataShape_list.append(int(member))

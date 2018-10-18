@@ -195,7 +195,8 @@ class OpStreamingN5SequenceReaderS(Operator):
 
     @staticmethod
     def expandGlobStrings(n5File, globStrings):
-        """Matches a list of globStrings to internal paths of files
+        """
+        Matches a list of globStrings to internal paths of files
 
         Args:
             n5File: z5py.N5File object, or path(string). If a string is given,
@@ -222,7 +223,8 @@ class OpStreamingN5SequenceReaderS(Operator):
 
     @staticmethod
     def checkGlobString(globString):
-        """Checks whether globString is valid for this class
+        """
+        Checks whether globString is valid for this class
 
         Rules for globString:
             * must only contain one distinct external path

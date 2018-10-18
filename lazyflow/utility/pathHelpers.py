@@ -354,7 +354,8 @@ def lsHdf5(hdf5FileObject, minShape=2, maxShape=5):
     return listOfDatasets
 
 def lsN5(N5FileObject, minShape=2, maxShape=5):
-    """Generates dataset list of given z5py n5 file object
+    """
+    Generates dataset list of given z5py n5 file object
 
     Args:
         n5FileObject (z5py.N5FIle): Opened N5 file
@@ -379,7 +380,8 @@ def lsN5(N5FileObject, minShape=2, maxShape=5):
 
 
 def globHdf5N5(fileObject, globString):
-    """globs a hdf5/n5 file like a file system for datasets
+    """
+    globs a hdf5/n5 file like a file system for datasets
 
     Note: does not glob Attributes, only data sets.
 
