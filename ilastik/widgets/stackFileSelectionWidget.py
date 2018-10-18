@@ -215,7 +215,8 @@ class StackFileSelectionWidget(QDialog):
 
     @staticmethod
     def _h5FindCommonInternal(h5Files):
-        """Tries to find common internal path (containing data)
+        """
+        Tries to find common internal path (containing data)
 
         Method is used, when a directory is selected and the internal path is,
         thus, unclear.
@@ -239,7 +240,8 @@ class StackFileSelectionWidget(QDialog):
 
     @staticmethod
     def _n5FindCommonInternal(n5Files):
-        """Tries to find common internal path (containing data)
+        """
+        Tries to find common internal path (containing data)
 
         Method is used, when a directory is selected and the internal path is,
         thus, unclear.
@@ -263,7 +265,8 @@ class StackFileSelectionWidget(QDialog):
 
     @staticmethod
     def _findInternalStacks(h5n5File):
-        """Tries to find common internal path (containing data)
+        """
+        Tries to find common internal path (containing data)
 
         Method is used, when a directory is selected and the internal path is,
         thus, unclear.
