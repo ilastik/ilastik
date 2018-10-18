@@ -103,8 +103,7 @@ class Hdf5StackSelectionWidget(QWidget):
 
 
 class H5N5StackingDlg(QDialog):
-    """Dialogue for subvolume stack selection within single HDF5/N5 files
-    """
+    """Dialogue for subvolume stack selection within single HDF5/N5 files"""
     def __init__(self, parent=None, list_of_paths=None):
         super(H5N5StackingDlg, self).__init__(parent)
         self.setWindowTitle('Select images for stacking')

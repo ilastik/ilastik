@@ -731,10 +731,10 @@ class DataSelectionGui(QWidget):
 
     @classmethod
     def getPossibleN5InternalPaths(cls, absPath, min_ndim=2, max_ndim=5):
-        datasetNames = []
         """
         Returns the name of all datasets in the file with at least 2 axes.
         """
+        datasetNames = []
         # Open the file as a read-only so we can get a list of the internal paths
         with z5py.N5File(absPath, mode='r+') as f:
             def accumulate_names(path, val):
