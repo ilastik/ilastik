@@ -113,7 +113,7 @@ assert issubclass(TikTorchLazyflowClassifierFactory, LazyflowPixelwiseClassifier
 class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     HDF5_GROUP_FILENAME = 'pytorch_network_path'
 
-    def __init__(self, tiktorch_net, filename=None, HALO_SIZE=0, BATCH_SIZE=3):
+    def __init__(self, tiktorch_net, filename=None, HALO_SIZE=0, BATCH_SIZE=3, exp_input_shape=None):
         """
         Args:
             tiktorch_net (tiktorch): tiktorch object to be loaded into this
@@ -123,6 +123,8 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         self._filename = filename
         if self._filename is None:
             self._filename = ""
+
+        self.exp_input_shape = exp_input_shape
 
         self.BATCH_SIZE = BATCH_SIZE
         self.HALO_SIZE = HALO_SIZE
@@ -147,7 +149,52 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         reordered_feature_image = self._opReorderAxes.Output([]).wait()
         transform = Compose(Normalize())
         reordered_feature_image = transform(reordered_feature_image)
-        orig_shape = reordered_feature_image.shape
+        result_roi = numpy.array(roi)
+        print(reordered_feature_image.shape, "shape")
+
+        slice_shape = reordered_feature_image.shape[2:4]
+
+
+        # diff shape: cyx
+        diff_shape = numpy.array(self.exp_input_shape) - numpy.array(slice_shape)
+        print(diff_shape)
+        # offset shape z, y, x, c for easy indexing, with c = 0, z = 0
+        offset = numpy.array([0, 0, 0, 0])
+        logger.info(f"Diff_shape {diff_shape}")
+
+        # at least one of y, x (diff_shape[1], diff_shape[2]) should be off
+        # let's determine how to adjust the offset -> offset[2] and offset[3]
+        # caveat: this code assumes that image requests were tiled in a regular
+        # pattern starting from left upper corner.
+        # We use a blocked array-cache to achieve that
+        # y-offset:
+        if diff_shape[0] > 0:
+            # was the halo added to the upper side of the feature image?
+            # HACK: this only works because we assume the data to be in zyx!!!
+            if roi[0][1] == 0:
+                # no, doesn't seem like it
+                offset[1] = self.HALO_SIZE
+
+        # x-offsets:
+        if diff_shape[1] > 0:
+            # was the halo added to the upper side of the feature image?
+            # HACK: this only works because we assume the data to be in zyx!!!
+            if roi[0][2] == 0:
+                # no, doesn't seem like it
+                offset[2] = self.HALO_SIZE
+
+        result_roi[0] += offset[0:3]
+        result_roi[1] += offset[0:3]
+
+        reorder_feature_image_extents = numpy.array(reordered_feature_image.shape)
+        # add the offset:
+        reorder_feature_image_extents[2:4] += offset[1:3]
+
+        pad_img = numpy.pad(reordered_feature_image,[(0,0),(0,0),(offset[1],self.exp_input_shape[0]-reorder_feature_image_extents[2]), 
+            (offset[2], self.exp_input_shape[1]-reorder_feature_image_extents[3])],'reflect')
+
+
+        reordered_feature_image = pad_img
 
         logger.info(f"forward")
         input_tensor = [reordered_feature_image[z] for z in range(reordered_feature_image.shape[0])]
@@ -160,9 +207,9 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         result = self._opReorderAxes.Output([]).wait()
         logger.info(f"Reordered result to shape {result.shape}")
 
-        result = result[:, :orig_shape[2],:orig_shape[3], :]
+        cropped_result = result[roiToSlice(*result_roi)]
 
-        return result
+        return cropped_result
 
     @property
     def known_classes(self):
