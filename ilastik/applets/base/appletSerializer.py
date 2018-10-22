@@ -787,6 +787,19 @@ class SerialDictSlot(SerialSlot):
         except AssertionError as e:
             warnings.warn('setValue() failed. message: {}'.format(e.message))
 
+class SerialObjectFeatureNamesSlot(SerialDictSlot):
+    """Backwards compatible serializer for DictSlot containing feature names"""
+
+    def _getValue(self, subgroup, slot):
+        """Retrieves value for Slot "slot" from the h5 subgroup "subgroup"
+
+        Global feature names used to be saved into .ilp files under a '0' key.
+        That is no longer the case, so this method peels that extra level off when
+        it is present."""
+        if list(subgroup.keys()) == ['0']:
+            subgroup = subgroup['0']
+        return super()._getValue(subgroup, slot)
+
 class SerialClassifierFactorySlot(SerialSlot):
     def __init__(self, slot, name=None):
         super( SerialClassifierFactorySlot, self ).__init__( slot, name=name )
