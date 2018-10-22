@@ -1,4 +1,4 @@
-###############################################################################
+#x##############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
 #       Copyright (C) 2011-2014, the ilastik developers
@@ -359,19 +359,16 @@ class NNClassGui(LayerViewerGui):
                 # model_object = self.topLevelOperator.FullModel.value
                 self.topLevelOperator.FreezePredictions.setValue(False)
                 #zero for halo size, since its handled in tiktorch
-                model = TikTorchLazyflowClassifier(None, self.tiktorch_path, 0, self.batch_size)
+                self.model = TikTorchLazyflowClassifier(None, self.tiktorch_path, 0, self.batch_size)
 
-                dynamic_shape = model._tiktorch_net.get('dynamic_input_shape')
-                block_shape = set_BlockShape(self.topLevelOperator.InputImage.meta.shape, dynamic_shape)
-                # self.topLevelOperator.BlockShape.setValue(self.topLevelOperator.InputImage.meta.shape)
-                self.topLevelOperator.BlockShape.setValue(block_shape)
+                self.set_BlockShape()
 
                 if len(self.topLevelOperator.InputImage.meta.shape) == 3:
                     self.topLevelOperator.NumClasses.setValue(self.topLevelOperator.InputImage.meta.shape[2])
                 else:
                     self.topLevelOperator.NumClasses.setValue(self.topLevelOperator.InputImage.meta.shape[3])
 
-                self.topLevelOperator.Classifier.setValue(model)
+                self.topLevelOperator.Classifier.setValue(self.model)
                 self.updateAllLayers()
                 self.parentApplet.appletStateUpdateRequested()
 
@@ -443,17 +440,30 @@ class NNClassGui(LayerViewerGui):
 
         return folder_names
 
-def set_BlockShape(inputDim, dynamic_shape):
-    """
-    calculates the blockshape with the blocksize of the dynamic shape 
-    """
-    block_size = DynamicShape(dynamic_shape).base_shape
-    img_shape = inputDim[1]
+    def set_BlockShape(self):
+        """
+        calculates the blockshape with the blocksize of the dynamic shape 
+        """
+        # dynamic_shape = model._tiktorch_net.get('dynamic_input_shape')
+        # block_size = DynamicShape(dynamic_shape).base_shape
+        inputDim = list(self.topLevelOperator.InputImage.meta.shape)
 
-    for i in range(1,20):
-        if img_shape//(i*block_size[0]) < 10:
-            block_shape = i*block_size[0]
-            break
+        halo_block_shape = self.model._tiktorch_net.halo
+        full_shape =self.model._tiktorch_net.dry_run(inputDim[1:3])
+        
+        print(halo_block_shape)
+        print(full_shape)
 
-    return [1, block_shape, block_shape, inputDim[3]]
+        # for i in range(1,20):
+        #     if img_shape//(i*block_size[0]) < 10:
+        #         block_shape = i*block_size[0]
+        #         break
+
+        block_shape = [1, full_shape[0], full_shape[1], inputDim[3]]
+        block_shape[1] -= 2 * halo_block_shape[0]
+        block_shape[2] -= 2 * halo_block_shape[1]
+
+        self.topLevelOperator.BlockShape.setValue(block_shape)
+        self.model.HALO_SIZE = halo_block_shape[0]
+        self.model.exp_input_shape = full_shape
 
