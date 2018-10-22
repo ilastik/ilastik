@@ -1,5 +1,5 @@
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot,\
-    deleteIfPresent, getOrCreateGroup, SerialBlockSlot, SerialDictSlot
+    deleteIfPresent, getOrCreateGroup, SerialBlockSlot, SerialDictSlot, SerialFeatureNamesSlot
 from ilastik.applets.objectExtraction.objectExtractionSerializer import ObjectExtractionSerializer,\
     SerialObjectFeaturesSlot
 
@@ -17,8 +17,8 @@ class TrackingFeatureExtractionSerializer(AppletSerializer):
                             selfdepends=False,
                             shrink_to_bb=False,
                             compression_level=1),
-            SerialDictSlot(operator.FeatureNamesVigra),
-            SerialDictSlot(operator.FeatureNamesDivision),
+            SerialFeatureNamesSlot(operator.FeatureNamesVigra),
+            SerialFeatureNamesSlot(operator.FeatureNamesDivision),
             SerialObjectFeaturesSlot(operator.BlockwiseRegionFeaturesVigra,
                                      operator.RegionFeaturesCacheInputVigra,
                                      operator.RegionFeaturesCleanBlocksVigra,

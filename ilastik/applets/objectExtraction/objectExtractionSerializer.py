@@ -30,7 +30,8 @@ from lazyflow.roi import getIntersectingBlocks, TinyVector, getBlockBounds, roiT
 from lazyflow.request import Request, RequestLock, RequestPool
 
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    deleteIfPresent, getOrCreateGroup, SerialSlot, SerialBlockSlot, SerialDictSlot
+    deleteIfPresent, getOrCreateGroup, SerialSlot, SerialBlockSlot, \
+    SerialDictSlot, SerialFeatureNamesSlot
 from ilastik.utility.commandLineProcessing import convertStringToList
 
 logger = logging.getLogger(__name__)
@@ -109,7 +110,7 @@ class ObjectExtractionSerializer(AppletSerializer):
                             selfdepends=False,
                             shrink_to_bb=False,
                             compression_level=1),
-            SerialDictSlot(operator.Features),
+            SerialFeatureNamesSlot(operator.Features),
             SerialObjectFeaturesSlot(operator.BlockwiseRegionFeatures,
                                      operator.RegionFeaturesCacheInput,
                                      operator.RegionFeaturesCleanBlocks,
