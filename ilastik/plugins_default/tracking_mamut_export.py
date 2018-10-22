@@ -38,17 +38,17 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename + '_mamut.xml') or os.path.exists(filename + '_bdv.xml') or os.path.exists(filename + '_raw.h5')
 
-    def export(self, filename, hypothesesGraph, *, objectFeaturesSlot, additionalPluginArgumentsSlot, **kwargs):
+    def export(self, filename, hypothesesGraph, pluginExportContext):
         """Export the tracking solution stored in the hypotheses graph to MaMuT XML file.
         Creates an _mamut.xml file that contains the tracks for visualization and proof-reading in MaMuT.
 
         :param filename: string of the FILE where to save the result (*_mamut.xml file)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-        :param objectFeaturesSlot (lazyflow.graph.InputSlot): connected to the RegionFeaturesAll
+        :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:
+            - objectFeaturesSlot (lazyflow.graph.InputSlot): connected to the RegionFeaturesAll
             output of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
-        :param additionalPluginArgumentsSlot (lazyflow.graph.InputSlot): additional arguments passed to the plugin
+            - additionalPluginArgumentsSlot (lazyflow.graph.InputSlot): additional arguments passed to the plugin
             in this it provides BigDataViewer file path
-        :param kwargs: dict containing additional context info
 
         :returns: True on success, False otherwise
         """
@@ -56,7 +56,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         builder = MamutXmlBuilder()
         graph = hypothesesGraph._graph
 
-        features = objectFeaturesSlot([]).wait() # this is a dict of structure: {frame: {category: {featureNames}}}
+        features = pluginExportContext.objectFeaturesSlot([]).wait() # this is a dict of structure: {frame: {category: {featureNames}}}
 
         # first loop over all nodes to find present features
         presentTrackIds = set([])
@@ -147,7 +147,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                 featureDict['LabelimageId'] = label
                 builder.addSpot(frame, 'track-{}'.format(trackId), graph.node[node]['id'], xpos, ypos, zpos, radius, featureDict)
 
-        additional_plugin_args = additionalPluginArgumentsSlot.value
+        additional_plugin_args = pluginExportContext.additionalPluginArgumentsSlot.value
         assert 'bdvFilepath' in additional_plugin_args, "'bdvFilepath' must be present in 'additionalPluginArgumentsSlot'"
         bigDataViewerFile = additional_plugin_args['bdvFilepath']
         builder.setBigDataViewerImagePath(os.path.dirname(bigDataViewerFile), os.path.basename(bigDataViewerFile))

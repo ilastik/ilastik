@@ -20,7 +20,7 @@ class TrackingContoursBodyPartsPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename + '.contours')
 
-    def export(self, filename, hypothesesGraph, *, labelImageSlot, rawImageSlot, **kwargs):
+    def export(self, filename, hypothesesGraph, pluginExportContext):
         """
         Export the contours, head index, and corresponding IDs for all objects on the video.
         
@@ -30,15 +30,18 @@ class TrackingContoursBodyPartsPlugin(TrackingExportFormatPlugin):
 
         :param filename: string of the FILE where to save the result (different .xml files were)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-        :param labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
-        :param rawImageSlot: lazyflow.graph.InputSlot, raw image slot
-        :param kwargs: dict containing additional context info
+        :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:
+            - labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
+            - rawImageSlot: lazyflow.graph.InputSlot, raw image slot
 
         :returns: True on success, False otherwise
         """
         
         headIndsDict = {}
         contoursDict = {}
+
+        labelImageSlot = pluginExportContext.labelImageSlot
+        rawImageSlot = pluginExportContext.rawImageSlot
 
         cIndex = labelImageSlot.meta.axistags.index('c')
         tIndex = labelImageSlot.meta.axistags.index('t')

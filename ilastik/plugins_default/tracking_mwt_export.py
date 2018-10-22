@@ -20,28 +20,29 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename + '.outline')
 
-    def export(self, filename, hypothesesGraph, *, objectFeaturesSlot, labelImageSlot, **kwargs):
+    def export(self, filename, hypothesesGraph, pluginExportContext):
         """
         Export the Multi-Worm-Tracker .summary and .blobs files.
 
         :param filename: string of the FILE where to save the result (different .xml files were)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-        :param objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output
-               of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
-        :param labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
-        :param kwargs: dict, additional contextual info
+        :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:
+            - objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output
+            of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
+            - labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
 
         :returns: True on success, False otherwise
         """
         # Get object features
-        features = objectFeaturesSlot([]).wait()
+        features = pluginExportContext.objectFeaturesSlot([]).wait()
         
         contoursDict = {}
         
         summaryDict = {}
-        
+
+        labelImageSlot = pluginExportContext.labelImageSlot
         tIndex = labelImageSlot.meta.axistags.index('t')
-        tMax = labelImageSlot.meta.shape[tIndex] 
+        tMax = labelImageSlot.meta.shape[tIndex]
        
         # Method to compute contours for single frame (called in parallel by a request parallel)
         def compute_dicts_for_frame(tIndex, t, labelImageSlot, hypothesesGraph, contoursDict): 

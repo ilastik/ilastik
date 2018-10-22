@@ -5,9 +5,9 @@ from builtins import range
 from past.utils import old_div
 import numpy as np
 import os
-import itertools
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from ilastik.utility.exportingOperator import ExportingOperator
+
+from ilastik.plugins import PluginExportContext
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 
@@ -21,9 +21,6 @@ from .opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtracti
 from functools import partial
 from lazyflow.request import Request, RequestPool
 
-import hytra
-from hytra.core.ilastik_project_options import IlastikProjectOptions
-from hytra.core.jsongraph import JsonTrackingGraph
 from hytra.core.jsongraph import getMappingsBetweenUUIDsAndTraxels, getMergersDetectionsLinksDivisions, getMergersPerTimestep, getLinksPerTimestep, getDetectionsPerTimestep, getDivisionsPerTimestep
 from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
 from hytra.core.fieldofview import FieldOfView
@@ -59,14 +56,14 @@ class OpConservationTracking(Operator):
     Parameters = InputSlot(value={})
     HypothesesGraph = InputSlot(value={})
     ResolvedMergers = InputSlot(value={})
- 
+
     # for serialization
     CleanBlocks = OutputSlot()
     AllBlocks = OutputSlot()
     CachedOutput = OutputSlot()  # For the GUI (blockwise-access)
- 
+
     Output = OutputSlot() # Volume relabelled with lineage IDs
- 
+
     # Use a slot for storing the export settings in the project file.
     # just here so that old projects still load!
     ExportSettings = InputSlot(value={})
@@ -113,7 +110,7 @@ class OpConservationTracking(Operator):
         self._relabeledOpCache.Input.connect(self.RelabeledImage)
         self.RelabeledCleanBlocks.connect(self._relabeledOpCache.CleanBlocks)
         self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
-        
+
         # Merger resolver plugin manager (contains GMM fit routine)
         self.pluginPaths = [os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')]
         pluginManager = TrackingPluginManager(verbose=False, pluginPaths=self.pluginPaths)
@@ -137,18 +134,18 @@ class OpConservationTracking(Operator):
 
         self.AllBlocks.meta.shape = (1,)
         self.AllBlocks.meta.dtype = object
-        
+
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
         self.RelabeledImage.meta.assignFrom(self.LabelImage.meta)
 
         self._mergerOpCache.BlockShape.setValue( self._blockshape )
         self._relabeledOpCache.BlockShape.setValue( self._blockshape )
-        
+
         frame_shape = (1,) + self.LabelImage.meta.shape[1:] # assumes t,x,y,z,c order
         assert frame_shape[-1] == 1
         self.MergerOutput.meta.ideal_blockshape = frame_shape
         self.RelabeledImage.meta.ideal_blockshape = frame_shape
-          
+
     def execute(self, slot, subindex, roi, result):
         # Output showing lineage IDs
         if slot is self.Output:
@@ -156,11 +153,11 @@ class OpConservationTracking(Operator):
                 raise Exception("Parameter slot is not ready")
             parameters = self.Parameters.value
             resolvedMergers = self.ResolvedMergers.value
-            
+
             # Assume [t,x,y,z,c] order           
             trange = list(range(roi.start[0], roi.stop[0]))
             offset = roi.start[1:-1]
-       
+
             result[:] =  self.LabelImage.get(roi).wait()
 
             for t in trange:
@@ -170,22 +167,22 @@ class OpConservationTracking(Operator):
                     result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t)
                 else:
                     result[t-roi.start[0],...][:] = 0
-        
+
         # Output showing mergers only    
         elif slot is self.MergerOutput:
             parameters = self.Parameters.value
             resolvedMergers = self.ResolvedMergers.value
-            
+
             # Assume [t,x,y,z,c] order
             trange = list(range(roi.start[0], roi.stop[0]))
             offset = roi.start[1:-1]
 
             result[:] =  self.LabelImage.get(roi).wait()
-   
+
             for t in trange:
                 if 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]:
                     if resolvedMergers:
-                        self._labelMergers(result[t-roi.start[0],...,0], t, offset)   
+                        self._labelMergers(result[t-roi.start[0],...,0], t, offset)
                     result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True)
                 else:
                     result[t-roi.start[0],...][:] = 0
@@ -194,17 +191,17 @@ class OpConservationTracking(Operator):
         elif slot is self.RelabeledImage:
             parameters = self.Parameters.value
             resolvedMergers = self.ResolvedMergers.value
-            
+
             # Assume [t,x,y,z,c] order
             trange = list(range(roi.start[0], roi.stop[0]))
-            offset = roi.start[1:-1] 
+            offset = roi.start[1:-1]
 
             result[:] =  self.LabelImage.get(roi).wait()
-            
+
             for t in trange:
                 if resolvedMergers and 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]:
                     self._labelMergers(result[t-roi.start[0],...,0], t, offset)
-        
+
         # Cache blocks            
         elif slot == self.AllBlocks:
             # if nothing was computed, return empty list
@@ -225,7 +222,7 @@ class OpConservationTracking(Operator):
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.InputHdf5 or slot == self.MergerInputHdf5 or slot == self.RelabeledInputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
-    
+
     def _createHypothesesGraph(self):
         '''
         Construct a hypotheses graph given the current settings in the parameters slot
@@ -246,14 +243,14 @@ class OpConservationTracking(Operator):
         borderAwareWidth = parameters['borderAwareWidth']
 
         traxelstore = self._generate_traxelstore(time_range, x_range, y_range, z_range,
-                                                       size_range, scales[0], scales[1], scales[2], 
+                                                       size_range, scales[0], scales[1], scales[2],
                                                        with_div=withDivisions,
                                                        with_classifier_prior=withClassifierPrior)
 
         def constructFov(shape, t0, t1, scale=[1, 1, 1]):
             [xshape, yshape, zshape] = shape
             [xscale, yscale, zscale] = scale
-        
+
             fov = FieldOfView(t0, 0, 0, 0, t1, xscale * (xshape - 1), yscale * (yshape - 1),
                               zscale * (zshape - 1))
             return fov
@@ -276,36 +273,36 @@ class OpConservationTracking(Operator):
             progressVisitor=self.progressVisitor
         )
         return hypothesesGraph
-    
+
     def _resolveMergers(self, hypothesesGraph, model):
         '''
         run merger resolution on the hypotheses graph which contains the current solution
         '''
         logger.info("Resolving mergers.")
-                
+
         parameters = self.Parameters.value
         withTracklets = parameters['withTracklets']
         originalGraph = hypothesesGraph.referenceTraxelGraph if withTracklets else hypothesesGraph
         resolvedMergersDict = {}
-        
+
         # Enable full graph computation for animal tracking workflow
         withFullGraph = False
-        if 'withAnimalTracking' in parameters and parameters['withAnimalTracking']: # TODO: Setting this parameter outside of the track() function (on AnimalConservationTrackingWorkflow) is not desirable 
+        if 'withAnimalTracking' in parameters and parameters['withAnimalTracking']: # TODO: Setting this parameter outside of the track() function (on AnimalConservationTrackingWorkflow) is not desirable
             withFullGraph = True
             logger.info("Computing full graph on merger resolver (Only enabled on animal tracking workflow)")
-        
+
         mergerResolver = IlastikMergerResolver(originalGraph, pluginPaths=self.pluginPaths, withFullGraph=withFullGraph)
-        
+
         # Check if graph contains mergers, otherwise skip merger resolving
         if not mergerResolver.mergerNum:
             logger.info("Graph contains no mergers. Skipping merger resolving.")
-        else:        
+        else:
             # Fit and refine merger nodes using a GMM 
             # It has to be done per time-step in order to aviod loading the whole video on RAM
             traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(model)
             timesteps = [int(t) for t in list(traxelIdPerTimestepToUniqueIdMap.keys())]
             timesteps.sort()
-            
+
             timeIndex = self.LabelImage.meta.axistags.index('t')
             numTimeStep = len(timesteps)
             count=0
@@ -316,26 +313,26 @@ class OpConservationTracking(Operator):
                 roi = [slice(None) for i in range(len(self.LabelImage.meta.shape))]
                 roi[timeIndex] = slice(timestep, timestep+1)
                 roi = tuple(roi)
-                
+
                 labelImage = self.LabelImage[roi].wait()
-                
+
                 # Get coordinates for object IDs in label image. Used by GMM merger fit.
                 objectIds = vigra.analysis.unique(labelImage[0,...,0])
                 maxObjectId = max(objectIds)
-                
+
                 coordinatesForIds = {}
-                
+
                 pool = RequestPool()
                 for objectId in objectIds:
-                    pool.add(Request(partial(mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], timestep, objectId)))                 
+                    pool.add(Request(partial(mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], timestep, objectId)))
 
                 # Run requests to get object ID coordinates
-                pool.wait()              
-                
+                pool.wait()
+
                 # Fit mergers and store fit info in nodes  
                 if coordinatesForIds:
-                    mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, maxObjectId, timestep)   
-                
+                    mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, maxObjectId, timestep)
+
             self.parent.parent.trackingApplet.progressSignal(100)
 
             # Compute object features, re-run flow solver, update model and result, and get merger dictionary
@@ -361,10 +358,10 @@ class OpConservationTracking(Operator):
             x_scale=1.0,
             y_scale=1.0,
             z_scale=1.0,
-            maxDist=30,     
-            maxObj=2,       
+            maxDist=30,
+            maxObj=2,
             divThreshold=0.5,
-            avgSize=[0],                        
+            avgSize=[0],
             withTracklets=False,
             sizeDependent=True,
             detWeight=10.0,
@@ -395,10 +392,10 @@ class OpConservationTracking(Operator):
 
         self.progressWindow = progressWindow
         self.progressVisitor=progressVisitor
-    
+
         if not self.Parameters.ready():
             self.raiseException(self.progressWindow, "Parameter slot is not ready")
-        
+
         # it is assumed that the self.Parameters object is changed only at this
         # place (ugly assumption). Therefore we can track any changes in the
         # parameters as done in the following lines: If the same value for the
@@ -423,7 +420,7 @@ class OpConservationTracking(Operator):
         parameters['borderAwareWidth'] = borderAwareWidth
         parameters['withArmaCoordinates'] = withArmaCoordinates
         parameters['appearanceCost'] = appearance_cost
-        parameters['disappearanceCost'] = disappearance_cost       
+        parameters['disappearanceCost'] = disappearance_cost
         parameters['scales'] = [x_scale, y_scale, z_scale]
         parameters['time_range'] = [min(time_range), max(time_range)]
         parameters['x_range'] = x_range
@@ -442,9 +439,9 @@ class OpConservationTracking(Operator):
         else:
             parameters['cplex_timeout'] = ''
             cplex_timeout = float(1e75)
-        
+
         self.Parameters.setValue(parameters, check_changed=False)
-        
+
         if withClassifierPrior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
                 self.raiseDatasetConstraintError(self.progressWindow, 'Tracking', 'Classifier not ready yet. Did you forget to train the Object Count Classifier?')
@@ -479,7 +476,7 @@ class OpConservationTracking(Operator):
         if solverName == 'Flow-based' and dpct:
             if numFramesPerSplit:
                 # Run solver with frame splits (split, solve, and stitch video to improve running-time)
-                from hytra.core.splittracking import SplitTracking 
+                from hytra.core.splittracking import SplitTracking
                 result = SplitTracking.trackFlowBasedWithSplits(model, weights, numFramesPerSplit=numFramesPerSplit)
             else:
                 # casting weights to float (raised TypeError on Windows before)
@@ -495,7 +492,7 @@ class OpConservationTracking(Operator):
         # Insert the solution into the hypotheses graph and from that deduce the lineages
         if hypothesesGraph:
             hypothesesGraph.insertSolution(result)
-            
+
         # Merger resolution
         resolvedMergersDict = {}
         if withMergerResolution:
@@ -505,7 +502,7 @@ class OpConservationTracking(Operator):
 
         # Set value of resolved mergers slot (Should be empty if mergers are disabled)
         self.ResolvedMergers.setValue(resolvedMergersDict, check_changed=False)
-                
+
         # Computing tracking lineage IDs from within Hytra
         hypothesesGraph.computeLineage()
 
@@ -516,7 +513,7 @@ class OpConservationTracking(Operator):
         #logger.info("Exporting hypotheses graph diagram")
         #from hytra.util.hypothesesgraphdiagram import HypothesesGraphDiagram
         #hgv = HypothesesGraphDiagram(hypothesesGraph._graph, timeRange=(0, 10), fileName='HypothesesGraph.png' )
-                
+
         # Set value of hypotheses grap slot (use referenceTraxelGraph if using tracklets)
         hypothesesGraph = hypothesesGraph.referenceTraxelGraph if withTracklets else hypothesesGraph
         self.HypothesesGraph.setValue(hypothesesGraph, check_changed=False)
@@ -543,19 +540,19 @@ class OpConservationTracking(Operator):
         Label volume mergers with correspoding IDs, using the plugin GMM fit
         """
         resolvedMergersDict = self.ResolvedMergers.value
-        
+
         if time not in resolvedMergersDict:
             return volume
-        
+
         idxs = vigra.analysis.unique(volume)
-        
-        for idx in idxs: 
+
+        for idx in idxs:
             if idx in resolvedMergersDict[time]:
                 fits = resolvedMergersDict[time][idx]['fits']
                 newIds = resolvedMergersDict[time][idx]['newIds']
                 self.mergerResolverPlugin.updateLabelImage(volume, idx, fits, newIds, offset=offset)
-        
-        return volume               
+
+        return volume
 
     def _labelLineageIds(self, volume, time, onlyMergers=False):
         """
@@ -565,16 +562,16 @@ class OpConservationTracking(Operator):
         :return: the relabeled volume, where 0 means background, 1 means false detection, and all higher numbers indicate lineages
         """
         hypothesesGraph = self.HypothesesGraph.value
-        
+
         if not hypothesesGraph:
-            return np.zeros_like(volume) 
-        
+            return np.zeros_like(volume)
+
         resolvedMergersDict = self.ResolvedMergers.value
 
         indexMapping = np.zeros(np.amax(volume) + 1, dtype=volume.dtype)
-        
+
         idxs = vigra.analysis.unique(volume)
-        
+
         # Reduce labels to the ones that contain mergers
         if onlyMergers:
             if resolvedMergersDict:
@@ -593,10 +590,10 @@ class OpConservationTracking(Operator):
                 if lineage_id is None:
                     lineage_id = 1
                 indexMapping[idx] = lineage_id
-            
+
         return indexMapping[volume]
- 
- 
+
+
     def _setupRelabeledFeatureSlot(self, original_feature_slot):
         from ilastik.applets.trackingFeatureExtraction import config
         # when exporting after merger resolving, the stored object features are not up to date for the relabeled objects
@@ -614,15 +611,28 @@ class OpConservationTracking(Operator):
         return opRelabeledRegionFeatures
 
     def exportPlugin(self, filename, plugin, checkOverwriteFiles=False, additionalPluginArgumentsSlot=None):
-        with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
-        with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False
+        if checkOverwriteFiles and plugin.checkFilesExist(filename):
+            logger.info("Tracking export files already exist. Tracking export skipped")
+            # do not export if we would otherwise overwrite files
+            return False
 
+        plugin_export_context = self._create_plugin_export_context(additionalPluginArgumentsSlot)
+
+        hypothesesGraph = self.HypothesesGraph.value
+
+        return plugin.export(filename, hypothesesGraph, plugin_export_context)
+
+    def _create_plugin_export_context(self, additionalPluginArgumentsSlot):
+        with_divisions = self.Parameters.value[
+            "withDivisions"] if self.Parameters.ready() else False
+        with_merger_resolution = self.Parameters.value[
+            "withMergerResolution"] if self.Parameters.ready() else False
         # Create opRegionFeatures to extract features of relabeled volume
         if with_merger_resolution:
             # Use opRelabeledMergerFeatureExtraction for cell tracking
             opRelabeledRegionFeatures = self._setupRelabeledFeatureSlot(self.ObjectFeatures)
             object_feature_slot = opRelabeledRegionFeatures.RegionFeatures
-            
+
             label_image_slot = self.RelabeledImage
         # Use ObjectFeaturesWithDivFeatures slot
         elif with_divisions:
@@ -632,18 +642,14 @@ class OpConservationTracking(Operator):
         else:
             object_feature_slot = self.ObjectFeatures
             label_image_slot = self.LabelImage
-        
-        hypothesesGraph = self.HypothesesGraph.value
 
-        if checkOverwriteFiles and plugin.checkFilesExist(filename):
-            # do not export if we would otherwise overwrite files
-            return False
+        plugin_export_context = PluginExportContext(
+            objectFeaturesSlot=object_feature_slot,
+            labelImageSlot=label_image_slot,
+            rawImageSlot=self.RawImage,
+            additionalPluginArgumentsSlot=additionalPluginArgumentsSlot)
 
-        return plugin.export(filename, hypothesesGraph,
-                             objectFeaturesSlot=object_feature_slot,
-                             labelImageSlot=label_image_slot,
-                             rawImageSlot=self.RawImage,
-                             additionalPluginArgumentsSlot=additionalPluginArgumentsSlot)
+        return plugin_export_context
 
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
@@ -692,7 +698,7 @@ class OpConservationTracking(Operator):
         self.progressVisitor.showProgress(0)
 
         traxelstore = ProbabilityGenerator()
-        
+
         logger.info("fetching region features and division probabilities")
         feats = self.ObjectFeatures(time_range).wait()
 
@@ -750,7 +756,7 @@ class OpConservationTracking(Operator):
             filtered_labels_at = []
             for idx in range(rc.shape[0]):
                 traxel = Traxel()
-                
+
                 # for 2d data, set z-coordinate to 0:
                 if len(rc[idx]) == 2:
                     x, y = rc[idx]
@@ -776,9 +782,9 @@ class OpConservationTracking(Operator):
                     continue
                 else:
                     count += 1
-                
+
                 traxel.Id = int(idx + 1)
-                traxel.Timestep = int(t) 
+                traxel.Timestep = int(t)
                 traxel.set_x_scale(x_scale)
                 traxel.set_y_scale(y_scale)
                 traxel.set_z_scale(z_scale)
@@ -818,16 +824,16 @@ class OpConservationTracking(Operator):
                         traxel.set_feature_value("detProb", i, float(val))
 
                 # FIXME: check whether it is 2d or 3d data!
-                if with_local_centers:                   
+                if with_local_centers:
                     traxel.add_feature_array("localCentersX", len(localCenters[t][idx + 1]))
                     traxel.add_feature_array("localCentersY", len(localCenters[t][idx + 1]))
                     traxel.add_feature_array("localCentersZ", len(localCenters[t][idx + 1]))
-                    
-                    for i, v in enumerate(localCenters[t][idx + 1]):                        
+
+                    for i, v in enumerate(localCenters[t][idx + 1]):
                         traxel.set_feature_value("localCentersX", i, float(v[0]))
                         traxel.set_feature_value("localCentersY", i, float(v[1]))
                         traxel.set_feature_value("localCentersZ", i, float(v[2]))
-                
+
                 traxel.add_feature_array("count", 1)
                 traxel.set_feature_value("count", 0, float(size))
 
@@ -843,7 +849,7 @@ class OpConservationTracking(Operator):
 
             if len(filtered_labels_at) > 0:
                 filtered_labels[str(int(t) - time_range[0])] = filtered_labels_at
-                
+
             logger.debug("at timestep {}, {} traxels passed filter".format(t, count))
 
             if count == 0:
@@ -856,7 +862,7 @@ class OpConservationTracking(Operator):
         self.FilteredLabels.setValue(filtered_labels, check_changed=True)
 
         return traxelstore
-    
+
     def isTrackingSolutionAvailable(self):
         """
         check whether the hypotheses graph is filled and contains a tracking solution

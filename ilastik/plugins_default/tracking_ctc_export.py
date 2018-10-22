@@ -16,14 +16,14 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename)
 
-    def export(self, filename, hypothesesGraph, *, labelImageSlot, **kwargs):
+    def export(self, filename, hypothesesGraph, pluginExportContext):
         """
         Export the tracking model and result
 
         :param filename: string of the FOLDER where to save the result (will be filled with a res_track.txt and segmentation masks for each frame)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-        :param labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
-        :param kwargs: dict, additional contextual info
+        :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:
+            - labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
 
         :returns: True on success, False otherwise
         """
@@ -73,7 +73,7 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
         # load images, relabel, and export relabeled result
         logger.debug("Saving relabeled images")
 
-        labelImage = labelImageSlot([]).wait()
+        labelImage = pluginExportContext.labelImageSlot([]).wait()
         labelImage = np.swapaxes(labelImage, 1, 3) # do we need that?
         for timeframe in range(labelImage.shape[0]):
             labelFrame = labelImage[timeframe, ...]

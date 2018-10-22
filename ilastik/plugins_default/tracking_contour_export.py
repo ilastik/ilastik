@@ -18,7 +18,7 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
         ''' Check whether the files we want to export are already present '''
         return os.path.exists(filename + '.outline')
 
-    def export(self, filename, hypothesesGraph, *, labelImageSlot, **kwargs):
+    def export(self, filename, hypothesesGraph, pluginExportContext):
         """
         Export the contours and corresponding IDs for all objects on the video
         
@@ -29,14 +29,15 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
 
         :param filename: string of the FILE where to save the result (different .xml files were)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-        :param labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
-        :param kwargs: dict containing additional context info
+        :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:
+            - labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
 
         :returns: True on success, False otherwise
         """
         
         contoursDict = {}
 
+        labelImageSlot = pluginExportContext.labelImageSlot
         tIndex = labelImageSlot.meta.axistags.index('t')
         tMax = labelImageSlot.meta.shape[tIndex] 
        

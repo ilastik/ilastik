@@ -91,18 +91,19 @@ else:
             ''' Check whether the files we want to export are already present '''
             return os.path.exists(filename)
     
-        def export(self, filename, hypothesesGraph, *, labelImageSlot, **kwargs):
+        def export(self, filename, hypothesesGraph, pluginExportContext):
             """Export the tracking solution stored in the hypotheses graph as a sequence of H5 files,
             one per frame, containing the label image of that frame and which objects were part
             of a move or a division.
     
             :param filename: string of the FOLDER where to save the result
             :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-            :param labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
-            :param kwargs: dict, additional contextual info
+            :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:
+                - labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
 
             :returns: True on success, False otherwise
             """
+            labelImageSlot = pluginExportContext.labelImageSlot
             traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hypothesesGraph.getMappingsBetweenUUIDsAndTraxels()
             timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
     
