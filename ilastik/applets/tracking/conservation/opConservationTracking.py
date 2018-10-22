@@ -619,32 +619,11 @@ class OpConservationTracking(Operator):
 
         # Create opRegionFeatures to extract features of relabeled volume
         if with_merger_resolution:
-            # Use simple relabeled merger feature slot configuration instead of opRelabeledMergerFeatureExtraction
-            # This is faster for videos with few mergers and few number of objects per frame
-            if False:#'withAnimalTracking' in parameters and parameters['withAnimalTracking']:  
-                logger.info('Setting relabeled merger feature slots for animal tracking')
-                from ilastik.applets.trackingFeatureExtraction import config
-                
-                self._opRegionFeatures = OpRegionFeatures(parent=self)
-                self._opRegionFeatures.RawVolume.connect(self.RawImage)
-                self._opRegionFeatures.LabelVolume.connect(self.RelabeledImage)
-                
-                vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name]))
-                feature_names_vigra = {}
-                feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
-                self._opRegionFeatures.Features.setValue(feature_names_vigra)
-        
-                self._opAdaptTimeListRoi = OpAdaptTimeListRoi(parent=self)
-                self._opAdaptTimeListRoi.Input.connect(self._opRegionFeatures.Output)
-                
-                object_feature_slot = self._opAdaptTimeListRoi.Output
             # Use opRelabeledMergerFeatureExtraction for cell tracking
-            else:
-                opRelabeledRegionFeatures = self._setupRelabeledFeatureSlot(self.ObjectFeatures)
-                object_feature_slot = opRelabeledRegionFeatures.RegionFeatures                
+            opRelabeledRegionFeatures = self._setupRelabeledFeatureSlot(self.ObjectFeatures)
+            object_feature_slot = opRelabeledRegionFeatures.RegionFeatures
             
             label_image_slot = self.RelabeledImage
-
         # Use ObjectFeaturesWithDivFeatures slot
         elif with_divisions:
             object_feature_slot = self.ObjectFeaturesWithDivFeatures
@@ -660,14 +639,11 @@ class OpConservationTracking(Operator):
             # do not export if we would otherwise overwrite files
             return False
 
-        if not plugin.export(filename, hypothesesGraph,
+        return plugin.export(filename, hypothesesGraph,
                              objectFeaturesSlot=object_feature_slot,
                              labelImageSlot=label_image_slot,
                              rawImageSlot=self.RawImage,
-                             additionalPluginArgumentsSlot=additionalPluginArgumentsSlot):
-            raise RuntimeError('Exporting tracking solution with plugin failed')
-        else:
-            return True
+                             additionalPluginArgumentsSlot=additionalPluginArgumentsSlot)
 
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
