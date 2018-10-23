@@ -113,7 +113,7 @@ class PixelClassificationWorkflow(Workflow):
         self.pcApplet = self.createPixelClassificationApplet()
         opClassify = self.pcApplet.topLevelOperator
 
-        self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
+        self.dataExportApplet = PixelClassificationDataExportApplet(self, "Data Export")
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.PmapColors.connect( opClassify.PmapColors )
         opDataExport.LabelNames.connect( opClassify.LabelNames )

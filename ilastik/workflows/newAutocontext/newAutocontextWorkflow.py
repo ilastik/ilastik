@@ -114,7 +114,7 @@ class NewAutocontextWorkflowBase(Workflow):
         for pcApplet in self.pcApplets:
             pcApplet.topLevelOperator.FreezePredictions.notifyDirty( sync_freeze_predictions_settings )
 
-        self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
+        self.dataExportApplet = PixelClassificationDataExportApplet(self, "Data Export")
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.PmapColors.connect( opFinalClassify.PmapColors )
         opDataExport.LabelNames.connect( opFinalClassify.LabelNames )
