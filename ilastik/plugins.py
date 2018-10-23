@@ -206,12 +206,14 @@ class TrackingExportFormatPlugin(IPlugin):
         return long_name
 
 
+# Helper class used to pass the necessary context information to the export plugin
 PluginExportContext = namedtuple('PluginExportContext',
-                                 ['objectFeaturesSlot',
-                                  'labelImageSlot',
-                                  'rawImageSlot',
-                                  'additionalPluginArgumentsSlot']
-                                 )
+                                 [
+                                     'objectFeaturesSlot',
+                                     'labelImageSlot',
+                                     'rawImageSlot',
+                                     'additionalPluginArgumentsSlot'
+                                 ])
 
 ###############
 # the manager #
