@@ -234,6 +234,7 @@ class NNClassGui(LayerViewerGui):
 
             self.drawer.comboBox.clear()
             self.drawer.comboBox.addItems(self.topLevelOperator.ModelPath.value)
+            print(self.topLevelOperator.ModelPath.value)
 
             self.classifiers = self.topLevelOperator.ModelPath.value
 
@@ -318,8 +319,6 @@ class NNClassGui(LayerViewerGui):
 
         #split path string
         modelname = os.path.basename(os.path.normpath(folder_path))
-        print(modelname)
-
         self.tiktorch_path = folder_path
 
         #Statement for importing the same classifier twice
@@ -327,15 +326,13 @@ class NNClassGui(LayerViewerGui):
             print("Classifier already added")
             QMessageBox.critical(self, "Error loading file", "{} already added".format(modelname))
         else:
-
-            #workAround
             self.classifiers[modelname] = folder_path
 
             #clear first the comboBox or addItems will duplicate names
             self.drawer.comboBox.clear()
             self.drawer.comboBox.addItems(self.classifiers)
 
-            # self.topLevelOperator.FullModel.setValue(self.tiktorch._model)
+            self.topLevelOperator.ModelPath.setValue(self.classifiers)
 
 
     def pred_nn(self):
