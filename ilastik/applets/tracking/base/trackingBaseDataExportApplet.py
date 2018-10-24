@@ -19,7 +19,9 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from ilastik.applets.base.appletSerializer import SerialSlot, SerialDictSlot
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
 from ilastik.utility import OpMultiLaneWrapper
 import os
@@ -27,22 +29,27 @@ import os
 class TrackingBaseDataExportApplet( DataExportApplet ):
     """
     This a specialization of the generic data export applet that
-    provides a special viewer for trackign output.
+    provides a special viewer for tracking output.
     """
-    def __init__(self, workflow, *args, **kwargs):
-        if 'default_export_filename' in kwargs:
-            default_export_filename = kwargs['default_export_filename']
-            del kwargs['default_export_filename']
-        else:
-            default_export_filename = ""
-
+    def __init__(self, workflow, title, default_export_filename=''):
         self.export_op = None
         self._default_export_filename = default_export_filename
 
         self.__topLevelOperator = OpMultiLaneWrapper(OpTrackingBaseDataExport, parent=workflow,
                                                      promotedSlotNames=set(['RawData', 'Inputs', 'RawDatasetInfo']))
 
-        super(TrackingBaseDataExportApplet, self).__init__(workflow, *args, **kwargs)
+        extra_serial_slots = [
+            SerialSlot(self.topLevelOperator.SelectedPlugin),
+            SerialSlot(self.topLevelOperator.SelectedExportSource),
+            SerialDictSlot(self.topLevelOperator.AdditionalPluginArguments)
+        ]
+        self._serializers = [DataExportSerializer(self.topLevelOperator, title, extra_serial_slots)]
+
+        super(TrackingBaseDataExportApplet, self).__init__(workflow, title)
+
+    @property
+    def dataSerializers(self):
+        return self._serializers
 
     def set_exporting_operator(self, op):
         self.export_op = op

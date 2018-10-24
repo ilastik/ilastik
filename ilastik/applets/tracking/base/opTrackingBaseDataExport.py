@@ -27,7 +27,7 @@ class OpTrackingBaseDataExport(OpDataExport):
 
     # These slots get populated from within ``TrackingBaseDataExportGui``
     # or when parsing the command line in ``TrackingBaseDataExportApplet``
-    SelectedPlugin = InputSlot(value=None)
+    SelectedPlugin = InputSlot(optional=True)
     SelectedExportSource = InputSlot(value=None)
 
     # Slot containing plugin specific arguments. Holds a dictionary that can
