@@ -36,7 +36,7 @@ class DataExportApplet( Applet ):
     """
     
     """
-    def __init__(self, workflow, title):
+    def __init__( self, workflow, title, isBatch=False ):
         # Designed to be subclassed: If the subclass defined its own top-level operator,
         #  don't create one here.
         self.__topLevelOperator = None
