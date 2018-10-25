@@ -154,10 +154,29 @@ class MetaDict(defaultdict):
         return [tag.key for tag in self.axistags]
 
     def getOriginalAxisKeys(self):
+        """Returns the original axis keys
+
+        In case we have `OpReorderAxes` in the chain somewhere, the original
+        axistags are preserved in `original_axistags`, thus this is returned if
+        present. Fallback is the `axistags` attribute (via `getAxisKeys()`).
+        """
         if self.original_axistags is None:
             return self.getAxisKeys()
 
         return [tag.key for tag in self.original_axistags]
+
+    def getOriginalShape(self):
+        """Returns the original shape
+
+        In case we have `OpReorderAxes` in the chain somewhere, the original shape
+        is preserved in `original_shape`, thus this is returned if present.
+        Fallback is the `shape` attribute.
+        """
+        if self.original_shape is None:
+            assert self.shape is not None
+            return self.shape
+
+        return self.original_shape
 
     def getDtypeBytes(self):
         """
