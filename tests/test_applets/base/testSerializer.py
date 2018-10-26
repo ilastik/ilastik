@@ -25,9 +25,13 @@ import vigra
 import unittest
 import shutil
 import tempfile
+from copy import deepcopy
+from ilastik.applets.base.appletSerializer import SerialObjectFeatureNamesSlot
 from lazyflow.graph import Graph, Operator, InputSlot, Slot, OperatorWrapper
 from lazyflow.operators import OpCompressedUserLabelArray
 from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.stype import Opaque
+from lazyflow.rtype import List
 
 from ilastik.applets.base.appletSerializer import \
     getOrCreateGroup, deleteIfPresent, \
@@ -39,6 +43,7 @@ class OpMock(Operator):
     TestSlot = InputSlot(name="TestSlot")
     TestMultiSlot = InputSlot(name="TestMultiSlot", level=1)
     TestListSlot = InputSlot(name='TestListSlot')
+    OpaqueListSlot = InputSlot(rtype=List, stype=Opaque)
 
     def __init__(self, *args, **kwargs):
         super(OpMock, self).__init__(*args, **kwargs)
@@ -329,6 +334,49 @@ class TestSerialDictSlot(unittest.TestCase):
         self.assertTrue( d2_read['a'] == 'A' )
         self.assertTrue( d2_read['b'] == 'B' )
         self.assertTrue( d2_read['c'] == 'C' )
+
+class TestSerialObjectFeatureNamesSlot(unittest.TestCase):
+    def setUp(self):
+        self.mockInput = {
+            "Standard Object Features": {
+                "Coord<Principal<Kurtosis>>": {},
+                "Coord<Principal<Skewness>>": {},
+                "Count": {},
+                "Kurtosis": {},
+                "Maximum": {},
+                "Mean": {},
+                "Minimum": {},
+                "Quantiles": {"something": 123456},
+                "RegionCenter": {},
+                "RegionRadii": {},
+                "Skewness": {},
+                "Sum": {},
+                "Variance": {}
+            }
+        }
+        self.legacyMockInput = {'0': deepcopy(self.mockInput)}
+        self.operator = OpMock(graph=Graph())
+        self.objFeaturesNameSlot = self.operator.OpaqueListSlot
+        self.serializer = SerialObjectFeatureNamesSlot(self.objFeaturesNameSlot)
+        self.testFilePath = os.path.join(tempfile.gettempdir(), 'objFeatureNames.h5')
+
+
+    def testSerialization(self):
+        for inp in (self.mockInput, self.legacyMockInput):
+            h5file = h5py.File(self.testFilePath, 'w')
+            h5group = h5file.create_group('Some Group')
+
+            self.objFeaturesNameSlot.setValue(deepcopy(inp))
+            self.assertEqual(self.objFeaturesNameSlot([]).wait(), inp)
+            self.serializer.serialize(h5group)
+
+            self.objFeaturesNameSlot.setValue({"something": "else"})
+            self.assertNotEqual(self.objFeaturesNameSlot([]).wait(), inp)
+
+            self.serializer.deserialize(h5group)
+            self.assertEqual(self.objFeaturesNameSlot([]).wait(), self.mockInput)
+            h5file.close()
+
 
 class TestSerialBlockSlot(unittest.TestCase):
     
