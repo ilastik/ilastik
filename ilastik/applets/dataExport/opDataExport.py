@@ -18,15 +18,19 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-import os
 import collections
-import numpy
+import logging
+import os
 
+import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
-from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
 from lazyflow.operators.generic import OpSubRegion
+from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
 from lazyflow.operators.valueProviders import OpMetadataInjector
+from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
+
+logger = logging.getLogger(__name__)
+
 
 class OpDataExport(Operator):
     """
@@ -152,12 +156,6 @@ class OpDataExport(Operator):
         opFormatRaw.Input.connect( self.RawData )
         opFormatRaw.RegionStart.connect( opHelper.RawStart )
         opFormatRaw.RegionStop.connect( opHelper.RawStop )
-        # Don't normalize the raw data.
-        #opFormatRaw.InputMin.connect( self.InputMin )
-        #opFormatRaw.InputMax.connect( self.InputMax )
-        #opFormatRaw.ExportMin.connect( self.ExportMin )
-        #opFormatRaw.ExportMax.connect( self.ExportMax )
-        #opFormatRaw.ExportDtype.connect( self.ExportDtype )
         opFormatRaw.OutputAxisOrder.connect( self.OutputAxisOrder )
         opFormatRaw.OutputFormat.connect( self.OutputFormat )
         self._opFormatRaw = opFormatRaw
@@ -185,6 +183,11 @@ class OpDataExport(Operator):
         self.ImageOnDisk.connect( self._opImageOnDiskProvider.Output )
         
     def setupOutputs(self):
+        def _update_readiness(op):
+            for output_slot in list(op.outputs.values()):
+                if output_slot.upstream_slot is None:
+                    output_slot.meta.NOTREADY = True
+
         self.cleanupOnDiskView()
 
         # FIXME: If RawData becomes unready() at the same time as RawDatasetInfo(), then 
@@ -195,20 +198,17 @@ class OpDataExport(Operator):
         #          setupOutputs method from being called.
         #        Without proper graph setup transaction semantics, we have to use this 
         #          hack as a workaround.
-        try:
-            rawInfo = self.RawDatasetInfo.value
-        except:
-            for oslot in list(self.outputs.values()):
-                if oslot.upstream_slot is None:
-                    oslot.meta.NOTREADY = True
+        if not self.RawDatasetInfo.ready():
+            logger.warning("Input slot RawDatasetInfo not ready")
+            _update_readiness(self)
             return
+        rawInfo = self.RawDatasetInfo.value
 
         selection_index = self.InputSelection.value
         if not self.Inputs[selection_index].ready():
-            for oslot in list(self.outputs.values()):
-                if oslot.upstream_slot is None:
-                    oslot.meta.NOTREADY = True
+            _update_readiness(self)
             return
+
         self._opFormattedExport.Input.connect( self.Inputs[selection_index] )
 
         if os.path.pathsep in rawInfo.filePath:

@@ -26,6 +26,7 @@ import copy
 import argparse
 import itertools
 import logging
+from functools import partial
 logger = logging.getLogger(__name__)
 
 import numpy
@@ -237,6 +238,40 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.Inputs[self.ExportNames.UNCERTAINTY].connect( opClassify.HeadlessUncertaintyEstimate )
         opDataExport.Inputs[self.ExportNames.FEATURES].connect( opClassify.FeatureImages )
         opDataExport.Inputs[self.ExportNames.LABELS].connect( opClassify.LabelImages )
+
+        # Subscribe to slot readiness changes to handle export
+        opDataExport.Inputs[self.ExportNames.PROBABILITIES].notifyReady(
+            partial(
+                self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                source_name='Probabilities'
+            )
+        )
+        opDataExport.Inputs[self.ExportNames.SIMPLE_SEGMENTATION].notifyReady(
+            partial(
+                self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                source_name='Simple Segmentation'
+            )
+        )
+        opDataExport.Inputs[self.ExportNames.UNCERTAINTY].notifyReady(
+            partial(
+                self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                source_name='Uncertainty'
+            )
+        )
+
+        opDataExport.Inputs[self.ExportNames.FEATURES].notifyReady(
+            partial(
+                self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                source_name='Features'
+            )
+        )
+        opDataExport.Inputs[self.ExportNames.LABELS].notifyReady(
+            partial(
+                self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                source_name='Labels'
+            )
+        )
+
         for slot in opDataExport.Inputs:
             assert slot.upstream_slot is not None
 
