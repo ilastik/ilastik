@@ -292,12 +292,7 @@ class PixelClassificationWorkflow(Workflow):
                          featureOutput[0].ready() and \
                          (TinyVector(featureOutput[0].meta.shape) > 0).all()
 
-        opDataExport = self.dataExportApplet.topLevelOperator
         opPixelClassification = self.pcApplet.topLevelOperator
-
-        invalid_classifier = opPixelClassification.classifier_cache.fixAtCurrent.value and \
-                             opPixelClassification.classifier_cache.Output.ready() and\
-                             opPixelClassification.classifier_cache.Output.value is None
 
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
@@ -312,13 +307,7 @@ class PixelClassificationWorkflow(Workflow):
         self._shell.setAppletEnabled(self.dataExportApplet, features_ready and not batch_processing_busy)
 
         if self.batchProcessingApplet is not None:
-            predictions_ready = features_ready and \
-                                not invalid_classifier and \
-                                len(opDataExport.Inputs) > 0 and \
-                                opDataExport.Inputs[0][0].ready() and \
-                                (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
-
-            self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
+            self._shell.setAppletEnabled(self.batchProcessingApplet, features_ready and not batch_processing_busy)
 
         # Lastly, check for certain "busy" conditions, during which we
         #  should prevent the shell from closing the project.
