@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
-from builtins import range
+
 import enum
 import sys
 import copy
@@ -27,6 +27,7 @@ import argparse
 import itertools
 import logging
 from functools import partial
+
 logger = logging.getLogger(__name__)
 
 import numpy
