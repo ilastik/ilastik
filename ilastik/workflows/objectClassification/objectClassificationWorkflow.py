@@ -26,17 +26,22 @@ import warnings
 import argparse
 import csv
 
-import numpy
-import h5py
+from functools import partial
 
-from ilastik.workflow import Workflow
+import h5py
+import numpy
+from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ilastik.applets.blockwiseObjectClassification import BlockwiseObjectClassificationApplet
 from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
 from ilastik.applets.featureSelection import FeatureSelectionApplet
-from ilastik.applets.pixelClassification import PixelClassificationApplet
-from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
-from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipeline
-from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet, OpThresholdTwoLevels
+from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
+from ilastik.applets.objectClassification import ObjectClassificationApplet, ObjectClassificationDataExportApplet
 from ilastik.applets.objectExtraction import ObjectExtractionApplet
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.applets.pixelClassification import PixelClassificationApplet
+from ilastik.applets.thresholdTwoLevels import ThresholdTwoLevelsApplet
+from ilastik.workflow import Workflow
+from lazyflow.graph import Graph
 from ilastik.applets.objectClassification import ObjectClassificationApplet, ObjectClassificationDataExportApplet
 from ilastik.applets.fillMissingSlices import FillMissingSlicesApplet
 from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingSlicesNoCache
@@ -57,9 +62,9 @@ logger = logging.getLogger(__name__)
 
 # Constants for pointcloud generation on cluster
 CSV_FORMAT = { 'delimiter' : '\t', 'lineterminator' : '\n' }
-OUTPUT_COLUMNS = ["x_px", "y_px", "z_px", 
-                  "size_px", 
-                  "min_x_px", "min_y_px", "min_z_px", 
+OUTPUT_COLUMNS = ["x_px", "y_px", "z_px",
+                  "size_px",
+                  "min_x_px", "min_y_px", "min_z_px",
                   "max_x_px", "max_y_px", "max_z_px"]
 
 
@@ -114,7 +119,7 @@ class ObjectClassificationWorkflow(Workflow):
 
         self.createInputApplets()
 
-        
+
         if self.fillMissing != 'none':
             self.fillMissingSlicesApplet = FillMissingSlicesApplet(
                 self, "Fill Missing Slices", "Fill Missing Slices", self.fillMissing)
@@ -131,7 +136,7 @@ class ObjectClassificationWorkflow(Workflow):
         #self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
         self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
         self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
-        
+
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
 
@@ -148,9 +153,9 @@ class ObjectClassificationWorkflow(Workflow):
         self._applets.append(self.dataExportApplet)
 
         if self.batch:
-            self.batchProcessingApplet = BatchProcessingApplet(self, 
-                                                               "Batch Processing", 
-                                                               self.dataSelectionApplet, 
+            self.batchProcessingApplet = BatchProcessingApplet(self,
+                                                               "Batch Processing",
+                                                               self.dataSelectionApplet,
                                                                self.dataExportApplet)
             self._applets.append(self.batchProcessingApplet)
 
@@ -287,6 +292,34 @@ class ObjectClassificationWorkflow(Workflow):
         opDataExport.Inputs[self.ExportNames.BLOCKWISE_OBJECT_PREDICTIONS].connect( opBlockwiseObjectClassification.PredictionImage )
         opDataExport.Inputs[self.ExportNames.BLOCKWISE_OBJECT_PROBABILITIES].connect( opBlockwiseObjectClassification.ProbabilityChannelImage )
 
+        # Data Export Source listeners
+        if not self.batchProcessingApplet.busy:
+            opDataExport.Inputs[self.ExportNames.OBJECT_PREDICTIONS].notifyReady(
+                partial(
+                    self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                    source_name='Object Predictions'
+                )
+            )
+            opDataExport.Inputs[self.ExportNames.OBJECT_PROBABILITIES].notifyReady(
+                partial(
+                    self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                    source_name='Object Probabilities'
+                )
+            )
+            opDataExport.Inputs[self.ExportNames.BLOCKWISE_OBJECT_PREDICTIONS].notifyReady(
+                partial(
+                    self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                    source_name='Blockwise Object Predictions'
+                )
+            )
+            opDataExport.Inputs[self.ExportNames.BLOCKWISE_OBJECT_PROBABILITIES].notifyReady(
+                partial(
+                    self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                    source_name='Blockwise Object Probabilities'
+                )
+            )
+
+
         opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator.getLane(laneIndex)
 
@@ -295,14 +328,14 @@ class ObjectClassificationWorkflow(Workflow):
         opBlockwiseObjectClassification.Classifier.connect(opObjClassification.Classifier)
         opBlockwiseObjectClassification.LabelsCount.connect(opObjClassification.NumLabels)
         opBlockwiseObjectClassification.SelectedFeatures.connect(opObjClassification.SelectedFeatures)
-        
+
     def onProjectLoaded(self, projectManager):
         if not self._headless:
             return
-        
+
         if not (self._batch_input_args and self._batch_export_args):
             logger.warning("Was not able to understand the batch mode command-line arguments.")
-        
+
         # Check for problems: Is the project file ready to use?
         opObjClassification = self.objectClassificationApplet.topLevelOperator
         if not opObjClassification.Classifier.ready():
@@ -316,10 +349,10 @@ class ObjectClassificationWorkflow(Workflow):
         if self._batch_export_args:
             self.dataExportApplet.configure_operator_with_parsed_args( self._batch_export_args )
 
-        if self._export_args:        
+        if self._export_args:
             csv_filename = self._export_args.table_filename
             if csv_filename:
-                # The user wants to override the csv export location via 
+                # The user wants to override the csv export location via
                 #  the command-line arguments. Apply the new setting to the operator.
                 settings, selected_features = self.objectClassificationApplet.topLevelOperator.get_table_export_settings()
                 if settings is None:
@@ -354,13 +387,13 @@ class ObjectClassificationWorkflow(Workflow):
             else:
                 filename_suffix = str(lane_index)
             req = self.objectClassificationApplet.topLevelOperator.export_object_data(
-                        lane_index, 
+                        lane_index,
                         # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
                         #        That's not a huge deal, because there's still a progress bar for the overall export.
-                        show_gui=False, 
+                        show_gui=False,
                         filename_suffix=filename_suffix)
             req.wait()
-         
+
     def getHeadlessOutputSlot(self, slotId):
         if slotId == "BatchPredictionImage":
             return self.opBatchClassify.PredictionImage
@@ -370,7 +403,7 @@ class ObjectClassificationWorkflow(Workflow):
         """
         Overridden from Workflow base class
         Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
-        
+
         This method will be called by the child classes with the result of their
         own applet readyness findings as keyword argument.
         """
@@ -416,7 +449,7 @@ class ObjectClassificationWorkflow(Workflow):
             self._shell.setAppletEnabled(self.blockwiseObjectClassificationApplet, cumulated_readyness)
             self._shell.setAppletEnabled(self.batchProcessingApplet, cumulated_readyness)
 
-        # Lastly, check for certain "busy" conditions, during which we 
+        # Lastly, check for certain "busy" conditions, during which we
         # should prevent the shell from closing the project.
         #TODO implement
         busy = False
@@ -435,7 +468,7 @@ class ObjectClassificationWorkflow(Workflow):
     def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
         """
         This function is only used by special cluster scripts.
-        
+
         When the batch-processing mechanism was rewritten, this function broke.
         It could probably be fixed with minor changes.
         """
@@ -445,7 +478,7 @@ class ObjectClassificationWorkflow(Workflow):
 
         # TODO: Here, we hard-code to select from the first lane only.
         opBatchClassify = self.opBatchClassify[0]
-        
+
         from lazyflow.utility.io_uti.blockwiseFileset import vectorized_pickle_dumps
         # Assume that roi always starts as a multiple of the blockshape
         block_shape = opBatchClassify.get_blockshape()
@@ -456,7 +489,7 @@ class ObjectClassificationWorkflow(Workflow):
         sub_block_start = sub_block_index
         sub_block_stop = sub_block_start + 1
         sub_block_roi = (sub_block_start, sub_block_stop)
-        
+
         # FIRST, remove all objects that lie outside the block (i.e. remove the ones in the halo)
         region_features = opBatchClassify.BlockwiseRegionFeatures( *sub_block_roi ).wait()
         region_features_dict = region_features.flat[0]
@@ -474,10 +507,10 @@ class ObjectClassificationWorkflow(Workflow):
         for index, translated_region_center in enumerate(translated_region_centers):
             # FIXME: Here we assume t=0 and c=0
             mask[index] = opBatchClassify.is_in_block( roi[0], (0,) + tuple(translated_region_center) + (0,) )
-        
+
         # Always exclude the first object (it's the background??)
         mask[0] = False
-        
+
         # Remove all 'negative' predictions, emit only 'positive' predictions
         # FIXME: Don't hardcode this?
         POSITIVE_LABEL = 2
@@ -500,7 +533,7 @@ class ObjectClassificationWorkflow(Workflow):
 
         # Get the image offset relative to the file coordinates
         image_offset = blockwise_fileset.description.view_origin
-        
+
         total_offset_5d = halo_roi[0] + image_offset
         total_offset_3d = total_offset_5d[1:-1]
 
@@ -528,12 +561,12 @@ class ObjectClassificationWorkflow(Workflow):
         # (Store the csv file next to this block's h5 file.)
         dataset_directory = blockwise_fileset.getDatasetDirectory(roi[0])
         pointcloud_path = os.path.join( dataset_directory, "block-pointcloud.csv" )
-        
+
         logger.info("Writing to csv: {}".format( pointcloud_path ))
         with open(pointcloud_path, "w") as fout:
             csv_writer = csv.DictWriter(fout, OUTPUT_COLUMNS, **CSV_FORMAT)
             csv_writer.writeheader()
-        
+
             for obj_id in range(len(object_sizes)):
                 fields = {}
                 fields["x_px"], fields["y_px"], fields["z_px"], = object_centers_xyz[obj_id]
@@ -543,7 +576,7 @@ class ObjectClassificationWorkflow(Workflow):
 
                 csv_writer.writerow( fields )
                 #fout.flush()
-        
+
         logger.info("FINISHED csv export")
 
 
@@ -606,6 +639,14 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
         opDataExport.Inputs[self.ExportNames.PIXEL_PROBABILITIES].connect( opThreshold.InputImage )
+
+        if not self.batchProcessingApplet.busy:
+            opDataExport.Inputs[self.ExportNames.PIXEL_PROBABILITIES].notifyReady(
+                partial(
+                    self.dataExportApplet.getMultiLaneGui().handleExportSourceReady,
+                    source_name='Pixel Probabilities'
+                )
+            )
 
     def createInputApplets(self):
         super().createInputApplets()
@@ -697,7 +738,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
             # Make sure it's in 'live update' mode, since the rest of the workflow pulls from the *cached* predictions.
             opPixelClassification = self.pcApplet.topLevelOperator
             opPixelClassification.FreezePredictions.setValue( self._shell.currentAppletIndex <= self.applets.index( self.pcApplet ) )
-                        
+
 
 class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from binary image)"

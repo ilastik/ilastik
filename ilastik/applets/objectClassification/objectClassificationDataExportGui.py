@@ -90,39 +90,39 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
             if fromDiskSlot.ready():
                 exportLayer = ColortableLayer( LazyflowSource(fromDiskSlot), colorTable=self._colorTable16 )
                 exportLayer.name = "Prediction - Exported"
-                exportLayer.visible = True
+                exportLayer.visible = False
                 layers.append(exportLayer)
     
             previewSlot = self.topLevelOperatorView.ImageToExport
             if previewSlot.ready():
                 previewLayer = ColortableLayer( LazyflowSource(previewSlot), colorTable=self._colorTable16 )
                 previewLayer.name = "Prediction - Preview"
-                previewLayer.visible = False
+                previewLayer.visible = True
                 layers.append(previewLayer)
 
         elif selection in ("Object Probabilities", "Blockwise Object Probabilities"):
             exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
             for layer in exportedLayers:
-                layer.visible = True
+                layer.visible = False
                 layer.name = layer.name + "- Exported"
             layers += exportedLayers
             
             previewLayers = self._initPredictionLayers(opLane.ImageToExport)
             for layer in previewLayers:
-                layer.visible = False
+                layer.visible = True
                 layer.name = layer.name + "- Preview"
             layers += previewLayers
         
         elif selection == 'Pixel Probabilities':
             exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
             for layer in exportedLayers:
-                layer.visible = True
+                layer.visible = False
                 layer.name = layer.name + "- Exported"
             layers += exportedLayers
             
             previewLayers = self._initPredictionLayers(opLane.ImageToExport)
             for layer in previewLayers:
-                layer.visible = False
+                layer.visible = True
                 layer.name = layer.name + "- Preview"
             layers += previewLayers
         else:

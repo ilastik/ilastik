@@ -21,6 +21,9 @@ from __future__ import division
 #		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
+
+from ilastik.workflows import PixelClassificationWorkflow
+from ilastik.workflows.objectClassification.objectClassificationWorkflow import ObjectClassificationWorkflow
 from past.utils import old_div
 import os
 import threading
@@ -171,8 +174,9 @@ class DataExportGui(QWidget):
             self.drawer.inputSelectionCombo.clear()
             for index, selection_name in enumerate(slot.value):
                 self.drawer.inputSelectionCombo.addItem(selection_name)
-                # Disable all items until the relevant slots are ready
-                self.drawer.inputSelectionCombo.model().item(index).setEnabled(False)
+                # Disable all items until the relevant slots are ready.
+                if isinstance(self.topLevelOperator.parent, (PixelClassificationWorkflow, ObjectClassificationWorkflow)):
+                    self.drawer.inputSelectionCombo.model().item(index).setEnabled(False)
 
         self.topLevelOperator.SelectionNames.notifyDirty(_handleNewSelectionNames)
 
