@@ -32,7 +32,24 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         multicut_box = QGroupBox( "Multicut", parent=self )
         multicut_box.setLayout(multicut_layout)
         multicut_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        
+        multicut_box.setEnabled(False)
+
+        # Enable multicut only when all edgeTraining->multicut connections
+        # have non-None inputs.
+        op = self.topLevelOperatorView
+        conns = (
+            op.Superpixels,
+            op.Rag,
+            op.EdgeProbabilities,
+            op.EdgeProbabilitiesDict,
+        )
+        def set_multicut_enabled(*args, **kwargs):
+            all_conns_ok = all(conn.value is not None for conn in conns)
+            multicut_box.setEnabled(all_conns_ok)
+        for conn in conns:
+            cleanup_fn = conn.notifyDirty(set_multicut_enabled)
+            self.__cleanup_fns.append(cleanup_fn)
+
         drawer_layout = QVBoxLayout()
         drawer_layout.addWidget(training_box)
         drawer_layout.addWidget(multicut_box)
