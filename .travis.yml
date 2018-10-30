@@ -1,0 +1,56 @@
+language: generic
+os:
+  - linux
+  - osx
+env:
+  global:
+    - CONDA_ROOT=$HOME/miniconda
+    - TEST_ENV=test-env
+    - TEST_ENV_PREFIX=$CONDA_ROOT/envs/$TEST_ENV
+    - NOSETEST_OUT_DIR=${CIRCLE_ARTIFACTS}/lazyflow-nose
+
+cache:
+  directories:
+    - CONDA_ROOT
+
+install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then export MINICONDA=https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export MINICONDA=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh; fi
+  - echo $CONDA_ROOT
+  - echo $TEST_ENV
+  - echo $TEST_ENV_PREFIX
+  - if [[ ! -d ${CONDA_ROOT} ]]; then
+      echo "Installing Miniconda...";
+      wget $MINICONDA -O miniconda.sh &&
+      bash miniconda.sh -b -p ${CONDA_ROOT};
+    else
+      echo "Using cached Miniconda install";
+    fi
+  - echo ". $CONDA_ROOT/etc/profile.d/conda.sh" >> ~/.bashrc
+  - source ~/.bashrc
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+
+  # Useful for debugging any issues with conda
+  # - conda info -a
+
+  - if [[ ! -d $TEST_ENV_PREFIX ]]; then
+      conda create -q -n $TEST_ENV -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers nose;
+    else
+      conda install -y -n ${TEST_ENV} -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers nose;
+    fi
+  # remove installed ilastik
+  - rm -rf ${TEST_ENV_PREFIX}/ilastik-meta
+  # install current master
+  - git clone http://github.com/ilastik/ilastik-meta ${TEST_ENV_PREFIX}/ilastik-meta
+  - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule init && git submodule update --recursive && git submodule foreach "git checkout master"
+  - rm -rf ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow
+  - ln -s $TRAVIS_BUILD_DIR ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow
+
+script:
+  - conda activate $TEST_ENV
+  - echo `which python`
+  - echo `which nosetests`
+  - cd ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow/tests && nosetests --nologcapture --ignore-files=testInterpolatedFeatures.py
