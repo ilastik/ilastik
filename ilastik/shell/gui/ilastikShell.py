@@ -577,16 +577,19 @@ class IlastikShell(QMainWindow):
             enc = codecs.getencoder( "rot-13" )
             key = 'vynfgvxunyybjrra'
             clearkey = enc( key )[0].encode()
-            
+
             import zipfile
-            with zipfile.ZipFile(os.path.join(localDir, 'ilastik-logo-alternative.zip'), 'r') as z:
-                z.setpassword(clearkey)
-                filename = z.namelist()[0]
-                z.extract(filename, localDir)
+            import tempfile
             
-                fullPath = os.path.join(localDir, filename)
-                self.startscreen.label.setPixmap(QPixmap(fullPath))
-                os.remove(fullPath)
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                with zipfile.ZipFile(os.path.join(localDir, 'ilastik-logo-alternative.zip'), 'r') as z:
+                    z.setpassword(clearkey)
+                    filename = z.namelist()[0]
+                    z.extract(filename, tmp_dir)
+
+                    fullPath = os.path.join(tmp_dir, filename)
+                    self.startscreen.label.setPixmap(QPixmap(fullPath))
+                    os.remove(fullPath)
 
     def _loaduifile(self):
         localDir = os.path.split(__file__)[0]
