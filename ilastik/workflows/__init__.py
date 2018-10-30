@@ -104,6 +104,8 @@ if can_nn:
         from .nnClassification import NNClassificationWorkflow
         WORKFLOW_CLASSES += [NNClassificationWorkflow]
 
+from .voxelSegmentation import VoxelSegmentationWorkflow
+WORKFLOW_CLASSES += [VoxelSegmentationWorkflow]
 
 # Examples
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
