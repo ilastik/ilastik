@@ -109,6 +109,9 @@ class EdgeTrainingGui(LayerViewerGui):
                                               clicked=self._handle_live_update_clicked)
         configure_update_handlers( self.live_update_button.toggled, op.FreezeCache )
         
+        self.train_from_gt_button.clicked.connect(
+                lambda: op.FreezeClassifier.setValue(False))
+
         # Layout
         label_layout = QHBoxLayout()
         label_layout.addWidget(self.clear_labels_button)
