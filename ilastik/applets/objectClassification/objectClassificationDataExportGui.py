@@ -18,18 +18,17 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtGui import QColor
-
-
-from volumina.api import LazyflowSource, ColortableLayer, AlphaModulatedLayer
-from volumina import colortables
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
-from lazyflow.operators import OpMultiArraySlicer2
+from ilastik.applets.objectClassification.opObjectClassificationDataExport import OpObjectClassificationDataExport
 from ilastik.utility.exportingOperator import ExportingGui
+from lazyflow.operators import OpMultiArraySlicer2
+from volumina.api import LazyflowSource, ColortableLayer, AlphaModulatedLayer
 
-class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
+from volumina import colortables
+
+
+class ObjectClassificationDataExportGui(DataExportGui, ExportingGui):
     """
     A subclass of the generic data export gui that creates custom layer viewers.
     """
@@ -61,8 +60,13 @@ class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
 
     def _initAppletDrawerUic(self):
         super(ObjectClassificationDataExportGui, self)._initAppletDrawerUic()
-        btn = QPushButton("Configure Feature Table Export", clicked=self.configure_table_export)
-        self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
+
+    def _chooseSettings(self):
+        selected_name = self.topLevelOperator.SelectionNames.value[self.topLevelOperator.InputSelection.value]
+        if selected_name == OpObjectClassificationDataExport.ObjectFeaturesTable:
+            self.configure_table_export()
+        else:
+            super()._chooseSettings()
 
 
 class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
