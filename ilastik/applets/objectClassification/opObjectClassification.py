@@ -821,42 +821,43 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         export_file.add_columns("table", list(range(sum(obj_count))), Mode.List, Default.KnimeId)
         export_file.add_columns("table", ids, Mode.List, Default.IlastikId)
 
-        # Object User and Prediction Labels
-        class_names = OrderedDict(enumerate(self.LabelNames.value, start=1))
-        predictions = self.Predictions[lane_index]([]).wait()
-        labels = self.LabelInputs[lane_index]([]).wait()
-
-        # Predicted classes
-        named_predictions = []
-        named_labels = []
-        for t, object_id in ids:
-            prediction_label = predictions[t][object_id]
-            prediction_name = class_names[prediction_label]
-            named_predictions.append(prediction_name)
-            if object_id>=len(labels[t]) or labels[t][object_id]==0:
-                named_labels.append("0")
-            else:
-                named_labels.append(class_names[labels[t][object_id]])
-
-        export_file.add_columns("table", named_labels, Mode.List, {"names": ("User Label",)})
-        export_file.add_columns("table", named_predictions, Mode.List, {"names": ("Predicted Class",)})
-
-        # Class probabilities
-        probabilities = self.Probabilities[lane_index]([]).wait()
-        probability_columns = OrderedDict((name, []) for name in list(class_names.values()))
-        for t, object_id in ids:
-             for label_id, class_name in list(class_names.items()):
-                 prob = probabilities[t][object_id][label_id-1]
-                 probability_columns[class_name].append( prob )
-
-        probability_column_names = ["Probability of {}".format( class_name ) for class_name in list(class_names.values())]
-        export_file.add_columns("table", list(zip(*list(probability_columns.values()))), Mode.List, {"names": probability_column_names})
-
         # Object features
-        computed_names = self.ComputedFeatureNames.value
-
         export_file.add_columns("table", self.ObjectFeatures[lane_index], Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
+
+        # User Labels and Prediction Labels
+        class_names = OrderedDict(enumerate(self.LabelNames.value, start=1))
+
+        if self.Predictions[lane_index].ready():
+            predictions = self.Predictions[lane_index]([]).wait()
+            labels = self.LabelInputs[lane_index]([]).wait()
+
+            # Predicted classes
+            named_predictions = []
+            named_labels = []
+            for t, object_id in ids:
+                prediction_label = predictions[t][object_id]
+                prediction_name = class_names[prediction_label]
+                named_predictions.append(prediction_name)
+                if object_id>=len(labels[t]) or labels[t][object_id]==0:
+                    named_labels.append("0")
+                else:
+                    named_labels.append(class_names[labels[t][object_id]])
+
+            export_file.add_columns("table", named_labels, Mode.List, {"names": ("User Label",)})
+            export_file.add_columns("table", named_predictions, Mode.List, {"names": ("Predicted Class",)})
+
+        # Class probabilities
+        if self.Probabilities[lane_index].ready():
+            probabilities = self.Probabilities[lane_index]([]).wait()
+            probability_columns = OrderedDict((name, []) for name in list(class_names.values()))
+            for t, object_id in ids:
+                 for label_id, class_name in list(class_names.items()):
+                     prob = probabilities[t][object_id][label_id-1]
+                     probability_columns[class_name].append( prob )
+
+            probability_column_names = ["Probability of {}".format( class_name ) for class_name in list(class_names.values())]
+            export_file.add_columns("table", list(zip(*list(probability_columns.values()))), Mode.List, {"names": probability_column_names})
 
         if settings["file type"] == "h5":
             export_file.add_rois(Default.LabelRoiPath, label_image, "table", settings["margin"], "labeling")

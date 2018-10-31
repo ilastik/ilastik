@@ -192,11 +192,12 @@ class DataExportGui(QWidget):
             self.topLevelOperator.TableOnly.setValue(False)
             self.topLevelOperator.InputSelection.setValue( index )
 
-    def handleExportSourceReady(self, slot, source_name, *args):
+    def handleExportSourceReady(self, slot, *args, source_name=None):
         """
         Used to enable the given source_name in the self.drawer.inputSelectionCombo.
         To be called when a given source becomes ready. See e.g. PixelClassificationWorkflow#connectLanes
         """
+        assert source_name is not None
         index = self.topLevelOperator.SelectionNames.value.index(source_name)
         self.drawer.inputSelectionCombo.model().item(index).setEnabled(True)
         # if the first item (Probabilities) is enabled already do nothing, otherwise set the current source name

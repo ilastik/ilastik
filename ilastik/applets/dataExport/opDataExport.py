@@ -206,7 +206,6 @@ class OpDataExport(Operator):
 
         selection_index = self.InputSelection.value
         if not self.Inputs[selection_index].ready():
-            _update_readiness(self)
             return
 
         self._opFormattedExport.Input.connect( self.Inputs[selection_index] )

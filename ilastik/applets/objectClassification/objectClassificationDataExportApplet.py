@@ -20,15 +20,24 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.objectClassification.opObjectClassificationDataExport import OpObjectClassificationDataExport
+from ilastik.utility import OpMultiLaneWrapper
+
 
 class ObjectClassificationDataExportApplet( DataExportApplet ):
     """
     This a specialization of the generic data export applet that
     provides a special viewer for object classification predictions.
     """
-    def __init__(self, *args, **kwargs):
-        super(ObjectClassificationDataExportApplet, self).__init__(*args, **kwargs)
+    def __init__(self, workflow, title, *args, **kwargs):
+        self.__topLevelOperator = OpMultiLaneWrapper(OpObjectClassificationDataExport, parent=workflow,
+                                                     promotedSlotNames=set(['RawData', 'Inputs', 'RawDatasetInfo']))
+        super(ObjectClassificationDataExportApplet, self).__init__(workflow, title, *args, **kwargs)
         self.exporting_op = None
+
+    @property
+    def topLevelOperator(self):
+        return self.__topLevelOperator
 
     def set_exporting_operator(self, op):
         self.exporting_op = op
