@@ -1,7 +1,7 @@
 import logging
 import time
 
-import multiprocessing
+from pathos import multiprocessing
 import numpy as np
 
 logger = logging.getLogger('default')
