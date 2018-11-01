@@ -236,8 +236,8 @@ class VoxelSegmentationWorkflow(Workflow):
         opDataExport.Inputs[2].connect(opClassify.HeadlessUncertaintyEstimate)
         opDataExport.Inputs[3].connect(opClassify.FeatureImages)
         opDataExport.Inputs[4].connect(opClassify.LabelImages)
-        for slot in opDataExport.Inputs:
-            assert slot.partner is not None
+        # for slot in opDataExport.Inputs:
+        #     assert slot.partner is not None
 
         opSlic = self.slicApplet.topLevelOperator
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
