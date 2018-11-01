@@ -423,6 +423,8 @@ class ObjectClassificationWorkflow(Workflow):
 
         object_features_ready = ( self.objectExtractionApplet.topLevelOperator.Features.ready()
                                   and len(self.objectExtractionApplet.topLevelOperator.Features.value) > 0 )
+        self._shell.setAppletEnabled(self.dataExportApplet, object_features_ready)
+
         cumulated_readyness = cumulated_readyness and object_features_ready
         self._shell.setAppletEnabled(self.objectClassificationApplet, cumulated_readyness)
 
@@ -435,16 +437,11 @@ class ObjectClassificationWorkflow(Workflow):
                               opObjectClassification.NumLabels.value < 2
 
         object_classification_ready = object_features_ready and not invalid_classifier
-
         cumulated_readyness = cumulated_readyness and object_classification_ready
-        self._shell.setAppletEnabled(self.dataExportApplet, object_features_ready)
 
         if self.batch:
-            object_prediction_ready = True  # TODO is that so?
-            cumulated_readyness = cumulated_readyness and object_prediction_ready
-
+            self._shell.setAppletEnabled(self.batchProcessingApplet, object_features_ready)
             self._shell.setAppletEnabled(self.blockwiseObjectClassificationApplet, cumulated_readyness)
-            self._shell.setAppletEnabled(self.batchProcessingApplet, cumulated_readyness)
 
         # Lastly, check for certain "busy" conditions, during which we
         # should prevent the shell from closing the project.
