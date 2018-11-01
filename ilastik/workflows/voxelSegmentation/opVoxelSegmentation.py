@@ -4,7 +4,7 @@ from functools import partial
 
 # SciPy
 import numpy
-from pathos import multiprocessing
+import multiprocessing
 import skimage
 #import IPython
 import vigra

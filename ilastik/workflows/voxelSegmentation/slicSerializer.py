@@ -22,7 +22,7 @@ from builtins import range
 
 import vigra
 
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot, SerialPickledValueSlot, SerialSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot, SerialPickleableSlot, SerialSlot
 from ilastik.utility import bind
 
 import logging

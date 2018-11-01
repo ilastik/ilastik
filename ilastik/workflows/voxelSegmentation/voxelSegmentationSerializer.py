@@ -20,7 +20,7 @@
 ###############################################################################
 from builtins import range
 import vigra
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot, SerialPickledValueSlot, SerialSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot, SerialPickleableSlot, SerialSlot
 
 import logging
 logger = logging.getLogger(__name__)
@@ -33,6 +33,7 @@ class VoxelSegmentationSerializer(AppletSerializer):
     """
 
     def __init__(self, operator, projectFileGroupName):
+        self.VERSION = 1  # Make sure to bump the version in case you make any changes in the serialization
         self._serialClassifierSlot = SerialClassifierSlot(operator.Classifier,
                                                           operator.classifier_cache,
                                                           name="ClassifierForests")
@@ -40,7 +41,7 @@ class VoxelSegmentationSerializer(AppletSerializer):
             SerialListSlot(operator.LabelNames),
             SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
             SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
-            SerialPickledValueSlot(operator.Bookmarks),
+            SerialPickleableSlot(operator.Bookmarks, self.VERSION),
             SerialBlockSlot(operator.LabelImages,
                             operator.LabelInputs,
                             operator.NonzeroLabelBlocks,
