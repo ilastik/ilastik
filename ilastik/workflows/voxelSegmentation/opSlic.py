@@ -32,7 +32,7 @@ class OpSlic(Operator):
     # These are the slic parameters.
     # Here we give default values, but they can be changed.
     NumSegments = InputSlot()
-    Compactness = InputSlot(value=0.6)
+    Compactness = InputSlot(value=0.4)
     MaxIter = InputSlot(value=10)
 
     Output = OutputSlot()
@@ -57,7 +57,7 @@ class OpSlic(Operator):
 
         if n_segments == 0:
             # If the number of supervoxels was not given, use a default proportional to the number of voxels
-            n_segments = numpy.int(numpy.prod(input_data.shape) / 5000)
+            n_segments = numpy.int(numpy.prod(input_data.shape) / 2500)
 
         print("calling skimage.segmentation.slic with {}".format(
             dict(
@@ -131,7 +131,7 @@ class OpSlicCached(Operator):
     # Same slots as OpSlic
     Input = InputSlot()
     NumSegments = InputSlot(value=0)
-    Compactness = InputSlot(value=0.6)
+    Compactness = InputSlot(value=0.4)
     MaxIter = InputSlot(value=10)
 
     CacheInput = InputSlot(optional=True)
