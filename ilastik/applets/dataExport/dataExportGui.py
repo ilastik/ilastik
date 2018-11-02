@@ -23,6 +23,7 @@ from __future__ import division
 from builtins import range
 
 from ilastik.workflows import PixelClassificationWorkflow
+from ilastik.workflows.newAutocontext.newAutocontextWorkflow import NewAutocontextWorkflowBase
 from ilastik.workflows.objectClassification.objectClassificationWorkflow import ObjectClassificationWorkflow
 from past.utils import old_div
 import os
@@ -175,7 +176,8 @@ class DataExportGui(QWidget):
             for index, selection_name in enumerate(slot.value):
                 self.drawer.inputSelectionCombo.addItem(selection_name)
                 # Disable all items until the relevant slots are ready.
-                if isinstance(self.topLevelOperator.parent, (PixelClassificationWorkflow, ObjectClassificationWorkflow)):
+                if isinstance(self.topLevelOperator.parent,
+                              (PixelClassificationWorkflow, ObjectClassificationWorkflow, NewAutocontextWorkflowBase)):
                     self.drawer.inputSelectionCombo.model().item(index).setEnabled(False)
 
         self.topLevelOperator.SelectionNames.notifyDirty(_handleNewSelectionNames)
