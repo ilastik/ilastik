@@ -409,9 +409,10 @@ class NewAutocontextWorkflowBase(Workflow):
             
             self._shell.setAppletEnabled(pcApplet, stage_flags[stage_index].features_ready and not batch_processing_busy)
 
-        # enable export if any of the features from any stage are ready
-        self._shell.setAppletEnabled(self.dataExportApplet, any(sf.features_ready for sf in stage_flags) and not batch_processing_busy)
-        self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
+        # enable export and batch processing if any of the features from any stage are ready
+        features_ready_any_stage = any(sf.features_ready for sf in stage_flags) and not batch_processing_busy
+        self._shell.setAppletEnabled(self.dataExportApplet, features_ready_any_stage)
+        self._shell.setAppletEnabled(self.batchProcessingApplet, features_ready_any_stage)
     
         # Lastly, check for certain "busy" conditions, during which we 
         #  should prevent the shell from closing the project.
