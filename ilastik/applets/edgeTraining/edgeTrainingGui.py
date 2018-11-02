@@ -106,11 +106,20 @@ class EdgeTrainingGui(LayerViewerGui):
                                               checkable=True,
                                               icon=QIcon(ilastikIcons.Play),
                                               toolTip="Update the edge classifier predictions",
-                                              clicked=self._handle_live_update_clicked)
+                                              clicked=self._handle_live_update_clicked,
+                                              enabled=False)
         configure_update_handlers( self.live_update_button.toggled, op.FreezeCache )
         
         self.train_from_gt_button.clicked.connect(
-                lambda: op.FreezeClassifier.setValue(False))
+            lambda: op.FreezeClassifier.setValue(False))
+
+        def enable_live_update_on_edges_available(*args, **kwargs):
+            have_edges = (op.EdgeLabelsDict.ready() and
+                          bool(op.EdgeLabelsDict.value))
+            self.live_update_button.setEnabled(have_edges)
+        cleanup_fn = op.EdgeLabelsDict.notifyDirty(
+            enable_live_update_on_edges_available)
+        self.__cleanup_fns.append(cleanup_fn)
 
         # Layout
         label_layout = QHBoxLayout()
