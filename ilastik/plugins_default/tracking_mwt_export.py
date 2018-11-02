@@ -27,10 +27,9 @@ class TrackingContourExportFormatPlugin(TrackingExportFormatPlugin):
         :param filename: string of the FILE where to save the result (different .xml files were)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
         :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:
-            - objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output
-            of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
-            - labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
-
+            objectFeaturesSlot (required here),  labelImageSlot (required here)
+            as well as  rawImageSlot, additionalPluginArgumentsSlot
+            
         :returns: True on success, False otherwise
         """
         # Get object features

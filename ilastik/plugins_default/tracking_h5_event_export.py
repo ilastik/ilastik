@@ -99,7 +99,7 @@ else:
             :param filename: string of the FOLDER where to save the result
             :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
             :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:
-                - labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
+                labelImageSlot (required here) as well as objectFeaturesSlot, rawImageSlot, additionalPluginArgumentsSlot
 
             :returns: True on success, False otherwise
             """

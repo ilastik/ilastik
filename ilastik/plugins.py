@@ -167,13 +167,15 @@ class TrackingExportFormatPlugin(IPlugin):
 
         :param filename: string of the file where to save the result (or folder where to put the export files)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-        :param pluginExportContext (ilastik.plugins.PluginExportContext): instance of PluginExportContext containing data necessary for the export such as:
-            - objectFeaturesSlot (lazyflow.graph.InputSlot): connected to the RegionFeaturesAll
-            output of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
+        :param pluginExportContext ilastik.plugins.PluginExportContext: instance of PluginExportContext containing
+            data necessary for the export such as:
+
+            - objectFeaturesSlot (lazyflow.graph.InputSlot): connected to the RegionFeaturesAll output of
+                ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
             - labelImageSlot (lazyflow.graph.InputSlot): labeled image slot
             - rawImageSlot (lazyflow.graph.InputSlot): raw image slot
             - additionalPluginArgumentsSlot (lazyflow.graph.InputSlot): slot containing a dictionary
-            with plugin specific arguments
+                with plugin specific arguments
 
         :returns: True on success, False otherwise
         """

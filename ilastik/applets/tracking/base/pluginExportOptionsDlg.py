@@ -196,8 +196,10 @@ class PluginExportOptionsDlg(QDialog):
             self._filepathSlot.setValue(file_path)
 
         if self._additionalPluginArgumentsSlot.ready():
-            bdv_file_path = self._additionalPluginArgumentsSlot.value.get('bdvFilepath')
-            self.bdvFilepath.setText(bdv_file_path)
+            # handle additional arguments on a per-plugin basis
+            if self.pluginName == 'Fiji-MaMuT':
+                bdv_file_path = self._additionalPluginArgumentsSlot.value.get('bdvFilepath')
+                self.bdvFilepath.setText(bdv_file_path)
 
     def _browseForFilepath(self):
         starting_dir = os.path.expanduser("~")

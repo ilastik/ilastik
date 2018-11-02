@@ -31,7 +31,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
     This a specialization of the generic data export applet that
     provides a special viewer for tracking output.
     """
-    def __init__(self, workflow, title, default_export_filename=''):
+    def __init__(self, workflow, title, is_batch=False, default_export_filename=''):
         self.export_op = None
         self._default_export_filename = default_export_filename
 
@@ -45,7 +45,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
         ]
         self._serializers = [DataExportSerializer(self.topLevelOperator, title, extra_serial_slots)]
 
-        super(TrackingBaseDataExportApplet, self).__init__(workflow, title)
+        super(TrackingBaseDataExportApplet, self).__init__(workflow, title, isBatch=is_batch)
 
     @property
     def dataSerializers(self):

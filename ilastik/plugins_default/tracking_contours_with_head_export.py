@@ -31,8 +31,8 @@ class TrackingContoursBodyPartsPlugin(TrackingExportFormatPlugin):
         :param filename: string of the FILE where to save the result (different .xml files were)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
         :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:
-            - labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
-            - rawImageSlot: lazyflow.graph.InputSlot, raw image slot
+            labelImageSlot (required here), rawImageSlot (required here)
+            as well as objectFeaturesSlot, additionalPluginArgumentsSlot
 
         :returns: True on success, False otherwise
         """

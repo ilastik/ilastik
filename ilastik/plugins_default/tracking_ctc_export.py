@@ -23,7 +23,7 @@ class TrackingCTCExportFormatPlugin(TrackingExportFormatPlugin):
         :param filename: string of the FOLDER where to save the result (will be filled with a res_track.txt and segmentation masks for each frame)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
         :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:
-            - labelImageSlot: lazyflow.graph.InputSlot, labeled image slot
+            labelImageSlot (required here) as well as objectFeaturesSlot, rawImageSlot, additionalPluginArgumentsSlot
 
         :returns: True on success, False otherwise
         """

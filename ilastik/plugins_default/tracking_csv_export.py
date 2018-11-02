@@ -20,8 +20,7 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
         :param filename: string of the FILE where to save the resulting CSV file
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
         :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:
-            - objectFeaturesSlot: lazyflow.graph.InputSlot, connected to the RegionFeaturesAll output
-            of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
+            objectFeaturesSlot (required here) as well as labelImageSlot, rawImageSlot, additionalPluginArgumentsSlot
 
         :returns: True on success, False otherwise
         """

@@ -45,10 +45,8 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
         :param filename: string of the FILE where to save the result (*_mamut.xml file)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
         :param pluginExportContext: instance of ilastik.plugins.PluginExportContext containing:
-            - objectFeaturesSlot (lazyflow.graph.InputSlot): connected to the RegionFeaturesAll
-            output of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
-            - additionalPluginArgumentsSlot (lazyflow.graph.InputSlot): additional arguments passed to the plugin
-            in this it provides BigDataViewer file path
+            objectFeaturesSlot (required here), additionalPluginArgumentsSlot (required here)
+            as well as rawImageSlot, labelImageSlot
 
         :returns: True on success, False otherwise
         """
