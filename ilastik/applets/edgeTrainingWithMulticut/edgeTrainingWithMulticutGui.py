@@ -34,21 +34,18 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         multicut_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         multicut_box.setEnabled(False)
 
-        # Enable multicut only when all edgeTraining->multicut connections
-        # have non-None inputs.
         op = self.topLevelOperatorView
-        conns = (
+        edge_training_to_multicut_required_slots = (
             op.Superpixels,
             op.Rag,
             op.EdgeProbabilities,
             op.EdgeProbabilitiesDict,
         )
-        def set_multicut_enabled(*args, **kwargs):
-            all_conns_ok = all(conn.value is not None for conn in conns)
-            multicut_box.setEnabled(all_conns_ok)
-        for conn in conns:
-            cleanup_fn = conn.notifyDirty(set_multicut_enabled)
-            self.__cleanup_fns.append(cleanup_fn)
+        cleanup_fn = _enable_widget_on_usable_values(
+            multicut_box,
+            *edge_training_to_multicut_required_slots,
+        )
+        self.__cleanup_fns.append(cleanup_fn)
 
         drawer_layout = QVBoxLayout()
         drawer_layout.addWidget(training_box)
@@ -101,3 +98,27 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
     def configure_operator_from_gui(self):
         EdgeTrainingGui.configure_operator_from_gui(self)
         MulticutGuiMixin.configure_operator_from_gui(self)
+
+
+def _enable_widget_on_usable_values(widget, *slots):
+    """Enables the widget only if all slots have usable values.
+
+    Subscribe to dirty notifications from the slots and enable
+    the widget only if all slot values are ready and not None.
+    Otherwise, disable the widget.
+
+    Args:
+        widget: Widget to enable or disable.
+        slots: Slots whose values to check.
+
+    Returns:
+        Unsubscribe callable.
+    """
+    def set_widget_enabled(*args, **kwargs):
+        have_values = all(s.ready() and s.value is not None for s in slots)
+        widget.setEnabled(have_values)
+    slot_cleanup_funcs = [s.notifyDirty(set_widget_enabled) for s in slots]
+    def cleanup_func():
+        for func in slot_cleanup_funcs:
+            func()
+    return cleanup_func
