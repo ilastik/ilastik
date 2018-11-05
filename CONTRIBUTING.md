@@ -155,7 +155,7 @@ You can create a development environment (given miniconda is installed) by invok
 
 Create the ilastik development environment (we assume that the dev-environment will have the name _idev_, but you can, of course choose a name to your liking):
 ```bash
-conda create --name idev -c ilastik-forge -c conda-forge ilastik-dependenies-no-solvers
+conda create --name idev -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers
 ```
 
 In order to run your own code, you need to link against your sources
