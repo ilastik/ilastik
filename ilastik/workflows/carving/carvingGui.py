@@ -64,7 +64,6 @@ class CarvingGui(LabelingGui):
     def __init__(self, parentApplet, topLevelOperatorView, drawerUiPath=None ):
         self.topLevelOperatorView = topLevelOperatorView
         self.isInitialized = False  # Need this flag in carvingApplet where initialization is terminated with label selection
-        self.objectPrefix = "Object"
 
         #members
         self._doneSegmentationLayer = None
@@ -225,6 +224,10 @@ class CarvingGui(LabelingGui):
         makeColortable()
         self._updateGui()
 
+    @property
+    def objectPrefix(self):
+        return self.labelingDrawerUi.objPrefix.text()
+
     def _is_3d(self):
         tagged_shape = defaultdict(lambda: 1)
         tagged_shape.update(self.topLevelOperatorView.InputData.meta.getTaggedShape())
@@ -255,7 +258,7 @@ class CarvingGui(LabelingGui):
         namesInUse = self.getObjectNames()
 
         def generateObjectName():
-            return "{} {}".format(self.objectPrefix, len(namesInUse) + 1)
+            return "{}{}".format(self.objectPrefix, len(namesInUse) + 1)
 
         name = name or generateObjectName()
 
