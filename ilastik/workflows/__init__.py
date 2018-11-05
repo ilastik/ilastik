@@ -89,21 +89,16 @@ except ImportError as e:
 from .examples.dataConversion.dataConversionWorkflow import DataConversionWorkflow
 WORKFLOW_CLASSES += [DataConversionWorkflow]
 
-# network classification, check whether required modules are available:
-can_nn = True
 try:
     import torch
     import inferno
     import tiktorch
+    from .nnClassification import NNClassificationWorkflow
+    from .domainAdaptation import DomainAdaptationWorkflow
+    WORKFLOW_CLASSES += [NNClassificationWorkflow]
+    WORKFLOW_CLASSES += [DomainAdaptationWorkflow]
 except ImportError as e:
-    can_nn = False
-    logger.debug(f"NNClassificationWorkflow: could not import required modules: {e}")
-
-if can_nn:
-    if ilastik.config.cfg.getboolean('ilastik', 'hbp', fallback=False):
-        from .nnClassification import NNClassificationWorkflow
-        WORKFLOW_CLASSES += [NNClassificationWorkflow]
-
+    logger.warning(f"Failed to load `Domain Adaptation` and `Pixel Classification with Neural Networks` workflows: {e}")
 
 # Examples
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):

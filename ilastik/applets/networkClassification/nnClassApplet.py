@@ -31,7 +31,7 @@ class NNClassApplet(StandardApplet):
 
     def __init__(self, workflow, projectFileGroupName):
 
-        super(NNClassApplet, self).__init__("NN Classification", workflow=workflow)
+        super(NNClassApplet, self).__init__("Training", workflow=workflow)
 
         self._serializableItems = [NNClassificationSerializer(self.topLevelOperator, projectFileGroupName)]   # Legacy (v0.5) importer
         self._gui = None

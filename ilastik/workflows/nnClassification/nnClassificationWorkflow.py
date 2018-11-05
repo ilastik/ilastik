@@ -34,14 +34,14 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from lazyflow.graph import Graph
 
-
 logger = logging.getLogger(__name__)
+
 
 class NNClassificationWorkflow(Workflow):
     """
     Workflow for the Neural Network Classification Applet
     """
-    workflowName = "Neural Network Classification"
+    workflowName = "Pixel Classification with Neural Networks"
     workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 0 # show DataSelection by default
 
@@ -138,6 +138,7 @@ class NNClassificationWorkflow(Workflow):
         special parameters to initialize the DataSelectionApplet.
         """
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
+        
         return DataSelectionApplet(self,
                                    "Input Data",
                                    "Input Data",

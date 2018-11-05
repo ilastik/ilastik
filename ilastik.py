@@ -23,6 +23,7 @@
 
 import sys
 import os
+import torch
 
 def _clean_paths( ilastik_dir ):
     # remove undesired paths from PYTHONPATH and add ilastik's submodules
@@ -58,6 +59,8 @@ def _clean_paths( ilastik_dir ):
         os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(path))
 
 def main():
+#    sys.argv = ['--project=/home/jo/sfb1129/ilastik_debug/projects/nnclassification.ilp', '--hbp', '--debug']
+    
     if "--clean_paths" in sys.argv:
         this_path = os.path.dirname(__file__)
         ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
