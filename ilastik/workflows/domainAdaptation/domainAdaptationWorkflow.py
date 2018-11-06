@@ -33,7 +33,7 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
-from ilastik.applets.featureSelection import FeatureSelectionApplet
+from ilastik.applets.domainAdaptation import DomainAdaptationApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationDataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
@@ -69,6 +69,9 @@ class DomainAdaptationWorkflow(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue(DomainAdaptationWorkflow.ROLE_NAMES)
 
+        self.daApplet = self.createDomainAdaptationApplet()
+        opDomainAdaptation = self.daApplet.topLevelOperator
+
         self.dataExportApplet = DataExportApplet(self, "Data Export")
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
@@ -76,6 +79,7 @@ class DomainAdaptationWorkflow(Workflow):
 
         # Expose applets in a list (for the shell to use)
         self._applets.append(self.dataSelectionApplet)
+        self._applets.append(self.daApplet)
         self._applets.append(self.dataExportApplet)
 
         # Parse command-line arguments
@@ -97,6 +101,9 @@ class DomainAdaptationWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
+    def createDomainAdaptationApplet(self):
+        return DomainAdaptationApplet(self, "DomainAdaptation")
+
     def createDataSelectionApplet(self):
         """
         Can be overridden by subclasses, if they want to use
@@ -117,13 +124,23 @@ class DomainAdaptationWorkflow(Workflow):
                                    forceAxisOrder=c_at_end)
 
     def prepareForNewLane(self, laneIndex):
-        pass
+        opDomainAdaptation = self.daApplet.topLevelOperator
+        if opDomainAdaptation.classifier_cache.Output.ready() and opDomainAdaptation.classifier_cache._dirty:
+            self.stored_classifier = opDomainAdaptation.classifier_cache.Output.value
+        else:
+            self.stored_classifier = None
 
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opDomainAdaptation = self.daApplet.topLevelOperator.getLane(laneIndex)
+
+        # Input Image -> Classification Operator
+        opDomainAdaptation.InputImages.connect(opData.Image)
 
     def handleNewLanesAdded(self):
-        pass
+        if self.stored_classifier:
+            self.daApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
+            self.stored_classifier = None
 
     def onProjectLoaded(self, projectManager):
         pass
@@ -131,3 +148,20 @@ class DomainAdaptationWorkflow(Workflow):
     def handleAppletStateUpdateRequested(self):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         input_ready = len(opDataSelection.ImageGroup) > 0
+
+        opDomainAdaptation = self.daApplet.topLevelOperator
+
+        invalid_classifier = opDomainAdaptation.classifier_cache.fixAtCurrent.value and \
+                             opDomainAdaptation.classifier_cache.Output.ready() and \
+                             opDomainAdaptation.classifier_cache.Output.value is None
+
+        prediction_ready = not invalid_classifier
+
+        live_update_active = not opDomainAdaptation.FreezePredictions.value
+
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not live_update_active)
+        self._shell.setAppletEnabled(self.daApplet, input_ready)
+
+        busy = False
+        busy |= self.dataSelectionApplet.busy
+        self._shell.enableProjectChanges(not busy)
