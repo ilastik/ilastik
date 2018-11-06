@@ -171,6 +171,8 @@ class CarvingGui(LabelingGui):
         #    self.updateAllLayers() #make sure that an added/deleted uncertainty layer is recognized
         #self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onUncertaintyCombo)
 
+        self.labelingDrawerUi.objPrefix.setText(self.objectPrefix)
+        self.labelingDrawerUi.objPrefix.textChanged.connect(self.setObjectPrefix)
 
         ## save
 
@@ -226,7 +228,10 @@ class CarvingGui(LabelingGui):
 
     @property
     def objectPrefix(self):
-        return self.labelingDrawerUi.objPrefix.text()
+        return self.topLevelOperatorView.ObjectPrefix.value
+
+    def setObjectPrefix(self, value):
+        self.topLevelOperatorView.ObjectPrefix.setValue(value)
 
     def _is_3d(self):
         tagged_shape = defaultdict(lambda: 1)

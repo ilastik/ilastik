@@ -18,8 +18,12 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from typing import TYPE_CHECKING
+
 from builtins import range
-from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
+from ilastik.applets.base.appletSerializer import (
+    AppletSerializer, getOrCreateGroup, deleteIfPresent, SerialSlot
+)
 import numpy
 
 from lazyflow.roi import roiFromShape, roiToSlice
@@ -27,12 +31,17 @@ from lazyflow.roi import roiFromShape, roiToSlice
 import logging
 logger = logging.getLogger(__name__)
 
-class CarvingSerializer( AppletSerializer ):
-    def __init__(self, carvingTopLevelOperator, *args, **kwargs):
-        super(CarvingSerializer, self).__init__(*args, **kwargs)
-        self._o = carvingTopLevelOperator 
-        
-        
+if TYPE_CHECKING:
+    from .opCarving import OpCarving
+
+
+class CarvingSerializer(AppletSerializer):
+    def __init__(self, operator: 'OpCarving', groupName):
+        super().__init__(groupName, slots=[
+            SerialSlot(operator.ObjectPrefix)
+        ])
+        self._o = operator
+
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         obj = getOrCreateGroup(topGroup, "objects")
         for imageIndex, opCarving in enumerate( self._o.innerOperators ):
@@ -196,4 +205,3 @@ class CarvingSerializer( AppletSerializer ):
     #this is present only for the serializer AppletInterface
     def unload(self):
         pass
-    
