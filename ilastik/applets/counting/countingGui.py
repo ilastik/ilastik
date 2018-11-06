@@ -54,9 +54,6 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter
 from ilastik.applets.base.appletSerializer import SerialListSlot
 
-from volumina.api import \
-    LazyflowSource, GrayscaleLayer, ColortableLayer, AlphaModulatedLayer, \
-    ClickableColortableLayer, LazyflowSinkSource
 
 # Loggers
 logger = logging.getLogger(__name__)
