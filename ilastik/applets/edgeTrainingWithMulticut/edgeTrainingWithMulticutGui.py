@@ -43,7 +43,7 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         )
         cleanup_fn = _enable_widget_on_usable_values(
             multicut_box,
-            *edge_training_to_multicut_required_slots,
+            edge_training_to_multicut_required_slots,
         )
         self.__cleanup_fns.append(cleanup_fn)
 
@@ -100,7 +100,7 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         MulticutGuiMixin.configure_operator_from_gui(self)
 
 
-def _enable_widget_on_usable_values(widget, *slots):
+def _enable_widget_on_usable_values(widget, slots):
     """Enables the widget only if all slots have usable values.
 
     Subscribe to dirty notifications from the slots and enable
@@ -109,7 +109,7 @@ def _enable_widget_on_usable_values(widget, *slots):
 
     Args:
         widget: Widget to enable or disable.
-        slots: Slots whose values to check.
+        slots: Iterable of slots whose values to check.
 
     Returns:
         Unsubscribe callable.
