@@ -20,13 +20,13 @@ else:
             ''' Check whether the files we want to export are already present '''
             return os.path.exists(filename + '_graph.json') or os.path.exists(filename + '_result.json')
 
-        def export(self, filename, hypothesesGraph, **kwargs):
+        def export(self, filename, hypothesesGraph, pluginExportContext):
             """
             Export the tracking model and result
 
             :param filename: string of the FILE where to save the result (will be appended with _graph.json and _result.json)
             :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-            :param kwargs: dict, additional contextual info
+            :param pluginExportContext: additional contextual info (here to adhere to the interface)
 
             :returns: True on success, False otherwise
             """

@@ -445,7 +445,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         if self.dataExportTrackingApplet.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName:
             logger.info("Export source plugin selected!")
             selectedPlugin = self.dataExportTrackingApplet.topLevelOperator.SelectedPlugin.value
-            bdvFilepathSlot = self.dataExportTrackingApplet.topLevelOperator.BigDataViewerFilepath
+            additionalPluginArgumentsSlot = self.dataExportTrackingApplet.topLevelOperator.AdditionalPluginArguments
 
             exportPluginInfo = pluginManager.getPluginByName(selectedPlugin, category="TrackingExportFormats")
             if exportPluginInfo is None:
@@ -469,7 +469,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
                 self.dataExportTrackingApplet.progressSignal(-1)
                 exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(
-                    filename, exportPlugin, checkOverwriteFiles, bdvFilepathSlot)
+                    filename, exportPlugin, checkOverwriteFiles, additionalPluginArgumentsSlot)
                 self.dataExportTrackingApplet.progressSignal(100)
 
                 if not exportStatus:

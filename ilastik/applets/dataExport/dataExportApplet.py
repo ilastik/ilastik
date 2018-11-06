@@ -1,4 +1,6 @@
 from __future__ import absolute_import
+
+import argparse
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,16 +22,15 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
-import argparse
-import json
 
 import numpy
 
 from ilastik.applets.base.applet import Applet
-from .opDataExport import OpDataExport
-from .dataExportSerializer import DataExportSerializer
 from ilastik.utility import OpMultiLaneWrapper
 from ilastik.utility.commandLineProcessing import ParseListFromString
+from .dataExportSerializer import DataExportSerializer
+from .opDataExport import OpDataExport
+
 
 class DataExportApplet( Applet ):
     """

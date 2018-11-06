@@ -161,17 +161,21 @@ class TrackingExportFormatPlugin(IPlugin):
         ''' Check whether the files we want to export (when appending the base filename) are already present '''
         return False
 
-    def export(self, filename, hypothesesGraph, *, objectFeaturesSlot, labelImageSlot, rawImageSlot, bdvFilepathSlot):
+    def export(self, filename, hypothesesGraph, pluginExportContext):
         """Export the tracking solution stored in the hypotheses graph's "value" and "divisionValue"
         attributes (or the "lineageId" and "trackId" attribs). See https://github.com/chaubold/hytra for more details.
 
         :param filename: string of the file where to save the result (or folder where to put the export files)
         :param hypothesesGraph: hytra.core.hypothesesgraph.HypothesesGraph filled with a solution
-        :param objectFeaturesSlot (lazyflow.graph.InputSlot): connected to the RegionFeaturesAll
-            output of ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
-        :param labelImageSlot (lazyflow.graph.InputSlot): labeled image slot
-        :param rawImageSlot (lazyflow.graph.InputSlot): raw image slot
-        :param bdvFilepathSlot (lazyflow.graph.InputSlot): BigDataViewer file path slot
+        :param pluginExportContext ilastik.plugins.PluginExportContext: instance of PluginExportContext containing
+            data necessary for the export such as:
+
+            - objectFeaturesSlot (lazyflow.graph.InputSlot): connected to the RegionFeaturesAll output of
+                ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction.OpTrackingFeatureExtraction
+            - labelImageSlot (lazyflow.graph.InputSlot): labeled image slot
+            - rawImageSlot (lazyflow.graph.InputSlot): raw image slot
+            - additionalPluginArgumentsSlot (lazyflow.graph.InputSlot): slot containing a dictionary
+                with plugin specific arguments
 
         :returns: True on success, False otherwise
         """
@@ -202,6 +206,16 @@ class TrackingExportFormatPlugin(IPlugin):
             long_name = name
 
         return long_name
+
+
+# Helper class used to pass the necessary context information to the export plugin
+PluginExportContext = namedtuple('PluginExportContext',
+                                 [
+                                     'objectFeaturesSlot',
+                                     'labelImageSlot',
+                                     'rawImageSlot',
+                                     'additionalPluginArgumentsSlot'
+                                 ])
 
 ###############
 # the manager #
