@@ -60,7 +60,8 @@ def _clean_paths( ilastik_dir ):
 
 def main():
 #    sys.argv = ['--project=/home/jo/sfb1129/ilastik_debug/projects/nnclassification.ilp', '--hbp', '--debug']
-    
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
     if "--clean_paths" in sys.argv:
         this_path = os.path.dirname(__file__)
         ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
