@@ -258,7 +258,7 @@ class CarvingGui(LabelingGui):
         namesInUse = self.getObjectNames()
 
         def generateObjectName():
-            return "{}{}".format(self.objectPrefix, len(namesInUse) + 1)
+            return f"{self.objectPrefix}{len(namesInUse) + 1}"
 
         name = name or generateObjectName()
 
