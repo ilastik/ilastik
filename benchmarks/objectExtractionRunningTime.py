@@ -40,7 +40,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListR
 from ilastik.plugins import pluginManager
 from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
 
-from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpStreamingUfmfReader
+from lazyflow.operators.ioOperators import OpStreamingH5N5Reader, OpStreamingUfmfReader
 import lazyflow
 
 from lazyflow.utility import RoiRequestBatch
