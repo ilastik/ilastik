@@ -30,14 +30,13 @@ from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector, OpSubReg
 from .opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import (
     OpBlockwiseFilesetReader, OpKlbReader, OpRESTfulBlockwiseFilesetReader,
-    OpStreamingHdf5Reader, OpStreamingN5Reader, OpStreamingHdf5SequenceReaderS,
-    OpStreamingHdf5SequenceReaderM, OpStreamingN5SequenceReaderS,
-    OpStreamingN5SequenceReaderM, OpTiffReader,
+    OpStreamingH5N5Reader, OpStreamingH5N5SequenceReaderS,
+    OpStreamingH5N5SequenceReaderM, OpTiffReader,
     OpTiffSequenceReader, OpCachedTiledVolumeReader, OpRawBinaryFileReader,
     OpStackLoader, OpRESTfulPrecomputedChunkedVolumeReader, OpImageReader
 )
 from lazyflow.utility.jsonConfig import JsonConfigParser
-from lazyflow.utility.pathHelpers import isUrl, PathComponents
+from lazyflow.utility.pathHelpers import lsH5N5, isUrl, PathComponents
 
 from .opStreamingUfmfReader import OpStreamingUfmfReader
 from .opStreamingMmfReader import OpStreamingMmfReader
@@ -62,8 +61,6 @@ try:
 except ImportError as ex:
     _supports_h5blockreader = False
 
-import h5py
-import z5py
 import vigra
 import os
 import re
@@ -81,8 +78,7 @@ class OpInputDataReader(Operator):
     category = "Input"
 
     videoExts = ['ufmf', 'mmf']
-    h5Exts = ['h5', 'hdf5', 'ilp']
-    n5Exts = ['n5']
+    h5_n5_Exts = ['h5', 'hdf5', 'ilp', 'n5']
     n5Selection = ['json']  # n5 stores data in a directory, containing a json-file which we use to select the n5-file
     klbExts = ['klb']
     npyExts = ['npy']
@@ -93,7 +89,7 @@ class OpInputDataReader(Operator):
     tiffExts = ['tif', 'tiff']
     vigraImpexExts = vigra.impex.listExtensions().split()
 
-    SupportedExtensions = h5Exts + n5Exts + n5Selection + npyExts + npzExts + rawExts + \
+    SupportedExtensions = h5_n5_Exts + n5Selection + npyExts + npzExts + rawExts + \
                           vigraImpexExts + blockwiseExts + videoExts + klbExts
 
     if _supports_dvid:
@@ -173,12 +169,10 @@ class OpInputDataReader(Operator):
                      self._attemptOpenAsMmf,
                      self._attemptOpenAsRESTfulPrecomputedChunkedVolume,
                      self._attemptOpenAsDvidVolume,
-                     self._attemptOpenAsHdf5Stack,
-                     self._attemptOpenAsN5Stack,
+                     self._attemptOpenAsH5N5Stack,
                      self._attemptOpenAsTiffStack,
                      self._attemptOpenAsStack,
-                     self._attemptOpenAsHdf5,
-                     self._attemptOpenAsN5,
+                     self._attemptOpenAsH5N5,
                      self._attemptOpenAsNpy,
                      self._attemptOpenAsRawBinary,
                      self._attemptOpenAsTiledVolume,
@@ -285,80 +279,42 @@ class OpInputDataReader(Operator):
             reader.BaseUrl.setValue(url)
             return [reader], reader.Output
 
-    def _attemptOpenAsHdf5Stack(self, filePath):
+    def _attemptOpenAsH5N5Stack(self, filePath):
         if not ('*' in filePath or os.path.pathsep in filePath):
             return ([], None)
 
         # Now use the .checkGlobString method of the stack readers
         isSingleFile = True
         try:
-            OpStreamingHdf5SequenceReaderS.checkGlobString(filePath)
-        except OpStreamingHdf5SequenceReaderS.WrongFileTypeError:
+            OpStreamingH5N5SequenceReaderS.checkGlobString(filePath)
+        except OpStreamingH5N5SequenceReaderS.WrongFileTypeError:
             return ([], None)
-        except (OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError,
-                OpStreamingHdf5SequenceReaderS.NotTheSameFileError,
-                OpStreamingHdf5SequenceReaderS.ExternalPlaceholderError):
+        except (OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError,
+                OpStreamingH5N5SequenceReaderS.NotTheSameFileError,
+                OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError):
             isSingleFile = False
 
         isMultiFile = True
         try:
-            OpStreamingHdf5SequenceReaderM.checkGlobString(filePath)
-        except (OpStreamingHdf5SequenceReaderM.NoExternalPlaceholderError,
-                OpStreamingHdf5SequenceReaderM.SameFileError,
-                OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
+            OpStreamingH5N5SequenceReaderM.checkGlobString(filePath)
+        except (OpStreamingH5N5SequenceReaderM.NoExternalPlaceholderError,
+                OpStreamingH5N5SequenceReaderM.SameFileError,
+                OpStreamingH5N5SequenceReaderM.InternalPlaceholderError):
             isMultiFile = False
 
         assert(not(isMultiFile and isSingleFile))
 
         if isSingleFile is True:
-            opReader = OpStreamingHdf5SequenceReaderS(parent=self)
+            opReader = OpStreamingH5N5SequenceReaderS(parent=self)
         elif isMultiFile is True:
-            opReader = OpStreamingHdf5SequenceReaderM(parent=self)
+            opReader = OpStreamingH5N5SequenceReaderM(parent=self)
 
         try:
             opReader.SequenceAxis.connect(self.SequenceAxis)
             opReader.GlobString.setValue(filePath)
             return ([opReader], opReader.OutputImage)
-        except (OpStreamingHdf5SequenceReaderM.WrongFileTypeError,
-                OpStreamingHdf5SequenceReaderS.WrongFileTypeError):
-            return ([], None)
-
-    def _attemptOpenAsN5Stack(self, filePath):
-        if not ('*' in filePath or os.path.pathsep in filePath):
-            return ([], None)
-
-        # Now use the .checkGlobString method of the stack readers
-        isSingleFile = True
-        try:
-            OpStreamingN5SequenceReaderS.checkGlobString(filePath)
-        except OpStreamingN5SequenceReaderS.WrongFileTypeError:
-            return ([], None)
-        except (OpStreamingN5SequenceReaderS.NoInternalPlaceholderError,
-                OpStreamingN5SequenceReaderS.NotTheSameFileError,
-                OpStreamingN5SequenceReaderS.ExternalPlaceholderError):
-            isSingleFile = False
-
-        isMultiFile = True
-        try:
-            OpStreamingN5SequenceReaderM.checkGlobString(filePath)
-        except (OpStreamingN5SequenceReaderM.NoExternalPlaceholderError,
-                OpStreamingN5SequenceReaderM.SameFileError,
-                OpStreamingN5SequenceReaderM.InternalPlaceholderError):
-            isMultiFile = False
-
-        assert(not(isMultiFile and isSingleFile))
-
-        if isSingleFile is True:
-            opReader = OpStreamingN5SequenceReaderS(parent=self)
-        elif isMultiFile is True:
-            opReader = OpStreamingN5SequenceReaderM(parent=self)
-
-        try:
-            opReader.SequenceAxis.connect(self.SequenceAxis)
-            opReader.GlobString.setValue(filePath)
-            return ([opReader], opReader.OutputImage)
-        except (OpStreamingN5SequenceReaderM.WrongFileTypeError,
-                OpStreamingN5SequenceReaderS.WrongFileTypeError):
+        except (OpStreamingH5N5SequenceReaderM.WrongFileTypeError,
+                OpStreamingH5N5SequenceReaderS.WrongFileTypeError):
             return ([], None)
 
     def _attemptOpenAsTiffStack(self, filePath):
@@ -382,11 +338,11 @@ class OpInputDataReader(Operator):
         else:
             return ([], None)
 
-    def _attemptOpenAsHdf5(self, filePath):
-        # Check for an hdf5 extension
+    def _attemptOpenAsH5N5(self, filePath):
+        # Check for an hdf5 or n5 extension
         pathComponents = PathComponents(filePath)
         ext = pathComponents.extension
-        if ext not in (".%s" % x for x in OpInputDataReader.h5Exts):
+        if ext not in (".%s" % x for x in OpInputDataReader.h5_n5_Exts):
             return ([], None)
 
         externalPath = pathComponents.externalPath
@@ -396,38 +352,37 @@ class OpInputDataReader(Operator):
             raise OpInputDataReader.DatasetReadError(
                 "Input file does not exist: " + externalPath)
 
-        # Open the h5 file in read-only mode
+        # Open the h5/n5 file in read-only mode
         try:
-            h5File = h5py.File(externalPath, 'r')
+            h5N5File = OpStreamingH5N5Reader.get_h5_n5_file(externalPath, 'r')
         except OpInputDataReader.DatasetReadError:
             raise
         except Exception as e:
-            msg = "Unable to open HDF5 File: {}\n{}".format(
+            msg = "Unable to open H5/N5 File: {}\n{}".format(
                 externalPath, str(e))
             raise OpInputDataReader.DatasetReadError(msg)
         else:
             if not internalPath:
-                possible_internal_paths = self._get_hdf5_dataset_names(h5File)
+                possible_internal_paths = lsH5N5(h5N5File)
                 if len(possible_internal_paths) == 1:
-                    internalPath = possible_internal_paths[0]
+                    internalPath = possible_internal_paths[0]['name']
                 elif len(possible_internal_paths) == 0:
-                    h5File.close()
-                    msg = "HDF5 file contains no datasets: {}".format(
+                    h5N5File.close()
+                    msg = "H5/N5 file contains no datasets: {}".format(
                         externalPath)
                     raise OpInputDataReader.DatasetReadError(msg)
                 else:
-                    h5File.close()
-                    msg = "When using hdf5, you must append the hdf5 internal path to the "\
+                    h5N5File.close()
+                    msg = "When using hdf5/n5, you must append the hdf5 internal path to the "\
                           "data set to your filename, e.g. myfile.h5/volume/data  "\
                           "No internal path provided for dataset in file: {}".format(
                               externalPath)
                     raise OpInputDataReader.DatasetReadError(msg)
-
             try:
-                compression_setting = h5File[internalPath].compression
+                compression_setting = h5N5File[internalPath].compression
             except Exception as e:
-                h5File.close()
-                msg = "Error reading HDF5 File: {}\n{}".format(externalPath, e)
+                h5N5File.close()
+                msg = "Error reading H5/N5 File: {}\n{}".format(externalPath, e)
                 raise OpInputDataReader.DatasetReadError(msg)
 
             # If the h5 dataset is compressed, we'll have better performance
@@ -436,105 +391,21 @@ class OpInputDataReader(Operator):
             allow_multiprocess_hdf5 = "LAZYFLOW_MULTIPROCESS_HDF5" in os.environ and os.environ[
                 "LAZYFLOW_MULTIPROCESS_HDF5"] != ""
             if compression_setting is not None and allow_multiprocess_hdf5:
-                h5File.close()
-                h5File = MultiProcessHdf5File(externalPath, 'r')
+                h5N5File.close()
+                h5N5File = MultiProcessHdf5File(externalPath, 'r')
 
-        self._file = h5File
+        self._file = h5N5File
 
-        h5Reader = OpStreamingHdf5Reader(parent=self)
-        h5Reader.Hdf5File.setValue(h5File)
-
-        try:
-            h5Reader.InternalPath.setValue(internalPath)
-        except OpStreamingHdf5Reader.DatasetReadError as e:
-            msg = "Error reading HDF5 File: {}\n{}".format(externalPath, e.msg)
-            raise OpInputDataReader.DatasetReadError(msg)
-
-        return ([h5Reader], h5Reader.OutputImage)
-
-    def _attemptOpenAsN5(self, filePath):
-        # Check for an n5 extension
-        pathComponents = PathComponents(filePath)
-        ext = pathComponents.extension
-        if ext not in (".%s" % x for x in OpInputDataReader.n5Exts):
-            return ([], None)
-
-        externalPath = pathComponents.externalPath
-        internalPath = pathComponents.internalPath
-
-        if not os.path.exists(externalPath):
-            raise OpInputDataReader.DatasetReadError(
-                "Input file does not exist: " + externalPath)
-
-        # Open the n5 file in read-only mode
-        try:
-            n5File = z5py.N5File(externalPath, 'r+')
-        except OpInputDataReader.DatasetReadError:
-            raise
-        except Exception as e:
-            msg = "Unable to open N5 File: {}\n{}".format(
-                  externalPath, str(e))
-            raise OpInputDataReader.DatasetReadError(msg)
-        else:
-            if not internalPath:
-                possible_internal_paths = self._get_n5_dataset_names(n5File)
-                if len(possible_internal_paths) == 1:
-                    internalPath = possible_internal_paths[0]
-                elif len(possible_internal_paths) == 0:
-                    n5File.close()
-                    msg = "N5 file contains no datasets: {}".format(
-                        externalPath)
-                    raise OpInputDataReader.DatasetReadError(msg)
-                else:
-                    n5File.close()
-                    msg = "When using N5, you must append the N5 internal path to the " \
-                          "data set to your filename, e.g. myfile.n5/volume/data  " \
-                          "No internal path provided for dataset in file: {}".format(
-                        externalPath)
-                    raise OpInputDataReader.DatasetReadError(msg)
-
-        self._file = n5File
-
-        n5Reader = OpStreamingN5Reader(parent=self)
-        n5Reader.N5File.setValue(n5File)
+        h5N5Reader = OpStreamingH5N5Reader(parent=self)
+        h5N5Reader.H5N5File.setValue(h5N5File)
 
         try:
-            n5Reader.InternalPath.setValue(internalPath)
-        except OpStreamingN5Reader.DatasetReadError as e:
-            msg = "Error reading n5 File: {}\n{}".format(externalPath, e.msg)
+            h5N5Reader.InternalPath.setValue(internalPath)
+        except OpStreamingH5N5Reader.DatasetReadError as e:
+            msg = "Error reading H5/N5 File: {}\n{}".format(externalPath, e.msg)
             raise OpInputDataReader.DatasetReadError(msg)
 
-        return ([n5Reader], n5Reader.OutputImage)
-
-    @staticmethod
-    def _get_hdf5_dataset_names(h5_file):
-        """
-        Helper function for _attemptOpenAsHdf5().
-        Returns the name of all datasets in the file with at least 2 axes.
-        """
-        dataset_names = []
-
-        def accumulate_names(name, val):
-            if type(val) == h5py._hl.dataset.Dataset and 2 <= len(val.shape):
-                dataset_names.append('/' + name)
-        h5_file.visititems(accumulate_names)
-        return dataset_names
-
-    @staticmethod
-    def _get_n5_dataset_names(n5_file):
-        """
-        Helper function for _attemptOpenAsN5().
-        Returns the name of all datasets in the file with at least 2 axes.
-        """
-        datasetNames = []
-
-        def accumulate_names(path, val):
-            if isinstance(val, z5py.dataset.Dataset) and 2 <= len(val.shape):
-                name = path.replace(n5_file.path, '')  # Need only the internal path here
-                datasetNames.append(name)
-
-        n5_file.visititems(accumulate_names, '')
-        return datasetNames
+        return ([h5N5Reader], h5N5Reader.OutputImage)
 
     def _attemptOpenAsNpy(self, filePath):
         pathComponents = PathComponents(filePath)
@@ -770,27 +641,3 @@ class OpInputDataReader(Operator):
         # Output slots are directly conncted to internal operators
         pass
 
-    @classmethod
-    def getInternalDatasets(cls, filePath):
-        """
-        Search the given file for internal datasets, and return their internal paths as a list.
-        For now, it is assumed that the file is an hdf5 file.
-
-        Returns: A list of the internal datasets in the file, or None if the format doesn't support internal datasets.
-        """
-        datasetNames = None
-        ext = os.path.splitext(filePath)[1][1:]
-
-        # HDF5. Other formats don't contain more than one dataset (as far as we're concerned).
-        if ext in OpInputDataReader.h5Exts:
-            datasetNames = []
-            # Open the file as a read-only so we can get a list of the internal paths
-            with h5py.File(filePath, 'r') as f:
-                # Define a closure to collect all of the dataset names in the file.
-                def accumulateDatasetPaths(name, val):
-                    if type(val) == h5py._hl.dataset.Dataset and 3 <= len(val.shape) <= 5:
-                        datasetNames.append('/' + name)
-                # Visit every group/dataset in the file
-                f.visititems(accumulateDatasetPaths)
-
-        return datasetNames

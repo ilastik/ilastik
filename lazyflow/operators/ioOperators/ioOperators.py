@@ -26,6 +26,7 @@ import os
 import math
 import logging
 import glob
+import h5py
 from collections import OrderedDict
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -526,31 +527,32 @@ class OpStackToH5Writer(Operator):
 
         return result
 
-class OpH5WriterBigDataset(Operator):
-    name = "H5 File Writer BigDataset"
+class OpH5N5WriterBigDataset(Operator):
+    name = "H5 and N5 File Writer BigDataset"
     category = "Output"
 
-    hdf5File = InputSlot() # Must be an already-open hdf5File (or group) for writing to
-    hdf5Path = InputSlot()
+    h5N5File = InputSlot() # Must be an already-open hdf5File/n5File (or group) for writing to
+    h5N5Path = InputSlot()
     Image = InputSlot()
-    CompressionEnabled = InputSlot(value=False) # h5py uses single-threaded gzip comression, which really slows down export.
+    # h5py uses single-threaded gzip comression, which really slows down export.
+    CompressionEnabled = InputSlot(value=False)
     BatchSize = InputSlot(optional=True)
 
     WriteImage = OutputSlot()
 
-    loggingName = __name__ + ".OpH5WriterBigDataset"
+    loggingName = __name__ + ".OpH5N5WriterBigDataset"
     logger = logging.getLogger(loggingName)
     traceLogger = logging.getLogger("TRACE." + loggingName)
 
     def __init__(self, *args, **kwargs):
-        super(OpH5WriterBigDataset, self).__init__(*args, **kwargs)
+        super(OpH5N5WriterBigDataset, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
         self.d = None
         self.f = None
 
     def cleanUp(self):
-        super( OpH5WriterBigDataset, self ).cleanUp()
-        # Discard the reference to the dataset, to ensure that hdf5 can close the file.
+        super(OpH5N5WriterBigDataset, self).cleanUp()
+        # Discard the reference to the dataset, to ensure that the file can be closed.
         self.d = None
         self.f = None
         self.progressSignal.clean()
@@ -559,20 +561,20 @@ class OpH5WriterBigDataset(Operator):
         self.outputs["WriteImage"].meta.shape = (1,)
         self.outputs["WriteImage"].meta.dtype = object
 
-        self.f = self.inputs["hdf5File"].value
-        hdf5Path = self.inputs["hdf5Path"].value
+        self.f = self.inputs["h5N5File"].value
+        h5N5Path = self.inputs["h5N5Path"].value
 
         # On windows, there may be backslashes.
-        hdf5Path = hdf5Path.replace('\\', '/')
+        h5N5Path = h5N5Path.replace('\\', '/')
 
-        hdf5GroupName, datasetName = os.path.split(hdf5Path)
-        if hdf5GroupName == "":
+        h5N5GroupName, datasetName = os.path.split(h5N5Path)
+        if h5N5GroupName == "":
             g = self.f
         else:
-            if hdf5GroupName in self.f:
-                g = self.f[hdf5GroupName]
+            if h5N5GroupName in self.f:
+                g = self.f[h5N5GroupName]
             else:
-                g = self.f.create_group(hdf5GroupName)
+                g = self.f.create_group(h5N5GroupName)
 
         dataShape=self.Image.meta.shape
         self.logger.info( "Data shape: {}".format(dataShape))
@@ -580,7 +582,7 @@ class OpH5WriterBigDataset(Operator):
         dtype = self.Image.meta.dtype
         if isinstance(dtype, numpy.dtype):
             # Make sure we're dealing with a type (e.g. numpy.float64),
-            #  not a numpy.dtype
+            # not a numpy.dtype
             dtype = dtype.type
         # Set up our chunk shape: Aim for a cube that's roughly 512k in size
         dtypeBytes = dtype().nbytes
@@ -588,22 +590,25 @@ class OpH5WriterBigDataset(Operator):
         tagged_maxshape = self.Image.meta.getTaggedShape()
         if 't' in tagged_maxshape:
             # Assume that chunks should not span multiple t-slices,
-            #  and channels are often handled separately, too.
+            # and channels are often handled separately, too.
             tagged_maxshape['t'] = 1
 
         if 'c' in tagged_maxshape:
             tagged_maxshape['c'] = 1
 
-        self.chunkShape = determineBlockShape( list(tagged_maxshape.values()), 512000.0 / dtypeBytes )
+        self.chunkShape = determineBlockShape(list(tagged_maxshape.values()), 512000.0 / dtypeBytes)
 
         if datasetName in list(g.keys()):
             del g[datasetName]
-        kwargs = { 'shape' : dataShape, 'dtype' : dtype,
-            'chunks' : self.chunkShape }
+        kwargs = {'shape': dataShape, 'dtype': dtype,
+                  'chunks': self.chunkShape}
         if self.CompressionEnabled.value:
-            kwargs['compression'] = 'gzip' # <-- Would be nice to use lzf compression here, but that is h5py-specific.
-            kwargs['compression_opts'] = 1 # <-- Optimize for speed, not disk space.
-        self.d=g.create_dataset(datasetName, **kwargs)
+            kwargs['compression'] = 'gzip'  # <-- Would be nice to use lzf compression here, but that is h5py-specific.
+            if isinstance(self.f, h5py.File):
+                kwargs['compression_opts'] = 1  # <-- Optimize for speed, not disk space.
+            else:  # z5py has uses different names here
+                kwargs['level'] = 1  # <-- Optimize for speed, not disk space.
+        self.d = g.create_dataset(datasetName, **kwargs)
 
         if self.Image.meta.drange is not None:
             self.d.attrs['drange'] = self.Image.meta.drange
@@ -625,13 +630,14 @@ class OpH5WriterBigDataset(Operator):
         batch_size = None
         if self.BatchSize.ready():
             batch_size = self.BatchSize.value
-        requester = BigRequestStreamer( self.Image, roiFromShape( self.Image.meta.shape ), batchSize=batch_size )
-        requester.resultSignal.subscribe( handle_block_result )
-        requester.progressSignal.subscribe( self.progressSignal )
+        requester = BigRequestStreamer(self.Image, roiFromShape(self.Image.meta.shape), batchSize=batch_size)
+        requester.resultSignal.subscribe(handle_block_result)
+        requester.progressSignal.subscribe(self.progressSignal)
         requester.execute()
 
         # Be paranoid: Flush right now.
-        self.f.file.flush()
+        if isinstance(self.f, h5py.File):
+            self.f.file.flush()  # not available in z5py
 
         # We're finished.
         result[0] = True
@@ -641,142 +647,12 @@ class OpH5WriterBigDataset(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # The output from this operator isn't generally connected to other operators.
         # If someone is using it that way, we'll assume that the user wants to know that
-        #  the input image has become dirty and may need to be written to disk again.
+        # the input image has become dirty and may need to be written to disk again.
         self.WriteImage.setDirty(slice(None))
-
-class OpN5WriterBigDataset(Operator):
-    name = "N5 File Writer BigDataset"
-    category = "Output"
-
-    n5File = InputSlot()  # Must be an already-open n5File (or group) for writing to
-    n5Path = InputSlot()
-    Image = InputSlot()
-    CompressionEnabled = InputSlot(value=False)
-    BatchSize = InputSlot(optional=True)
-
-    WriteImage = OutputSlot()
-
-    loggingName = __name__ + ".OpN5WriterBigDataset"
-    logger = logging.getLogger(loggingName)
-    traceLogger = logging.getLogger("TRACE." + loggingName)
-
-    def __init__(self, *args, **kwargs):
-        super(OpN5WriterBigDataset, self).__init__(*args, **kwargs)
-        self.progressSignal = OrderedSignal()
-        self.d = None
-        self.f = None
-
-    def cleanUp(self):
-        super( OpN5WriterBigDataset, self ).cleanUp()
-        # Discard the reference to the dataset, to ensure that z5 can close the file.
-        self.d = None
-        self.f = None
-        self.progressSignal.clean()
-
-    def setupOutputs(self):
-        self.outputs["WriteImage"].meta.shape = (1,)
-        self.outputs["WriteImage"].meta.dtype = object
-
-        self.f = self.inputs["n5File"].value
-        n5Path = self.inputs["n5Path"].value
-
-        # On windows, there may be backslashes.
-        n5Path = n5Path.replace('\\', '/')
-
-        n5GroupName, datasetName = os.path.split(n5Path)
-        if n5GroupName == "":
-            g = self.f
-        else:
-            if n5GroupName in self.f:
-                g = self.f[n5GroupName]
-            else:
-                g = self.f.create_group(n5GroupName)
-
-        dataShape = convertToIntTuple(self.Image.meta.shape)
-
-        self.logger.info( "Data shape: {}".format(dataShape))
-
-        dtype = self.Image.meta.dtype
-        if isinstance(dtype, numpy.dtype):
-            # Make sure we're dealing with a type (e.g. numpy.float64),
-            # not a numpy.dtype
-            dtype = dtype.type
-        # Set up our chunk shape: Aim for a cube that's roughly 512k in size
-        dtypeBytes = dtype().nbytes
-
-        tagged_maxshape = self.Image.meta.getTaggedShape()
-        if 't' in tagged_maxshape:
-            # Assume that chunks should not span multiple t-slices,
-            # and channels are often handled separately, too.
-            tagged_maxshape['t'] = 1
-
-        if 'c' in tagged_maxshape:
-            tagged_maxshape['c'] = 1
-
-        self.chunkShape = convertToIntTuple( determineBlockShape( list(tagged_maxshape.values()), 512000.0 / dtypeBytes ) )
-
-        if datasetName in list(g.keys()):
-            del g[datasetName]
-        kwargs = {'shape': dataShape, 'dtype': dtype, 'chunks': self.chunkShape}
-
-        if self.CompressionEnabled.value:
-            kwargs['compression'] = 'gzip'
-            kwargs['level'] = 1  # <-- Optimize for speed, not disk space.
-        self.d = g.create_dataset(datasetName, **kwargs)
-
-        if self.Image.meta.drange is not None:
-            self.d.attrs['drange'] = convertToIntTuple(self.Image.meta.drange)
-        if self.Image.meta.display_mode is not None:
-            self.d.attrs['display_mode'] = self.Image.meta.display_mode
-
-    def execute(self, slot, subindex, rroi, result):
-        self.progressSignal(0)
-
-        # Save the axistags as a dataset attribute
-        self.d.attrs['axistags'] = self.Image.meta.axistags.toJSON()
-
-        def handle_block_result(roi, data):
-            slicing = roiToSlice(*roi)
-            if data.flags.c_contiguous:
-                self.d.write_subarray(roi[0], data.view(numpy.ndarray))
-            else:
-                self.d[slicing] = data
-        batch_size = None
-        if self.BatchSize.ready():
-            batch_size = self.BatchSize.value
-        requester = BigRequestStreamer( self.Image, roiFromShape( self.Image.meta.shape ), batchSize=batch_size )
-        requester.resultSignal.subscribe( handle_block_result )
-        requester.progressSignal.subscribe( self.progressSignal )
-        requester.execute()
-
-        # We're finished.
-        result[0] = True
-        self.progressSignal(100)
-
-    def propagateDirty(self, slot, subindex, roi):
-        """
-        The output from this operator isn't generally connected to other operators.
-        If someone is using it that way, we'll assume that the user wants to know that
-        the input image has become dirty and may need to be written to disk again.
-        """
-        self.WriteImage.setDirty(slice(None))
-
-
-def convertToIntTuple(in_tuple):
-    """
-    If the data type of @param in_tuple is accepted by the function int(),
-    this method returns in_tuple converted to a tuple of ints. This is needed for the N5 format. Which stores its
-    attributes in the json format which does not accept datatypes like intXX but only int.
-    """
-    dataShape_list = []
-    for member in in_tuple:
-        dataShape_list.append(int(member))
-    return tuple(dataShape_list)
 
 if __name__ == '__main__':
     from lazyflow.graph import Graph
     import h5py
-    import z5py
     import sys
 
     traceLogger.addHandler(logging.StreamHandler(sys.stdout))
@@ -795,4 +671,6 @@ if __name__ == '__main__':
 
     success = opStackToH5.WriteImage.value
     assert success
+
+
 

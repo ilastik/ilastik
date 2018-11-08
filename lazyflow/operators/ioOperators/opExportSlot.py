@@ -30,14 +30,12 @@ from functools import partial
 
 import numpy
 import vigra
-import h5py
-import z5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape
 from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents, mkdir_p
-from lazyflow.operators.ioOperators import OpH5WriterBigDataset, OpN5WriterBigDataset, OpNpyWriter, OpExport2DImage, OpStackWriter, \
-                                           OpExportMultipageTiff, OpExportMultipageTiffSequence, OpExportToArray
+from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset, OpStreamingH5N5Reader, OpNpyWriter, OpExport2DImage,\
+    OpStackWriter, OpExportMultipageTiff, OpExportMultipageTiffSequence, OpExportToArray
 
 try:
     from lazyflow.operators.ioOperators import OpExportDvidVolume
@@ -55,7 +53,7 @@ class OpExportSlot(Operator):
     For example, txyzc produces a sequence of xyzc volumes.
     """
     Input = InputSlot()
-    
+
     OutputFormat = InputSlot(value='hdf5') # string.  See formats, below
     OutputFilenameFormat = InputSlot() # A format string allowing {roi}, {t_start}, {t_stop}, etc (but not {nickname} or {dataset_dir})
     OutputInternalPath = InputSlot(value='exported_data')
@@ -65,7 +63,7 @@ class OpExportSlot(Operator):
     ExportPath = OutputSlot()
     FormatSelectionErrorMsg = OutputSlot()
 
-    _2d_exts = vigra.impex.listExtensions().split()    
+    _2d_exts = vigra.impex.listExtensions().split()
 
     # List all supported formats
     _2d_formats = [FormatInfo(ext, ext, 2, 2) for ext in _2d_exts]
@@ -79,7 +77,7 @@ class OpExportSlot(Operator):
                           FormatInfo('numpy', 'npy', 0, 5),
                           FormatInfo('dvid', '', 2, 5),
                           FormatInfo('blockwise hdf5', 'json', 0, 5) ]
-    
+
     ALL_FORMATS = _2d_formats + _3d_sequence_formats + _3d_volume_formats\
                 + _4d_sequence_formats + nd_format_formats
 
@@ -89,14 +87,14 @@ class OpExportSlot(Operator):
 
         # Set up the impl function lookup dict
         export_impls = {}
-        export_impls['hdf5'] = ('h5', self._export_hdf5)
-        export_impls['compressed hdf5'] = ('h5', partial(self._export_hdf5, True))
-        export_impls['n5'] = ('n5', self._export_n5)
-        export_impls['compressed n5'] = ('n5', partial(self._export_n5, True))
+        export_impls['hdf5'] = ('h5', self._export_h5n5)
+        export_impls['compressed hdf5'] = ('h5', partial(self._export_h5n5, True))
+        export_impls['n5'] = ('n5', self._export_h5n5)
+        export_impls['compressed n5'] = ('n5', partial(self._export_h5n5, True))
         export_impls['numpy'] = ('npy', self._export_npy)
         export_impls['dvid'] = ('', self._export_dvid)
         export_impls['blockwise hdf5'] = ('json', self._export_blockwise_hdf5)
-        
+
         for fmt in self._2d_formats:
             export_impls[fmt.name] = (fmt.extension, partial(self._export_2d, fmt.extension) )
 
@@ -108,16 +106,16 @@ class OpExportSlot(Operator):
         self._export_impls = export_impls
 
         self.Input.notifyMetaChanged( self._updateFormatSelectionErrorMsg )
-    
+
     def setupOutputs(self):
         self.ExportPath.meta.shape = (1,)
         self.ExportPath.meta.dtype = object
         self.FormatSelectionErrorMsg.meta.shape = (1,)
         self.FormatSelectionErrorMsg.meta.dtype = object
-        
+
         if self.OutputFormat.value in ('hdf5', 'compressed hdf5') and self.OutputInternalPath.value == "":
             self.ExportPath.meta.NOTREADY = True
-    
+
     def execute(self, slot, subindex, roi, result):
         if slot == self.ExportPath:
             return self._executeExportPath(result)
@@ -127,7 +125,7 @@ class OpExportSlot(Operator):
     def _executeExportPath(self, result):
         path_format = self.OutputFilenameFormat.value
         file_extension = self._export_impls[ self.OutputFormat.value ][0]
-        
+
         # Remove existing extension (if present) and add the correct extension (if any)
         if file_extension:
             path_format = os.path.splitext(path_format)[0]
@@ -138,7 +136,7 @@ class OpExportSlot(Operator):
             path_format += '/' + self.OutputInternalPath.value
 
         roi = numpy.array( roiFromShape(self.Input.meta.shape) )
-        
+
         # Intermediate state can cause coordinate offset and input shape to be mismatched.
         # Just don't use the offset if it looks wrong.
         # (The client will provide a valid offset later on.)
@@ -161,7 +159,7 @@ class OpExportSlot(Operator):
 
     def _get_format_selection_error_msg(self, *args):
         """
-        If the currently selected format does not support the input image format, 
+        If the currently selected format does not support the input image format,
         return an error message stating why. Otherwise, return an empty string.
         """
         if not self.Input.ready():
@@ -169,9 +167,9 @@ class OpExportSlot(Operator):
         output_format = self.OutputFormat.value
 
         # These cases support all combinations
-        if output_format in ('hdf5', 'compressed hdf5' 'npy', 'blockwise hdf5'):
+        if output_format in ('hdf5', 'compressed hdf5', 'n5', 'compressed n5', 'npy', 'blockwise hdf5'):
             return ""
-        
+
         tagged_shape = self.Input.meta.getTaggedShape()
         axes = OpStackWriter.get_nonsingleton_axes_for_tagged_shape( tagged_shape )
         output_dtype = self.Input.meta.dtype
@@ -224,13 +222,13 @@ class OpExportSlot(Operator):
             return opExport.run_export_to_array()
         finally:
             opExport.cleanUp()
-            self.progressSignal(100)                
-    
+            self.progressSignal(100)
+
     def run_export(self):
         """
         Perform the export and WAIT for it to complete.
         If you want asynchronous execution, run this function in a request:
-        
+
             req = Request( opExport.run_export )
             req.submit()
         """
@@ -242,51 +240,18 @@ class OpExportSlot(Operator):
         else:
             mkdir_p( PathComponents(self.ExportPath.value).externalDirectory )
             export_func()
-    
-    def _export_hdf5(self, compress=False):
+
+    def _export_h5n5(self, compress=False):
         self.progressSignal( 0 )
 
-        # Create and open the hdf5 file
+        # Create and open the hdf5/n5 file
         export_components = PathComponents(self.ExportPath.value)
         try:
-            os.remove(export_components.externalPath)
-        except OSError as ex:
-            # It's okay if the file isn't there.
-            if ex.errno != 2:
-                raise
-        try:
-            with h5py.File(export_components.externalPath, 'w') as hdf5File:
-                # Create a temporary operator to do the work for us
-                opH5Writer = OpH5WriterBigDataset(parent=self)
-                try:
-                    opH5Writer.CompressionEnabled.setValue( compress )
-                    opH5Writer.hdf5File.setValue( hdf5File )
-                    opH5Writer.hdf5Path.setValue( export_components.internalPath )
-                    opH5Writer.Image.connect( self.Input )
-            
-                    # The H5 Writer provides it's own progress signal, so just connect ours to it.
-                    opH5Writer.progressSignal.subscribe( self.progressSignal )
-    
-                    # Perform the export and block for it in THIS THREAD.
-                    opH5Writer.WriteImage[:].wait()
-                finally:
-                    opH5Writer.cleanUp()
-                    self.progressSignal(100)
-        except IOError as ex:
-            import sys
-            msg = "\nException raised when attempting to export to {}: {}\n"\
-                  .format( export_components.externalPath, str(ex) )
-            sys.stderr.write(msg)
-            raise
-
-    def _export_n5(self, compress=False):
-        self.progressSignal(0)
-
-        # Create and open the n5 file
-        export_components = PathComponents(self.ExportPath.value)
-        try:
-            if os.path.isdir(export_components.externalPath):
-                shutil.rmtree(export_components.externalPath)
+            if export_components.extension in OpStreamingH5N5Reader.N5EXTS:
+                if os.path.isdir(export_components.externalPath):
+                    shutil.rmtree(export_components.externalPath)
+                else:
+                    os.remove(export_components.externalPath)
             else:
                 os.remove(export_components.externalPath)
         except OSError as ex:
@@ -294,26 +259,27 @@ class OpExportSlot(Operator):
             if ex.errno != 2:
                 raise
         try:
-            with z5py.N5File(export_components.externalPath, mode='w') as n5File:
+            with OpStreamingH5N5Reader.get_h5_n5_file(export_components.externalPath, 'w') as h5N5File:
                 # Create a temporary operator to do the work for us
-                opN5Writer = OpN5WriterBigDataset(parent=self)
+                opH5N5Writer = OpH5N5WriterBigDataset(parent=self)
                 try:
-                    opN5Writer.CompressionEnabled.setValue(compress)
-                    opN5Writer.n5File.setValue(n5File)
-                    opN5Writer.n5Path.setValue(export_components.internalPath)
-                    opN5Writer.Image.connect(self.Input)
-                    # The N5 Writer provides it's own progress signal, so just connect ours to it.
-                    opN5Writer.progressSignal.subscribe(self.progressSignal)
+                    opH5N5Writer.CompressionEnabled.setValue(compress)
+                    opH5N5Writer.h5N5File.setValue(h5N5File)
+                    opH5N5Writer.h5N5Path.setValue(export_components.internalPath)
+                    opH5N5Writer.Image.connect(self.Input)
+
+                    # The H5 Writer provides it's own progress signal, so just connect ours to it.
+                    opH5N5Writer.progressSignal.subscribe( self.progressSignal )
 
                     # Perform the export and block for it in THIS THREAD.
-                    opN5Writer.WriteImage[:].wait()
+                    opH5N5Writer.WriteImage[:].wait()
                 finally:
-                    opN5Writer.cleanUp()
+                    opH5N5Writer.cleanUp()
                     self.progressSignal(100)
         except IOError as ex:
             import sys
-            msg = "\nException raised when attempting to export to {}: {}\n" \
-                .format(export_components.externalPath, str(ex))
+            msg = "\nException raised when attempting to export to {}: {}\n"\
+                  .format(export_components.externalPath, str(ex))
             sys.stderr.write(msg)
             raise
 

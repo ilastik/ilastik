@@ -329,11 +329,11 @@ def mkdir_p(path):
             raise
 
 
-def lsHdf5(hdf5FileObject, minShape=2, maxShape=5):
-    """Generates dataset list of given h5py file object
+def lsH5N5(h5N5FileObject, minShape=2):
+    """Generates dataset list of given h5py or z5py file object
 
     Args:
-        hdf5FileObject (h5py.FIle): Opened hdf5 file
+        h5N5FileObject (h5py.FIle): Opened hdf5 file
         minShape (int, optional): minimum shape of data
 
     Returns:
@@ -342,44 +342,20 @@ def lsHdf5(hdf5FileObject, minShape=2, maxShape=5):
     listOfDatasets = []
 
     def addObjectNames(objectName, obj):
-        if isinstance(obj, h5py.Dataset):
-            if (len(obj.shape) >= minShape) and (len(obj.shape) <= maxShape):
+        if isinstance(obj, h5py._hl.dataset.Dataset) or isinstance(obj, z5py.dataset.Dataset):
+            if len(obj.shape) >= minShape:
+                if isinstance(h5N5FileObject, z5py.N5File):
+                    objectName = objectName.replace(h5N5FileObject.path + '/', '')  # Need only the internal path here
                 listOfDatasets.append({
                     'name': objectName,
                     'object': obj
                 })
 
-    hdf5FileObject.visititems(addObjectNames)
+    h5N5FileObject.visititems(addObjectNames)
 
     return listOfDatasets
 
-def lsN5(N5FileObject, minShape=2, maxShape=5):
-    """
-    Generates dataset list of given z5py n5 file object
-
-    Args:
-        n5FileObject (z5py.N5FIle): Opened N5 file
-        minShape (int, optional): minimum shape of data
-
-    Returns:
-        list of datasets inside the given file object
-    """
-    listOfDatasets = []
-
-    def addObjectNames(objectPath, obj):
-        if isinstance(obj, z5py.dataset.Dataset):
-            if (len(obj.shape) >= minShape) and (len(obj.shape) <= maxShape):
-                listOfDatasets.append({
-                    'name': objectPath.replace(N5FileObject.path + '/', ''),
-                    'object': obj
-                })
-
-    N5FileObject.visititems(addObjectNames)
-
-    return listOfDatasets
-
-
-def globHdf5N5(fileObject, globString):
+def globH5N5(fileObject, globString):
     """
     globs a hdf5/n5 file like a file system for datasets
 
@@ -395,13 +371,14 @@ def globHdf5N5(fileObject, globString):
             glob-like placeholders
 
     Returns
-        A sorted list of matched object names. This list is empty if no
-        matches occurred.
+        - A sorted list of matched object names. This list is empty if no
+          matches occurred.
+        - None if fileObject is not a h5 or n5 file object
     """
-    if isinstance(fileObject, h5py.File):
-        pathlist = [x['name'] for x in lsHdf5(fileObject)]
+    if isinstance(fileObject, h5py.File) or isinstance(fileObject, z5py.N5File):
+        pathlist = [x['name'] for x in lsH5N5(fileObject)]
     else:
-        pathlist = [x['name'] for x in lsN5(fileObject)]
+        return None
     matches = globList(pathlist, globString)
     return sorted(matches)
 

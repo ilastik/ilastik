@@ -21,7 +21,7 @@ from builtins import object
 #		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.operators.opArrayPiper import OpArrayPiper
-from lazyflow.operators.ioOperators import OpH5WriterBigDataset
+from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
 import numpy
 import vigra
 import h5py
@@ -34,11 +34,11 @@ import logging
 #logger.addHandler(logging.StreamHandler(sys.stdout))
 #logger.setLevel(logging.DEBUG)
 
-logger = logging.getLogger("tests.testOpH5WriterBigDataset")
-cacheLogger = logging.getLogger("lazyflow.operators.ioOperators.ioOperators.OpH5WriterBigDataset")
+logger = logging.getLogger("tests.testOpH5N5WriterBigDataset")
+cacheLogger = logging.getLogger("lazyflow.operators.ioOperators.ioOperators.OpH5N5WriterBigDataset")
 requesterLogger = logging.getLogger( "lazyflow.utility.bigRequestStreamer" )
 
-class TestOpH5WriterBigDataset(object):
+class TestOpH5N5WriterBigDataset(object):
  
     def setUp(self):
         self.graph = lazyflow.graph.Graph()
@@ -64,7 +64,7 @@ class TestOpH5WriterBigDataset(object):
         opPiper = OpArrayPiper(graph=self.graph)
         opPiper.Input.setValue( self.testData )
          
-        opWriter = OpH5WriterBigDataset(graph=self.graph)
+        opWriter = OpH5N5WriterBigDataset(graph=self.graph)
         opWriter.hdf5File.setValue( hdf5File )
         opWriter.hdf5Path.setValue( self.datasetInternalPath )
         opWriter.Image.connect( opPiper.Output )
@@ -82,7 +82,7 @@ class TestOpH5WriterBigDataset(object):
         assert numpy.all( dataset[...] == self.testData.view(numpy.ndarray)[...] )
         f.close()
  
-class TestOpH5WriterBigDataset_2(object):
+class TestOpH5N5WriterBigDataset_2(object):
  
     def setUp(self):
         self.graph = lazyflow.graph.Graph()
@@ -109,7 +109,7 @@ class TestOpH5WriterBigDataset_2(object):
         opPiper = OpArrayPiper(graph=self.graph)
         opPiper.Input.setValue( self.testData )        
          
-        opWriter = OpH5WriterBigDataset(graph=self.graph)
+        opWriter = OpH5N5WriterBigDataset(graph=self.graph)
          
         # This checks that you can give a preexisting group as the file
         g = hdf5File.create_group('volume')
@@ -130,7 +130,7 @@ class TestOpH5WriterBigDataset_2(object):
         assert numpy.all( dataset[...] == self.testData.view(numpy.ndarray)[...] )
         f.close()
 
-class TestOpH5WriterBigDataset_3(object):
+class TestOpH5N5WriterBigDataset_3(object):
 
     def setUp(self):
         self.graph = lazyflow.graph.Graph()
@@ -161,7 +161,7 @@ class TestOpH5WriterBigDataset_3(object):
         # Pretend the RAM usage will be really high to force lots of tiny blocks
         opPiper.Output.meta.ram_usage_per_requested_pixel = 1000000.0
         
-        opWriter = OpH5WriterBigDataset(graph=self.graph)
+        opWriter = OpH5N5WriterBigDataset(graph=self.graph)
         
         # This checks that you can give a preexisting group as the file
         g = hdf5File.create_group('volume')

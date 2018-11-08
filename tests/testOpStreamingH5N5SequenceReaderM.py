@@ -8,7 +8,7 @@ import h5py
 import numpy
 
 from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpStreamingHdf5SequenceReaderM
+from lazyflow.operators.ioOperators import OpStreamingH5N5SequenceReaderM
 import vigra
 
 
@@ -19,7 +19,7 @@ def tempdir():
     shutil.rmtree(d)
 
 
-class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
+class TestOpStreamingH5N5SequenceReaderM(unittest.TestCase):
 
     def setUp(self):
         self.graph = Graph()
@@ -31,7 +31,7 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         axistags = vigra.defaultAxistags('yxc')
         expected_axistags = vigra.defaultAxistags('zyxc')
 
-        op = OpStreamingHdf5SequenceReaderM(graph=self.graph)
+        op = OpStreamingH5N5SequenceReaderM(graph=self.graph)
 
         with tempdir() as d:
             try:
@@ -70,7 +70,7 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         axistags = vigra.defaultAxistags('yxc')
         expected_axistags = vigra.defaultAxistags('tyxc')
 
-        op = OpStreamingHdf5SequenceReaderM(graph=self.graph)
+        op = OpStreamingH5N5SequenceReaderM(graph=self.graph)
 
         with tempdir() as d:
             try:
@@ -110,7 +110,7 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         axistags = vigra.defaultAxistags('zyxc')
         expected_axistags = vigra.defaultAxistags('tzyxc')
 
-        op = OpStreamingHdf5SequenceReaderM(graph=self.graph)
+        op = OpStreamingH5N5SequenceReaderM(graph=self.graph)
 
         with tempdir() as d:
             try:
@@ -145,24 +145,24 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
     def test_globStringValidity(self):
         """Check whether globStrings are correctly verified"""
         testGlobString = '/tmp/test.h5/somedata'
-        with self.assertRaises(OpStreamingHdf5SequenceReaderM.NoExternalPlaceholderError):
-            OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
+        with self.assertRaises(OpStreamingH5N5SequenceReaderM.NoExternalPlaceholderError):
+            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
 
         testGlobString = '/tmp/test.jpg/*'
-        with self.assertRaises(OpStreamingHdf5SequenceReaderM.WrongFileTypeError):
-            OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
+        with self.assertRaises(OpStreamingH5N5SequenceReaderM.WrongFileTypeError):
+            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
 
         testGlobString = '/tmp/test.h5/data'+os.pathsep+'/tmp/test.h5/data2'
-        with self.assertRaises(OpStreamingHdf5SequenceReaderM.SameFileError):
-            OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
+        with self.assertRaises(OpStreamingH5N5SequenceReaderM.SameFileError):
+            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
 
         testGlobString = '/tmp/test-*.h5/data*'
-        with self.assertRaises(OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
-            OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
+        with self.assertRaises(OpStreamingH5N5SequenceReaderM.InternalPlaceholderError):
+            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
 
         testGlobString = '/tmp/test-0.h5/data'+os.pathsep+'/tmp/test-1.h5/data*'
-        with self.assertRaises(OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
-            OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
+        with self.assertRaises(OpStreamingH5N5SequenceReaderM.InternalPlaceholderError):
+            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
 
         validGlobStrings = [
             '/tmp/test-*.h5/data',
@@ -170,7 +170,7 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         ]
 
         for testGlobString in validGlobStrings:
-             OpStreamingHdf5SequenceReaderM.checkGlobString(testGlobString)
+            OpStreamingH5N5SequenceReaderM.checkGlobString(testGlobString)
         # Implicit test for validity; test fails if an exception is raised
         self.assertTrue(True)
 

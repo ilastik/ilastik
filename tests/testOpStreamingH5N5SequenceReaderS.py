@@ -8,7 +8,7 @@ import h5py
 import numpy
 
 from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpStreamingHdf5SequenceReaderS
+from lazyflow.operators.ioOperators import OpStreamingH5N5SequenceReaderS
 import vigra
 
 
@@ -19,7 +19,7 @@ def tempdir():
     shutil.rmtree(d)
 
 
-class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
+class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
 
     def setUp(self):
         self.graph = Graph()
@@ -31,7 +31,7 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         axistags = vigra.defaultAxistags('yxc')
         expected_axistags = vigra.defaultAxistags('zyxc')
 
-        op = OpStreamingHdf5SequenceReaderS(graph=self.graph)
+        op = OpStreamingH5N5SequenceReaderS(graph=self.graph)
 
         with tempdir() as d:
             try:
@@ -71,7 +71,7 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
 
         expected_axistags = vigra.defaultAxistags('tyxc')
 
-        op = OpStreamingHdf5SequenceReaderS(graph=self.graph)
+        op = OpStreamingH5N5SequenceReaderS(graph=self.graph)
 
         with tempdir() as d:
             try:
@@ -111,7 +111,7 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
         axistags = vigra.defaultAxistags('zyxc')
         expected_axistags = vigra.defaultAxistags('tzyxc')
 
-        op = OpStreamingHdf5SequenceReaderS(graph=self.graph)
+        op = OpStreamingH5N5SequenceReaderS(graph=self.graph)
 
         with tempdir() as d:
             try:
@@ -147,20 +147,20 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
     def test_globStringValidity(self):
         """Check whether globStrings are correctly verified"""
         testGlobString = '/tmp/test.h5'
-        with self.assertRaises(OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError):
-            OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString)
+        with self.assertRaises(OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError):
+            OpStreamingH5N5SequenceReaderS.checkGlobString(testGlobString)
 
         testGlobString = '/tmp/test.h5/a'+os.pathsep+'/tmp/test2.h5/a'
-        with self.assertRaises(OpStreamingHdf5SequenceReaderS.NotTheSameFileError):
-            OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString)
+        with self.assertRaises(OpStreamingH5N5SequenceReaderS.NotTheSameFileError):
+            OpStreamingH5N5SequenceReaderS.checkGlobString(testGlobString)
 
         testGlobString = '/tmp/test*.h5/a'+os.pathsep+'/tmp/test*.h5/a'
-        with self.assertRaises(OpStreamingHdf5SequenceReaderS.ExternalPlaceholderError):
-            OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString)
+        with self.assertRaises(OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError):
+            OpStreamingH5N5SequenceReaderS.checkGlobString(testGlobString)
 
         testGlobString = '/tmp/test.jpg/*'
-        with self.assertRaises(OpStreamingHdf5SequenceReaderS.WrongFileTypeError):
-            OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString)
+        with self.assertRaises(OpStreamingH5N5SequenceReaderS.WrongFileTypeError):
+            OpStreamingH5N5SequenceReaderS.checkGlobString(testGlobString)
 
         validGlobStrings = [
             '/tmp/test.h5/*',
@@ -170,7 +170,7 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
 
         # Implicit test for validity; test fails if an exception is raised
         for testGlobString in validGlobStrings:
-            OpStreamingHdf5SequenceReaderS.checkGlobString(testGlobString)
+            OpStreamingH5N5SequenceReaderS.checkGlobString(testGlobString)
 
         self.assertTrue(True)
 
@@ -190,14 +190,14 @@ class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
                 g3.create_dataset('data4', data=numpy.ones((10, 10)))
                 f.flush()
 
-                glob_res1 = OpStreamingHdf5SequenceReaderS.expandGlobStrings(
+                glob_res1 = OpStreamingH5N5SequenceReaderS.expandGlobStrings(
                     f, '{}/g1/g2/data*'.format(file_name))
                 self.assertEqual(glob_res1, expected_datasets)
 
             finally:
                 f.close()
 
-            glob_res2 = OpStreamingHdf5SequenceReaderS.expandGlobStrings(
+            glob_res2 = OpStreamingH5N5SequenceReaderS.expandGlobStrings(
                 file_name, '{}/g1/g2/data*'.format(file_name))
             self.assertEqual(glob_res2, expected_datasets)
 

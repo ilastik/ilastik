@@ -21,21 +21,25 @@ from builtins import object
 #		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpStreamingHdf5Reader
-import h5py
+from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
 import numpy
 import os
 import vigra
+import shutil
 
-class TestOpStreamingHdf5Reader(object):
+class TestOpStreamingH5N5Reader(object):
 
     def setUp(self):
         self.graph = Graph()
-        self.testDataFileName = 'test.h5'
-        self.op = OpStreamingHdf5Reader(graph=self.graph)
+        self.testDataH5FileName = 'test.h5'
+        self.testDataN5FileName = 'test.n5'
+        self.h5_op = OpStreamingH5N5Reader(graph=self.graph)
+        self.n5_op = OpStreamingH5N5Reader(graph=self.graph)
 
-        self.h5File = h5py.File(self.testDataFileName)
+        self.h5File = OpStreamingH5N5Reader.get_h5_n5_file(self.testDataH5FileName)
+        self.n5File = OpStreamingH5N5Reader.get_h5_n5_file(self.testDataN5FileName)
         self.h5File.create_group('volume')
+        self.n5File.create_group('volume')
 
         # Create a test dataset
         datashape = (1,2,3,4,5)
@@ -43,43 +47,56 @@ class TestOpStreamingHdf5Reader(object):
 
     def tearDown(self):
         self.h5File.close()
+        self.n5File.close()
         try:
-            os.remove(self.testDataFileName)
+            os.remove(self.testDataH5FileName)
+            shutil.rmtree(self.testDataN5FileName, ignore_errors=True)
         except:
             pass
 
     def test_plain(self):
         # Write the dataset to an hdf5 file
         self.h5File['volume'].create_dataset('data', data=self.data)
+        self.n5File['volume'].create_dataset('data', data=self.data)
 
         # Read the data with an operator
-        self.op.Hdf5File.setValue(self.h5File)
-        self.op.InternalPath.setValue('volume/data')
+        self.h5_op.H5N5File.setValue(self.h5File)
+        self.n5_op.H5N5File.setValue(self.n5File)
+        self.h5_op.InternalPath.setValue('volume/data')
+        self.n5_op.InternalPath.setValue('volume/data')
 
-        assert self.op.OutputImage.meta.shape == self.data.shape
-        assert self.op.OutputImage[0,1,2,1,0].wait() == 4
+        assert self.h5_op.OutputImage.meta.shape == self.data.shape
+        assert self.n5_op.OutputImage.meta.shape == self.data.shape
+        assert self.h5_op.OutputImage[0, 1, 2, 1, 0].wait() == 4
+        assert self.n5_op.OutputImage[0, 1, 2, 1, 0].wait() == 4
 
     def test_withAxisTags(self):
         # Write it again, this time with weird axistags
         axistags = vigra.AxisTags(
-            vigra.AxisInfo('x',vigra.AxisType.Space),
-            vigra.AxisInfo('y',vigra.AxisType.Space),
-            vigra.AxisInfo('z',vigra.AxisType.Space),
-            vigra.AxisInfo('c',vigra.AxisType.Channels),
-            vigra.AxisInfo('t',vigra.AxisType.Time))
+            vigra.AxisInfo('x', vigra.AxisType.Space),
+            vigra.AxisInfo('y', vigra.AxisType.Space),
+            vigra.AxisInfo('z', vigra.AxisType.Space),
+            vigra.AxisInfo('c', vigra.AxisType.Channels),
+            vigra.AxisInfo('t', vigra.AxisType.Time))
 
         # Write the dataset to an hdf5 file
         # (Note: Don't use vigra to do this, which may reorder the axes)
         self.h5File['volume'].create_dataset('tagged_data', data=self.data)
+        self.n5File['volume'].create_dataset('tagged_data', data=self.data)
         # Write the axistags attribute
         self.h5File['volume/tagged_data'].attrs['axistags'] = axistags.toJSON()
+        self.n5File['volume/tagged_data'].attrs['axistags'] = axistags.toJSON()
 
         # Read the data with an operator
-        self.op.Hdf5File.setValue(self.h5File)
-        self.op.InternalPath.setValue('volume/tagged_data')
+        self.h5_op.H5N5File.setValue(self.h5File)
+        self.n5_op.H5N5File.setValue(self.n5File)
+        self.h5_op.InternalPath.setValue('volume/tagged_data')
+        self.n5_op.InternalPath.setValue('volume/tagged_data')
 
-        assert self.op.OutputImage.meta.shape == self.data.shape
-        assert self.op.OutputImage[0,1,2,1,0].wait() == 4
+        assert self.h5_op.OutputImage.meta.shape == self.data.shape
+        assert self.n5_op.OutputImage.meta.shape == self.data.shape
+        assert self.h5_op.OutputImage[0, 1, 2, 1, 0].wait() == 4
+        assert self.n5_op.OutputImage[0, 1, 2, 1, 0].wait() == 4
 
 if __name__ == "__main__":
     import sys
