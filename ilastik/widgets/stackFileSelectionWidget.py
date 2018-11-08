@@ -37,13 +37,11 @@ import ilastik.config
 from ilastik.widgets.hdf5SubvolumeSelectionDialog import H5N5StackingDlg, H5N5VolumeSelectionDlg
 
 from lazyflow.operators.ioOperators import (
-    OpStackLoader, OpStreamingHdf5SequenceReaderM,
-    OpStreamingHdf5SequenceReaderS, OpStreamingN5SequenceReaderM,
-    OpStreamingN5SequenceReaderS, OpInputDataReader
+    OpStackLoader, OpStreamingH5N5Reader, OpStreamingH5N5SequenceReaderM,
+    OpStreamingH5N5SequenceReaderS,
+    OpInputDataReader
 )
-from lazyflow.utility import lsHdf5, lsN5, PathComponents
-import h5py
-import z5py
+from lazyflow.utility import lsH5N5, PathComponents
 
 
 class StackFileSelectionWidget(QDialog):
@@ -153,10 +151,10 @@ class StackFileSelectionWidget(QDialog):
         globstrings = []
 
         msg = ''
-        h5exts = [x.lstrip('.') for x in OpStreamingHdf5SequenceReaderM.H5EXTS]
-        n5exts = [x.lstrip('.') for x in OpStreamingN5SequenceReaderM.N5EXTS]
+        h5exts = [x.lstrip('.') for x in OpStreamingH5N5SequenceReaderM.H5EXTS]
+        n5exts = [x.lstrip('.') for x in OpStreamingH5N5SequenceReaderM.N5EXTS]
         exts = vigra.impex.listExtensions().split()
-        exts.extend(OpInputDataReader.n5Exts)
+        exts.extend(n5exts)
         exts.extend(h5exts)
         for ext in exts:
             fullGlob = directory + '/*.' + ext
@@ -170,10 +168,7 @@ class StackFileSelectionWidget(QDialog):
                 # Special handling for h5-files: Try to add internal path
                 if ext in h5exts + n5exts:
                     # be even more helpful and try to find a common internal path
-                    if ext in h5exts:
-                        internal_paths = self._h5FindCommonInternal(new_filenames)
-                    else:
-                        internal_paths = self._n5FindCommonInternal(new_filenames)
+                    internal_paths = self._h5N5FindCommonInternal(new_filenames)
                     if len(internal_paths) == 0:
                         msg += 'Could not find a unique common internal path in'
                         msg += directory + '\n'
@@ -214,7 +209,7 @@ class StackFileSelectionWidget(QDialog):
         return os.path.pathsep.join(globstrings)
 
     @staticmethod
-    def _h5FindCommonInternal(h5Files):
+    def _h5N5FindCommonInternal(h5N5Files):
         """
         Tries to find common internal path (containing data)
 
@@ -222,49 +217,24 @@ class StackFileSelectionWidget(QDialog):
         thus, unclear.
 
         Args:
-            h5Files (list of strings): h5 files to be globbed internally
+            h5Files or hń5Files (list of strings): h5 or n5 files to be globbed internally
 
         Returns:
             list of internal paths
         """
-        h5 = h5py.File(h5Files[0], mode='r')
-        internal_paths = set([x['name'] for x in lsHdf5(h5, minShape=2)])
+        h5 = OpStreamingH5N5Reader.get_h5_n5_file(h5N5Files[0], mode='r')
+        internal_paths = set([x['name'] for x in lsH5N5(h5, minShape=2)])
         h5.close()
-        for h5File in h5Files[1::]:
-            h5 = h5py.File(h5File, 'r')
+        for h5N5File in h5N5Files[1::]:
+            h5 = OpStreamingH5N5Reader.get_h5_n5_file(h5N5File, 'r')
             # get all files with with at least 2D shape
-            tmp = set([x['name'] for x in lsHdf5(h5, minShape=2)])
+            tmp = set([x['name'] for x in lsH5N5(h5, minShape=2)])
             internal_paths = internal_paths.intersection(tmp)
 
         return list(internal_paths)
 
     @staticmethod
-    def _n5FindCommonInternal(n5Files):
-        """
-        Tries to find common internal path (containing data)
-
-        Method is used, when a directory is selected and the internal path is,
-        thus, unclear.
-
-        Args:
-            n5Files (list of strings): n5 files to be globbed internally
-
-        Returns:
-            list of internal paths
-        """
-        n5 = z5py.N5File(n5Files[0], mode='r')
-        internal_paths = set([x['name'] for x in lsN5(n5, minShape=2)])
-        n5.close()
-        for n5File in n5Files[1::]:
-            n5 = z5py.N5File(n5File, 'r+')
-            # get all files with with at least 2D shape
-            tmp = set([x['name'] for x in lsN5(n5, minShape=2)])
-            internal_paths = internal_paths.intersection(tmp)
-
-        return list(internal_paths)
-
-    @staticmethod
-    def _findInternalStacks(h5n5File):
+    def _findInternalStacks(h5N5File):
         """
         Tries to find common internal path (containing data)
 
@@ -277,16 +247,11 @@ class StackFileSelectionWidget(QDialog):
         Returns:
             list of internal stacks
         """
-        pathComponents = PathComponents(h5n5File)
-        if pathComponents.extension in OpStreamingHdf5SequenceReaderM.H5EXTS:
+        pathComponents = PathComponents(h5N5File)
+        if pathComponents.extension in (OpStreamingH5N5SequenceReaderM.H5EXTS + OpStreamingH5N5SequenceReaderM.N5EXTS):
             # get all internal paths
-            with h5py.File(h5n5File, mode='r') as h5:
-                internal_paths = lsHdf5(h5, minShape=2)
-            return [x['name'] for x in internal_paths]
-        elif pathComponents.extension in OpStreamingN5SequenceReaderM.N5EXTS:
-            # get all internal paths
-            with z5py.N5File(h5n5File, mode='r') as n5:
-                internal_paths = lsN5(n5, minShape=2)
+            with OpStreamingH5N5Reader.get_h5_n5_file(h5N5File, mode='r') as h5:
+                internal_paths = lsH5N5(h5, minShape=2)
             return [x['name'] for x in internal_paths]
 
     def _selectFiles(self):
@@ -301,7 +266,7 @@ class StackFileSelectionWidget(QDialog):
         if ilastik.config.cfg.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
-        h5exts = [x.lstrip('.') for x in OpStreamingHdf5SequenceReaderM.H5EXTS]
+        h5exts = [x.lstrip('.') for x in OpStreamingH5N5SequenceReaderM.H5EXTS]
         # Launch the "Open File" dialog
         extensions = vigra.impex.listExtensions().split()
         extensions.extend(h5exts)
@@ -325,8 +290,8 @@ class StackFileSelectionWidget(QDialog):
 
         pathComponents = PathComponents(fileNames[0])
 
-        if (len(fileNames) == 1) and (pathComponents.extension not in OpStreamingHdf5SequenceReaderM.H5EXTS) \
-                and (pathComponents.extension not in OpStreamingN5SequenceReaderM.N5EXTS):
+        if (len(fileNames) == 1) and (pathComponents.extension not in OpStreamingH5N5SequenceReaderM.H5EXTS) \
+                and (pathComponents.extension not in OpStreamingH5N5SequenceReaderM.N5EXTS):
             msg += 'Cannot create stack: You only chose a single file.  '
             msg += 'If your stack is contained in a single file (e.g. a multi-page tiff) '
             msg += 'please use the "Add File" button.'
@@ -336,8 +301,8 @@ class StackFileSelectionWidget(QDialog):
         directory = pathComponents.externalPath
         PreferencesManager().set('DataSelection', 'recent stack directory', directory)
 
-        if pathComponents.extension in OpStreamingHdf5SequenceReaderM.H5EXTS or \
-                pathComponents.extension in OpStreamingN5SequenceReaderM.N5EXTS:
+        if pathComponents.extension in OpStreamingH5N5SequenceReaderM.H5EXTS or \
+                pathComponents.extension in OpStreamingH5N5SequenceReaderM.N5EXTS:
             if len(fileNames) == 1:
                 # open the dialog for globbing:
                 file_name = fileNames[0]
@@ -351,7 +316,7 @@ class StackFileSelectionWidget(QDialog):
                     return None
             else:
                 # check for internal paths
-                internal_paths = self._h5FindCommonInternal(fileNames)
+                internal_paths = self._h5N5FindCommonInternal(fileNames)
 
                 if len(internal_paths) == 0:
                     msg += 'Could not find a unique common internal path in'
@@ -372,81 +337,50 @@ class StackFileSelectionWidget(QDialog):
                         msg = 'No valid internal path selected.'
                         QMessageBox.warning(self, "Invalid selection", msg)
                         return None
-
         self._updateFileList(fileNames)
 
     def _applyPattern(self):
         globStrings = self.patternEdit.text()
-        H5EXTS = OpStreamingHdf5SequenceReaderM.H5EXTS
-        N5EXTS = OpStreamingN5SequenceReaderM.N5EXTS
+        H5EXTS = OpStreamingH5N5SequenceReaderM.H5EXTS
+        N5EXTS = OpStreamingH5N5SequenceReaderM.N5EXTS
         filenames = []
-        # see if some glob strings include HDF5 files
+        # see if some glob strings include HDF5 and/or N5 files
         globStrings = globStrings.split(os.path.pathsep)
         pcs = [PathComponents(x) for x in globStrings]
-        ish5 = [x.extension in H5EXTS for x in pcs]
-        isn5 = [x.extension in N5EXTS for x in pcs]
+        is_h5_n5 = [x.extension in (H5EXTS + N5EXTS) for x in pcs]
 
-        h5GlobStrings = os.path.pathsep.join([x for x, y in zip(globStrings, ish5) if y is True])
-        n5GlobStrings = os.path.pathsep.join([x for x, y in zip(globStrings, isn5) if y is True])
-        globStrings = os.path.pathsep.join([x for x, y, z in zip(globStrings, ish5, isn5) if y is False and z is False])
+        h5GlobStrings = os.path.pathsep.join([x for x, y in zip(globStrings, is_h5_n5) if y is True])
+        globStrings = os.path.pathsep.join([x for x, y in zip(globStrings, is_h5_n5) if y is False])
 
         filenames.extend(OpStackLoader.expandGlobStrings(globStrings))
 
         try:
-            OpStreamingHdf5SequenceReaderS.checkGlobString(h5GlobStrings)
+            OpStreamingH5N5SequenceReaderS.checkGlobString(h5GlobStrings)
             # OK, if nothing raised there is a single h5 file in h5GlobStrings:
             pathComponents = PathComponents(h5GlobStrings.split(os.path.pathsep)[0])
-            h5file = h5py.File(pathComponents.externalPath, mode='r')
+            h5file = OpStreamingH5N5Reader.get_h5_n5_file(pathComponents.externalPath, mode='r')
             filenames.extend(
                 "{}/{}".format(pathComponents.externalPath, internal)
-                for internal in OpStreamingHdf5SequenceReaderS.expandGlobStrings(h5file, h5GlobStrings))
+                for internal in OpStreamingH5N5SequenceReaderS.expandGlobStrings(h5file, h5GlobStrings))
         except (
-                OpStreamingHdf5SequenceReaderS.WrongFileTypeError,
-                OpStreamingHdf5SequenceReaderS.NotTheSameFileError,
-                OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError,
-                OpStreamingHdf5SequenceReaderS.ExternalPlaceholderError):
+                OpStreamingH5N5SequenceReaderS.WrongFileTypeError,
+                OpStreamingH5N5SequenceReaderS.NotTheSameFileError,
+                OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError,
+                OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError):
             pass
 
         try:
-            OpStreamingHdf5SequenceReaderM.checkGlobString(h5GlobStrings)
+            OpStreamingH5N5SequenceReaderM.checkGlobString(h5GlobStrings)
             filenames.extend(
                 "{}/{}".format(external, internal)
                 for external, internal
-                in zip(*OpStreamingHdf5SequenceReaderM.expandGlobStrings(h5GlobStrings))
+                in zip(*OpStreamingH5N5SequenceReaderM.expandGlobStrings(h5GlobStrings))
             )
         except (
-                OpStreamingHdf5SequenceReaderM.WrongFileTypeError,
-                OpStreamingHdf5SequenceReaderM.SameFileError,
-                OpStreamingHdf5SequenceReaderM.NoExternalPlaceholderError,
-                OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
-            pass
-
-        try:
-            OpStreamingN5SequenceReaderS.checkGlobString(n5GlobStrings)
-            # OK, if nothing raised there is a single n5 file in n5GlobStrings:
-            pathComponents = PathComponents(n5GlobStrings.split(os.path.pathsep)[0])
-            n5file = z5py.N5File(pathComponents.externalPath, mode='r')
-            filenames.extend(
-                "{}/{}".format(pathComponents.externalPath, internal)
-                for internal in OpStreamingN5SequenceReaderS.expandGlobStrings(n5file, n5GlobStrings))
-        except (
-                OpStreamingN5SequenceReaderS.WrongFileTypeError,
-                OpStreamingN5SequenceReaderS.NotTheSameFileError,
-                OpStreamingN5SequenceReaderS.NoInternalPlaceholderError,
-                OpStreamingN5SequenceReaderS.ExternalPlaceholderError):
-            pass
-        try:
-            OpStreamingN5SequenceReaderM.checkGlobString(n5GlobStrings)
-            filenames.extend(
-                "{}/{}".format(external, internal)
-                for external, internal
-                in zip(*OpStreamingN5SequenceReaderM.expandGlobStrings(n5GlobStrings))
-            )
-        except (
-                OpStreamingN5SequenceReaderM.WrongFileTypeError,
-                OpStreamingN5SequenceReaderM.SameFileError,
-                OpStreamingN5SequenceReaderM.NoExternalPlaceholderError,
-                OpStreamingN5SequenceReaderM.InternalPlaceholderError):
+                OpStreamingH5N5SequenceReaderM.WrongFileTypeError,
+                OpStreamingH5N5SequenceReaderM.SameFileError,
+                OpStreamingH5N5SequenceReaderM.NoExternalPlaceholderError,
+                OpStreamingH5N5SequenceReaderM.InternalPlaceholderError):
             pass
         self._updateFileList(filenames)
 

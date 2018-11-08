@@ -28,7 +28,7 @@ import copy
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.metaDict import MetaDict
 from lazyflow.operators.ioOperators import (
-    OpStreamingHdf5Reader, OpStreamingHdf5SequenceReaderS, OpInputDataReader
+    OpStreamingH5N5Reader, OpStreamingH5N5SequenceReaderS, OpInputDataReader
 )
 from lazyflow.operators.valueProviders import OpMetadataInjector, OpZeroDefault
 from lazyflow.operators.opArrayPiper import OpArrayPiper
@@ -126,7 +126,7 @@ class DatasetInfo(object):
                                     # overwrite internalPaths, will be assembled further down
                                     glob_string = "{}{}".format(externalPaths[0], internalPaths[0])
                                     internalPaths = \
-                                        OpStreamingHdf5SequenceReaderS.expandGlobStrings(
+                                        OpStreamingH5N5SequenceReaderS.expandGlobStrings(
                                             externalPaths[0], glob_string)
                                     if internalPaths:
                                         file_list = [externalPaths[0]] * len(internalPaths)
@@ -145,8 +145,7 @@ class DatasetInfo(object):
                     )
                     # The following is necessary for h5 as well as npz-files
                     internalPathExts = (
-                        OpInputDataReader.h5Exts +
-                        OpInputDataReader.n5Exts +
+                        OpInputDataReader.h5_n5_Exts +
                         OpInputDataReader.npzExts
                     )
                     internalPathExts = [".{}".format(ipx) for ipx in internalPathExts]
@@ -334,8 +333,8 @@ class OpDataSelection(Operator):
 
             # If we should find the data in the project file, use a dataset reader
             if datasetInProject:
-                opReader = OpStreamingHdf5Reader(parent=self)
-                opReader.Hdf5File.setValue(self.ProjectFile.value)
+                opReader = OpStreamingH5N5Reader(parent=self)
+                opReader.H5N5File.setValue(self.ProjectFile.value)
                 opReader.InternalPath.setValue(internalPath)
                 providerSlot = opReader.OutputImage
             elif datasetInfo.location == DatasetInfo.Location.PreloadedArray:

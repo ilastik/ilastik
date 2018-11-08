@@ -23,7 +23,7 @@ from builtins import range
 from ilastik.applets.base.appletSerializer import \
     AppletSerializer, deleteIfPresent, SerialSlot, SerialCountingSlot, \
     SerialBlockSlot, SerialListSlot
-from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpH5WriterBigDataset
+from lazyflow.operators.ioOperators import OpStreamingH5N5Reader, OpH5N5WriterBigDataset
 from lazyflow.utility.orderedSignal import OrderedSignal
 import threading
 
@@ -112,9 +112,9 @@ class SerialPredictionSlot(SerialSlot):
                 datasetName = self.subname.format(imageIndex)
 
                 # Use a big dataset writer to do this in chunks
-                opWriter = OpH5WriterBigDataset(graph=self.operator.graph, parent = self.operator.parent)
-                opWriter.hdf5File.setValue(predictionDir)
-                opWriter.hdf5Path.setValue(datasetName)
+                opWriter = OpH5N5WriterBigDataset(graph=self.operator.graph, parent = self.operator.parent)
+                opWriter.h5N5File.setValue(predictionDir)
+                opWriter.h5N5Path.setValue(datasetName)
                 opWriter.Image.connect(slot[imageIndex])
 
                 def handleProgress(percent):
@@ -175,8 +175,8 @@ class SerialPredictionSlot(SerialSlot):
             for slot in self.operator.PredictionsFromDisk:
                 slot.disconnect()
         for imageIndex, datasetName in enumerate(group.keys()):
-            opStreamer = OpStreamingHdf5Reader(graph=self.operator.graph, parent=self.operator.parent)
-            opStreamer.Hdf5File.setValue(group)
+            opStreamer = OpStreamingH5N5Reader(graph=self.operator.graph, parent=self.operator.parent)
+            opStreamer.H5N5File.setValue(group)
             opStreamer.InternalPath.setValue(datasetName)
             self.operator.PredictionsFromDisk[imageIndex].connect(opStreamer.OutputImage)
 
