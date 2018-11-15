@@ -34,11 +34,11 @@ from ilastik.applets.dataExport.opDataExport import OpDataExport
 class TestOpDataExport(object):
     
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls._tmpdir = tempfile.mkdtemp()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         shutil.rmtree(cls._tmpdir) 
 
     def testBasic(self):
