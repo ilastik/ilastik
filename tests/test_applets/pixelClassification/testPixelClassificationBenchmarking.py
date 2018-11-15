@@ -22,6 +22,8 @@ from builtins import range
 import os
 import sys
 import numpy
+import pytest
+
 from PyQt5.QtWidgets import QApplication
 from tests.helpers import ShellGuiTestCaseBase
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
@@ -32,13 +34,12 @@ from lazyflow.utility.timer import Timer
 from ilastik.applets.pixelClassification.pixelClassificationApplet import PixelClassificationApplet
 PIXEL_CLASSIFICATION_INDEX = 2
 
-import nose
-
 import logging
 logger = logging.getLogger(__name__)
 logger.addHandler( logging.StreamHandler(sys.stdout) )
 #logger.setLevel(logging.INFO)
 logger.setLevel(logging.DEBUG)
+
 
 class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
     """
@@ -56,14 +57,15 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
     #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
     @classmethod
-    def setupClass(cls):
-        # This test is useful for performance evaluation,
-        #  but it takes too long to be useful as part of the normal test suite.
-        raise nose.SkipTest
-        
+    def setup_class(cls):
         # Base class first
-        super(TestPixelClassificationGuiBenchmarking, cls).setupClass()
-        
+        super(TestPixelClassificationGuiBenchmarking, cls).setup_class()
+
+        # This test is useful for performance evaluation,
+        # but it takes too long to be useful as part of the normal test suite.
+        super().teardown_class()
+        pytest.skip("For benchmark purposes only")
+
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
         else:
@@ -75,15 +77,14 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
         
         # Start the timer
         cls.timer = Timer()
-        cls.timer.start()
+        cls.timer.unpause()
 
     @classmethod
-    def teardownClass(cls):
-        cls.timer.stop()
+    def teardown_class(cls):
         logger.debug( "Total Time: {} seconds".format( cls.timer.seconds() ) )
         
         # Call our base class so the app quits!
-        super(TestPixelClassificationGuiBenchmarking, cls).teardownClass()
+        super(TestPixelClassificationGuiBenchmarking, cls).teardown_class()
 
         # Clean up: Delete any test files we generated
         removeFiles = [ TestPixelClassificationGuiBenchmarking.PROJECT_FILE ]
@@ -106,7 +107,7 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             shell = self.shell
             
             # New project
-            shell.createAndLoadNewProject(projFilePath)
+            shell.createAndLoadNewProject(projFilePath, self.workflowClass())
             workflow = shell.projectManager.workflow
         
             # Add a file
@@ -114,8 +115,8 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             info = DatasetInfo()
             info.filePath = self.SAMPLE_DATA
             opDataSelection = workflow.dataSelectionApplet.topLevelOperator
-            opDataSelection.Dataset.resize(1)
-            opDataSelection.Dataset[0].setValue(info)
+            opDataSelection.DatasetGroup.resize(1)
+            opDataSelection.DatasetGroup[0][0].setValue(info)
             
             # Set some features
             opFeatures = workflow.featureSelectionApplet.topLevelOperator
@@ -154,7 +155,8 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             assert isinstance(self.shell.workflow.applets[PIXEL_CLASSIFICATION_INDEX], PixelClassificationApplet)
             
             # Turn off the huds and so we can capture the raw image
-            gui.currentGui().menuGui.actionToggleAllHuds.trigger()
+            viewMenu = gui.currentGui().menus()[0]
+            viewMenu.actionToggleAllHuds.trigger()
 
             ## Turn off the slicing position lines
             ## FIXME: This disables the lines without unchecking the position  
@@ -165,12 +167,14 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             gui.currentGui().editor.posModel.slicingPos = (0,0,0)
 
             assert gui.currentGui()._labelControlUi.liveUpdateButton.isChecked() == False
-            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 0, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
+            assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 2,\
+                "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
             
             # Add label classes
             for i in range(3):
                 gui.currentGui()._labelControlUi.AddLabelButton.click()
-                assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == i+1, "Got {} rows".format(gui.currentGui()._labelControlUi.labelListModel.rowCount())
+                assert gui.currentGui()._labelControlUi.labelListModel.rowCount() == 3 + i,\
+                    "Expected {}, but got {} rows".format(2 + i, gui.currentGui()._labelControlUi.labelListModel.rowCount())
 
             # Select the brush
             gui.currentGui()._labelControlUi.paintToolButton.click()
@@ -215,7 +219,8 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
             gui = pixClassApplet.getMultiLaneGui()
 
             # Make sure the entire slice is visible
-            gui.currentGui().menuGui.actionFitToScreen.trigger()
+            viewMenu = gui.currentGui().menus()[0]
+            viewMenu.actionFitToScreen.trigger()
 
             with Timer() as timer:
                 # Enable interactive mode            
@@ -254,5 +259,5 @@ class TestPixelClassificationGuiBenchmarking(ShellGuiTestCaseBase):
 
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_nosetest
-    run_shell_nosetest(__file__)
+    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    run_shell_test(__file__)
