@@ -65,7 +65,8 @@ def emptyImage():
     img.axistags = vigra.defaultAxistags('txyzc')    
     return img
 
-class TestOpRelabelSegmentation(object):
+
+class TestOpRelabelSegmentation(unittest.TestCase):
     def setUp(self):
         g = Graph()
         self.op = OpRelabelSegmentation(graph=g)
@@ -349,7 +350,7 @@ class TestOpBadObjectsToWarningMessage(unittest.TestCase):
         self.assertTrue('text' in list(messagedict.keys()))
 
 
-class TestMaxLabel(object):
+class TestMaxLabel(unittest.TestCase):
     def setUp(self):
         g = Graph()
         rawimg = np.random.randint(0, 255, (2, 10, 10, 10, 1))

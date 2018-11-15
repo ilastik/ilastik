@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+import unittest
 
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification, \
                                                                         OpObjectTrain, OpObjectPredict
@@ -26,7 +27,7 @@ import numpy
 import vigra
 from lazyflow.graph import Graph
 
-class testMissingValueHandling(object):
+class TestMissingValueHandling(unittest.TestCase):
     def setUp(self):
         self.rawimg = numpy.random.randint(0, 256, (1, 200, 200, 1, 1))
         self.binimg = self.rawimg>100
