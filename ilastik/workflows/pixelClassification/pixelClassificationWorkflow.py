@@ -108,9 +108,6 @@ class PixelClassificationWorkflow(Workflow):
         self.dataSelectionApplet = self.createDataSelectionApplet()
         opDataSelection = self.dataSelectionApplet.topLevelOperator
 
-        # see role constants, above
-        opDataSelection.DatasetRoles.setValue(self.Roles.asNameList())
-
         self.featureSelectionApplet = self.createFeatureSelectionApplet()
 
         self.pcApplet = self.createPixelClassificationApplet()
@@ -161,12 +158,14 @@ class PixelClassificationWorkflow(Workflow):
         for perm in itertools.permutations('tzyx', 4):
             c_at_end.append(''.join(perm) + 'c')
 
-        return DataSelectionApplet(self,
+        appl = DataSelectionApplet(self,
                                    "Input Data",
                                    "Input Data",
                                    supportIlastik05Import=True,
                                    instructionText=data_instructions,
                                    forceAxisOrder=c_at_end)
+        appl.topLevelOperator.DatasetRoles.setValue(self.Roles.asNameList())
+        return appl
 
     def createFeatureSelectionApplet(self):
         """
