@@ -62,7 +62,7 @@ class TestAxesOrderPreservation(object):
     PROJECT_FILE_BASE = os.path.join(os.path.dirname(__file__), '..', '..', 'data')
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         print('starting setup...')
         print('unzipping project files...')
         projects = zipfile.ZipFile(os.path.join(cls.PROJECT_FILE_BASE,
@@ -90,7 +90,7 @@ class TestAxesOrderPreservation(object):
         cls.created_data = []
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         # Clean up: Delete all unzipped test projects
         for f in cls.unzipped_project_files + cls.created_data:
             file = os.path.join(cls.PROJECT_FILE_BASE, f)
