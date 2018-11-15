@@ -48,7 +48,7 @@ def generate_project_file_name(temp_dir, workflow_name):
 class TestHeadlessWorkflowStartupProjectCreation(object):
     """Start a headless shell and create a project for each workflow"""
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.workflow_list = list(getAvailableWorkflows())
 
     def test_workflow_creation_headless(self):
