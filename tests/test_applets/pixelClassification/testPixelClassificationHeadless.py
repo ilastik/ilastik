@@ -54,7 +54,7 @@ class TestPixelClassificationHeadless(object):
     SAMPLE_MASK = os.path.join(data_dir, 'mask.npy')
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         print('looking for ilastik.py...')
         # Load the ilastik startup script as a module.
         # Do it here in setupClass to ensure that it isn't loaded more than once.
@@ -76,7 +76,7 @@ class TestPixelClassificationHeadless(object):
         cls.ilastik_startup = imp.load_source( 'ilastik_startup', ilastik_entry_file_path )
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         os.chdir(cls.original_cwd)
         # Clean up: Delete any test files we generated
         removeFiles = [cls.PROJECT_FILE, cls.PROJECT_FILE_RAW_DATA, cls.SAMPLE_DATA, cls.SAMPLE_MASK]
