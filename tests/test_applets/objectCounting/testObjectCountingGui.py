@@ -65,13 +65,13 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
     #SAMPLE_DATA = os.path.join(os.path.split(__file__)[0], 'synapse_small.npy')
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         if 'TRAVIS' in os.environ:
             # The counting workflow doesn't import correctly on Travis, so skip this test.
             import nose
             raise nose.SkipTest
         # Base class first
-        super(TestObjectCountingGui, cls).setupClass()
+        super(TestObjectCountingGui, cls).setup_class()
         
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
@@ -90,12 +90,12 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
         cls.timer.unpause()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.timer.pause()
         logger.debug( "Total Time: {} seconds".format( cls.timer.seconds() ) )
         
         # Call our base class so the app quits!
-        super(TestObjectCountingGui, cls).teardownClass()
+        super(TestObjectCountingGui, cls).teardown_class()
 
         # Clean up: Delete any test files we generated
         removeFiles = [ TestObjectCountingGui.PROJECT_FILE ]
@@ -521,5 +521,5 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
 
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_nosetest
-    run_shell_nosetest(__file__)
+    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    run_shell_test(__file__)
