@@ -23,6 +23,7 @@ from builtins import range
 import sys
 import warnings
 import tempfile
+import unittest
 
 import numpy
 import vigra
@@ -48,7 +49,8 @@ traceLogger = logging.getLogger("TRACE." + logger.name)
 
 WRITE_DEBUG_IMAGES = False
 
-class TestOpBlockwiseObjectClassification(object):
+
+class TestOpBlockwiseObjectClassification(unittest.TestCase):
     
     def setUp(self):
         self.setUpSources()
