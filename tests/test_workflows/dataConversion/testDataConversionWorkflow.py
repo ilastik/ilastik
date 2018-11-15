@@ -44,7 +44,7 @@ class TestDataConversionWorkflow(object):
     # SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         print('starting setup...')
 
         if hasattr(cls, 'SAMPLE_DATA'):
@@ -63,7 +63,7 @@ class TestDataConversionWorkflow(object):
         cls.ilastik_startup = imp.load_source('ilastik_startup', ilastik_entry_file_path)
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         # Clean up: Delete any test files we generated
         removeFiles = [TestDataConversionWorkflow.PROJECT_FILE]
         if cls.using_random_data:
