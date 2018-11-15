@@ -47,9 +47,9 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
     #SAMPLE_DATA.append( os.path.split(__file__)[0] + '/synapse_small.npy' )
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         # Base class first
-        super(TestPixelClassificationGuiMultiImage, cls).setupClass()
+        super(TestPixelClassificationGuiMultiImage, cls).setup_class()
         
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
@@ -66,9 +66,9 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
             numpy.save(cls.SAMPLE_DATA[1], data2.astype(numpy.uint8))
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         # Call our base class so the app quits!
-        super(TestPixelClassificationGuiMultiImage, cls).teardownClass()
+        super(TestPixelClassificationGuiMultiImage, cls).teardown_class()
 
         # Clean up: Delete any test files we generated
         removeFiles = [ TestPixelClassificationGuiMultiImage.PROJECT_FILE ]
@@ -333,8 +333,8 @@ class TestPixelClassificationGuiMultiImage(ShellGuiTestCaseBase):
         self.exec_in_shell(impl)
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_nosetest
-    run_shell_nosetest(__file__)
+    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    run_shell_test(__file__)
 
 
 
