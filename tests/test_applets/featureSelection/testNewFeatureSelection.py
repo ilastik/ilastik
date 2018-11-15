@@ -2,6 +2,7 @@ import logging
 import numpy
 import time
 import vigra
+import pytest
 
 from lazyflow.graph import Graph, OperatorWrapper
 
@@ -16,9 +17,10 @@ if DEBUG:
 logger = logging.getLogger(__name__)
 
 
-class TestCompareOpFeatureSelectionToOld():
-    @classmethod
-    def setupClass(cls):
+
+class TestCompareOpFeatureSelectionToOld:
+
+    def setup_method(self, method):
         # data = vigra.taggedView(numpy.random.random((2, 20, 25, 30, 3)), 'tzyxc')
 
         graph = Graph()
@@ -46,8 +48,8 @@ class TestCompareOpFeatureSelectionToOld():
         opFeatures.FeatureIds.setValue(featureIds)
         opFeaturesOld.FeatureIds.setValue(featureIds)
 
-        cls.opFeatures = opFeatures
-        cls.opFeaturesOld = opFeaturesOld
+        self.opFeatures = opFeatures
+        self.opFeaturesOld = opFeaturesOld
 
     def compare(self, result, resultOld):
         assert result.shape == resultOld.shape
@@ -341,7 +343,19 @@ class TestCompareOpFeatureSelectionToOld():
         res2d = opFeatures.OutputImage[:].wait()
         assert (res3d != res2d).all()
 
-    def test_timing(self):
+    @pytest.mark.parametrize('shape,order,in2d', [
+        # ([1, 1, 20, 512, 512], 'tczyx', False),
+        # ([1, 1, 20, 512, 512], 'tcxyz', False),
+        ([1, 1, 1, 2048, 2048], 'tczyx', True),
+        # ([1, 1, 1, 512, 512], 'tczxy', True), # old is faster
+        # ([10, 3, 1, 1024, 1024], 'tczyx', True),
+        # ([1, 1, 25, 67, 68], 'tczyx', False),
+        # ([5, 25, 67, 68, 3], 'tzyxc', False),
+        ([5, 5, 256, 256], 'tcyx', True),
+        ([5, 256, 256, 1], 'tyxc', True),
+        ([25, 26, 1], 'xyc', True),
+    ])
+    def test_timing(self, shape, order, in2d):
         self.opFeatures.InputImage[0].disconnect()
         # Configure selection matrix
         sel = numpy.ones((6, 5), dtype=bool)
@@ -349,25 +363,11 @@ class TestCompareOpFeatureSelectionToOld():
         self.opFeatures.SelectionMatrix.setValue(sel)
         self.opFeaturesOld.SelectionMatrix.setValue(sel)
 
-        shapes_orders = [
-            # ([1, 1, 20, 512, 512], 'tczyx', False),
-            # ([1, 1, 20, 512, 512], 'tcxyz', False),
-            ([1, 1, 1, 2048, 2048], 'tczyx', True),
-            # ([1, 1, 1, 512, 512], 'tczxy', True), # old is faster
-            # ([10, 3, 1, 1024, 1024], 'tczyx', True),
-            # ([1, 1, 25, 67, 68], 'tczyx', False),
-            # ([5, 25, 67, 68, 3], 'tzyxc', False),
-            ([5, 5, 256, 256], 'tcyx', True),
-            ([5, 256, 256, 1], 'tyxc', True),
-            ([25, 26, 1], 'xyc', True),
-        ]
+        data = vigra.taggedView(
+            numpy.resize(numpy.random.rand(numpy.prod(shape)), shape).astype(numpy.float32), order)
+        self._timing(data, in2d)
 
-        for shape, order, in2d in shapes_orders:
-            data = vigra.taggedView(
-                numpy.resize(numpy.random.rand(numpy.prod(shape)), shape).astype(numpy.float32), order)
-            yield self._test_timing, data, in2d
-
-    def _test_timing(self, data, in2d):
+    def _timing(self, data, in2d):
         self.opFeatures.ComputeIn2d.setValue([in2d] * 6)
         self.opFeatures.InputImage[0].setValue(data)
         self.opFeaturesOld.InputImage[0].setValue(data)
