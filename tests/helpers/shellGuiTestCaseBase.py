@@ -92,6 +92,7 @@ def run_shell_nosetest(filename):
     def run_nose():
         sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
         sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+        sys.argv.append("-v") # Don't set the logging level to DEBUG.  Leave it alone.
         nose.run(defaultTest=filename, addplugins=[ShutdownTimeoutPlugin()])
 
     noseThread = threading.Thread(target=run_nose)
@@ -99,6 +100,21 @@ def run_shell_nosetest(filename):
 
     wait_for_main_func()
     noseThread.join()
+
+
+def run_shell_test(filename):
+    # This only works from the main thread.
+    assert threading.current_thread().getName() == "MainThread"
+    import pytest
+
+    def run_test():
+        pytest.main([filename, '--capture=no'])
+
+    testThread = threading.Thread(target=run_test)
+    testThread.start()
+    wait_for_main_func()
+    testThread.join()
+
 
 class ShellGuiTestCaseBase(object):
     """
@@ -112,7 +128,7 @@ class ShellGuiTestCaseBase(object):
     mainThreadEvent = threading.Event()
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         """
         Start the shell and wait until it is finished initializing.
         """
@@ -166,7 +182,7 @@ class ShellGuiTestCaseBase(object):
         init_complete.wait()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         """
         Force the shell to quit (without a save prompt), and wait for the app to exit.
         """
