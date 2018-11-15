@@ -55,7 +55,7 @@ class TestConservationTrackingHeadless(object):
     EXPECTED_NUM_DIVISION_CHILDREN = 2 # Number of tracks that have their "parent" set, meaning they are children of a division
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         logger.info('starting setup...')
         cls.original_cwd = os.getcwd()
 
@@ -70,7 +70,7 @@ class TestConservationTrackingHeadless(object):
 
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         removeFiles = [cls.EXPECTED_TRACKING_RESULT_FILE, cls.EXPECTED_CSV_FILE]
 
         # Clean up: Delete any test files we generated
