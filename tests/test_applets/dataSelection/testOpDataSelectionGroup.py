@@ -29,7 +29,7 @@ from ilastik.applets.dataSelection.opDataSelection import OpDataSelectionGroup, 
 class TestOpDataSelectionGroup(object):
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.workingDir = tempfile.mkdtemp()
         cls.group1Data = [ ( os.path.join(cls.workingDir, 'A.npy'), numpy.random.random( (100,100, 1) ) ),
                            ( os.path.join(cls.workingDir, 'C.npy'), numpy.random.random( (100,100, 1) ) ) ]
@@ -38,7 +38,7 @@ class TestOpDataSelectionGroup(object):
             numpy.save(name, data)
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         shutil.rmtree(cls.workingDir)
 
     def test(self):
