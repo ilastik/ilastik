@@ -30,6 +30,7 @@ from past.utils import old_div
 import os
 import numpy
 import vigra
+
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtCore import QEvent,Qt
@@ -61,12 +62,10 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
     SAMPLE_DATA.append( os.path.split(__file__)[0] + '/4.npy')
 
 
-
-
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         # Base class first
-        super(TestObjectCountingGuiMultiImage, cls).setupClass()
+        super(TestObjectCountingGuiMultiImage, cls).setup_class()
 
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
@@ -83,9 +82,9 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
             numpy.save(cls.SAMPLE_DATA[1], data2.astype(numpy.uint8))
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         # Call our base class so the app quits!
-        super(TestObjectCountingGuiMultiImage, cls).teardownClass()
+        super(TestObjectCountingGuiMultiImage, cls).teardown_class()
 
         # Clean up: Delete any test files we generated
         removeFiles = [ TestObjectCountingGuiMultiImage.PROJECT_FILE ]
@@ -664,7 +663,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
         """
         Click on the interactive mode to see if training has been
-        suceesfull in the secod images even if the labels are given
+        sucessful in the second image even if the labels are given
         in the first one
 
         """
@@ -686,14 +685,11 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
                 # rounding here is necessary, because box label is rounded too
                 val = numpy.round(numpy.sum(gui.currentGui().op.Density[slicing[1:3]].wait()), 1)
                 val2 = float(box.density)
-                assert abs(val - val2) < 1E-3, "The value written to the box {} differs from the one gotten via the\
-                operator {}".format(val, val2)
+                assert abs(val - val2) < 1E-3,\
+                    f"The value written to the box {val} differs from the one gotten via the operator {val2}"
 
-        self.exec_in_shell(impl)
-
-
-
-
+        # FIXME same as test below?
+        # self.exec_in_shell(impl)
 
 
     def test_11_CheckBoxes(self):
@@ -784,8 +780,8 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_nosetest
-    run_shell_nosetest(__file__)
+    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    run_shell_test(__file__)
 
 
 
