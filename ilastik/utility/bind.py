@@ -24,7 +24,7 @@ def getRootArgSpec(f):
     if hasattr( f, '__wrapped__' ):
         return getRootArgSpec(f.__wrapped__)
     else:
-        return inspect.getargspec(f)
+        return inspect.getfullargspec(f)
 
 class bind(tuple):
     """Behaves like functools.partial, but discards any extra
