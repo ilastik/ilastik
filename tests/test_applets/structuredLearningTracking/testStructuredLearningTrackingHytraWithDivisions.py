@@ -80,7 +80,7 @@ class TestStructuredLearningTrackingHeadless(object):
     EXPECTED_FALSE_DETECTIONS_NUM = 1 # Number of false detections expected in exported csv file
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         logger.info('starting setup...')
         cls.original_cwd = os.getcwd()
 
@@ -95,7 +95,7 @@ class TestStructuredLearningTrackingHeadless(object):
 
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         removeFiles = [cls.ilastik_tests_file_path+'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_Tracking-Result.h5',
                        cls.ilastik_tests_file_path+'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_CSV-Table.csv']
 
