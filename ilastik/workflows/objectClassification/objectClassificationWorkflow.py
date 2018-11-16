@@ -28,6 +28,7 @@ import csv
 
 import numpy
 import h5py
+import enum
 
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
@@ -50,6 +51,7 @@ from lazyflow.operators.valueProviders import OpAttributeSelector
 from lazyflow.roi import TinyVector
 from lazyflow.utility import PathComponents
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.utility import SlotNameEnum
 
 import logging
 logger = logging.getLogger(__name__)
@@ -72,6 +74,15 @@ class ObjectClassificationWorkflow(Workflow):
     workflowName = "Object Classification Workflow Base"
     defaultAppletIndex = 0 # show DataSelection by default
 
+    @enum.unique
+    class BaseExportNames(SlotNameEnum):
+        OBJECT_PREDICTIONS = 0,
+        OBJECT_PROBABILITIES = enum.auto()
+        BLOCKWISE_OBJECT_PREDICTIONS = enum.auto()
+        BLOCKWISE_OBJECT_PROBABILITIES = enum.auto()
+
+    ExportNames = BaseExportNames
+
     def __init__(self, shell, headless,
                  workflow_cmdline_args,
                  project_creation_args,
@@ -80,7 +91,6 @@ class ObjectClassificationWorkflow(Workflow):
         if 'graph' in kwargs:
             del kwargs['graph']
         super(ObjectClassificationWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
-        self.stored_pixel_classifier = None
         self.stored_object_classifier = None
 
         # Parse workflow-specific command-line args
@@ -100,8 +110,6 @@ class ObjectClassificationWorkflow(Workflow):
 
         self._applets = []
 
-        self.pcApplet = None
-
         self.setupInputs()
         
         if self.fillMissing != 'none':
@@ -109,13 +117,6 @@ class ObjectClassificationWorkflow(Workflow):
                 self, "Fill Missing Slices", "Fill Missing Slices", self.fillMissing)
             self._applets.append(self.fillMissingSlicesApplet)
 
-        if isinstance(self, ObjectClassificationWorkflowPixel):
-            self.input_types = 'raw'
-        elif isinstance(self, ObjectClassificationWorkflowBinary):
-            self.input_types = 'raw+binary'
-        elif isinstance( self, ObjectClassificationWorkflowPrediction ):
-            self.input_types = 'raw+pmaps'
-        
         # our main applets
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, name = "Object Feature Selection")
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
@@ -130,76 +131,61 @@ class ObjectClassificationWorkflow(Workflow):
         
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
-        
-        # See EXPORT_SELECTION_PREDICTIONS and EXPORT_SELECTION_PROBABILITIES, above
-        export_selection_names = ['Object Predictions',
-                                  'Object Probabilities',
-                                  'Blockwise Object Predictions',
-                                  'Blockwise Object Probabilities']
-        if self.input_types == 'raw':
-            # Re-configure to add the pixel probabilities option
-            # See EXPORT_SELECTION_PIXEL_PROBABILITIES, above
-            export_selection_names.append( 'Pixel Probabilities' )
-        opDataExport.SelectionNames.setValue( export_selection_names )
+
+        opDataExport.SelectionNames.setValue( self.ExportNames.asNameList() )
 
         self._batch_export_args = None
         self._batch_input_args = None
         self._export_args = None
         self.batchProcessingApplet = None
+
+
+        self._applets.append(self.objectExtractionApplet)
+        self._applets.append(self.objectClassificationApplet)
+        self._applets.append(self.dataExportApplet)
+
         if self.batch:
             self.batchProcessingApplet = BatchProcessingApplet(self, 
                                                                "Batch Processing", 
                                                                self.dataSelectionApplet, 
                                                                self.dataExportApplet)
-    
-            if unused_args:
-                # Additional export args (specific to the object classification workflow)
-                export_arg_parser = argparse.ArgumentParser()
-                export_arg_parser.add_argument( "--table_filename", help="The location to export the object feature/prediction CSV file.", required=False )
-                export_arg_parser.add_argument( "--export_object_prediction_img", action="store_true" )
-                export_arg_parser.add_argument( "--export_object_probability_img", action="store_true" )
-                export_arg_parser.add_argument( "--export_pixel_probability_img", action="store_true" )
-                
-                # TODO: Support this, too, someday?
-                #export_arg_parser.add_argument( "--export_object_label_img", action="store_true" )
-                
-                    
-                self._export_args, unused_args = export_arg_parser.parse_known_args(unused_args)
-                if self.input_types != 'raw' and self._export_args.export_pixel_probability_img:
-                    raise RuntimeError("Invalid command-line argument: \n"\
-                                       "--export_pixel_probability_img' can only be used with the combined "\
-                                       "'Pixel Classification + Object Classification' workflow.")
+            self._applets.append(self.batchProcessingApplet)
 
-                if sum([self._export_args.export_object_prediction_img,
-                        self._export_args.export_object_probability_img,
-                        self._export_args.export_pixel_probability_img]) > 1:
-                    raise RuntimeError("Invalid command-line arguments: Only one type classification output can be exported at a time.")
+            if unused_args:
+                exportsArgParser, _ = self.exportsArgParser
+                self._export_args, unused_args = exportsArgParser.parse_known_args(unused_args)
 
                 # We parse the export setting args first.  All remaining args are considered input files by the input applet.
                 self._batch_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
                 self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( unused_args )
 
                 # For backwards compatibility, translate these special args into the standard syntax
-                if self._export_args.export_object_prediction_img:
-                    self._batch_input_args.export_source = "Object Predictions"
-                if self._export_args.export_object_probability_img:
-                    self._batch_input_args.export_source = "Object Probabilities"
-                if self._export_args.export_pixel_probability_img:
-                    self._batch_input_args.export_source = "Pixel Probabilities"
-
+                self._batch_input_args.export_source = self._export_args.export_source
 
         self.blockwiseObjectClassificationApplet = BlockwiseObjectClassificationApplet(
             self, "Blockwise Object Classification", "Blockwise Object Classification")
-
-        self._applets.append(self.objectExtractionApplet)
-        self._applets.append(self.objectClassificationApplet)
-        self._applets.append(self.dataExportApplet)
-        if self.batchProcessingApplet:
-            self._applets.append(self.batchProcessingApplet)
         self._applets.append(self.blockwiseObjectClassificationApplet)
 
         if unused_args:
             logger.warning("Unused command-line args: {}".format( unused_args ))
+
+
+    @property
+    def exportsArgParser(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--table_filename",
+            help="The location to export the object feature/prediction CSV file.")
+        exportImageArgGroup = parser.add_mutually_exclusive_group()
+        exportImageArgGroup.add_argument(
+            "--export_object_prediction_img", dest="export_source",
+            action="store_const",
+            const=self.ExportNames.OBJECT_PREDICTIONS.socketName)
+        exportImageArgGroup.add_argument(
+            "--export_object_probability_img", dest="export_source",
+            action="store_const",
+            const=self.ExportNames.OBJECT_PROBABILITIES.socketName)
+        return parser, exportImageArgGroup
 
     @property
     def applets(self):
@@ -210,14 +196,6 @@ class ObjectClassificationWorkflow(Workflow):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
     def prepareForNewLane(self, laneIndex):
-        if self.pcApplet:
-            opPixelClassification = self.pcApplet.topLevelOperator
-            if opPixelClassification.classifier_cache.Output.ready() and \
-               not opPixelClassification.classifier_cache._dirty:
-                self.stored_pixel_classifier = opPixelClassification.classifier_cache.Output.value
-            else:
-                self.stored_pixel_classifier = None
-        
         opObjectClassification = self.objectClassificationApplet.topLevelOperator
         if opObjectClassification.classifier_cache.Output.ready() and \
            not opObjectClassification.classifier_cache._dirty:
@@ -230,13 +208,6 @@ class ObjectClassificationWorkflow(Workflow):
         If new lanes were added, then we invalidated our classifiers unecessarily.
         Here, we can restore the classifier so it doesn't need to be retrained.
         """
-        # If we have stored classifiers, restore them into the workflow now.
-        if self.stored_pixel_classifier:
-            opPixelClassification = self.pcApplet.topLevelOperator
-            opPixelClassification.classifier_cache.forceValue(self.stored_pixel_classifier)
-            # Release reference
-            self.stored_pixel_classifier = None
-
         if self.stored_object_classifier:
             opObjectClassification = self.objectClassificationApplet.topLevelOperator
             opObjectClassification.classifier_cache.forceValue(self.stored_object_classifier)
@@ -266,19 +237,11 @@ class ObjectClassificationWorkflow(Workflow):
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[0] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
-        opDataExport.Inputs.resize(4)
-        opDataExport.Inputs[EXPORT_SELECTION_PREDICTIONS].connect( opObjClassification.UncachedPredictionImages )
-        opDataExport.Inputs[EXPORT_SELECTION_PROBABILITIES].connect( opObjClassification.ProbabilityChannelImage )
-        opDataExport.Inputs[EXPORT_SELECTION_BLOCKWISE_PREDICTIONS].connect( opBlockwiseObjectClassification.PredictionImage )
-        opDataExport.Inputs[EXPORT_SELECTION_BLOCKWISE_PROBABILITIES].connect( opBlockwiseObjectClassification.ProbabilityChannelImage )
-        
-        if self.input_types == 'raw':
-            # Append the prediction probabilities to the list of slots that can be exported.
-            opDataExport.Inputs.resize(5)
-            # Pull from this slot since the data has already been through the Op5 operator
-            # (All data in the export operator must have matching spatial dimensions.)
-            opThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
-            opDataExport.Inputs[EXPORT_SELECTION_PIXEL_PROBABILITIES].connect( opThreshold.InputImage )
+        opDataExport.Inputs.resize(len(self.ExportNames))
+        opDataExport.Inputs[self.ExportNames.OBJECT_PREDICTIONS].connect( opObjClassification.UncachedPredictionImages )
+        opDataExport.Inputs[self.ExportNames.OBJECT_PROBABILITIES].connect( opObjClassification.ProbabilityChannelImage )
+        opDataExport.Inputs[self.ExportNames.BLOCKWISE_OBJECT_PREDICTIONS].connect( opBlockwiseObjectClassification.PredictionImage )
+        opDataExport.Inputs[self.ExportNames.BLOCKWISE_OBJECT_PROBABILITIES].connect( opBlockwiseObjectClassification.ProbabilityChannelImage )
 
         opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator.getLane(laneIndex)
@@ -329,16 +292,11 @@ class ObjectClassificationWorkflow(Workflow):
 
     def prepare_for_entire_export(self):
         # Un-freeze the workflow so we don't just get a bunch of zeros from the caches when we ask for results
-        if self.pcApplet:
-            self.pc_freeze_status = self.pcApplet.topLevelOperator.FreezePredictions.value
-            self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
         self.oc_freeze_status = self.objectClassificationApplet.topLevelOperator.FreezePredictions.value
         self.objectClassificationApplet.topLevelOperator.FreezePredictions.setValue(False)
 
     def post_process_entire_export(self):
         # Unfreeze.
-        if self.pcApplet:
-            self.pcApplet.topLevelOperator.FreezePredictions.setValue(self.pc_freeze_status)
         self.objectClassificationApplet.topLevelOperator.FreezePredictions.setValue(self.oc_freeze_status)
 
     def post_process_lane_export(self, lane_index):
@@ -551,6 +509,60 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from pixel classification)"
     workflowDisplayName = "Pixel Classification + Object Classification"
 
+    class ExtraExportNames(SlotNameEnum):
+        PIXEL_PROBABILITIES = ObjectClassificationWorkflow.ExportNames.getLast() + 1
+
+    ExportNames = ObjectClassificationWorkflow.ExportNames.extendedWithEnum(ExtraExportNames)
+
+    def __init__(self, *args, **kwargs):
+        self.stored_pixel_classifier = None
+        super().__init__(*args, **kwargs)
+
+    @property
+    def exportsArgParser(self):
+        parser, exportImageArgGroup = super().exportsArgParser
+        exportImageArgGroup.add_argument(
+            "--export_pixel_probability_img", dest="export_source",
+            action="store_const",
+            const=self.ExportNames.PIXEL_PROBABILITIES.socketName)
+        return parser, exportImageArgGroup
+
+    def prepareForNewLane(self, laneIndex):
+        opPixelClassification = self.pcApplet.topLevelOperator
+        if opPixelClassification.classifier_cache.Output.ready() and \
+           not opPixelClassification.classifier_cache._dirty:
+            self.stored_pixel_classifier = opPixelClassification.classifier_cache.Output.value
+        else:
+            self.stored_pixel_classifier = None
+        super().prepareForNewLane(laneIndex)
+
+    def handleNewLanesAdded(self):
+        # If we have stored classifiers, restore them into the workflow now.
+        if self.stored_pixel_classifier:
+            opPixelClassification = self.pcApplet.topLevelOperator
+            opPixelClassification.classifier_cache.forceValue(self.stored_pixel_classifier)
+            # Release reference
+            self.stored_pixel_classifier = None
+        super().handleNewLanesAdded()
+
+    def prepare_for_entire_export(self):
+        self.pc_freeze_status = self.pcApplet.topLevelOperator.FreezePredictions.value
+        self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
+        super().prepare_for_entire_export()
+
+    def post_process_entire_export(self):
+        self.pcApplet.topLevelOperator.FreezePredictions.setValue(self.pc_freeze_status)
+        super().post_process_entire_export()
+
+    def connectLane(self, laneIndex):
+        super().connectLane(laneIndex)
+        # Append the prediction probabilities to the list of slots that can be exported.
+        # Pull from this slot since the data has already been through the Op5 operator
+        # (All data in the export operator must have matching spatial dimensions.)
+        opThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
+        opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
+        opDataExport.Inputs[self.ExportNames.PIXEL_PROBABILITIES].connect( opThreshold.InputImage )
+
     def setupInputs(self):
         data_instructions = 'Use the "Raw Data" tab on the right to load your intensity image(s).'
         
@@ -581,7 +593,6 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
 
         if not self._headless:
             self._shell.currentAppletChanged.connect( self.handle_applet_changed )
-
 
     def connectInputs(self, laneIndex):
                
