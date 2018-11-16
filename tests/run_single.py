@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from __future__ import absolute_import
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
@@ -20,7 +21,6 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 import sys
-import nose
 import threading
 
 # Make sure the ilastik repo 'tests' package is first on sys.path
@@ -48,6 +48,6 @@ if __name__ == "__main__":
     #
     # Run a SINGLE test file using nosetests, which is launched in a separate thread.
     # The main thread (i.e. this one) is left available for launching other tasks (e.g. the GUI).
-    #    
+    #
     filename = sys.argv.pop(1)
-    sys.exit(mainThreadHelpers.run_nosetests_in_separate_thread(filename))
+    sys.exit(mainThreadHelpers.run_tests_in_separate_thread(filename))

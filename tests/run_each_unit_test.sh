@@ -18,7 +18,7 @@
 #
 
 TESTS_DIR=`dirname $0`
-NOSE_ARG=${1-$TESTS_DIR}
+DIR_ARG=${1-$TESTS_DIR}
 
 SKIP_GUI_TESTS=${SKIP_GUI_TESTS-0}
 
@@ -27,9 +27,10 @@ SKIP_UNTIL=${2-"RUN_ALL"}
 FAILURES=0
 BROKEN=()
 
-for f in `find $NOSE_ARG -iname "*test*.py"` 
+
+for f in `find $DIR_ARG -iname "*test*.py"`
 do
-  if echo $f | grep -q "shellGuiTestCaseBase.py"; then
+  if echo $f | grep -q "shellGuiTestCaseBase.py\|generate_test_data.py"; then
       # This isn't a test case, it's a helper file
       continue
   fi
@@ -41,11 +42,6 @@ do
 
   if echo $f | grep -q "testAutocontextGui.py"; then
       echo "Skipping $f which is known to fail"
-      continue
-  fi
-
-  if echo $f | grep -q "testObjectCountingDrawing.py"; then
-      echo "Skipping $f because for some reason it doesn't work in this script."
       continue
   fi
 
@@ -79,7 +75,7 @@ do
   elif echo $f | grep -q "testPixelClassificationHeadless.py"; then
       python $f
   else
-      python $TESTS_DIR/nose_single.py --nologcapture $f
+      python $TESTS_DIR/run_single.py $f --capture=no
   fi
   
   RETVAL=$?
