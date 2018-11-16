@@ -30,9 +30,11 @@ import vigra
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 
+import unittest
 import tempfile
 
-class TestOpFeatureSelection(object):
+
+class TestOpFeatureSelection(unittest.TestCase):
     def setUp(self):
         data = numpy.random.random((2,100,100,100,3))
 
