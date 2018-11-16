@@ -11,7 +11,7 @@ install:
   - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  - conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge python=3.6 numpy=1.12 ilastik-dependencies-no-solvers
+  - conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge python=3.6 pytest=3.10.* numpy=1.12 ilastik-dependencies-no-solvers
   - activate %ENV_NAME%
   - cd \
   # Get the current master of all submodules
