@@ -77,7 +77,7 @@ def imageWithRandomNoise():
     img.axistags = vigra.defaultAxistags('txyzc')    
     return img
  
-class TestOpMean(object):
+class TestOpMean(unittest.TestCase):
     def setUp(self):
         g = Graph()
         self.op = OpMean(graph=g)
