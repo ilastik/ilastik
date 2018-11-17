@@ -173,9 +173,11 @@ class OpStreamingH5N5Reader(Operator):
             self.OutputImage.setDirty(slice(None))
 
     @staticmethod
-    def get_h5_n5_file(filepath, mode=None):
+    def get_h5_n5_file(filepath, mode='a'):
         """
         returns, depending on the file-extension of filepath, either a hdf5 or a N5 file defined by filepath
+        If the file is created when it does not exist depends on mode and on the function z5py.N5File/h5py.File.
+        default mode = 'a':  Read/write if exists, create otherwise
         """
         name, ext = os.path.splitext(filepath)
         if ext in OpStreamingH5N5Reader.N5EXTS:
