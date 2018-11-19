@@ -26,7 +26,7 @@ import numpy as np
 import h5py
 import tempfile
 import csv
-import nose
+import pytest
 
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackLoader
@@ -114,12 +114,11 @@ class TestStructuredLearningTrackingHeadless(object):
         try:
             import ilastik.workflows.tracking.structured
         except ImportError as e:
-            logger.warning( "Structured learning tracking could not be imported. CPLEX is most likely missing: " + str(e) )
-            raise nose.SkipTest
+            pytest.xfail( "Structured learning tracking could not be imported. CPLEX is most likely missing: " + str(e) )
 
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.PREDICTION_FILE):
-            logger.info("Test files not found.")   
+            pytest.xfail("Test files not found.")
         
         args = ' --project='+self.PROJECT_FILE
         args += ' --headless'
@@ -152,13 +151,12 @@ class TestStructuredLearningTrackingHeadless(object):
         try:
             import hytra
         except ImportError as e:
-            logger.warning("Hytra tracking pipeline couldn't be imported: " + str(e))
-            raise nose.SkipTest
+            pytest.xfail("Hytra tracking pipeline couldn't be imported: " + str(e))
 
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(
                 self.PREDICTION_FILE):
-            logger.info("Test files not found.")
+            pytest.xfail("Test files not found.")
 
         args = ' --project=' + self.PROJECT_FILE
         args += ' --headless'
