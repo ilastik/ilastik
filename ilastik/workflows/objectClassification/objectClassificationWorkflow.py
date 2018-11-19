@@ -419,7 +419,8 @@ class ObjectClassificationWorkflow(Workflow):
         busy = False
         self._shell.enableProjectChanges( not busy )
 
-    def _inputReady(self, nRoles):
+    def _inputReady(self):
+        nRoles = len(self.InputImageRoles)
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
         if len(slot) > 0:
             input_ready = True
@@ -659,7 +660,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         Overridden from Workflow base class
         Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
         """
-        input_ready = self._inputReady(1)
+        input_ready = self._inputReady()
         cumulated_readyness = input_ready
 
         cumulated_readyness &= not self.batchProcessingApplet.busy # Nothing can be touched while batch mode is executing.
@@ -723,7 +724,7 @@ class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
         Overridden from Workflow base class
         Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
         """
-        input_ready = self._inputReady(2)
+        input_ready = self._inputReady()
 
         super(ObjectClassificationWorkflowBinary, self).handleAppletStateUpdateRequested(upstream_ready=input_ready)
 
@@ -772,7 +773,7 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         Overridden from Workflow base class
         Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
         """
-        input_ready = self._inputReady(2)
+        input_ready = self._inputReady()
         cumulated_readyness = input_ready
         cumulated_readyness &= not self.batchProcessingApplet.busy # Nothing can be touched while batch mode is executing.
         self._shell.setAppletEnabled(self.thresholdingApplet, cumulated_readyness)
