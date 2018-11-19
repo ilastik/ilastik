@@ -2,21 +2,21 @@
 Appendix: Testing Ilastik
 =========================
 
-ilastik comes with a set of unit/regression tests.  You must have `nosetests <https://nose.readthedocs.org/en/latest/>`_ installed to run the tests.
+ilastik comes with a set of unit/regression tests.  You must have `pytest <https://docs.pytest.org/en/latest/getting-started.html>`_ installed to run the tests.
 
 Non-gui tests
 =============
 
-To run all the non-gui tests in one go, use nosetests:
+To run all the non-gui tests in one go, use pytest:
 
 .. code-block:: bash
    
    $ cd ilastik/tests
-   $ nosetests --nologcapture
+   $ pytest --capture=no
    
-.. note:: ilastik and lazyflow make extensive use of the python logger.  Unfortunately, nosetests sets the default 
-          logging level to DEBUG, which causes a lot of unecessary output for failed tests.  
-          Use the ``--nologcapture`` option to disable logger output.
+.. note:: ilastik and lazyflow make extensive use of the python logger.
+   Unfortunately, it may result in a lot of unecessary output for failed tests.
+   Use the ``--capture=no`` option to disable logger output.
 
 Sometimes it's convenient to run the test scripts one at a time.  A convenience script for that is included in the tests directory:
 
@@ -30,7 +30,7 @@ Sometimes it's convenient to run the test scripts one at a time.  A convenience 
 GUI tests
 =========
 
-The ilastik GUI tests cannot be run using nosetests.  You must run them directly as python scripts (they use nosetests internally, but from a different thread).
+The ilastik GUI tests cannot be run using pytest.  You must run them directly as python scripts (they use pytest internally, but from a different thread).
 
 .. code-block:: bash
 
@@ -38,4 +38,4 @@ The ilastik GUI tests cannot be run using nosetests.  You must run them directly
     $ python test_applets/pixelClassification/testPixelClassificationGui.py
     $ python test_applets/pixelClassification/testPixelClassificationMultiImageGui.py
 
-Because of this limitation, the GUI tests are not executed using the travis-CI tool.   
+Because of this limitation, the GUI tests are not executed using the travis-CI tool.
