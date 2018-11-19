@@ -160,7 +160,7 @@ class ShellGuiTestCaseBase(object):
         """
         Execute the given function within the shell event loop.
         Block until the function completes.
-        If there were exceptions, assert so that nose marks this test as failed.
+        If there were exceptions, assert so that this test marked as failed.
         """
         testFinished = threading.Event()
         errors = []

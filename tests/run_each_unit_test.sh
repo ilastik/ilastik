@@ -6,15 +6,15 @@
 # If a first-nonskipped-test is given, then skip all tests until that 
 #  file is found, then resume testing.
 #
-# The ilastik test suite shouldn't be run from the standard 'nosetests' command, 
+# The ilastik test suite shouldn't be run from the standard 'pytest' command,
 #  because some of the tests (GUI tests) can't be run that way.
 #  (It has to do with the fact that these tests need to take control of the main thread, 
-#  which means nosetests must be running in a separate thread.)
+#  which means tests must be running in a separate thread.)
 # 
 # This simple bash script runs all tests in the current directory:
 # - Only runs files with the word 'test' in their name
 # - For files with 'gui' in the filename, the file is run directly
-# - For all other files, the special 'nose_single' helper script is used.
+# - For all other files, the special 'run_single' helper script is used.
 #
 
 TESTS_DIR=`dirname $0`

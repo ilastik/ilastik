@@ -160,7 +160,7 @@ class TestPixelClassificationHeadless(object):
         
     @timeLogged(logger)
     def testBasic(self):
-        # NOTE: In this test, cmd-line args to nosetests will also end up getting "parsed" by ilastik.
+        # NOTE: In this test, cmd-line args to tests will also end up getting "parsed" by ilastik.
         #       That shouldn't be an issue, since the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
         args = "--project=" + self.PROJECT_FILE
@@ -202,7 +202,7 @@ class TestPixelClassificationHeadless(object):
         #OLD_LAZYFLOW_STATUS_MONITOR_SECONDS = os.getenv("LAZYFLOW_STATUS_MONITOR_SECONDS", None)
         #os.environ["LAZYFLOW_STATUS_MONITOR_SECONDS"] = "1"
         
-        # NOTE: In this test, cmd-line args to nosetests will also end up getting "parsed" by ilastik.
+        # NOTE: In this test, cmd-line args to tests will also end up getting "parsed" by ilastik.
         #       That shouldn't be an issue, since the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
         args = []

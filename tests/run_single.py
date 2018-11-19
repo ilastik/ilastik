@@ -30,7 +30,7 @@ sys.path.insert(0, ilastik_repo)
 from tests.helpers import mainThreadHelpers
 
 # For some mysterious reason, we need to make sure that volumina.api gets imported 
-#  from the main thread before nose imports it from a separate thread.
+#  from the main thread before test runner imports it from a separate thread.
 # If we don't, QT gets confused about which thread is really the main thread.
 # This must be because the "main" thread is determined by some QT class or module 
 #  that first becomes active somewhere in volumina, but I can't figure out which one it is.
@@ -46,7 +46,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     #
-    # Run a SINGLE test file using nosetests, which is launched in a separate thread.
+    # Run a SINGLE test file, which is launched in a separate thread.
     # The main thread (i.e. this one) is left available for launching other tasks (e.g. the GUI).
     #
     filename = sys.argv.pop(1)

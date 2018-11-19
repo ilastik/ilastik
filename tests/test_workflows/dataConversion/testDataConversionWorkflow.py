@@ -88,7 +88,7 @@ class TestDataConversionWorkflow(object):
 
     @timeLogged(logger)
     def testLotsOfOptions(self):
-        # NOTE: In this test, cmd-line args to nosetests will also end up getting "parsed" by ilastik.
+        # NOTE: In this test, cmd-line args to tests will also end up getting "parsed" by ilastik.
         #       That shouldn't be an issue, since the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
         args = []

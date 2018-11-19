@@ -227,7 +227,7 @@ class TestAxesOrderPreservation(object):
 
     @timeLogged(logger)
     def _test_pixel_classification(self, dims, input_axes):
-        # NOTE: In this test, cmd-line args to nosetests will also end up
+        # NOTE: In this test, cmd-line args to test runner will also end up
         #       getting "parsed" by ilastik. That shouldn't be an issue, since
         #       the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
@@ -308,7 +308,7 @@ class TestAxesOrderPreservation(object):
 
     @timeLogged(logger)
     def _test_autocontext(self, dims, input_axes):
-        # NOTE: In this test, cmd-line args to nosetests will also end up
+        # NOTE: In this test, cmd-line args to test runner will also end up
         #       getting "parsed" by ilastik. That shouldn't be an issue, since
         #       the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
