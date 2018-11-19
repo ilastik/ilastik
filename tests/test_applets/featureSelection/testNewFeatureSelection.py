@@ -368,18 +368,24 @@ class TestCompareOpFeatureSelectionToOld:
         self._timing(data, in2d)
 
     def _timing(self, data, in2d):
-        self.opFeatures.ComputeIn2d.setValue([in2d] * 6)
-        self.opFeatures.InputImage[0].setValue(data)
-        self.opFeaturesOld.InputImage[0].setValue(data)
-        timeNew = 0
-        timeOld = 0
-        t0 = time.time()
-        self.opFeatures.OutputImage[0][:].wait()
-        t1 = time.time()
-        self.opFeaturesOld.OutputImage[0][:].wait()
-        t2 = time.time()
-        timeNew += t1 - t0
-        timeOld += t2 - t1
+        timingsNew = []
+        timingsOld = []
+
+        for _ in range(5):
+            self.opFeatures.ComputeIn2d.setValue([in2d] * 6)
+            self.opFeatures.InputImage[0].setValue(data)
+            self.opFeaturesOld.InputImage[0].setValue(data)
+            t0 = time.time()
+            self.opFeatures.OutputImage[0][:].wait()
+            t1 = time.time()
+            self.opFeaturesOld.OutputImage[0][:].wait()
+            t2 = time.time()
+            timingsNew.append(t1 - t0)
+            timingsOld.append(t2 - t1)
+
+
+        timeNew = numpy.mean(timingsNew)
+        timeOld = numpy.mean(timingsOld)
 
         # The new code should (within a tolerance) run faster!
         assert timeNew <= 1.1 * timeOld + .05, f'{timeNew:.2f} !<= {timeOld:.2f}'
