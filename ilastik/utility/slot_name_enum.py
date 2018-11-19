@@ -19,6 +19,10 @@ class SlotNameEnum(enum.IntEnum):
         return list(cls)[-1]
 
     @classmethod
+    def getNext(cls):
+        return cls.getLast() + 1
+
+    @classmethod
     def getPairs(cls):
         return [(item.name, item.value) for item in cls]
 
@@ -27,8 +31,9 @@ class SlotNameEnum(enum.IntEnum):
         return [item.name for item in cls]
 
     @classmethod
-    def extendWithKeys(cls, new_enum_name, new_keys):
-        new_values_start = cls.getLast() + 1
+    def extendedWithKeys(cls, new_keys, new_enum_name=None):
+        new_enum_name = new_enum_name or cls.__name__ + "Extended"
+        new_values_start = cls.getNext()
         new_values_end = new_values_start + len(new_keys)
 
         new_pairs = list(zip(new_keys, range(new_values_start, new_values_end)))
