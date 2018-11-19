@@ -270,8 +270,8 @@ class ObjectClassificationWorkflow(Workflow):
         opObjClassification.ComputedFeatureNames.connect(opObjExtraction.Features)
 
         # Data Export connections
-        opDataExport.RawData.connect( opData.ImageGroup[0] )
-        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+        opDataExport.RawData.connect( opData.ImageGroup[self.InputImageRoles.RAW_DATA] )
+        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.InputImageRoles.RAW_DATA] )
         opDataExport.Inputs.resize(len(self.ExportNames))
         opDataExport.Inputs[self.ExportNames.OBJECT_PREDICTIONS].connect( opObjClassification.UncachedPredictionImages )
         opDataExport.Inputs[self.ExportNames.OBJECT_PROBABILITIES].connect( opObjClassification.ProbabilityChannelImage )
@@ -339,7 +339,7 @@ class ObjectClassificationWorkflow(Workflow):
         #        We should assert that the user isn't using the blockwise slot.
         settings, selected_features = self.objectClassificationApplet.topLevelOperator.get_table_export_settings()
         if settings:
-            raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
+            raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][self.InputImageRoles.RAW_DATA].value
             if raw_dataset_info.location == DatasetInfo.Location.FileSystem:
                 filename_suffix = raw_dataset_info.nickname
             else:
