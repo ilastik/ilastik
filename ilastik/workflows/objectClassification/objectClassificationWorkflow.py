@@ -56,12 +56,6 @@ from ilastik.utility import SlotNameEnum
 import logging
 logger = logging.getLogger(__name__)
 
-EXPORT_SELECTION_PREDICTIONS = 0
-EXPORT_SELECTION_PROBABILITIES = 1
-EXPORT_SELECTION_BLOCKWISE_PREDICTIONS = 2
-EXPORT_SELECTION_BLOCKWISE_PROBABILITIES = 3
-EXPORT_SELECTION_PIXEL_PROBABILITIES = 4
-
 # Constants for pointcloud generation on cluster
 CSV_FORMAT = { 'delimiter' : '\t', 'lineterminator' : '\n' }
 OUTPUT_COLUMNS = ["x_px", "y_px", "z_px", 
