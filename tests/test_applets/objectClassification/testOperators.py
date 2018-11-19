@@ -440,20 +440,3 @@ class TestFullOperator(unittest.TestCase):
     def test_unfavorable_conditions(self):
         #TODO write test with not so nice input
         pass
-        
-
-        
-        
- 
-
-if __name__ == '__main__':
-    import sys
-    import nose
-
-    # Don't steal stdout. Show it on the console as usual.
-    sys.argv.append("--nocapture")
-
-    # Don't set the logging level to DEBUG. Leave it alone.
-    sys.argv.append("--nologcapture")
-
-    nose.main(defaultTest=__file__)

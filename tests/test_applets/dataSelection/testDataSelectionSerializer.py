@@ -174,11 +174,3 @@ class TestDataSelectionSerializer(unittest.TestCase):
         info.filePath = self.tmpFilePath
         info.location = DatasetInfo.Location.ProjectInternal
         return info
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")
-    sys.argv.append("--nologcapture")
-    nose.main(defaultTest=__file__)

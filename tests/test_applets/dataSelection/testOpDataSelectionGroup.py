@@ -157,10 +157,3 @@ class TestOpDataSelectionGroup(object):
         
         # Ensure that files opened by the inner operators are closed before we exit.
         op.DatasetGroup.resize(0)
-
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)

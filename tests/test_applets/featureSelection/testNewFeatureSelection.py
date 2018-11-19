@@ -390,11 +390,3 @@ class TestCompareOpFeatureSelectionToOld:
         # The new code should (within a tolerance) run faster!
         assert timeNew <= 1.1 * timeOld + .05, f'{timeNew:.2f} !<= {timeOld:.2f}'
         logger.debug(f'{timeNew:.2f} <= {timeOld:.2f}')
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append('--nocapture')     # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append('--nologcapture')  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)

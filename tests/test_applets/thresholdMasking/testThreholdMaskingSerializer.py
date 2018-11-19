@@ -67,8 +67,3 @@ class TestThresholdMaskingSerializer(object):
             assert operatorToLoad.MaxValue.value == 20
 
         os.remove(testProjectName)
-
-if __name__ == "__main__":
-    import nose
-    nose.main(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
-

@@ -298,14 +298,3 @@ class TestConservationTrackingHeadless(object):
         for f in files:
             assert os.path.exists(f)
             os.remove(f)
-
-if __name__ == "__main__":
-    # Make the program quit on Ctrl+C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)

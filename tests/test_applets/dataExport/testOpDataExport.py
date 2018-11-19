@@ -95,11 +95,3 @@ class TestOpDataExport(object):
             assert (read_data == expected_data).all(), "Read data didn't match exported data!"
         finally:
             opRead.cleanUp()
-
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)
-        

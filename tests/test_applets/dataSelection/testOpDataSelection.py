@@ -1093,8 +1093,3 @@ class TestOpDataSelection_stack_along_parameter:
 
         for name, extension, sequence_axis, expected in testcases:
             yield self._test_stack_along, name, extension, sequence_axis, expected
-
-
-if __name__ == "__main__":
-    import nose
-    nose.main(defaultTest=__file__, env={'NOSE_NOCAPTURE': 1})

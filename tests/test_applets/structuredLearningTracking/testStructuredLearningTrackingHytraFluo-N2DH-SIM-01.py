@@ -216,14 +216,3 @@ class TestStructuredLearningTrackingHeadless(object):
             division_count /= 2
             logger.info("Number of divisions in the csv file: {}".format(division_count))
             assert division_count == self.EXPECTED_NUM_DIVISIONS, 'Number of divisions {} in the csv file differs from expected {}.'.format(division_count,self.EXPECTED_NUM_DIVISIONS)
-
-if __name__ == "__main__":
-    # Make the program quit on Ctrl+C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)

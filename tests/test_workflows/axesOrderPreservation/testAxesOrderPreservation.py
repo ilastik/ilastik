@@ -705,17 +705,3 @@ class TestAxesOrderPreservation(object):
         else:
             self.compare_results(opReaderResult, compare_name, input_axes, post_process=detect_edges,
                                  max_part_uneqaul=0.01)
-
-
-if __name__ == "__main__":
-    # make the program quit on Ctrl+C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    import nose
-    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nocapture")
-    sys.argv.append("--debug")
-    # Don't set the logging level to DEBUG.  Leave it alone.
-    sys.argv.append("--nologcapture")
-    nose.main(defaultTest=__file__)

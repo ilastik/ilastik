@@ -112,12 +112,3 @@ class TestConvexHull(unittest.TestCase):
         output = self.featsop.Output([]).wait()
 
         return output
-
-        
-
-
-if __name__ == "__main__":
-
-    import nose
-
-    nose.main(defaultTest=__file__)

@@ -107,15 +107,3 @@ class TestOpLabeledThreshold(object):
             assert len(label_values) == 3        
             assert len(np.unique(result_yx[1:12, 1:5])) == 1 # Same as 'simple'
             assert len(np.unique(result_yx[7:10, 6:9])) == 1 # Almost same as simple, but with the hole filled in.
-
-if __name__ == "__main__":
-    #make the program quit on Ctrl+C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)
-

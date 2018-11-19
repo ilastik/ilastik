@@ -73,12 +73,3 @@ class CommandLineHelperTests(unittest.TestCase):
         for value, expected in values_to_test.items():
             parsed = self.parser.parse_args([value]).this
             self.assertEqual(parsed, expected)
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    sys.argv.append("-v")
-    nose.main(defaultTest=__file__)

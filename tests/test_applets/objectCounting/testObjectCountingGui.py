@@ -66,10 +66,6 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
 
     @classmethod
     def setup_class(cls):
-        if 'TRAVIS' in os.environ:
-            # The counting workflow doesn't import correctly on Travis, so skip this test.
-            import nose
-            raise nose.SkipTest
         # Base class first
         super(TestObjectCountingGui, cls).setup_class()
         

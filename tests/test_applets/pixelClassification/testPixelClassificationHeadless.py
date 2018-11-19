@@ -294,17 +294,3 @@ class TestPixelClassificationHeadless(object):
             # Assume channel is last axis
             assert segm_shape[:-1] == (2, 20, 20, 5), "Segmentation volume has wrong shape: {}".format(segm_shape)
             assert segm_shape[-1] == 1, "Segmentation volume has wrong shape: {}".format(segm_shape)
-
-
-if __name__ == "__main__":
-    #make the program quit on Ctrl+C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    # nose.main will exit right after the tests are run with the correct return value
-    # (in contrast to nose.run)
-    nose.main(defaultTest=__file__)

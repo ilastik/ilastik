@@ -13,14 +13,13 @@ import os
 import imp
 import ilastik
 import ilastik.utility
-import nose
+import pytest
 
+@pytest.mark.skipif(
+    __name__ != "__main__",
+    reason=f"This test must be run independently: python {__file__}"
+)
 def test_headless_launch():
-    if __name__ != "__main__":
-        import warnings
-        warnings.warn("Skipping: This test must be run independently: python {}".format(__file__))
-        raise nose.SkipTest()
-    
     print('looking for ilastik.py...')
     # Load the ilastik startup script as a module.
     # Do it here in setupClass to ensure that it isn't loaded more than once.

@@ -206,16 +206,3 @@ class TestOpRegionFeaturesAgainstNumpy(unittest.TestCase):
                 for icoord, coord in enumerate(centers[iobj]):
                     center_good = mins[iobj][icoord] + old_div((maxs[iobj][icoord]-mins[iobj][icoord]),2.)
                     assert abs(coord-center_good)<0.01
-
-
-if __name__ == '__main__':
-    import sys
-    import nose
-
-    # Don't steal stdout. Show it on the console as usual.
-    sys.argv.append("--nocapture")
-
-    # Don't set the logging level to DEBUG. Leave it alone.
-    sys.argv.append("--nologcapture")
-
-    nose.main(defaultTest=__file__)
