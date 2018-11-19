@@ -682,5 +682,5 @@ def try_convert_to_numeric(val):
 
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_nosetest
-    run_shell_nosetest(__file__)
+    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    run_shell_test(__file__)
