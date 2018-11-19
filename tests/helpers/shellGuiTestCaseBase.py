@@ -24,14 +24,13 @@ from builtins import range
 from past.utils import old_div
 import sys
 import os
-import nose
 import threading
 import traceback
 import atexit
 import platform
 from functools import partial
 
-from nose.plugins.errorclass import ErrorClass, ErrorClassPlugin
+import pytest
 
 from PyQt5.QtCore import Qt, QEvent, QPoint, QTimer
 from PyQt5.QtGui import QPixmap, QMouseEvent
@@ -51,55 +50,9 @@ def quitApp():
         qApp.quit()
 
 
-class ShutdownTimeout(Exception):
-    """
-    Should only be raised in ShellGuiTestCaseBase.teardownClass to signal that
-    ilastik didn't close in time.
-
-    See: https://github.com/ilastik/ilastik/pull/1801
-    """
+class MainThreadException(Exception):
+    """Raised if GUI tests are run from main thread. Can't start QT app."""
     pass
-
-
-class ShutdownTimeoutPlugin(ErrorClassPlugin):
-    """Tiny nose plugin to inform about shutdown timeouts during teardown
-
-    we don't consider time-outs during ShellGuiTestCaseBase.teardownClass an
-    error. So this plugin just marks the test with the timeout.
-    """
-    enabled = True
-    name = 'ShutdownTimeoutPlugin'
-    timeout = ErrorClass(ShutdownTimeout,
-                         label='TIMEOUT',
-                         isfailure=False)
-
-    def options(self, parser, env=os.environ):
-        """Mandatory interface method"""
-        pass
-
-    def configure(self, options, conf):
-        """Mandatory interface method"""
-        pass
-
-
-def run_shell_nosetest(filename):
-    """
-    Launch nosetests from a separate thread, and pause this thread while the test runs the GUI in it.
-    """
-    # This only works from the main thread.
-    assert threading.current_thread().getName() == "MainThread"
-
-    def run_nose():
-        sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-        sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-        sys.argv.append("-v") # Don't set the logging level to DEBUG.  Leave it alone.
-        nose.run(defaultTest=filename, addplugins=[ShutdownTimeoutPlugin()])
-
-    noseThread = threading.Thread(target=run_nose)
-    noseThread.start()
-
-    wait_for_main_func()
-    noseThread.join()
 
 
 def run_shell_test(filename):
@@ -114,6 +67,10 @@ def run_shell_test(filename):
     testThread.start()
     wait_for_main_func()
     testThread.join()
+
+
+def is_main_thread():
+    return threading.current_thread().getName() == "MainThread"
 
 
 class ShellGuiTestCaseBase(object):
@@ -158,17 +115,14 @@ class ShellGuiTestCaseBase(object):
             # Start the event loop
             app.exec_()
 
-        # If nose was run from the main thread, exit now.
-        # If nose is running in a non-main thread, we assume the main thread is available to launch the gui.
-        if threading.current_thread().getName() == "MainThread":
-            # Don't run GUI tests in the main thread.
-            sys.stderr.write( "NOSE WAS RUN FROM THE MAIN THREAD.  SKIPPING GUI TEST\n" )
-            raise nose.SkipTest
-        else:
-            # We're currently running in a non-main thread.
-            # Start the gui IN THE MAIN THREAD.  Workflow is provided by our subclass.
-            run_in_main_thread( createApp )
-            appCreationEvent.wait()
+        # If test was run from the main thread, exit now.
+        # If test is running in a non-main thread, we assume the main thread is available to launch the gui.
+        if is_main_thread():
+            pytest.xfail("Launched GUI test from MainThread. Skipping test.")
+        # We're currently running in a non-main thread.
+        # Start the gui IN THE MAIN THREAD.  Workflow is provided by our subclass.
+        run_in_main_thread( createApp )
+        appCreationEvent.wait()
 
         platform_str = platform.platform().lower()
         if 'ubuntu' in platform_str or 'fedora' in platform_str:
@@ -199,7 +153,7 @@ class ShellGuiTestCaseBase(object):
         # (usually this takes no time at all) of 10 seconds
         finished.wait(timeout=10.0)
         if not finished.is_set():
-            raise ShutdownTimeout()
+            pytest.xfail("GUI test timeout")
 
     @classmethod
     def exec_in_shell(cls, func):
