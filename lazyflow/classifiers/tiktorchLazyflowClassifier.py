@@ -40,10 +40,9 @@ from inferno.io.transform.generic import Normalize, Cast, AsTorchBatch
 import logging
 logger = logging.getLogger(__name__)
 
-try:
-    from tiktorch.wrapper import TikTorch
-except ImportError as e:
-    raise
+
+from tiktorch.wrapper import TikTorch
+
 
 class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     # The version is used to determine compatibility of pickled classifier factories.
