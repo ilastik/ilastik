@@ -159,8 +159,15 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         if len(availableExportPlugins) > 0:
             self._includePluginOnlyOption()
 
-        super(TrackingBaseDataExportGui, self)._initAppletDrawerUic()
-        self.topLevelOperator.SelectedExportSource.setValue(self.drawer.inputSelectionCombo.currentText())
+        super()._initAppletDrawerUic()
+
+        def _handleDirty(slot, roi):
+            sourceName = slot.value
+            selectionNames = self.topLevelOperator.SelectionNames.value
+            index = selectionNames.index(sourceName)
+            self.drawer.inputSelectionCombo.setCurrentIndex(index)
+
+        self.topLevelOperator.SelectedExportSource.notifyDirty(_handleDirty)
 
         if len(availableExportPlugins) > 0:
             self.topLevelOperator.SelectedPlugin.setValue(availableExportPlugins[0])
