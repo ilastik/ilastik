@@ -54,7 +54,7 @@ class TestPixelClassificationHeadless(object):
     SAMPLE_MASK = os.path.join(data_dir, 'mask.npy')
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         print('looking for ilastik.py...')
         # Load the ilastik startup script as a module.
         # Do it here in setupClass to ensure that it isn't loaded more than once.
@@ -76,7 +76,7 @@ class TestPixelClassificationHeadless(object):
         cls.ilastik_startup = imp.load_source( 'ilastik_startup', ilastik_entry_file_path )
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         os.chdir(cls.original_cwd)
         # Clean up: Delete any test files we generated
         removeFiles = [cls.PROJECT_FILE, cls.PROJECT_FILE_RAW_DATA, cls.SAMPLE_DATA, cls.SAMPLE_MASK]
@@ -160,7 +160,7 @@ class TestPixelClassificationHeadless(object):
         
     @timeLogged(logger)
     def testBasic(self):
-        # NOTE: In this test, cmd-line args to nosetests will also end up getting "parsed" by ilastik.
+        # NOTE: In this test, cmd-line args to tests will also end up getting "parsed" by ilastik.
         #       That shouldn't be an issue, since the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
         args = "--project=" + self.PROJECT_FILE
@@ -202,7 +202,7 @@ class TestPixelClassificationHeadless(object):
         #OLD_LAZYFLOW_STATUS_MONITOR_SECONDS = os.getenv("LAZYFLOW_STATUS_MONITOR_SECONDS", None)
         #os.environ["LAZYFLOW_STATUS_MONITOR_SECONDS"] = "1"
         
-        # NOTE: In this test, cmd-line args to nosetests will also end up getting "parsed" by ilastik.
+        # NOTE: In this test, cmd-line args to tests will also end up getting "parsed" by ilastik.
         #       That shouldn't be an issue, since the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
         args = []
@@ -294,17 +294,3 @@ class TestPixelClassificationHeadless(object):
             # Assume channel is last axis
             assert segm_shape[:-1] == (2, 20, 20, 5), "Segmentation volume has wrong shape: {}".format(segm_shape)
             assert segm_shape[-1] == 1, "Segmentation volume has wrong shape: {}".format(segm_shape)
-
-
-if __name__ == "__main__":
-    #make the program quit on Ctrl+C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    # nose.main will exit right after the tests are run with the correct return value
-    # (in contrast to nose.run)
-    nose.main(defaultTest=__file__)

@@ -26,7 +26,7 @@ import numpy as np
 import h5py
 import tempfile
 import csv
-import nose
+import pytest
 
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackLoader
@@ -80,7 +80,7 @@ class TestStructuredLearningTrackingHeadless(object):
     EXPECTED_FALSE_DETECTIONS_NUM = 1 # Number of false detections expected in exported csv file
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         logger.info('starting setup...')
         cls.original_cwd = os.getcwd()
 
@@ -95,7 +95,7 @@ class TestStructuredLearningTrackingHeadless(object):
 
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         removeFiles = [cls.ilastik_tests_file_path+'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_Tracking-Result.h5',
                        cls.ilastik_tests_file_path+'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_CSV-Table.csv']
 
@@ -114,12 +114,11 @@ class TestStructuredLearningTrackingHeadless(object):
         try:
             import ilastik.workflows.tracking.structured
         except ImportError as e:
-            logger.warning( "Structured learning tracking could not be imported. CPLEX is most likely missing: " + str(e) )
-            raise nose.SkipTest
+            pytest.xfail( "Structured learning tracking could not be imported. CPLEX is most likely missing: " + str(e) )
 
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.PREDICTION_FILE):
-            logger.info("Test files not found.")   
+            pytest.xfail("Test files not found.")
         
         args = ' --project='+self.PROJECT_FILE
         args += ' --headless'
@@ -152,13 +151,12 @@ class TestStructuredLearningTrackingHeadless(object):
         try:
             import hytra
         except ImportError as e:
-            logger.warning("Hytra tracking pipeline couldn't be imported: " + str(e))
-            raise nose.SkipTest
+            pytest.xfail("Hytra tracking pipeline couldn't be imported: " + str(e))
 
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(
                 self.PREDICTION_FILE):
-            logger.info("Test files not found.")
+            pytest.xfail("Test files not found.")
 
         args = ' --project=' + self.PROJECT_FILE
         args += ' --headless'
@@ -226,14 +224,3 @@ class TestStructuredLearningTrackingHeadless(object):
             division_count /= 2
             logger.info("Number of divisions in the csv file: {}".format(division_count))
             assert division_count == self.EXPECTED_NUM_DIVISIONS, 'Number of divisions {} in the csv file differs from expected {}.'.format(division_count,self.EXPECTED_NUM_DIVISIONS)
-
-if __name__ == "__main__":
-    # Make the program quit on Ctrl+C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)

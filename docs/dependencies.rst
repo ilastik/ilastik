@@ -55,4 +55,4 @@ Development
 Testing
 =======
 
-* nosetests
+* pytest

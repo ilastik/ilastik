@@ -57,18 +57,3 @@ class TestOpEdgeTraining(object):
         # ON
         assert edge_prob_dict[edge_C] > 0.5, "Expected > 0.5, got {}".format(edge_prob_dict[edge_C])
         assert edge_prob_dict[edge_D] > 0.5, "Expected > 0.5, got {}".format(edge_prob_dict[edge_D])
-    
-if __name__ == "__main__":
-    import sys
-    handler = logging.StreamHandler(sys.stdout)
-    logger.addHandler(handler)    
-    logger.setLevel(logging.DEBUG)
-
-    applet_logger = logging.getLogger("ilastik.applets.edgeTraining")
-    applet_logger.addHandler(handler)
-    applet_logger.setLevel(logging.DEBUG)
-    
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)

@@ -107,7 +107,7 @@ def make_bboxes(binary_bbox, margin):
     passed = numpy.asarray(dt < max_margin).astype(numpy.bool)
 
     # context only
-    context = numpy.asarray(passed) - numpy.asarray(binary_bbox).astype(numpy.bool)
+    context = numpy.asarray(passed) ^ numpy.asarray(binary_bbox).astype(numpy.bool)
     return passed, context
 
 

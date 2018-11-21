@@ -35,7 +35,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import \
 
 import h5py
 
-class TestWithCube(object):
+class TestWithCube(unittest.TestCase):
     def setUp(self):
         
         self.features = {"Standard Object Features": {\
@@ -360,17 +360,3 @@ class TestWithCube(object):
         assert predicted_labels[0]==0
         assert numpy.all(predicted_labels[1:16]==1)
         assert numpy.all(predicted_labels[16:]==2)
-        
-    
-
-if __name__ == '__main__':
-    import sys
-    import nose
-
-    # Don't steal stdout. Show it on the console as usual.
-    sys.argv.append("--nocapture")
-
-    # Don't set the logging level to DEBUG. Leave it alone.
-    sys.argv.append("--nologcapture")
-
-    nose.main(defaultTest=__file__)

@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+import unittest
 
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification, \
                                                                         OpObjectTrain, OpObjectPredict
@@ -26,7 +27,7 @@ import numpy
 import vigra
 from lazyflow.graph import Graph
 
-class testMissingValueHandling(object):
+class TestMissingValueHandling(unittest.TestCase):
     def setUp(self):
         self.rawimg = numpy.random.randint(0, 256, (1, 200, 200, 1, 1))
         self.binimg = self.rawimg>100
@@ -104,11 +105,3 @@ class testMissingValueHandling(object):
         assert numpy.all(ambig_images[self.segmimg==2]==1)
         assert numpy.all(ambig_images[self.segmimg==3]==1)
         assert numpy.all(ambig_images[self.segmimg==4]==1)
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)

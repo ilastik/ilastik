@@ -23,6 +23,8 @@ import h5py
 import vigra
 import numpy
 import tempfile
+import unittest
+
 from lazyflow.graph import Graph
 from ilastik.applets.dataSelection.opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
 from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionSerializer
@@ -30,7 +32,8 @@ from ilastik.applets.dataSelection.dataSelectionSerializer import DataSelectionS
 import logging
 logger = logging.getLogger(__name__)
 
-class TestDataSelectionSerializer(object):
+
+class TestDataSelectionSerializer(unittest.TestCase):
 
     def setUp(self):
         self.tmpDir = tempfile.mkdtemp()
@@ -171,11 +174,3 @@ class TestDataSelectionSerializer(object):
         info.filePath = self.tmpFilePath
         info.location = DatasetInfo.Location.ProjectInternal
         return info
-
-
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")
-    sys.argv.append("--nologcapture")
-    nose.main(defaultTest=__file__)

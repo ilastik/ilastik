@@ -23,7 +23,7 @@ import imp
 import numpy as np
 import h5py
 import sys
-import nose
+import pytest
 import shutil
 import vigra
 
@@ -55,7 +55,7 @@ class TestConservationTrackingHeadless(object):
     EXPECTED_NUM_DIVISION_CHILDREN = 2 # Number of tracks that have their "parent" set, meaning they are children of a division
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         logger.info('starting setup...')
         cls.original_cwd = os.getcwd()
 
@@ -70,7 +70,7 @@ class TestConservationTrackingHeadless(object):
 
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         removeFiles = [cls.EXPECTED_TRACKING_RESULT_FILE, cls.EXPECTED_CSV_FILE]
 
         # Clean up: Delete any test files we generated
@@ -84,8 +84,7 @@ class TestConservationTrackingHeadless(object):
     def testTrackingHeadless(self):        
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
-            logger.info("Test files not found.")
-            raise nose.SkipTest   
+            pytest.xfail("Test files not found.")
         
         args = ' --project='+self.PROJECT_FILE
         args += ' --headless'
@@ -113,8 +112,7 @@ class TestConservationTrackingHeadless(object):
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(
                 self.BINARY_SEGMENTATION_FILE):
-            logger.info("Test files not found.")
-            raise nose.SkipTest
+            pytest.xfail("Test files not found.")
 
         args = ' --project=' + self.PROJECT_FILE
         args += ' --headless'
@@ -161,8 +159,7 @@ class TestConservationTrackingHeadless(object):
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) \
            or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
-            logger.info("Test files not found.")
-            raise nose.SkipTest
+            pytest.xfail("Test files not found.")
 
         args = ' --project=' + self.PROJECT_FILE
         args += ' --headless'
@@ -207,8 +204,7 @@ class TestConservationTrackingHeadless(object):
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) \
            or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
-            logger.info("Test files not found.")
-            raise nose.SkipTest
+            pytest.xfail("Test files not found.")
 
         args = ' --project=' + self.PROJECT_FILE
         args += ' --headless'
@@ -234,13 +230,11 @@ class TestConservationTrackingHeadless(object):
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) \
            or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
-            logger.info("Test files not found.")
-            raise nose.SkipTest
+            pytest.xfail("Test files not found.")
         try:
             from mamutexport.mamutxmlbuilder import MamutXmlBuilder
         except:
-            logger.info("Mamutexport module not present. Skipping test")
-            raise nose.SkipTest
+            pytest.xfail("Mamutexport module not present. Skipping test")
 
         args = ' --project=' + self.PROJECT_FILE
         args += ' --headless'
@@ -269,13 +263,11 @@ class TestConservationTrackingHeadless(object):
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) \
            or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
-            logger.info("Test files not found.")
-            raise nose.SkipTest
+            pytest.xfail("Test files not found.")
         try:
             from mamutexport.mamutxmlbuilder import MamutXmlBuilder
         except:
-            logger.info("Mamutexport module not present. Skipping test")
-            raise nose.SkipTest
+            pytest.xfail("Mamutexport module not present. Skipping test")
 
         args = ' --project=' + self.PROJECT_FILE
         args += ' --headless'
@@ -298,14 +290,3 @@ class TestConservationTrackingHeadless(object):
         for f in files:
             assert os.path.exists(f)
             os.remove(f)
-
-if __name__ == "__main__":
-    # Make the program quit on Ctrl+C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)

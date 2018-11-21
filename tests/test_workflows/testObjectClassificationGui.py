@@ -60,9 +60,9 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         return ObjectClassificationWorkflowPrediction
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         # Base class first
-        super().setupClass()
+        super().setup_class()
 
         # input files:
         current_dir = os.path.split(__file__)[0]
@@ -111,12 +111,12 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         cls.timer.unpause()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.timer.pause()
         logger.debug(f"Total Time: {cls.timer.seconds()} seconds.")
 
         # Call our base class so the app quits!
-        super().teardownClass()
+        super().teardown_class()
 
         # Clean up: Delete any test files we generated
         # shutil.rmtree(cls.temp_dir)  # TODO: cleanup when dev is done
@@ -682,5 +682,5 @@ def try_convert_to_numeric(val):
 
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_nosetest
-    run_shell_nosetest(__file__)
+    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    run_shell_test(__file__)

@@ -58,9 +58,9 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
     #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         # Base class first
-        super(TestPixelClassificationGui, cls).setupClass()
+        super(TestPixelClassificationGui, cls).setup_class()
         
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
@@ -76,12 +76,12 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
         cls.timer.unpause()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.timer.pause()
         logger.debug( "Total Time: {} seconds".format( cls.timer.seconds() ) )
         
         # Call our base class so the app quits!
-        super(TestPixelClassificationGui, cls).teardownClass()
+        super(TestPixelClassificationGui, cls).teardown_class()
 
         # Clean up: Delete any test files we generated
         removeFiles = [ TestPixelClassificationGui.PROJECT_FILE ]
@@ -479,5 +479,5 @@ class TestPixelClassificationGui(ShellGuiTestCaseBase):
 
 
 if __name__ == "__main__":
-    from tests.helpers.shellGuiTestCaseBase import run_shell_nosetest
-    run_shell_nosetest(__file__)
+    from tests.helpers.shellGuiTestCaseBase import run_shell_test
+    run_shell_test(__file__)

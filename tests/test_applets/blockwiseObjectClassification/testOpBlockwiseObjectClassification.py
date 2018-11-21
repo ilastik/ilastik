@@ -23,6 +23,7 @@ from builtins import range
 import sys
 import warnings
 import tempfile
+import unittest
 
 import numpy
 import vigra
@@ -48,7 +49,8 @@ traceLogger = logging.getLogger("TRACE." + logger.name)
 
 WRITE_DEBUG_IMAGES = False
 
-class TestOpBlockwiseObjectClassification(object):
+
+class TestOpBlockwiseObjectClassification(unittest.TestCase):
     
     def setUp(self):
         self.setUpSources()
@@ -316,20 +318,3 @@ def writeToTempFile(data,pathInFile='volume',prefix='test_image_'):
     with h5py.File(name, 'w') as f:
         f.create_dataset(pathInFile, data=data)
     return name   
-        
-
-if __name__ == "__main__":
-
-    # Logging is OFF by default when running from command-line nose, i.e.:
-    # nosetests thisFile.py)
-    # but ON by default if running this test directly, i.e.:
-    # python thisFile.py
-    logging.getLogger().addHandler( handler )
-    logger.setLevel(logging.DEBUG)
-    traceLogger.setLevel(logging.DEBUG)
-
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)

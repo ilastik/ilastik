@@ -23,6 +23,7 @@
 import unittest
 import numpy as np
 import vigra
+import pytest
 
 from numpy.testing.utils import assert_array_equal, assert_array_almost_equal, assert_array_less
 
@@ -30,6 +31,7 @@ from lazyflow.graph import Graph
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 
 from ilastik.applets.thresholdTwoLevels.opGraphcutSegment import haveGraphCut
+
 
 def getTestVolume():
     t, c = 3, 2
@@ -80,127 +82,124 @@ def getTinyTestVolume():
 if haveGraphCut():
     from ilastik.applets.thresholdTwoLevels.opGraphcutSegment import OpObjectsSegment, OpGraphCut
 
-    class TestOpGraphCut(unittest.TestCase):
-     
-        def setUp(self):
-            self.tinyVolume, self.labels = getTinyTestVolume()
-     
-        def testComplete(self):
-            graph = Graph()
-            op = OpGraphCut(graph=graph)
-            piper = OpArrayPiper(graph=graph)
-            piper.Input.setValue(self.tinyVolume)
-            op.Prediction.connect(piper.Output)
 
-            out = op.CachedOutput[...].wait()
-            out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
-            assert_array_equal(out.shape, self.tinyVolume.shape)
+@pytest.mark.skipif(not haveGraphCut(), reason="GraphCut not available")
+class TestOpGraphCut(unittest.TestCase):
 
-            # check whether no new blocks introduced
-            mask = np.where(self.labels > 0, 0, 1)
-            masked = out.view(np.ndarray) * mask
-            assert_array_equal(masked, 0*masked)
+    def setUp(self):
+        self.tinyVolume, self.labels = getTinyTestVolume()
 
-            # check whether the interior was labeled 1
-            assert np.all(out[0, 7:9, 7:9, 7:9, :] > 0)
-            assert np.all(out[0, 15:17, 15:17, 15:17, :] > 0)
-            assert np.all(out[2, 9:11, 9:11, 9:11, :] > 0)
+    def testComplete(self):
+        graph = Graph()
+        op = OpGraphCut(graph=graph)
+        piper = OpArrayPiper(graph=graph)
+        piper.Input.setValue(self.tinyVolume)
+        op.Prediction.connect(piper.Output)
 
+        out = op.CachedOutput[...].wait()
+        out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
+        assert_array_equal(out.shape, self.tinyVolume.shape)
 
-        #TODO test dirty propagation
+        # check whether no new blocks introduced
+        mask = np.where(self.labels > 0, 0, 1)
+        masked = out.view(np.ndarray) * mask
+        assert_array_equal(masked, 0*masked)
 
+        # check whether the interior was labeled 1
+        assert np.all(out[0, 7:9, 7:9, 7:9, :] > 0)
+        assert np.all(out[0, 15:17, 15:17, 15:17, :] > 0)
+        assert np.all(out[2, 9:11, 9:11, 9:11, :] > 0)
 
-    class TestOpObjectsSegment(unittest.TestCase):
-        
-        def setUp(self):
-            self.vol, self.labels = getTestVolume()
-            self.tinyVol, self.tinyLabels = getTinyTestVolume()
-
-        def testBB(self):
-            graph = Graph()
-            op = OpObjectsSegment(graph=graph)
-            piper = OpArrayPiper(graph=graph)
-            piper.Input.setValue(self.vol)
-            op.Prediction.connect(piper.Output)
-            op.LabelImage.setValue(self.labels)
-
-            bbox = op.BoundingBoxes[0, ..., 0].wait()
-            assert isinstance(bbox, dict)
-
-        def testComplete(self):
-            graph = Graph()
-            op = OpObjectsSegment(graph=graph)
-            piper = OpArrayPiper(graph=graph)
-            piper.Input.setValue(self.tinyVol)
-            op.Prediction.connect(piper.Output)
-            piper = OpArrayPiper(graph=graph)
-            piper.Input.setValue(self.tinyLabels)
-            op.LabelImage.connect(piper.Output)
-
-            # get whole volume
-            out = op.CachedOutput[...].wait()
-            out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
-
-            # check whether no new blocks introduced
-            mask = np.where(self.tinyLabels > 0, 0, 1)
-            masked = out.view(np.ndarray) * mask
-            assert_array_equal(masked, 0*masked)
-
-            # check whether the interior was labeled 1
-            assert np.all(out[0, 7:9, 7:9, 7:9, :] > 0)
-            assert np.all(out[0, 15:17, 15:17, 15:17, :] > 0)
-            assert np.all(out[2, 9:11, 9:11, 9:11, :] > 0)
-
-        def testMargin(self):
-            graph = Graph()
-            vol = np.zeros((100, 110, 10), dtype=np.float32)
-            # draw a big plus sign
-            vol[50:70, :, :] = 1.0
-            vol[:, 60:80, :] = 1.0
-            vol = vigra.taggedView(vol, axistags='zyx').withAxes(*'tzyxc')
-            labels = np.zeros((100, 110, 10), dtype=np.uint32)
-            labels[45:75, 55:85, 3:4] = 1
-            labels = vigra.taggedView(labels, axistags='zyx').withAxes(*'tzyxc')
-
-            op = OpObjectsSegment(graph=graph)
-            piper = OpArrayPiper(graph=graph)
-            piper.Input.setValue(vol)
-            op.Prediction.connect(piper.Output)
-            op.LabelImage.setValue(labels)
-
-            # without margin
-            op.MarginZYX.setValue(np.asarray((0, 0, 0)))
-            out = op.Output[...].wait()
-            out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
-            out = out.withAxes(*'zyx')
-            vol = vol.withAxes(*'zyx')
-            assert_array_equal(out[50:70, 60:80, 3] > 0, vol[50:70, 60:80, 3] > .5)
-            assert np.all(out[:45, ...] == 0)
-
-            # with margin
-            op.MarginZYX.setValue(np.asarray((5, 5, 0)))
-            out = op.Output[...].wait()
-            out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
-            out = out.withAxes(*'zyx')
-            assert_array_equal(out[45:75, 55:85, 3] > 0, vol[45:75, 55:85, 3] > .5)
-            assert np.all(out[:40, ...] == 0)
-
-        def testFaulty(self):
-            vec = vigra.taggedView(np.zeros((500,), dtype=np.float32),
-                                   axistags=vigra.defaultAxistags('x'))
-            graph = Graph()
-            op = OpObjectsSegment(graph=graph)
-            piper = OpArrayPiper(graph=graph)
-            piper.Input.setValue(vec)
-
-            with self.assertRaises(AssertionError):
-                op.Prediction.connect(piper.Output)
-                op.LabelImage.connect(piper.Output)
 
     #TODO test dirty propagation
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)
+
+
+@pytest.mark.skipif(not haveGraphCut(), reason="GraphCut not available")
+class TestOpObjectsSegment(unittest.TestCase):
+
+    def setUp(self):
+        self.vol, self.labels = getTestVolume()
+        self.tinyVol, self.tinyLabels = getTinyTestVolume()
+
+    def testBB(self):
+        graph = Graph()
+        op = OpObjectsSegment(graph=graph)
+        piper = OpArrayPiper(graph=graph)
+        piper.Input.setValue(self.vol)
+        op.Prediction.connect(piper.Output)
+        op.LabelImage.setValue(self.labels)
+
+        bbox = op.BoundingBoxes[0, ..., 0].wait()
+        assert isinstance(bbox, dict)
+
+    def testComplete(self):
+        graph = Graph()
+        op = OpObjectsSegment(graph=graph)
+        piper = OpArrayPiper(graph=graph)
+        piper.Input.setValue(self.tinyVol)
+        op.Prediction.connect(piper.Output)
+        piper = OpArrayPiper(graph=graph)
+        piper.Input.setValue(self.tinyLabels)
+        op.LabelImage.connect(piper.Output)
+
+        # get whole volume
+        out = op.CachedOutput[...].wait()
+        out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
+
+        # check whether no new blocks introduced
+        mask = np.where(self.tinyLabels > 0, 0, 1)
+        masked = out.view(np.ndarray) * mask
+        assert_array_equal(masked, 0*masked)
+
+        # check whether the interior was labeled 1
+        assert np.all(out[0, 7:9, 7:9, 7:9, :] > 0)
+        assert np.all(out[0, 15:17, 15:17, 15:17, :] > 0)
+        assert np.all(out[2, 9:11, 9:11, 9:11, :] > 0)
+
+    def testMargin(self):
+        graph = Graph()
+        vol = np.zeros((100, 110, 10), dtype=np.float32)
+        # draw a big plus sign
+        vol[50:70, :, :] = 1.0
+        vol[:, 60:80, :] = 1.0
+        vol = vigra.taggedView(vol, axistags='zyx').withAxes(*'tzyxc')
+        labels = np.zeros((100, 110, 10), dtype=np.uint32)
+        labels[45:75, 55:85, 3:4] = 1
+        labels = vigra.taggedView(labels, axistags='zyx').withAxes(*'tzyxc')
+
+        op = OpObjectsSegment(graph=graph)
+        piper = OpArrayPiper(graph=graph)
+        piper.Input.setValue(vol)
+        op.Prediction.connect(piper.Output)
+        op.LabelImage.setValue(labels)
+
+        # without margin
+        op.MarginZYX.setValue(np.asarray((0, 0, 0)))
+        out = op.Output[...].wait()
+        out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
+        out = out.withAxes(*'zyx')
+        vol = vol.withAxes(*'zyx')
+        assert_array_equal(out[50:70, 60:80, 3] > 0, vol[50:70, 60:80, 3] > .5)
+        assert np.all(out[:45, ...] == 0)
+
+        # with margin
+        op.MarginZYX.setValue(np.asarray((5, 5, 0)))
+        out = op.Output[...].wait()
+        out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
+        out = out.withAxes(*'zyx')
+        assert_array_equal(out[45:75, 55:85, 3] > 0, vol[45:75, 55:85, 3] > .5)
+        assert np.all(out[:40, ...] == 0)
+
+    def testFaulty(self):
+        vec = vigra.taggedView(np.zeros((500,), dtype=np.float32),
+                               axistags=vigra.defaultAxistags('x'))
+        graph = Graph()
+        op = OpObjectsSegment(graph=graph)
+        piper = OpArrayPiper(graph=graph)
+        piper.Input.setValue(vec)
+
+        with self.assertRaises(AssertionError):
+            op.Prediction.connect(piper.Output)
+            op.LabelImage.connect(piper.Output)
+
+    #TODO test dirty propagation

@@ -53,11 +53,3 @@ class TestTransferLabelsFunction(object):
         newmin4 =  coords_new["Coord<Minimum>"][4]
         newmax4 = coords_new["Coord<Maximum>"][4]
         assert numpy.all(newlost["conflict"]==(newmin4+(newmax4-newmin4)/2.))
-    
-    
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)

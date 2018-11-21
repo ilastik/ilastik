@@ -79,7 +79,7 @@ def rawImage():
     return img
 
 
-class TestOpRegionFeatures(object):
+class TestOpRegionFeatures(unittest.TestCase):
     def setUp(self):
         g = Graph()
         self.labelop = OpLabelVolume(graph=g)
@@ -108,7 +108,8 @@ class TestOpRegionFeatures(object):
         assert np.any(feats[0][NAME]['Count'] != feats[1][NAME]['Count'])
         assert np.any(feats[0][NAME]['RegionCenter'] != feats[1][NAME]['RegionCenter'])
 
-class TestPlugins(object):
+
+class TestPlugins(unittest.TestCase):
     def setUp(self):
         g = Graph()
         self.op = OpObjectExtraction(graph=g)
@@ -134,7 +135,8 @@ class TestPlugins(object):
         self.op.Features.setValue(self.Features_skeleton)
         feats = self.op.RegionFeatures([0]).wait()
 
-class testOpRegionFeaturesAgainstNumpy(object):
+
+class TestOpRegionFeaturesAgainstNumpy(unittest.TestCase):
     def setUp(self):
         g = Graph()
         self.features = {
@@ -204,16 +206,3 @@ class testOpRegionFeaturesAgainstNumpy(object):
                 for icoord, coord in enumerate(centers[iobj]):
                     center_good = mins[iobj][icoord] + old_div((maxs[iobj][icoord]-mins[iobj][icoord]),2.)
                     assert abs(coord-center_good)<0.01
-
-
-if __name__ == '__main__':
-    import sys
-    import nose
-
-    # Don't steal stdout. Show it on the console as usual.
-    sys.argv.append("--nocapture")
-
-    # Don't set the logging level to DEBUG. Leave it alone.
-    sys.argv.append("--nologcapture")
-
-    nose.main(defaultTest=__file__)

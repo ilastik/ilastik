@@ -44,7 +44,7 @@ class TestDataConversionWorkflow(object):
     # SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         print('starting setup...')
 
         if hasattr(cls, 'SAMPLE_DATA'):
@@ -63,7 +63,7 @@ class TestDataConversionWorkflow(object):
         cls.ilastik_startup = imp.load_source('ilastik_startup', ilastik_entry_file_path)
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         # Clean up: Delete any test files we generated
         removeFiles = [TestDataConversionWorkflow.PROJECT_FILE]
         if cls.using_random_data:
@@ -88,7 +88,7 @@ class TestDataConversionWorkflow(object):
 
     @timeLogged(logger)
     def testLotsOfOptions(self):
-        # NOTE: In this test, cmd-line args to nosetests will also end up getting "parsed" by ilastik.
+        # NOTE: In this test, cmd-line args to tests will also end up getting "parsed" by ilastik.
         #       That shouldn't be an issue, since the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
         args = []
@@ -144,14 +144,3 @@ class TestDataConversionWorkflow(object):
             # Clean-up.
             opReorderAxes.cleanUp()
             opReader.cleanUp()
-
-
-if __name__ == "__main__":
-    # make the program quit on Ctrl+C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)

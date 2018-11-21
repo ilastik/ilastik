@@ -38,7 +38,7 @@ import tempfile
 class TestOpDataSelection_Basic2D(object):
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.tmpdir = tempfile.mkdtemp()
         cls.imgFileNames2D = []
         cls.imgFileNames2Dc = []
@@ -143,7 +143,7 @@ class TestOpDataSelection_Basic2D(object):
         cls.projectFile.flush()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.projectFile.close()
         try:
             shutil.rmtree(cls.tmpdir)
@@ -353,7 +353,7 @@ class TestOpDataSelection_Basic2D(object):
 class TestOpDataSelection_Basic_native_3D(object):
     """Test related to loading file types that support 3D"""
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.tmpdir = tempfile.mkdtemp()
         cls.imgFileNames3D = []
         cls.imgFileNames3Dc = []
@@ -425,7 +425,7 @@ class TestOpDataSelection_Basic_native_3D(object):
         cls.projectFile.flush()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.projectFile.close()
         try:
             shutil.rmtree(cls.tmpdir)
@@ -547,7 +547,7 @@ class TestOpDataSelection_Basic_native_3D(object):
 class TestOpDataSelection_3DStacks(object):
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.tmpdir = tempfile.mkdtemp()
         cls.imgFileNameGlobs2D = []
         cls.imgFileNameGlobs2Dc = []
@@ -695,7 +695,7 @@ class TestOpDataSelection_3DStacks(object):
         cls.projectFile.flush()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.projectFile.close()
         try:
             shutil.rmtree(cls.tmpdir)
@@ -800,7 +800,7 @@ class TestOpDataSelection_3DStacks(object):
 
 class TestOpDataSelection_SingleFileH5Stacks():
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         cls.tmpdir = tempfile.mkdtemp()
         cls.projectFileName = os.path.join(cls.tmpdir, 'testProject.ilp')
         # generate some test data 'tczyx'
@@ -831,7 +831,7 @@ class TestOpDataSelection_SingleFileH5Stacks():
         cls.projectFile.flush()
 
     @classmethod
-    def tearDownClass(cls):
+    def teardown_class(cls):
         cls.projectFile.close()
         try:
             shutil.rmtree(cls.tmpdir)
@@ -895,7 +895,7 @@ class TestOpDataSelection_FakeDataReader():
     on the DatasetInfo.realDataSource attribute
     """
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         cls.tmpdir = tempfile.mkdtemp()
         cls.projectFileName = os.path.join(cls.tmpdir, 'testProject.ilp')
         # generate some test data 'tczyx'
@@ -914,7 +914,7 @@ class TestOpDataSelection_FakeDataReader():
         cls.projectFile.flush()
 
     @classmethod
-    def tearDownClass(cls):
+    def teardown_class(cls):
         cls.projectFile.close()
         try:
             shutil.rmtree(cls.tmpdir)
@@ -980,9 +980,10 @@ class TestOpDataSelection_FakeDataReader():
         numpy.testing.assert_array_equal(imgData, expected_fake_data)
 
 
-class TestOpDataSelection_stack_along_parameter():
+class TestOpDataSelection_stack_along_parameter:
+
     @classmethod
-    def setUpClass(cls):
+    def setup_class(cls):
         cls.tmpdir = tempfile.mkdtemp()
 
         cls.rgb00c = numpy.array([[1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -1092,8 +1093,3 @@ class TestOpDataSelection_stack_along_parameter():
 
         for name, extension, sequence_axis, expected in testcases:
             yield self._test_stack_along, name, extension, sequence_axis, expected
-
-
-if __name__ == "__main__":
-    import nose
-    nose.main(defaultTest=__file__, env={'NOSE_NOCAPTURE': 1})

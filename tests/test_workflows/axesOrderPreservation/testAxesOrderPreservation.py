@@ -62,7 +62,7 @@ class TestAxesOrderPreservation(object):
     PROJECT_FILE_BASE = os.path.join(os.path.dirname(__file__), '..', '..', 'data')
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         print('starting setup...')
         print('unzipping project files...')
         projects = zipfile.ZipFile(os.path.join(cls.PROJECT_FILE_BASE,
@@ -90,7 +90,7 @@ class TestAxesOrderPreservation(object):
         cls.created_data = []
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         # Clean up: Delete all unzipped test projects
         for f in cls.unzipped_project_files + cls.created_data:
             file = os.path.join(cls.PROJECT_FILE_BASE, f)
@@ -227,7 +227,7 @@ class TestAxesOrderPreservation(object):
 
     @timeLogged(logger)
     def _test_pixel_classification(self, dims, input_axes):
-        # NOTE: In this test, cmd-line args to nosetests will also end up
+        # NOTE: In this test, cmd-line args to test runner will also end up
         #       getting "parsed" by ilastik. That shouldn't be an issue, since
         #       the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
@@ -308,7 +308,7 @@ class TestAxesOrderPreservation(object):
 
     @timeLogged(logger)
     def _test_autocontext(self, dims, input_axes):
-        # NOTE: In this test, cmd-line args to nosetests will also end up
+        # NOTE: In this test, cmd-line args to test runner will also end up
         #       getting "parsed" by ilastik. That shouldn't be an issue, since
         #       the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
@@ -705,17 +705,3 @@ class TestAxesOrderPreservation(object):
         else:
             self.compare_results(opReaderResult, compare_name, input_axes, post_process=detect_edges,
                                  max_part_uneqaul=0.01)
-
-
-if __name__ == "__main__":
-    # make the program quit on Ctrl+C
-    import signal
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-    import nose
-    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nocapture")
-    sys.argv.append("--debug")
-    # Don't set the logging level to DEBUG.  Leave it alone.
-    sys.argv.append("--nologcapture")
-    nose.main(defaultTest=__file__)

@@ -93,9 +93,3 @@ class TestOpAnisotropicGaussianSmoothing5d(unittest.TestCase):
         vol = vigra.taggedView(vol, axistags='tzyxc')
         self.r1.Input.setValue(vol)
         out = self.op.Output[2, 10:20, 10:20, 0, 0].wait()
-
-
-if __name__ == "__main__":
-    import nose
-    nose.main(defaultTest=__file__, env={'NOSE_NOCAPTURE': 1})
-

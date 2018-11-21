@@ -30,9 +30,11 @@ import vigra
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 
+import unittest
 import tempfile
 
-class TestOpFeatureSelection(object):
+
+class TestOpFeatureSelection(unittest.TestCase):
     def setUp(self):
         data = numpy.random.random((2,100,100,100,3))
 
@@ -145,10 +147,3 @@ class TestOpFeatureSelection(object):
         
         assert len(dirtyRois) == 1
         assert (dirtyRois[0].start, dirtyRois[0].stop) == sliceToRoi( slice(None), self.opFeatures.OutputImage[0].meta.shape )
-
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.main(defaultTest=__file__)
