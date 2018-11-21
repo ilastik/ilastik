@@ -39,7 +39,7 @@ test_script:
   - cd ilastik\ilastik-meta\ilastik\tests
   - set Path="C:\Program Files\Git\usr\bin";%Path%
   - set CONTINUE_ON_FAILURE=1
-  - sh run_each_unit_test.sh
+  - pytest
 
 # on_finish:
 #  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
