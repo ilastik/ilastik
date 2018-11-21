@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
@@ -28,7 +28,9 @@ from .slicSerializer import SlicSerializer
 class SlicApplet(StandardApplet):
     def __init__(self, workflow, projectFileGroupName):
         super(SlicApplet, self).__init__("SLIC Applet", workflow)
-        self._serializableItems = [SlicSerializer(self.topLevelOperator, projectFileGroupName)]  # Default serializer for new projects   # Legacy (v0.5) importer
+        self._serializableItems = [
+            SlicSerializer(self.topLevelOperator, projectFileGroupName)
+        ]  # Default serializer for new projects   # Legacy (v0.5) importer
 
     @property
     def dataSerializers(self):
@@ -44,4 +46,4 @@ class SlicApplet(StandardApplet):
 
     @property
     def broadcastingSlots(self):
-        return ['NumSegments', 'Compactness', 'MaxIter']
+        return ["NumSegments", "Compactness", "MaxIter"]

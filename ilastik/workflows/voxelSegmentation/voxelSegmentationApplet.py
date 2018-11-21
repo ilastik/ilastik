@@ -26,24 +26,28 @@ from .voxelSegmentationSerializer import VoxelSegmentationSerializer
 
 
 class VoxelSegmentationApplet(StandardApplet):
-
     def __init__(self, workflow, projectFileGroupName):
         self._topLevelOperator = OpVoxelSegmentation(parent=workflow)
 
         def on_classifier_changed(slot, roi):
-            if self._topLevelOperator.classifier_cache.Output.ready() and \
-               self._topLevelOperator.classifier_cache.fixAtCurrent.value is True and \
-               self._topLevelOperator.classifier_cache.Output.value is None:
+            if (
+                self._topLevelOperator.classifier_cache.Output.ready()
+                and self._topLevelOperator.classifier_cache.fixAtCurrent.value is True
+                and self._topLevelOperator.classifier_cache.Output.value is None
+            ):
                 # When the classifier is deleted (e.g. because the number of features has changed,
                 #  then notify the workflow. (Export applet should be disabled.)
                 self.appletStateUpdateRequested.emit()
+
         self._topLevelOperator.classifier_cache.Output.notifyDirty(on_classifier_changed)
 
         super(VoxelSegmentationApplet, self).__init__("Training")
         self._topLevelOperator = OpVoxelSegmentation(parent=workflow)
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.
-        self._serializableItems = [VoxelSegmentationSerializer(self._topLevelOperator, projectFileGroupName)]  # Default serializer for new projects   # Legacy (v0.5) importer
+        self._serializableItems = [
+            VoxelSegmentationSerializer(self._topLevelOperator, projectFileGroupName)
+        ]  # Default serializer for new projects   # Legacy (v0.5) importer
 
         self._gui = None
 

@@ -13,13 +13,16 @@ from volumina.api import AlphaModulatedLayer
 from .slicViewerControls import SlicViewerControls
 
 
-SLIC_PARAMS = ("NumSegments", "Compactness", "MaxIter")#, "SlicZero")
+SLIC_PARAMS = ("NumSegments", "Compactness", "MaxIter")  # , "SlicZero")
 
 
 class SlicGui(LayerViewerGui):
-
-    def __init__(self, parentApplet, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False, crosshair=True):
-        super().__init__(parentApplet, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False, crosshair=True)
+    def __init__(
+        self, parentApplet, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False, crosshair=True
+    ):
+        super().__init__(
+            parentApplet, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False, crosshair=True
+        )
 
         self._drawer = SlicViewerControls()
 
@@ -39,16 +42,14 @@ class SlicGui(LayerViewerGui):
         if self.topLevelOperatorView.Output.ready():
             self._drawer.NumSegments.setValue(np.max(self.topLevelOperatorView.Output.value))
 
-
     def setupLayers(self):
         layers = [self.createStandardLayerFromSlot(self.topLevelOperatorView.Input)]
         layers[0].opacity = 1.0
         superVoxelSlot = self.topLevelOperatorView.BoundariesOutput
         if superVoxelSlot.ready():
-            layer = AlphaModulatedLayer(LazyflowSource(superVoxelSlot),
-                            tintColor=QColor(Qt.blue),
-                            range=(0.0, 1.0),
-                            normalize=(0.0, 1.0))
+            layer = AlphaModulatedLayer(
+                LazyflowSource(superVoxelSlot), tintColor=QColor(Qt.blue), range=(0.0, 1.0), normalize=(0.0, 1.0)
+            )
             layer.name = "Input Data"
             layer.visible = True
             layer.opacity = 1.0

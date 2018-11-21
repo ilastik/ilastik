@@ -4,7 +4,7 @@ import time
 from pathos import multiprocessing
 import numpy as np
 
-logger = logging.getLogger('default')
+logger = logging.getLogger("default")
 
 
 def log(s):
@@ -16,18 +16,22 @@ def timeit(method):
         ts = time.time()
         result = method(*args, **kw)
         te = time.time()
-        print('%r  %2.2f ms' % (method.__name__, (te - ts) * 1000))
+        print("%r  %2.2f ms" % (method.__name__, (te - ts) * 1000))
         return result
+
     return timed
+
 
 def timeit2(method):
     def timed(*args, **kw):
         ts = time.time()
         result = method(*args, **kw)
         te = time.time()
-        print('2 %r  %2.2f ms' % (method.__name__, (te - ts) * 1000))
+        print("2 %r  %2.2f ms" % (method.__name__, (te - ts) * 1000))
         return result
+
     return timed
+
 
 @timeit
 def get_supervoxel_features(featuresMatrix, supervoxel_mask):
@@ -73,7 +77,7 @@ def get_supervoxel_labels(labels, supervoxel_mask):
 def slic_to_mask(slic_segmentation, supervoxel_values):
     num_cores = multiprocessing.cpu_count()
 
-    slices = np.array_split(slic_segmentation, num_cores*16)
+    slices = np.array_split(slic_segmentation, num_cores * 16)
 
     @timeit2
     def compute(slice_):
@@ -83,7 +87,7 @@ def slic_to_mask(slic_segmentation, supervoxel_values):
             slice_out[slice_ == i, :] = v[:]
         return slice_out
 
-    pool = multiprocessing.Pool(num_cores*4)
+    pool = multiprocessing.Pool(num_cores * 4)
 
     slices_out = pool.map(compute, slices)
     pool.close()

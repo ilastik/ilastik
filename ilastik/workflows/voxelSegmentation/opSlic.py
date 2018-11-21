@@ -27,6 +27,7 @@ class OpSlic(Operator):
     concatenate the results of several requests into one large image.
     (If you do, the final image will appear 'quilted'.)
     """
+
     Input = InputSlot()
 
     # These are the slic parameters.
@@ -42,11 +43,11 @@ class OpSlic(Operator):
         self.Output.meta.dtype = numpy.uint16
 
         tagged_shape = self.Input.meta.getTaggedShape()
-        assert 'c' in tagged_shape, "We assume the image has an explicit channel axis."
-        assert next(reversed(tagged_shape))[0] == 'c', "This code assumes that channel is the LAST axis."
+        assert "c" in tagged_shape, "We assume the image has an explicit channel axis."
+        assert next(reversed(tagged_shape))[0] == "c", "This code assumes that channel is the LAST axis."
 
         # Output will have exactly one channel, regardless of input channels
-        tagged_shape['c'] = 1
+        tagged_shape["c"] = 1
         self.Output.meta.shape = tuple(tagged_shape.values())
 
     def execute(self, slot, subindex, roi, result):
@@ -59,23 +60,27 @@ class OpSlic(Operator):
             # If the number of supervoxels was not given, use a default proportional to the number of voxels
             n_segments = numpy.int(numpy.prod(input_data.shape) / 2500)
 
-        print("calling skimage.segmentation.slic with {}".format(
-            dict(
-                n_segments=n_segments,
-                compactness=self.Compactness.value,
-                max_iter=self.MaxIter.value,
-                multichannel=True,
-                enforce_connectivity=True,
-                convert2lab=False
+        print(
+            "calling skimage.segmentation.slic with {}".format(
+                dict(
+                    n_segments=n_segments,
+                    compactness=self.Compactness.value,
+                    max_iter=self.MaxIter.value,
+                    multichannel=True,
+                    enforce_connectivity=True,
+                    convert2lab=False,
                 )
-        ))
-        slic_sp = skimage.segmentation.slic(input_data,
-                                            n_segments=n_segments,
-                                            compactness=self.Compactness.value,
-                                            max_iter=self.MaxIter.value,
-                                            multichannel=True,
-                                            enforce_connectivity=True,
-                                            convert2lab=False)  # Use with caution.
+            )
+        )
+        slic_sp = skimage.segmentation.slic(
+            input_data,
+            n_segments=n_segments,
+            compactness=self.Compactness.value,
+            max_iter=self.MaxIter.value,
+            multichannel=True,
+            enforce_connectivity=True,
+            convert2lab=False,
+        )  # Use with caution.
         # This would cause slic() to have special behavior for 3-channel data,
         # in which case we better really be dealing with RGB channels
         # (not, say 3 unrelated image features).
@@ -112,8 +117,7 @@ class OpSlicBoundaries(Operator):
             # print(slic_sp[i].shape)
             # print(boundaries[i].shape)
             reshaped_slic = slic_sp[i].reshape(boundaries[i].shape)
-            boundaries[i] = skimage.segmentation.find_boundaries(
-                reshaped_slic)
+            boundaries[i] = skimage.segmentation.find_boundaries(reshaped_slic)
 
         # print(result.shape)
         # print(boundaries.shape)
@@ -128,6 +132,7 @@ class OpSlicCached(Operator):
     """
     Computes SLIC superpixels and cache the result for the entire image.
     """
+
     # Same slots as OpSlic
     Input = InputSlot()
     NumSegments = InputSlot(value=0)

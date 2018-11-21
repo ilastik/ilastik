@@ -26,6 +26,7 @@ from ilastik.applets.pixelClassification import pixelClassificationGui
 from ilastik.applets.pixelClassification.FeatureSelectionDialog import FeatureSelectionDialog
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import bind
+
 # ilastik
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility.gui import threadRouted
@@ -45,7 +46,6 @@ except ImportError:
 
 
 class VoxelSegmentationGui(LabelingGui):
-
     def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None):
         self.parentApplet = parentApplet
         # Tell our base class which slots to monitor
@@ -60,7 +60,7 @@ class VoxelSegmentationGui(LabelingGui):
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         if labelingDrawerUiPath is None:
-            labelingDrawerUiPath = os.path.dirname(__file__) + '/labelingDrawer.ui'
+            labelingDrawerUiPath = os.path.dirname(__file__) + "/labelingDrawer.ui"
 
         # Base class init
         super(VoxelSegmentationGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath)
@@ -90,7 +90,9 @@ class VoxelSegmentationGui(LabelingGui):
         self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
 
         self.topLevelOperatorView.LabelNames.notifyDirty(bind(self.handleLabelSelectionChange))
-        self.__cleanup_fns.append(partial(self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange)))
+        self.__cleanup_fns.append(
+            partial(self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange))
+        )
 
         self._initShortcuts()
 
@@ -118,9 +120,12 @@ class VoxelSegmentationGui(LabelingGui):
 
         def FreezePredDirty():
             self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
+
         # listen to freezePrediction changes
         # self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
-        self.__cleanup_fns.append(partial(self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty)))
+        self.__cleanup_fns.append(
+            partial(self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty))
+        )
 
         # self.superVoxelSinkSource = SuperVoxelSinkSource(self._labelingSlots.labelOutput,
         #                                                  self._labelingSlots.labelInput)
@@ -151,6 +156,7 @@ class VoxelSegmentationGui(LabelingGui):
             logger.info("resetting planes")
             self.mostUncertainPlanes = None
             self.mostUncertainAxis = None
+
         resetBestPlanes()
         self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(resetBestPlanes))
         self.topLevelOperatorView.LabelImages.notifyDirty(bind(resetBestPlanes))
@@ -158,22 +164,29 @@ class VoxelSegmentationGui(LabelingGui):
 
     def initFeatSelDlg(self):
         if self.topLevelOperatorView.name == "OpVoxelSegmentation":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
+                0
+            ]
         elif self.topLevelOperatorView.name == "OpVoxelSegmentation0":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[0].topLevelOperator.innerOperators[0]
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
+                0
+            ].topLevelOperator.innerOperators[0]
         elif self.topLevelOperatorView.name == "OpVoxelSegmentation1":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[1].topLevelOperator.innerOperators[0]
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
+                1
+            ].topLevelOperator.innerOperators[0]
         elif self.topLevelOperatorView.name == "OpVoxelSegmentation2":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[2].topLevelOperator.innerOperators[0]
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
+                2
+            ].topLevelOperator.innerOperators[0]
         elif self.topLevelOperatorView.name == "OpVoxelSegmentation3":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[3].topLevelOperator.innerOperators[0]
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
+                3
+            ].topLevelOperator.innerOperators[0]
         else:
             raise NotImplementedError
 
-        self.featSelDlg = FeatureSelectionDialog(
-            thisOpFeatureSelection,
-            self.topLevelOperatorView,
-            self.labelListData)
+        self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self.topLevelOperatorView, self.labelListData)
 
     def menus(self):
         menus = super().menus()
@@ -188,25 +201,26 @@ class VoxelSegmentationGui(LabelingGui):
         classifier_action.triggered.connect(handleClassifierAction)
 
         def showVarImpDlg():
-            varImpDlg = VariableImportanceDialog(self.topLevelOperatorView.Classifier.value.named_importances, parent=self)
+            varImpDlg = VariableImportanceDialog(
+                self.topLevelOperatorView.Classifier.value.named_importances, parent=self
+            )
             varImpDlg.exec_()
 
         advanced_menu.addAction("Variable Importance Table").triggered.connect(showVarImpDlg)
 
         def handleImportLabelsAction():
             # Find the directory of the most recently opened image file
-            mostRecentImageFile = PreferencesManager().get('DataSelection', 'recent image')
+            mostRecentImageFile = PreferencesManager().get("DataSelection", "recent image")
             if mostRecentImageFile is not None:
                 defaultDirectory = os.path.split(mostRecentImageFile)[0]
             else:
-                defaultDirectory = os.path.expanduser('~')
+                defaultDirectory = os.path.expanduser("~")
             fileNames = DataSelectionGui.getImageFileNamesToOpen(self, defaultDirectory)
             fileNames = list(map(str, fileNames))
 
             # For now, we require a single hdf5 file
             if len(fileNames) > 1:
-                QMessageBox.critical(self, "Too many files",
-                                     "Labels must be contained in a single hdf5 volume.")
+                QMessageBox.critical(self, "Too many files", "Labels must be contained in a single hdf5 volume.")
                 return
             if len(fileNames) == 0:
                 # user cancelled
@@ -215,8 +229,7 @@ class VoxelSegmentationGui(LabelingGui):
             file_path = fileNames[0]
             internal_paths = DataSelectionGui.getPossibleInternalPaths(file_path)
             if len(internal_paths) == 0:
-                QMessageBox.critical(self, "No volumes in file",
-                                     "Couldn't find a suitable dataset in your hdf5 file.")
+                QMessageBox.critical(self, "No volumes in file", "Couldn't find a suitable dataset in your hdf5 file.")
                 return
             if len(internal_paths) == 1:
                 internal_path = internal_paths[0]
@@ -272,15 +285,17 @@ class VoxelSegmentationGui(LabelingGui):
         labels_submenu.addMenu(self.print_labels_submenu)
 
         for axis in self.topLevelOperatorView.InputImages.meta.getAxisKeys()[:-1]:
-            self.print_labels_submenu\
-                .addAction("Sort by {}".format(axis.upper()))\
-                .triggered.connect(partial(print_label_blocks, axis))
+            self.print_labels_submenu.addAction("Sort by {}".format(axis.upper())).triggered.connect(
+                partial(print_label_blocks, axis)
+            )
 
         advanced_menu.addMenu(labels_submenu)
 
-        if ilastik_config.getboolean('ilastik', 'debug'):
+        if ilastik_config.getboolean("ilastik", "debug"):
+
             def showBookmarksWindow():
                 self._bookmarks_window.show()
+
             advanced_menu.addAction("Bookmarks...").triggered.connect(showBookmarksWindow)
 
         if self.render:
@@ -302,7 +317,7 @@ class VoxelSegmentationGui(LabelingGui):
 
         ActionInfo = ShortcutManager.ActionInfo
 
-        if ilastik_config.getboolean('ilastik', 'debug'):
+        if ilastik_config.getboolean("ilastik", "debug"):
 
             # Add the label projection layer.
             labelProjectionSlot = self.topLevelOperatorView.opLabelPipeline.opLabelArray.Projection2D
@@ -311,9 +326,10 @@ class VoxelSegmentationGui(LabelingGui):
                 try:
                     # This colortable requires matplotlib
                     from volumina.colortables import jet
-                    projectionLayer = ColortableLayer(projectionSrc,
-                                                      colorTable=[QColor(0, 0, 0, 128).rgba()]+jet(N=255),
-                                                      normalize=(0.0, 1.0))
+
+                    projectionLayer = ColortableLayer(
+                        projectionSrc, colorTable=[QColor(0, 0, 0, 128).rgba()] + jet(N=255), normalize=(0.0, 1.0)
+                    )
                 except (ImportError, RuntimeError):
                     pass
                 else:
@@ -335,38 +351,46 @@ class VoxelSegmentationGui(LabelingGui):
         uncertaintySlot = self.topLevelOperatorView.UncertaintyEstimate
         if uncertaintySlot.ready():
             uncertaintySrc = LazyflowSource(uncertaintySlot)
-            uncertaintyLayer = AlphaModulatedLayer(uncertaintySrc,
-                                                   tintColor=QColor(Qt.cyan),
-                                                   range=(0.0, 1.0),
-                                                   normalize=(0.0, 1.0))
+            uncertaintyLayer = AlphaModulatedLayer(
+                uncertaintySrc, tintColor=QColor(Qt.cyan), range=(0.0, 1.0), normalize=(0.0, 1.0)
+            )
             uncertaintyLayer.name = "Uncertainty"
             uncertaintyLayer.visible = False
             uncertaintyLayer.opacity = 1.0
-            uncertaintyLayer.shortcutRegistration = ("u", ActionInfo("Prediction Layers",
-                                                                     "Uncertainty",
-                                                                     "Show/Hide Uncertainty",
-                                                                     uncertaintyLayer.toggleVisible,
-                                                                     self.viewerControlWidget(),
-                                                                     uncertaintyLayer))
+            uncertaintyLayer.shortcutRegistration = (
+                "u",
+                ActionInfo(
+                    "Prediction Layers",
+                    "Uncertainty",
+                    "Show/Hide Uncertainty",
+                    uncertaintyLayer.toggleVisible,
+                    self.viewerControlWidget(),
+                    uncertaintyLayer,
+                ),
+            )
             layers.append(uncertaintyLayer)
 
         # Add the top uncertainty estimate layer
         topUncertaintySlot = self.topLevelOperatorView.TopUncertaintyEstimate
         if topUncertaintySlot.ready():
             topUncertaintySrc = LazyflowSource(topUncertaintySlot)
-            topUncertaintyLayer = AlphaModulatedLayer(topUncertaintySrc,
-                                                      tintColor=QColor(Qt.cyan),
-                                                      range=(0.0, 1.0),
-                                                      normalize=(0.0, 1.0))
+            topUncertaintyLayer = AlphaModulatedLayer(
+                topUncertaintySrc, tintColor=QColor(Qt.cyan), range=(0.0, 1.0), normalize=(0.0, 1.0)
+            )
             topUncertaintyLayer.name = "topUncertainty"
             topUncertaintyLayer.visible = True
             topUncertaintyLayer.opacity = 1.0
-            topUncertaintyLayer.shortcutRegistration = ("u", ActionInfo("Prediction Layers",
-                                                                        "topUncertainty",
-                                                                        "Show/Hide topUncertainty",
-                                                                        topUncertaintyLayer.toggleVisible,
-                                                                        self.viewerControlWidget(),
-                                                                        topUncertaintyLayer))
+            topUncertaintyLayer.shortcutRegistration = (
+                "u",
+                ActionInfo(
+                    "Prediction Layers",
+                    "topUncertainty",
+                    "Show/Hide topUncertainty",
+                    topUncertaintyLayer.toggleVisible,
+                    self.viewerControlWidget(),
+                    topUncertaintyLayer,
+                ),
+            )
             layers.insert(0, topUncertaintyLayer)
 
         labels = self.labelListData
@@ -376,10 +400,9 @@ class VoxelSegmentationGui(LabelingGui):
             if segmentationSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 segsrc = LazyflowSource(segmentationSlot)
-                segLayer = AlphaModulatedLayer(segsrc,
-                                               tintColor=ref_label.pmapColor(),
-                                               range=(0.0, 1.0),
-                                               normalize=(0.0, 1.0))
+                segLayer = AlphaModulatedLayer(
+                    segsrc, tintColor=ref_label.pmapColor(), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                )
 
                 segLayer.opacity = 1
                 segLayer.visible = False  # self.labelingDrawerUi.liveUpdateButton.isChecked()
@@ -426,10 +449,9 @@ class VoxelSegmentationGui(LabelingGui):
             if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
-                predictLayer = AlphaModulatedLayer(predictsrc,
-                                                   tintColor=ref_label.pmapColor(),
-                                                   range=(0.0, 1.0),
-                                                   normalize=(0.0, 1.0))
+                predictLayer = AlphaModulatedLayer(
+                    predictsrc, tintColor=ref_label.pmapColor(), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                )
                 predictLayer.opacity = 0.25
                 predictLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
                 predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
@@ -476,12 +498,17 @@ class VoxelSegmentationGui(LabelingGui):
                 else:
                     self.layerstack.moveSelectedToTop()
 
-            inputLayer.shortcutRegistration = ("i", ActionInfo("Prediction Layers",
-                                                               "Bring Input To Top/Bottom",
-                                                               "Bring Input To Top/Bottom",
-                                                               toggleTopToBottom,
-                                                               self.viewerControlWidget(),
-                                                               inputLayer))
+            inputLayer.shortcutRegistration = (
+                "i",
+                ActionInfo(
+                    "Prediction Layers",
+                    "Bring Input To Top/Bottom",
+                    "Bring Input To Top/Bottom",
+                    toggleTopToBottom,
+                    self.viewerControlWidget(),
+                    inputLayer,
+                ),
+            )
             layers.append(inputLayer)
 
             # The thresholding button can only be used if the data is displayed as grayscale.
@@ -494,10 +521,9 @@ class VoxelSegmentationGui(LabelingGui):
 
         superVoxelSlot = self.topLevelOperatorView.SupervoxelBoundaries
         if superVoxelSlot.ready():
-            layer = AlphaModulatedLayer(LazyflowSource(superVoxelSlot),
-                                        tintColor=QColor(Qt.black),
-                                        range=(0.0, 1.0),
-                                        normalize=(0.0, 1.0))
+            layer = AlphaModulatedLayer(
+                LazyflowSource(superVoxelSlot), tintColor=QColor(Qt.black), range=(0.0, 1.0), normalize=(0.0, 1.0)
+            )
             layer.name = "SLIC segmentation"
             layer.visible = True
             layer.opacity = 0.3
@@ -539,15 +565,25 @@ class VoxelSegmentationGui(LabelingGui):
 
     def update_features_from_dialog(self):
         if self.topLevelOperatorView.name == "OpPixelClassification":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[
+                0
+            ]
         elif self.topLevelOperatorView.name == "OpPixelClassification0":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[0].topLevelOperator.innerOperators[0]
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
+                0
+            ].topLevelOperator.innerOperators[0]
         elif self.topLevelOperatorView.name == "OpPixelClassification1":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[1].topLevelOperator.innerOperators[0]
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
+                1
+            ].topLevelOperator.innerOperators[0]
         elif self.topLevelOperatorView.name == "OpPixelClassification2":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[2].topLevelOperator.innerOperators[0]
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
+                2
+            ].topLevelOperator.innerOperators[0]
         elif self.topLevelOperatorView.name == "OpPixelClassification3":
-            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[3].topLevelOperator.innerOperators[0]
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[
+                3
+            ].topLevelOperator.innerOperators[0]
         else:
             raise NotImplementedError
 
@@ -562,8 +598,13 @@ class VoxelSegmentationGui(LabelingGui):
         # Connect checkboxes
         def nextCheckState(checkbox):
             checkbox.setChecked(not checkbox.isChecked())
-        self._viewerControlUi.checkShowPredictions.nextCheckState = partial(nextCheckState, self._viewerControlUi.checkShowPredictions)
-        self._viewerControlUi.checkShowSegmentation.nextCheckState = partial(nextCheckState, self._viewerControlUi.checkShowSegmentation)
+
+        self._viewerControlUi.checkShowPredictions.nextCheckState = partial(
+            nextCheckState, self._viewerControlUi.checkShowPredictions
+        )
+        self._viewerControlUi.checkShowSegmentation.nextCheckState = partial(
+            nextCheckState, self._viewerControlUi.checkShowSegmentation
+        )
 
         self._viewerControlUi.checkShowPredictions.clicked.connect(self.handleShowPredictionsClicked)
         self._viewerControlUi.checkShowSegmentation.clicked.connect(self.handleShowSegmentationClicked)
@@ -577,26 +618,41 @@ class VoxelSegmentationGui(LabelingGui):
         ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Predictions"
 
-        mgr.register("p", ActionInfo(shortcutGroupName,
-                                     "Toggle Prediction",
-                                     "Toggle Prediction Layer Visibility",
-                                     self._viewerControlUi.checkShowPredictions.click,
-                                     self._viewerControlUi.checkShowPredictions,
-                                     self._viewerControlUi.checkShowPredictions))
+        mgr.register(
+            "p",
+            ActionInfo(
+                shortcutGroupName,
+                "Toggle Prediction",
+                "Toggle Prediction Layer Visibility",
+                self._viewerControlUi.checkShowPredictions.click,
+                self._viewerControlUi.checkShowPredictions,
+                self._viewerControlUi.checkShowPredictions,
+            ),
+        )
 
-        mgr.register("s", ActionInfo(shortcutGroupName,
-                                     "Toggle Segmentaton",
-                                     "Toggle Segmentaton Layer Visibility",
-                                     self._viewerControlUi.checkShowSegmentation.click,
-                                     self._viewerControlUi.checkShowSegmentation,
-                                     self._viewerControlUi.checkShowSegmentation))
+        mgr.register(
+            "s",
+            ActionInfo(
+                shortcutGroupName,
+                "Toggle Segmentaton",
+                "Toggle Segmentaton Layer Visibility",
+                self._viewerControlUi.checkShowSegmentation.click,
+                self._viewerControlUi.checkShowSegmentation,
+                self._viewerControlUi.checkShowSegmentation,
+            ),
+        )
 
-        mgr.register("l", ActionInfo(shortcutGroupName,
-                                     "Live Prediction",
-                                     "Toggle Live Prediction Mode",
-                                     self.labelingDrawerUi.liveUpdateButton.toggle,
-                                     self.labelingDrawerUi.liveUpdateButton,
-                                     self.labelingDrawerUi.liveUpdateButton))
+        mgr.register(
+            "l",
+            ActionInfo(
+                shortcutGroupName,
+                "Live Prediction",
+                "Toggle Live Prediction Mode",
+                self.labelingDrawerUi.liveUpdateButton.toggle,
+                self.labelingDrawerUi.liveUpdateButton,
+                self.labelingDrawerUi.liveUpdateButton,
+            ),
+        )
 
     def _setup_contexts(self, layer):
         def callback(pos, clayer=layer):
@@ -611,14 +667,16 @@ class VoxelSegmentationGui(LabelingGui):
                 self._update_rendering()
 
         if self.render:
-            layer.contexts.append(QAction('Toggle 3D rendering', None, triggered=callback))
+            layer.contexts.append(QAction("Toggle 3D rendering", None, triggered=callback))
 
     def toggleInteractive(self, checked):
         logger.info("toggling interactive mode to '%r'" % checked)
 
         if checked == True:
-            if not self.topLevelOperatorView.FeatureImages.ready() \
-                    or self.topLevelOperatorView.FeatureImages.meta.shape == None:
+            if (
+                not self.topLevelOperatorView.FeatureImages.ready()
+                or self.topLevelOperatorView.FeatureImages.meta.shape == None
+            ):
                 self.labelingDrawerUi.liveUpdateButton.setChecked(False)
                 self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
                 mexBox = QMessageBox()
@@ -634,7 +692,7 @@ class VoxelSegmentationGui(LabelingGui):
                 self.labelingDrawerUi.AddLabelButton.setEnabled(False)
             else:
                 num_label_classes = self._labelControlUi.labelListModel.rowCount()
-                self.labelingDrawerUi.labelListView.allowDelete = (num_label_classes > self.minLabelNumber)
+                self.labelingDrawerUi.labelListView.allowDelete = num_label_classes > self.minLabelNumber
                 self.labelingDrawerUi.AddLabelButton.setEnabled((num_label_classes < self.maxLabelNumber))
                 self.labelingDrawerUi.suggestFeaturesButton.setEnabled(True)
 
@@ -769,41 +827,30 @@ class VoxelSegmentationGui(LabelingGui):
                 slot.setValue(value, check_changed=False)
 
     def getNextLabelName(self):
-        return self._getNext(self.topLevelOperatorView.LabelNames,
-                             super().getNextLabelName)
+        return self._getNext(self.topLevelOperatorView.LabelNames, super().getNextLabelName)
 
     def getNextLabelColor(self):
-        return self._getNext(
-            self.topLevelOperatorView.LabelColors,
-            super().getNextLabelColor,
-            lambda x: QColor(*x)
-        )
+        return self._getNext(self.topLevelOperatorView.LabelColors, super().getNextLabelColor, lambda x: QColor(*x))
 
     def getNextPmapColor(self):
-        return self._getNext(
-            self.topLevelOperatorView.PmapColors,
-            super().getNextPmapColor,
-            lambda x: QColor(*x)
-        )
+        return self._getNext(self.topLevelOperatorView.PmapColors, super().getNextPmapColor, lambda x: QColor(*x))
 
     def onLabelNameChanged(self):
-        self._onLabelChanged(super().onLabelNameChanged,
-                             lambda l: l.name,
-                             self.topLevelOperatorView.LabelNames)
+        self._onLabelChanged(super().onLabelNameChanged, lambda l: l.name, self.topLevelOperatorView.LabelNames)
 
     def onLabelColorChanged(self):
-        self._onLabelChanged(super().onLabelColorChanged,
-                             lambda l: (l.brushColor().red(),
-                                        l.brushColor().green(),
-                                        l.brushColor().blue()),
-                             self.topLevelOperatorView.LabelColors)
+        self._onLabelChanged(
+            super().onLabelColorChanged,
+            lambda l: (l.brushColor().red(), l.brushColor().green(), l.brushColor().blue()),
+            self.topLevelOperatorView.LabelColors,
+        )
 
     def onPmapColorChanged(self):
-        self._onLabelChanged(super().onPmapColorChanged,
-                             lambda l: (l.pmapColor().red(),
-                                        l.pmapColor().green(),
-                                        l.pmapColor().blue()),
-                             self.topLevelOperatorView.PmapColors)
+        self._onLabelChanged(
+            super().onPmapColorChanged,
+            lambda l: (l.pmapColor().red(), l.pmapColor().green(), l.pmapColor().blue()),
+            self.topLevelOperatorView.PmapColors,
+        )
 
     def _update_rendering(self):
         if not self.render:
@@ -818,8 +865,7 @@ class VoxelSegmentationGui(LabelingGui):
             self._renderMgr.setup(shape)
 
         layernames = set(layer.name for layer in self.layerstack)
-        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.items()
-                                    if k in layernames)
+        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.items() if k in layernames)
 
         newvolume = numpy.zeros(shape, dtype=numpy.uint8)
         for layer in self.layerstack:

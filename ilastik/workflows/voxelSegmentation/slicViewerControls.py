@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
 from functools import partial
@@ -31,7 +31,7 @@ from volumina.widgets.exportHelper import get_settings_and_export_layer
 
 # Modified from widgets.ViewerControls
 class SlicViewerControls(QWidget):
-    def __init__(self, parent = None, model=None):
+    def __init__(self, parent=None, model=None):
         QWidget.__init__(self, parent)
         localDir = os.path.split(__file__)[0]
-        uic.loadUi( os.path.join( localDir, "slicViewerControls.ui" ), self )
+        uic.loadUi(os.path.join(localDir, "slicViewerControls.ui"), self)

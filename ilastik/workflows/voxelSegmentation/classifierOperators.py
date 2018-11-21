@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from builtins import zip
 from builtins import map
 from builtins import range
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -26,6 +27,7 @@ from builtins import range
 # Python
 import copy
 import logging
+
 traceLogger = logging.getLogger("TRACE." + __name__)
 
 # SciPy
@@ -35,14 +37,17 @@ import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
 from lazyflow.roi import sliceToRoi, roiToSlice, getIntersection, roiFromShape, nonzero_bounding_box, enlargeRoiForHalo
 from lazyflow.utility import Timer
-from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC, \
-    LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
+from lazyflow.classifiers import (
+    LazyflowVectorwiseClassifierABC,
+    LazyflowVectorwiseClassifierFactoryABC,
+    LazyflowPixelwiseClassifierABC,
+    LazyflowPixelwiseClassifierFactoryABC,
+)
 
 from lazyflow.operators.opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
 
 from lazyflow.operators.opFeatureMatrixCache import OpFeatureMatrixCache
 from .utils import get_supervoxel_features, get_supervoxel_labels, slic_to_mask
-
 
 
 logger = logging.getLogger(__name__)
@@ -53,6 +58,7 @@ class OpTrainSupervoxelClassifierBlocked(Operator):
     Owns two child training operators, for 'vectorwise' and 'pixelwise' classifier types.
     Chooses which one to use based on the type of ClassifierFactory provided as input.
     """
+
     Images = InputSlot(level=1)
     SupervoxelSegmentation = InputSlot(level=1)
     Labels = InputSlot(level=1)
@@ -92,7 +98,7 @@ class OpTrainSupervoxelClassifierBlocked(Operator):
         # Construct an inner operator depending on the type of classifier we'll be creating.
         classifier_factory = self.ClassifierFactory.value
         if issubclass(type(classifier_factory), LazyflowVectorwiseClassifierFactoryABC):
-            new_mode = 'vectorwise'
+            new_mode = "vectorwise"
         else:
             raise Exception("Unknown classifier factory type: {}".format(type(classifier_factory)))
 
@@ -102,9 +108,9 @@ class OpTrainSupervoxelClassifierBlocked(Operator):
         self.Classifier.disconnect()
         self._mode = new_mode
 
-        if self._mode == 'vectorwise':
+        if self._mode == "vectorwise":
             self.Classifier.connect(self._opVectorwiseTrain.Classifier)
-        elif self._mode == 'pixelwise':
+        elif self._mode == "pixelwise":
             raise RuntimeError("shouldn't be here")
             # self.Classifier.connect(self._opPixelwiseTrain.Classifier)
 
@@ -164,6 +170,7 @@ class OpTrainSupervoxelwiseClassifierBlocked(Operator):
         def _handleTrainingComplete():
             logger.debug("Training: 100% (Complete)")
             self.progressSignal(100.0)
+
         self._opTrainFromFeatures.trainingCompleteSignal.subscribe(_handleTrainingComplete)
 
     def cleanUp(self):
@@ -198,7 +205,7 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
         self.trainingCompleteSignal = OrderedSignal()
 
         # TODO: Progress...
-        #self.progressSignal = OrderedSignal()
+        # self.progressSignal = OrderedSignal()
 
     def setupOutputs(self):
         self.Classifier.meta.dtype = object
@@ -221,9 +228,10 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
         #     return
 
         classifier_factory = self.ClassifierFactory.value
-        assert issubclass(type(classifier_factory), LazyflowVectorwiseClassifierFactoryABC), \
-            "Factory is of type {}, which does not satisfy the LazyflowVectorwiseClassifierFactoryABC interface."\
+        assert issubclass(type(classifier_factory), LazyflowVectorwiseClassifierFactoryABC), (
+            "Factory is of type {}, which does not satisfy the LazyflowVectorwiseClassifierFactoryABC interface."
             "".format(type(classifier_factory))
+        )
 
         print("labels shape {}".format(self.Labels[0].value.shape))
         print("Image shape {}".format(self.Images[0].value.shape))
@@ -245,9 +253,10 @@ class OpTrainClassifierFromFeatureVectorsAndSupervoxelMask(Operator):
         classifier = classifier_factory.create_and_train(supervoxelFeatures, supervoxelLabels, channel_names)
         result[0] = classifier
         if classifier is not None:
-            assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), \
-                "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface."\
+            assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), (
+                "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface."
                 "".format(type(classifier))
+            )
 
         self.trainingCompleteSignal()
         return result
@@ -285,7 +294,7 @@ class OpSupervoxelClassifierPredict(Operator):
             raise Exception("Classifier slot must include classifier factory as metadata.")
 
         if issubclass(classifier_factory.__class__, LazyflowVectorwiseClassifierFactoryABC):
-            new_mode = 'vectorwise'
+            new_mode = "vectorwise"
         # elif issubclass(classifier_factory.__class__, LazyflowPixelwiseClassifierFactoryABC):
         #     new_mode = 'pixelwise'
         else:
@@ -299,9 +308,9 @@ class OpSupervoxelClassifierPredict(Operator):
             self._prediction_op.cleanUp()
         self._mode = new_mode
 
-        if self._mode == 'vectorwise':
+        if self._mode == "vectorwise":
             self._prediction_op = OpSupervoxelwiseClassifierPredict(parent=self)
-        elif self._mode == 'pixelwise':
+        elif self._mode == "pixelwise":
             raise RuntimeError("shouldn't be here")
 
         self._prediction_op.PredictionMask.connect(self.PredictionMask)
@@ -327,7 +336,6 @@ class OpSupervoxelwiseClassifierPredict(Operator):
     SupervoxelSegmentation = InputSlot()
     SupervoxelFeatures = InputSlot()
 
-
     # An entire prediction request is skipped if the mask is all zeros for the requested roi.
     # Otherwise, the request is serviced as usual and the mask is ignored.
     PredictionMask = InputSlot(optional=True)
@@ -341,16 +349,18 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         self.PredictionMask.notifyUnready(lambda s: self.PMaps.setDirty())
 
     def setupOutputs(self):
-        assert self.Image.meta.getAxisKeys()[-1] == 'c'
+        assert self.Image.meta.getAxisKeys()[-1] == "c"
 
         nlabels = max(self.LabelsCount.value, 1)  # we'll have at least 2 labels once we actually predict something
         # not setting it to 0 here is friendlier to possible downstream
         # ilastik operators, setting it to 2 causes errors in pixel classification
-        #(live prediction doesn't work when only two labels are present)
+        # (live prediction doesn't work when only two labels are present)
 
         self.PMaps.meta.assignFrom(self.Image.meta)
         self.PMaps.meta.dtype = numpy.float32
-        self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,)  # FIXME: This assumes that channel is the last axis
+        self.PMaps.meta.shape = self.Image.meta.shape[:-1] + (
+            nlabels,
+        )  # FIXME: This assumes that channel is the last axis
         self.PMaps.meta.drange = (0.0, 1.0)
 
         self.Image.meta.ideal_blockshape = self.Image.meta.shape
@@ -379,7 +389,7 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         classifier = self.Classifier.value
 
         # Training operator may return 'None' if there was no data to train with
-        skip_prediction = (classifier is None)
+        skip_prediction = classifier is None
 
         # Shortcut: If the mask is totally zero, skip this request entirely
         if not skip_prediction and self.PredictionMask.ready():
@@ -394,9 +404,10 @@ class OpSupervoxelwiseClassifierPredict(Operator):
             result[:] = 0.0
             return result
 
-        assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), \
-            "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface."\
+        assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), (
+            "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface."
             "".format(type(classifier))
+        )
 
         key = roi.toSlice()
         newKey = key[:-1]
@@ -418,16 +429,21 @@ class OpSupervoxelwiseClassifierPredict(Operator):
             probabilities = classifier.predict_probabilities(features)
         print("probs shape: {}".format(probabilities.shape))
         # import ipdb; ipdb.set_trace()
-        probabilities = slic_to_mask(self.SupervoxelSegmentation.value, probabilities).reshape(-1, probabilities.shape[-1])
+        probabilities = slic_to_mask(self.SupervoxelSegmentation.value, probabilities).reshape(
+            -1, probabilities.shape[-1]
+        )
         print("probs shape unslicd: {}".format(probabilities.shape))
         print("ROI {}".format(roi.pprint()))
-        logger.debug("Features took {} seconds, Prediction took {} seconds for roi: {} : {}"
-                     .format(features_timer.seconds(), prediction_timer.seconds(), roi.start, roi.stop))
+        logger.debug(
+            "Features took {} seconds, Prediction took {} seconds for roi: {} : {}".format(
+                features_timer.seconds(), prediction_timer.seconds(), roi.start, roi.stop
+            )
+        )
 
-        assert probabilities.shape[1] <= self.PMaps.meta.shape[-1], \
-            "Error: Somehow the classifier has more label classes than expected:"\
-            " Got {} classes, expected {} classes"\
-            .format(probabilities.shape[1], self.PMaps.meta.shape[-1])
+        assert probabilities.shape[1] <= self.PMaps.meta.shape[-1], (
+            "Error: Somehow the classifier has more label classes than expected:"
+            " Got {} classes, expected {} classes".format(probabilities.shape[1], self.PMaps.meta.shape[-1])
+        )
 
         # We're expecting a channel for each label class.
         # If we didn't provide at least one sample for each label,
@@ -436,9 +452,11 @@ class OpSupervoxelwiseClassifierPredict(Operator):
             # Copy to an array of the correct shape
             # This is slow, but it's an unusual case
             assert probabilities.shape[-1] == len(classifier.known_classes)
-            full_probabilities = numpy.zeros(probabilities.shape[:-1] + (self.PMaps.meta.shape[-1],), dtype=numpy.float32)
+            full_probabilities = numpy.zeros(
+                probabilities.shape[:-1] + (self.PMaps.meta.shape[-1],), dtype=numpy.float32
+            )
             for i, label in enumerate(classifier.known_classes):
-                full_probabilities[:, label-1] = probabilities[:, i]
+                full_probabilities[:, label - 1] = probabilities[:, i]
 
             probabilities = full_probabilities
 
@@ -446,7 +464,7 @@ class OpSupervoxelwiseClassifierPredict(Operator):
         probabilities.shape = shape[:-1] + (self.PMaps.meta.shape[-1],)
 
         # Copy only the prediction channels the client requested.
-        result[...] = probabilities[..., roi.start[-1]:roi.stop[-1]]
+        result[...] = probabilities[..., roi.start[-1] : roi.stop[-1]]
         print("result.shape")
         print(result.shape)
         return result
