@@ -200,11 +200,11 @@ class ObjectClassificationWorkflow(Workflow):
         exportImageArgGroup.add_argument(
             "--export_object_prediction_img", dest="export_source",
             action="store_const",
-            const=self.ExportNames.OBJECT_PREDICTIONS.socketName)
+            const=self.ExportNames.OBJECT_PREDICTIONS.slotName)
         exportImageArgGroup.add_argument(
             "--export_object_probability_img", dest="export_source",
             action="store_const",
-            const=self.ExportNames.OBJECT_PROBABILITIES.socketName)
+            const=self.ExportNames.OBJECT_PROBABILITIES.slotName)
         return parser, exportImageArgGroup
 
     @property
@@ -562,7 +562,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         exportImageArgGroup.add_argument(
             "--export_pixel_probability_img", dest="export_source",
             action="store_const",
-            const=self.ExportNames.PIXEL_PROBABILITIES.socketName)
+            const=self.ExportNames.PIXEL_PROBABILITIES.slotName)
         return parser, exportImageArgGroup
 
     def prepareForNewLane(self, laneIndex):
