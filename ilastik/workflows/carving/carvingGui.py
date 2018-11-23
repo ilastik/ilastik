@@ -21,8 +21,10 @@ from __future__ import division
 ###############################################################################
 #Python
 import os
+import re
 from functools import partial
 from collections import defaultdict
+from typing import List, Union
 import numpy
 
 #PyQt
@@ -59,6 +61,7 @@ logger = logging.getLogger(__name__)
 
 CURRENT_SEGMENTATION_NAME = "__current_segmentation__"
 #===----------------------------------------------------------------------------------------------------------------===
+
 
 class CarvingGui(LabelingGui):
     def __init__(self, parentApplet, topLevelOperatorView, drawerUiPath=None ):
@@ -171,6 +174,8 @@ class CarvingGui(LabelingGui):
         #    self.updateAllLayers() #make sure that an added/deleted uncertainty layer is recognized
         #self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onUncertaintyCombo)
 
+        self.labelingDrawerUi.objPrefix.setText(self.objectPrefix)
+        self.labelingDrawerUi.objPrefix.textChanged.connect(self.setObjectPrefix)
 
         ## save
 
@@ -224,6 +229,13 @@ class CarvingGui(LabelingGui):
         makeColortable()
         self._updateGui()
 
+    @property
+    def objectPrefix(self):
+        return self.topLevelOperatorView.ObjectPrefix.value
+
+    def setObjectPrefix(self, value):
+        self.topLevelOperatorView.ObjectPrefix.setValue(value)
+
     def _is_3d(self):
         tagged_shape = defaultdict(lambda: 1)
         tagged_shape.update(self.topLevelOperatorView.InputData.meta.getTaggedShape())
@@ -245,19 +257,43 @@ class CarvingGui(LabelingGui):
         biasValue = self.labelingDrawerUi.noBiasBelowSpin.value()
         self.topLevelOperatorView.NoBiasBelow.setValue(biasValue)
         self.topLevelOperatorView.Trigger.setDirty(slice(None))
-    
+
+    def getObjectNames(self):
+        return self.topLevelOperatorView.AllObjectNames[:].wait()
+
+    def findNextPrefixNumber(self):
+        names = self.getObjectNames()
+        last = 0
+
+        for n in names:
+            match = re.match(f'^{self.objectPrefix}(?P<suffix>\d+)', n)
+            if match:
+                val = int(match.group('suffix'))
+                if val > last:
+                    last = val
+
+        return last + 1
+
     def saveAsDialog(self, name=""):
         '''special functionality: reject names given to other objects'''
+        namesInUse = self.getObjectNames()
+
+        def generateObjectName():
+            return f"{self.objectPrefix}{self.findNextPrefixNumber()}"
+
+        name = name or generateObjectName()
+
         dialog = uic.loadUi(self.dialogdirSAD)
         dialog.lineEdit.setText(name)
+        dialog.lineEdit.selectAll()
         dialog.warning.setVisible(False)
         dialog.Ok.clicked.connect(dialog.accept)
         dialog.Cancel.clicked.connect(dialog.reject)
-        listOfItems = self.topLevelOperatorView.AllObjectNames[:].wait()
         dialog.isDisabled = False
+
         def validate():
             name = dialog.lineEdit.text()
-            if name in listOfItems:
+            if name in namesInUse:
                 dialog.Ok.setEnabled(False)
                 dialog.warning.setVisible(True)
                 dialog.isDisabled = True
@@ -265,6 +301,7 @@ class CarvingGui(LabelingGui):
                 dialog.Ok.setEnabled(True)
                 dialog.warning.setVisible(False)
                 dialog.isDisabled = False
+
         dialog.lineEdit.textChanged.connect(validate)
         result = dialog.exec_()
         if result:
@@ -272,6 +309,7 @@ class CarvingGui(LabelingGui):
     
     def onSaveButton(self):
         logger.info( "save object as?" )
+        prevName = self.topLevelOperatorView.currentObjectName()
         if self.topLevelOperatorView.dataIsStorable():
             prevName = ""
             if self.topLevelOperatorView.hasCurrentObject():
@@ -281,8 +319,8 @@ class CarvingGui(LabelingGui):
             name = self.saveAsDialog(name=prevName)
             if name is None:
                 return
-            objects = self.topLevelOperatorView.AllObjectNames[:].wait()
-            if name in objects and name != prevName:
+            namesInUse = self.getObjectNames()
+            if name in namesInUse and name != prevName:
                 QMessageBox.critical(self, "Save Object As", "An object with name '%s' already exists.\nPlease choose a different name." % name)
                 return
             self.topLevelOperatorView.saveObjectAs(name)
@@ -304,8 +342,8 @@ class CarvingGui(LabelingGui):
     def onShowObjectNames(self):
         '''show object names and allow user to load/delete them'''
         dialog = uic.loadUi(self.dialogdirCOM)
-        listOfItems = self.topLevelOperatorView.AllObjectNames[:].wait()
-        dialog.objectNames.addItems(sorted(listOfItems))
+        names = self.getObjectNames()
+        dialog.objectNames.addItems(sorted(names, key=_humansort_key))
         
         def loadSelection():
             selected = [str(name.text()) for name in dialog.objectNames.selectedItems()]
@@ -792,3 +830,28 @@ class CarvingGui(LabelingGui):
             layers.append(layer)
 
         return layers
+
+
+def _str_to_int(data_str: str) -> Union[str, int]:
+    """
+    Convert string to int when possible
+    """
+    if data_str.isdigit():
+        return int(data_str)
+    return data_str
+
+
+def _humansort_key(elem: str):
+    """
+    Key for human sort
+    >>> lst = ['a 1', 'b 2', 'a 10', 'a 9']
+    >>> sorted(lst, key=_humansort_key)
+    ['a 1', 'a 9', 'a 10', 'b 2']
+    """
+    if not (elem and isinstance(elem, str)):
+        return tuple()
+
+    return tuple(
+        _str_to_int(token)
+        for token in re.split('(\d+)', elem) if token
+    )

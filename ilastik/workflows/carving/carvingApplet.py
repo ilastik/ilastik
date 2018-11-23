@@ -43,7 +43,7 @@ class CarvingApplet(LabelingApplet):
 
         super(CarvingApplet, self).__init__(workflow, projectFileGroupName)
         self._projectFileGroupName = projectFileGroupName
-        self._serializers = None
+        self._serializers = [CarvingSerializer(self.topLevelOperator, self._projectFileGroupName)]
 
     def getMultiLaneGui(self):
         """
@@ -61,8 +61,6 @@ class CarvingApplet(LabelingApplet):
 
     @property
     def dataSerializers(self):
-        if self._serializers is None:
-            self._serializers = [ CarvingSerializer(self.topLevelOperator, self._projectFileGroupName) ]
         return self._serializers
     
     @property
