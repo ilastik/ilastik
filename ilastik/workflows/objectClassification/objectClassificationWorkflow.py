@@ -234,7 +234,7 @@ class ObjectClassificationWorkflow(Workflow):
             # Release reference
             self.stored_object_classifier = None
 
-    def createRawDataSourceSlot(self, laneIndex):
+    def createRawDataSourceSlot(self, laneIndex, canonicalOrder=True):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
 
         rawslot = opData.ImageGroup[self.InputImageRoles.RAW_DATA]
@@ -243,14 +243,16 @@ class ObjectClassificationWorkflow(Workflow):
             opFillMissingSlices.Input.connect(rawslot)
             rawslot = opFillMissingSlices.Output
 
-        op5raw = OpReorderAxes(parent=self)
-        op5raw.AxisOrder.setValue("txyzc")
-        op5raw.Input.connect(rawslot)
-        return op5raw.Output
+        if canonicalOrder:
+            op5raw = OpReorderAxes(parent=self)
+            op5raw.AxisOrder.setValue("txyzc")
+            op5raw.Input.connect(rawslot)
+            return op5raw.Output
+
+        return rawslot
 
     def connectLane(self, laneIndex):
-        rawslot = self.createRawDataSourceSlot(laneIndex)
-        binaryslot = self.createBinaryDataSourceSlot(rawslot, laneIndex)
+        rawslot, binaryslot = self.connectInputs(laneIndex)
 
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
 
@@ -622,7 +624,9 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         if not self._headless:
             self._shell.currentAppletChanged.connect( self.handle_applet_changed )
 
-    def createBinaryDataSourceSlot(self, rawslot, laneIndex):
+    def connectInputs(self, laneIndex):
+        op5raw = OpReorderAxes(parent=self)
+        op5raw.AxisOrder.setValue("txyzc")
         op5pred = OpReorderAxes(parent=self)
         op5pred.AxisOrder.setValue("txyzc")
         op5threshold = OpReorderAxes(parent=self)
@@ -633,21 +637,24 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opClassify = self.pcApplet.topLevelOperator.getLane(laneIndex)
         opThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
 
+        rawslot = self.createRawDataSourceSlot(laneIndex, canonicalOrder=False)
+
         opTrainingFeatures.InputImage.connect(rawslot)
 
         opClassify.InputImages.connect(rawslot)
         opClassify.FeatureImages.connect(opTrainingFeatures.OutputImage)
         opClassify.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
 
+        op5raw.Input.connect(rawslot)
         op5pred.Input.connect(opClassify.CachedPredictionProbabilities)
 
-        opThreshold.RawInput.connect(rawslot)
+        opThreshold.RawInput.connect(op5raw.Output)
         opThreshold.InputImage.connect(op5pred.Output)
         opThreshold.InputChannelColors.connect( opClassify.PmapColors )
 
         op5threshold.Input.connect(opThreshold.CachedOutput)
 
-        return op5threshold.Output
+        return op5raw.Output, op5threshold.Output
 
     def handleAppletStateUpdateRequested(self):
         """
@@ -709,9 +716,9 @@ class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
         return (super().data_instructions +
                 'Use the "Segmentation Image" tab to load your binary mask image(s).')
 
-    def createBinaryDataSourceSlot(self, rawslot, laneIndex):
+    def connectInputs(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        return opData.ImageGroup[self.InputImageRoles.SEGMENTATION_IMAGE]
+        return self.createRawDataSourceSlot(laneIndex), opData.ImageGroup[self.InputImageRoles.SEGMENTATION_IMAGE]
 
     def handleAppletStateUpdateRequested(self):
         """
@@ -745,12 +752,15 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         self.thresholdingApplet = ThresholdTwoLevelsApplet(self, "Threshold and Size Filter", "ThresholdTwoLevels")
         self._applets.append(self.thresholdingApplet)
 
-    def createBinaryDataSourceSlot(self, rawslot, laneIndex):
+    def connectInputs(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opTwoLevelThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
 
         op5predictions = OpReorderAxes(parent=self)
         op5predictions.AxisOrder.setValue("txyzc")
+
+        rawslot = self.createRawDataSourceSlot(laneIndex)
+
         op5predictions.Input.connect(opData.ImageGroup[self.InputImageRoles.PREDICTION_MAPS])
 
         opTwoLevelThreshold.RawInput.connect(rawslot)
@@ -760,7 +770,7 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         op5Binary.AxisOrder.setValue("txyzc")
         op5Binary.Input.connect(opTwoLevelThreshold.CachedOutput)
 
-        return op5Binary.Output
+        return rawslot, op5Binary.Output
 
     def handleAppletStateUpdateRequested(self):
         """
