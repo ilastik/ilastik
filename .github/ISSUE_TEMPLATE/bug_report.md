@@ -4,6 +4,12 @@ about: Create a report to help us improve
 
 ---
 
+<!---
+Thank you for letting us know that there is a problem in ilastik.
+Filling out this template as detailed as possible will help us to improve the software.
+--->
+
+
 ## Describe the bug
 Please add a clear and concise description of what the bug is.
 
