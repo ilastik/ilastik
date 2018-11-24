@@ -52,7 +52,7 @@ class PixelClassificationSerializer(AppletSerializer):
 
         super(PixelClassificationSerializer, self).__init__(projectFileGroupName, slots, operator)
         
-    
+  
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath, headless=False):
         """
         Override from AppletSerializer.

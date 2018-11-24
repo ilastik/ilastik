@@ -21,6 +21,7 @@
 import sys
 import os
 import yaml
+from tiktorch.build_spec import BuildSpec, TikTorchSpec
 from PyQt5.QtWidgets import QPushButton, QHBoxLayout, QVBoxLayout, QApplication, QGridLayout, QLabel, QLineEdit, QWidget, QFileDialog, QWizard, QDesktopWidget, QMainWindow
 
 
@@ -189,6 +190,17 @@ class CreateTikTorchModelGui(QWidget):
         self.move(qr.topLeft())
 
     def saveParameters(self):
+        print(type(self.inputShapeTextbox.text()))
+        print(tuple(str(self.inputShapeTextbox.text())))
+        spec = TikTorchSpec(code_path=str(self.codePathTextbox.text()),
+                            model_class_name=str(self.modelNameTextbox.text()),
+                            state_path=str(self.statePathTextbox.text()),
+                            input_shape=(1, 572, 572),
+                            minimal_increment=[32, 32],
+                            model_init_kwargs={'in_channels': 1, 'out_channels': 1, 'initial_features': 64})
+        self.spec.validate()
+        build_spec = BuildSpec(build_directory='/home/jo/ISBI_UNet_pretrained', device='cpu')
+        build_spec.build(self.spec)
         self.close()
 
 

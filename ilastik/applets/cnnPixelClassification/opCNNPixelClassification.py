@@ -388,11 +388,7 @@ class OpBlockShape(Operator):
         block_shape = determineBlockShape(list(tagged_shape.values()), 40 ** 3)
         block_shape = self.ClassifierFactory.value.determineBlockShape([tagged_shape['x'], tagged_shape['y']],
                                                                        train=True)
-        block_shape = (1, *tuple(block_shape), 1)
-        
-        print('BLOCKSHAPE TRAIN', block_shape)
-        
-        return block_shape
+        return (1, *tuple(block_shape), 1)
 
     def setup_inference(self):
         axisOrder = [ tag.key for tag in self.RawImage.meta.axistags ]
@@ -422,8 +418,6 @@ class OpBlockShape(Operator):
         blockShapeX = tuple(blockDimsX[k][1] for k in axisOrder)
         blockShapeY = tuple(blockDimsY[k][1] for k in axisOrder)
         blockShapeZ = tuple(blockDimsZ[k][1] for k in axisOrder)
-
-        print('BLOCKSHAPE INFERENCE', blockShapeX, blockShapeY, blockShapeZ)
 
         return (blockShapeX, blockShapeY, blockShapeZ)
 

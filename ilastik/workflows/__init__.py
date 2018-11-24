@@ -94,11 +94,11 @@ try:
     import inferno
     import tiktorch
     from .nnClassification import NNClassificationWorkflow
-    from .domainAdaptation import DomainAdaptationWorkflow
+    from .cnnPixelClassification import CNNWorkflow
     WORKFLOW_CLASSES += [NNClassificationWorkflow]
-    WORKFLOW_CLASSES += [DomainAdaptationWorkflow]
+    WORKFLOW_CLASSES += [CNNWorkflow]
 except ImportError as e:
-    logger.warning(f"Failed to load `Domain Adaptation` and `Pixel Classification with Neural Networks` workflows: {e}")
+    logger.warning(f"Failed to load `Pixel Classification with CNNs` and `Neural Network Classification` workflows: {e}")
 
 # Examples
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):

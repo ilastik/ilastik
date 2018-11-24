@@ -1,4 +1,4 @@
-#x##############################################################################
+################################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
 #       Copyright (C) 2011-2014, the ilastik developers
@@ -418,6 +418,7 @@ class NNClassGui(LayerViewerGui):
             defaultDirectory = os.path.expanduser('~')
 
         fileNames = self.getFolderToOpen(self, defaultDirectory)
+        print(fileNames)
 
         if len(fileNames) > 0:
             self.add_NN_classifiers(fileNames)
