@@ -90,9 +90,6 @@ class Page1(QtWidgets.QWizardPage):
         self.model_init_kwargs = yaml.load(str(self.model_init_kwargs_textbox.text()))
         self.model_path = str(self.model_path_textbox.text())
 
-        # self.input_shape = self.makeArray(self.input_shape)
-        # self.output_shape = self.makeArray(self.output_shape)
-
         spec = TikTorchSpec(code_path=self.code_path, model_class_name=self.model_class_name, state_path=self.state_path,
                  input_shape=self.input_shape, output_shape=self.output_shape, dynamic_input_shape=self.dynamic_input_shape,
                  devices=self.devices, model_init_kwargs=self.model_init_kwargs)
@@ -100,16 +97,6 @@ class Page1(QtWidgets.QWizardPage):
         buildface = BuildSpec(self.model_path)
         buildface.build(spec)
 
-    # def makeArray(self, input_str):
-    #     """
-    #     helper function for making an array out of the string
-    #     """
-    #     input_str = input_str.split(',')
-    #     arr = np.zeros(3)
-    #     for i,str in enumerate(input_str):
-    #         arr[i] = int(str)
-
-    #     return arr
  
 if __name__ == '__main__':
     import sys
