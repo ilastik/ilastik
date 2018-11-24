@@ -47,21 +47,12 @@ class NNClassApplet(StandardApplet):
         self._gui = None
         self.predictionSerializer = self._serializableItems[0]
 
-
-    # @property
-    # def broadcastingSlots(self):
-    #     """
-    #     defines which variables will be shared with different lanes
-    #     """
-    #     return ['ModelPath', 'FullModel', "FreezePredictions", "NumClasses", "BlockShape"]
-
     @property
     def dataSerializers(self):
         """
         A list of dataSerializer objects for loading/saving any project data the applet is responsible for
         """
         return self._serializableItems
-
 
     @property
     def singleLaneGuiClass(self):
@@ -70,14 +61,6 @@ class NNClassApplet(StandardApplet):
         """
         from .nnClassGui import NNClassGui
         return NNClassGui
-
-
-    # @property
-    # def singleLaneOperatorClass(self):
-    #     """
-    #     Return the operator class which handles a single image.
-    #     """
-    #     return OpNNClassification
 
     @property
     def topLevelOperator(self):

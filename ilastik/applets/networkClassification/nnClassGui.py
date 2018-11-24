@@ -206,12 +206,6 @@ class NNClassGui(LabelingGui):
 
         return menus    
 
-    # def appletDrawer(self):
-    #     """
-    #     Return the drawer widget for this applet
-    #     """
-    #     return self.drawer
-
     def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None):
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
@@ -227,7 +221,6 @@ class NNClassGui(LabelingGui):
         super(NNClassGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath)
 
         self.parentApplet = parentApplet
-        # self.drawer = None
         self.topLevelOperator = topLevelOperatorView
         self.classifiers = OrderedDict()
 
@@ -269,17 +262,25 @@ class NNClassGui(LabelingGui):
         """
         Load the ui file for the applet drawer, which we own.
         """
-
         self.labelingDrawerUi.comboBox.clear()
-        # self.labelingDrawerUi.liveUpdateButton.clicked.connect(self.pred_nn)
         self.labelingDrawerUi.addModel.clicked.connect(self.addModels)
 
         if self.topLevelOperator.ModelPath.ready():
-
             self.labelingDrawerUi.comboBox.clear()
             self.labelingDrawerUi.comboBox.addItems(self.topLevelOperator.ModelPath.value)
-
             self.classifiers = self.topLevelOperator.ModelPath.value
+
+        def nextCheckState(checkbox):
+            """
+            sets the checkbox to the next state
+            """
+            checkbox.setChecked(not checkbox.isChecked())
+
+        self.labelingDrawerUi.TrainingCheckbox.nextCheckState = partial(nextCheckState, self.labelingDrawerUi.TrainingCheckbox)
+        self.labelingDrawerUi.TestingCheckbox.nextCheckState = partial(nextCheckState, self.labelingDrawerUi.TestingCheckbox)
+
+        self.labelingDrawerUi.TrainingCheckbox.clicked.connect(self.handleShowTrainingClicked)
+        self.labelingDrawerUi.TestingCheckbox.clicked.connect(self.handleShowTestingClicked)
 
     def initViewerControls(self):
         """
@@ -303,16 +304,10 @@ class NNClassGui(LabelingGui):
             checkbox.setChecked(not checkbox.isChecked())
 
         self._viewerControlUi.checkShowPredictions.nextCheckState = partial(nextCheckState, self._viewerControlUi.checkShowPredictions)
-        self.labelingDrawerUi.TrainingCheckbox.nextCheckState = partial(nextCheckState, self.labelingDrawerUi.TrainingCheckbox)
-        self.labelingDrawerUi.TestingCheckbox.nextCheckState = partial(nextCheckState, self.labelingDrawerUi.TestingCheckbox)
-
         self._viewerControlUi.checkShowPredictions.clicked.connect(self.handleShowPredictionsClicked)
-        self.labelingDrawerUi.TrainingCheckbox.clicked.connect(self.handleShowTrainingClicked)
-        self.labelingDrawerUi.TestingCheckbox.clicked.connect(self.handleShowTestingClicked)
 
         model = self.editor.layerStack
         self._viewerControlUi.viewerControls.setupConnections(model)
-
 
 
     def setupLayers(self):
@@ -324,8 +319,6 @@ class NNClassGui(LabelingGui):
         layers = super(NNClassGui, self).setupLayers()
 
         inputSlot = self.topLevelOperator.InputImages
-
-        layers = []
 
         labels = self.labelListData
 
@@ -381,8 +374,6 @@ class NNClassGui(LabelingGui):
         """
         Adds the chosen FilePath to the classifierDictionary and to the ComboBox
         """
-
-        #split path string
         modelname = os.path.basename(os.path.normpath(folder_path))
         self.tiktorch_path = folder_path
 
@@ -400,49 +391,12 @@ class NNClassGui(LabelingGui):
             self.topLevelOperator.ModelPath.setValue(self.classifiers)
             self.model = TikTorchLazyflowClassifierFactory(None, self.tiktorch_path, 0, self.batch_size)
 
-            if len(self.topLevelOperator.InputImages.meta.shape) == 3:
-                self.topLevelOperator.NumClasses.setValue(self.topLevelOperator.InputImages.meta.shape[2])
-            else:
-                self.topLevelOperator.NumClasses.setValue(self.topLevelOperator.InputImages.meta.shape[3])
-
             self.set_BlockShape()
 
             self.topLevelOperator.ClassifierFactory.setValue(self.model)
             self.labelingDrawerUi.TrainingCheckbox.setEnabled(True)
             self.labelingDrawerUi.TrainingCheckbox.setCheckState(Qt.Checked)
             self.labelingDrawerUi.TestingCheckbox.setEnabled(True)
-
-
-    def pred_nn(self):
-        """
-        When LivePredictionButton is clicked.
-        Sets the ClassifierSlotValue for Prediction.
-        Updates the SetupLayers function
-        """
-        classifier_key = self.labelingDrawerUi.comboBox.currentText()
-        classifier_index = self.labelingDrawerUi.comboBox.currentIndex()
-
-        if len(classifier_key) == 0:
-            QMessageBox.critical(self, "Error loading file", "Add a Model first")
-
-        else:
-
-            # if self.labelingDrawerUi.liveUpdateButton.isChecked():
-                # self.topLevelOperator.LabelInputs.setValue(None)
-
-                # if self.topLevelOperator.FullModel.value:
-                    #if the full model object is serialized
-                # model_object = self.topLevelOperator.FullModel.value
-            self._viewerControlUi.checkShowPredictions.setEnabled(True)
-            self.topLevelOperator.FreezePredictions.setValue(False)
-            self.updateAllLayers()
-            self.parentApplet.appletStateUpdateRequested()
-            print("prediction!")
-
-            # else:
-            #     #when disabled, the user can scroll around without predicting
-            #     self.topLevelOperator.FreezePredictions.setValue(True)
-            #     self.parentApplet.appletStateUpdateRequested()
 
     def toggleInteractive(self, checked):
         logger.debug("toggling interactive mode to '%r'" % checked)
@@ -539,13 +493,9 @@ class NNClassGui(LabelingGui):
         """
         opens a QFileDialog for importing files
         """
-
         options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
-
-            # folder_names, _ = QFileDialog.getOpenfolder_names(parent_window, "Select Model", defaultDirectory, filt_all_str)
         folder_names = QFileDialog.getExistingDirectory(parent_window, "Select Model", defaultDirectory, options=options)
             
-
         return folder_names
 
     def set_BlockShape(self):
@@ -566,7 +516,7 @@ class NNClassGui(LabelingGui):
         self.topLevelOperator.opPredictionPipeline.BlockShape.setValue(block_shape)
         self.model.HALO_SIZE = halo_block_shape[0]
         self.model.exp_input_shape = full_shape
-        print(self.model.exp_input_shape)
+
 
     @pyqtSlot()
     @threadRouted
