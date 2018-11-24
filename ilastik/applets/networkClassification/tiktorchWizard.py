@@ -5,7 +5,7 @@ from PyQt5.QtCore import pyqtProperty
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QLineEdit
 
-from tiktorch.buildy import TikTorchSpec, BuildyMcBuildface
+from tiktorch.build_spec import TikTorchSpec, BuildSpec
 import numpy as np
 import yaml
  
@@ -97,7 +97,7 @@ class Page1(QtWidgets.QWizardPage):
                  input_shape=self.input_shape, output_shape=self.output_shape, dynamic_input_shape=self.dynamic_input_shape,
                  devices=self.devices, model_init_kwargs=self.model_init_kwargs)
 
-        buildface = BuildyMcBuildface(self.model_path)
+        buildface = BuildSpec(self.model_path)
         buildface.build(spec)
 
     # def makeArray(self, input_str):

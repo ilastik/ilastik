@@ -180,7 +180,7 @@ class NNClassificationWorkflow(Workflow):
 
         # Input Image -> Feature Op
         #         and -> Classification Op (for display)
-        opNNclassify.InputImage.connect(opData.Image)
+        opNNclassify.InputImages.connect(opData.Image)
 
         #ReorderAxes is needed for specifying the original_shape meta tag , hack!
         op5Pred = OpReorderAxes(parent=self)
