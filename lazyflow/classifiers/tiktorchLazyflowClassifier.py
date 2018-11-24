@@ -39,7 +39,6 @@ from inferno.io.transform.generic import Normalize, Cast, AsTorchBatch
 import logging
 logger = logging.getLogger(__name__)
 
-
 from tiktorch.wrapper import TikTorch
 
 
@@ -52,33 +51,38 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         self._filename = tiktorch_config_path
         self._loaded_pytorch_net = None
 
+        self.train_model = True
+
+        if tiktorch_net is None:
+            # tiktorch_net = TikTorch.unserialize(self._filename)
+            tiktorch_net = TikTorch(filename)
+
+        self._loaded_pytorch_net = tiktorch_net
+
         self._opReorderAxes = OpReorderAxes(graph=Graph())
         self._opReorderAxes.AxisOrder.setValue('zcyx')
 
     def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
         logger.debug('Loading pytorch network from {}'.format(self._filename))
 
-        reordered_feature_images = []
-        reordered_labels = []
-        for i in range(len(feature_images)):
-            self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_images[i], axistags=axistags))
-            self._opReorderAxes.AxisOrder.setValue('zcyx')
-            reordered_feature_images.append(self._opReorderAxes.Output([]).wait())
+        if self.train_model:
+            reordered_feature_images = []
+            reordered_labels = []
+            for i in range(len(feature_images)):
+                self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_images[i], axistags=axistags))
+                self._opReorderAxes.AxisOrder.setValue('zcyx')
+                reordered_feature_images.append(self._opReorderAxes.Output([]).wait())
 
-            self._opReorderAxes.Input.setValue(vigra.VigraArray(label_images[i], axistags=axistags))
-            self._opReorderAxes.AxisOrder.setValue('zcyx')
-            reordered_labels.append(self._opReorderAxes.Output([]).wait())
+                self._opReorderAxes.Input.setValue(vigra.VigraArray(label_images[i], axistags=axistags))
+                self._opReorderAxes.AxisOrder.setValue('zcyx')
+                reordered_labels.append(self._opReorderAxes.Output([]).wait())
 
 
-        # TODO: check whether loaded network has the same number of classes as specified in ilastik!
-        # self._loaded_pytorch_net = TikTorch.unserialize(self._filename)
-        self._loaded_pytorch_net = TikTorch(self._filename)
-        self._loaded_pytorch_net.train(reordered_feature_images, reordered_labels)
-        logger.info(self.description)
+            # TODO: check whether loaded network has the same number of classes as specified in ilastik!
+            # self._loaded_pytorch_net = TikTorch.unserialize(self._filename)
+            self._loaded_pytorch_net.train(reordered_feature_images, reordered_labels)
+            logger.info(self.description)
 
-        # TODO: self._loaded_pytorch_net.train(feature_images, label_images)
-
-        # logger.info("OOB during training: {}".format( oob ))
         return TikTorchLazyflowClassifier(self._loaded_pytorch_net, self._filename)
 
     def determineBlockShape(self, max_shape, train=True):
@@ -120,7 +124,7 @@ assert issubclass(TikTorchLazyflowClassifierFactory, LazyflowPixelwiseClassifier
 class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     HDF5_GROUP_FILENAME = 'pytorch_network_path'
 
-    def __init__(self, tiktorch_net, filename=None, HALO_SIZE=0, BATCH_SIZE=3, exp_input_shape=None):
+    def __init__(self, tiktorch_net, filename=None):
         """
         Args:
             tiktorch_net (tiktorch): tiktorch object to be loaded into this
@@ -131,10 +135,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         if self._filename is None:
             self._filename = ""
 
-        self.exp_input_shape = exp_input_shape
-
-        self.BATCH_SIZE = BATCH_SIZE
-        self.HALO_SIZE = HALO_SIZE
+        self.HALO_SIZE = None
 
         if tiktorch_net is None:
             print (self._filename)
@@ -142,6 +143,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             tiktorch_net = TikTorch(filename)
 
         self._tiktorch_net = tiktorch_net
+        self.exp_input_shape = exp_input_shape 
 
         self._opReorderAxes = OpReorderAxes(graph=Graph())
         self._opReorderAxes.AxisOrder.setValue('zcyx')
@@ -170,68 +172,6 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         result = numpy.concatenate((1 - result, result), axis=3)
 
         return result
-
-        result_roi = numpy.array(roi)
-        print(reordered_feature_image.shape, "shape")
-
-        slice_shape = reordered_feature_image.shape[2:4]
-
-
-        # diff shape: cyx
-        diff_shape = numpy.array(self.exp_input_shape) - numpy.array(slice_shape)
-        print(diff_shape)
-        # offset shape z, y, x, c for easy indexing, with c = 0, z = 0
-        offset = numpy.array([0, 0, 0, 0])
-        logger.info(f"Diff_shape {diff_shape}")
-
-        # at least one of y, x (diff_shape[1], diff_shape[2]) should be off
-        # let's determine how to adjust the offset -> offset[2] and offset[3]
-        # caveat: this code assumes that image requests were tiled in a regular
-        # pattern starting from left upper corner.
-        # We use a blocked array-cache to achieve that
-        # y-offset:
-        if diff_shape[0] > 0:
-            # was the halo added to the upper side of the feature image?
-            # HACK: this only works because we assume the data to be in zyx!!!
-            if roi[0][1] == 0:
-                # no, doesn't seem like it
-                offset[1] = self.HALO_SIZE
-
-        # x-offsets:
-        if diff_shape[1] > 0:
-            # was the halo added to the upper side of the feature image?
-            # HACK: this only works because we assume the data to be in zyx!!!
-            if roi[0][2] == 0:
-                # no, doesn't seem like it
-                offset[2] = self.HALO_SIZE
-
-        result_roi[0] += offset[0:3]
-        result_roi[1] += offset[0:3]
-
-        reorder_feature_image_extents = numpy.array(reordered_feature_image.shape)
-        # add the offset:
-        reorder_feature_image_extents[2:4] += offset[1:3]
-
-        pad_img = numpy.pad(reordered_feature_image,[(0,0),(0,0),(offset[1],self.exp_input_shape[0]-reorder_feature_image_extents[2]), 
-            (offset[2], self.exp_input_shape[1]-reorder_feature_image_extents[3])],'reflect')
-
-
-        reordered_feature_image = pad_img
-
-        logger.info(f"forward")
-        input_tensor = [reordered_feature_image[z] for z in range(reordered_feature_image.shape[0])]
-        result = self._tiktorch_net.forward(input_tensor)
-
-        logger.info(f"Obtained a predicted block of shape {result.shape}")
-        self._opReorderAxes.Input.setValue(vigra.VigraArray(result, axistags=vigra.makeAxistags('zcyx')))
-        # axistags is vigra.AxisTags, but opReorderAxes expects a string
-        self._opReorderAxes.AxisOrder.setValue(''.join(axistags.keys()))
-        result = self._opReorderAxes.Output([]).wait()
-        logger.info(f"Reordered result to shape {result.shape}")
-
-        cropped_result = result[roiToSlice(*result_roi)]
-
-        return cropped_result
 
     @property
     def known_classes(self):
