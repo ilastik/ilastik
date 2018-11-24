@@ -48,12 +48,14 @@ class NNClassApplet(StandardApplet):
         self.predictionSerializer = self._serializableItems[0]
 
 
+
     # @property
     # def broadcastingSlots(self):
     #     """
     #     defines which variables will be shared with different lanes
     #     """
     #     return ['ModelPath', 'FullModel', "FreezePredictions", "NumClasses", "BlockShape"]
+
 
     @property
     def dataSerializers(self):

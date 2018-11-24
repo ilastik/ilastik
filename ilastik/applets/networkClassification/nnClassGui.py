@@ -48,6 +48,8 @@ from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 
 from tiktorch.utils import DynamicShape
 
+from tiktorch.utils import DynamicShape
+
 
 logger = logging.getLogger(__name__)
 

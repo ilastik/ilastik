@@ -187,6 +187,11 @@ class NNClassificationWorkflow(Workflow):
         op5Pred.AxisOrder.setValue("txyzc")
         op5Pred.Input.connect(opNNclassify.CachedPredictionProbabilities)
 
+        #ReorderAxes is needed for specifying the original_shape meta tag , hack!
+        op5Pred = OpReorderAxes(parent=self)
+        op5Pred.AxisOrder.setValue("txyzc")
+        op5Pred.Input.connect(opNNclassify.CachedPredictionProbabilities)
+
         # Data Export connections
         opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])

@@ -1,9 +1,10 @@
- 
+
 from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5.QtCore import pyqtProperty
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QLineEdit
+
 
 from tiktorch.build_spec import TikTorchSpec, BuildSpec
 import numpy as np
