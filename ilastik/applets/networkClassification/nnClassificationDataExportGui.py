@@ -16,19 +16,22 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 
+
 class NNClassificationDataExportGui(DataExportGui):
     """
     A subclass of the generic data export gui that creates custom layer viewers.
     """
+
     def createLayerViewer(self, opLane):
         return NNClassificationResultsViewer(self.parentApplet, opLane)
+
 
 class NNClassificationResultsViewer(DataExportLayerViewerGui):
     """
@@ -102,4 +105,3 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
                 layers.append(predictLayer)
 
         return layers
-
