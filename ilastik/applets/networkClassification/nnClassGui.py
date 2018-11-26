@@ -403,7 +403,7 @@ class NNClassGui(LabelingGui):
             self.labelingDrawerUi.comboBox.addItems(self.classifiers)
 
             self.topLevelOperator.ModelPath.setValue(self.classifiers)
-            self.model = TikTorchLazyflowClassifierFactory(None, self.tiktorch_path, 0, self.batch_size)
+            self.model = TikTorchLazyflowClassifierFactory(self.tiktorch_path)
 
             self.set_BlockShape()
 
