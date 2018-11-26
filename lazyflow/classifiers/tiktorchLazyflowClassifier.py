@@ -26,7 +26,6 @@ from builtins import range
 import pickle as pickle
 import tempfile
 
-
 import numpy
 import vigra
 
@@ -49,29 +48,41 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     # You must bump this if any instance members are added/removed/renamed.
     VERSION = 1
 
-    def __init__(self, *args, **kwargs):
-        self._args = args
-        self._kwargs = kwargs
-
-        print (self._args)
-
-        # FIXME: hard coded file path to a trained and pickled pytorch network!
-        self._filename = None # self._args[0]
+    def __init__(self, tiktorch_config_path, hyperparameter_config_path=None):
+        self._filename = tiktorch_config_path
         self._loaded_pytorch_net = None
 
+        self._opReorderAxes = OpReorderAxes(graph=Graph())
+        self._opReorderAxes.AxisOrder.setValue('zcyx')
+
     def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
-        self._filename = PYTORCH_MODEL_FILE_PATH
         logger.debug('Loading pytorch network from {}'.format(self._filename))
 
-        # Save for future reference
-        # known_labels = numpy.sort(vigra.analysis.unique(y))
+        reordered_feature_images = []
+        reordered_labels = []
+        for i in range(len(feature_images)):
+            self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_images[i], axistags=axistags))
+            self._opReorderAxes.AxisOrder.setValue('zcyx')
+            reordered_feature_images.append(self._opReorderAxes.Output([]).wait())
+
+            self._opReorderAxes.Input.setValue(vigra.VigraArray(label_images[i], axistags=axistags))
+            self._opReorderAxes.AxisOrder.setValue('zcyx')
+            reordered_labels.append(self._opReorderAxes.Output([]).wait())
+
 
         # TODO: check whether loaded network has the same number of classes as specified in ilastik!
-        self._loaded_pytorch_net = TikTorch.unserialize(self._filename)
+        # self._loaded_pytorch_net = TikTorch.unserialize(self._filename)
+        self._loaded_pytorch_net = TikTorch(self._filename)
+        self._loaded_pytorch_net.train(reordered_feature_images, reordered_labels)
         logger.info(self.description)
+
+        # TODO: self._loaded_pytorch_net.train(feature_images, label_images)
 
         # logger.info("OOB during training: {}".format( oob ))
         return TikTorchLazyflowClassifier(self._loaded_pytorch_net, self._filename)
+
+    def determineBlockShape(self, max_shape, train=True):
+        return TikTorch(self._filename).dry_run(max_shape, train)
 
     def get_halo_shape(self, data_axes='zyxc'):
         # return (z_halo, y_halo, x_halo, 0)
@@ -86,8 +97,8 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         if self._loaded_pytorch_net:
             return (
                 f"pytorch network loaded from {self._filename} with "
-                f"expected input shape {self._loaded_pytorch_net.expected_input_shape} and "
-                f"output shape {self._loaded_pytorch_net.expected_output_shape}"
+                #f"expected input shape {self._loaded_pytorch_net.expected_input_shape} and "
+                #f"output shape {self._loaded_pytorch_net.expected_output_shape}"
             )
         else:
             return f"pytorch network loading from {self._filename} failed"
@@ -97,10 +108,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         return numpy.inf
 
     def __eq__(self, other):
-        return (isinstance(other, type(self)) and
-                self._args == other._args and
-                self._kwargs == other._kwargs
-        )
+        return (isinstance(other, type(self)))
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -143,11 +151,26 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         forward function for tiktorch, roi handling happens in tiktorch
         so its set to 0
         """
+        assert isinstance(roi, numpy.ndarray)
+        print('tiktorchLazyflowClassifier.predict tile shape:', feature_image.shape)
         self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_image, axistags=axistags))
         self._opReorderAxes.AxisOrder.setValue('zcyx')
         reordered_feature_image = self._opReorderAxes.Output([]).wait()
+
         transform = Compose(Normalize())
         reordered_feature_image = transform(reordered_feature_image)
+
+        input_tensor = [reordered_feature_image[z] for z in range(reordered_feature_image.shape[0])]
+        result = self._tiktorch_net.forward(input_tensor)
+        logger.info(f"Obtained a predicted block of shape {result.shape}")
+        self._opReorderAxes.Input.setValue(vigra.VigraArray(result, axistags=vigra.makeAxistags('zcyx')))
+        # axistags is vigra.AxisTags, but opReorderAxes expects a string
+        self._opReorderAxes.AxisOrder.setValue(''.join(axistags.keys()))
+        result = self._opReorderAxes.Output([]).wait()
+        result = numpy.concatenate((1 - result, result), axis=3)
+
+        return result
+
         result_roi = numpy.array(roi)
         print(reordered_feature_image.shape, "shape")
 
@@ -212,7 +235,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
 
     @property
     def known_classes(self):
-        return list(range(self._tiktorch_net.expected_output_shape[0]))
+        return list(range(self._tiktorch_net.output_shape[0]))
 
     @property
     def feature_count(self):
