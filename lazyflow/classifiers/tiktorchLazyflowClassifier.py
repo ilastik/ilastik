@@ -36,10 +36,11 @@ from lazyflow.roi import roiToSlice
 from inferno.io.transform import Compose
 from inferno.io.transform.generic import Normalize, Cast, AsTorchBatch
 
-import logging
-logger = logging.getLogger(__name__)
-
 from tiktorch.wrapper import TikTorch
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
@@ -77,7 +78,6 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
                 self._opReorderAxes.AxisOrder.setValue('zcyx')
                 reordered_labels.append(self._opReorderAxes.Output([]).wait())
 
-
             # TODO: check whether loaded network has the same number of classes as specified in ilastik!
             # self._loaded_pytorch_net = TikTorch.unserialize(self._filename)
             self._loaded_pytorch_net.train(reordered_feature_images, reordered_labels)
@@ -100,19 +100,19 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     def description(self):
         if self._loaded_pytorch_net:
             return (
-                f"pytorch network loaded from {self._filename} with "
-                #f"expected input shape {self._loaded_pytorch_net.expected_input_shape} and "
-                #f"output shape {self._loaded_pytorch_net.expected_output_shape}"
+                f'pytorch network loaded from {self._filename} with '
+                # f'expected input shape {self._loaded_pytorch_net.expected_input_shape} and "
+                # f'output shape {self._loaded_pytorch_net.expected_output_shape}'
             )
         else:
-            return f"pytorch network loading from {self._filename} failed"
+            return f'pytorch network loading from {self._filename} failed'
 
     def estimated_ram_usage_per_requested_predictionchannel(self):
         # FIXME: compute from model size somehow??
         return numpy.inf
 
     def __eq__(self, other):
-        return (isinstance(other, type(self)))
+        return isinstance(other, type(self))
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -138,12 +138,11 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         self.HALO_SIZE = None
 
         if tiktorch_net is None:
-            print (self._filename)
+            logger.info(f'tiktorch filename: {self._filename}')
             # tiktorch_net = TikTorch.unserialize(self._filename)
             tiktorch_net = TikTorch(filename)
 
         self._tiktorch_net = tiktorch_net
-        self.exp_input_shape = exp_input_shape 
 
         self._opReorderAxes = OpReorderAxes(graph=Graph())
         self._opReorderAxes.AxisOrder.setValue('zcyx')
@@ -154,7 +153,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         so its set to 0
         """
         assert isinstance(roi, numpy.ndarray)
-        print('tiktorchLazyflowClassifier.predict tile shape:', feature_image.shape)
+        logger.info(f'tiktorchLazyflowClassifier.predict tile shape: {feature_image.shape}')
         self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_image, axistags=axistags))
         self._opReorderAxes.AxisOrder.setValue('zcyx')
         reordered_feature_image = self._opReorderAxes.Output([]).wait()
@@ -164,8 +163,8 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
 
         input_tensor = [reordered_feature_image[z] for z in range(reordered_feature_image.shape[0])]
         result = self._tiktorch_net.forward(input_tensor)
-        logger.info(f"Obtained a predicted block of shape {result.shape}")
-        self._opReorderAxes.Input.setValue(vigra.VigraArray(result, axistags=vigra.makeAxistags('zcyx')))
+        logger.info(f'Obtained a predicted block of shape {result.shape}')
+        self._opReorderAxes.Input.setValue(vigra.VigraArray(result, axistags=vigra.defaultAxistags('zcyx')))
         # axistags is vigra.AxisTags, but opReorderAxes expects a string
         self._opReorderAxes.AxisOrder.setValue(''.join(axistags.keys()))
         result = self._opReorderAxes.Output([]).wait()
@@ -206,7 +205,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         # HACK:
         # filename = PYTORCH_MODEL_FILE_PATH
         filename = h5py_group[cls.HDF5_GROUP_FILENAME]
-        logger.debug("Deserializing from {}".format(filename))
+        logger.debug('Deserializing from {}'.format(filename))
 
         with tempfile.TemporaryFile() as f:
             f.write(h5py_group['classifier'].value)
