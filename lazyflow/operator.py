@@ -1,6 +1,3 @@
-from future import standard_library
-standard_library.install_aliases()
-from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,20 +19,21 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-#Python
 import collections
+import functools
 import logging
 import threading
-import functools
 
-#lazyflow
+from abc import ABCMeta
+
+# lazyflow
 from lazyflow.slot import InputSlot, OutputSlot, Slot
-from future.utils import with_metaclass
+
 
 class InputDict(collections.OrderedDict):
 
     def __init__(self, operator):
-        super(InputDict, self).__init__()
+        super().__init__()
         self.operator = operator
 
     def __setitem__(self, key, value):
@@ -58,18 +56,18 @@ class InputDict(collections.OrderedDict):
 class OutputDict(collections.OrderedDict):
 
     def __init__(self, operator):
-        super(OutputDict, self).__init__()
+        super().__init__()
         self.operator = operator
 
     def __setitem__(self, key, value):
         assert isinstance(value, OutputSlot), \
             ("ERROR: all elements of .outputs must be of type"
              " OutputSlot. You provided {}!".format(value))
-        return super(OutputDict, self).__setitem__(key, value)
+        return super().__setitem__(key, value)
 
     def __getitem__(self, key):
         if key in self:
-            return super(OutputDict, self).__getitem__(key)
+            return super().__getitem__(key)
         elif hasattr(self.operator, key):
             return getattr(self.operator, key)
         else:
@@ -78,11 +76,9 @@ class OutputDict(collections.OrderedDict):
                                 self.operator.name, self.operator.__class__, key, list(self.keys())))
 
 
-from abc import ABCMeta
 class OperatorMetaClass(ABCMeta):
-
     def __new__(cls, name, bases, classDict):
-        cls = super(OperatorMetaClass, cls).__new__(cls, name, bases, classDict)
+        cls = super().__new__(cls, name, bases, classDict)
 
         # this allows for definition of input-/ output-slots the following way:
         #    inputSlots = [InputSlot("MySlot"), InputSlot("MySlot2")]
@@ -137,7 +133,7 @@ class OperatorMetaClass(ABCMeta):
         return instance
 
 
-class Operator(with_metaclass(OperatorMetaClass, object)):
+class Operator(metaclass=OperatorMetaClass):
     """The base class for all Operators.
 
     Operators consist of a class inheriting from this class
@@ -290,7 +286,7 @@ class Operator(with_metaclass(OperatorMetaClass, object)):
         for i in sorted(self.inputSlots, key=lambda s: s._global_slot_id):
             if i.name not in self.inputs:
                 ii = i._getInstance(self)
-                ii.connect(i.partner)
+                ii.connect(i.upstream_slot)
                 self.inputs[i.name] = ii
 
         for k, v in list(self.inputs.items()):
@@ -334,7 +330,7 @@ class Operator(with_metaclass(OperatorMetaClass, object)):
 
     def _setDefaultInputValues(self):
         for i in list(self.inputs.values()):
-            if (i.partner is None and
+            if (i.upstream_slot is None and
                 i._value is None and
                 i._defaultValue is not None):
                 i.setValue(i._defaultValue)
@@ -360,8 +356,8 @@ class Operator(with_metaclass(OperatorMetaClass, object)):
     #  FIXME: Unused function?
     def disconnectFromDownStreamPartners(self):
         for slot in list(self.inputs.values()) + list(self.outputs.values()):
-            partners = list(slot.partners)
-            for p in partners:
+            downstream_slots = list(slot.downstream_slots)
+            for p in downstream_slots:
                 p.disconnect()
 
     def _initCleanup(self):
@@ -380,14 +376,14 @@ class Operator(with_metaclass(OperatorMetaClass, object)):
 
         for s in list(self.inputs.values()) + list(self.outputs.values()):
             # See note about the externally_managed flag in Operator.__init__
-            partners = list(p for p in s.partners
+            downstream_slots = list(p for p in s.downstream_slots
                             if p.getRealOperator() is not None and
                             not p.getRealOperator().externally_managed)
-            if len(partners) > 0:
+            if len(downstream_slots) > 0:
                 msg = ("Cannot clean up this operator ({}): Slot '{}'"
                        " is still providing data to downstream"
                        " operators!\n".format( self.name, s.name))
-                for i, p in enumerate(s.partners):
+                for i, p in enumerate(s.downstream_slots):
                     msg += "Downstream Partner {}: {}.{}".format(
                         i, p.getRealOperator().name, p.name)
                 raise RuntimeError(msg)
@@ -465,7 +461,7 @@ class Operator(with_metaclass(OperatorMetaClass, object)):
         try:
             # Determine new "ready" flags
             for k, oslot in list(self.outputs.items()):
-                if oslot.partner is None:
+                if oslot.upstream_slot is None:
                     # Special case, operators can flag an output as not actually being ready yet,
                     #  in which case we do NOT notify downstream connections.
                     if oslot.meta.NOTREADY:
@@ -488,7 +484,7 @@ class Operator(with_metaclass(OperatorMetaClass, object)):
             # Something went wrong
             # Make the operator-supplied outputs unready again
             for k, oslot in list(self.outputs.items()):
-                if oslot.partner is None:
+                if oslot.upstream_slot is None:
                     oslot.disconnect() # Forces unready state
             raise
 
@@ -502,9 +498,9 @@ class Operator(with_metaclass(OperatorMetaClass, object)):
         def set_output_unready(s):
             for ss in s._subSlots:
                 set_output_unready(ss)
-            if s.partner is None and s._value is None:
+            if s.upstream_slot is None and s._value is None:
                 was_ready = s.meta._ready
-                s.meta._ready &= (s.partner is not None)
+                s.meta._ready &= (s.upstream_slot is not None)
                 if was_ready and not s.meta._ready:
                     newly_unready_slots.append(s)
 
@@ -535,8 +531,8 @@ class Operator(with_metaclass(OperatorMetaClass, object)):
             #  you probably need to override this method.
             # If your subclass provides an implementation of this method, there 
             #  is no need for it to call super().setupOutputs()
-            assert slot.partner is not None, \
-                "Output slot '{}' of operator '{}' has no upstream partner, " \
+            assert slot.upstream_slot is not None, \
+                "Output slot '{}' of operator '{}' has no upstream_slot, " \
                 "so you must override setupOutputs()".format( slot.name, self.name )
 
     def execute(self, slot, subindex, roi, result):

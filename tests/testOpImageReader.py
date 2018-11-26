@@ -7,7 +7,7 @@ import numpy
 import vigra
 
 from lazyflow.graph import Graph
-from lazyflow.operators.vigraOperators import OpImageReader
+from lazyflow.operators.ioOperators import OpImageReader
 
 class TestOpImageReader_multipage(object):
 

@@ -20,7 +20,7 @@ from __future__ import absolute_import
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-from .ioOperators import OpStackLoader, OpStackWriter, OpStackToH5Writer, OpH5WriterBigDataset
+from .ioOperators import OpImageReader, OpStackLoader, OpStackWriter, OpStackToH5Writer, OpH5WriterBigDataset
 
 # All "Read" operators must come before OpInputDataReader, which uses them.
 from .opStreamingMmfReader import OpStreamingMmfReader
@@ -37,6 +37,7 @@ from .opCachedTiledVolumeReader import OpCachedTiledVolumeReader
 from .opKlbReader import OpKlbReader
 from .opTiffReader import OpTiffReader
 from .opTiffSequenceReader import OpTiffSequenceReader
+from .opRESTfulPrecomputedChunkedVolumeReader import OpRESTfulPrecomputedChunkedVolumeReader
 
 # Try to import the dvid-related operator.
 # If it fails, that's okay.

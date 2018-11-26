@@ -18,7 +18,7 @@ from builtins import zip
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+#          http://ilastik.org/license/
 ###############################################################################
 #Python
 import copy
@@ -48,7 +48,6 @@ class MetaDict(defaultdict):
     def __setattr__(self, name, value):
         """Provide convenient access to the metadict, allows using the
         . notation instead of [] access
-
         """
         if self[name] != value:
             self["_dirty"] = True
@@ -72,7 +71,6 @@ class MetaDict(defaultdict):
     def __getattr__(self, name):
         """Provide convenient acces to the metadict, allows using the
         . notation instead of [] access
-
         """
         return self[name]
 
@@ -142,7 +140,6 @@ class MetaDict(defaultdict):
     def getTaggedShape(self):
         """Convenience function for creating an OrderedDict of axistag
         keys and shape dimensions.
-
         """
         assert self.axistags is not None
         assert self.shape is not None
@@ -154,10 +151,27 @@ class MetaDict(defaultdict):
         return [tag.key for tag in self.axistags]
 
     def getOriginalAxisKeys(self):
+        """Returns the original axis keys
+        In case we have `OpReorderAxes` in the chain somewhere, the original
+        axistags are preserved in `original_axistags`, thus this is returned if
+        present. Fallback is the `axistags` attribute (via `getAxisKeys()`).
+        """
         if self.original_axistags is None:
             return self.getAxisKeys()
 
         return [tag.key for tag in self.original_axistags]
+
+    def getOriginalShape(self):
+        """Returns the original shape
+        In case we have `OpReorderAxes` in the chain somewhere, the original shape
+        is preserved in `original_shape`, thus this is returned if present.
+        Fallback is the `shape` attribute.
+        """
+        if self.original_shape is None:
+            assert self.shape is not None
+            return self.shape
+
+        return self.original_shape
 
     def getDtypeBytes(self):
         """

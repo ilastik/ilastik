@@ -21,12 +21,18 @@ from builtins import zip
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-import copy
-from functools import partial
 import collections
+import copy
+import logging
 import numpy
 import vigra
+
+from functools import partial
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+
+
+logger = logging.getLogger(__name__)
+
 
 class OpReorderAxes(Operator):
     Input = InputSlot()
@@ -34,6 +40,10 @@ class OpReorderAxes(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
+        if 'c' not in self.AxisOrder.value:
+            # This is helpful in order to convert our internal axis order to 'tczyx'
+            logger.debug('Reordering an array without an explicit channel axis.')
+
         if self._cleaningUp:
             self.Output.meta.NOTREADY = True
             return
@@ -91,9 +101,14 @@ class OpReorderAxes(Operator):
         self.Output.meta.axistags = output_tags
         self.Output.meta.shape = tuple(output_shape)
         if self.Output.meta.original_axistags is None:
-            self.Output.meta.original_axistags = copy.copy(input_tags)
-            self.Output.meta.original_shape = self.Input.meta.shape
             assert len(input_tags) == len(self.Input.meta.shape)
+            otags = copy.copy(input_tags)
+            oshape = self.Input.meta.shape
+            if not otags.axisTypeCount(vigra.AxisType.Channels):
+                otags.insertChannelAxis()
+                oshape += (1, )
+            self.Output.meta.original_axistags = otags
+            self.Output.meta.original_shape = oshape
         if tagged_ideal_blockshape:
             self.Output.meta.ideal_blockshape = ideal_blockshape
         if tagged_max_blockshape:

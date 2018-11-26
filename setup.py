@@ -32,7 +32,6 @@ setup(
 
     package_data = {
         'lazyflow': ['*.txt', '*.py'],
-        'lazyflow.drtile': ['drtile.so']
     },
 
     include_package_data = True,    # include everything in source control

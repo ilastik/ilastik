@@ -95,14 +95,14 @@ class SvgSlot(DrawableABC, ConnectableABC):
     
     def key(self):
         return hex(id(self._slot))
-    
-    def partnerKey(self):
-        return hex(id(self._slot.partner))
+
+    def upstream_slot_key(self):
+        return hex(id(self._slot.upstream_slot))
 
     def drawConnectionToPartner(self, canvas):
-        if self._slot.partner in slot_registry:
+        if self._slot.upstream_slot in slot_registry:
             myIdStr = '#' + self.key()
-            partnerIdStr = '#' + self.partnerKey()
+            partnerIdStr = '#' + self.upstream_slot_key()
             pathName = "pathTo" + self.key()
             canvas += svg.connector_path( id_=pathName, inkscape__connection_start=partnerIdStr, inkscape__connection_end=myIdStr )
 
@@ -124,8 +124,8 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
     def key(self):
         return hex(id(self.mslot))
 
-    def partnerKey(self):
-        return hex(id(self.mslot.partner))
+    def upstream_slot_key(self):
+        return hex(id(self.mslot.upstream_slot))
 
     def __getitem__(self, i):
         return self.subslots[i]
@@ -142,9 +142,9 @@ class SvgMultiSlot(DrawableABC, ConnectableABC):
             canvas += self._code
 
     def drawConnectionToPartner(self, canvas):
-        if self.mslot.partner in slot_registry:
+        if self.mslot.upstream_slot in slot_registry:
             myIdStr = '#' + self.key()
-            partnerIdStr = '#' + self.partnerKey()
+            partnerIdStr = '#' + self.upstream_slot_key()
             pathName = "pathTo" + self.key()
             canvas += svg.connector_path( id_=pathName, inkscape__connection_start=partnerIdStr, inkscape__connection_end=myIdStr )
         else:
@@ -389,15 +389,15 @@ def get_column_within_parent( op ):
     
     max_column = 0
     for slot in list(op.inputs.values()):
-        if slot.partner is None:
+        if slot.upstream_slot is None:
             continue
-        upstream_op = slot.partner.getRealOperator()
+        upstream_op = slot.upstream_slot.getRealOperator()
         if upstream_op is not op.parent and upstream_op is not op:
             assert upstream_op.parent is op.parent, \
-                "Slot '{}' of operator '{}' and it's upstream partner" \
+                "Slot '{}' of operator '{}' and it's upstream_slot" \
                 " (slot '{}' of operator '{}') do not have the same parent operator.\n" \
                 "parent is '{}', upstream parent is '{}'".format(
-                 slot.name, op.name, slot.partner.name, upstream_op.name, op.parent.name, upstream_op.parent.name)
+                 slot.name, op.name, slot.upstream_slot.name, upstream_op.name, op.parent.name, upstream_op.parent.name)
             max_column = max( max_column, get_column_within_parent(upstream_op)+1 )
 
     memoized_columns[op] = max_column
