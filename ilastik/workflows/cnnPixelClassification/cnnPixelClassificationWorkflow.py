@@ -25,7 +25,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 from ilastik.workflow import Workflow
-from ilastik.applets.cnnModelSelection import CNNModelSelectionApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.cnnPixelClassification import CNNPixelClassificationApplet
@@ -58,9 +57,6 @@ class CNNWorkflow(Workflow):
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
 
         # Applets
-        self.modelSelectionApplet = self.createModelSelectionApplet()
-        opModelSelectionApplet = self.modelSelectionApplet.topLevelOperator
-        
         self.dataSelectionApplet = self.createDataSelectionApplet()
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue(CNNWorkflow.ROLE_NAMES)
@@ -74,7 +70,6 @@ class CNNWorkflow(Workflow):
         opDataExport.SelectionNames.setValue(self.EXPORT_NAMES)
 
         # Expose applets in a list (for the shell to use)
-        self._applets.append(self.modelSelectionApplet)
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.cnnApplet)
         self._applets.append(self.dataExportApplet)
@@ -120,9 +115,6 @@ class CNNWorkflow(Workflow):
                                    instructionText=data_instructions,
                                    forceAxisOrder=c_at_end)
 
-    def createModelSelectionApplet(self):
-        return CNNModelSelectionApplet(self, "Model Selection","CNNPixelClassification")
-
     def prepareForNewLane(self, laneIndex):
         opCNNPixelClassification = self.cnnApplet.topLevelOperator
         if opCNNPixelClassification.classifier_cache.Output.ready() and opCNNPixelClassification.classifier_cache._dirty:
@@ -131,12 +123,8 @@ class CNNWorkflow(Workflow):
             self.stored_classifier = None
 
     def connectLane(self, laneIndex):
-        opModelSelection = self.modelSelectionApplet.topLevelOperator.getLane(laneIndex)
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opCNNPixelClassification = self.cnnApplet.topLevelOperator.getLane(laneIndex)
-
-        # Input Model -> Classification Operator
-        opCNNPixelClassification.ClassifierFactory.connect(opModelSelection.ClassifierFactory)
 
         # Input Image -> Classification Operator
         opCNNPixelClassification.InputImages.connect(opData.Image)

@@ -46,6 +46,8 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from .hyperparameterGui import HyperparameterGui, CreateTikTorchModelGui
 
+from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
+
 try:
     from volumina.view3d.volumeRendering import RenderingManager
 except ImportError:
@@ -93,7 +95,8 @@ class CNNPixelClassificationGui(LabelingGui):
             options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
             folder_name = QFileDialog.getExistingDirectory(self, "Select TikTorch model",
                                                            os.path.expanduser('~'), options)
-            self.topLevelOperator.ModelPath.setValue(folder_name)
+            self.topLevelOperatorView.ModelPath.setValue(folder_name)
+            self.topLevelOperatorView.ClassifierFactory.setValue(TikTorchLazyflowClassifierFactory(folder_name))
 
         add_model_menu.addAction("Add existing TikTorch model").triggered.connect(add_existing_model)            
 
