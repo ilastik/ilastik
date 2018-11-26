@@ -18,13 +18,13 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.graph import InputSlot
 from ilastik.applets.dataExport.opDataExport import OpDataExport
+
 
 class OpNNClassificationDataExport(OpDataExport):
     """
     Subclass placeholder
     """
+
     def __init__(self, *args, **kwargs):
         super(OpNNClassificationDataExport, self).__init__(*args, **kwargs)
-

@@ -1,4 +1,4 @@
-#x##############################################################################
+###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
 #       Copyright (C) 2011-2014, the ilastik developers
@@ -23,33 +23,36 @@ import logging
 from functools import partial
 from collections import OrderedDict
 
-import sys
-
 import numpy
 import torch
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer
 from volumina.utility import PreferencesManager
 
-from PyQt5 import uic, QtCore, QtGui
-from PyQt5.QtCore import Qt, pyqtSlot, pyqtProperty
-from PyQt5.QtWidgets import QStackedWidget, QMessageBox, QFileDialog, QMenu, QLineEdit, QDialogButtonBox, QVBoxLayout, \
-     QDialog, QCheckBox, QApplication
+from PyQt5 import uic
+from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtWidgets import (
+    QStackedWidget,
+    QMessageBox,
+    QFileDialog,
+    QMenu,
+    QLineEdit,
+    QDialogButtonBox,
+    QVBoxLayout,
+    QDialog,
+    QCheckBox,
+)
 
 from ilastik.applets.networkClassification.tiktorchWizard import MagicWizard
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.labeling.labelingGui import LabelingGui
-from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.config import cfg as ilastik_config
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import bind
 
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 
-from tiktorch.utils import DynamicShape
-
 
 logger = logging.getLogger(__name__)
+
 
 def _listReplace(old, new):
     if len(old) > len(new):
@@ -57,10 +60,12 @@ def _listReplace(old, new):
     else:
         return new
 
+
 class ParameterDlg(QDialog):
     """
     simple window for setting parameters
     """
+
     def __init__(self, topLevelOperator, parent):
         super(QDialog, self).__init__(parent=parent)
 
@@ -81,7 +86,6 @@ class ParameterDlg(QDialog):
         self.setLayout(layout)
         self.setWindowTitle("Set Parameters")
 
-
     def add_Parameters(self):
         """
         changing Batch Size Slot Values
@@ -90,7 +94,7 @@ class ParameterDlg(QDialog):
 
         self.topLevelOperator.Batch_Size.setValue(batch_size)
 
-        #close dialog
+        # close dialog
         super(ParameterDlg, self).accept()
 
 
@@ -98,6 +102,7 @@ class SavingDlg(QDialog):
     """
     Saving Option Dialog
     """
+
     def __init__(self, topLevelOperator, parent):
         super(QDialog, self).__init__(parent=parent)
 
@@ -124,7 +129,7 @@ class SavingDlg(QDialog):
 
         self.topLevelOperator.SaveFullModel.setValue(self.checkbox.isChecked())
 
-        #close dialog
+        # close dialog
         super(SavingDlg, self).accept()
 
 
@@ -192,7 +197,6 @@ class NNClassGui(LabelingGui):
 
                 self.topLevelOperator.FullModel.setValue(obj_list)
 
-
         advanced_menu.addAction("Saving Options").triggered.connect(serializing_options)
 
         def object_wizard():
@@ -201,10 +205,10 @@ class NNClassGui(LabelingGui):
             wizard.exec_()
 
         advanced_menu.addAction("make Pytorch Object").triggered.connect(object_wizard)
-                    
+
         menus += [advanced_menu]
 
-        return menus    
+        return menus
 
     def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None):
         labelSlots = LabelingGui.LabelingSlots()
@@ -230,7 +234,7 @@ class NNClassGui(LabelingGui):
 
         self._initAppletDrawerUic()
         self.initViewerControls()
-        self.initViewerControlUi() 
+        self.initViewerControlUi()
 
         self.train_model = True
 
@@ -245,18 +249,23 @@ class NNClassGui(LabelingGui):
         self.batch_size = self.topLevelOperator.Batch_Size.value
 
         num_label_classes = self._labelControlUi.labelListModel.rowCount()
-        self.labelingDrawerUi.labelListView.allowDelete = ( num_label_classes > self.minLabelNumber )
-        self.labelingDrawerUi.AddLabelButton.setEnabled(( num_label_classes < self.maxLabelNumber ))
+        self.labelingDrawerUi.labelListView.allowDelete = num_label_classes > self.minLabelNumber
+        self.labelingDrawerUi.AddLabelButton.setEnabled((num_label_classes < self.maxLabelNumber))
 
         self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
+
         def FreezePredDirty():
             self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
 
-        self.topLevelOperatorView.FreezePredictions.notifyDirty( bind(FreezePredDirty) )
-        self.__cleanup_fns.append( partial( self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty) ) )
+        self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
+        self.__cleanup_fns.append(
+            partial(self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty))
+        )
 
-        self.topLevelOperatorView.LabelNames.notifyDirty( bind(self.handleLabelSelectionChange) )
-        self.__cleanup_fns.append( partial( self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
+        self.topLevelOperatorView.LabelNames.notifyDirty(bind(self.handleLabelSelectionChange))
+        self.__cleanup_fns.append(
+            partial(self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange))
+        )
 
     def _initAppletDrawerUic(self, drawerPath=None):
         """
@@ -276,8 +285,12 @@ class NNClassGui(LabelingGui):
             """
             checkbox.setChecked(not checkbox.isChecked())
 
-        self.labelingDrawerUi.TrainingCheckbox.nextCheckState = partial(nextCheckState, self.labelingDrawerUi.TrainingCheckbox)
-        self.labelingDrawerUi.TestingCheckbox.nextCheckState = partial(nextCheckState, self.labelingDrawerUi.TestingCheckbox)
+        self.labelingDrawerUi.TrainingCheckbox.nextCheckState = partial(
+            nextCheckState, self.labelingDrawerUi.TrainingCheckbox
+        )
+        self.labelingDrawerUi.TestingCheckbox.nextCheckState = partial(
+            nextCheckState, self.labelingDrawerUi.TestingCheckbox
+        )
 
         self.labelingDrawerUi.TrainingCheckbox.clicked.connect(self.handleShowTrainingClicked)
         self.labelingDrawerUi.TestingCheckbox.clicked.connect(self.handleShowTestingClicked)
@@ -287,7 +300,6 @@ class NNClassGui(LabelingGui):
         initializing viewerControl
         """
         self._viewerControlWidgetStack = QStackedWidget(parent=self)
-
 
     def initViewerControlUi(self):
         """
@@ -303,12 +315,13 @@ class NNClassGui(LabelingGui):
             """
             checkbox.setChecked(not checkbox.isChecked())
 
-        self._viewerControlUi.checkShowPredictions.nextCheckState = partial(nextCheckState, self._viewerControlUi.checkShowPredictions)
+        self._viewerControlUi.checkShowPredictions.nextCheckState = partial(
+            nextCheckState, self._viewerControlUi.checkShowPredictions
+        )
         self._viewerControlUi.checkShowPredictions.clicked.connect(self.handleShowPredictionsClicked)
 
         model = self.editor.layerStack
         self._viewerControlUi.viewerControls.setupConnections(model)
-
 
     def setupLayers(self):
         """
@@ -323,11 +336,13 @@ class NNClassGui(LabelingGui):
         labels = self.labelListData
 
         for channel, predictionSlot in enumerate(self.topLevelOperator.PredictionProbabilityChannels):
-            print(predictionSlot)
+            logger.info(f"prediction_slot: {predictionSlot}")
             if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
                 predictsrc = LazyflowSource(predictionSlot)
-                predictionLayer = AlphaModulatedLayer(predictsrc, tintColor=ref_label.pmapColor(), range=(0.0, 1.0), normalize=(0.0, 1.0))
+                predictionLayer = AlphaModulatedLayer(
+                    predictsrc, tintColor=ref_label.pmapColor(), range=(0.0, 1.0), normalize=(0.0, 1.0)
+                )
                 predictionLayer.visible = self.labelingDrawerUi.UpdateButton.isChecked()
                 predictionLayer.opacity = 0.25
                 predictionLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
@@ -369,7 +384,6 @@ class NNClassGui(LabelingGui):
 
         return layers
 
-
     def add_NN_classifiers(self, folder_path):
         """
         Adds the chosen FilePath to the classifierDictionary and to the ComboBox
@@ -377,14 +391,14 @@ class NNClassGui(LabelingGui):
         modelname = os.path.basename(os.path.normpath(folder_path))
         self.tiktorch_path = folder_path
 
-        #Statement for importing the same classifier twice
+        # Statement for importing the same classifier twice
         if modelname in self.classifiers.keys():
-            print("Classifier already added")
+            logger.info("Classifier already added")
             QMessageBox.critical(self, "Error loading file", "{} already added".format(modelname))
         else:
             self.classifiers[modelname] = folder_path
 
-            #clear first the comboBox or addItems will duplicate names
+            # clear first the comboBox or addItems will duplicate names
             self.labelingDrawerUi.comboBox.clear()
             self.labelingDrawerUi.comboBox.addItems(self.classifiers)
 
@@ -401,20 +415,19 @@ class NNClassGui(LabelingGui):
     def toggleInteractive(self, checked):
         logger.debug("toggling interactive mode to '%r'" % checked)
 
-
         # If we're changing modes, enable/disable our controls and other applets accordingly
         if self.interactiveModeActive != checked:
             if checked:
                 self.labelingDrawerUi.labelListView.allowDelete = False
-                self.labelingDrawerUi.AddLabelButton.setEnabled( False )
+                self.labelingDrawerUi.AddLabelButton.setEnabled(False)
             else:
                 num_label_classes = self._labelControlUi.labelListModel.rowCount()
-                self.labelingDrawerUi.labelListView.allowDelete = ( num_label_classes > self.minLabelNumber )
-                self.labelingDrawerUi.AddLabelButton.setEnabled( ( num_label_classes < self.maxLabelNumber ) )
+                self.labelingDrawerUi.labelListView.allowDelete = num_label_classes > self.minLabelNumber
+                self.labelingDrawerUi.AddLabelButton.setEnabled((num_label_classes < self.maxLabelNumber))
 
         self.interactiveModeActive = checked
 
-        self.topLevelOperatorView.FreezePredictions.setValue( not checked )
+        self.topLevelOperatorView.FreezePredictions.setValue(not checked)
         self.labelingDrawerUi.UpdateButton.setChecked(checked)
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
@@ -422,7 +435,7 @@ class NNClassGui(LabelingGui):
             self.handleShowPredictionsClicked()
 
         # Notify the workflow that some applets may have changed state now.
-        # (For example, the downstream pixel classification applet can 
+        # (For example, the downstream pixel classification applet can
         #  be used now that there are features selected)
         self.parentApplet.appletStateUpdateRequested()
 
@@ -470,7 +483,6 @@ class NNClassGui(LabelingGui):
         else:
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
-
     def addModels(self):
         """
         When AddModels button is clicked.
@@ -487,36 +499,35 @@ class NNClassGui(LabelingGui):
         if len(fileNames) > 0:
             self.add_NN_classifiers(fileNames)
 
-
-
     def getFolderToOpen(cls, parent_window, defaultDirectory):
         """
         opens a QFileDialog for importing files
         """
         options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
-        folder_names = QFileDialog.getExistingDirectory(parent_window, "Select Model", defaultDirectory, options=options)
-            
+        folder_names = QFileDialog.getExistingDirectory(
+            parent_window, "Select Model", defaultDirectory, options=options
+        )
+
         return folder_names
 
     def set_BlockShape(self):
         """
-        calculates the blockshape with the blocksize of the dynamic shape 
+        calculates the blockshape with the blocksize of the dynamic shape
         """
         inputDim = list(self.topLevelOperator.InputImages.meta.shape)
 
         halo_block_shape = self.model._loaded_pytorch_net.halo
-        print(halo_block_shape)
-        full_shape =self.model._loaded_pytorch_net.dry_run(inputDim[1:3])
-        print("Finished Dry Run")
+        logger.info(f"Halo block shape: {halo_block_shape}")
+        full_shape = self.model._loaded_pytorch_net.dry_run(inputDim[1:3])
+        logger.info("Finished Dry Run")
 
         block_shape = [1, full_shape[0], full_shape[1], inputDim[3]]
         block_shape[1] -= 2 * halo_block_shape[0]
         block_shape[2] -= 2 * halo_block_shape[1]
-        print("Blockshape: ",block_shape)
+        logger.info(f"Blockshape: {block_shape}")
         self.topLevelOperator.opPredictionPipeline.BlockShape.setValue(block_shape)
         self.model.HALO_SIZE = halo_block_shape[0]
         self.model.exp_input_shape = full_shape
-
 
     @pyqtSlot()
     @threadRouted
@@ -527,8 +538,8 @@ class NNClassGui(LabelingGui):
             enabled &= len(self.topLevelOperatorView.LabelNames.value) >= 0
             enabled &= numpy.all(numpy.asarray(self.topLevelOperatorView.InputImages.meta.shape) > 0)
             # FIXME: also check that each label has scribbles?
-        
-        # if not enabled:
+
+            # if not enabled:
             self.labelingDrawerUi.UpdateButton.setChecked(False)
             self._viewerControlUi.checkShowPredictions.setChecked(False)
             # self._viewerControlUi.checkShowSegmentation.setChecked(False)
@@ -571,58 +582,51 @@ class NNClassGui(LabelingGui):
                 slot.setValue(value, check_changed=False)
 
     def getNextLabelName(self):
-        return self._getNext(self.topLevelOperatorView.LabelNames,
-                             super(NNClassGui, self).getNextLabelName)
+        return self._getNext(self.topLevelOperatorView.LabelNames, super(NNClassGui, self).getNextLabelName)
 
     def getNextLabelColor(self):
         return self._getNext(
-            self.topLevelOperatorView.LabelColors,
-            super(NNClassGui, self).getNextLabelColor,
-            lambda x: QColor(*x)
+            self.topLevelOperatorView.LabelColors, super(NNClassGui, self).getNextLabelColor, lambda x: QColor(*x)
         )
 
     def getNextPmapColor(self):
         return self._getNext(
-            self.topLevelOperatorView.PmapColors,
-            super(NNClassGui, self).getNextPmapColor,
-            lambda x: QColor(*x)
+            self.topLevelOperatorView.PmapColors, super(NNClassGui, self).getNextPmapColor, lambda x: QColor(*x)
         )
 
     def onLabelNameChanged(self):
-        self._onLabelChanged(super(NNClassGui, self).onLabelNameChanged,
-                             lambda l: l.name,
-                             self.topLevelOperatorView.LabelNames)
+        self._onLabelChanged(
+            super(NNClassGui, self).onLabelNameChanged, lambda l: l.name, self.topLevelOperatorView.LabelNames
+        )
 
     def onLabelColorChanged(self):
-        self._onLabelChanged(super(NNClassGui, self).onLabelColorChanged,
-                             lambda l: (l.brushColor().red(),
-                                        l.brushColor().green(),
-                                        l.brushColor().blue()),
-                             self.topLevelOperatorView.LabelColors)
-
+        self._onLabelChanged(
+            super(NNClassGui, self).onLabelColorChanged,
+            lambda l: (l.brushColor().red(), l.brushColor().green(), l.brushColor().blue()),
+            self.topLevelOperatorView.LabelColors,
+        )
 
     def onPmapColorChanged(self):
-        self._onLabelChanged(super(NNClassGui, self).onPmapColorChanged,
-                             lambda l: (l.pmapColor().red(),
-                                        l.pmapColor().green(),
-                                        l.pmapColor().blue()),
-                             self.topLevelOperatorView.PmapColors)
+        self._onLabelChanged(
+            super(NNClassGui, self).onPmapColorChanged,
+            lambda l: (l.pmapColor().red(), l.pmapColor().green(), l.pmapColor().blue()),
+            self.topLevelOperatorView.PmapColors,
+        )
 
     def _update_rendering(self):
         if not self.render:
             return
         shape = self.topLevelOperatorView.InputImages.meta.shape[1:4]
         if len(shape) != 5:
-            #this might be a 2D image, no need for updating any 3D stuff 
+            # this might be a 2D image, no need for updating any 3D stuff
             return
-        
+
         time = self.editor.posModel.slicingPos5D[0]
         if not self._renderMgr.ready:
             self._renderMgr.setup(shape)
 
         layernames = set(layer.name for layer in self.layerstack)
-        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.items()
-                                if k in layernames)
+        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.items() if k in layernames)
 
         newvolume = numpy.zeros(shape, dtype=numpy.uint8)
         for layer in self.layerstack:

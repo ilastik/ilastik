@@ -21,6 +21,7 @@
 from __future__ import absolute_import
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 
+
 class NNClassificationDataExportApplet(DataExportApplet):
     """
     This a specialization of the generic data export applet that
@@ -28,15 +29,13 @@ class NNClassificationDataExportApplet(DataExportApplet):
     """
 
     def __init__(self, workflow, title, isBatch=False):
-    # Base class init
+        # Base class init
         super(NNClassificationDataExportApplet, self).__init__(workflow, title, isBatch)
 
     def getMultiLaneGui(self):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from .nnClassificationDataExportGui import NNClassificationDataExportGui
+
             self._gui = NNClassificationDataExportGui(self, self.topLevelOperator)
         return self._gui
-
-
-

@@ -37,13 +37,15 @@ from lazyflow.graph import Graph
 
 logger = logging.getLogger(__name__)
 
+
 class NNClassificationWorkflow(Workflow):
     """
     Workflow for the Neural Network Classification Applet
     """
+
     workflowName = "Neural Network Classification"
     workflowDescription = "This is obviously self-explanatory."
-    defaultAppletIndex = 0 # show DataSelection by default
+    defaultAppletIndex = 0  # show DataSelection by default
 
     DATA_ROLE_RAW = 0
     ROLE_NAMES = ['Raw Data']
@@ -68,7 +70,9 @@ class NNClassificationWorkflow(Workflow):
 
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(NNClassificationWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
+        super(NNClassificationWorkflow, self).__init__(
+            shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
+        )
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
 
@@ -88,8 +92,10 @@ class NNClassificationWorkflow(Workflow):
         # Interactive workflow
         ######################
 
-        data_instructions = "Select your input data using the 'Raw Data' tab shown on the right.\n\n"\
-                            "Power users: Optionally use the 'Prediction Mask' tab to supply a binary image that tells ilastik where it should avoid computations you don't need."
+        data_instructions = (
+            "Select your input data using the 'Raw Data' tab shown on the right.\n\n"
+            "Power users: Optionally use the 'Prediction Mask' tab to supply a binary image that tells ilastik where it should avoid computations you don't need."
+        )
 
         # Applets for training (interactive) workflow
         self.dataSelectionApplet = self.createDataSelectionApplet()
@@ -110,10 +116,9 @@ class NNClassificationWorkflow(Workflow):
         # self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
         # self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
 
-        self.batchProcessingApplet = BatchProcessingApplet(self,
-                                                           "Batch Processing",
-                                                           self.dataSelectionApplet,
-                                                           self.dataExportApplet)
+        self.batchProcessingApplet = BatchProcessingApplet(
+            self, "Batch Processing", self.dataSelectionApplet, self.dataExportApplet
+        )
 
         # Expose for shell
         self._applets.append(self.dataSelectionApplet)
@@ -138,11 +143,9 @@ class NNClassificationWorkflow(Workflow):
         special parameters to initialize the DataSelectionApplet.
         """
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
-        return DataSelectionApplet(self,
-                                   "Input Data",
-                                   "Input Data",
-                                   supportIlastik05Import=True,
-                                   instructionText=data_instructions)
+        return DataSelectionApplet(
+            self, "Input Data", "Input Data", supportIlastik05Import=True, instructionText=data_instructions
+        )
 
     # def prepareForNewLane(self, laneIndex):
     #     """
@@ -182,13 +185,13 @@ class NNClassificationWorkflow(Workflow):
         #         and -> Classification Op (for display)
         opNNclassify.InputImages.connect(opData.Image)
 
-        #ReorderAxes is needed for specifying the original_shape meta tag , hack!
+        # ReorderAxes is needed for specifying the original_shape meta tag , hack!
         op5Pred = OpReorderAxes(parent=self)
         op5Pred.AxisOrder.setValue("txyzc")
         op5Pred.Input.connect(opNNclassify.CachedPredictionProbabilities)
 
         # Data Export connections
-        opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW] )
+        opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
         opDataExport.Inputs[0].connect(op5Pred.Output)
@@ -208,10 +211,9 @@ class NNClassificationWorkflow(Workflow):
 
         opDataExport = self.dataExportApplet.topLevelOperator
 
-        predictions_ready = input_ready and \
-                            len(opDataExport.Inputs) > 0
-                            # opDataExport.Inputs[0][0].ready()
-                            # (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
+        predictions_ready = input_ready and len(opDataExport.Inputs) > 0
+        # opDataExport.Inputs[0][0].ready()
+        # (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
@@ -222,7 +224,9 @@ class NNClassificationWorkflow(Workflow):
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
         self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and not batch_processing_busy)
-        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not batch_processing_busy and not live_update_active)
+        self._shell.setAppletEnabled(
+            self.dataExportApplet, predictions_ready and not batch_processing_busy and not live_update_active
+        )
 
         if self.batchProcessingApplet is not None:
             self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
@@ -254,20 +258,20 @@ class NNClassificationWorkflow(Workflow):
 
             if batch_size and model_path:
 
-                model = TikTorchLazyflowClassifier(None, model_path,
-                                                   halo_size, batch_size)
+                model = TikTorchLazyflowClassifier(None, model_path, halo_size, batch_size)
 
                 input_shape = self.getBlockShape(model, halo_size)
 
                 self.nnClassificationApplet.topLevelOperator.BlockShape.setValue(input_shape)
-                self.nnClassificationApplet.topLevelOperator.NumClasses.setValue(model._tiktorch_net.get('num_output_channels'))
+                self.nnClassificationApplet.topLevelOperator.NumClasses.setValue(
+                    model._tiktorch_net.get('num_output_channels')
+                )
 
                 self.nnClassificationApplet.topLevelOperator.Classifier.setValue(model)
 
             logger.info("Beginning Batch Processing")
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
-
 
     # def prepare_for_entire_export(self):
     #     """
@@ -278,7 +282,6 @@ class NNClassificationWorkflow(Workflow):
     #     self.freeze_status = self.nnClassificationApplet.topLevelOperator.FreezePredictions.value
     #     self.nnClassificationApplet.topLevelOperator.FreezePredictions.setValue(False)
 
-
     # def post_process_entire_export(self):
     #     """
     #     Assigned to DataExportApplet.post_process_entire_export
@@ -286,7 +289,6 @@ class NNClassificationWorkflow(Workflow):
     #     """
     #     print("post_process_entire_export")
     #     self.nnClassificationApplet.topLevelOperator.FreezePredictions.setValue(self.freeze_status)
-
 
     def getBlockShape(self, model, halo_size):
         """
@@ -297,14 +299,13 @@ class NNClassificationWorkflow(Workflow):
 
         if not halo_size:
             if 'output_size' in model._tiktorch_net._configuration:
-                #if the ouputsize of the model is smaller as the expected input shape
-                #the halo needs to be changed
+                # if the ouputsize of the model is smaller as the expected input shape
+                # the halo needs to be changed
                 output_shape = model._tiktorch_net.get('output_size')
-                if (output_shape != input_shape):
-                    self.halo_size = int((input_shape[1] - output_shape[1])/2)
+                if output_shape != input_shape:
+                    self.halo_size = int((input_shape[1] - output_shape[1]) / 2)
                     model.HALO_SIZE = self.halo_size
                     print(self.halo_size)
-
 
         if len(model._tiktorch_net.get('window_size')) == 2:
             input_shape = numpy.append(input_shape, None)
@@ -316,10 +317,3 @@ class NNClassificationWorkflow(Workflow):
         input_shape[1:3] -= 2 * self.halo_size
 
         return input_shape
-
-
-
-
-
-
-

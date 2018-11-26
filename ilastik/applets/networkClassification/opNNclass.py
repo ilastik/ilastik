@@ -18,48 +18,47 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-
-from __future__ import print_function
-from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.classifierOperators import OpPixelwiseClassifierPredict
 from lazyflow.operators import OpMultiArraySlicer2, OpValueCache, OpCompressedUserLabelArray
-from lazyflow.operators.classifierOperators import OpTrainClassifierBlocked, OpClassifierPredict
+from lazyflow.operators.classifierOperators import OpTrainClassifierBlocked
 from ilastik.utility.operatorSubView import OperatorSubView
-from lazyflow.operators.valueProviders import OpValueCache
 from lazyflow.roi import determineBlockShape
 from ilastik.utility import OpMultiLaneWrapper
 
-from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 
 class OpNNClassification(Operator):
     """
     Top-level operator for pixel classification
     """
+
     name = "OpNNClassification"
     category = "Top-level"
 
-    #Graph inputs
+    # Graph inputs
     ClassifierFactory = InputSlot()
     Classifier = OutputSlot()
     InputImages = InputSlot(level=1)
     NumClasses = InputSlot()
 
-    #Labels
-    LabelInputs = InputSlot(optional = True, level=1)
+    # Labels
+    LabelInputs = InputSlot(optional=True, level=1)
     NonzeroLabelBlocks = OutputSlot(level=1)
 
     FreezePredictions = InputSlot(stype='bool', value=False, nonlane=True)
 
-    PredictionProbabilities = OutputSlot(level=1) # Classification predictions (via feature cache for interactive speed)
-    PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
-    CachedPredictionProbabilities = OutputSlot(level=1) 
+    PredictionProbabilities = OutputSlot(
+        level=1
+    )  # Classification predictions (via feature cache for interactive speed)
+    PredictionProbabilityChannels = OutputSlot(level=2)  # Classification predictions, enumerated by channel
+    CachedPredictionProbabilities = OutputSlot(level=1)
 
     LabelImages = OutputSlot(level=1)
 
-    #Gui only (not part of the pipeline)
-    ModelPath = InputSlot() # Path 
-    FullModel = InputSlot(value=[]) # When full model serialization is enabled
+    # Gui only (not part of the pipeline)
+    ModelPath = InputSlot()  # Path
+    FullModel = InputSlot(value=[])  # When full model serialization is enabled
     Halo_Size = InputSlot(value=0)
     Batch_Size = InputSlot(value=1)
     SaveFullModel = InputSlot(stype='bool', value=False, nonlane=True)
@@ -82,19 +81,19 @@ class OpNNClassification(Operator):
 
         ############################ Training ########################
         # Default values for some input slots
-        self.LabelNames.setValue( [] )
-        self.LabelColors.setValue( [] )
-        self.PmapColors.setValue( [] )
+        self.LabelNames.setValue([])
+        self.LabelColors.setValue([])
+        self.PmapColors.setValue([])
 
         self.LabelInputs.connect(self.InputImages)
 
         # Hook up Labeling Pipeline
-        self.opLabelPipeline = OpMultiLaneWrapper( OpLabelPipeline, parent=self, broadcastingSlotNames=['DeleteLabel'] )
+        self.opLabelPipeline = OpMultiLaneWrapper(OpLabelPipeline, parent=self, broadcastingSlotNames=['DeleteLabel'])
         self.opLabelPipeline.RawImage.connect(self.InputImages)
         self.opLabelPipeline.LabelInput.connect(self.LabelInputs)
-        self.opLabelPipeline.DeleteLabel.setValue( -1 )
-        self.LabelImages.connect( self.opLabelPipeline.Output )
-        self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
+        self.opLabelPipeline.DeleteLabel.setValue(-1)
+        self.LabelImages.connect(self.opLabelPipeline.Output)
+        self.NonzeroLabelBlocks.connect(self.opLabelPipeline.nonzeroBlocks)
 
         # TRAINING OPERATOR
         self.opTrain = OpTrainClassifierBlocked(parent=self)
@@ -105,7 +104,7 @@ class OpNNClassification(Operator):
 
         # CLASSIFIER CACHE
         # This cache stores exactly one object: the classifier itself.
-        self.classifier_cache = OpValueCache( parent=self )
+        self.classifier_cache = OpValueCache(parent=self)
         self.classifier_cache.name = "OpNetworkClassification.classifier_cache"
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
         self.classifier_cache.inputs["fixAtCurrent"].connect(self.FreezePredictions)
@@ -133,12 +132,11 @@ class OpNNClassification(Operator):
 
         self.LabelNames.notifyDirty(_updateNumClasses)
 
-
-        def handleNewInputImage( multislot, index, *args ):
+        def handleNewInputImage(multislot, index, *args):
             def handleInputReady(slot):
-                self.setupCaches( multislot.index(slot) )
-            multislot[index].notifyReady(handleInputReady)
+                self.setupCaches(multislot.index(slot))
 
+            multislot[index].notifyReady(handleInputReady)
 
     def setupCaches(self, imageIndex):
         numImages = len(self.InputImages)
@@ -162,15 +160,14 @@ class OpNNClassification(Operator):
         pass
 
     def propagateDirty(self, slot, subindex, roi):
-        # Nothing to do here: All outputs are directly connected to 
+        # Nothing to do here: All outputs are directly connected to
         #  internal operators that handle their own dirty propagation.
         self.PredictionProbabilityChannels.setDirty(slice(None))
 
-
     def addLane(self, laneIndex):
         numLanes = len(self.InputImages)
-        assert numLanes == laneIndex, "Image lanes must be appended."        
-        self.InputImages.resize(numLanes+1)
+        assert numLanes == laneIndex, "Image lanes must be appended."
+        self.InputImages.resize(numLanes + 1)
 
     def removeLane(self, laneIndex, finalLength):
         self.InputImages.removeSlot(laneIndex, finalLength)
@@ -179,28 +176,27 @@ class OpNNClassification(Operator):
         return OperatorSubView(self, laneIndex)
 
 
-
 class OpLabelPipeline(Operator):
     RawImage = InputSlot()
     LabelInput = InputSlot()
     DeleteLabel = InputSlot()
-    
+
     Output = OutputSlot()
     nonzeroBlocks = OutputSlot()
-    
+
     def __init__(self, *args, **kwargs):
-        super( OpLabelPipeline, self ).__init__( *args, **kwargs )
-        
-        self.opLabelArray = OpCompressedUserLabelArray( parent=self )
-        self.opLabelArray.Input.connect( self.LabelInput )
+        super(OpLabelPipeline, self).__init__(*args, **kwargs)
+
+        self.opLabelArray = OpCompressedUserLabelArray(parent=self)
+        self.opLabelArray.Input.connect(self.LabelInput)
         self.opLabelArray.eraser.setValue(100)
 
-        self.opLabelArray.deleteLabel.connect( self.DeleteLabel )
+        self.opLabelArray.deleteLabel.connect(self.DeleteLabel)
 
         # Connect external outputs to their internal sources
-        self.Output.connect( self.opLabelArray.Output )
-        self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
-    
+        self.Output.connect(self.opLabelArray.Output)
+        self.nonzeroBlocks.connect(self.opLabelArray.nonzeroBlocks)
+
     def setupOutputs(self):
         tagged_shape = self.RawImage.meta.getTaggedShape()
         # labels are created for one channel (i.e. the label) and only in the
@@ -208,10 +204,10 @@ class OpLabelPipeline(Operator):
         tagged_shape['c'] = 1
         if 't' in tagged_shape:
             tagged_shape['t'] = 1
-        
+
         # Aim for blocks that are roughly 20px
-        block_shape = determineBlockShape( list(tagged_shape.values()), 40**3 )
-        self.opLabelArray.blockShape.setValue( block_shape )
+        block_shape = determineBlockShape(list(tagged_shape.values()), 40 ** 3)
+        self.opLabelArray.blockShape.setValue(block_shape)
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
@@ -223,8 +219,7 @@ class OpLabelPipeline(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
-        pass  
-
+        pass
 
 
 class OpPredictionPipeline(Operator):
@@ -234,7 +229,7 @@ class OpPredictionPipeline(Operator):
     NumClasses = InputSlot()
     FreezePredictions = InputSlot()
     BlockShape = InputSlot()
-     
+
     PredictionProbabilities = OutputSlot()
     CachedPredictionProbabilities = OutputSlot()
     PredictionProbabilityChannels = OutputSlot(level=1)
@@ -271,6 +266,3 @@ class OpPredictionPipeline(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass
-
-
-

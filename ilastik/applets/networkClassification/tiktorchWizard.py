@@ -1,26 +1,23 @@
- 
-from PyQt5 import QtCore
-from PyQt5 import QtGui
-from PyQt5.QtCore import pyqtProperty
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QLineEdit
 
 from tiktorch.build_spec import TikTorchSpec, BuildSpec
-import numpy as np
 import yaml
- 
+
+
 class QIComboBox(QtWidgets.QComboBox):
-    def __init__(self,parent=None):
+    def __init__(self, parent=None):
         super(QIComboBox, self).__init__(parent)
- 
- 
+
+
 class MagicWizard(QtWidgets.QWizard):
     def __init__(self, parent=None):
         super(MagicWizard, self).__init__(parent)
         self.addPage(Page1(self))
         self.setWindowTitle("Tiktorch Object Build Wizard")
-        self.resize(640,480)
- 
+        self.resize(640, 480)
+
+
 class Page1(QtWidgets.QWizardPage):
     def __init__(self, parent=None):
         super(Page1, self).__init__(parent)
@@ -71,10 +68,9 @@ class Page1(QtWidgets.QWizardPage):
         self.label1.setText("Parameters:")
 
     def validatePage(self):
-        #will be triggered after pressing Done
+        # will be triggered after pressing Done
         self.saveParameters()
         return True
-
 
     def saveParameters(self):
         """
@@ -83,23 +79,31 @@ class Page1(QtWidgets.QWizardPage):
         self.code_path = str(self.code_path_textbox.text())
         self.model_class_name = str(self.model_class_name_textbox.text())
         self.state_path = str(self.state_path_textbox.text())
-        self.input_shape = [ int(x) for x in self.input_shape_textbox.text().split(',') ]
-        self.output_shape = [ int(x) for x in self.output_shape_textbox.text().split(',') ]
+        self.input_shape = [int(x) for x in self.input_shape_textbox.text().split(',')]
+        self.output_shape = [int(x) for x in self.output_shape_textbox.text().split(',')]
         self.dynamic_input_shape = str(self.dynamic_input_shape_textbox.text())
         self.devices = [x for x in str(self.devices_textbox.text()).split(',')]
         self.model_init_kwargs = yaml.load(str(self.model_init_kwargs_textbox.text()))
         self.model_path = str(self.model_path_textbox.text())
 
-        spec = TikTorchSpec(code_path=self.code_path, model_class_name=self.model_class_name, state_path=self.state_path,
-                 input_shape=self.input_shape, output_shape=self.output_shape, dynamic_input_shape=self.dynamic_input_shape,
-                 devices=self.devices, model_init_kwargs=self.model_init_kwargs)
+        spec = TikTorchSpec(
+            code_path=self.code_path,
+            model_class_name=self.model_class_name,
+            state_path=self.state_path,
+            input_shape=self.input_shape,
+            output_shape=self.output_shape,
+            dynamic_input_shape=self.dynamic_input_shape,
+            devices=self.devices,
+            model_init_kwargs=self.model_init_kwargs,
+        )
 
         buildface = BuildSpec(self.model_path)
         buildface.build(spec)
 
- 
+
 if __name__ == '__main__':
     import sys
+
     app = QtWidgets.QApplication(sys.argv)
     wizard = MagicWizard()
     wizard.show()

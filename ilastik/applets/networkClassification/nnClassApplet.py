@@ -33,17 +33,22 @@ class NNClassApplet(StandardApplet):
         self._topLevelOperator = OpNNClassification(parent=workflow)
 
         def on_classifier_changed(slot, roi):
-            if self._topLevelOperator.classifier_cache.Output.ready() and \
-               self._topLevelOperator.classifier_cache.fixAtCurrent.value is True and \
-               self._topLevelOperator.classifier_cache.Output.value is None:
+            if (
+                self._topLevelOperator.classifier_cache.Output.ready()
+                and self._topLevelOperator.classifier_cache.fixAtCurrent.value is True
+                and self._topLevelOperator.classifier_cache.Output.value is None
+            ):
                 # When the classifier is deleted (e.g. because the number of features has changed,
                 #  then notify the workflow. (Export applet should be disabled.)
                 self.appletStateUpdateRequested()
+
         self._topLevelOperator.classifier_cache.Output.notifyDirty(on_classifier_changed)
 
         super(NNClassApplet, self).__init__("NN Training", workflow=workflow)
 
-        self._serializableItems = [NNClassificationSerializer(self.topLevelOperator, projectFileGroupName)]   # Legacy (v0.5) importer
+        self._serializableItems = [
+            NNClassificationSerializer(self.topLevelOperator, projectFileGroupName)
+        ]  # Legacy (v0.5) importer
         self._gui = None
         self.predictionSerializer = self._serializableItems[0]
 
@@ -60,6 +65,7 @@ class NNClassApplet(StandardApplet):
         This applet uses a single lane gui and shares variables through the broadcasting slots
         """
         from .nnClassGui import NNClassGui
+
         return NNClassGui
 
     @property
