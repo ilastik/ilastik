@@ -48,7 +48,7 @@ class OpCNNPixelClassification(Operator):
     LabelInputs = InputSlot(level=1, optional=True)
 
     FreezePredictions = InputSlot(stype='bool')
-    ClassifierFactory = InputSlot(value=TikTorchLazyflowClassifierFactory())
+    ClassifierFactory = InputSlot()
 
     HyperparametersPath = InputSlot()
     ModelPath = InputSlot()
@@ -393,6 +393,9 @@ class OpBlockShape(Operator):
     def setup_inference(self):
         axisOrder = [ tag.key for tag in self.RawImage.meta.axistags ]
         tagged_shape = self.RawImage.meta.getTaggedShape()
+
+        x = self.ClassifierFactory[:].wait()
+        print(x)
 
         block_shape = self.ClassifierFactory.value.determineBlockShape([tagged_shape['x'], tagged_shape['y']],
                                                                        train=False)

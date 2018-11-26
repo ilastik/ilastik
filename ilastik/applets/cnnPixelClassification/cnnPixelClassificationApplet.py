@@ -18,16 +18,17 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from ..pixelClassification.pixelClassificationApplet import PixelClassificationApplet
+from ilastik.applets.base.standardApplet import StandardApplet
+#from ..pixelClassification.pixelClassificationApplet import PixelClassificationApplet
 from .cnnPixelClassificationSerializer import CNNPixelClassificationSerializer
 from .opCNNPixelClassification import OpCNNPixelClassification
 
-class CNNPixelClassificationApplet(PixelClassificationApplet):
+class CNNPixelClassificationApplet(StandardApplet):
     """
     Implements the CNN pixel classification "applet", which allows the ilastik shell to use it.
     """
     def __init__(self, workflow, projectFileGroupName):
-        super(CNNPixelClassificationApplet, self).__init__(workflow, projectFileGroupName)
+        #super(CNNPixelClassificationApplet, self).__init__(workflow, projectFileGroupName)
         self._topLevelOperator = OpCNNPixelClassification(parent=workflow)
         
         def on_classifier_changed(slot, roi):
@@ -38,6 +39,8 @@ class CNNPixelClassificationApplet(PixelClassificationApplet):
                 # then notify the workflow. (Export applet should be disabled.)
                 self.appletStateUpdateRequested()
         self._topLevelOperator.classifier_cache.Output.notifyDirty(on_classifier_changed)
+
+        super(CNNPixelClassificationApplet, self).__init__("Training")
 
         # We provide two independent serializing objects:
         # one for the current scheme and one for importing old projects.
@@ -53,6 +56,15 @@ class CNNPixelClassificationApplet(PixelClassificationApplet):
         # If we start reporting progress for multiple tasks that might occur simulatneously,
         # we'll need to aggregate the progress updates.
         self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
+
+    
+    @property
+    def topLevelOperator(self):
+        return self._topLevelOperator
+
+    @property
+    def dataSerializers(self):
+        return self._serializableItems
 
     @property
     def singleLaneGuiClass(self):

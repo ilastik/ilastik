@@ -25,6 +25,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from ilastik.workflow import Workflow
+from ilastik.applets.cnnModelSelection import CNNModelSelectionApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.cnnPixelClassification import CNNPixelClassificationApplet
@@ -57,12 +58,15 @@ class CNNWorkflow(Workflow):
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
 
         # Applets
+        self.modelSelectionApplet = self.createModelSelectionApplet()
+        opModelSelectionApplet = self.modelSelectionApplet.topLevelOperator
+        
         self.dataSelectionApplet = self.createDataSelectionApplet()
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue(CNNWorkflow.ROLE_NAMES)
 
-        self.daApplet = self.createCNNApplet()
-        opCNNPixelClassification = self.daApplet.topLevelOperator
+        self.cnnApplet = self.createCNNApplet()
+        opCNNPixelClassification = self.cnnApplet.topLevelOperator
 
         self.dataExportApplet = DataExportApplet(self, "Data Export")
         opDataExport = self.dataExportApplet.topLevelOperator
@@ -70,8 +74,9 @@ class CNNWorkflow(Workflow):
         opDataExport.SelectionNames.setValue(self.EXPORT_NAMES)
 
         # Expose applets in a list (for the shell to use)
+        self._applets.append(self.modelSelectionApplet)
         self._applets.append(self.dataSelectionApplet)
-        self._applets.append(self.daApplet)
+        self._applets.append(self.cnnApplet)
         self._applets.append(self.dataExportApplet)
 
         # Parse command-line arguments
@@ -115,23 +120,30 @@ class CNNWorkflow(Workflow):
                                    instructionText=data_instructions,
                                    forceAxisOrder=c_at_end)
 
+    def createModelSelectionApplet(self):
+        return CNNModelSelectionApplet(self, "Model Selection","CNNPixelClassification")
+
     def prepareForNewLane(self, laneIndex):
-        opCNNPixelClassification = self.daApplet.topLevelOperator
+        opCNNPixelClassification = self.cnnApplet.topLevelOperator
         if opCNNPixelClassification.classifier_cache.Output.ready() and opCNNPixelClassification.classifier_cache._dirty:
             self.stored_classifier = opCNNPixelClassification.classifier_cache.Output.value
         else:
             self.stored_classifier = None
 
     def connectLane(self, laneIndex):
+        opModelSelection = self.modelSelectionApplet.topLevelOperator.getLane(laneIndex)
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        opCNNPixelClassification = self.daApplet.topLevelOperator.getLane(laneIndex)
+        opCNNPixelClassification = self.cnnApplet.topLevelOperator.getLane(laneIndex)
+
+        # Input Model -> Classification Operator
+        opCNNPixelClassification.ClassifierFactory.connect(opModelSelection.ClassifierFactory)
 
         # Input Image -> Classification Operator
         opCNNPixelClassification.InputImages.connect(opData.Image)
 
     def handleNewLanesAdded(self):
         if self.stored_classifier:
-            self.daApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
+            self.cnnApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
             self.stored_classifier = None
 
     def onProjectLoaded(self, projectManager):
@@ -141,7 +153,7 @@ class CNNWorkflow(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         input_ready = len(opDataSelection.ImageGroup) > 0
 
-        opCNNPixelClassification = self.daApplet.topLevelOperator
+        opCNNPixelClassification = self.cnnApplet.topLevelOperator
 
         invalid_classifier = opCNNPixelClassification.classifier_cache.fixAtCurrent.value and \
                              opCNNPixelClassification.classifier_cache.Output.ready() and \
@@ -150,7 +162,7 @@ class CNNWorkflow(Workflow):
         live_update_active = not opCNNPixelClassification.FreezePredictions.value
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not live_update_active)
-        self._shell.setAppletEnabled(self.daApplet, input_ready)
+        self._shell.setAppletEnabled(self.cnnApplet, input_ready)
 
         busy = False
         busy |= self.dataSelectionApplet.busy
