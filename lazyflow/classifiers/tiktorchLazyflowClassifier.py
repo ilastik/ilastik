@@ -54,11 +54,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
         self.train_model = True
 
-        if tiktorch_net is None:
-            # tiktorch_net = TikTorch.unserialize(self._filename)
-            tiktorch_net = TikTorch(filename)
-
-        self._loaded_pytorch_net = tiktorch_net
+        self._loaded_pytorch_net = TikTorch(self._filename)
 
         self._opReorderAxes = OpReorderAxes(graph=Graph())
         self._opReorderAxes.AxisOrder.setValue('zcyx')
