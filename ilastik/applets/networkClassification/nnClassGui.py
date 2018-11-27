@@ -239,7 +239,6 @@ class NNClassGui(LabelingGui):
         self.train_model = True
 
         self.labelingDrawerUi.TrainingCheckbox.setEnabled(False)
-        self.labelingDrawerUi.TestingCheckbox.setEnabled(False)
 
         self.labelingDrawerUi.labelListView.support_merges = True
 
@@ -288,12 +287,7 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.TrainingCheckbox.nextCheckState = partial(
             nextCheckState, self.labelingDrawerUi.TrainingCheckbox
         )
-        self.labelingDrawerUi.TestingCheckbox.nextCheckState = partial(
-            nextCheckState, self.labelingDrawerUi.TestingCheckbox
-        )
-
         self.labelingDrawerUi.TrainingCheckbox.clicked.connect(self.handleShowTrainingClicked)
-        self.labelingDrawerUi.TestingCheckbox.clicked.connect(self.handleShowTestingClicked)
 
     def initViewerControls(self):
         """
@@ -401,16 +395,15 @@ class NNClassGui(LabelingGui):
             # clear first the comboBox or addItems will duplicate names
             self.labelingDrawerUi.comboBox.clear()
             self.labelingDrawerUi.comboBox.addItems(self.classifiers)
+            self.labelingDrawerUi.TrainingCheckbox.setEnabled(True)
+            self.labelingDrawerUi.TrainingCheckbox.setCheckState(Qt.Checked)
 
             self.topLevelOperator.ModelPath.setValue(self.classifiers)
             self.model = TikTorchLazyflowClassifierFactory(self.tiktorch_path)
+            self.topLevelOperator.ClassifierFactory.setValue(self.model)
 
             self.set_BlockShape()
 
-            self.topLevelOperator.ClassifierFactory.setValue(self.model)
-            self.labelingDrawerUi.TrainingCheckbox.setEnabled(True)
-            self.labelingDrawerUi.TrainingCheckbox.setCheckState(Qt.Checked)
-            self.labelingDrawerUi.TestingCheckbox.setEnabled(True)
 
     def toggleInteractive(self, checked):
         logger.debug("toggling interactive mode to '%r'" % checked)
@@ -452,16 +445,10 @@ class NNClassGui(LabelingGui):
     @pyqtSlot()
     def handleShowTrainingClicked(self):
         checked = self.labelingDrawerUi.TrainingCheckbox.isChecked()
-        self.labelingDrawerUi.TestingCheckbox.setCheckState(Qt.Unchecked)
-        # self.train_model = True
-        self.model.train_model = True
-
-    @pyqtSlot()
-    def handleShowTestingClicked(self):
-        checked = self.labelingDrawerUi.TestingCheckbox.isChecked()
-        self.labelingDrawerUi.TrainingCheckbox.setCheckState(Qt.Unchecked)
-        # self.train_model = False
-        self.model.train_model = False
+        if checked:
+            self.model.train_model = True
+        else:
+            self.model.train_model = False
 
     @pyqtSlot()
     def updateShowPredictionCheckbox(self):
@@ -535,11 +522,11 @@ class NNClassGui(LabelingGui):
         enabled = False
         if self.topLevelOperatorView.LabelNames.ready():
             enabled = True
-            enabled &= len(self.topLevelOperatorView.LabelNames.value) >= 0
+            enabled &= len(self.topLevelOperatorView.LabelNames.value) >= 2
             enabled &= numpy.all(numpy.asarray(self.topLevelOperatorView.InputImages.meta.shape) > 0)
             # FIXME: also check that each label has scribbles?
 
-            # if not enabled:
+        #if not enabled:
             self.labelingDrawerUi.UpdateButton.setChecked(False)
             self._viewerControlUi.checkShowPredictions.setChecked(False)
             # self._viewerControlUi.checkShowSegmentation.setChecked(False)
@@ -547,7 +534,6 @@ class NNClassGui(LabelingGui):
             # self.handleShowSegmentationClicked()
 
         self.labelingDrawerUi.UpdateButton.setEnabled(enabled)
-        # self.labelingDrawerUi.suggestFeaturesButton.setEnabled(enabled)
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
 
     def _getNext(self, slot, parentFun, transform=None):

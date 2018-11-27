@@ -171,7 +171,7 @@
      </property>
     </widget>
    </item>
-         <item>
+   <item>
       <widget class="QToolButton" name="addModel">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -191,19 +191,12 @@
       </widget>
      </item>
      <item>
-      <widget class="QCheckBox" name="TrainingCheckbox">
-       <property name="text">
-        <string>Training</string>
+       <widget class="QCheckBox" name="TrainingCheckbox">
+	 <property name="text">
+        <string>Train Interactively</string>
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QCheckBox" name="TestingCheckbox">
-       <property name="text">
-        <string>Testing</string>
-       </property>
-      </widget>
-   </item>
   </layout>
  </widget>
   <customwidgets>
