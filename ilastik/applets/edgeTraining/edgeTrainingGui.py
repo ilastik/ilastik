@@ -244,9 +244,11 @@ class EdgeTrainingGui(LayerViewerGui):
                 op.setEdgeLabelsFromGroundtruth(op.current_view_index())
             finally:
                 self.parentApplet.busy = False
+                self.parentApplet.progressSignal(100)
                 self.parentApplet.appletStateUpdateRequested()
 
         self.parentApplet.busy = True
+        self.parentApplet.progressSignal(-1)
         self.parentApplet.appletStateUpdateRequested()
 
         Request(train_from_gt).submit()
