@@ -63,43 +63,43 @@ class OpStreamingH5N5SequenceReaderS(Operator):
         def __init__(self, globString):
             self.filename = globString
             self.msg = "File is not a HDF5 or N5: {}".format(globString)
-            super(OpStreamingH5N5SequenceReaderS.WrongFileTypeError, self).__init__(self.msg)
+            super().__init__(self.msg)
 
     class InconsistentShape(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
             self.msg = "Cannot stack dataset: {} because its shape differs from the shape of the previous" \
                        " datasets".format(fileName + '/' + datasetName)
-            super(OpStreamingH5N5SequenceReaderS.InconsistentShape, self).__init__(self.msg)
+            super().__init__(self.msg)
 
     class InconsistentDType(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
             self.msg = "Cannot stack dataset: {} because its data type differs from the type of the previous" \
                        " datasets".format(fileName + '/' + datasetName)
-            super(OpStreamingH5N5SequenceReaderS.InconsistentDType, self).__init__(self.msg)
+            super().__init__(self.msg)
 
     class NotTheSameFileError(Exception):
         def __init__(self, globString):
             self.globString = globString
             self.msg = "Glob string encompasses more than one HDF5/N5 file: {}".format(globString)
-            super(OpStreamingH5N5SequenceReaderS.NotTheSameFileError, self).__init__(self.msg)
+            super().__init__(self.msg)
 
     class NoInternalPlaceholderError(Exception):
         def __init__(self, globString):
             self.globString = globString
             self.msg = "Glob string does not contain a placeholder: {}".format(globString)
-            super(OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError, self).__init__(self.msg)
+            super().__init__(self.msg)
 
     class ExternalPlaceholderError(Exception):
         def __init__(self, globString):
             self.globString = globString
             self.msg = ("Glob string does contains an external placeholder "
                         "(not supported!): {}".format(globString))
-            super(OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError, self).__init__(self.msg)
+            super().__init__(self.msg)
 
     def __init__(self, *args, **kwargs):
-        super(OpStreamingH5N5SequenceReaderS, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._h5N5File = None
         self._readers = []
         self._opStacker = OpMultiArrayStacker(parent=self)
@@ -114,7 +114,7 @@ class OpStreamingH5N5SequenceReaderS(Operator):
                 "_h5N5File should not be of any other type")
             self._h5N5File.close()
 
-        super(OpStreamingH5N5SequenceReaderS, self).cleanUp()
+        super().cleanUp()
 
     def setupOutputs(self):
         pcs = PathComponents(self.GlobString.value.split(os.path.pathsep)[0])

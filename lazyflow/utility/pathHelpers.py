@@ -329,7 +329,7 @@ def mkdir_p(path):
             raise
 
 
-def lsH5N5(h5N5FileObject, minShape=2):
+def lsH5N5(h5N5FileObject, minShape=2, maxShape=5):
     """Generates dataset list of given h5py or z5py file object
 
     Args:
@@ -343,7 +343,7 @@ def lsH5N5(h5N5FileObject, minShape=2):
 
     def addObjectNames(objectName, obj):
         if isinstance(obj, h5py._hl.dataset.Dataset) or isinstance(obj, z5py.dataset.Dataset):
-            if len(obj.shape) >= minShape:
+            if minShape <= len(obj.shape) <= maxShape:
                 if isinstance(h5N5FileObject, z5py.N5File):
                     objectName = objectName.replace(h5N5FileObject.path + '/', '')  # Need only the internal path here
                 listOfDatasets.append({

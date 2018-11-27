@@ -61,6 +61,7 @@ try:
 except ImportError as ex:
     _supports_h5blockreader = False
 
+import h5py
 import vigra
 import os
 import re
@@ -390,7 +391,7 @@ class OpInputDataReader(Operator):
             # (Otherwise, single-process is faster.)
             allow_multiprocess_hdf5 = "LAZYFLOW_MULTIPROCESS_HDF5" in os.environ and os.environ[
                 "LAZYFLOW_MULTIPROCESS_HDF5"] != ""
-            if compression_setting is not None and allow_multiprocess_hdf5:
+            if compression_setting is not None and allow_multiprocess_hdf5 and isinstance(h5N5File, h5py.File):
                 h5N5File.close()
                 h5N5File = MultiProcessHdf5File(externalPath, 'r')
 

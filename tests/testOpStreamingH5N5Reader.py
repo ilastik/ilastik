@@ -23,16 +23,17 @@ from builtins import object
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
 import numpy
-import os
 import vigra
 import shutil
+import tempfile
 
 class TestOpStreamingH5N5Reader(object):
 
     def setUp(self):
         self.graph = Graph()
-        self.testDataH5FileName = 'test.h5'
-        self.testDataN5FileName = 'test.n5'
+        self.testFileDir = tempfile.TemporaryDirectory()
+        self.testDataH5FileName = self.testFileDir.name + 'test.h5'
+        self.testDataN5FileName = self.testFileDir.name + 'test.n5'
         self.h5_op = OpStreamingH5N5Reader(graph=self.graph)
         self.n5_op = OpStreamingH5N5Reader(graph=self.graph)
 
@@ -42,17 +43,13 @@ class TestOpStreamingH5N5Reader(object):
         self.n5File.create_group('volume')
 
         # Create a test dataset
-        datashape = (1,2,3,4,5)
+        datashape = (1, 2, 3, 4, 5)
         self.data = numpy.indices(datashape).sum(0).astype(numpy.float32)
 
     def tearDown(self):
         self.h5File.close()
         self.n5File.close()
-        try:
-            os.remove(self.testDataH5FileName)
-            shutil.rmtree(self.testDataN5FileName, ignore_errors=True)
-        except:
-            pass
+        shutil.rmtree(self.testFileDir)
 
     def test_plain(self):
         # Write the dataset to an hdf5 file
@@ -67,8 +64,8 @@ class TestOpStreamingH5N5Reader(object):
 
         assert self.h5_op.OutputImage.meta.shape == self.data.shape
         assert self.n5_op.OutputImage.meta.shape == self.data.shape
-        assert self.h5_op.OutputImage[0, 1, 2, 1, 0].wait() == 4
-        assert self.n5_op.OutputImage[0, 1, 2, 1, 0].wait() == 4
+        assert self.h5_op.OutputImage.wait() == self.data
+        assert self.n5_op.OutputImage.wait() == self.data
 
     def test_withAxisTags(self):
         # Write it again, this time with weird axistags
@@ -95,8 +92,8 @@ class TestOpStreamingH5N5Reader(object):
 
         assert self.h5_op.OutputImage.meta.shape == self.data.shape
         assert self.n5_op.OutputImage.meta.shape == self.data.shape
-        assert self.h5_op.OutputImage[0, 1, 2, 1, 0].wait() == 4
-        assert self.n5_op.OutputImage[0, 1, 2, 1, 0].wait() == 4
+        assert self.h5_op.OutputImage.wait() == self.data
+        assert self.n5_op.OutputImage.wait() == self.data
 
 if __name__ == "__main__":
     import sys

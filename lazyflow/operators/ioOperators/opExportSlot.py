@@ -247,11 +247,8 @@ class OpExportSlot(Operator):
         # Create and open the hdf5/n5 file
         export_components = PathComponents(self.ExportPath.value)
         try:
-            if export_components.extension in OpStreamingH5N5Reader.N5EXTS:
-                if os.path.isdir(export_components.externalPath):
-                    shutil.rmtree(export_components.externalPath)
-                else:
-                    os.remove(export_components.externalPath)
+            if os.path.isdir(export_components.externalPath):  # externalPath leads to a n5 file
+                shutil.rmtree(export_components.externalPath)  # n5 is stored as a directory structure
             else:
                 os.remove(export_components.externalPath)
         except OSError as ex:

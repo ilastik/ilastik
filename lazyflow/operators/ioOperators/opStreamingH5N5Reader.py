@@ -56,33 +56,6 @@ class OpStreamingH5N5Reader(Operator):
     H5EXTS = ['.h5', '.hdf5', '.ilp']
     N5EXTS = ['.n5']
 
-    # monkeypatch z5py to have it similar enough to be used like h5py
-    def z5pyReadDirectWrapper(self, dest, source_sel=None, dest_sel=None):
-        start = [s.start for s in source_sel]
-        stop = [s.stop for s in source_sel]
-        dest[...] = self.read_subarray(start, stop)
-
-    def z5pyWriteDirectWrapper(self, source, source_sel=None, dest_sel=None):
-        start = [s.start for s in dest_sel]
-        self.write_subarray(start, source)
-
-    z5py.dataset.Dataset.compression = None
-    z5py.dataset.Dataset.read_direct = z5pyReadDirectWrapper
-    z5py.dataset.Dataset.write_direct = z5pyWriteDirectWrapper
-
-    class N5JsonEncoder(json.JSONEncoder):
-        """
-        json encoder for json dumps in z5py
-        """
-        def default(self, obj):
-            if isinstance(obj, np.integer):
-                return int(obj)
-            if isinstance(obj, np.floating):
-                return float(obj)
-            json.JSONEncoder.default(self, obj)
-
-    z5py.set_json_encoder(N5JsonEncoder)
-
     class DatasetReadError(Exception):
         def __init__(self, internalPath):
             self.internalPath = internalPath
@@ -181,7 +154,6 @@ class OpStreamingH5N5Reader(Operator):
         """
         name, ext = os.path.splitext(filepath)
         if ext in OpStreamingH5N5Reader.N5EXTS:
-            z5py.set_json_encoder(OpStreamingH5N5Reader.N5JsonEncoder)
             return z5py.N5File(filepath, mode)
         elif ext in OpStreamingH5N5Reader.H5EXTS:
             return h5py.File(filepath, mode)

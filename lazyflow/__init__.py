@@ -22,6 +22,9 @@ from __future__ import absolute_import
 ###############################################################################
 import faulthandler
 faulthandler.enable()  # noqa
+import z5py
+import json
+import numpy as np
 
 from . import utility
 from . import request
@@ -32,3 +35,19 @@ from . import stype
 from . import graph
 from . import slot
 from . import operators
+
+
+class N5JsonEncoder(json.JSONEncoder):
+    """
+    json encoder for json dumps in z5py
+    """
+
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        json.JSONEncoder.default(self, obj)
+
+
+z5py.set_json_encoder(N5JsonEncoder)  # Set a json decoder for h5py

@@ -27,6 +27,7 @@ import math
 import logging
 import glob
 import h5py
+import z5py
 from collections import OrderedDict
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -608,6 +609,10 @@ class OpH5N5WriterBigDataset(Operator):
                 kwargs['compression_opts'] = 1  # <-- Optimize for speed, not disk space.
             else:  # z5py has uses different names here
                 kwargs['level'] = 1  # <-- Optimize for speed, not disk space.
+        else:
+            if isinstance(self.f, z5py.N5File):  # n5 uses gzip level 5 as default compression.
+                kwargs['compression'] = 'raw'
+
         self.d = g.create_dataset(datasetName, **kwargs)
 
         if self.Image.meta.drange is not None:
@@ -671,6 +676,3 @@ if __name__ == '__main__':
 
     success = opStackToH5.WriteImage.value
     assert success
-
-
-
