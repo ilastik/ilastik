@@ -290,8 +290,8 @@ class StackFileSelectionWidget(QDialog):
 
         pathComponents = PathComponents(fileNames[0])
 
-        if (len(fileNames) == 1) and (pathComponents.extension not in OpStreamingH5N5SequenceReaderM.H5EXTS) \
-                and (pathComponents.extension not in OpStreamingH5N5SequenceReaderM.N5EXTS):
+        if (len(fileNames) == 1) and pathComponents.extension not in OpStreamingH5N5SequenceReaderM.H5EXTS \
+                + OpStreamingH5N5SequenceReaderM.N5EXTS:
             msg += 'Cannot create stack: You only chose a single file.  '
             msg += 'If your stack is contained in a single file (e.g. a multi-page tiff) '
             msg += 'please use the "Add File" button.'

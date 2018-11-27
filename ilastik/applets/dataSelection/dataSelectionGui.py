@@ -434,11 +434,16 @@ class DataSelectionGui(QWidget):
                 # For the n5 extension the attributes.json file has to be selected in the file dialog.
                 # However we need just the *.n5 directory-file.
                 for i in range(len(fileNames)):
-                    if os.path.join(".n5", "attributes.json") in fileNames[i]:
+                    if "attributes.json" in fileNames[i] and ".n5" in fileNames[i]:
                         fileNames[i] = fileNames[i].replace(os.path.sep + "attributes.json", "")
         else:
             # otherwise, use native dialog of the present platform
             fileNames, _filter = QFileDialog.getOpenFileNames(parent_window, "Select Images", defaultDirectory, filt_all_str)
+            # For the n5 extension the attributes.json file has to be selected in the file dialog.
+            # However we need just the *.n5 directory-file.
+            for i in range(len(fileNames)):
+                if "attributes.json" in fileNames[i] and ".n5" in fileNames[i]:
+                    fileNames[i] = fileNames[i].replace(os.path.sep + "attributes.json", "")
         return fileNames
 
     def _findFirstEmptyLane(self, roleIndex):
@@ -738,7 +743,7 @@ class DataSelectionGui(QWidget):
         # Open the file as a read-only so we can get a list of the internal paths
         with z5py.N5File(absPath, mode='r+') as f:
             def accumulate_names(path, val):
-                if isinstance(val, z5py.dataset.Dataset) and 2 <= len(val.shape):
+                if isinstance(val, z5py.dataset.Dataset) and min_ndim <= len(val.shape) <= max_ndim:
                     name = path.replace(absPath, '')  # Need only the internal path here
                     datasetNames.append(name)
 
