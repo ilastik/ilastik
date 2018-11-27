@@ -50,4 +50,4 @@ class N5JsonEncoder(json.JSONEncoder):
         json.JSONEncoder.default(self, obj)
 
 
-z5py.set_json_encoder(N5JsonEncoder)  # Set a json decoder for h5py
+z5py.set_json_encoder(N5JsonEncoder)  # Set a json decoder for z5py
