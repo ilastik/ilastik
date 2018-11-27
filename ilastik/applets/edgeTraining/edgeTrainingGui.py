@@ -238,8 +238,18 @@ class EdgeTrainingGui(LayerViewerGui):
         op.EdgeLabelsDict.setValue( new_labels )
 
     def _handle_label_from_gt_clicked(self):
-        op = self.topLevelOperatorView
-        op.setEdgeLabelsFromGroundtruth( op.current_view_index() )
+        def train_from_gt():
+            try:
+                op = self.topLevelOperatorView
+                op.setEdgeLabelsFromGroundtruth(op.current_view_index())
+            finally:
+                self.parentApplet.busy = False
+                self.parentApplet.appletStateUpdateRequested()
+
+        self.parentApplet.busy = True
+        self.parentApplet.appletStateUpdateRequested()
+
+        Request(train_from_gt).submit()
 
     def _handle_clear_labels_clicked(self):
         response = QMessageBox.warning(self, "Clear Labels?",
