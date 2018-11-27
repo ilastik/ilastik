@@ -1812,6 +1812,7 @@ class IlastikShell(QMainWindow):
         Enable or disable the shell actions that could affect the project state.
         (Basically anything that would cause the project to be closed.)
         """
+        self.appletBar.setEnabled(enabled)
         self._shellActions.openProjectAction.setEnabled(enabled)
         self._shellActions.importProjectAction.setEnabled(enabled)
         self._shellActions.quitAction.setEnabled(enabled)
