@@ -19,13 +19,11 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from functools import partial
+import numpy as np
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
-from lazyflow.operators.classifierOperators import OpClassifierPredict, OpPixelwiseClassifierPredict
-from lazyflow.operators import OpMultiArraySlicer2, OpValueCache, OpCompressedUserLabelArray
-from lazyflow.operators.classifierOperators import OpTrainClassifierBlocked
+from lazyflow.operators import OpMultiArraySlicer2, OpValueCache, OpCompressedUserLabelArray, OpSlicedBlockedArrayCache, OpClassifierPredict, OpTrainClassifierBlocked
+from lazyflow.operators.tiktorchClassifierOperators import OpTikTorchTrainClassifierBlocked
 from ilastik.utility.operatorSubView import OperatorSubView
-from lazyflow.roi import determineBlockShape
 from ilastik.utility import OpMultiLaneWrapper
 
 
@@ -100,7 +98,7 @@ class OpNNClassification(Operator):
         self.opLabelPipeline.BlockShape.connect(self.opBlockShape.BlockShapeTrain)
 
         # TRAINING OPERATOR
-        self.opTrain = OpTrainClassifierBlocked(parent=self)
+        self.opTrain = OpTikTorchTrainClassifierBlocked(parent=self)
         self.opTrain.ClassifierFactory.connect(self.ClassifierFactory)
         self.opTrain.Labels.connect(self.opLabelPipeline.Output)
         self.opTrain.Images.connect(self.InputImages)
@@ -410,7 +408,7 @@ class OpPredictionPipeline(Operator):
         self.predict.LabelsCount.connect(self.NumClasses)
         self.PredictionProbabilities.connect(self.predict.PMaps)
 
-        self.prediction_cache = OpBlockedArrayCache(parent=self)
+        self.prediction_cache = OpSlicedBlockedArrayCache(parent=self)
         self.prediction_cache.name = "BlockedArrayCache"
         self.prediction_cache.inputs["Input"].connect(self.predict.PMaps)
         self.prediction_cache.inputs["fixAtCurrent"].connect(self.FreezePredictions)
