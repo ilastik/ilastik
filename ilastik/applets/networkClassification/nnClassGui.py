@@ -98,41 +98,6 @@ class ParameterDlg(QDialog):
         super(ParameterDlg, self).accept()
 
 
-class SavingDlg(QDialog):
-    """
-    Saving Option Dialog
-    """
-
-    def __init__(self, topLevelOperator, parent):
-        super(QDialog, self).__init__(parent=parent)
-
-        self.topLevelOperator = topLevelOperator
-
-        buttonbox = QDialogButtonBox(Qt.Horizontal, parent=self)
-        buttonbox.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttonbox.accepted.connect(self.change_state)
-        buttonbox.rejected.connect(self.reject)
-
-        self.checkbox = QCheckBox()
-        self.checkbox.setChecked(self.topLevelOperator.SaveFullModel.value)
-        self.checkbox.setCheckable(True)
-        self.checkbox.setText("Enable Model Object serialization")
-
-        layout = QVBoxLayout()
-        layout.addWidget(self.checkbox)
-        layout.addWidget(buttonbox)
-
-        self.setLayout(layout)
-        self.setWindowTitle("Saving Options")
-
-    def change_state(self):
-
-        self.topLevelOperator.SaveFullModel.setValue(self.checkbox.isChecked())
-
-        # close dialog
-        super(SavingDlg, self).accept()
-
-
 class NNClassGui(LabelingGui):
     """
     LayerViewerGui class for Neural Network Classification
@@ -179,25 +144,6 @@ class NNClassGui(LabelingGui):
 
         set_parameter = advanced_menu.addAction("Parameters...")
         set_parameter.triggered.connect(settingParameter)
-
-        def serializing_options():
-            """
-            enable/disable serialization options
-            """
-            dlg = SavingDlg(self.topLevelOperator, parent=self)
-            dlg.exec_()
-
-            if self.topLevelOperator.SaveFullModel.value == True:
-                obj_list = []
-                # print(list(self.topLevelOperator.ModelPath.value.values())[0])
-                # object_ = torch.load(list(self.topLevelOperator.ModelPath.value.values())[0])
-                for key in self.topLevelOperator.ModelPath.value:
-                    object_ = torch.load(self.topLevelOperator.ModelPath.value[key])
-                    obj_list.append(object_)
-
-                self.topLevelOperator.FullModel.setValue(obj_list)
-
-        advanced_menu.addAction("Saving Options").triggered.connect(serializing_options)
 
         def object_wizard():
             wizard = MagicWizard()
