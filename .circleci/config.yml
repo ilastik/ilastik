@@ -57,7 +57,7 @@ jobs:
         paths:
         - /home/ubuntu/miniconda
     # Test
-    - run: cd ${TEST_ENV_PREFIX}/ilastik-meta/ilastik && pytest
+    - run: cd ${TEST_ENV_PREFIX}/ilastik-meta/ilastik/tests && pytest --run-legacy-gui
     # Teardown
     #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
     # Save test results
