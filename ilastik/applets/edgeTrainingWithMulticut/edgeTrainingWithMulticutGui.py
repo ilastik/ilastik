@@ -1,7 +1,12 @@
+from typing import Iterable, Callable
+
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy
+
+from lazyflow.slot import Slot
 
 from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingGui
 from ilastik.applets.multicut.multicutGui import MulticutGuiMixin
+
 
 class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
     
@@ -41,7 +46,7 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
             op.EdgeProbabilities,
             op.EdgeProbabilitiesDict,
         )
-        cleanup_fn = _enable_widget_on_usable_values(
+        cleanup_fn = _enable_when_all_ready(
             multicut_box,
             edge_training_to_multicut_required_slots,
         )
@@ -100,25 +105,26 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         MulticutGuiMixin.configure_operator_from_gui(self)
 
 
-def _enable_widget_on_usable_values(widget, slots):
-    """Enables the widget only if all slots have usable values.
+def _enable_when_all_ready(widget: QWidget, slots: Iterable[Slot]) -> Callable[[], None]:
+    """Enables the widget only if all slots are ready.
 
-    Subscribe to dirty notifications from the slots and enable
-    the widget only if all slot values are ready and not None.
-    Otherwise, disable the widget.
+    When one of the slots becomes dirty, check the ready status of all the slots.
+    If all of them are ready, enable the widget. Otherwise, disable the widget.
 
     Args:
         widget: Widget to enable or disable.
-        slots: Iterable of slots whose values to check.
+        slots: Slots to check.
 
     Returns:
         Unsubscribe callable.
     """
-    def set_widget_enabled(*args, **kwargs):
-        have_values = all(s.ready() and s.value is not None for s in slots)
-        widget.setEnabled(have_values)
-    slot_cleanup_funcs = [s.notifyDirty(set_widget_enabled) for s in slots]
-    def cleanup_func():
-        for func in slot_cleanup_funcs:
-            func()
-    return cleanup_func
+    def set_enabled(*_args):
+        widget.setEnabled(all(s.ready() for s in slots))
+
+    funcs = [s.notifyDirty(set_enabled) for s in slots]
+
+    def cleanup():
+        for f in funcs:
+            f()
+
+    return cleanup
