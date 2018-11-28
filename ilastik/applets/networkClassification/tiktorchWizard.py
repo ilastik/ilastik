@@ -16,7 +16,7 @@ class MagicWizard(QtWidgets.QWizard):
         self.addPage(Page1(self))
         self.setWindowTitle("Tiktorch Object Build Wizard")
         self.resize(640, 480)
-
+        self.setOption(self.NoBackButtonOnStartPage)
 
 class Page1(QtWidgets.QWizardPage):
     def __init__(self, parent=None):
