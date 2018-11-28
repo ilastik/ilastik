@@ -26,7 +26,7 @@ from collections import OrderedDict
 import numpy
 import torch
 
-from volumina.api import LazyflowSource, AlphaModulatedLayer
+from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import PreferencesManager
 
 from PyQt5 import uic
@@ -239,7 +239,6 @@ class NNClassGui(LabelingGui):
         self.train_model = True
 
         self.labelingDrawerUi.TrainingCheckbox.setEnabled(False)
-
         self.labelingDrawerUi.labelListView.support_merges = True
 
         self.labelingDrawerUi.UpdateButton.setEnabled(False)
@@ -265,6 +264,8 @@ class NNClassGui(LabelingGui):
         self.__cleanup_fns.append(
             partial(self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange))
         )
+
+        self.forceAtLeastTwoLabels(True)
 
     def _initAppletDrawerUic(self, drawerPath=None):
         """
@@ -325,8 +326,6 @@ class NNClassGui(LabelingGui):
 
         layers = super(NNClassGui, self).setupLayers()
 
-        inputSlot = self.topLevelOperator.InputImages
-
         labels = self.labelListData
 
         for channel, predictionSlot in enumerate(self.topLevelOperator.PredictionProbabilityChannels):
@@ -360,19 +359,40 @@ class NNClassGui(LabelingGui):
                     predictLayer_.name = newName
 
                 setPredLayerName(channel, initializing=True)
-
                 setPredLayerName(ref_label.name, initializing=True)
                 ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setPredLayerName)
                 layers.append(predictionLayer)
 
-        # always as last layer
-        if inputSlot.ready():
-            rawLayer = self.createStandardLayerFromSlot(inputSlot)
-            rawLayer.visible = True
-            rawLayer.opacity = 1.0
-            rawLayer.name = "Raw Data (display only)"
-            layers.append(rawLayer)
+        # Add the raw data last (on the bottom)
+        inputDataSlot = self.topLevelOperatorView.InputImages
+        if inputDataSlot.ready():
+            inputLayer = self.createStandardLayerFromSlot(inputDataSlot)
+            inputLayer.name = "Input Data"
+            inputLayer.visible = True
+            inputLayer.opacity = 1.0
+            # the flag window_leveling is used to determine if the contrast
+            # of the layer is adjustable
+            if isinstance(inputLayer, GrayscaleLayer):
+                inputLayer.window_leveling = True
+            else:
+                inputLayer.window_leveling = False
+
+            def toggleTopToBottom():
+                index = self.layerstack.layerIndex(inputLayer)
+                self.layerstack.selectRow(index)
+                if index == 0:
+                    self.layerstack.moveSelectedToBottom()
+                else:
+                    self.layerstack.moveSelectedToTop()
+
+            layers.append(inputLayer)
+
+            # The thresholding button can only be used if the data is displayed as grayscale.
+            if inputLayer.window_leveling:
+                self.labelingDrawerUi.thresToolButton.show()
+            else:
+                self.labelingDrawerUi.thresToolButton.hide()
 
         self.handleLabelSelectionChange()
 
@@ -402,8 +422,6 @@ class NNClassGui(LabelingGui):
             self.model = TikTorchLazyflowClassifierFactory(self.tiktorch_path)
             self.topLevelOperator.ClassifierFactory.setValue(self.model)
 
-            self.set_BlockShape()
-
 
     def toggleInteractive(self, checked):
         logger.debug("toggling interactive mode to '%r'" % checked)
@@ -415,13 +433,14 @@ class NNClassGui(LabelingGui):
                 self.labelingDrawerUi.AddLabelButton.setEnabled(False)
             else:
                 num_label_classes = self._labelControlUi.labelListModel.rowCount()
-                self.labelingDrawerUi.labelListView.allowDelete = num_label_classes > self.minLabelNumber
+                self.labelingDrawerUi.labelListView.allowDelete = (num_label_classes > self.minLabelNumber)
                 self.labelingDrawerUi.AddLabelButton.setEnabled((num_label_classes < self.maxLabelNumber))
 
         self.interactiveModeActive = checked
 
         self.topLevelOperatorView.FreezePredictions.setValue(not checked)
         self.labelingDrawerUi.UpdateButton.setChecked(checked)
+        
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked(True)
@@ -496,25 +515,6 @@ class NNClassGui(LabelingGui):
         )
 
         return folder_names
-
-    def set_BlockShape(self):
-        """
-        calculates the blockshape with the blocksize of the dynamic shape
-        """
-        inputDim = list(self.topLevelOperator.InputImages.meta.shape)
-
-        halo_block_shape = self.model._loaded_pytorch_net.halo
-        logger.info(f"Halo block shape: {halo_block_shape}")
-        full_shape = self.model._loaded_pytorch_net.dry_run(inputDim[1:3])
-        logger.info("Finished Dry Run")
-
-        block_shape = [1, full_shape[0], full_shape[1], inputDim[3]]
-        block_shape[1] -= 2 * halo_block_shape[0]
-        block_shape[2] -= 2 * halo_block_shape[1]
-        logger.info(f"Blockshape: {block_shape}")
-        self.topLevelOperator.opPredictionPipeline.BlockShape.setValue(block_shape)
-        self.model.HALO_SIZE = halo_block_shape[0]
-        self.model.exp_input_shape = full_shape
 
     @pyqtSlot()
     @threadRouted
