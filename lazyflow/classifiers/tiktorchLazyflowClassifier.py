@@ -131,7 +131,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         if self._filename is None:
             self._filename = ""
 
-        self.HALO_SIZE = None
+        self.HALO_SIZE = 0
 
         if tiktorch_net is None:
             logger.info(f'tiktorch filename: {self._filename}')
