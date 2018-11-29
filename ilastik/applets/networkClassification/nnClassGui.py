@@ -30,6 +30,7 @@ from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import PreferencesManager
 
 from PyQt5 import uic
+from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt, pyqtSlot
 from PyQt5.QtWidgets import (
     QStackedWidget,
@@ -180,13 +181,14 @@ class NNClassGui(LabelingGui):
 
         self.__cleanup_fns = []
 
+        self.labelingDrawerUi.TrainingCheckbox.setEnabled(False)
+
         self._initAppletDrawerUic()
         self.initViewerControls()
         self.initViewerControlUi()
 
         self.train_model = True
 
-        self.labelingDrawerUi.TrainingCheckbox.setEnabled(False)
         self.labelingDrawerUi.labelListView.support_merges = True
 
         self.labelingDrawerUi.UpdateButton.setEnabled(False)
@@ -221,9 +223,11 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.addModel.clicked.connect(self.addModels)
 
         if self.topLevelOperator.ModelPath.ready():
-            self.labelingDrawerUi.comboBox.clear()
-            self.labelingDrawerUi.comboBox.addItems(self.topLevelOperator.ModelPath.value)
-            self.classifiers = self.topLevelOperator.ModelPath.value
+            modelPathList = list(self.topLevelOperator.ModelPath.value.values())
+            #TODO: save more networks
+            # for modelPath in modelPathList:
+            #     self.add_NN_classifiers(modelPath)
+            self.add_NN_classifiers(modelPathList[0]) 
 
         def nextCheckState(checkbox):
             """
@@ -474,14 +478,10 @@ class NNClassGui(LabelingGui):
             enabled = True
             enabled &= len(self.topLevelOperatorView.LabelNames.value) >= 2
             enabled &= numpy.all(numpy.asarray(self.topLevelOperatorView.InputImages.meta.shape) > 0)
-            # FIXME: also check that each label has scribbles?
 
-        #if not enabled:
             self.labelingDrawerUi.UpdateButton.setChecked(False)
             self._viewerControlUi.checkShowPredictions.setChecked(False)
-            # self._viewerControlUi.checkShowSegmentation.setChecked(False)
             self.handleShowPredictionsClicked()
-            # self.handleShowSegmentationClicked()
 
         self.labelingDrawerUi.UpdateButton.setEnabled(enabled)
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)

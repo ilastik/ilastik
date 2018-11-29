@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialListSlot, SerialDictSlot, SerialPickleableSlot, SerialBlockSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialListSlot, SerialDictSlot, SerialBlockSlot
 
 import logging
 
@@ -29,18 +29,16 @@ class NNClassificationSerializer(AppletSerializer):
     def __init__(self, topLevelOperator, projectFileGroupName):
         self.VERSION = 1
 
-        slots = [SerialPickleableSlot(topLevelOperator.FullModel, version=1),
-                 SerialDictSlot(topLevelOperator.ModelPath),
-                 SerialListSlot(topLevelOperator.LabelNames),
+        slots = [SerialListSlot(topLevelOperator.LabelNames),
                  SerialListSlot(topLevelOperator.LabelColors, transform=lambda x: tuple(x.flat)),
                  SerialListSlot(topLevelOperator.PmapColors, transform=lambda x: tuple(x.flat)),
-                 SerialBlockSlot(topLevelOperator.LabelImages,
+            	 SerialDictSlot(topLevelOperator.ModelPath),
+            	 SerialBlockSlot(topLevelOperator.LabelImages,
                                  topLevelOperator.LabelInputs,
                                  topLevelOperator.NonzeroLabelBlocks,
                                  name='LabelSets',
                                  subname='labels{:03d}',
                                  selfdepends=False,
-                                 shrink_to_bb=True)
-        ]
+                                 shrink_to_bb=True)]
 
-        super(NNClassificationSerializer, self).__init__(projectFileGroupName, slots, topLevelOperator)
+        super(NNClassificationSerializer, self).__init__(projectFileGroupName, slots)
