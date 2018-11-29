@@ -67,11 +67,11 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
             reordered_labels = []
             for i in range(len(feature_images)):
                 self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_images[i], axistags=axistags))
-                self._opReorderAxes.AxisOrder.setValue('zcyx')
+                self._opReorderAxes.AxisOrder.setValue('czyx')
                 reordered_feature_images.append(self._opReorderAxes.Output([]).wait())
 
                 self._opReorderAxes.Input.setValue(vigra.VigraArray(label_images[i], axistags=axistags))
-                self._opReorderAxes.AxisOrder.setValue('zcyx')
+                self._opReorderAxes.AxisOrder.setValue('czyx')
                 reordered_labels.append(self._opReorderAxes.Output([]).wait())
 
             # TODO: check whether loaded network has the same number of classes as specified in ilastik!
@@ -135,13 +135,11 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
 
         if tiktorch_net is None:
             logger.info(f'tiktorch filename: {self._filename}')
-            # tiktorch_net = TikTorch.unserialize(self._filename)
             tiktorch_net = TikTorch(filename)
 
         self._tiktorch_net = tiktorch_net
 
         self._opReorderAxes = OpReorderAxes(graph=Graph())
-        self._opReorderAxes.AxisOrder.setValue('zcyx')
 
     def predict_probabilities_pixelwise(self, feature_image, roi, axistags=None):
         """
@@ -151,7 +149,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         assert isinstance(roi, numpy.ndarray)
         logger.info(f'tiktorchLazyflowClassifier.predict tile shape: {feature_image.shape}')
         self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_image, axistags=axistags))
-        self._opReorderAxes.AxisOrder.setValue('zcyx')
+        self._opReorderAxes.AxisOrder.setValue('czyx')
         reordered_feature_image = self._opReorderAxes.Output([]).wait()
 
         transform = Compose(Normalize())
@@ -160,11 +158,11 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         input_tensor = [reordered_feature_image[z] for z in range(reordered_feature_image.shape[0])]
         result = self._tiktorch_net.forward(input_tensor)
         logger.info(f'Obtained a predicted block of shape {result.shape}')
-        self._opReorderAxes.Input.setValue(vigra.VigraArray(result, axistags=vigra.defaultAxistags('zcyx')))
+        self._opReorderAxes.Input.setValue(vigra.VigraArray(result, axistags=vigra.defaultAxistags('czyx')))
         # axistags is vigra.AxisTags, but opReorderAxes expects a string
         self._opReorderAxes.AxisOrder.setValue(''.join(axistags.keys()))
         result = self._opReorderAxes.Output([]).wait()
-        result = numpy.concatenate((1 - result, result), axis=3)
+        result = numpy.concatenate((result, 1-result), axis=3)
 
         return result
 

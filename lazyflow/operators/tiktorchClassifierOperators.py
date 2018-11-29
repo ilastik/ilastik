@@ -77,10 +77,6 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
                 block_label_roi = sliceToRoi( block_slicing, label_slot.meta.shape )
                 block_label_data = label_slot(*block_label_roi).wait()
                 
-                # Shrink roi to bounding box of actual label pixels
-                bb_roi_within_block = nonzero_bounding_box(block_label_data)
-                block_label_bb_roi = bb_roi_within_block + block_label_roi[0]
-
                 bb_roi_within_block = numpy.array([[0, 0, 0, 0], list(block_label_data.shape)])
                 block_label_bb_roi = bb_roi_within_block + block_label_roi[0]
 
@@ -125,3 +121,4 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
             assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), \
                 "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface." \
                 "".format(type(classifier))
+
