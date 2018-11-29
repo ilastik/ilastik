@@ -51,6 +51,11 @@ class NNClassApplet(StandardApplet):
         ]  # Legacy (v0.5) importer
         self._gui = None
         self.predictionSerializer = self._serializableItems[0]
+        # FIXME: For now, we can directly connect the progress signal from the classifier training operator
+        # directly to the applet's overall progress signal, because it's the only thing we report progress for at the moment.
+        # If we start reporting progress for multiple tasks that might occur simulatneously,
+        # we'll need to aggregate the progress updates.
+        self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal)
 
     @property
     def dataSerializers(self):

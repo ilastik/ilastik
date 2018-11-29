@@ -42,6 +42,7 @@ from PyQt5.QtWidgets import (
     QDialog,
     QCheckBox,
 )
+from PyQt5.QtGui import QColor
 
 from ilastik.applets.networkClassification.tiktorchWizard import MagicWizard
 from ilastik.applets.labeling.labelingGui import LabelingGui
@@ -175,6 +176,7 @@ class NNClassGui(LabelingGui):
         self.classifiers = OrderedDict()
 
         self.interactiveModeActive = False
+        self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
 
         self.__cleanup_fns = []
 
@@ -195,8 +197,6 @@ class NNClassGui(LabelingGui):
         num_label_classes = self._labelControlUi.labelListModel.rowCount()
         self.labelingDrawerUi.labelListView.allowDelete = num_label_classes > self.minLabelNumber
         self.labelingDrawerUi.AddLabelButton.setEnabled((num_label_classes < self.maxLabelNumber))
-
-        self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
 
         def FreezePredDirty():
             self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
@@ -392,6 +392,9 @@ class NNClassGui(LabelingGui):
             self._viewerControlUi.checkShowPredictions.setChecked(True)
             self.handleShowPredictionsClicked()
 
+        if hasattr(self, 'model'):
+            self.model.train_model = self.labelingDrawerUi.TrainingCheckbox.isChecked()
+
         # Notify the workflow that some applets may have changed state now.
         # (For example, the downstream pixel classification applet can
         #  be used now that there are features selected)
@@ -409,11 +412,12 @@ class NNClassGui(LabelingGui):
 
     @pyqtSlot()
     def handleShowTrainingClicked(self):
-        checked = self.labelingDrawerUi.TrainingCheckbox.isChecked()
-        if checked:
-            self.model.train_model = True
-        else:
-            self.model.train_model = False
+        pass
+        #checked = self.labelingDrawerUi.TrainingCheckbox.isChecked()
+        #if checked:
+        #    self.model.train_model = True
+        #else:
+        #    self.model.train_model = False
 
     @pyqtSlot()
     def updateShowPredictionCheckbox(self):
