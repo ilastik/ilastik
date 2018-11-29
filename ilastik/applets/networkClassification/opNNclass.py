@@ -26,6 +26,7 @@ from lazyflow.operators.tiktorchClassifierOperators import OpTikTorchTrainClassi
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
+BLOCKSHAPE = (1, 512, 512, 1)
 
 class OpNNClassification(Operator):
     """
@@ -294,9 +295,11 @@ class OpBlockShape(Operator):
             tagged_shape['t'] = 1
 
         # Aim for blocks that are roughly 20px
-        block_shape = self.ClassifierFactory.value.determineBlockShape([tagged_shape['x'], tagged_shape['y']],
-                                                                       train=True)
-        return (1, *tuple(block_shape), 1)
+        #block_shape = self.ClassifierFactory.value.determineBlockShape([tagged_shape['x'], tagged_shape['y']],
+        #                                                               train=True)
+        #return (1, *tuple(block_shape), 1)
+
+        return BLOCKSHAPE
 
     def setup_inference(self):
         axisOrder = [ tag.key for tag in self.RawImage.meta.axistags ]
@@ -305,8 +308,10 @@ class OpBlockShape(Operator):
         x = self.ClassifierFactory[:].wait()
         print(x)
 
-        block_shape = self.ClassifierFactory.value.determineBlockShape([tagged_shape['x'], tagged_shape['y']],
-                                                                       train=False)
+        #block_shape = self.ClassifierFactory.value.determineBlockShape([tagged_shape['x'], tagged_shape['y']],
+        #                                                               train=False)
+
+        block_shape = (BLOCKSHAPE[1], BLOCKSHAPE[2])
 
         blockDimsX = { 't' : (1,1),
                        'z' : (block_shape[0], block_shape[1]),
