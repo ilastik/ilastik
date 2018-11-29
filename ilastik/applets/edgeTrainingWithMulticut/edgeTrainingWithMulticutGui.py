@@ -1,11 +1,8 @@
-from typing import Iterable, Callable
-
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizePolicy
-
-from lazyflow.slot import Slot
 
 from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingGui
 from ilastik.applets.multicut.multicutGui import MulticutGuiMixin
+import ilastik.utility.gui as guiutil
 
 
 class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
@@ -40,17 +37,13 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         multicut_box.setEnabled(False)
 
         op = self.topLevelOperatorView
-        edge_training_to_multicut_required_slots = (
+        multicut_required_slots = (
             op.Superpixels,
             op.Rag,
             op.EdgeProbabilities,
             op.EdgeProbabilitiesDict,
         )
-        cleanup_fn = _enable_when_all_ready(
-            multicut_box,
-            edge_training_to_multicut_required_slots,
-        )
-        self.__cleanup_fns.append(cleanup_fn)
+        self.__cleanup_fns.append(guiutil.enable_when_ready(multicut_box, multicut_required_slots))
 
         drawer_layout = QVBoxLayout()
         drawer_layout.addWidget(training_box)
@@ -103,28 +96,3 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
     def configure_operator_from_gui(self):
         EdgeTrainingGui.configure_operator_from_gui(self)
         MulticutGuiMixin.configure_operator_from_gui(self)
-
-
-def _enable_when_all_ready(widget: QWidget, slots: Iterable[Slot]) -> Callable[[], None]:
-    """Enables the widget only if all slots are ready.
-
-    When one of the slots becomes dirty, check the ready status of all the slots.
-    If all of them are ready, enable the widget. Otherwise, disable the widget.
-
-    Args:
-        widget: Widget to enable or disable.
-        slots: Slots to check.
-
-    Returns:
-        Unsubscribe callable.
-    """
-    def set_enabled(*_args):
-        widget.setEnabled(all(s.ready() for s in slots))
-
-    funcs = [s.notifyDirty(set_enabled) for s in slots]
-
-    def cleanup():
-        for f in funcs:
-            f()
-
-    return cleanup
