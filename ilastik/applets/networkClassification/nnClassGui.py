@@ -352,21 +352,21 @@ class NNClassGui(LabelingGui):
         self.tiktorch_path = folder_path
 
         # Statement for importing the same classifier twice
-        if modelname in self.classifiers.keys():
-            logger.info("Classifier already added")
-            QMessageBox.critical(self, "Error loading file", "{} already added".format(modelname))
-        else:
-            self.classifiers[modelname] = folder_path
+        #if modelname in self.classifiers.keys():
+        #    logger.info("Classifier already added")
+        #    QMessageBox.critical(self, "Error loading file", "{} already added".format(modelname))
+        #else:
+        self.classifiers[modelname] = folder_path
 
-            # clear first the comboBox or addItems will duplicate names
-            self.labelingDrawerUi.comboBox.clear()
-            self.labelingDrawerUi.comboBox.addItems(self.classifiers)
-            self.labelingDrawerUi.TrainingCheckbox.setEnabled(True)
-            self.labelingDrawerUi.TrainingCheckbox.setCheckState(Qt.Checked)
+        # clear first the comboBox or addItems will duplicate names
+        self.labelingDrawerUi.comboBox.clear()
+        self.labelingDrawerUi.comboBox.addItems(self.classifiers)
+        self.labelingDrawerUi.TrainingCheckbox.setEnabled(True)
+        self.labelingDrawerUi.TrainingCheckbox.setCheckState(Qt.Checked)
 
-            self.topLevelOperator.ModelPath.setValue(self.classifiers)
-            self.model = TikTorchLazyflowClassifierFactory(self.tiktorch_path)
-            self.topLevelOperator.ClassifierFactory.setValue(self.model)
+        self.topLevelOperator.ModelPath.setValue(self.classifiers)
+        self.model = TikTorchLazyflowClassifierFactory(self.tiktorch_path)
+        self.topLevelOperator.ClassifierFactory.setValue(self.model)
 
 
     def toggleInteractive(self, checked):
