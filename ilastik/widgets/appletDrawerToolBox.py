@@ -68,7 +68,6 @@ class AppletDrawerToolBox(QToolBox):
                 if item in self._visible_widgets:
                     visible_index +=1
             self._visible_widgets.insert( visible_index, (widget, text) )
-            print("Showing {} at {}".format( text, visible_index ))
             super( AppletDrawerToolBox, self ).insertItem( visible_index, widget, text )
 
     ####
@@ -88,9 +87,6 @@ class AppletDrawerToolBox(QToolBox):
     def currentIndex(self):
         visible_index = super( AppletDrawerToolBox, self).currentIndex()
         return self._get_index(visible_index)
-
-    def currentWidget(self):
-        super( AppletDrawerToolBox, self ).currentWidget()
 
     def indexOf(self, widget):
         for i, (w, text) in enumerate(self._all_widgets):
@@ -150,10 +146,12 @@ class AppletDrawerToolBox(QToolBox):
         visible_index = self._get_visible_index(index)
         if visible_index != -1:
             self._visible_widgets[visible_index] = ( widget, newtext )
+            super().setItemText(visible_index, newtext)
         else:
             # Find this widget in the invisible list
             invisible_index = self._index_of_widget(widget, self._invisible_widgets)
             self._invisible_widgets[invisible_index] = ( widget, newtext )
+
 
     def setItemToolTip(self, index, toopTip):
         raise NotImplementedError("Sorry, this class doesn't support tool-tips (yet).")
