@@ -72,7 +72,7 @@ class ObjectClassificationWorkflow(Workflow):
     def ExportNames(self):
         @enum.unique
         class ExportNames(SlotNameEnum):
-            OBJECT_PREDICTIONS = 0,
+            OBJECT_PREDICTIONS = 0
             OBJECT_PROBABILITIES = enum.auto()
             BLOCKWISE_OBJECT_PREDICTIONS = enum.auto()
             BLOCKWISE_OBJECT_PROBABILITIES = enum.auto()
