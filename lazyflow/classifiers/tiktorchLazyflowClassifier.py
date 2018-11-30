@@ -19,10 +19,6 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
-"""
-TODOs TikTorchflowClassifier:
-"""
-from builtins import range
 import pickle as pickle
 import tempfile
 
@@ -54,32 +50,55 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
         self.train_model = True
 
+        self.axiskeys = 'zcyx'
         self._loaded_pytorch_net = TikTorch(self._filename)
-
-        self._opReorderAxes = OpReorderAxes(graph=Graph())
-        self._opReorderAxes.AxisOrder.setValue('zcyx')
 
     def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
         logger.debug('Loading pytorch network from {}'.format(self._filename))
+        assert self._loaded_pytorch_net is not None, "TikTorchLazyflowClassifierFactory not properly initialized."
 
         if self.train_model:
-            reordered_feature_images = []
-            reordered_labels = []
-            for i in range(len(feature_images)):
-                self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_images[i], axistags=axistags))
-                self._opReorderAxes.AxisOrder.setValue('zcyx')
-                reordered_feature_images.append(self._opReorderAxes.Output([]).wait())
+            input_axiskeys = "".join([tag.key for tag in axistags])
+            output_axiskeys = self.axiskeys
 
-                self._opReorderAxes.Input.setValue(vigra.VigraArray(label_images[i], axistags=axistags))
-                self._opReorderAxes.AxisOrder.setValue('zcyx')
-                reordered_labels.append(self._opReorderAxes.Output([]).wait())
+            if output_axiskeys == input_axiskeys:
+                logger.debug("Training: No need to reorder feature_images/labels")
+                # nothing to do
+                reordered_label_images = label_images
+                reordered_feature_images = feature_images
+            else:
+                reordered_feature_images = []
+                reordered_label_images = []
+                for feature_image, label_image in zip(feature_images, label_images):
+                    reordered_feature_images.append(
+                        self.get_view_with_axes(feature_image, input_axiskeys, output_axiskeys))
+                    reordered_label_images.append(
+                        self.get_view_with_axes(label_image, input_axiskeys, output_axiskeys))
 
             # TODO: check whether loaded network has the same number of classes as specified in ilastik!
             # self._loaded_pytorch_net = TikTorch.unserialize(self._filename)
-            self._loaded_pytorch_net.train(reordered_feature_images, reordered_labels)
+            self._loaded_pytorch_net.train(reordered_feature_images, reordered_label_images)
             logger.info(self.description)
 
         return TikTorchLazyflowClassifier(self._loaded_pytorch_net, self._filename)
+
+    @staticmethod
+    def get_view_with_axes(in_array: numpy.ndarray, in_axiskeys: str, out_axiskeys: str) -> vigra.VigraArray:
+        """
+        Args:
+            in_array: numpy array
+            in_axiskeys: string specifying the input axisorder
+            out_axiskeys: string specifying the output axisorder
+
+        Returns:
+            returns a view in the output axisorder
+
+        """
+        assert len(in_array.shape) == len(in_axiskeys)
+        tagged_array = in_array.view(vigra.VigraArray)
+        tagged_array.axistags = vigra.defaultAxistags(in_axiskeys)
+        reordered_view = tagged_array.withAxes(*out_axiskeys)
+        return reordered_view
 
     def determineBlockShape(self, max_shape, train=True):
         return TikTorch(self._filename).dry_run(max_shape, train)
