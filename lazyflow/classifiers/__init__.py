@@ -12,3 +12,4 @@ except ImportError:
 
 # Testing
 from .vigraRfPixelwiseClassifier import VigraRfPixelwiseClassifier, VigraRfPixelwiseClassifierFactory
+from .tiktorchLazyflowClassifier import *

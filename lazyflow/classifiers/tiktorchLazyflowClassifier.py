@@ -36,7 +36,8 @@ from lazyflow.roi import roiToSlice
 from inferno.io.transform import Compose
 from inferno.io.transform.generic import Normalize, Cast, AsTorchBatch
 
-from tiktorch.wrapper import TikTorch
+from tiktorch.client import TikTorchClient
+#from tiktorch.wrapper import TikTorch as TikTorchClient
 
 import logging
 
@@ -54,7 +55,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
         self.train_model = True
 
-        self._loaded_pytorch_net = TikTorch(self._filename)
+        self._loaded_pytorch_net = TikTorchClient(self._filename)
 
         self._opReorderAxes = OpReorderAxes(graph=Graph())
         self._opReorderAxes.AxisOrder.setValue('zcyx')
@@ -82,7 +83,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         return TikTorchLazyflowClassifier(self._loaded_pytorch_net, self._filename)
 
     def determineBlockShape(self, max_shape, train=True):
-        return TikTorch(self._filename).dry_run(max_shape, train)
+        return TikTorchClient(self._filename).dry_run(max_shape, train)
 
     def get_halo_shape(self, data_axes='zyxc'):
         # return (z_halo, y_halo, x_halo, 0)
@@ -135,7 +136,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
 
         if tiktorch_net is None:
             logger.info(f'tiktorch filename: {self._filename}')
-            tiktorch_net = TikTorch(filename)
+            tiktorch_net = TikTorchClient(filename)
 
         self._tiktorch_net = tiktorch_net
 
@@ -204,7 +205,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         with tempfile.TemporaryFile() as f:
             f.write(h5py_group['classifier'].value)
             f.seek(0)
-            loaded_pytorch_net = TikTorch.unserialize(f)
+            loaded_pytorch_net = TikTorchClient.unserialize(f)
 
         return TikTorchLazyflowClassifier(loaded_pytorch_net, filename)
 
