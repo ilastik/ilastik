@@ -26,7 +26,7 @@ from lazyflow.operators.tiktorchClassifierOperators import OpTikTorchTrainClassi
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
-BLOCKSHAPE = (1, 512, 512, 1)
+BLOCKSHAPE = (1, 256, 256, 1)
 
 class OpNNClassification(Operator):
     """

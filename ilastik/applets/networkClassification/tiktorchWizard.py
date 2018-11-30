@@ -27,7 +27,7 @@ class Page1(QtWidgets.QWizardPage):
         self.label1 = QtWidgets.QLabel()
 
         self.code_path_textbox = QLineEdit(self)
-        self.code_path_textbox.setPlaceholderText("Path to the .py file")
+        self.code_path_textbox.setPlaceholderText("Path to the .py file where the model lives")
 
         self.model_class_name_textbox = QLineEdit(self)
         self.model_class_name_textbox.setPlaceholderText("Name of the model class in the .py file")
@@ -36,22 +36,16 @@ class Page1(QtWidgets.QWizardPage):
         self.state_path_textbox.setPlaceholderText("Path to where the state_dict is pickled")
 
         self.input_shape_textbox = QLineEdit(self)
-        self.input_shape_textbox.setPlaceholderText("Input shape of the model in the order CHW")
+        self.input_shape_textbox.setPlaceholderText("Input shape of the model as tuple/list ('CHW'/'CDHW')")
 
-        self.output_shape_textbox = QLineEdit(self)
-        self.output_shape_textbox.setPlaceholderText("Output shape of the model in the order CHW")
-
-        self.dynamic_input_shape_textbox = QLineEdit(self)
-        self.dynamic_input_shape_textbox.setPlaceholderText("dynamic_input_shape (Optional)")
-
-        self.devices_textbox = QLineEdit(self)
-        self.devices_textbox.setPlaceholderText("List of devices (e.g. 'cpu:0' or ['cuda:0', 'cuda:1'])")
+        self.minimal_increment_textbox = QLineEdit(self)
+        self.minimal_increment_textbox.setPlaceholderText("Minimal values by which to increment/decrement the input shape to be still valid as tuple/list ('HW'/'DHW')")
 
         self.model_init_kwargs_textbox = QLineEdit(self)
         self.model_init_kwargs_textbox.setPlaceholderText("Kwargs to the model constructor (Optional)")
 
         self.model_path_textbox = QLineEdit(self)
-        self.model_path_textbox.setPlaceholderText("Path were the object will be saved")
+        self.model_path_textbox.setPlaceholderText("Path were this configuration will be saved")
 
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.label1)
@@ -59,15 +53,13 @@ class Page1(QtWidgets.QWizardPage):
         layout.addWidget(self.model_class_name_textbox)
         layout.addWidget(self.state_path_textbox)
         layout.addWidget(self.input_shape_textbox)
-        layout.addWidget(self.output_shape_textbox)
-        layout.addWidget(self.dynamic_input_shape_textbox)
-        layout.addWidget(self.devices_textbox)
+        layout.addWidget(self.minimal_increment_textbox)
         layout.addWidget(self.model_init_kwargs_textbox)
         layout.addWidget(self.model_path_textbox)
         self.setLayout(layout)
 
     def initializePage(self):
-        self.label1.setText("Parameters:")
+        self.label1.setText("Parameters for TikTorch configuration:")
 
     def validatePage(self):
         # will be triggered after pressing Done
@@ -81,11 +73,9 @@ class Page1(QtWidgets.QWizardPage):
         self.code_path = str(self.code_path_textbox.text())
         self.model_class_name = str(self.model_class_name_textbox.text())
         self.state_path = str(self.state_path_textbox.text())
-        self.input_shape = [int(x) for x in self.input_shape_textbox.text().split(',')]
-        self.output_shape = [int(x) for x in self.output_shape_textbox.text().split(',')]
-        self.dynamic_input_shape = str(self.dynamic_input_shape_textbox.text())
-        self.devices = [x for x in str(self.devices_textbox.text()).split(',')]
-        self.model_init_kwargs = yaml.load(str(self.model_init_kwargs_textbox.text()))
+        self.input_shape = [int(x) for x in self.input_shape_textbox.text()[1:-1].replace(', ', ',').split(',')]
+        self.minimal_increment = [int(x) for x in self.minimal_increment_textbox.text()[1:-1].replace(', ',',').split(',')]
+        self.model_init_kwargs = yaml.load(str(self.model_init_kwargs_textbox.text())[1:-1].replace(', ', '\n'))
         self.model_path = str(self.model_path_textbox.text())
 
         spec = TikTorchSpec(
@@ -93,9 +83,7 @@ class Page1(QtWidgets.QWizardPage):
             model_class_name=self.model_class_name,
             state_path=self.state_path,
             input_shape=self.input_shape,
-            output_shape=self.output_shape,
-            dynamic_input_shape=self.dynamic_input_shape,
-            devices=self.devices,
+            minimal_increment=self.minimal_increment,
             model_init_kwargs=self.model_init_kwargs,
         )
 

@@ -317,3 +317,8 @@ class NNClassificationWorkflow(Workflow):
         input_shape[1:3] -= 2 * self.halo_size
 
         return input_shape
+
+    def cleanUp(self):
+        tiktorchClient = self.nnClassificationApplet.topLevelOperator.ClassifierFactory.value
+        if tiktorchClient is not None:
+            tiktorchClient._loaded_pytorch_net.shutdown()
