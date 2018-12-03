@@ -22,11 +22,11 @@ from functools import partial
 import numpy as np
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpMultiArraySlicer2, OpValueCache, OpCompressedUserLabelArray, OpSlicedBlockedArrayCache, OpClassifierPredict, OpTrainClassifierBlocked
-from lazyflow.operators.tiktorchClassifierOperators import OpTikTorchTrainClassifierBlocked
+from lazyflow.operators.tiktorchClassifierOperators import OpTikTorchTrainClassifierBlocked, OpTikTorchClassifierPredict
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
-BLOCKSHAPE = (1, 256, 256, 1)
+BLOCKSHAPE = (1, 256, 256, 1) #(1, 188, 188, 1)
 
 class OpNNClassification(Operator):
     """
@@ -398,13 +398,13 @@ class OpPredictionPipeline(Operator):
     def __init__(self, *args, **kwargs):
         super(OpPredictionPipeline, self).__init__(*args, **kwargs)
 
-        self.cacheless_predict = OpClassifierPredict(parent=self)
+        self.cacheless_predict = OpTikTorchClassifierPredict(parent=self)
         self.cacheless_predict.name = "OpClassifierPredict (Cacheless Path)"
         self.cacheless_predict.Classifier.connect(self.Classifier)
         self.cacheless_predict.Image.connect(self.RawImage) # <--- Not from cache
         self.cacheless_predict.LabelsCount.connect(self.NumClasses)
 
-        self.predict = OpClassifierPredict(parent=self)
+        self.predict = OpTikTorchClassifierPredict(parent=self)
         self.predict.name = "OpClassifierPredict"
         self.predict.Classifier.connect(self.Classifier)
         self.predict.Image.connect(self.RawImage)
