@@ -132,7 +132,7 @@ class NNClassGui(LabelingGui):
         """
         menus = super(NNClassGui, self).menus()
 
-        advanced_menu = QMenu("Advanced", parent=self)
+        advanced_menu = QMenu("TikTorch", parent=self)
 
         def settingParameter():
             """
@@ -152,7 +152,7 @@ class NNClassGui(LabelingGui):
             wizard.show()
             wizard.exec_()
 
-        advanced_menu.addAction("make Pytorch Object").triggered.connect(object_wizard)
+        advanced_menu.addAction("Create TikTorch Configuration").triggered.connect(object_wizard)
 
         menus += [advanced_menu]
 
@@ -186,8 +186,6 @@ class NNClassGui(LabelingGui):
         self._initAppletDrawerUic()
         self.initViewerControls()
         self.initViewerControlUi()
-
-        self.train_model = True
 
         self.labelingDrawerUi.labelListView.support_merges = True
 
