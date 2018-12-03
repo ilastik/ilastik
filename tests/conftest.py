@@ -50,6 +50,7 @@ def pytest_pyfunc_call(pyfuncitem):
 
     def testfunc():
         try:
+            # Call actual test function
             return pyfuncitem.obj()
         except Exception:
             bucket[0] = sys.exc_info
