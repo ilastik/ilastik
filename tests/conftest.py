@@ -6,7 +6,6 @@ import warnings
 import platform
 import itertools
 
-
 import pytest
 
 from PyQt5.QtWidgets import QApplication
@@ -19,6 +18,14 @@ from ilastik.utility.gui.threadRouter import ThreadRouter
 from ilastik.utility.itertools import pairwise
 from ilastik.shell.gui.startShellGui import launchShell
 
+# Every function starting with pytest_ in this module is a pytest hook
+# that modifies specific behavior of test life cycle
+# Useful links for understanding pytest plugins/conftest.py files.
+# Writing Plugins: https://docs.pytest.org/en/3.10.1/writing_plugins.html
+# Hookspec Reference: https://docs.pytest.org/en/3.10.1/_modules/_pytest/hookspec.html
+# If hookspec hash @hookspec(firstresult=True) in its definition, this means
+# that hooks will be executed until first not None result is found.
+
 
 GUI_TEST_TIMEOUT = 20  # Seconds
 
@@ -29,10 +36,12 @@ def pytest_addoption(parser):
                      help="runs legacy gui tests")
 
 
-
 def pytest_pyfunc_call(pyfuncitem):
     """
     Defines protocol for legacy GUI test execution
+    It should be run in a separate thread
+    :param pyfuncitem: wrapper object around test function
+    see https://docs.pytest.org/en/3.10.1/reference.html#function
     """
     if not is_gui_test(pyfuncitem):
         return
@@ -65,12 +74,15 @@ def pytest_pyfunc_call(pyfuncitem):
     return True
 
 
+# hookwrapper=True means that this function will wrap all other hook implementation
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     """
     Handle reports and chain fails for GUI tests
     """
-    outcome = yield
+    outcome = yield  # Retrive result of hook execution (report)
+    # How does it work? Internaly it uses generator .send method, yield expressions see
+    # https://docs.python.org/2.5/whatsnew/pep-342.html
 
     if is_gui_test(item):
         rep = outcome.get_result()
@@ -133,7 +145,6 @@ class GuiTestSuite:
             self._current = None
 
 
-
 def pytest_runtestloop(session):
     """
     Gui test runner
@@ -144,6 +155,8 @@ def pytest_runtestloop(session):
     if session.config.option.collectonly:
         return True
 
+    # Modify session leaving only normal tests as session.items
+    # Gui test should be run separately
     guitests, session.items = split_guitests(session.items)
     _pytest_runtestloop(session)
 
@@ -175,11 +188,16 @@ def run_gui_tests(tstcls, gui_test_bag):
     if ilastik.config.cfg.getboolean("ilastik", "debug"):
         QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
 
+    # Note on the class test execution lifecycle
+    # pytest infers that finalizer teardown_class should be called when
+    # nextitem is None
     for item, nextitem in pairwise(gui_test_bag):
         tst_queue.put((item, nextitem))
 
+    # Spawn a suite runner as a interval task
     suite = GuiTestSuite(tst_queue, tstcls.shell)
     timer = QTimer()
+    # This timer will fire only after application is started running
     timer.timeout.connect(suite.poll)
     timer.start(100)  # Every 100 ms
 
