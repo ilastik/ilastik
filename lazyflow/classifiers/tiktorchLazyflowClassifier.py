@@ -19,10 +19,6 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
-"""
-TODOs TikTorchflowClassifier:
-"""
-from builtins import range
 import pickle as pickle
 import tempfile
 
@@ -84,6 +80,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
     def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
         logger.debug('Loading pytorch network from {}'.format(self._filename))
+        assert self._loaded_pytorch_net is not None, "TikTorchLazyflowClassifierFactory not properly initialized."
 
         if self.train_model:
             reordered_feature_images = []
@@ -99,9 +96,28 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
             # TODO: check whether loaded network has the same number of classes as specified in ilastik!
             self._tikTorchClient.train(reordered_feature_images, reordered_labels)
+
             logger.info(self.description)
 
         return TikTorchLazyflowClassifier(self.tikTorchClient, self._filename)
+
+    @staticmethod
+    def get_view_with_axes(in_array: numpy.ndarray, in_axiskeys: str, out_axiskeys: str) -> vigra.VigraArray:
+        """
+        Args:
+            in_array: numpy array
+            in_axiskeys: string specifying the input axisorder
+            out_axiskeys: string specifying the output axisorder
+
+        Returns:
+            returns a view in the output axisorder
+
+        """
+        assert len(in_array.shape) == len(in_axiskeys)
+        tagged_array = in_array.view(vigra.VigraArray)
+        tagged_array.axistags = vigra.defaultAxistags(in_axiskeys)
+        reordered_view = tagged_array.withAxes(*out_axiskeys)
+        return reordered_view
 
     def determineBlockShape(self, max_shape, train=True):
         return self.tikTorchClient.dry_run(max_shape, train)
