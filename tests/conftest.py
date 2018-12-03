@@ -6,6 +6,8 @@ import warnings
 import platform
 import itertools
 
+from concurrent import futures
+
 import pytest
 
 from PyQt5.QtWidgets import QApplication
@@ -55,17 +57,9 @@ def pytest_pyfunc_call(pyfuncitem):
         except Exception:
             bucket[0] = sys.exc_info
 
-    thread = threading.Thread(target=testfunc)
-    thread.daemon = True
-
-    start = time.time()
-    thread.start()
-
-    while thread.is_alive():
-        time.sleep(0.2)
-        duration = time.time() - start
-        if duration > GUI_TEST_TIMEOUT:
-            raise TimeoutException()
+    with futures.ThreadPoolExecutor(max_workers=1) as executor:
+        fut = executor.submit(testfunc)
+        fut.result(timeout=GUI_TEST_TIMEOUT)
 
     exc_info = bucket[0]
 
@@ -90,7 +84,7 @@ def pytest_runtest_makereport(item, call):
 
         if rep.failed and call.excinfo is not None:
             item.parent._failed = item
-            if call.excinfo.errisinstance(TimeoutException):
+            if call.excinfo.errisinstance(futures.TimeoutError):
                 rep.wasxfail = "reason: Timeout"
                 rep.outcome = "skipped"
 
@@ -243,7 +237,3 @@ def _sorted_guitests(iterable):
         return cls.__module__, cls.__name__, obj.name
 
     return sorted(iterable, key=_keyfunc)
-
-
-class TimeoutException(Exception):
-    pass
