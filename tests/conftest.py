@@ -88,8 +88,7 @@ def pytest_runtest_makereport(item, call):
         rep = outcome.get_result()
 
         if rep.failed and call.excinfo is not None:
-            parent = item.parent
-            parent._failed = item
+            item.parent._failed = item
             if call.excinfo.errisinstance(TimeoutException):
                 rep.wasxfail = "reason: Timeout"
                 rep.outcome = "skipped"
@@ -99,6 +98,9 @@ def pytest_runtest_setup(item):
     """
     Handle chain fails for GUI tests
     """
+    # All legacy GUI tests assume certain order of execution
+    # and rely on state changes from previous steps
+    # so as soon as one fails, next ones shouldn't be executed
     if is_gui_test(item):
         fail = getattr(item.parent, "_failed", None)
         if fail is not None:
