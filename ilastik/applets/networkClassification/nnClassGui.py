@@ -189,8 +189,8 @@ class NNClassGui(LabelingGui):
 
         self.labelingDrawerUi.labelListView.support_merges = True
 
-        self.labelingDrawerUi.UpdateButton.setEnabled(False)
         self.labelingDrawerUi.UpdateButton.toggled.connect(self.toggleInteractive)
+        self.labelingDrawerUi.UpdateButton.setEnabled(False)
 
         self.batch_size = self.topLevelOperator.Batch_Size.value
 
@@ -364,7 +364,9 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.comboBox.clear()
         self.labelingDrawerUi.comboBox.addItems(self.classifiers)
         self.labelingDrawerUi.TrainingCheckbox.setEnabled(True)
-        self.labelingDrawerUi.TrainingCheckbox.setCheckState(Qt.Checked)
+        self.labelingDrawerUi.TrainingCheckbox.setCheckState(Qt.Unchecked)
+
+        self.labelingDrawerUi.UpdateButton.setEnabled(True)
 
         self.topLevelOperator.ModelPath.setValue(self.classifiers)
         self.model = TikTorchLazyflowClassifierFactory(self.tiktorch_path)
@@ -415,11 +417,7 @@ class NNClassGui(LabelingGui):
     @pyqtSlot()
     def handleShowTrainingClicked(self):
         pass
-        #checked = self.labelingDrawerUi.TrainingCheckbox.isChecked()
-        #if checked:
-        #    self.model.train_model = True
-        #else:
-        #    self.model.train_model = False
+
 
     @pyqtSlot()
     def updateShowPredictionCheckbox(self):
@@ -481,7 +479,6 @@ class NNClassGui(LabelingGui):
             self._viewerControlUi.checkShowPredictions.setChecked(False)
             self.handleShowPredictionsClicked()
 
-        self.labelingDrawerUi.UpdateButton.setEnabled(enabled)
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
 
     def _getNext(self, slot, parentFun, transform=None):
