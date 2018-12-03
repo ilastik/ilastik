@@ -114,7 +114,7 @@ class GuiTestSuite:
         self._queue = queue
         self._shell = shell
 
-        self._current = None
+        self._current_thread = None
         self._timeout = True
         self._shutting_down = False
 
@@ -124,25 +124,25 @@ class GuiTestSuite:
         def test():
             item.config.hook.pytest_runtest_protocol(item=item, nextitem=nextitem)
 
-        self._current = threading.Thread(target=test)
-        self._current.daemon = True
-        self._current.start()
+        self._current_thread = threading.Thread(target=test)
+        self._current_thread.daemon = True
+        self._current_thread.start()
 
     def _finalize(self):
         self._shell.onQuitActionTriggered(force=True, quitApp=False)
 
     def poll(self):
-        if self._current is None:
+        if self._current_thread is None:
             self._start_new()
 
-        if not self._current.is_alive():
+        if not self._current_thread.is_alive():
             self._queue.task_done()
 
             if self._queue.empty() and not self._shutting_down:
                 self._finalize()
                 self._shutting_down = True
 
-            self._current = None
+            self._current_thread = None
 
 
 def pytest_runtestloop(session):
