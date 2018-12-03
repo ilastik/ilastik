@@ -321,4 +321,4 @@ class NNClassificationWorkflow(Workflow):
     def cleanUp(self):
         tiktorchClient = self.nnClassificationApplet.topLevelOperator.ClassifierFactory.value
         if tiktorchClient is not None:
-            tiktorchClient._loaded_pytorch_net.shutdown()
+            tiktorchClient._tikTorchClient.shutdown()

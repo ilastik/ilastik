@@ -1,5 +1,7 @@
+import os
 from PyQt5 import QtWidgets
-from PyQt5.QtWidgets import QLineEdit
+from PyQt5.QtCore import (Qt, pyqtSignal)
+from PyQt5.QtWidgets import QLineEdit, QFileDialog
 
 from tiktorch.build_spec import TikTorchSpec, BuildSpec
 import yaml
@@ -26,14 +28,16 @@ class Page1(QtWidgets.QWizardPage):
 
         self.label1 = QtWidgets.QLabel()
 
-        self.code_path_textbox = QLineEdit(self)
+        self.code_path_textbox = ClickableLineEdit()
         self.code_path_textbox.setPlaceholderText("Path to the .py file where the model lives")
+        self.code_path_textbox.clicked.connect(self.addModel)
 
         self.model_class_name_textbox = QLineEdit(self)
         self.model_class_name_textbox.setPlaceholderText("Name of the model class in the .py file")
 
-        self.state_path_textbox = QLineEdit(self)
+        self.state_path_textbox = ClickableLineEdit()
         self.state_path_textbox.setPlaceholderText("Path to where the state_dict is pickled")
+        self.state_path_textbox.clicked.connect(self.addStatePath)
 
         self.input_shape_textbox = QLineEdit(self)
         self.input_shape_textbox.setPlaceholderText("Input shape of the model as tuple/list ('CHW'/'CDHW')")
@@ -44,8 +48,9 @@ class Page1(QtWidgets.QWizardPage):
         self.model_init_kwargs_textbox = QLineEdit(self)
         self.model_init_kwargs_textbox.setPlaceholderText("Kwargs to the model constructor (Optional)")
 
-        self.model_path_textbox = QLineEdit(self)
+        self.model_path_textbox = ClickableLineEdit()
         self.model_path_textbox.setPlaceholderText("Path were this configuration will be saved")
+        self.model_path_textbox.clicked.connect(self.addSavePath)
 
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.label1)
@@ -89,6 +94,51 @@ class Page1(QtWidgets.QWizardPage):
 
         buildface = BuildSpec(self.model_path)
         buildface.build(spec)
+
+    def addModel(self):
+        defaultDirectory = os.path.expanduser('~')
+
+        path = self.getFileToOpen(self, defaultDirectory)
+        self.code_path_textbox.setText(path)
+
+    def addStatePath(self):
+        defaultDirectory = os.path.expanduser('~')
+
+        path = self.getFileToOpen(self, defaultDirectory)
+        self.state_path_textbox.setText(path)
+        
+    def addSavePath(self):
+        defaultDirectory = os.path.expanduser('~')
+
+        path = self.getFolderToOpen(self, defaultDirectory)
+        self.model_path_textbox.setText(path)     
+
+    def getFolderToOpen(cls, parent_window, defaultDirectory):
+        """
+        opens a QFileDialog for importing files
+        """
+        options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
+        folder_name = QFileDialog.getExistingDirectory(
+            parent_window, "Select Model", defaultDirectory, options=options)
+
+        return folder_name
+
+    def getFileToOpen(cls, parent_window, defaultDirectory):
+        """
+        opens a QFileDialog for importing files
+        """
+        options = QFileDialog.Options()
+        file_name, _ = QFileDialog.getOpenFileName(
+            parent_window, "Select Model", defaultDirectory)
+
+        return file_name
+
+class ClickableLineEdit(QLineEdit):
+    clicked = pyqtSignal()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton: self.clicked.emit()
+        else: super().mousePressEvent(event)
 
 
 if __name__ == '__main__':
