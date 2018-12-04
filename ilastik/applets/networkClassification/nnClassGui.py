@@ -190,7 +190,8 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.labelListView.support_merges = True
 
         self.labelingDrawerUi.UpdateButton.toggled.connect(self.toggleInteractive)
-        self.labelingDrawerUi.UpdateButton.setEnabled(False)
+        #self.labelingDrawerUi.UpdateButton.setEnabled(False)
+        self.labelingDrawerUi.UpdateButton.setEnabled(True)
 
         self.batch_size = self.topLevelOperator.Batch_Size.value
 
