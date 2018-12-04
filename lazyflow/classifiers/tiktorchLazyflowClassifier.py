@@ -19,8 +19,10 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
+import os
 import pickle as pickle
 import tempfile
+import yaml
 
 import numpy
 import vigra
@@ -32,8 +34,9 @@ from lazyflow.roi import roiToSlice
 from inferno.io.transform import Compose
 from inferno.io.transform.generic import Normalize, Cast, AsTorchBatch
 
-#from tiktorch.client import TikTorchClient
-from tiktorch.wrapper import TikTorch as TikTorchClient
+from tiktorch.client import TikTorchClient
+#from tiktorch.wrapper import TikTorch as TikTorchClient
+from tiktorch.blockinator import np_pad
 
 import logging
 
@@ -80,7 +83,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
     def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
         logger.debug('Loading pytorch network from {}'.format(self._filename))
-        assert self._loaded_pytorch_net is not None, "TikTorchLazyflowClassifierFactory not properly initialized."
+        assert self.tikTorchClient is not None, "TikTorchLazyflowClassifierFactory not properly initialized."
 
         if self.train_model:
             reordered_feature_images = []
@@ -170,6 +173,8 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         self._opReorderAxes = OpReorderAxes(graph=Graph())
         self._filename = filename
         self._halo = None
+        self._config = {}
+        self.read_config(filename)
 
         # Publics
         self.HALO_SIZE = 0
@@ -192,6 +197,15 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             self.compute_halo()
         return self._halo
 
+    def read_config(self, filename):
+        config_file_name = os.path.join(filename, 'tiktorch_config.yml')
+        if not os.path.exists(config_file_name):
+            raise FileNotFoundError(f"Config file not found in "
+                                    f"build_directory: {self.build_directory}.")
+        with open(config_file_name, 'r') as f:
+            self._config.update(yaml.load(f))
+        return self
+
     def compute_halo(self):
         self._halo = self.tikTorchClient.get('halo')
 
@@ -202,6 +216,11 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         """
         assert isinstance(roi, numpy.ndarray)
         logger.info(f'tiktorchLazyflowClassifier.predict tile shape: {feature_image.shape}')
+
+        min_input_shape = list(self._config.get('min_input_shape')) + [1]
+        padding = [((min_inp - feat_im) // 2,) * 2 for min_inp, feat_im in zip(min_input_shape, list(feature_image.shape))]
+        feature_image = np_pad(feature_image, padding)
+
         self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_image, axistags=axistags))
         self._opReorderAxes.AxisOrder.setValue('czyx')
         reordered_feature_image = self._opReorderAxes.Output([]).wait()
@@ -227,6 +246,10 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         # axistags is vigra.AxisTags, but opReorderAxes expects a string
         self._opReorderAxes.AxisOrder.setValue(''.join(axistags.keys()))
         result = self._opReorderAxes.Output([]).wait()
+
+        slicing = [slice(x[0], -x[1]) if x[0] > 0 else slice(None) for x in padding]
+        result = result[slicing]
+
         result = self.remove_halo(result)
         result = numpy.concatenate((result, 1-result), axis=3)
 
