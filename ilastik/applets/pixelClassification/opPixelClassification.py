@@ -70,6 +70,7 @@ class OpPixelClassification( Operator ):
 
     PredictionProbabilities = OutputSlot(level=1) # Classification predictions (via feature cache for interactive speed)
     PredictionProbabilitiesUint8 = OutputSlot(level=1) # Same thing, but converted to uint8 first
+    PredictionProbabilitiesUint16 = OutputSlot(level=1) # Same thing, but converted to uint16 first
 
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     SegmentationChannels = OutputSlot(level=2) # Binary image of the final selections.
@@ -175,6 +176,7 @@ class OpPixelClassification( Operator ):
         # Prediction pipeline outputs -> Top-level outputs
         self.PredictionProbabilities.connect( self.opPredictionPipeline.PredictionProbabilities )
         self.PredictionProbabilitiesUint8.connect( self.opPredictionPipeline.PredictionProbabilitiesUint8 )
+        self.PredictionProbabilitiesUint16.connect( self.opPredictionPipeline.PredictionProbabilitiesUint16 )
         self.CachedPredictionProbabilities.connect( self.opPredictionPipeline.CachedPredictionProbabilities )
         self.HeadlessPredictionProbabilities.connect( self.opPredictionPipeline.HeadlessPredictionProbabilities )
         self.HeadlessUint8PredictionProbabilities.connect( self.opPredictionPipeline.HeadlessUint8PredictionProbabilities )
@@ -504,6 +506,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
     CachedPredictionProbabilities = OutputSlot()
 
     PredictionProbabilitiesUint8 = OutputSlot()
+    PredictionProbabilitiesUint16 = OutputSlot()
     
     PredictionProbabilityChannels = OutputSlot( level=1 )
     SegmentationChannels = OutputSlot( level=1 )
@@ -527,6 +530,13 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.opConvertToUint8.Input.connect( self.predict.PMaps )
         self.opConvertToUint8.Function.setValue( lambda a: (255*a).astype(numpy.uint8) )
         self.PredictionProbabilitiesUint8.connect( self.opConvertToUint8.Output )
+
+        # Alternate headless output: uint16 instead of float.
+        # Note that drange is automatically updated.
+        self.opConvertToUint16 = OpPixelOperator( parent=self )
+        self.opConvertToUint16.Input.connect( self.predict.PMaps )
+        self.opConvertToUint16.Function.setValue( lambda a: (65535*a).astype(numpy.uint16) )
+        self.PredictionProbabilitiesUint16.connect( self.opConvertToUint16.Output )
 
         # Prediction cache for the GUI
         self.prediction_cache_gui = OpSlicedBlockedArrayCache( parent=self )

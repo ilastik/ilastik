@@ -243,8 +243,9 @@ class NewAutocontextWorkflowBase(Workflow):
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
         
         def checkConstraints(*_):
-            if opData.Image.meta.dtype != np.uint8:
-                msg = "The Autocontext Workflow only supports 8-bit images (UINT8 pixel type).\n"\
+            if (opData.Image.meta.dtype in [np.uint8, np.uint16]) == False:
+                msg = "The Autocontext Workflow only supports 8-bit images (UINT8 pixel type)\n"\
+                      "or 16-bit images (UINT16 pixel type)\n"\
                       "Your image has a pixel type of {}.  Please convert your data to UINT8 and try again."\
                       .format( str(np.dtype(opData.Image.meta.dtype)) )
                 raise DatasetConstraintError( "Autocontext Workflow", msg, unfixable=True )
@@ -278,11 +279,21 @@ class NewAutocontextWorkflowBase(Workflow):
             #opDownstreamClassify.LabelInputs.connect( opUpstreamClassify.LabelInputs )
             
             # Connect data path
-            #assert opData.Image.meta.dtype == numpy.uint8, "Raw Data must be uint8, not {}".format( opData.Image.meta.dtype )
+            #This approach won't work: assert opData.Image.meta.dtype == numpy.uint8, "Raw Data must be uint8, not {}".format( opData.Image.meta.dtype )
             opStacker = OpMultiArrayStacker(parent=self)
             opStacker.Images.resize(2)
             opStacker.Images[0].connect( opData.Image )
-            opStacker.Images[1].connect( opUpstreamClassify.PredictionProbabilitiesUint8 )
+            def connect_probabilities(*_, stackimage, upstreamclass):
+                # This will connext the probability images to the OpMultiArrayStacker using
+                # the right dtype only once the Image is ready and thus the dtype known.
+                if opData.Image.meta.dtype == np.uint8:
+                    stackimage.connect( upstreamclass.PredictionProbabilitiesUint8 )
+                else:
+                    stackimage.connect( upstreamclass.PredictionProbabilitiesUint16 )
+
+            opData.Image.notifyReady( connect_probabilities, stackimage=opStacker.Images[1],
+                                     upstreamclass=opUpstreamClassify)
+
             opStacker.AxisFlag.setValue('c')
             
             opDownstreamFeatures.InputImage.connect( opStacker.Output )
