@@ -396,9 +396,15 @@ class NNClassGui(LabelingGui):
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked(True)
             self.handleShowPredictionsClicked()
+            self.topLevelOperator.classifier_cache.Output.setDirty()
 
         if hasattr(self, 'model'):
-            self.model.train_model = self.labelingDrawerUi.TrainingCheckbox.isChecked()
+            self.model.train_model = self.labelingDrawerUi.TrainingCheckbox.isChecked() and checked
+            if not checked:
+                self.model.pause_training_process()
+            elif checked and self.model.train_model:
+                self.model.resume_training_process()
+
 
         # Notify the workflow that some applets may have changed state now.
         # (For example, the downstream pixel classification applet can
