@@ -35,7 +35,6 @@ from inferno.io.transform import Compose
 from inferno.io.transform.generic import Normalize, Cast, AsTorchBatch
 
 from tiktorch.client import TikTorchClient
-#from tiktorch.wrapper import TikTorch as TikTorchClient
 from tiktorch.blockinator import np_pad
 
 import logging
@@ -81,6 +80,14 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         else:
             ValueError
 
+    def pause_training_process(self):
+        if self.tikTorchClient.training_process_is_running():
+            self.tikTorchClient.pause()
+
+    def resume_training_process(self):
+        if self.tikTorchClient.training_process_is_running():
+            self.tikTorchClient.resume()
+
     def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
         logger.debug('Loading pytorch network from {}'.format(self._filename))
         assert self.tikTorchClient is not None, "TikTorchLazyflowClassifierFactory not properly initialized."
@@ -98,6 +105,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
                 reordered_labels.append(self._opReorderAxes.Output([]).wait())
 
             # TODO: check whether loaded network has the same number of classes as specified in ilastik!
+            self.tikTorchClient.resume()
             self._tikTorchClient.train(reordered_feature_images, reordered_labels)
 
             logger.info(self.description)
