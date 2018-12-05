@@ -40,10 +40,10 @@ class Page1(QtWidgets.QWizardPage):
         self.state_path_textbox.clicked.connect(self.addStatePath)
 
         self.input_shape_textbox = QLineEdit(self)
-        self.input_shape_textbox.setPlaceholderText("Input shape of the model as tuple/list ('CHW'/'CDHW')")
+        self.input_shape_textbox.setPlaceholderText("Input shape of the model as (C, H, W)/(C, D, H, W)")
 
         self.minimal_increment_textbox = QLineEdit(self)
-        self.minimal_increment_textbox.setPlaceholderText("Minimal values by which to increment/decrement the input shape to be still valid as tuple/list ('HW'/'DHW')")
+        self.minimal_increment_textbox.setPlaceholderText("Minimal values by which to increment/decrement the input shape to be still valid as (H, W)/(D, H, W)")
 
         self.model_init_kwargs_textbox = QLineEdit(self)
         self.model_init_kwargs_textbox.setPlaceholderText("Kwargs to the model constructor (Optional)")
