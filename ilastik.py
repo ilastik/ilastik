@@ -23,6 +23,7 @@
 
 import sys
 import os
+import torch
 
 def _clean_paths( ilastik_dir ):
     # remove undesired paths from PYTHONPATH and add ilastik's submodules
