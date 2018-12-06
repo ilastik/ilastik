@@ -31,7 +31,7 @@ from volumina.utility import PreferencesManager
 
 from PyQt5 import uic
 from PyQt5.QtGui import QColor
-from PyQt5.QtCore import Qt, pyqtSlot
+from PyQt5.QtCore import Qt, pyqtSlot, QTimer
 from PyQt5.QtWidgets import (
     QStackedWidget,
     QMessageBox,
@@ -213,6 +213,13 @@ class NNClassGui(LabelingGui):
         )
 
         self.forceAtLeastTwoLabels(True)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.updatePredictions)
+
+
+    def updatePredictions(self):
+        self.topLevelOperator.classifier_cache.Output.setDirty()
 
     def _initAppletDrawerUic(self, drawerPath=None):
         """
@@ -404,6 +411,11 @@ class NNClassGui(LabelingGui):
                 self.model.pause_training_process()
             elif checked and self.model.train_model:
                 self.model.resume_training_process()
+
+            if checked and self.model.train_model:
+                self.timer.start(30000)
+            else:
+                self.timer.stop()
 
 
         # Notify the workflow that some applets may have changed state now.
