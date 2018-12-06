@@ -412,7 +412,7 @@ class NNClassGui(LabelingGui):
             elif checked and self.model.train_model:
                 self.model.resume_training_process()
 
-            if checked and self.model.train_model:
+            if checked:
                 self.timer.start(30000)
             else:
                 self.timer.stop()
