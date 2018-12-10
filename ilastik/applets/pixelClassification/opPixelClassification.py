@@ -565,8 +565,10 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 
     def setupOutputs(self):
         input_dtype = self.InputImage.meta.dtype
-        if isinstance(input_dtype, numpy.dtype):
-            input_dtype = input_dtype.type
+
+        # When from other libraries, the dtype could also be
+        # numpy.dtype('uint8'), which would not be the same as numpy.uint8
+        assert not isinstance(input_dtype, np.dtype)
 
         if  np.dtype(input_dtype).kind in np.typecodes['AllInteger']:
             # For integer dtype scale accoring to dtype min and max to maximize
