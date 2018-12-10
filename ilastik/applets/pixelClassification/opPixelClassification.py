@@ -497,7 +497,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
     """
     This operator extends the cacheless prediction pipeline above with additional outputs for the GUI.
     (It uses caches for these outputs, and has an extra input for cached features.)
-    """        
+    """
     # we need access to the input image in order to determine data-type -> autocontext
     InputImage = InputSlot()
     FreezePredictions = InputSlot()
@@ -567,9 +567,18 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         input_dtype = self.InputImage.meta.dtype
         if isinstance(input_dtype, numpy.dtype):
             input_dtype = input_dtype.type
-        dtype_info = np.iinfo(input_dtype)
+
+        if  np.dtype(input_dtype).kind in np.typecodes['AllInteger']:
+            # For integer dtype scale accoring to dtype min and max to maximize
+            # precision
+            dtype_info = np.iinfo(input_dtype)
+            fun_convert = lambda a: ((dtype_info.max - dtype_info.min) * a - dtype_info.min).astype(input_dtype)
+        else:
+            # For floating points, just coerce it to the new floating point
+            # dtype.
+            fun_convert = lambda a: a.astype(input_dtype)
         self.opConvertPMapsToInputPixelType.Function.setValue(
-            lambda a: ((dtype_info.max - dtype_info.min) * a - dtype_info.min).astype(input_dtype)
+            fun_convert
         )
         # Set the blockshapes for each input image separately, depending on which axistags it has.
         axisOrder = [ tag.key for tag in self.FeatureImages.meta.axistags ]
@@ -598,8 +607,6 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 
         self.prediction_cache_gui.BlockShape.setValue( (blockShapeX, blockShapeY, blockShapeZ) )
         self.opUncertaintyCache.BlockShape.setValue( (blockShapeX, blockShapeY, blockShapeZ) )
-
-        assert self.opConvertPMapsToInputPixelType.Output.meta.drange == self.InputImage.meta.drange
 
 class OpEnsembleMargin(Operator):
     """
