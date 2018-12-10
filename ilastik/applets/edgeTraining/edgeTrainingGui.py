@@ -90,6 +90,8 @@ class EdgeTrainingGui(LayerViewerGui):
 
         # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
+        # Make sure, Live Update is unchecked on init. It might have been checked by previous function.
+        self.live_update_button.setChecked(False)
 
     def createDrawerControls(self):
         op = self.topLevelOperatorView
