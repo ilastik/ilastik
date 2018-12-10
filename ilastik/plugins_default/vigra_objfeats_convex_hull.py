@@ -51,10 +51,9 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
     local_preffix = "Convex Hull " #note the space at the end, it's important
     
     ndim = None
-    
-    def availableFeatures(self, image, labels):
 
-        if image.ndim == 2:
+    def availableFeatures(self, image, labels):
+        if labels.ndim == 2:
             names = vigra.analysis.supportedConvexHullFeatures(labels)
             logger.debug('Convex Hull Features: Supported Convex Hull Features: done.')
 
