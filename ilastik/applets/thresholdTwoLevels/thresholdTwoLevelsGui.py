@@ -104,10 +104,10 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._showDebug = False
         
         self._updateGuiFromOperator()
-        self.topLevelOperatorView.InputImage.notifyReady( bind(self._updateGuiFromOperator) )
+        self.topLevelOperatorView.InputChannelColors.notifyReady( bind(self._updateGuiFromOperator) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.InputImage.unregisterUnready, bind(self._updateGuiFromOperator) ) )
 
-        self.topLevelOperatorView.InputImage.notifyMetaChanged( bind(self._updateGuiFromOperator) )
+        self.topLevelOperatorView.InputChannelColors.notifyMetaChanged( bind(self._updateGuiFromOperator) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.InputImage.unregisterMetaChanged, bind(self._updateGuiFromOperator) ) )
 
     def _connectCallbacks(self):
@@ -133,12 +133,6 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         self._drawer.sigmaSpinBox_Z.setVisible(data_has_z_axis)
 
-        numChannels = 0
-        if op.InputImage.ready():
-            # Channel
-            channelIndex = op.InputImage.meta.axistags.index('c')
-            numChannels = op.InputImage.meta.shape[channelIndex]
-
         if op.InputChannelColors.ready():
             input_channel_colors = [QColor(r_g_b[0],r_g_b[1],r_g_b[2]) for r_g_b in op.InputChannelColors.value]
         else:
@@ -150,10 +144,10 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._drawer.inputChannelComboBox.clear()
         self._drawer.coreChannelComboBox.clear()
         
-        for ichannel in range(numChannels):
+        for ichannel, color in enumerate(input_channel_colors):
             # make an icon
             pm = QPixmap(16, 16)
-            pm.fill(input_channel_colors[ichannel])
+            pm.fill(color)
             self._drawer.inputChannelComboBox.insertItem(ichannel, QIcon(pm), str(ichannel))
             self._drawer.coreChannelComboBox.insertItem(ichannel, QIcon(pm), str(ichannel))
 
