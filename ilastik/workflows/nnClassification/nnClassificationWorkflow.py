@@ -49,7 +49,7 @@ class NNClassificationWorkflow(Workflow):
 
     DATA_ROLE_RAW = 0
     ROLE_NAMES = ['Raw Data']
-    EXPORT_NAMES = ['Probabilities']
+    EXPORT_NAMES = ['Probabilities', 'Labels']
 
     @property
     def applets(self):
@@ -105,6 +105,7 @@ class NNClassificationWorkflow(Workflow):
         opDataSelection.DatasetRoles.setValue(NNClassificationWorkflow.ROLE_NAMES)
 
         self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet")
+        opClassify = self.nnClassificationApplet.topLevelOperator
 
         self.dataExportApplet = NNClassificationDataExportApplet(self, 'Data Export')
 
@@ -112,6 +113,8 @@ class NNClassificationWorkflow(Workflow):
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
         opDataExport.SelectionNames.setValue(self.EXPORT_NAMES)
+        opDataExport.PmapColors.connect( opClassify.PmapColors )
+        opDataExport.LabelNames.connect( opClassify.LabelNames )
 
         # self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
         # self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
@@ -195,6 +198,7 @@ class NNClassificationWorkflow(Workflow):
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
         opDataExport.Inputs[0].connect(op5Pred.Output)
+        opDataExport.Inputs[1].connect(opNNclassify.LabelImages)
         # for slot in opDataExport.Inputs:
         #     assert slot.upstream_slot is not None
 

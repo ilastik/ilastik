@@ -20,6 +20,9 @@
 ###############################################################################
 from __future__ import absolute_import
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from .opNNClassificationDataExport import OpNNClassificationDataExport
+from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
+from ilastik.utility import OpMultiLaneWrapper
 
 
 class NNClassificationDataExportApplet(DataExportApplet):
@@ -29,8 +32,17 @@ class NNClassificationDataExportApplet(DataExportApplet):
     """
 
     def __init__(self, workflow, title, isBatch=False):
+        self._topLevelOperator = OpMultiLaneWrapper(OpNNClassificationDataExport, parent=workflow,
+            promotedSlotNames=set(['RawData', 'Inputs', 'RawDatasetInfo']))
+
+        self._title = title
+        self._serializers = [DataExportSerializer(self._topLevelOperator, title)]
         # Base class init
         super(NNClassificationDataExportApplet, self).__init__(workflow, title, isBatch)
+
+    @property
+    def topLevelOperator(self):
+        return self._topLevelOperator
 
     def getMultiLaneGui(self):
         if self._gui is None:

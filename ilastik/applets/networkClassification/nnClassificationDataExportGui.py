@@ -20,9 +20,11 @@
 ###############################################################################
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
-from volumina.api import LazyflowSource, AlphaModulatedLayer
+from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
+from ilastik.utility import bind
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 
+from PyQt5.QtGui import QColor
 
 class NNClassificationDataExportGui(DataExportGui):
     """
@@ -40,6 +42,8 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
 
     def __init__(self, *args, **kwargs):
         super(NNClassificationResultsViewer, self).__init__(*args, **kwargs)
+        self.topLevelOperatorView.PmapColors.notifyDirty( bind( self.updateAllLayers ) )
+        self.topLevelOperatorView.LabelNames.notifyDirty( bind( self.updateAllLayers ) )
 
     def setupLayers(self):
         layers = []
@@ -50,7 +54,7 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
         selection_names = opLane.SelectionNames.value
 
         # see comment above
-        for name, expected in zip(selection_names[0:1], ['Probabilities']):
+        for name, expected in zip(selection_names[0:1], ['Probabilities','Labels']):
             assert name.startswith(expected), "The Selection Names don't match the expected selection names."
 
         selection = selection_names[opLane.InputSelection.value]
@@ -61,6 +65,18 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
                 layer.visible = True
                 layer.name = layer.name + "- Exported"
             layers += exportedLayers
+        elif selection.startswith("Labels"):
+            exportedLayer = self._initColortablelayer(opLane.ImageOnDisk)
+            if exportedLayer:
+                exportedLayer.visible = True
+                exportedLayer.name = selection + " - Exported"
+                layers.append( exportedLayer )
+
+            previewLayer = self._initColortablelayer(opLane.ImageToExport)
+            if previewLayer:
+                previewLayer.visible = False
+                previewLayer.name = selection + " - Preview"
+                layers.append( previewLayer )
 
         # If available, also show the raw data layer
         rawSlot = opLane.FormattedRawData
@@ -72,6 +88,22 @@ class NNClassificationResultsViewer(DataExportLayerViewerGui):
             layers.append(rawLayer)
 
         return layers
+
+    def _initColortablelayer(self, labelSlot):
+        """
+        Used to export labels
+        """
+        if not labelSlot.ready():
+            return None
+        opLane = self.topLevelOperatorView
+        colors = opLane.PmapColors.value
+        colortable = []
+        colortable.append( QColor(0,0,0,0).rgba() ) # transparent
+        for color in colors:
+            colortable.append( QColor(*color).rgba() )
+        labelsrc = LazyflowSource(labelSlot)
+        labellayer = ColortableLayer(labelsrc, colortable)
+        return labellayer
 
     def _initPredictionLayers(self, predictionSlot):
         opLane = self.topLevelOperatorView
