@@ -182,6 +182,8 @@ class NNClassGui(LabelingGui):
         self.__cleanup_fns = []
 
         self.labelingDrawerUi.TrainingCheckbox.setEnabled(False)
+        self.labelingDrawerUi.UpdateButton.toggled.connect(self.toggleInteractive)
+        self.labelingDrawerUi.UpdateButton.setEnabled(False)
 
         self._initAppletDrawerUic()
         self.initViewerControls()
@@ -189,9 +191,12 @@ class NNClassGui(LabelingGui):
 
         self.labelingDrawerUi.labelListView.support_merges = True
 
+<<<<<<< Updated upstream
         self.labelingDrawerUi.UpdateButton.toggled.connect(self.toggleInteractive)
         #self.labelingDrawerUi.UpdateButton.setEnabled(False)
         self.labelingDrawerUi.UpdateButton.setEnabled(True)
+=======
+>>>>>>> Stashed changes
 
         self.batch_size = self.topLevelOperator.Batch_Size.value
 
@@ -233,7 +238,8 @@ class NNClassGui(LabelingGui):
             #TODO: save more networks
             # for modelPath in modelPathList:
             #     self.add_NN_classifiers(modelPath)
-            self.add_NN_classifiers(modelPathList[0]) 
+            self.add_NN_classifiers(modelPathList[0])
+            print('modelPath rdy') 
 
         def nextCheckState(checkbox):
             """
@@ -375,6 +381,7 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.TrainingCheckbox.setCheckState(Qt.Unchecked)
 
         self.labelingDrawerUi.UpdateButton.setEnabled(True)
+        print('updateButton enabled')
 
         self.topLevelOperator.ModelPath.setValue(self.classifiers)
         self.model = TikTorchLazyflowClassifierFactory(self.tiktorch_path)
