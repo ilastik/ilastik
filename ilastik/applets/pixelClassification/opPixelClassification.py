@@ -570,7 +570,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         # numpy.dtype('uint8'), which would not be the same as numpy.uint8
         assert not isinstance(input_dtype, np.dtype)
 
-        if  np.dtype(input_dtype).kind in np.typecodes['AllInteger']:
+        if  np.dtype(input_dtype).char in np.typecodes['AllInteger']:
             # For integer dtype scale accoring to dtype min and max to maximize
             # precision
             dtype_info = np.iinfo(input_dtype)
