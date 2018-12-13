@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, QModelIndex
 from PyQt5.QtWidgets import QMenu, QPushButton
 from PyQt5.QtGui import QIcon
 
@@ -51,7 +51,7 @@ class AddFileButton(QPushButton):
     addRemoteVolumeRequested = pyqtSignal()
     addPrecomputedVolumeRequested = pyqtSignal()
 
-    def __init__(self, parent, new=False):
+    def __init__(self, parent, index=None, new=False):
         """
         -- ``new`` - boolean parameter to indicate if this button is used to
            add new lanes or files to new roles corresponding to an
@@ -61,6 +61,7 @@ class AddFileButton(QPushButton):
             "/../../shell/gui/icons/16x16/actions/list-add.png"),
             "Add..." if new == False else "Add New...", parent)
 
+        self.index = index
         # drop down menu for different add options
         menu = QMenu(parent=self)
         menu.addAction("Add separate Image(s)...").triggered.\
@@ -77,3 +78,12 @@ class AddFileButton(QPushButton):
                     self.addRemoteVolumeRequested.emit)
 
         self.setMenu( menu )
+
+    @property
+    def index(self):
+        return self.__index
+
+    @index.setter
+    def index(self, index):
+        if isinstance(index, QModelIndex):
+            self.__index = index

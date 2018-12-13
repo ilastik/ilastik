@@ -147,16 +147,19 @@ class AddButtonDelegate(QItemDelegate):
         parent_view = self.parent()
         button = parent_view.indexWidget(index)
         if index.row() < parent_view.model().rowCount()-1 and parent_view.model().isEmptyRow(index.row()):
+            if isinstance(button, AddFileButton) and button.index.row() != index.row():
+                button.index = index  # Just in case index got out of sync
             if button is None:
-                button = AddFileButton(parent_view)
+                # this is only executed on init, but not on remove, such that row and lane get out of sync
+                button = AddFileButton(parent_view, index)
                 button.addFilesRequested.connect(
-                        partial(parent_view.handleCellAddFilesEvent, index.row()))
+                        partial(parent_view.handleCellAddFilesEvent, button))
                 button.addStackRequested.connect(
-                        partial(parent_view.handleCellAddStackEvent, index.row()))
+                        partial(parent_view.handleCellAddStackEvent, button))
                 button.addPrecomputedVolumeRequested.connect(
-                        partial(parent_view.handleCellAddPrecomputedVolumeEvent, index.row()))
+                        partial(parent_view.handleCellAddPrecomputedVolumeEvent, button))
                 button.addRemoteVolumeRequested.connect(
-                        partial(parent_view.handleCellAddRemoteVolumeEvent, index.row()))
+                        partial(parent_view.handleCellAddRemoteVolumeEvent, button))
                 parent_view.setIndexWidget(index, button)
         elif index.data() != '':
             if button is not None:
@@ -209,20 +212,20 @@ class DatasetDetailedInfoTableView(QTableView):
         self.verticalHeader().installEventFilter(event_filter)
 
     @pyqtSlot(int)
-    def handleCellAddFilesEvent(self, row):
-        self.addFilesRequested.emit(row)
+    def handleCellAddFilesEvent(self, button):
+        self.addFilesRequested.emit(button.index.row())
 
     @pyqtSlot(int)
-    def handleCellAddStackEvent(self, row):
-        self.addStackRequested.emit(row)
+    def handleCellAddStackEvent(self, button):
+        self.addStackRequested.emit(button.index.row())
 
     @pyqtSlot(int)
-    def handleCellAddRemoteVolumeEvent(self, row):
-        self.addRemoteVolumeRequested.emit(row)
+    def handleCellAddRemoteVolumeEvent(self, button):
+        self.addRemoteVolumeRequested.emit(button.index.row())
 
     @pyqtSlot(int)
-    def handleCellAddPrecomputedVolumeEvent(self, row):
-        self.addPrecomputedVolumeRequested.emit(row)
+    def handleCellAddPrecomputedVolumeEvent(self, button):
+        self.addPrecomputedVolumeRequested.emit(button.index.row())
 
     def wheelEvent(self, event):
         """
@@ -291,8 +294,8 @@ class DatasetDetailedInfoTableView(QTableView):
         widget.setLayout(layout)
 
         lastRow = self.model().rowCount()-1
-        modelIndex = self.model().index( lastRow, 0 )
-        self.setIndexWidget( modelIndex, widget )
+        button.index = self.model().index( lastRow, 0 )
+        self.setIndexWidget( button.index, widget )
         # the "Add..." button spans last row
         self.setSpan(lastRow, 0, 1, model.columnCount())
 

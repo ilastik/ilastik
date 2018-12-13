@@ -63,8 +63,8 @@ class DataLaneSummaryTableView(QTableView):
             self.addFilesButtons[roleIndex] = button
 
             lastRow = self.model().rowCount()-1
-            modelIndex = self.model().index( lastRow, column )
-            self.setIndexWidget( modelIndex, button )
+            button.index = self.model().index( lastRow, column )
+            self.setIndexWidget( button.index, button )
             
             roleIndex += 1
 
