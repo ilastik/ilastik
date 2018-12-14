@@ -24,24 +24,20 @@ from functools import partial
 from collections import OrderedDict
 
 import numpy
-import torch
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import PreferencesManager
 
 from PyQt5 import uic
-from PyQt5.QtGui import QColor
 from PyQt5.QtCore import Qt, pyqtSlot, QTimer
 from PyQt5.QtWidgets import (
     QStackedWidget,
-    QMessageBox,
     QFileDialog,
     QMenu,
     QLineEdit,
     QDialogButtonBox,
     QVBoxLayout,
     QDialog,
-    QCheckBox,
 )
 from PyQt5.QtGui import QColor
 
@@ -138,11 +134,11 @@ class NNClassGui(LabelingGui):
             """
             changing BatchSize 
             """
-            dlg = ParameterDlg(self.topLevelOperator, parent=self)
+            dlg = ParameterDlg(self.topLevelOperatorView, parent=self)
             dlg.exec_()
 
             # classifier_key = self.drawer.comboBox.currentText()
-            self.batch_size = self.topLevelOperator.Batch_Size.value
+            self.batch_size = self.topLevelOperatorView.Batch_Size.value
 
         set_parameter = advanced_menu.addAction("Parameters...")
         set_parameter.triggered.connect(settingParameter)
@@ -173,7 +169,6 @@ class NNClassGui(LabelingGui):
         super(NNClassGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath)
 
         self.parentApplet = parentApplet
-        self.topLevelOperator = topLevelOperatorView
         self.classifiers = OrderedDict()
 
         self.interactiveModeActive = False
@@ -191,14 +186,11 @@ class NNClassGui(LabelingGui):
 
         self.labelingDrawerUi.labelListView.support_merges = True
 
-<<<<<<< Updated upstream
         self.labelingDrawerUi.UpdateButton.toggled.connect(self.toggleInteractive)
         #self.labelingDrawerUi.UpdateButton.setEnabled(False)
         self.labelingDrawerUi.UpdateButton.setEnabled(True)
-=======
->>>>>>> Stashed changes
 
-        self.batch_size = self.topLevelOperator.Batch_Size.value
+        self.batch_size = self.topLevelOperatorView.Batch_Size.value
 
         num_label_classes = self._labelControlUi.labelListModel.rowCount()
         self.labelingDrawerUi.labelListView.allowDelete = num_label_classes > self.minLabelNumber
@@ -224,7 +216,7 @@ class NNClassGui(LabelingGui):
 
 
     def updatePredictions(self):
-        self.topLevelOperator.classifier_cache.Output.setDirty()
+        self.topLevelOperatorView.classifier_cache.Output.setDirty()
 
     def _initAppletDrawerUic(self, drawerPath=None):
         """
@@ -233,13 +225,12 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.comboBox.clear()
         self.labelingDrawerUi.addModel.clicked.connect(self.addModels)
 
-        if self.topLevelOperator.ModelPath.ready():
-            modelPathList = list(self.topLevelOperator.ModelPath.value.values())
+        if self.topLevelOperatorView.ModelPath.ready():
+            modelPathList = list(self.topLevelOperatorView.ModelPath.value.values())
             #TODO: save more networks
             # for modelPath in modelPathList:
             #     self.add_NN_classifiers(modelPath)
             self.add_NN_classifiers(modelPathList[0])
-            print('modelPath rdy') 
 
         def nextCheckState(checkbox):
             """
@@ -290,7 +281,7 @@ class NNClassGui(LabelingGui):
 
         labels = self.labelListData
 
-        for channel, predictionSlot in enumerate(self.topLevelOperator.PredictionProbabilityChannels):
+        for channel, predictionSlot in enumerate(self.topLevelOperatorView.PredictionProbabilityChannels):
             logger.info(f"prediction_slot: {predictionSlot}")
             if predictionSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
@@ -360,33 +351,6 @@ class NNClassGui(LabelingGui):
 
         return layers
 
-    def add_NN_classifiers(self, folder_path):
-        """
-        Adds the chosen FilePath to the classifierDictionary and to the ComboBox
-        """
-        modelname = os.path.basename(os.path.normpath(folder_path))
-        self.tiktorch_path = folder_path
-
-        # Statement for importing the same classifier twice
-        #if modelname in self.classifiers.keys():
-        #    logger.info("Classifier already added")
-        #    QMessageBox.critical(self, "Error loading file", "{} already added".format(modelname))
-        #else:
-        self.classifiers[modelname] = folder_path
-
-        # clear first the comboBox or addItems will duplicate names
-        self.labelingDrawerUi.comboBox.clear()
-        self.labelingDrawerUi.comboBox.addItems(self.classifiers)
-        self.labelingDrawerUi.TrainingCheckbox.setEnabled(True)
-        self.labelingDrawerUi.TrainingCheckbox.setCheckState(Qt.Unchecked)
-
-        self.labelingDrawerUi.UpdateButton.setEnabled(True)
-        print('updateButton enabled')
-
-        self.topLevelOperator.ModelPath.setValue(self.classifiers)
-        self.model = TikTorchLazyflowClassifierFactory(self.tiktorch_path)
-        self.topLevelOperator.ClassifierFactory.setValue(self.model)
-
 
     def toggleInteractive(self, checked):
         logger.debug("toggling interactive mode to '%r'" % checked)
@@ -410,20 +374,22 @@ class NNClassGui(LabelingGui):
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked(True)
             self.handleShowPredictionsClicked()
-            self.topLevelOperator.classifier_cache.Output.setDirty()
+            self.topLevelOperatorView.classifier_cache.Output.setDirty()
 
-        if hasattr(self, 'model'):
-            self.model.train_model = self.labelingDrawerUi.TrainingCheckbox.isChecked() and checked
+        if self.topLevelOperatorView.ClassifierFactory.ready():
+            model = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
+            model.train_model = checked
+            model.train_model &= self.labelingDrawerUi.TrainingCheckbox.isChecked()
+
             if not checked:
-                self.model.pause_training_process()
-            elif checked and self.model.train_model:
-                self.model.resume_training_process()
+                model.pause_training_process()
+            elif checked and model.train_model:
+                model.resume_training_process()
 
-            if checked:
-                self.timer.start(10000)
+            if checked and self.labelingDrawerUi.TrainingCheckbox.isChecked():
+                self.timer.start(20000)
             else:
                 self.timer.stop()
-
 
         # Notify the workflow that some applets may have changed state now.
         # (For example, the downstream pixel classification applet can
@@ -480,6 +446,27 @@ class NNClassGui(LabelingGui):
 
         if len(fileNames) > 0:
             self.add_NN_classifiers(fileNames)
+
+
+    def add_NN_classifiers(self, folder_path):
+        """
+        Adds the chosen FilePath to the classifierDictionary and to the ComboBox
+        """
+        modelname = os.path.basename(os.path.normpath(folder_path))
+
+        self.classifiers[modelname] = folder_path # Misleading! this attribute is an OrderedDict and contains the path to the TikTorch config and not the classifier/network itself.
+
+        # clear first the comboBox or addItems will duplicate names
+        self.labelingDrawerUi.comboBox.clear()
+        self.labelingDrawerUi.comboBox.addItems(self.classifiers)
+        self.labelingDrawerUi.TrainingCheckbox.setEnabled(True)
+        self.labelingDrawerUi.TrainingCheckbox.setCheckState(Qt.Unchecked)
+
+        self.labelingDrawerUi.UpdateButton.setEnabled(True)
+
+        self.topLevelOperatorView.ModelPath.setValue(self.classifiers) # Check if attribute ModelPath is really needed. If yes 'self.classifier' should be of type 'str' and not 'OrderedDict'
+        self.topLevelOperatorView.ClassifierFactory.setValue(TikTorchLazyflowClassifierFactory(folder_path))
+
 
     def getFolderToOpen(cls, parent_window, defaultDirectory):
         """
