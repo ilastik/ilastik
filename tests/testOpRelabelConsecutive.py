@@ -7,7 +7,7 @@ from lazyflow.operators import OpRelabelConsecutive
 class TestOpRelabelConsecutive(object):
     
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         try:
             import pandas
         except ImportError:

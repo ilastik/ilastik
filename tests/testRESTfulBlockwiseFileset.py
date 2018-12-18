@@ -43,7 +43,7 @@ from lazyflow.utility.io_util.RESTfulBlockwiseFileset import RESTfulBlockwiseFil
 class TestRESTFullBlockwiseFilset(object):
     
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         # The openconnectome site appears to be down at the moment.
         # This test fails when that happens...
         raise nose.SkipTest
@@ -123,7 +123,7 @@ class TestRESTFullBlockwiseFilset(object):
         RESTfulBlockwiseFileset.writeDescription(cls.descriptionFilePath_offset, offsetDescription)
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         # If the user is debugging, don't clear the files we're testing with.
         if logger.level > logging.DEBUG:
             shutil.rmtree(cls.tempDir)
@@ -161,7 +161,7 @@ class TestRESTFullBlockwiseFilset(object):
         assert volume.getBlockStatus( ([20,20,20]) ) == BlockwiseFileset.BLOCK_AVAILABLE
 
         offsetVolume = RESTfulBlockwiseFileset( self.descriptionFilePath_offset )
-        offsetSlicing = numpy.s_[20:40, 0:20, 20:40] # Note middle slice is offset (see view_origin in setupClass)
+        offsetSlicing = numpy.s_[20:40, 0:20, 20:40] # Note middle slice is offset (see view_origin in setup_class)
         offsetRoi = sliceToRoi(offsetSlicing, offsetVolume.description.shape)        
         offsetData = offsetVolume.readData( offsetRoi )
         assert offsetData.shape == (20,20,20)

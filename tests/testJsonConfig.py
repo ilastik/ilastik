@@ -98,7 +98,7 @@ class TestJsonConfig(object):
     }
     
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         testConfig = \
         """
         {
@@ -131,7 +131,7 @@ class TestJsonConfig(object):
             f.write(testConfig)
     
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         # If the user is debugging, don't delete the test files.
         if logger.level > logging.DEBUG:
             shutil.rmtree(cls.tempDir)

@@ -16,12 +16,12 @@ logger = logging.getLogger(__name__)
 class TestOpTiledVolumeReader(object):
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.data_setup = testTiledVolume.DataSetup()
         cls.data_setup.setup()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.data_setup.teardown()
  
     def testBasic(self):
@@ -51,12 +51,12 @@ class TestOpTiledVolumeReader(object):
 class TestOpTiledVolumeReader_Transposed(object):
      
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.data_setup = testTiledVolume.DataSetup()
         cls.data_setup.setup()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.data_setup.teardown()
  
     def test(self):
@@ -90,12 +90,12 @@ class TestOpTiledVolumeReader_Transposed(object):
 class TestOpCachedTiledVolumeReader(object):
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.data_setup = testTiledVolume.DataSetup()
         cls.data_setup.setup()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.data_setup.teardown()
  
     def testBasic(self):
