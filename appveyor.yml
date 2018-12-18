@@ -37,15 +37,12 @@ test_script:
   - set DEV_PREFIX=%MINICONDA%/envs/%ENV_NAME%
   - activate %ENV_NAME%
   - cd \
-  - cd ilastik\ilastik-meta\lazyflow\tests
+  - cd ilastik\ilastik-meta\lazyflow
   - set Path=C:\ilastik\scripts;%Path%
   - >
-      nosetests
-      --nologcapture
-      --ignore-files=testInterpolatedFeatures.py
-      --with-xunit
-      --xunit-file=nosetests.lazyflow.xml
-      .
+      pytest
+      --capture=no
+      --junitxml=nosetests.lazyflow.xml
 
 # on_finish:
 #  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
