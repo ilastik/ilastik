@@ -64,7 +64,7 @@ def main():
         _clean_paths( ilastik_dir )
 
     import ilastik_main
-    parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
+    parsed_args, workflow_cmdline_args = ilastik_main.parse_known_args()
     
     # allow to start-up by double-clicking an '.ilp' file
     if len(workflow_cmdline_args) == 1 and \

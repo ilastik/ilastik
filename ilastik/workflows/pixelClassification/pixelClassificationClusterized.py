@@ -97,7 +97,7 @@ background_thread.daemon = True
 background_thread.start()
 
 def runWorkflow(cluster_args):
-    ilastik_main_args = ilastik_main.parser.parse_args([])
+    ilastik_main_args = ilastik_main.parse_args([])
     # Copy relevant args from cluster cmdline options to ilastik_main cmdline options
     ilastik_main_args.headless = True
     ilastik_main_args.project = cluster_args.project

@@ -132,7 +132,7 @@ def generate_trained_project_file( new_project_path,
     
     # Manually configure the arguments to ilastik, as if they were parsed from the command line.
     # (Start with empty args and fill in below.)
-    ilastik_args = ilastik_main.parser.parse_args([])
+    ilastik_args = ilastik_main.parse_args([])
     ilastik_args.new_project = new_project_path
     ilastik_args.headless = True
     ilastik_args.workflow = 'Pixel Classification'
