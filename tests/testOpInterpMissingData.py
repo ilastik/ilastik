@@ -303,7 +303,7 @@ class TestDetection(unittest.TestCase):
             #check if patch is in the result
             has = False
             for i,p in enumerate(patches):
-                if np.all(p == ep):
+                if np.array_equal(p, ep):
                     has = True
                     # check if slice is ok
                     self.assertEqual(s, slices[i])
