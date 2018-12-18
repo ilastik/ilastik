@@ -21,13 +21,43 @@
 ###############################################################################
 import string
 
-def format_known_keys(s, entries):
+
+def format_known_keys_strict(s, entries):
+    """Strict version of format_known_keys()."""
+    formatter = string.Formatter()
+    pieces = []
+
+    for text, name, fmt, _conv in formatter.parse(s):
+        pieces.append(text)
+
+        if name in entries:
+            value = formatter.format_field(entries[name], fmt)
+            pieces.append(value)
+            continue
+
+        # Replicate the original stub
+        name = name or ''
+        fmt = fmt or ''
+        start, end, fmtsep = '', '', ''
+        if name or fmt:
+            start, end = '{', '}'
+        if fmt:
+            fmtsep = ':'
+        pieces.append(start + name + fmtsep + fmt + end)
+
+    return ''.join(pieces)
+
+
+def format_known_keys(s, entries, strict=True):
     """
     Like str.format(), but 
      (1) accepts only a dict and 
      (2) allows the dict to be incomplete, 
          in which case those entries are left alone.
     
+    Setting strict to False returns the original format string
+    if that string is malformed.
+
     Examples:
     
     >>> format_known_keys("Hello, {first_name}, my name is {my_name}", {'first_name' : 'Jim', 'my_name' : "Jon"})
@@ -35,26 +65,22 @@ def format_known_keys(s, entries):
     
     >>> format_known_keys("Hello, {first_name:}, my name is {my_name}!", {"first_name" : [1,2,2]})
     'Hello, [1, 2, 2], my name is {my_name}!'
+
+    >>> format_known_keys("Hello, {first_name}, my name is {my_name", {'first_name' : 'Jim'})  # doctest: +IGNORE_EXCEPTION_DETAIL
+    Traceback (most recent call last):
+      ...
+    ValueError: ...
+
+    >>> format_known_keys("Hello, {first_name}, my name is {my_name", {'first_name' : 'Jim'}, strict=False)
+    'Hello, {first_name}, my name is {my_name'
     """
-    fmt = string.Formatter()
-    it = fmt.parse(s)
-    s = ''
-    for i in it:
-        if i[1] in entries:
-            val = entries[ i[1] ]
-            s += i[0] + fmt.format_field( val, i[2] )
-        else:
-            # Replicate the original stub
-            s += i[0]
-            if i[1] or i[2]:
-                s += '{'
-            if i[1]:
-                s += i[1]
-            if i[2]:
-                s += ':' + i[2]
-            if i[1] or i[2]:
-                s += '}'
-    return s
+    try:
+        return format_known_keys_strict(s, entries)
+    except ValueError:
+        if strict:
+            raise
+        return s
+
 
 if __name__ == "__main__":
     import doctest

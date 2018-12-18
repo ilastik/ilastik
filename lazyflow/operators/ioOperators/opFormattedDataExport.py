@@ -233,7 +233,7 @@ class OpFormattedDataExport(Operator):
         
         # use partial formatting to fill in non-coordinate name fields
         name_format = self.OutputFilenameFormat.value
-        partially_formatted_path = format_known_keys( name_format, known_keys )
+        partially_formatted_path = format_known_keys( name_format, known_keys, strict=False )
         self._opExportSlot.OutputFilenameFormat.setValue( partially_formatted_path )
 
         internal_dataset_format = self.OutputInternalPath.value 
