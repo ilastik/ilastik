@@ -33,7 +33,7 @@ from lazyflow.roi import roiToSlice, sliceToRoi
 
 from lazyflow.operators.valueProviders import OpOutputProvider
 
-from numpy.testing import *
+from numpy.testing import assert_array_equal
 
 import unittest
 
