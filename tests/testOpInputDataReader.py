@@ -29,6 +29,7 @@ import lazyflow.graph
 import tempfile
 import shutil
 import h5py
+import pytest
 
 from PIL import Image
 
@@ -119,7 +120,8 @@ class TestOpInputDataReader(object):
             for y in range(pngData.shape[1]):
                 assert pngData[x,y,0] == (x+y) % 256
 
-    def _test_multi_png(self, sequence_axis):
+    @pytest.mark.parametrize('sequence_axis', ['t', 'z', 'c'])
+    def test_multi_png(self, sequence_axis):
 
         # Create PNG test data
         data = numpy.random.randint(0, 255, size=(5, 100,200)).astype(numpy.uint8)
@@ -139,10 +141,6 @@ class TestOpInputDataReader(object):
 
         assert pngData.shape == data.shape, f'{pngData.shape}, {data.shape}'
         numpy.testing.assert_array_equal(pngData, data)
-
-    def test_multi_png(self):
-        for sequence_axis in ['t', 'z', 'c']:
-            yield self._test_multi_png, sequence_axis
 
     def test_h5(self):
         # Create HDF5 test data
@@ -175,7 +173,8 @@ class TestOpInputDataReader(object):
             h5Reader.cleanUp()
             assert not h5Reader._file # Whitebox assertion...
 
-    def _test_h5_stack_single_file(self, sequence_axis):
+    @pytest.mark.parametrize('sequence_axis', ['t', 'z', 'c'])
+    def test_h5_stack_single_file(self, sequence_axis):
         """Test stack/sequence reading in hdf5-files for given 'sequence_axis'"""
         shape = (4, 8, 16, 32, 3)  # assuming axis guess order is 'tzyxc'
         data = numpy.random.randint(0, 255, size=shape).astype(numpy.uint8)
@@ -204,12 +203,8 @@ class TestOpInputDataReader(object):
             # Call cleanUp() to close the file that this operator opened
             h5SequenceReader.cleanUp()
 
-    def test_h5_stack_single_file(self):
-        for sequence_axis in ['t', 'z', 'c']:
-            yield self._test_h5_stack_single_file, sequence_axis
-
-
-    def _test_h5_stack_multi_file(self, sequence_axis):
+    @pytest.mark.parametrize('sequence_axis', ['t', 'z', 'c'])
+    def test_h5_stack_multi_file(self, sequence_axis):
         """Test stack/sequence reading in hdf5-files"""
         shape = (4, 8, 16, 32, 3)
         data = numpy.random.randint(0, 255, size=shape).astype(numpy.uint8)
@@ -239,11 +234,8 @@ class TestOpInputDataReader(object):
             # Call cleanUp() to close the file that this operator opened
             h5SequenceReader.cleanUp()
 
-    def test_h5_stack_multi_file(self):
-        for sequence_axis in ['t', 'z', 'c']:
-            yield self._test_h5_stack_multi_file, sequence_axis
-
-    def _test_tiff_stack_multi_file(self, sequence_axis):
+    @pytest.mark.parametrize('sequence_axis', ['t', 'z', 'c'])
+    def test_tiff_stack_multi_file(self, sequence_axis):
         """Test stack/sequence reading in hdf5-files"""
         shape = (4, 8, 16, 3)
         data = numpy.random.randint(0, 255, size=shape).astype(numpy.uint8)
@@ -266,11 +258,6 @@ class TestOpInputDataReader(object):
         finally:
             # Call cleanUp() to close the file that this operator opened
             reader.cleanUp()
-
-    def test_tiff_stack_multi_file(self):
-        for sequence_axis in ['t', 'z', 'c']:
-            yield self._test_tiff_stack_multi_file, sequence_axis
-
 
     def test_npy_with_roi(self):
         a = numpy.indices((100,100,200)).astype( numpy.uint8 ).sum(0)
