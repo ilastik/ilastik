@@ -35,7 +35,7 @@ from PIL import Image
 
 class TestOpInputDataReader(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = lazyflow.graph.Graph()
         tmpDir = tempfile.mkdtemp()
         self.testNpyDataFileName = tmpDir + '/test.npy'
@@ -47,7 +47,7 @@ class TestOpInputDataReader(object):
         self.testmultiTiffFileName = tmpDir + '/test-{index:02d}.tiff'
         self.tmpDir = tmpDir
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Clean up: Delete the test data files.
         shutil.rmtree(self.tmpDir)
 

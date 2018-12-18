@@ -35,10 +35,10 @@ import h5py
 
 
 class TestOpStackLoader(object):
-    def setUp(self):
+    def setup_method(self, method):
         self._tmp_dir = tempfile.mkdtemp()
 
-    def tearDown(self):
+    def teardown_method(self, method):
         shutil.rmtree(self._tmp_dir)
 
     def _prepare_data(self, name, shape, axes, stack_axis,

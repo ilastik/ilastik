@@ -43,7 +43,7 @@ logger.setLevel(logging.INFO)
 
 class TestOpBlockwiseFilesetReader(object):
     
-    def setUp(self):
+    def setup_method(self, method):
         """
         Create a blockwise fileset to test with.
         """
@@ -92,7 +92,7 @@ class TestOpBlockwiseFilesetReader(object):
             bfs.setBlockStatus(block_start, BlockwiseFileset.BLOCK_AVAILABLE)
         bfs.close()
 
-    def tearDown(self):
+    def teardown_method(self, method):
         shutil.rmtree(self.tempDir)
 
     def testRead(self):

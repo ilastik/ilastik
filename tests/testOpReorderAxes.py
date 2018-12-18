@@ -56,7 +56,7 @@ class OpArrayProvider(Operator):
 
 class TestOpReorderAxes(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.array = None
         self.axis = list('tzyxc')
         self.tests = 20

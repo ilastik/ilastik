@@ -63,7 +63,7 @@ class DirtyAssert(Operator):
 
 class TestOpLazyCC(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self, method):
         pass
 
     def testCorrectLabeling(self):

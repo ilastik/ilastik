@@ -97,7 +97,7 @@ class OpDummyOutputResize(Operator):
 
 class TestInputInputConnection(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.g = Graph()
         self.op = OpA(graph=self.g)
 
@@ -204,7 +204,7 @@ class OpC(Operator):
 
 class TestMultiInputInputConnection(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.g = Graph()
         self.op = OpC(graph=self.g)
 

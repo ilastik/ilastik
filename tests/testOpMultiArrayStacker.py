@@ -313,7 +313,7 @@ def testPartialAllocate():
 
 
 class TestAxisIndex(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self, method):
         vol = numpy.random.randint(0, 256, size=(100, 200, 300, 2))
         vol = vol.astype(numpy.uint8)
         vol = vigra.taggedView(vol, 'xyzc')
@@ -355,7 +355,7 @@ class TestAxisIndex(unittest.TestCase):
 
 class TestOpMultiArrayStacker(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.g = Graph()
         vol = numpy.zeros((100,200,2))
         vol = vigra.taggedView(vol, axistags='xyz')

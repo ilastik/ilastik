@@ -84,7 +84,7 @@ class TestOpDvidVolume(unittest.TestCase):
     @unittest.skipIf(True, "FIXME: OpExportDvidVolume doesn't work any more....")
     @unittest.skipIf(not have_dvid, "optional module libdvid not available.")
     @unittest.skipIf(platform.system() == "Windows", "DVID not tested on Windows. Skipping.")
-    def setUp(self):
+    def setup_method(self, method):
         """
         Override.  Called by nosetests.
         """
@@ -94,7 +94,7 @@ class TestOpDvidVolume(unittest.TestCase):
         self.data_name = "exported_data_{}".format(time.time())
         self.data_uuid = get_testrepo_root_uuid()
 
-    def tearDown(self):
+    def teardown_method(self, method):
         """
         Override.  Called by nosetests.
         """

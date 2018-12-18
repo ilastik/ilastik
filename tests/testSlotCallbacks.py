@@ -86,7 +86,7 @@ class OpA(Operator):
 
 class TestSlot_notifyConnect(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.g = Graph()
 
     def test_connect(self):
@@ -164,7 +164,7 @@ class TestSlot_notifyConnect(object):
 
 class TestSlot_notifyDisconnect(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.g = Graph()
 
     def test_disconnect(self):
@@ -246,7 +246,7 @@ class TestSlot_notifyDisconnect(object):
 
 class TestSlot_notifyMetaChanged(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.g = Graph()
 
     def test_inputslot_changed(self):
