@@ -233,7 +233,7 @@ class ObjectClassificationGui(LabelingGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             m.addAction("Export All Label Info").triggered.connect( self.exportLabelInfo )
             m.addAction("Import New Label Info").triggered.connect( self.importLabelInfo )
-        return [m]
+        return [m] if len(m.actions()) > 0 else []
 
     def exportLabelInfo(self):
         file_path, _filter = QFileDialog.getSaveFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")
