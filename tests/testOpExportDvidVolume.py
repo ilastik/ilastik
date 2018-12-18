@@ -34,18 +34,25 @@ import time
 import numpy
 import vigra
 import h5py
+import pytest
 
 from lazyflow.graph import Graph
 from lazyflow.roi import roiFromShape
 from lazyflow.operators import OpArrayPiper
 from lazyflow.operators.ioOperators import OpExportSlot, OpInputDataReader
 
+TEST_DVID_SERVER = os.getenv("TEST_DVID_SERVER", None)
+if TEST_DVID_SERVER is None:
+    pytest.skip(
+        "skipping DVID tests, Environment variable TEST_DVID_SERVER is not specified",
+        allow_module_level=True
+    )
+
 try:
     from lazyflow.operators.ioOperators import OpExportDvidVolume
     from libdvid import DVIDConnection, ConnectionMethod, DVIDNodeService
     from libdvid.voxels import VoxelsMetadata, VoxelsAccessor
-    TEST_DVID_SERVER = os.getenv("TEST_DVID_SERVER", "127.0.0.1:8000")
-    
+
     def get_testrepo_root_uuid():
         connection = DVIDConnection(TEST_DVID_SERVER)
         status, body, error_message = connection.make_request( "/repos/info", ConnectionMethod.GET)
