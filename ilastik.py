@@ -73,51 +73,9 @@ def main():
             parsed_args.project = workflow_cmdline_args[0]
             workflow_cmdline_args = []
 
-    # DEVELOPERS:
-    # Provide your command-line args here. See examples below.
-    
-    ## Auto-open an existing project
-    #parsed_args.project='/Users/bergs/MyProject.ilp'
-    #parsed_args.project='/magnetic/data/multicut-testdata/2d/MyMulticut2D.ilp'
-    #parsed_args.project = '/Users/bergs/MyMulticutProject.ilp'
-    #parsed_args.project = '/magnetic/data/multicut-testdata/chris-256/MyMulticutProject-chris256.ilp'
-    #parsed_args.project = '/magnetic/data/flyem/fib25-neuroproof-validation/fib25-multicut/mc-training/mc-training-with-corrected-gt.ilp'
-
-    ## Headless-mode options
-    #parsed_args.headless = True
-    #parsed_args.debug = True
-
-    ## Override lazyflow environment settings
-    #os.environ["LAZYFLOW_THREADS"] = "0"
-    #os.environ["LAZYFLOW_TOTAL_RAM_MB"] = "8192"
-
-    ## Provide workflow-specific args
-    #workflow_cmdline_args += ["--retrain"]
-
-    ## Provide batch inputs (for headless mode)
-    #workflow_cmdline_args += ["/magnetic/data/cells/001cell.png",
-    #                          "/magnetic/data/cells/002cell.png",
-    #                          "/magnetic/data/cells/003cell.png" ]
-
-    # Create a new project from scratch (instead of opening existing project)
-    #parsed_args.new_project='/Users/bergs/MyProject.ilp'
-    #parsed_args.workflow = 'Pixel Classification'
-    #parsed_args.workflow = 'Object Classification (from pixel classification)'
-    #parsed_args.workflow = 'Carving'
-
     hShell = ilastik_main.main(parsed_args, workflow_cmdline_args)
     # in headless mode the headless shell is returned and its project manager still has an open project file
     hShell.closeCurrentProject()
 
 if __name__ == "__main__":
-    # Examples:
-    # python ilastik.py --headless --project=MyProject.ilp --output_format=hdf5 raw_input.h5/volumes/data
-
-    ## Multicut headless test
-    #sys.argv += "--headless".split()
-    #sys.argv += "--project=/magnetic/data/multicut-testdata/chris-256/MyMulticutProject-chris256.ilp".split()
-    #sys.argv += "--raw_data /magnetic/data/multicut-testdata/chris-256/grayscale-256.h5/grayscale".split()
-    #sys.argv += "--probabilities /magnetic/data/multicut-testdata/chris-256/final-membranes-256.h5/membranes".split()
-    #sys.argv += "--superpixels /magnetic/data/multicut-testdata/chris-256/watershed-256.h5/watershed".split()
-
     main()
