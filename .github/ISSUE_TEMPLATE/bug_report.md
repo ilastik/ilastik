@@ -49,3 +49,20 @@ If applicable, please add screenshots to help explain your problem.
 ## Desktop (please complete the following information):
  - ilastik version: [e.g. 1.3.2b1]
  - OS: [e.g. Ubuntu 18.04, macOS 10.12: Sierra (Fuji), Windows 10]
+ 
+ <!---
+For developers only:
+in order to reproduce the environment properly it is of great help to know the exact commits for each of the main packages.
+
+for d in ilastik lazyflow volumina; do
+    (cd $d && echo "$d ilastik/$d@$(git rev-parse --verify HEAD)")
+done
+
+Just run the the preceding for loop in your shell from your ilastik-meta folder and paste the output below, after the comment mark.
+Example output:
+
+ilastik ilastik/ilastik@b060889258b8e8e5a8291d1c391dcfeb80474131
+lazyflow ilastik/lazyflow@f1eaa478381ca27cf1ee43e4a26c96175a914073
+volumina ilastik/volumina@0431fcefd75ecba2ddc3fe1fe86b47f65132f76b
+--->
+
