@@ -133,13 +133,19 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         self._drawer.sigmaSpinBox_Z.setVisible(data_has_z_axis)
 
+        numChannels = 0
+        if op.InputImage.ready():
+            # Channel
+            channelIndex = op.InputImage.meta.axistags.index('c')
+            numChannels = op.InputImage.meta.shape[channelIndex]
+
         if op.InputChannelColors.ready():
             input_channel_colors = [QColor(r_g_b[0],r_g_b[1],r_g_b[2]) for r_g_b in op.InputChannelColors.value]
         else:
             if self._defaultInputChannelColors is None:
                 self._defaultInputChannelColors = colortables.default16_new[1:]
 
-            input_channel_colors = list(map(QColor, self._defaultInputChannelColors))
+            input_channel_colors = list(map(QColor, self._defaultInputChannelColors[0:numChannels]))
 
         self._drawer.inputChannelComboBox.clear()
         self._drawer.coreChannelComboBox.clear()
