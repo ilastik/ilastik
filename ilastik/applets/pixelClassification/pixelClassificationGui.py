@@ -415,7 +415,9 @@ class PixelClassificationGui(LabelingGui):
             labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
 
         # Base class init
-        super(PixelClassificationGui, self).__init__( parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath )
+        super(PixelClassificationGui, self).__init__( parentApplet, labelSlots,
+                                                      topLevelOperatorView, labelingDrawerUiPath,
+                                                      topLevelOperatorView.InputImages)
 
         self.topLevelOperatorView = topLevelOperatorView
 
@@ -579,7 +581,7 @@ class PixelClassificationGui(LabelingGui):
         Called by our base class when one of our data slots has changed.
         This function creates a layer for each slot we want displayed in the volume editor.
         """
-        # Base class provides the label layer.
+        # Base class provides the label layer and the raw layer
         layers = super(PixelClassificationGui, self).setupLayers()
 
         ActionInfo = ShortcutManager.ActionInfo
@@ -716,42 +718,6 @@ class PixelClassificationGui(LabelingGui):
                 ref_label.pmapColorChanged.connect(setLayerColor)
                 ref_label.nameChanged.connect(setPredLayerName)
                 layers.append(predictLayer)
-
-        # Add the raw data last (on the bottom)
-        inputDataSlot = self.topLevelOperatorView.InputImages        
-        if inputDataSlot.ready():                        
-            inputLayer = self.createStandardLayerFromSlot( inputDataSlot )
-            inputLayer.name = "Input Data"
-            inputLayer.visible = True
-            inputLayer.opacity = 1.0
-            # the flag window_leveling is used to determine if the contrast 
-            # of the layer is adjustable
-            if isinstance( inputLayer, GrayscaleLayer ):
-                inputLayer.window_leveling = True
-            else:
-                inputLayer.window_leveling = False
-
-            def toggleTopToBottom():
-                index = self.layerstack.layerIndex( inputLayer )
-                self.layerstack.selectRow( index )
-                if index == 0:
-                    self.layerstack.moveSelectedToBottom()
-                else:
-                    self.layerstack.moveSelectedToTop()
-
-            inputLayer.shortcutRegistration = ( "i", ActionInfo( "Prediction Layers",
-                                                                 "Bring Input To Top/Bottom",
-                                                                 "Bring Input To Top/Bottom",
-                                                                 toggleTopToBottom,
-                                                                 self.viewerControlWidget(),
-                                                                 inputLayer ) )
-            layers.append(inputLayer)
-            
-            # The thresholding button can only be used if the data is displayed as grayscale.
-            if inputLayer.window_leveling:
-                self.labelingDrawerUi.thresToolButton.show()
-            else:
-                self.labelingDrawerUi.thresToolButton.hide()
         
         self.handleLabelSelectionChange()
         return layers

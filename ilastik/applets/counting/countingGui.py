@@ -140,7 +140,8 @@ class CountingGui(LabelingGui):
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/countingDrawer.ui'
 
         # Base class init
-        super(CountingGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath )
+        super(CountingGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView,
+                                          labelingDrawerUiPath, topLevelOperatorView.InputImages)
 
         self.op = topLevelOperatorView
 
@@ -614,7 +615,7 @@ class CountingGui(LabelingGui):
         Called by our base class when one of our data slots has changed.
         This function creates a layer for each slot we want displayed in the volume editor.
         """
-        # Base class provides the label layer.
+        # Base class provides the label layer and the raw layer.
         layers = super(CountingGui, self).setupLayers()
 
         slots = {'Prediction': (self.op.Density, 0.5),
@@ -644,30 +645,6 @@ class CountingGui(LabelingGui):
 
         layers.append(boxlabellayer)
         self.boxlabelsrc = boxlabelsrc
-
-        inputDataSlot = self.topLevelOperatorView.InputImages
-        if inputDataSlot.ready():
-            inputLayer = self.createStandardLayerFromSlot( inputDataSlot )
-            inputLayer.name = "Input Data"
-            inputLayer.visible = True
-            inputLayer.opacity = 1.0
-
-            def toggleTopToBottom():
-                index = self.layerstack.layerIndex( inputLayer )
-                self.layerstack.selectRow( index )
-                if index == 0:
-                    self.layerstack.moveSelectedToBottom()
-                else:
-                    self.layerstack.moveSelectedToTop()
-
-            inputLayer.shortcutRegistration = ( "i", ShortcutManager.ActionInfo(
-                                                        "Prediction Layers",
-                                                        "Bring Input To Top/Bottom",
-                                                        "Bring Input To Top/Bottom",
-                                                        toggleTopToBottom,
-                                                        self.viewerControlWidget(),
-                                                        inputLayer ) )
-            layers.append(inputLayer)
 
         self.handleLabelSelectionChange()
         return layers
@@ -979,6 +956,7 @@ class CountingGui(LabelingGui):
         modeNames = { Tool.Navigation   : "navigation",
                       Tool.Paint        : "brushing",
                       Tool.Erase        : "brushing",
+                      Tool.Threshold    : "thresholding",
                       Tool.Box          : "navigation"
                     }
 
@@ -1022,6 +1000,15 @@ class CountingGui(LabelingGui):
             self.editor.brushingModel.setBrushSize(eraserSize)
             # update GUI
             self._gui_setErasing()
+            self.setCursor(Qt.ArrowCursor)
+
+        elif toolId == Tool.Threshold:
+            # If necessary, tell the brushing model to stop erasing
+            if self.editor.brushingModel.erasing:
+                self.editor.brushingModel.disableErasing()
+            # display a curser that is static while moving arrow
+            self.editor.brushingModel.setBrushSize(1)
+            self._gui_setThresholding()
             self.setCursor(Qt.ArrowCursor)
 
         elif toolId == Tool.Box:
@@ -1074,11 +1061,6 @@ class CountingGui(LabelingGui):
     def _onLabelSelected(self, row):
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
 
-
-
-
-
-
         self.toolButtons[Tool.Paint].setEnabled(True)
         #elf.toolButtons[Tool.Box].setEnabled(False)
         self.toolButtons[Tool.Paint].click()
@@ -1094,8 +1076,7 @@ class CountingGui(LabelingGui):
 
 
         if row==0: #foreground
-
-            self._cachedBrushSizeIndex= self._labelControlUi.brushSizeComboBox.currentIndex()
+            self._cachedBrushSizeIndex = self._labelControlUi.brushSizeComboBox.currentIndex()
             self._labelControlUi.SigmaBox.setEnabled(True)
             self._labelControlUi.brushSizeComboBox.setEnabled(False)
             self._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
