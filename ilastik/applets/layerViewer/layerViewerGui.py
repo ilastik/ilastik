@@ -426,7 +426,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         # Ask for the updated layer list (usually provided by the subclass)
         newGuiLayers = self.setupLayers()
 
-        # The order of the initial layerstack has to be static, where the "Raw Input" layer is at the stacks last positoin
+        # The order of the initial layerstack has to be static, where the "Raw Input" layer is at the stacks last position
         for i in range(len(newGuiLayers)):
             if newGuiLayers[i].name == "Raw Input":
                 rlayer = newGuiLayers[i]
