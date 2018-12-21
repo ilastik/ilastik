@@ -63,15 +63,12 @@ def main():
         ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
         _clean_paths( ilastik_dir )
 
+    # Allow to start-up by double-clicking a project file.
+    if len(sys.argv) == 2 and sys.argv[1].endswith('.ilp'):
+        sys.argv.insert(1, '--project')
+
     import ilastik_main
     parsed_args, workflow_cmdline_args = ilastik_main.parse_known_args()
-    
-    # allow to start-up by double-clicking an '.ilp' file
-    if len(workflow_cmdline_args) == 1 and \
-       workflow_cmdline_args[0].endswith('.ilp') and \
-       parsed_args.project is None:
-            parsed_args.project = workflow_cmdline_args[0]
-            workflow_cmdline_args = []
 
     hShell = ilastik_main.main(parsed_args, workflow_cmdline_args)
     # in headless mode the headless shell is returned and its project manager still has an open project file
