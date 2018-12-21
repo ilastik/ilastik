@@ -72,6 +72,7 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
         # Accumulate all non-zero blocks of each image into lists
         label_data_blocks = []
         image_data_blocks = []
+        block_ids =[]
         for image_slot, label_slot, nonzero_block_slot in zip(self.Images, self.Labels, self.nonzeroLabelBlocks):
             block_slicings = nonzero_block_slot.value
             for block_slicing in block_slicings:
@@ -112,12 +113,13 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
                     
                     label_data_blocks.append( padded_label_data )
                     image_data_blocks.append( padded_image_data )
+                    block_ids.append(tuple(block_label_bb_roi[0][i] for i, key in enumerate(axiskeys) if key != 'c'))
 
         channel_names = self.Images[0].meta.channel_names
         axistags = self.Images[0].meta.axistags
         logger.debug("Training new pixelwise classifier: {}".format(classifier_factory.description))
         classifier = classifier_factory.create_and_train_pixelwise(image_data_blocks, label_data_blocks, axistags,
-                                                                   channel_names)
+                                                                   channel_names, block_ids)
         result[0] = classifier
         if classifier is not None:
             assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), \
