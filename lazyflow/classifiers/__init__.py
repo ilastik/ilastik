@@ -7,8 +7,9 @@ from .sklearnLazyflowClassifier import SklearnLazyflowClassifier, SklearnLazyflo
 try:
     from .tiktorchLazyflowClassifier import TikTorchLazyflowClassifier, TikTorchLazyflowClassifierFactory
 except ImportError:
+    TikTorchLazyflowClassifier, TikTorchLazyflowClassifierFactory = None, None
     import warnings
-    warnings.warn("init: Could not import tiktorch classifier")
+    warnings.warn("Could not import tiktorch classifier")
 
 # Testing
 from .vigraRfPixelwiseClassifier import VigraRfPixelwiseClassifier, VigraRfPixelwiseClassifierFactory
