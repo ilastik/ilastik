@@ -134,12 +134,10 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         return self.tikTorchClient.dry_run(max_shape, train)
 
     def get_halo_shape(self, data_axes='zyxc'):
-        halo = self.tikTorchClient.get('halo')
-        if len(data_axes) == 4:
-            return (0, 32, 32, 0)
-        # FIXME: assuming 'yxc' !
-        elif len(data_axes) == 3:
-            return (32, 32, 0)
+        # halo = self.tikTorchClient.get('halo')
+        logger.warning('Using hardcoded halo')
+        halo = {'t': 0, 'c': 0, 'z': 0, 'y': 32, 'x': 32}
+        return tuple(halo[axis] for axis in data_axes)
 
     @property
     def description(self):
