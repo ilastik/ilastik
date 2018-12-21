@@ -21,6 +21,8 @@
 ###############################################################################
 import os
 import pickle as pickle
+import subprocess
+import sys
 import tempfile
 import yaml
 
@@ -46,8 +48,9 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     # The version is used to determine compatibility of pickled classifier factories.
     # You must bump this if any instance members are added/removed/renamed.
     VERSION = 1
+    tikTorchServer_process = None
 
-    def __init__(self, tiktorch_config_path, hyperparameter_config_path=None):
+    def __init__(self, tiktorch_config_path, hyperparameter_config_path=None, run_locally=True):
         self._filename = tiktorch_config_path  # DELETE this attribute
         # Privates
         self._tikTorchClient = None
@@ -56,7 +59,18 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         self._opReorderAxes.AxisOrder.setValue('zcyx')
 
         # Publics
+        if run_locally:
+            self.start_local_server()
+
         self.tikTorchClient = TikTorchClient(tiktorch_config_path)
+
+    @classmethod
+    def start_local_server(cls, **kwargs):
+        if cls.tikTorchServer_process is None or cls.tikTorchServer_process.poll() is not None:
+            logger.info('Starting local TikTorchServer...')
+            cls.tikTorchServer_process = subprocess.Popen(
+                [sys.executable, '-c', 'from tiktorch.server import TikTorchServer;TikTorchServer().listen()'],
+                stdout=sys.stdout)
 
     @property
     def tikTorchClient(self):
