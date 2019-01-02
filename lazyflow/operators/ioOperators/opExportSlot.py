@@ -145,7 +145,7 @@ class OpExportSlot(Operator):
         for key, (start, stop) in zip( self.Input.meta.getAxisKeys(), roi.transpose() ):
             optional_replacements[key + '_start'] = start
             optional_replacements[key + '_stop'] = stop
-        formatted_path = format_known_keys( path_format, optional_replacements )
+        formatted_path = format_known_keys( path_format, optional_replacements, strict=False )
         result[0] = formatted_path
         return result
 
