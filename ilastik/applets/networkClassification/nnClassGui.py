@@ -223,6 +223,7 @@ class NNClassGui(LabelingGui):
         Load the ui file for the applet drawer, which we own.
         """
         self.labelingDrawerUi.comboBox.clear()
+        self.labelingDrawerUi.comboBox.hide()  # atm only a single model is supported
         self.labelingDrawerUi.addModel.clicked.connect(self.addModels)
 
         if self.topLevelOperatorView.ModelPath.ready():
@@ -453,6 +454,11 @@ class NNClassGui(LabelingGui):
         Adds the chosen FilePath to the classifierDictionary and to the ComboBox
         """
         modelname = os.path.basename(os.path.normpath(folder_path))
+        # disable adding another model
+        self.labelingDrawerUi.addModel.setEnabled(False)
+        self.labelingDrawerUi.addModel.setChecked(True)
+        self.labelingDrawerUi.addModel.setText(f'{modelname} loaded')
+        self.labelingDrawerUi.addModel.setToolTip('Switching network model currently not supported.')
 
         self.classifiers[modelname] = folder_path # Misleading! this attribute is an OrderedDict and contains the path to the TikTorch config and not the classifier/network itself.
 
