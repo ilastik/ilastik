@@ -88,6 +88,9 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         if self.tikTorchClient.training_process_is_running():
             self.tikTorchClient.resume()
 
+    def send_hparams(self, hparams):
+        self.tikTorchClient.set_hparams(hparams)
+
     def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
         logger.debug('Loading pytorch network from {}'.format(self._filename))
         assert self.tikTorchClient is not None, "TikTorchLazyflowClassifierFactory not properly initialized."
