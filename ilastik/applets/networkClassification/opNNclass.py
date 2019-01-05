@@ -21,8 +21,12 @@
 from functools import partial
 import numpy as np
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpMultiArraySlicer2, OpValueCache, OpCompressedUserLabelArray, OpSlicedBlockedArrayCache, OpClassifierPredict, OpTrainClassifierBlocked
-from lazyflow.operators.tiktorchClassifierOperators import OpTikTorchTrainClassifierBlocked, OpTikTorchClassifierPredict
+from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
+from lazyflow.operators import OpMultiArraySlicer2, OpValueCache, \
+                               OpCompressedUserLabelArray, OpSlicedBlockedArrayCache, \
+                               OpClassifierPredict, OpTrainClassifierBlocked
+from lazyflow.operators.tiktorchClassifierOperators import OpTikTorchTrainClassifierBlocked, \
+                                                           OpTikTorchClassifierPredict
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
@@ -168,6 +172,20 @@ class OpNNClassification(Operator):
                     def removeSlot(a, b, position, finalsize):
                         a.removeSlot(position, finalsize)
                     s1.notifyRemoved(partial(removeSlot, s2))
+
+    def set_classifier(self, config_path):
+        self.ClassifierFactory.setValue(TikTorchLazyflowClassifierFactory(config_path))
+
+    def send_hparams(self, hparams):
+        self.ClassifierFactory.meta.hparams = hparams
+        def _send_hparams(slot):
+            classifierFactory = self.ClassifierFactory[:].wait()[0]
+            classifierFactory.send_hparams(hparams=self.ClassifierFactory.meta.hparams)
+        if not self.ClassifierFactory.ready():
+            self.ClassifierFactory.notifyReady(_send_hparams)
+        else:
+            classifierFactory = self.ClassifierFactory[:].wait()[0]
+            classifierFactory.send_hparams(hparams)
 
     def setupCaches(self, imageIndex):
         numImages = len(self.InputImages)
