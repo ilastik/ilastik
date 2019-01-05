@@ -24,22 +24,14 @@ from functools import partial
 from collections import OrderedDict
 
 import numpy
-
-from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
-from volumina.utility import PreferencesManager
+import yaml
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, pyqtSlot, QTimer
-from PyQt5.QtWidgets import (
-    QStackedWidget,
-    QFileDialog,
-    QMenu,
-    QLineEdit,
-    QDialogButtonBox,
-    QVBoxLayout,
-    QDialog,
-)
 from PyQt5.QtGui import QColor, QIcon
+from PyQt5.QtWidgets import QStackedWidget, QFileDialog, QMenu, QLineEdit, \
+                            QVBoxLayout, QDialog, QGridLayout, QLabel, \
+                            QPushButton, QHBoxLayout, QDesktopWidget, QComboBox
 
 from ilastik.applets.networkClassification.tiktorchWizard import MagicWizard
 from ilastik.applets.labeling.labelingGui import LabelingGui
@@ -47,11 +39,12 @@ from ilastik.utility.gui import threadRouted
 from ilastik.utility import bind
 from ilastik.shell.gui.iconMgr import ilastikIcons
 
+from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
+from volumina.utility import PreferencesManager
+
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 
-
 logger = logging.getLogger(__name__)
-
 
 def _listReplace(old, new):
     if len(old) > len(new):
@@ -65,36 +58,93 @@ class ParameterDlg(QDialog):
     simple window for setting parameters
     """
 
-    def __init__(self, topLevelOperator, parent):
+    def __init__(self, parent):
+        self.hparams = None
+
         super(QDialog, self).__init__(parent=parent)
 
-        self.topLevelOperator = topLevelOperator
+        self.optimizer_combo = QComboBox(self)
+        self.optimizer_combo.addItem("Adam")
+        self.optimizer_kwargs_textbox = QLineEdit()
+        self.optimizer_kwargs_textbox.setPlaceholderText("e.g. for Adam: {'lr': 0.0003, 'weight_decay':0.0001, amsgrad: True}")
+        
+        self.criterion_combo = QComboBox(self)
+        self.criterion_combo.addItem("BCEWithLogitsLoss")
+        self.criterion_kwargs_textbox = QLineEdit()
+        self.criterion_kwargs_textbox.setPlaceholderText("e.g.: {'reduce': False}")
+        
+        self.batch_size_textbox = QLineEdit()
+        self.batch_size_textbox.setPlaceholderText("default: 1")
 
-        buttonbox = QDialogButtonBox(Qt.Horizontal, parent=self)
-        buttonbox.setStandardButtons(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        buttonbox.accepted.connect(self.add_Parameters)
-        buttonbox.rejected.connect(self.reject)
+        grid = QGridLayout()
+        grid.setSpacing(10)
 
-        self.batch_edit = QLineEdit(self)
-        self.batch_edit.setPlaceholderText("Batch Size")
+        grid.addWidget(QLabel('Optimizer'), 1, 0)
+        grid.addWidget(self.optimizer_combo, 1, 1)
 
-        layout = QVBoxLayout()
-        layout.addWidget(self.batch_edit)
-        layout.addWidget(buttonbox)
+        grid.addWidget(QLabel('Optimizer keywork arguments'), 2, 0)
+        grid.addWidget(self.optimizer_kwargs_textbox, 2, 1)
 
-        self.setLayout(layout)
-        self.setWindowTitle("Set Parameters")
+        grid.addWidget(QLabel('Criterion'), 3, 0)
+        grid.addWidget(self.criterion_combo, 3, 1)
 
-    def add_Parameters(self):
-        """
-        changing Batch Size Slot Values
-        """
-        batch_size = int(self.batch_edit.text())
+        grid.addWidget(QLabel('Criterion keyword arguments'), 4, 0)
+        grid.addWidget(self.criterion_kwargs_textbox, 4, 1)
 
-        self.topLevelOperator.Batch_Size.setValue(batch_size)
+        grid.addWidget(QLabel('Batch size'), 5, 0)
+        grid.addWidget(self.batch_size_textbox, 5, 1)
 
-        # close dialog
-        super(ParameterDlg, self).accept()
+        okButton = QPushButton("OK")
+        okButton.clicked.connect(self.readParameters)
+        cancelButton = QPushButton("Cancel")
+        cancelButton.clicked.connect(self.close)
+
+        hbox = QHBoxLayout()
+        hbox.addStretch(1)
+        hbox.addWidget(okButton)
+        hbox.addWidget(cancelButton)
+
+        vbox = QVBoxLayout()
+        vbox.addLayout(grid)
+        vbox.addLayout(hbox)
+
+        self.setLayout(vbox)
+
+        # self.resize(480, 200)
+        self.setFixedSize(600, 200)
+        self.center()
+
+        self.setWindowTitle('Hyperparameter Settings')
+        self.show()
+
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+
+        self.move(qr.topLeft())
+
+    def readParameters(self):
+        optimizer = self.optimizer_combo.currentText()
+        optimizer_kwargs = yaml.load(self.optimizer_kwargs_textbox.text())
+        if optimizer_kwargs is None:
+            optimizer_kwargs = dict(lr=0.0003, weight_decay=0.0001, amsgrad=True)
+            optimizer = 'Adam'
+        criterion = self.criterion_combo.currentText()
+        criterion_kwargs = yaml.load(self.criterion_kwargs_textbox.text())
+        if criterion_kwargs is None:
+            criterion_kwargs = dict(reduce=False)
+            criterion = 'BCEWithLogitsLoss'
+        batch_size = int(self.batch_size_textbox.text()) if len(self.batch_size_textbox.text()) > 0 else 1
+
+        self.hparams = dict(optimizer_kwargs=optimizer_kwargs,
+                            optimizer_name=optimizer,
+                            criterion_kwargs=criterion_kwargs,
+                            criterion_name=criterion,
+                            batch_size=batch_size)
+
+        self.close()
 
 
 class NNClassGui(LabelingGui):
@@ -135,13 +185,12 @@ class NNClassGui(LabelingGui):
             """
             changing BatchSize 
             """
-            dlg = ParameterDlg(self.topLevelOperatorView, parent=self)
+            dlg = ParameterDlg(parent=self)
             dlg.exec_()
 
-            # classifier_key = self.drawer.comboBox.currentText()
-            self.batch_size = self.topLevelOperatorView.Batch_Size.value
+            self.topLevelOperatorView.send_hparams(dlg.hparams)
 
-        set_parameter = advanced_menu.addAction("Parameters...")
+        set_parameter = advanced_menu.addAction("Set hyperparameters")
         set_parameter.triggered.connect(settingParameter)
 
         def object_wizard():
@@ -149,7 +198,7 @@ class NNClassGui(LabelingGui):
             wizard.show()
             wizard.exec_()
 
-        advanced_menu.addAction("Create TikTorch Configuration").triggered.connect(object_wizard)
+        advanced_menu.addAction("Create TikTorch configuration").triggered.connect(object_wizard)
 
         menus += [advanced_menu]
 
@@ -457,7 +506,7 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.livePrediction.setEnabled(True)
 
 
-        self.topLevelOperatorView.ClassifierFactory.setValue(TikTorchLazyflowClassifierFactory(folder_path))
+        self.topLevelOperatorView.set_classifier(folder_path)
 
 
     def getFolderToOpen(cls, parent_window, defaultDirectory):
