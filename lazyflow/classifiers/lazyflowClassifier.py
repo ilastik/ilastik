@@ -134,7 +134,8 @@ class LazyflowPixelwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object))
         return obj
 
     @abc.abstractmethod
-    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
+    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None,
+                                   image_ids=None):
         """
         Create a new classifier and train it with the given list of feature images and the given list of label images.
         Generally, it is assumed that the channel dimension is the LAST axis for each image.  

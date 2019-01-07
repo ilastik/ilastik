@@ -21,6 +21,8 @@
 ###############################################################################
 import os
 import pickle as pickle
+import subprocess
+import sys
 import tempfile
 import yaml
 
@@ -46,8 +48,9 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     # The version is used to determine compatibility of pickled classifier factories.
     # You must bump this if any instance members are added/removed/renamed.
     VERSION = 1
+    tikTorchServer_process = None
 
-    def __init__(self, tiktorch_config_path, hyperparameter_config_path=None):
+    def __init__(self, tiktorch_config_path, hyperparameter_config_path=None, run_locally=True):
         self._filename = tiktorch_config_path  # DELETE this attribute
         # Privates
         self._tikTorchClient = None
@@ -56,7 +59,18 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         self._opReorderAxes.AxisOrder.setValue('zcyx')
 
         # Publics
+        if run_locally:
+            self.start_local_server()
+
         self.tikTorchClient = TikTorchClient(tiktorch_config_path)
+
+    @classmethod
+    def start_local_server(cls, **kwargs):
+        if cls.tikTorchServer_process is None or cls.tikTorchServer_process.poll() is not None:
+            logger.info('Starting local TikTorchServer...')
+            cls.tikTorchServer_process = subprocess.Popen(
+                [sys.executable, '-c', 'from tiktorch.server import TikTorchServer;TikTorchServer().listen()'],
+                stdout=sys.stdout)
 
     @property
     def tikTorchClient(self):
@@ -91,7 +105,8 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     def send_hparams(self, hparams):
         self.tikTorchClient.set_hparams(hparams)
 
-    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
+    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None,
+                                   image_ids=None):
         logger.debug('Loading pytorch network from {}'.format(self._filename))
         assert self.tikTorchClient is not None, "TikTorchLazyflowClassifierFactory not properly initialized."
 
@@ -109,7 +124,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
             # TODO: check whether loaded network has the same number of classes as specified in ilastik!
             self.tikTorchClient.resume()
-            self._tikTorchClient.train(reordered_feature_images, reordered_labels)
+            self._tikTorchClient.train(reordered_feature_images, reordered_labels, image_ids)
 
             logger.info(self.description)
 
@@ -137,12 +152,10 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         return self.tikTorchClient.dry_run(max_shape, train)
 
     def get_halo_shape(self, data_axes='zyxc'):
-        halo = self.tikTorchClient.get('halo')
-        if len(data_axes) == 4:
-            return (0, 32, 32, 0)
-        # FIXME: assuming 'yxc' !
-        elif len(data_axes) == 3:
-            return (32, 32, 0)
+        # halo = self.tikTorchClient.get('halo')
+        logger.warning('Using hardcoded halo')
+        halo = {'t': 0, 'c': 0, 'z': 0, 'y': 32, 'x': 32}
+        return tuple(halo[axis] for axis in data_axes)
 
     @property
     def description(self):
