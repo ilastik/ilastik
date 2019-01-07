@@ -54,6 +54,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         self._filename = tiktorch_config_path  # DELETE this attribute
         # Privates
         self._tikTorchClient = None
+        self._tikTorchClassifier = None
         self._train_model = None
         self._opReorderAxes = OpReorderAxes(graph=Graph())
         self._opReorderAxes.AxisOrder.setValue('zcyx')
@@ -97,10 +98,14 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     def pause_training_process(self):
         if self.tikTorchClient.training_process_is_running():
             self.tikTorchClient.pause()
+        else:
+            logger.debug('tikTorchClient cannot be paused. (training process not running)')
 
     def resume_training_process(self):
         if self.tikTorchClient.training_process_is_running():
             self.tikTorchClient.resume()
+        else:
+            logger.debug('tikTorchClient cannot be resumed. (training process not running)')
 
     def send_hparams(self, hparams):
         self.tikTorchClient.set_hparams(hparams)
@@ -110,25 +115,34 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         logger.debug('Loading pytorch network from {}'.format(self._filename))
         assert self.tikTorchClient is not None, "TikTorchLazyflowClassifierFactory not properly initialized."
 
+
         if self.train_model:
-            reordered_feature_images = []
-            reordered_labels = []
-            for i in range(len(feature_images)):
-                self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_images[i], axistags=axistags))
-                self._opReorderAxes.AxisOrder.setValue('czyx')
-                reordered_feature_images.append(self._opReorderAxes.Output([]).wait())
+            self.update(feature_images, label_images, axistags, image_ids)
+            self._tikTorchClient.resume()
+        else:
+            self.update([], [], [])
 
-                self._opReorderAxes.Input.setValue(vigra.VigraArray(label_images[i], axistags=axistags))
-                self._opReorderAxes.AxisOrder.setValue('czyx')
-                reordered_labels.append(self._opReorderAxes.Output([]).wait())
+        logger.info(self.description)
 
-            # TODO: check whether loaded network has the same number of classes as specified in ilastik!
-            self.tikTorchClient.resume()
-            self._tikTorchClient.train(reordered_feature_images, reordered_labels, image_ids)
+        if self._tikTorchClassifier is None:
+            self._tikTorchClassifier = TikTorchLazyflowClassifier(self.tikTorchClient, self._filename)
 
-            logger.info(self.description)
+        return self._tikTorchClassifier
 
-        return TikTorchLazyflowClassifier(self.tikTorchClient, self._filename)
+    def update(self, feature_images, label_images, axistags=None, image_ids=None):
+        reordered_feature_images = []
+        reordered_labels = []
+        for i in range(len(feature_images)):
+            self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_images[i], axistags=axistags))
+            self._opReorderAxes.AxisOrder.setValue('czyx')
+            reordered_feature_images.append(self._opReorderAxes.Output([]).wait())
+
+            self._opReorderAxes.Input.setValue(vigra.VigraArray(label_images[i], axistags=axistags))
+            self._opReorderAxes.AxisOrder.setValue('czyx')
+            reordered_labels.append(self._opReorderAxes.Output([]).wait())
+
+        # TODO: check whether loaded network has the same number of classes as specified in ilastik!
+        self._tikTorchClient.train(reordered_feature_images, reordered_labels, image_ids)
 
     @staticmethod
     def get_view_with_axes(in_array: numpy.ndarray, in_axiskeys: str, out_axiskeys: str) -> vigra.VigraArray:
