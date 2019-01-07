@@ -21,47 +21,62 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
-import sys
 import os
+import pathlib
+import sys
+from typing import Iterable
 
-def _clean_paths( ilastik_dir ):
-    # remove undesired paths from PYTHONPATH and add ilastik's submodules
-    pythonpath = [k for k in sys.path if k.startswith(ilastik_dir)]
-    for k in ['/ilastik/lazyflow', '/ilastik/volumina', '/ilastik/ilastik']:
-        new_path = ilastik_dir + k.replace('/', os.path.sep)
-        if os.path.isdir(new_path):
-            pythonpath.append(new_path)
-    sys.path = pythonpath
+
+def _env_list(name: str, sep: str = os.pathsep) -> Iterable[str]:
+    """Items from the environment variable, delimited by separator.
+
+    Empty sequence if the variable is not set.
+    """
+    value = os.environ.get(name, '')
+    if not value:
+        return []
+    return value.split(sep)
+
+
+def _clean_paths(root: pathlib.Path) -> None:
+    def issubdir(path):
+        """Whether path is equal to or is a subdirectory of root."""
+        path = pathlib.PurePath(path)
+        return path == root or any(parent == root for parent in path.parents)
+
+    def subdirs(*suffixes):
+        """Valid subdirectories of root."""
+        paths = map(root.joinpath, suffixes)
+        return [str(p) for p in paths if p.is_dir()]
+
+    def isvalidpath_win(path):
+        """Whether an element of PATH is "clean" on Windows."""
+        patterns = '*/cplex/*', '*/guirobi/*', '/windows/system32/*'
+        return any(map(pathlib.PurePath(path).match, patterns))
+
+    # Remove undesired paths from PYTHONPATH and add ilastik's submodules.
+    sys_path = list(filter(issubdir, sys.path))
+    sys_path += subdirs('ilastik/lazyflow', 'ilastik/volumina', 'ilastik/ilastik')
+    sys.path = sys_path
 
     if sys.platform.startswith('win'):
-        # empty PATH except for gurobi and CPLEX and add ilastik's installation paths
-        path_var = os.environ.get('PATH')
-        if path_var is None:
-            path_array = []
-        else:
-            path_array = path_var.split(os.pathsep)
-        path = [k for k in path_array \
-                   if k.count('CPLEX') > 0 or k.count('gurobi') > 0 or \
-                      k.count('windows\\system32') > 0]
-        for k in ['/Qt4/bin', '/Library/bin', '/python', '/bin']:
-            new_path = ilastik_dir + k.replace('/', os.path.sep)
-            if os.path.isdir(new_path):
-                path.append(new_path)
+        # Empty PATH except for gurobi and CPLEX and add ilastik's installation paths.
+        path = list(filter(isvalidpath_win, _env_list('PATH')))
+        path += subdirs('Qt4/bin', 'Library/bin', 'python', 'bin')
         os.environ['PATH'] = os.pathsep.join(reversed(path))
     else:
-        # clean LD_LIBRARY_PATH and add ilastik's installation paths
-        # (gurobi and CPLEX are supposed to be located there as well)
-        path = [k for k in os.environ['LD_LIBRARY_PATH'] if k.startswith(ilastik_dir)]
-        
-        for k in ['/lib']:
-            path.append(ilastik_dir + k.replace('/', os.path.sep))
-        os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(path))
+        # Clean LD_LIBRARY_PATH and add ilastik's installation paths
+        # (gurobi and CPLEX are supposed to be located there as well).
+        ld_lib_path = list(filter(issubdir, _env_list('LD_LIBRARY_PATH')))
+        ld_lib_path += subdirs('lib')
+        os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(ld_lib_path))
+
 
 def main():
-    if "--clean_paths" in sys.argv:
-        this_path = os.path.dirname(__file__)
-        ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
-        _clean_paths( ilastik_dir )
+    if '--clean_paths' in sys.argv:
+        script_dir = pathlib.Path(__file__).parent
+        ilastik_root = script_dir.parent.parent
+        _clean_paths(ilastik_root)
 
     # Allow to start-up by double-clicking a project file.
     if len(sys.argv) == 2 and sys.argv[1].endswith('.ilp'):
@@ -74,5 +89,6 @@ def main():
     # in headless mode the headless shell is returned and its project manager still has an open project file
     hShell.closeCurrentProject()
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main()
