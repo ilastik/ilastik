@@ -39,12 +39,13 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QDialog,
 )
-from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QColor, QIcon
 
 from ilastik.applets.networkClassification.tiktorchWizard import MagicWizard
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import bind
+from ilastik.shell.gui.iconMgr import ilastikIcons
 
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 
@@ -171,33 +172,43 @@ class NNClassGui(LabelingGui):
         self.parentApplet = parentApplet
         self.classifiers = OrderedDict()
 
-        self.interactiveModeActive = False
-        self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
+        self.liveTraining = False
+        self.livePrediction = False
 
         self.__cleanup_fns = []
 
-        self.labelingDrawerUi.TrainingCheckbox.setEnabled(False)
-        self.labelingDrawerUi.UpdateButton.toggled.connect(self.toggleInteractive)
-        self.labelingDrawerUi.UpdateButton.setEnabled(False)
+        self.labelingDrawerUi.liveTraining.setEnabled(False)
+        self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.System))
+        self.labelingDrawerUi.liveTraining.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.labelingDrawerUi.liveTraining.toggled.connect(self.toggleLiveTraining)
 
-        self._initAppletDrawerUic()
+        self.labelingDrawerUi.livePrediction.setEnabled(False)
+        self.labelingDrawerUi.livePrediction.setIcon(QIcon(ilastikIcons.Play))
+        self.labelingDrawerUi.livePrediction.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.labelingDrawerUi.livePrediction.toggled.connect(self.toggleLivePrediction)
+
+        self.labelingDrawerUi.comboBox.clear()
+        self.labelingDrawerUi.comboBox.hide()  # atm only a single model is supported
+        self.labelingDrawerUi.addModel.clicked.connect(self.addModel)
+
+        if self.topLevelOperatorView.ModelPath.ready():
+            modelPathList = list(self.topLevelOperatorView.ModelPath.value.values())
+            #TODO: save more networks
+            # for modelPath in modelPathList:
+            #     self.add_NN_classifiers(modelPath)
+            self.add_NN_classifiers(modelPathList[0])
+
         self.initViewerControls()
         self.initViewerControlUi()
 
         self.labelingDrawerUi.labelListView.support_merges = True
-
-        self.labelingDrawerUi.UpdateButton.toggled.connect(self.toggleInteractive)
-        #self.labelingDrawerUi.UpdateButton.setEnabled(False)
-        self.labelingDrawerUi.UpdateButton.setEnabled(True)
-
         self.batch_size = self.topLevelOperatorView.Batch_Size.value
-
         num_label_classes = self._labelControlUi.labelListModel.rowCount()
         self.labelingDrawerUi.labelListView.allowDelete = num_label_classes > self.minLabelNumber
         self.labelingDrawerUi.AddLabelButton.setEnabled((num_label_classes < self.maxLabelNumber))
 
         def FreezePredDirty():
-            self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
+            self.toggleLivePrediction(not self.topLevelOperatorView.FreezePredictions.value)
 
         self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
         self.__cleanup_fns.append(
@@ -211,38 +222,19 @@ class NNClassGui(LabelingGui):
 
         self.forceAtLeastTwoLabels(True)
 
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.updatePredictions)
+        self.invalidatePredictionsTimer = QTimer()
+        self.invalidatePredictionsTimer.timeout.connect(self.updatePredictions)
 
+    def updatePredictions(self, forceDirty=False):
+        if forceDirty:
+            self.topLevelOperatorView.classifier_cache.Output.setDirty()
+        else:
+            pmap_source = self.topLevelOperatorView.PredictionProbabilities.upstream_slot
+            while pmap_source.upstream_slot is not None:
+                pmap_source = pmap_source.upstream_slot
 
-    def updatePredictions(self):
-        self.topLevelOperatorView.classifier_cache.Output.setDirty()
+            pmap_source.setValue(pmap_source[:].wait() * .9)
 
-    def _initAppletDrawerUic(self, drawerPath=None):
-        """
-        Load the ui file for the applet drawer, which we own.
-        """
-        self.labelingDrawerUi.comboBox.clear()
-        self.labelingDrawerUi.comboBox.hide()  # atm only a single model is supported
-        self.labelingDrawerUi.addModel.clicked.connect(self.addModels)
-
-        if self.topLevelOperatorView.ModelPath.ready():
-            modelPathList = list(self.topLevelOperatorView.ModelPath.value.values())
-            #TODO: save more networks
-            # for modelPath in modelPathList:
-            #     self.add_NN_classifiers(modelPath)
-            self.add_NN_classifiers(modelPathList[0])
-
-        def nextCheckState(checkbox):
-            """
-            sets the checkbox to the next state
-            """
-            checkbox.setChecked(not checkbox.isChecked())
-
-        self.labelingDrawerUi.TrainingCheckbox.nextCheckState = partial(
-            nextCheckState, self.labelingDrawerUi.TrainingCheckbox
-        )
-        self.labelingDrawerUi.TrainingCheckbox.clicked.connect(self.handleShowTrainingClicked)
 
     def initViewerControls(self):
         """
@@ -290,7 +282,7 @@ class NNClassGui(LabelingGui):
                 predictionLayer = AlphaModulatedLayer(
                     predictsrc, tintColor=ref_label.pmapColor(), range=(0.0, 1.0), normalize=(0.0, 1.0)
                 )
-                predictionLayer.visible = self.labelingDrawerUi.UpdateButton.isChecked()
+                predictionLayer.visible = self.labelingDrawerUi.livePrediction.isChecked()
                 predictionLayer.opacity = 0.25
                 predictionLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
@@ -352,12 +344,12 @@ class NNClassGui(LabelingGui):
 
         return layers
 
-
-    def toggleInteractive(self, checked):
-        logger.debug("toggling interactive mode to '%r'" % checked)
+    def toggleLivePrediction(self, checked):
+        assert self.topLevelOperatorView.ClassifierFactory.ready()
+        logger.debug(f'toggling live prediction mode to {checked}')
 
         # If we're changing modes, enable/disable our controls and other applets accordingly
-        if self.interactiveModeActive != checked:
+        if self.livePrediction != checked:
             if checked:
                 self.labelingDrawerUi.labelListView.allowDelete = False
                 self.labelingDrawerUi.AddLabelButton.setEnabled(False)
@@ -366,36 +358,37 @@ class NNClassGui(LabelingGui):
                 self.labelingDrawerUi.labelListView.allowDelete = (num_label_classes > self.minLabelNumber)
                 self.labelingDrawerUi.AddLabelButton.setEnabled((num_label_classes < self.maxLabelNumber))
 
-        self.interactiveModeActive = checked
+        self.livePrediction = checked
 
         self.topLevelOperatorView.FreezePredictions.setValue(not checked)
-        self.labelingDrawerUi.UpdateButton.setChecked(checked)
-        
+        self.labelingDrawerUi.livePrediction.setChecked(checked)
+
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked(True)
             self.handleShowPredictionsClicked()
-            self.topLevelOperatorView.classifier_cache.Output.setDirty()
-
-        if self.topLevelOperatorView.ClassifierFactory.ready():
-            model = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
-            model.train_model = checked
-            model.train_model &= self.labelingDrawerUi.TrainingCheckbox.isChecked()
-
-            if not checked:
-                model.pause_training_process()
-            elif checked and model.train_model:
-                model.resume_training_process()
-
-            if checked and self.labelingDrawerUi.TrainingCheckbox.isChecked():
-                self.timer.start(20000)
-            else:
-                self.timer.stop()
 
         # Notify the workflow that some applets may have changed state now.
         # (For example, the downstream pixel classification applet can
         #  be used now that there are features selected)
         self.parentApplet.appletStateUpdateRequested()
+
+    def toggleLiveTraining(self, checked):
+        assert self.topLevelOperatorView.ClassifierFactory.ready()
+
+        if self.liveTraining != checked:
+            model = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
+            model.train_model = checked
+            if checked:
+                self.toggleLivePrediction(True)
+                model.resume_training_process()
+                self.invalidatePredictionsTimer.start(20000)  # start updating regularly
+            else:
+                model.pause_training_process()
+                self.invalidatePredictionsTimer.stop()
+                self.updatePredictions(True)  # update one last time
+
+            self.liveTraining = checked
 
     @pyqtSlot()
     def handleShowPredictionsClicked(self):
@@ -406,11 +399,6 @@ class NNClassGui(LabelingGui):
         for layer in self.layerstack:
             if "Prediction" in layer.name:
                 layer.visible = checked
-
-    @pyqtSlot()
-    def handleShowTrainingClicked(self):
-        pass
-
 
     @pyqtSlot()
     def updateShowPredictionCheckbox(self):
@@ -432,45 +420,43 @@ class NNClassGui(LabelingGui):
         else:
             self._viewerControlUi.checkShowPredictions.setCheckState(Qt.PartiallyChecked)
 
-    def addModels(self):
+    def addModel(self):
         """
-        When AddModels button is clicked.
+        When AddModel button is clicked.
         """
-        mostRecentImageFile = PreferencesManager().get('DataSelection', 'recent models')
-        mostRecentImageFile = str(mostRecentImageFile)
-        if mostRecentImageFile is not None:
-            defaultDirectory = os.path.split(mostRecentImageFile)[0]
-        else:
-            defaultDirectory = os.path.expanduser('~')
+        # open dialog in recent model folder if possible
+        folder = PreferencesManager().get('DataSelection', 'recent model')
+        if folder is None:
+            folder = os.path.expanduser('~')
 
-        fileNames = self.getFolderToOpen(self, defaultDirectory)
+        # get folder from user
+        folder = self.getFolderToOpen(self, folder)
 
-        if len(fileNames) > 0:
-            self.add_NN_classifiers(fileNames)
-
+        if folder:
+            # user did not cancel selection
+            self.labelingDrawerUi.addModel.setEnabled(False)
+            self.add_NN_classifiers(folder)
+            PreferencesManager().set('DataSelection', 'recent model', folder)
+            # disable adding another model TODO: handle new model in add_NN_Classifier
+            self.labelingDrawerUi.addModel.setToolTip('Switching network model currently not supported.')
+            # self.labelingDrawerUi.addModel.setEnabled(True)
+            # self.labelingDrawerUi.addModel.setChecked(False)
 
     def add_NN_classifiers(self, folder_path):
         """
         Adds the chosen FilePath to the classifierDictionary and to the ComboBox
         """
         modelname = os.path.basename(os.path.normpath(folder_path))
-        # disable adding another model
-        self.labelingDrawerUi.addModel.setEnabled(False)
-        self.labelingDrawerUi.addModel.setChecked(True)
         self.labelingDrawerUi.addModel.setText(f'{modelname} loaded')
-        self.labelingDrawerUi.addModel.setToolTip('Switching network model currently not supported.')
-
         self.classifiers[modelname] = folder_path # Misleading! this attribute is an OrderedDict and contains the path to the TikTorch config and not the classifier/network itself.
 
         # clear first the comboBox or addItems will duplicate names
         self.labelingDrawerUi.comboBox.clear()
         self.labelingDrawerUi.comboBox.addItems(self.classifiers)
-        self.labelingDrawerUi.TrainingCheckbox.setEnabled(True)
-        self.labelingDrawerUi.TrainingCheckbox.setCheckState(Qt.Unchecked)
+        self.labelingDrawerUi.liveTraining.setEnabled(True)
+        self.labelingDrawerUi.livePrediction.setEnabled(True)
 
-        self.labelingDrawerUi.UpdateButton.setEnabled(True)
 
-        self.topLevelOperatorView.ModelPath.setValue(self.classifiers) # Check if attribute ModelPath is really needed. If yes 'self.classifier' should be of type 'str' and not 'OrderedDict'
         self.topLevelOperatorView.ClassifierFactory.setValue(TikTorchLazyflowClassifierFactory(folder_path))
 
 
@@ -479,11 +465,9 @@ class NNClassGui(LabelingGui):
         opens a QFileDialog for importing files
         """
         options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
-        folder_names = QFileDialog.getExistingDirectory(
+        return QFileDialog.getExistingDirectory(
             parent_window, "Select Model", defaultDirectory, options=options
         )
-
-        return folder_names
 
     @pyqtSlot()
     @threadRouted
@@ -494,7 +478,7 @@ class NNClassGui(LabelingGui):
             enabled &= len(self.topLevelOperatorView.LabelNames.value) >= 2
             enabled &= numpy.all(numpy.asarray(self.topLevelOperatorView.InputImages.meta.shape) > 0)
 
-            self.labelingDrawerUi.UpdateButton.setChecked(False)
+            self.labelingDrawerUi.livePrediction.setChecked(False)
             self._viewerControlUi.checkShowPredictions.setChecked(False)
             self.handleShowPredictionsClicked()
 
