@@ -30,6 +30,8 @@ from lazyflow.operators.tiktorchClassifierOperators import OpTikTorchTrainClassi
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
+from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
+
 BLOCKSHAPE = (1, 256, 256, 1) #(1, 188, 188, 1)
 
 class OpNNClassification(Operator):
@@ -362,44 +364,6 @@ class OpBlockShape(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.BlockShapeTrain.setDirty()
         self.BlockShapeInference.setDirty()
-
-
-class OpLabelPipeline(Operator):
-    RawImage = InputSlot()
-    LabelInput = InputSlot()
-    DeleteLabel = InputSlot()
-    BlockShape = InputSlot()
-
-    Output = OutputSlot()
-    nonzeroBlocks = OutputSlot()
-
-    def __init__(self, *args, **kwargs):
-        super(OpLabelPipeline, self).__init__(*args, **kwargs)
-
-        self.opLabelArray = OpCompressedUserLabelArray(parent=self)
-        self.opLabelArray.Input.connect(self.LabelInput)
-        self.opLabelArray.eraser.setValue(100)
-        self.opLabelArray.deleteLabel.connect(self.DeleteLabel)
-        self.opLabelArray.blockShape.connect(self.BlockShape)
-
-        # Connect external outputs to their internal sources
-        self.Output.connect(self.opLabelArray.Output)
-        self.nonzeroBlocks.connect(self.opLabelArray.nonzeroBlocks)
-
-    def setupOutputs(self):
-        pass
-
-    def setInSlot(self, slot, subindex, roi, value):
-        # Nothing to do here: All inputs that support __setitem__
-        #   are directly connected to internal operators.
-        pass
-
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
-
-    def propagateDirty(self, slot, subindex, roi):
-        # Our output changes when the input changed shape, not when it becomes dirty.
-        pass
 
 
 class OpPredictionPipeline(Operator):
