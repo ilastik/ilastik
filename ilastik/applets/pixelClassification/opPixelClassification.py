@@ -361,11 +361,13 @@ class OpPixelClassification( Operator ):
         for laneIndex in range(len(self.InputImages)):
             self.getLane( laneIndex ).opLabelPipeline.opLabelArray.clearLabel(label_value)
 
+
 class OpLabelPipeline( Operator ):
     RawImage = InputSlot()
     LabelInput = InputSlot()
     DeleteLabel = InputSlot()
-    
+    BlockShape = InputSlot(optional=True)
+
     Output = OutputSlot()
     nonzeroBlocks = OutputSlot()
     
@@ -375,13 +377,13 @@ class OpLabelPipeline( Operator ):
         self.opLabelArray = OpCompressedUserLabelArray( parent=self )
         self.opLabelArray.Input.connect( self.LabelInput )
         self.opLabelArray.eraser.setValue(100)
-
         self.opLabelArray.deleteLabel.connect( self.DeleteLabel )
+        self.opLabelArray.blockShape.connect(self.BlockShape)
 
         # Connect external outputs to their internal sources
         self.Output.connect( self.opLabelArray.Output )
         self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
-    
+
     def setupOutputs(self):
         tagged_shape = self.RawImage.meta.getTaggedShape()
         # labels are created for one channel (i.e. the label) and only in the
@@ -389,10 +391,13 @@ class OpLabelPipeline( Operator ):
         tagged_shape['c'] = 1
         if 't' in tagged_shape:
             tagged_shape['t'] = 1
-        
-        # Aim for blocks that are roughly 20px
-        block_shape = determineBlockShape( list(tagged_shape.values()), 40**3 )
-        self.opLabelArray.blockShape.setValue( block_shape )
+
+        # determine BlockShape if left unconnected (also considering the wrapped op if it exists)
+        if not self.BlockShape.connected() or (isinstance(self.parent, OperatorWrapper) and
+                                               not self.BlockShape.upstream_slot.connected()):
+            # Aim for blocks that are roughly 20px
+            block_shape = determineBlockShape(list(tagged_shape.values()), 40**3)
+            self.BlockShape.setValue(block_shape)
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
