@@ -253,6 +253,10 @@ class MulticutGuiMixin(object):
             op = self.__topLevelOperatorView
             self.update_button.setEnabled( op.FreezeCache.value )
             self.live_multicut_button.setChecked( not op.FreezeCache.value )
+            if op.FreezeCache.value:
+                self.live_multicut_button.setIcon(QIcon(ilastikIcons.Play))
+            else:
+                self.live_multicut_button.setIcon(QIcon(ilastikIcons.Pause))
             self.beta_box.setValue( op.Beta.value )
 
             solver_name = op.SolverName.value

@@ -302,6 +302,11 @@ class EdgeTrainingGui(LayerViewerGui):
             op = self.topLevelOperatorView
             self.train_from_gt_button.setEnabled( op.GroundtruthSegmentation.ready() )
             self.live_update_button.setChecked( not op.FreezeClassifier.value )
+            if op.FreezeClassifier.value:
+                self.live_update_button.setIcon(QIcon(ilastikIcons.Play))
+            else:
+                self.live_update_button.setIcon(QIcon(ilastikIcons.Pause))
+
 
     def configure_operator_from_gui(self):
         if self._currently_updating:
