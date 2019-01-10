@@ -269,6 +269,10 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setChecked(val)
         if val:
             self.showPredictions = True
+            self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Pause))
+        else:
+            self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
+
         self.labelMode = not val
         self.op.FreezePredictions.setValue(not val)
 

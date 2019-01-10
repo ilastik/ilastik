@@ -660,22 +660,22 @@ class CountingGui(LabelingGui):
             if not self.topLevelOperatorView.FeatureImages.ready() \
             or self.topLevelOperatorView.FeatureImages.meta.shape is None:
                 self.labelingDrawerUi.liveUpdateButton.setChecked(False)
+                self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
                 mexBox.exec_()
                 return
 
         if self.interactiveModeActive != checked:
+            self.interactiveModeActive = checked
+            self.labelingDrawerUi.labelListView.allowDelete = not checked
+            self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
             if checked:
-                self.labelingDrawerUi.labelListView.allowDelete = False
-        #        self.labelingDrawerUi.AddLabelButton.setEnabled( False )
+                self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Pause))
             else:
-                self.labelingDrawerUi.labelListView.allowDelete = True
-        #        self.labelingDrawerUi.AddLabelButton.setEnabled( True )
-        self.interactiveModeActive = checked
-#        self.labelingDrawerUi.savePredictionsButton.setEnabled(not checked)
+                self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
+
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
-        self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
 
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
@@ -1092,10 +1092,15 @@ class CountingGui(LabelingGui):
     def updateSum(self, *args, **kw):
         state = self.labelingDrawerUi.liveUpdateButton.isChecked()
         self.labelingDrawerUi.liveUpdateButton.setChecked(True)
+        self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Pause))
         density = self.op.OutputSum[...].wait()
         strdensity = "{0:.2f}".format(density[0])
         self._labelControlUi.CountText.setText(strdensity)
         self.labelingDrawerUi.liveUpdateButton.setChecked(state)
+        if state:
+            self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Pause))
+        else:
+            self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
 
 
 #==============================================================================

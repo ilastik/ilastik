@@ -430,7 +430,7 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.labelListView.support_merges = True
 
         self.labelingDrawerUi.liveUpdateButton.setEnabled(False)
-        self.labelingDrawerUi.liveUpdateButton.setIcon( QIcon(ilastikIcons.Play) )
+        self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
 
@@ -729,6 +729,7 @@ class PixelClassificationGui(LabelingGui):
             if not self.topLevelOperatorView.FeatureImages.ready() \
             or self.topLevelOperatorView.FeatureImages.meta.shape==None:
                 self.labelingDrawerUi.liveUpdateButton.setChecked(False)
+                self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
                 self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
@@ -737,21 +738,22 @@ class PixelClassificationGui(LabelingGui):
 
         # If we're changing modes, enable/disable our controls and other applets accordingly
         if self.interactiveModeActive != checked:
+            self.interactiveModeActive = checked
             if checked:
-                self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
+                self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Pause))
                 self.labelingDrawerUi.labelListView.allowDelete = False
                 self.labelingDrawerUi.AddLabelButton.setEnabled( False )
             else:
+                self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
                 num_label_classes = self._labelControlUi.labelListModel.rowCount()
                 self.labelingDrawerUi.labelListView.allowDelete = ( num_label_classes > self.minLabelNumber )
                 self.labelingDrawerUi.AddLabelButton.setEnabled( ( num_label_classes < self.maxLabelNumber ) )
-                self.labelingDrawerUi.suggestFeaturesButton.setEnabled(True)
 
-        self.interactiveModeActive = checked
+            self.labelingDrawerUi.suggestFeaturesButton.setEnabled(not checked)
+            self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
 
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
-        self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
-        #self.labelingDrawerUi.suggestFeaturesButton.setEnabled(checked)
+
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked( True )
@@ -822,6 +824,7 @@ class PixelClassificationGui(LabelingGui):
         
         if not enabled:
             self.labelingDrawerUi.liveUpdateButton.setChecked(False)
+            self.labelingDrawerUi.liveUpdateButton.setIcon(QIcon(ilastikIcons.Play))
             self._viewerControlUi.checkShowPredictions.setChecked(False)
             self._viewerControlUi.checkShowSegmentation.setChecked(False)
             self.handleShowPredictionsClicked()
