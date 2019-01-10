@@ -15,11 +15,11 @@ about: Let us know about the missing features
 
 <!-- Why having this feature is important? -->
 
+<!-- The following sections are not mandatory and can be deleted.
+
 ## Drawbacks
 
-<!-- What are the possible downsides of this feature? -->
-
-<!-- The following sections are not mandatory and can be deleted.
+What are the possible downsides of this feature?
 
 ## Scope
 
