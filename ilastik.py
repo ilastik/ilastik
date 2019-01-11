@@ -18,13 +18,20 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#          http://ilastik.org/license.html
 ###############################################################################
 
 import os
 import pathlib
+import shlex
 import sys
-from typing import Iterable
+from typing import (
+    Iterable,
+    Mapping,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 
 def _env_list(name: str, sep: str = os.pathsep) -> Iterable[str]:
@@ -72,6 +79,40 @@ def _clean_paths(root: pathlib.Path) -> None:
         os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(ld_lib_path))
 
 
+def _parse_internal_config(path: Union[str, os.PathLike]) -> Tuple[Sequence[str], Mapping[str, str]]:
+    """Parse options from the internal config file.
+
+    Args:
+        path: Path to the config file.
+
+    Returns:
+        Additional command-line options and environment variable assignments.
+        Both are empty if the config file does not exist.
+
+    Raises:
+        ValueError: Config file is malformed.
+    """
+    path = pathlib.Path(path)
+    if not path.exists():
+        return [], {}
+
+    opts = shlex.split(path.read_text(), comments=True)
+
+    sep_idx = tuple(i for i, opt in enumerate(opts) if opt.startswith(";"))
+    if len(sep_idx) != 1:
+        raise ValueError(f"{path} should have one and only one semicolon separator")
+    sep_idx = sep_idx[0]
+
+    env_vars = {}
+    for opt in opts[:sep_idx]:
+        name, sep, value = opt.partition("=")
+        if not name or not sep:
+            raise ValueError(f"invalid environment variable assignment {opt!r}")
+        env_vars[name] = value
+
+    return opts[sep_idx+1:], env_vars
+
+
 def main():
     if '--clean_paths' in sys.argv:
         script_dir = pathlib.Path(__file__).parent
@@ -81,6 +122,10 @@ def main():
     # Allow to start-up by double-clicking a project file.
     if len(sys.argv) == 2 and sys.argv[1].endswith('.ilp'):
         sys.argv.insert(1, '--project')
+
+    arg_opts, env_vars = _parse_internal_config("internal-startup-options.cfg")
+    sys.argv[1:1] = arg_opts
+    os.environ.update(env_vars)
 
     import ilastik_main
     parsed_args, workflow_cmdline_args = ilastik_main.parse_known_args()
