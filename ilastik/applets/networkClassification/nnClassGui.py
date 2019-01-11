@@ -227,7 +227,7 @@ class NNClassGui(LabelingGui):
         self.__cleanup_fns = []
 
         self.labelingDrawerUi.liveTraining.setEnabled(False)
-        self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.System))
+        self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.Play))
         self.labelingDrawerUi.liveTraining.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveTraining.toggled.connect(self.toggleLiveTraining)
 
@@ -399,18 +399,20 @@ class NNClassGui(LabelingGui):
 
         # If we're changing modes, enable/disable our controls and other applets accordingly
         if self.livePrediction != checked:
+            self.livePrediction = checked
+            self.labelingDrawerUi.livePrediction.setChecked(checked)
             if checked:
+                self.labelingDrawerUi.livePrediction.setIcon(QIcon(ilastikIcons.Pause))
                 self.labelingDrawerUi.labelListView.allowDelete = False
                 self.labelingDrawerUi.AddLabelButton.setEnabled(False)
             else:
+                self.labelingDrawerUi.livePrediction.setIcon(QIcon(ilastikIcons.Play))
                 num_label_classes = self._labelControlUi.labelListModel.rowCount()
                 self.labelingDrawerUi.labelListView.allowDelete = (num_label_classes > self.minLabelNumber)
                 self.labelingDrawerUi.AddLabelButton.setEnabled((num_label_classes < self.maxLabelNumber))
 
-        self.livePrediction = checked
 
         self.topLevelOperatorView.FreezePredictions.setValue(not checked)
-        self.labelingDrawerUi.livePrediction.setChecked(checked)
 
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
@@ -426,18 +428,20 @@ class NNClassGui(LabelingGui):
         assert self.topLevelOperatorView.ClassifierFactory.ready()
 
         if self.liveTraining != checked:
+            self.liveTraining = checked
             model = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
             model.train_model = checked
             if checked:
+                self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.Pause))
                 self.toggleLivePrediction(True)
                 model.resume_training_process()
                 self.invalidatePredictionsTimer.start(20000)  # start updating regularly
             else:
+                self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.Play))
                 model.pause_training_process()
                 self.invalidatePredictionsTimer.stop()
                 self.updatePredictions(True)  # update one last time
 
-            self.liveTraining = checked
 
     @pyqtSlot()
     def handleShowPredictionsClicked(self):
@@ -528,6 +532,7 @@ class NNClassGui(LabelingGui):
             enabled &= numpy.all(numpy.asarray(self.topLevelOperatorView.InputImages.meta.shape) > 0)
 
             self.labelingDrawerUi.livePrediction.setChecked(False)
+            self.labelingDrawerUi.livePrediction.setIcon(QIcon(ilastikIcons.Play))
             self._viewerControlUi.checkShowPredictions.setChecked(False)
             self.handleShowPredictionsClicked()
 
