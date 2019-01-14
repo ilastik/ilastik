@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>515</width>
-    <height>319</height>
+    <width>545</width>
+    <height>390</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,22 +16,22 @@
   <widget class="QWidget" name="gridLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>30</x>
+     <x>40</x>
      <y>30</y>
-     <width>451</width>
-     <height>251</height>
+     <width>461</width>
+     <height>331</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
-     <widget class="QRadioButton" name="radioButton">
+     <widget class="QRadioButton" name="localServerButton">
       <property name="text">
        <string>Local server</string>
       </property>
      </widget>
     </item>
     <item row="2" column="0">
-     <widget class="QFrame" name="frame">
+     <widget class="QFrame" name="remoteServerBox">
       <property name="frameShape">
        <enum>QFrame::StyledPanel</enum>
       </property>
@@ -41,71 +41,99 @@
       <widget class="QWidget" name="gridLayoutWidget_2">
        <property name="geometry">
         <rect>
-         <x>30</x>
-         <y>10</y>
+         <x>40</x>
+         <y>30</y>
          <width>351</width>
          <height>181</height>
         </rect>
        </property>
        <layout class="QGridLayout" name="gridLayout_3">
         <item row="1" column="0">
-         <widget class="QLabel" name="label">
+         <widget class="QLabel" name="passwordLabel">
           <property name="text">
            <string>Password:</string>
           </property>
          </widget>
         </item>
         <item row="0" column="0">
-         <widget class="QLabel" name="label_2">
+         <widget class="QLabel" name="usernameLabel">
           <property name="text">
            <string>Username:</string>
           </property>
          </widget>
         </item>
         <item row="0" column="1">
-         <widget class="QLineEdit" name="lineEdit"/>
+         <widget class="QLineEdit" name="usernameLine"/>
         </item>
         <item row="1" column="1">
-         <widget class="QLineEdit" name="lineEdit_2"/>
+         <widget class="QLineEdit" name="passwordLine"/>
         </item>
         <item row="2" column="0">
-         <widget class="QLabel" name="label_3">
+         <widget class="QLabel" name="addressLabel">
           <property name="text">
            <string>Address:</string>
           </property>
          </widget>
         </item>
         <item row="3" column="0">
-         <widget class="QLabel" name="label_4">
+         <widget class="QLabel" name="portLabel">
           <property name="text">
            <string>Port:</string>
           </property>
          </widget>
         </item>
         <item row="4" column="0">
-         <widget class="QLabel" name="label_5">
+         <widget class="QLabel" name="metaPortLabel">
           <property name="text">
            <string>Meta port:</string>
           </property>
          </widget>
         </item>
         <item row="2" column="1">
-         <widget class="QLineEdit" name="lineEdit_3"/>
+         <widget class="QLineEdit" name="addressLine"/>
         </item>
         <item row="3" column="1">
-         <widget class="QLineEdit" name="lineEdit_4"/>
+         <widget class="QLineEdit" name="portLine"/>
         </item>
         <item row="4" column="1">
-         <widget class="QLineEdit" name="lineEdit_5"/>
+         <widget class="QLineEdit" name="metaPortLine"/>
         </item>
        </layout>
       </widget>
+      <widget class="QPushButton" name="saveButton">
+       <property name="geometry">
+        <rect>
+         <x>360</x>
+         <y>230</y>
+         <width>85</width>
+         <height>30</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Save</string>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="editButton">
+       <property name="geometry">
+        <rect>
+         <x>250</x>
+         <y>230</y>
+         <width>85</width>
+         <height>30</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Edit</string>
+       </property>
+      </widget>
       <zorder>gridLayoutWidget_2</zorder>
-      <zorder>radioButton_2</zorder>
+      <zorder>remoteServerButton</zorder>
+      <zorder>saveButton</zorder>
+      <zorder>editButton</zorder>
      </widget>
     </item>
     <item row="1" column="0">
-     <widget class="QRadioButton" name="radioButton_2">
+     <widget class="QRadioButton" name="remoteServerButton">
       <property name="text">
        <string>Remote server</string>
       </property>
