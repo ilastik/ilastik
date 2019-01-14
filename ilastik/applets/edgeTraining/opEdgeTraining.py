@@ -348,7 +348,16 @@ class OpPredictEdgeProbabilities(Operator):
             return
         
         logger.info("Predicting edge probabilities...")
-        feature_matrix = edge_features_df.iloc[:, 2:].values # Discard [sp1, sp2]
+        feature_matrix = edge_features_df.iloc[:, 2:].values  # Discard [sp1, sp2]
+        feature_names = edge_features_df.columns.values[2:]  # Discard [sp1, sp2]
+
+        if feature_names is not None:
+            # classifier and edge features might get out of sync
+            # If this happens, just return without probabilities and wait for either the classifier or the edge features
+            # to become dirty (according to which is obsolete here) and execute again.
+            if not all(elem in classifier.feature_names for elem in feature_names):
+                return
+
         assert feature_matrix.dtype == np.float32, "Unexpected feature dtype: {}".format( feature_matrix.dtype )
         probabilities = classifier.predict_probabilities(feature_matrix)[:,1]
         assert len(probabilities) == len(edge_features_df)
