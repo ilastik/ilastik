@@ -43,6 +43,38 @@ class ServerConfigGui(QWidget):
         self.topLevelOperator = topLevelOperatorView
 
         self._initCentralUic()
+        # Disable box that contains username, password ect. while
+        # local server (radio button) is activated
+        self.localServerButton.setChecked(True)
+
+        def localButtonState():
+            if self.localServerButton.isChecked():
+                self.remoteServerBox.setEnabled(False)
+        self.localServerButton.toggled.connect(localButtonState)
+
+        self.remoteServerButton.setChecked(False)
+
+        def remoteButtonState():
+            if self.remoteServerButton.isChecked():
+                self.remoteServerBox.setEnabled(True)
+        self.remoteServerButton.toggled.connect(remoteButtonState)
+
+        self.remoteServerBox.setEnabled(False)
+
+        def saveButtonState():
+            config = {}
+            for line in {'usernameLine', 'passwordLine', 'addressLine', 'portLine', 'metaPortLine'}:
+                attr = getattr(self, line)
+                attr.setEnabled(False)
+                config.update({line[:-4]: attr.text()})
+            self.topLevelOperator.setServerConfig(config)
+        self.saveButton.clicked.connect(saveButtonState)
+
+        def editButtonState():
+            for line in {'usernameLine', 'passwordLine', 'addressLine', 'portLine', 'metaPortLine'}:
+                getattr(self, line).setEnabled(True)
+        self.editButton.clicked.connect(editButtonState)
+
         self._initAppletDrawerUic()
 
         self._viewerControlWidgetStack = QStackedWidget(self)

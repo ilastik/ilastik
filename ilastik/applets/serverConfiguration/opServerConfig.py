@@ -31,6 +31,9 @@ class OpServerConfig(Operator):
     def __init__(self, *args, **kwargs):
         super(OpServerConfig, self).__init__(*args, **kwargs)
 
+    def setServerConfig(self, config: dict):
+        self.ServerConfigIn.setValue(config)
+
     def addLane(self, laneIndex):
         pass
 
