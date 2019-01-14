@@ -49,6 +49,7 @@ class ServerConfigGui(QWidget):
 
         def localButtonState():
             if self.localServerButton.isChecked():
+                self.topLevelOperator.setServerConfig()
                 self.remoteServerBox.setEnabled(False)
         self.localServerButton.toggled.connect(localButtonState)
 
@@ -66,7 +67,8 @@ class ServerConfigGui(QWidget):
             for line in {'usernameLine', 'passwordLine', 'addressLine', 'portLine', 'metaPortLine'}:
                 attr = getattr(self, line)
                 attr.setEnabled(False)
-                config.update({line[:-4]: attr.text()})
+                value = attr.text() if len(attr.text()) > 0 else None
+                config.update({line[:-4]: value})
             self.topLevelOperator.setServerConfig(config)
         self.saveButton.clicked.connect(saveButtonState)
 

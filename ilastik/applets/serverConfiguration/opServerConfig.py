@@ -26,13 +26,23 @@ class OpServerConfig(Operator):
     category = "top-level"
 
     ServerConfigIn = InputSlot()
-    ServerConfigOut = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpServerConfig, self).__init__(*args, **kwargs)
 
-    def setServerConfig(self, config: dict):
+    def setServerConfig(self, config: dict = {'username': None, 'password': None,
+                                              'address': '127.0.0.1', 'port': '29500',
+                                              'meta_port': '29501'}):
         self.ServerConfigIn.setValue(config)
+
+    def setupOutputs(self):
+        pass
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
+
+    def execute(self, slot, subindex, roi, result):
+        pass
 
     def addLane(self, laneIndex):
         pass

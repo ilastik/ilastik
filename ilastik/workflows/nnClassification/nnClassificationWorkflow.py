@@ -160,12 +160,13 @@ class NNClassificationWorkflow(Workflow):
         connects the operators for different lanes, each lane has a laneIndex starting at 0
         """
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opServerConfig = self.serverConfigApplet.topLevelOperator.getLane(laneIndex)
         opNNclassify = self.nnClassificationApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
-        # Input Image -> Feature Op
-        #         and -> Classification Op (for display)
+        # Input Image ->  Classification Op (for display)
         opNNclassify.InputImages.connect(opData.Image)
+        opNNclassify.ServerConfig.connect(opServerConfig.ServerConfigIn)
 
         # ReorderAxes is needed for specifying the original_shape meta tag , hack!
         op5Pred = OpReorderAxes(parent=self)
@@ -190,7 +191,9 @@ class NNClassificationWorkflow(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
+        opServerConfig = self.serverConfigApplet.topLevelOperator
         opNNClassification = self.nnClassificationApplet.topLevelOperator
+        serverConfig_finished = opNNClassification.ClassifierFactory.ready()
 
         opDataExport = self.dataExportApplet.topLevelOperator
 
@@ -206,6 +209,7 @@ class NNClassificationWorkflow(Workflow):
         batch_processing_busy = self.batchProcessingApplet.busy
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
+        self._shell.setAppletEnabled(self.serverConfigApplet, not serverConfig_finished)
         self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and not batch_processing_busy)
         self._shell.setAppletEnabled(
             self.dataExportApplet, predictions_ready and not batch_processing_busy and not live_update_active
