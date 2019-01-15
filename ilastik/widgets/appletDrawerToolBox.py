@@ -13,7 +13,6 @@ class AppletDrawerToolBox(QToolBox):
         self.ICON_OPEN = QIcon(ilastikIcons.ChevronDown)
 
         self._prevActive = None
-        self._originalText = {}
         self.currentChanged.connect(self._toggleCollapsedMarker)
 
     def _toggleCollapsedMarker(self, newActiveIdx):
@@ -67,6 +66,9 @@ class AppletBarManager(QObject):
         """
         Emit applet activated signal on toolbox switch
         """
+        if toolboxId == -1:
+            return
+
         appletId = self._appletIdByToolbarId[toolboxId]
         self.appletActivated.emit(appletId)
 
