@@ -26,6 +26,7 @@ import numpy
 
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
+from ilastik.applets.serverConfiguration import ServerConfigApplet
 from ilastik.applets.networkClassification import NNClassApplet, NNClassificationDataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
@@ -104,6 +105,9 @@ class NNClassificationWorkflow(Workflow):
         # see role constants, above
         opDataSelection.DatasetRoles.setValue(NNClassificationWorkflow.ROLE_NAMES)
 
+        self.serverConfigApplet = ServerConfigApplet(self)
+        opServerConfig = self.serverConfigApplet.topLevelOperator
+
         self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet")
         opClassify = self.nnClassificationApplet.topLevelOperator
 
@@ -125,6 +129,7 @@ class NNClassificationWorkflow(Workflow):
 
         # Expose for shell
         self._applets.append(self.dataSelectionApplet)
+        self._applets.append(self.serverConfigApplet)
         self._applets.append(self.nnClassificationApplet)
         self._applets.append(self.dataExportApplet)
         self._applets.append(self.batchProcessingApplet)
@@ -150,43 +155,18 @@ class NNClassificationWorkflow(Workflow):
             self, "Input Data", "Input Data", supportIlastik05Import=True, instructionText=data_instructions
         )
 
-    # def prepareForNewLane(self, laneIndex):
-    #     """
-    #     Overridden from Workflow base class.
-    #     Called immediately before a new lane is added to the workflow.
-    #     """
-    #     # When the new lane is added, dirty notifications will propagate throughout the entire graph.
-    #     # This means the classifier will be marked 'dirty' even though it is still usable.
-    #     # Before that happens, let's store the classifier, so we can restore it in handleNewLanesAdded(), below.
-    #     opNNClassification = self.nnClassificationApplet.topLevelOperator.getRealOperator()
-    #     print(dir(opNNClassification))
-    #     if opNNClassification.model_cache.ready():
-    #         self.stored_classifier = opNNClassification.model_cache.Output.value
-    #     else:
-    #         self.stored_classifier = None
-
-    # def handleNewLanesAdded(self):
-    #     """
-    #     Overridden from Workflow base class.
-    #     Called immediately after a new lane is added to the workflow and initialized.
-    #     """
-    #     # Restore classifier we saved in prepareForNewLane() (if any)
-    #     if self.stored_classifier:
-    #         self.nnClassificationApplet.topLevelOperator.model_cache.forceValue(self.stored_classifier)
-    #         # Release reference
-    #         self.stored_classifier = None
-
     def connectLane(self, laneIndex):
         """
         connects the operators for different lanes, each lane has a laneIndex starting at 0
         """
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opServerConfig = self.serverConfigApplet.topLevelOperator.getLane(laneIndex)
         opNNclassify = self.nnClassificationApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
-        # Input Image -> Feature Op
-        #         and -> Classification Op (for display)
+        # Input Image ->  Classification Op (for display)
         opNNclassify.InputImages.connect(opData.Image)
+        opNNclassify.ServerConfig.connect(opServerConfig.ServerConfigIn)
 
         # ReorderAxes is needed for specifying the original_shape meta tag , hack!
         op5Pred = OpReorderAxes(parent=self)
@@ -211,7 +191,9 @@ class NNClassificationWorkflow(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
+        opServerConfig = self.serverConfigApplet.topLevelOperator
         opNNClassification = self.nnClassificationApplet.topLevelOperator
+        serverConfig_finished = opNNClassification.ClassifierFactory.ready()
 
         opDataExport = self.dataExportApplet.topLevelOperator
 
@@ -227,6 +209,7 @@ class NNClassificationWorkflow(Workflow):
         batch_processing_busy = self.batchProcessingApplet.busy
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
+        self._shell.setAppletEnabled(self.serverConfigApplet, not serverConfig_finished)
         self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and not batch_processing_busy)
         self._shell.setAppletEnabled(
             self.dataExportApplet, predictions_ready and not batch_processing_busy and not live_update_active
@@ -277,22 +260,6 @@ class NNClassificationWorkflow(Workflow):
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
 
-    # def prepare_for_entire_export(self):
-    #     """
-    #     Assigned to DataExportApplet.prepare_for_entire_export
-    #     (See above.)
-    #     """
-    #     print("prepare_for_entire_export")
-    #     self.freeze_status = self.nnClassificationApplet.topLevelOperator.FreezePredictions.value
-    #     self.nnClassificationApplet.topLevelOperator.FreezePredictions.setValue(False)
-
-    # def post_process_entire_export(self):
-    #     """
-    #     Assigned to DataExportApplet.post_process_entire_export
-    #     (See above.)
-    #     """
-    #     print("post_process_entire_export")
-    #     self.nnClassificationApplet.topLevelOperator.FreezePredictions.setValue(self.freeze_status)
 
     def getBlockShape(self, model, halo_size):
         """
