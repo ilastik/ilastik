@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2019, the ilastik team
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -21,5 +21,6 @@
 from ilastik.applets.base.appletSerializer import AppletSerializer
 
 class ServerConfigSerializer(AppletSerializer):
+
     def __init__(self, projectFileGroupName, slots=None, operator=None):
         super(ServerConfigSerializer, self).__init__(projectFileGroupName, slots, operator)
