@@ -1,7 +1,7 @@
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
-#       Copyright (C) 2011-2017, the ilastik developers
+#       Copyright (C) 2011-2019, the ilastik team
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -21,28 +21,25 @@
 ###############################################################################
 import os
 import pickle as pickle
-import subprocess
-import sys
+import logging
 import tempfile
 import yaml
 
 import numpy
 import vigra
 
-from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.graph import Graph
-from lazyflow.roi import roiToSlice
 from inferno.io.transform import Compose
-from inferno.io.transform.generic import Normalize, Cast, AsTorchBatch
+from inferno.io.transform.generic import Normalize
 
 from tiktorch.client import TikTorchClient
 from tiktorch.blockinator import np_pad
 
-import logging
+from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, \
+                                LazyflowPixelwiseClassifierFactoryABC
 
 logger = logging.getLogger(__name__)
-
 
 class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     # The version is used to determine compatibility of pickled classifier factories.
@@ -50,7 +47,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     VERSION = 1
     tikTorchServer_process = None
 
-    def __init__(self, tiktorch_config_path, hyperparameter_config_path=None, start_server=True):
+    def __init__(self, tiktorch_config_path: str, server_config: dict, start_server=True):
         self._filename = tiktorch_config_path  # DELETE this attribute
         # Privates
         self._tikTorchClient = None
@@ -60,7 +57,13 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         self._opReorderAxes.AxisOrder.setValue('zcyx')
 
         # Publics
-        self.tikTorchClient = TikTorchClient(tiktorch_config_path, start_server=start_server)
+        self.tikTorchClient = TikTorchClient(local_build_dir=tiktorch_config_path,
+                                             address=server_config['address'],
+                                             port=server_config['port'],
+                                             meta_port=server_config['meta_port'],
+                                             username=server_config['username'],
+                                             password=server_config['password'],
+                                             start_server=start_server)
 
     @property
     def tikTorchClient(self):
@@ -99,11 +102,11 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     def send_hparams(self, hparams):
         self.tikTorchClient.set_hparams(hparams)
 
-    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None,
-                                   image_ids=None):
+    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None,
+                                   feature_names=None, image_ids=None):
         logger.debug('Loading pytorch network from {}'.format(self._filename))
-        assert self.tikTorchClient is not None, "TikTorchLazyflowClassifierFactory not properly initialized."
-
+        assert self.tikTorchClient is not None, \
+               "TikTorchLazyflowClassifierFactory not properly initialized."
 
         if self.train_model:
             self.update(feature_images, label_images, axistags, image_ids)
@@ -114,7 +117,8 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         logger.info(self.description)
 
         if self._tikTorchClassifier is None:
-            self._tikTorchClassifier = TikTorchLazyflowClassifier(self.tikTorchClient, self._filename)
+            self._tikTorchClassifier = TikTorchLazyflowClassifier(self.tikTorchClient,
+                                                                  self._filename)
 
         return self._tikTorchClassifier
 
@@ -122,11 +126,15 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         reordered_feature_images = []
         reordered_labels = []
         for i in range(len(feature_images)):
-            self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_images[i], axistags=axistags))
+            self._opReorderAxes.Input.setValue(
+                vigra.VigraArray(feature_images[i], axistags=axistags)
+            )
             self._opReorderAxes.AxisOrder.setValue('czyx')
             reordered_feature_images.append(self._opReorderAxes.Output([]).wait())
 
-            self._opReorderAxes.Input.setValue(vigra.VigraArray(label_images[i], axistags=axistags))
+            self._opReorderAxes.Input.setValue(
+                vigra.VigraArray(label_images[i], axistags=axistags)
+            )
             self._opReorderAxes.AxisOrder.setValue('czyx')
             reordered_labels.append(self._opReorderAxes.Output([]).wait())
 
@@ -152,7 +160,8 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         return reordered_view
 
     def determineBlockShape(self, max_shape, train=True):
-        return self.tikTorchClient.dry_run(max_shape, train)
+        # determine blockshape with e.g. binary dry run
+        pass
 
     def get_halo_shape(self, data_axes='zyxc'):
         # halo = self.tikTorchClient.get('halo')
@@ -181,9 +190,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-
 assert issubclass(TikTorchLazyflowClassifierFactory, LazyflowPixelwiseClassifierFactoryABC)
-
 
 class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     HDF5_GROUP_FILENAME = 'pytorch_network_path'
@@ -245,7 +252,8 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         logger.info(f'tiktorchLazyflowClassifier.predict tile shape: {feature_image.shape}')
 
         min_input_shape = list(self._config.get('min_input_shape')) + [1]
-        padding = [((min_inp - feat_im) // 2,) * 2 for min_inp, feat_im in zip(min_input_shape, list(feature_image.shape))]
+        padding = [((min_inp - feat_im) // 2,) * 2
+                   for min_inp, feat_im in zip(min_input_shape, list(feature_image.shape))]
         feature_image = np_pad(feature_image, padding)
 
         self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_image, axistags=axistags))
@@ -285,7 +293,8 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     def remove_halo(self, tensor):
         halo = self.tikTorchClient.get('halo')
         minimalIncrement = 32  # TODO: hardcoded for now. Better: include in TikTorch config file
-        haloBlocked = tuple(int(numpy.ceil(x / minimalIncrement) * minimalIncrement - x) if x > 0 else minimalIncrement for x in halo)
+        haloBlocked = tuple(int(numpy.ceil(x / minimalIncrement) * minimalIncrement - x) if x > 0
+                            else minimalIncrement for x in halo)
         if len(halo) == 2:
             haloSlice = [slice(None), *[slice(x, -x) for x in haloBlocked], slice(None)]
         elif len(halo) == 3:
@@ -303,7 +312,8 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     def get_halo_shape(self, data_axes='zyxc'):
         halo = self.tikTorchClient.get('halo')
         minimalIncrement = 32 # TODO: hardcoded for now. Better: include in TikTorch config file
-        haloBlocked = tuple(int(numpy.ceil(x / minimalIncrement) * minimalIncrement) if x > 0 else minimalIncrement for x in halo)
+        haloBlocked = tuple(int(numpy.ceil(x / minimalIncrement) * minimalIncrement) if x > 0
+                            else minimalIncrement for x in halo)
         if len(halo) == 2:
             return (0, *haloBlocked, 0)
         # FIXME: assuming 'yxc' !
@@ -336,6 +346,5 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             loaded_pytorch_net = TikTorchClient.unserialize(f)
 
         return TikTorchLazyflowClassifier(loaded_pytorch_net, filename)
-
 
 assert issubclass(TikTorchLazyflowClassifier, LazyflowPixelwiseClassifierABC)
