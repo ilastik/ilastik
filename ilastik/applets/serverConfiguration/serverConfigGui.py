@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2019, the ilastik team
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -42,60 +42,54 @@ class ServerConfigGui(QWidget):
         self._viewerControls = QWidget()
         self.topLevelOperator = topLevelOperatorView
 
-        self._initCentralUic()
+        self._init_central_uic()
         # Disable box that contains username, password ect. while
         # local server (radio button) is activated
         self.localServerButton.setChecked(True)
 
-        def localButtonState():
+        def local_button_state():
             if self.localServerButton.isChecked():
                 self.topLevelOperator.setServerConfig()
                 self.remoteServerBox.setEnabled(False)
-        self.localServerButton.toggled.connect(localButtonState)
+        self.localServerButton.toggled.connect(local_button_state)
 
         self.remoteServerButton.setChecked(False)
 
-        def remoteButtonState():
+        def remote_button_state():
             if self.remoteServerButton.isChecked():
                 self.remoteServerBox.setEnabled(True)
-        self.remoteServerButton.toggled.connect(remoteButtonState)
+        self.remoteServerButton.toggled.connect(remote_button_state)
 
         self.remoteServerBox.setEnabled(False)
 
-        def saveButtonState():
+        def save_button_state():
             config = {}
             for line in {'usernameLine', 'passwordLine', 'addressLine', 'portLine', 'metaPortLine'}:
                 attr = getattr(self, line)
                 attr.setEnabled(False)
-                value = attr.text() if len(attr.text()) > 0 else None
+                value = attr.text() if attr.text() else None
                 config.update({line[:-4]: value})
             self.topLevelOperator.setServerConfig(config)
-        self.saveButton.clicked.connect(saveButtonState)
+        self.saveButton.clicked.connect(save_button_state)
 
-        def editButtonState():
+        def edit_button_state():
             for line in {'usernameLine', 'passwordLine', 'addressLine', 'portLine', 'metaPortLine'}:
                 getattr(self, line).setEnabled(True)
-        self.editButton.clicked.connect(editButtonState)
+        self.editButton.clicked.connect(edit_button_state)
 
-        self._initAppletDrawerUic()
-
+        self._init_applet_drawer_uic()
         self._viewerControlWidgetStack = QStackedWidget(self)
 
-
-    def _initCentralUic(self):
+    def _init_central_uic(self):
         """
         Load the ui file for the central widget.
         """
-        localDir = os.path.split(__file__)[0] + '/'
-        uic.loadUi(localDir + "/serverConfig.ui", self)
+        local_dir = os.path.split(__file__)[0] + '/'
+        uic.loadUi(local_dir + "/serverConfig.ui", self)
 
-
-    def _initAppletDrawerUic(self):
+    def _init_applet_drawer_uic(self):
         """
         Load the ui file for the applet drawer.
         """
-        localDir = os.path.split(__file__)[0]+'/'
-        self._drawer = uic.loadUi(localDir+"/serverConfigDrawer.ui")
-
-
-
+        local_dir = os.path.split(__file__)[0] + '/'
+        self._drawer = uic.loadUi(local_dir + "/serverConfigDrawer.ui")

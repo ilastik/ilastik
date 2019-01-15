@@ -1,7 +1,7 @@
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
-#       Copyright (C) 2011-2014, the ilastik developers
+#       Copyright (C) 2011-2019, the ilastik team
 #                                <team@ilastik.org>
 #
 # This program is free software; you can redistribute it and/or
@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.utility.operatorSubView import OperatorSubView
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import Operator, InputSlot
 
 class OpServerConfig(Operator):
     name = "OpServerConfig"
