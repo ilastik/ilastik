@@ -50,7 +50,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     VERSION = 1
     tikTorchServer_process = None
 
-    def __init__(self, tiktorch_config_path, hyperparameter_config_path=None, start_server=True):
+    def __init__(self, tiktorch_config_path: str, server_config: dict, start_server=True):
         self._filename = tiktorch_config_path  # DELETE this attribute
         # Privates
         self._tikTorchClient = None
@@ -60,7 +60,13 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         self._opReorderAxes.AxisOrder.setValue('zcyx')
 
         # Publics
-        self.tikTorchClient = TikTorchClient(tiktorch_config_path, start_server=start_server)
+        self.tikTorchClient = TikTorchClient(local_build_dir=tiktorch_config_path,
+                                             address=server_config['address'],
+                                             port=server_config['port'],
+                                             meta_port=server_config['meta_port'],
+                                             username=server_config['username'],
+                                             password=server_config['password'],
+                                             start_server=start_server)
 
     @property
     def tikTorchClient(self):
