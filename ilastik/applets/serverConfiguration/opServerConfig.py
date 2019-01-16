@@ -21,6 +21,10 @@
 from ilastik.utility.operatorSubView import OperatorSubView
 from lazyflow.graph import Operator, InputSlot
 
+DEFAULT_CONFIG = {'username': None, 'password': None,
+                  'address': '127.0.0.1', 'port': '29500',
+                  'meta_port': '29501'}
+
 class OpServerConfig(Operator):
     name = "OpServerConfig"
     category = "top-level"
@@ -29,10 +33,9 @@ class OpServerConfig(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpServerConfig, self).__init__(*args, **kwargs)
+        self.ServerConfigIn.setValue(DEFAULT_CONFIG)
 
-    def setServerConfig(self, config: dict = {'username': None, 'password': None,
-                                              'address': '127.0.0.1', 'port': '29500',
-                                              'meta_port': '29501'}):
+    def setServerConfig(self, config: dict = DEFAULT_CONFIG):
         self.ServerConfigIn.setValue(config)
 
     def setupOutputs(self):

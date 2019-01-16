@@ -64,7 +64,7 @@ class ServerConfigGui(QWidget):
 
         def save_button_state():
             config = {}
-            for line in {'usernameLine', 'passwordLine', 'addressLine', 'portLine', 'metaPortLine'}:
+            for line in {'usernameLine', 'passwordLine', 'addressLine', 'portLine', 'meta_portLine'}:
                 attr = getattr(self, line)
                 attr.setEnabled(False)
                 value = attr.text() if attr.text() else None
@@ -73,7 +73,7 @@ class ServerConfigGui(QWidget):
         self.saveButton.clicked.connect(save_button_state)
 
         def edit_button_state():
-            for line in {'usernameLine', 'passwordLine', 'addressLine', 'portLine', 'metaPortLine'}:
+            for line in {'usernameLine', 'passwordLine', 'addressLine', 'portLine', 'meta_portLine'}:
                 getattr(self, line).setEnabled(True)
         self.editButton.clicked.connect(edit_button_state)
 

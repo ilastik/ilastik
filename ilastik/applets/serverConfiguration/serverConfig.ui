@@ -83,7 +83,7 @@
          </widget>
         </item>
         <item row="4" column="0">
-         <widget class="QLabel" name="metaPortLabel">
+         <widget class="QLabel" name="meta_portLabel">
           <property name="text">
            <string>Meta port:</string>
           </property>
@@ -96,7 +96,7 @@
          <widget class="QLineEdit" name="portLine"/>
         </item>
         <item row="4" column="1">
-         <widget class="QLineEdit" name="metaPortLine"/>
+         <widget class="QLineEdit" name="meta_portLine"/>
         </item>
        </layout>
       </widget>
