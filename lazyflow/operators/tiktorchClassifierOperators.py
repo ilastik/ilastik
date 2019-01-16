@@ -195,28 +195,58 @@ class OpTikTorchPixelwiseClassifierPredict(OpPixelwiseClassifierPredict):
             "".format( type(classifier) )
 
         upstream_roi = (roi.start, roi.stop)
-        # Ask for the halo needed by the classifier
         axiskeys = self.Image.meta.getAxisKeys()
-        halo_shape = classifier.get_halo_shape(axiskeys)
-        assert len(halo_shape) == len( upstream_roi[0] )
-        assert halo_shape[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
+        halo = numpy.array(classifier.get_halo_shape(axiskeys))
+        shrinkage = numpy.array(classifier.get_shrinkage(axiskeys))
 
-        # Expand block by halo, then clip to image bounds
+        assert len(halo) == len( upstream_roi[0] )
+        assert axiskeys[-1] == 'c'
+        assert halo[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
+
+        # Expand block by halo and shrinkage
         upstream_roi = numpy.array(upstream_roi)
+        upstream_roi[0] -= halo + shrinkage
+        upstream_roi[1] += halo + shrinkage
 
-        # Determine how to extract the data from the result (without the halo)
+        # Extend block further to reach a valid shape
+        min_shape = upstream_roi[1] - upstream_roi[0]
+        for vs in classifier.get_valid_shapes(axiskeys):
+            if all(m <= v for m, v in zip(min_shape, vs)):
+                valid_shape = numpy.array(vs)
+                if any(m < v for m, v in zip(min_shape, vs)):
+                    shape_diff = valid_shape - min_shape
+                    upstream_roi[0] -= numpy.array([(a + 1) // 2 for a in shape_diff])
+                    upstream_roi[1] += numpy.array([a // 2 for a in shape_diff])
+
+                break
+        else:
+            raise ValueError(f'The requested roi {roi} with halo {halo} and shrinkage {shrinkage} is too large for the '
+                             f'classifier\'s valid shapes: {classifier.get_valid_shapes(axiskeys)}')
+
+
+        # Determine how to extract the data from the result (without halo, shrinkage, and padding)
         downstream_roi = numpy.array((roi.start, roi.stop))
-        predictions_roi = downstream_roi[:, :-1] - upstream_roi[0, :-1]
+        predictions_roi = downstream_roi - upstream_roi[0]
+
+        # Limit upstream roi to self.Image.meta.shape and determine padding
+        # todo: manage padding with tiktorch
+        im_shape = self.Image.meta.shape
+        padding = [(max(0, -a0), max(0, a1 - s)) for a0, a1, s in zip(*upstream_roi, im_shape)]
+        upstream_roi = numpy.array([[max(0, a0), min(a1, s)] for a0, a1, s in zip(*upstream_roi, im_shape)]).T
 
         # Request all upstream channels
-        input_channels = self.Image.meta.shape[-1]
+        input_channels = im_shape[-1]
         upstream_roi[:, -1] = [0, input_channels]
+        padding[-1] = (0, 0)  # do not pad channels
 
         # Request the data
+        input_data = self.Image(*upstream_roi).wait()
         axistags = self.Image.meta.axistags
-        blockinator = IlastikBlockinator(data_slot=self.Image, halo=list(halo_shape))
-        input_data = blockinator[upstream_roi]
-        probabilities = classifier.predict_probabilities_pixelwise( input_data, predictions_roi, axistags )
+
+        # Pad the data
+        input_data = numpy.pad(input_data, padding, mode='reflect')
+
+        probabilities = classifier.predict_probabilities_pixelwise(input_data, predictions_roi, axistags)
         
         # We're expecting a channel for each label class.
         # If we didn't provide at least one sample for each label,

@@ -112,7 +112,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
             self.update(feature_images, label_images, axistags, image_ids)
             self._tikTorchClient.resume()
         else:
-            self.update([], [], [])
+            self.update([], [], None, [])
 
         logger.info(self.description)
 
@@ -204,9 +204,13 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         """
         # Privates
         self._tikTorchClient = None
-        self._opReorderAxes = OpReorderAxes(graph=Graph())
+        self._opReorderAxesIn = OpReorderAxes(graph=Graph())
+        self._opReorderAxesIn.AxisOrder.setValue('czyx')
+        self._opReorderAxesOut = OpReorderAxes(graph=Graph())
         self._filename = filename
         self._halo = None
+        self._shrinkage = None
+        self._valid_shapes = []
         self._config = {}
         self.read_config(filename)
 
@@ -231,6 +235,24 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             self.compute_halo()
         return self._halo
 
+    @property
+    def shrinkage(self):
+        """
+        Similar to a halo, the shrinkage describes the loss of image size in each dimension
+        (for one border => half of the total size loss)
+        :return: loss of image size per border in each dimension
+        """
+        if self._shrinkage is None:
+            self.compute_shrinkage()
+        return self._shrinkage
+
+    @property
+    def valid_shapes(self):
+        # All input data shapes the network can handle in ascending order.
+        if not self._valid_shapes:
+            self.compute_valid_shapes()
+        return self._valid_shapes
+
     def read_config(self, filename):
         config_file_name = os.path.join(filename, 'tiktorch_config.yml')
         if not os.path.exists(config_file_name):
@@ -243,82 +265,116 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     def compute_halo(self):
         self._halo = self.tikTorchClient.get('halo')
 
+    def compute_shrinkage(self):
+        self._shrinkage = self.tikTorchClient.get('shrinkage', (0, 0, 0, 0))  # czyx
+
+    def compute_valid_shapes(self):
+        """Computes all valid shapes in ascending order"""
+        assert not self._valid_shapes, 'trying to recompute valid shapes'
+        self._valid_shapes = []
+        candidates = []
+        candidates.append(self._config.get('min_input_shape'))  # todo: add more valid shapes
+
+        for shape in candidates:
+            if len(shape) == 2:  # assume yx
+                new_shape = (1, 1, *shape)
+            elif len(shape) == 3:  # assume cyx
+                logger.warning(f'Ambiguous interpretation of shape {shape} as cyx')
+                new_shape = (shape[0], 1, shape[1], shape[2])
+            elif len(shape) == 4:  # assume czyx
+                new_shape = tuple(shape)
+            else:
+                raise ValueError(f'Could not interpret shape: {shape}')
+
+            self._valid_shapes.append(new_shape)
+            if new_shape[0] == 1:
+                # A single channel gives rise to two channels: (p, 1-p)
+                self._valid_shapes.append((2, *new_shape[1:]))
+
     def predict_probabilities_pixelwise(self, feature_image, roi, axistags=None):
         """
-        forward function for tiktorch, roi handling happens in tiktorch
-        so its set to 0
+        :param numpy.ndarray feature_image: classifier input
+        :param numpy.ndarray roi: ROI within feature_image
+        :param vigra.AxisTags axistags: axistags of feature_image
+        :return: probabilities
         """
         assert isinstance(roi, numpy.ndarray)
         logger.info(f'tiktorchLazyflowClassifier.predict tile shape: {feature_image.shape}')
 
-        min_input_shape = list(self._config.get('min_input_shape')) + [1]
-        padding = [((min_inp - feat_im) // 2,) * 2
-                   for min_inp, feat_im in zip(min_input_shape, list(feature_image.shape))]
-        feature_image = np_pad(feature_image, padding)
+        # translate roi axes todo: remove with tczyx standard
+        roi = roi[:, [axistags.index(a) for a in 'czyx']]
 
-        self._opReorderAxes.Input.setValue(vigra.VigraArray(feature_image, axistags=axistags))
-        self._opReorderAxes.AxisOrder.setValue('czyx')
-        reordered_feature_image = self._opReorderAxes.Output([]).wait()
-
+        self._opReorderAxesIn.Input.setValue(vigra.VigraArray(feature_image, axistags=axistags))
+        reordered_feature_image = self._opReorderAxesIn.Output([]).wait()
+        assert reordered_feature_image.shape in self.valid_shapes, (reordered_feature_image.shape, self.valid_shapes)
         transform = Compose(Normalize())
         reordered_feature_image = transform(reordered_feature_image)
 
-        input_tensor = [reordered_feature_image[z] for z in range(reordered_feature_image.shape[0])]
-
-        if len(self.halo) == 2:
-            result = None
-            for i in range(feature_image.shape[0]):
-                input_ = [input_tensor[0][i: i+1]]
-                out = self.tikTorchClient.forward(input_)
-                if result is None:
-                    result = out
-                else:
-                    result = numpy.concatenate((result, out), axis=1)
-        else:
-            result = self.tikTorchClient.forward(input_tensor)
+        result = self.tikTorchClient.forward(reordered_feature_image)
         logger.info(f'Obtained a predicted block of shape {result.shape}')
-        self._opReorderAxes.Input.setValue(vigra.VigraArray(result, axistags=vigra.defaultAxistags('czyx')))
-        # axistags is vigra.AxisTags, but opReorderAxes expects a string
-        self._opReorderAxes.AxisOrder.setValue(''.join(axistags.keys()))
-        result = self._opReorderAxes.Output([]).wait()
+        halo = numpy.array(self.get_halo_shape('czyx'))
+        shrink = numpy.array(self.get_shrinkage('czyx'))
+        # remove halo from result todo: do not send tensor with halo back, but remove halo in tiktorch instead
+        assert len(result.shape) == len(halo), (result.shape, halo)
+        result = result[[slice(h, -h) if h else slice(None) for h in halo]]
 
-        slicing = [slice(x[0], -x[1]) if x[0] > 0 else slice(None) for x in padding]
-        result = result[slicing]
+        # make two channels out of single channel predictions
+        if result.shape[0] == 1:
+            result = numpy.concatenate((result, 1-result), axis=0)
+            logger.info(f'Changed shape of predicted block to {result.shape} by adding \'1-p\' channel')
 
-        result = self.remove_halo(result)
-        result = numpy.concatenate((result, 1-result), axis=3)
+        # remove shrinkage and halo from roi
+        roi -= halo + shrink
+        assert all(a >= 0 for a in roi[0]), roi[0]
+        assert all(a <= s for a, s in zip(roi[1], result.shape)), (roi[1], result.shape)
 
-        return result
+        # select roi from result
+        shape_wo_halo = result.shape
+        result = result[roiToSlice(*roi)]
+        logger.info(f'Selected roi (start: {roi[0]}, stop: {roi[1]}) from result without halo ({shape_wo_halo}). Now'
+                    f' result has shape: ({result.shape}).')
 
-    def remove_halo(self, tensor):
-        halo = self.tikTorchClient.get('halo')
-        minimalIncrement = 32  # TODO: hardcoded for now. Better: include in TikTorch config file
-        haloBlocked = tuple(int(numpy.ceil(x / minimalIncrement) * minimalIncrement - x) if x > 0
-                            else minimalIncrement for x in halo)
-        if len(halo) == 2:
-            haloSlice = [slice(None), *[slice(x, -x) for x in haloBlocked], slice(None)]
-        elif len(halo) == 3:
-            haloSlice = [*[slice(x, -x) for x in haloBlocked], slice(None)]
-        return tensor[haloSlice]
+
+        self._opReorderAxesOut.AxisOrder.setValue(''.join(axistags.keys()))
+        self._opReorderAxesOut.Input.setValue(vigra.VigraArray(result, axistags=vigra.defaultAxistags('czyx')))
+        return self._opReorderAxesOut.Output[:].wait()
 
     @property
     def known_classes(self):
-        return list(range(self.tikTorchClient.output_shape[0]))
+        nr_classes = self.tikTorchClient.get('output_shape')[0]
+        if nr_classes == 1:
+            nr_classes = 2
+        return list(range(nr_classes))
 
     @property
     def feature_count(self):
         return self.tikTorchClient.expected_input_shape[0]
 
     def get_halo_shape(self, data_axes='zyxc'):
-        halo = self.tikTorchClient.get('halo')
+        """
+        :return: required halo for data axes
+        """
+        # todo: remove data_axes for all classifiers and set it implicitly to tczyx
+        halo = self.halo
         minimalIncrement = 32 # TODO: hardcoded for now. Better: include in TikTorch config file
         haloBlocked = tuple(int(numpy.ceil(x / minimalIncrement) * minimalIncrement) if x > 0
                             else minimalIncrement for x in halo)
         if len(halo) == 2:
-            return (0, *haloBlocked, 0)
-        # FIXME: assuming 'yxc' !
+            tczyx_halo =  (0, 0, 0, *haloBlocked)
         elif len(halo) == 3:
-            return (*haloBlocked, 0)
+            tczyx_halo =  (0, 0, *haloBlocked)
+        else:
+            raise NotImplementedError('Unknown halo length: {len(halo)}. How to interpret this halo: {halo}?')
+
+        return tuple(tczyx_halo['tczyx'.index(axis)] for axis in data_axes)
+
+    def get_shrinkage(self, data_axes='zyxc'):
+        assert all([a in data_axes for a in 'czyx'])
+        return tuple(self.shrinkage['czyx'.index(a)] for a in data_axes)
+
+    def get_valid_shapes(self, data_axes='zyxc'):
+        assert all([a in data_axes for a in 'czyx'])
+        return [tuple(vs['czyx'.index(a)] for a in data_axes) for vs in self.valid_shapes]
 
     def serialize_hdf5(self, h5py_group):
         logger.debug('Serializing')
