@@ -106,7 +106,6 @@ class NNClassificationWorkflow(Workflow):
         opDataSelection.DatasetRoles.setValue(NNClassificationWorkflow.ROLE_NAMES)
 
         self.serverConfigApplet = ServerConfigApplet(self)
-        opServerConfig = self.serverConfigApplet.topLevelOperator
 
         self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet")
         opClassify = self.nnClassificationApplet.topLevelOperator
@@ -166,7 +165,7 @@ class NNClassificationWorkflow(Workflow):
 
         # Input Image ->  Classification Op (for display)
         opNNclassify.InputImages.connect(opData.Image)
-        opNNclassify.ServerConfig.connect(opServerConfig.ServerConfigIn)
+        opNNclassify.ServerConfig.connect(opServerConfig.ServerConfig)
 
         # ReorderAxes is needed for specifying the original_shape meta tag , hack!
         op5Pred = OpReorderAxes(parent=self)
@@ -191,7 +190,6 @@ class NNClassificationWorkflow(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
-        opServerConfig = self.serverConfigApplet.topLevelOperator
         opNNClassification = self.nnClassificationApplet.topLevelOperator
         serverConfig_finished = opNNClassification.ClassifierFactory.ready()
 
@@ -290,6 +288,8 @@ class NNClassificationWorkflow(Workflow):
         return input_shape
 
     def cleanUp(self):
-        tiktorchClient = self.nnClassificationApplet.topLevelOperator.ClassifierFactory.value
-        if tiktorchClient is not None:
-            tiktorchClient._tikTorchClient.shutdown()
+        tiktorchFactory = self.nnClassificationApplet.topLevelOperator.ClassifierFactory
+        if tiktorchFactory.ready():
+            tiktorchFactory = tiktorchFactory.value
+            if tiktorchFactory is not None:
+                tiktorchFactory._tikTorchClient.shutdown()

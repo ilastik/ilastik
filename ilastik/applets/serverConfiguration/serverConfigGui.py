@@ -22,7 +22,11 @@ import os
 from PyQt5 import uic
 from PyQt5.QtWidgets import QWidget, QStackedWidget
 
+from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_SERVER_CONFIG
+
+
 class ServerConfigGui(QWidget):
+    configurables = DEFAULT_SERVER_CONFIG.keys()
 
     def centralWidget(self):
         return self
@@ -45,37 +49,57 @@ class ServerConfigGui(QWidget):
         self._init_central_uic()
         # Disable box that contains username, password ect. while
         # local server (radio button) is activated
-        self.localServerButton.setChecked(True)
+        def edit_button():
+            for el in self.configurables:
+                if self.localServerButton.isChecked() and el == 'address':
+                    continue
+                getattr(self, el).setEnabled(True)
 
-        def local_button_state():
+        self.editButton.clicked.connect(edit_button)
+
+        def server_button():
             if self.localServerButton.isChecked():
-                self.topLevelOperator.setServerConfig()
-                self.remoteServerBox.setEnabled(False)
-        self.localServerButton.toggled.connect(local_button_state)
+                assert not self.remoteServerButton.isChecked()
+                config = self.topLevelOperator.LocalServerConfig.value
+                getattr(self, 'address').setEnabled(False)
+                getattr(self, 'username').hide()
+                getattr(self, 'usernameLabel').hide()
+                getattr(self, 'password').hide()
+                getattr(self, 'passwordLabel').hide()
+            else:
+                assert self.remoteServerButton.isChecked()
+                config = self.topLevelOperator.RemoteServerConfig.value
+                getattr(self, 'username').show()
+                getattr(self, 'usernameLabel').show()
+                getattr(self, 'password').show()
+                getattr(self, 'passwordLabel').show()
 
-        self.remoteServerButton.setChecked(False)
+            for el in self.configurables:
+                getattr(self, el).setText(config[el])
 
-        def remote_button_state():
-            if self.remoteServerButton.isChecked():
-                self.remoteServerBox.setEnabled(True)
-        self.remoteServerButton.toggled.connect(remote_button_state)
+            self.topLevelOperator.toggleServerConfig(use_local=self.localServerButton.isChecked())
+            edit_button()  # enter 'edit mode' when switching between locale and remote server
 
-        self.remoteServerBox.setEnabled(False)
+        self.localServerButton.toggled.connect(server_button)
 
-        def save_button_state():
+        use_local = self.topLevelOperator.UseLocalServer.value
+        self.localServerButton.setChecked(use_local)
+        self.remoteServerButton.setChecked(not use_local)
+        server_button()
+
+        def save_button():
             config = {}
-            for line in {'usernameLine', 'passwordLine', 'addressLine', 'portLine', 'meta_portLine'}:
-                attr = getattr(self, line)
+            for el in self.configurables:
+                attr = getattr(self, el)
                 attr.setEnabled(False)
-                value = attr.text() if attr.text() else None
-                config.update({line[:-4]: value})
-            self.topLevelOperator.setServerConfig(config)
-        self.saveButton.clicked.connect(save_button_state)
+                config.update({el: attr.text()})
 
-        def edit_button_state():
-            for line in {'usernameLine', 'passwordLine', 'addressLine', 'portLine', 'meta_portLine'}:
-                getattr(self, line).setEnabled(True)
-        self.editButton.clicked.connect(edit_button_state)
+            if self.localServerButton.isChecked():
+                self.topLevelOperator.setLocalServerConfig(config)
+            else:
+                self.topLevelOperator.setRemoteServerConfig(config)
+
+        self.saveButton.clicked.connect(save_button)
 
         self._init_applet_drawer_uic()
         self._viewerControlWidgetStack = QStackedWidget(self)

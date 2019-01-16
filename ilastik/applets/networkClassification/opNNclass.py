@@ -31,8 +31,10 @@ from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
+from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_SERVER_CONFIG
 
 BLOCKSHAPE = (1, 256, 256, 1) #(1, 188, 188, 1)
+
 
 class OpNNClassification(Operator):
     """
@@ -48,7 +50,7 @@ class OpNNClassification(Operator):
     LabelInputs = InputSlot(optional=True, level=1)
     FreezePredictions = InputSlot(stype='bool', value=False, nonlane=True)
     ClassifierFactory = InputSlot()
-    ServerConfig = InputSlot()
+    ServerConfig = InputSlot(value=DEFAULT_SERVER_CONFIG)
 
     Classifier = OutputSlot()
     PredictionProbabilities = OutputSlot(level=1)  # Classification predictions (via feature cache for interactive speed)
@@ -85,9 +87,6 @@ class OpNNClassification(Operator):
         self.LabelNames.setValue([])
         self.LabelColors.setValue([])
         self.PmapColors.setValue([])
-        self.ServerConfig.setValue({'username': None, 'password': None,
-                                    'address': '127.0.0.1', 'port': '29500',
-                                    'meta_port': '29501'})
 
         # SPECIAL connection: the LabelInputs slot doesn't get it's data
         # from the InputImages slot, but it's shape must match.
@@ -257,7 +256,7 @@ class OpNNClassification(Operator):
 
     def addLane(self, laneIndex):
         numLanes = len(self.InputImages)
-        assert numLanes == laneIndex, "Image lanes must be appended."
+        assert numLanes == laneIndex, f'Image lanes must be appended. {numLanes}, {laneIndex})'
         self.InputImages.resize(numLanes + 1)
 
     def removeLane(self, laneIndex, finalLength):

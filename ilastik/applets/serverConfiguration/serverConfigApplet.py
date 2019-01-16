@@ -20,12 +20,13 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 from .opServerConfig import OpServerConfig
+from .serverConfigSerializer import ServerConfigSerializer
 
 class ServerConfigApplet(StandardApplet):
     def __init__(self, workflow):
         self._topLevelOperator = OpServerConfig(parent=workflow)
-        super(ServerConfigApplet, self).__init__("Server configuration", workflow)
-        self._serializableItems = []
+        super().__init__("Server configuration", workflow)
+        self._serializableItems = [ServerConfigSerializer('ServerConfiguration', operator=self._topLevelOperator)]
 
     @property
     def topLevelOperator(self):

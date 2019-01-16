@@ -764,6 +764,8 @@ class SerialDictSlot(SerialSlot):
                         else:
                             vv.append(a)
                     v = vv
+
+                assert v is not None, "Cannot serialize 'None' to hdf5"
                 sg.create_dataset(str(key), data=v)
 
     def _getValueHelper(self, subgroup):
