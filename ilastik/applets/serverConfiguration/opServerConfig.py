@@ -16,30 +16,48 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#           http://ilastik.org/license.html
 ###############################################################################
 from ilastik.utility.operatorSubView import OperatorSubView
-from lazyflow.graph import Operator, InputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 
-DEFAULT_CONFIG = {'username': None, 'password': None,
-                  'address': '127.0.0.1', 'port': '29500',
-                  'meta_port': '29501'}
+DEFAULT_SERVER_CONFIG = {'username': '', 'password': '',
+                         'address': 'localhost', 'port': '5556', 'meta_port': '5557'}
+# use remote defaults as user hints
+DEFAULT_REMOTE_SERVER_CONFIG = {'username': 'SSH user name', 'password': 'SSH password',
+                                'address': 'remote host or IP address', 'port': '5556', 'meta_port': '5557'}
+
 
 class OpServerConfig(Operator):
     name = "OpServerConfig"
     category = "top-level"
 
-    ServerConfigIn = InputSlot()
+    LocalServerConfig = InputSlot(value=DEFAULT_SERVER_CONFIG)
+    RemoteServerConfig = InputSlot(value=DEFAULT_REMOTE_SERVER_CONFIG)
+    UseLocalServer = InputSlot(value=True)
+
+    ServerConfig = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        super(OpServerConfig, self).__init__(*args, **kwargs)
-        self.ServerConfigIn.setValue(DEFAULT_CONFIG)
+        super().__init__(*args, **kwargs)
 
-    def setServerConfig(self, config: dict = DEFAULT_CONFIG):
-        self.ServerConfigIn.setValue(config)
+    def setLocalServerConfig(self, config: dict = DEFAULT_SERVER_CONFIG):
+        self.LocalServerConfig.setValue(config)
+
+    def setRemoteServerConfig(self, config: dict = DEFAULT_REMOTE_SERVER_CONFIG):
+        self.RemoteServerConfig.setValue(config)
+
+    def toggleServerConfig(self, use_local=True):
+        if use_local != self.UseLocalServer.value:
+            self.ServerConfig.disconnect()
+            self.UseLocalServer.setValue(use_local)
+            self.setupOutputs()
 
     def setupOutputs(self):
-        pass
+        if self.UseLocalServer.value:
+            self.ServerConfig.connect(self.LocalServerConfig)
+        else:
+            self.ServerConfig.connect(self.RemoteServerConfig)
 
     def propagateDirty(self, slot, subindex, roi):
         pass

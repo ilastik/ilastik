@@ -494,6 +494,7 @@ class NNClassGui(LabelingGui):
             self.labelingDrawerUi.addModel.setToolTip('Switching network model currently not supported.')
             # self.labelingDrawerUi.addModel.setEnabled(True)
             # self.labelingDrawerUi.addModel.setChecked(False)
+            self.parentApplet.appletStateUpdateRequested()
 
     def add_NN_classifiers(self, folder_path):
         """
