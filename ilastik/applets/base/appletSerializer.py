@@ -405,6 +405,9 @@ class SerialBlockSlot(SerialSlot):
         # serialized. Otherwise, if everything is intact, it doesn't suggest serialization unless the state has changed.
 
         logger.debug("Checking whether to serialize BlockSlot: {}".format( self.name ))
+        # cannot serialize if not ready
+        if not self.blockslot.ready():
+            return False
 
         if self.dirty:
             logger.debug("BlockSlot \"" + self.name + "\" appears to be dirty. Should serialize.")
