@@ -91,7 +91,7 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self.registerWithMemoryManager()
         
     def setupOutputs(self):
-        if not self.BlockShape.ready():
+        if not self.BlockShape.connected() and not self.BlockShape.read():
             self.BlockShape.setValue( self.Input.meta.shape )
         # Copy metadata from the internal pipeline to the output
         self.Output.meta.assignFrom( self._opSimpleBlockedArrayCache.Output.meta )
