@@ -177,9 +177,11 @@ class OpNNClassification(Operator):
                         a.removeSlot(position, finalsize)
                     s1.notifyRemoved(partial(removeSlot, s2))
 
-    def set_classifier(self, tiktorch_config_path: str):
+    def set_classifier(self, tiktorch_config : dict, model_file : bytes, model_state : bytes, optimizer_state : bytes):
         server_config = self.ServerConfig[:].wait()[0]
-        self.ClassifierFactory.setValue(TikTorchLazyflowClassifierFactory(tiktorch_config_path, server_config))
+        self.ClassifierFactory.setValue(
+            TikTorchLazyflowClassifierFactory(tiktorch_config, model_file, model_state, optimizer_state,
+                                              server_config=server_config))
 
     def send_hparams(self, hparams):
         self.ClassifierFactory.meta.hparams = hparams

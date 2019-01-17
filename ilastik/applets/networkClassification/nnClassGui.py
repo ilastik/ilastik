@@ -510,9 +510,33 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.liveTraining.setEnabled(True)
         self.labelingDrawerUi.livePrediction.setEnabled(True)
 
+        # Read tiktorch config
+        config_file_name = os.path.join(folder_path, 'tiktorch_config.yml')
+        if not os.path.exists(config_file_name):
+            raise FileNotFoundError(f"Config file not found at: {config_file_name}.")
 
-        self.topLevelOperatorView.set_classifier(folder_path)
+        with open(config_file_name, 'r') as f:
+            tiktorch_config = yaml.load(f)
 
+        # Read model.py
+        file_name = os.path.join(folder_path, 'model.py')
+        if not os.path.exists(file_name):
+            raise FileNotFoundError(f"Model file not found at: {file_name}.")
+
+        with open(file_name, 'rb') as f:
+            binary_model_file = f.read()
+
+        # Read model and optimizer states if they exist
+        binary_states = []
+        for fn in ['state.nn', 'optimizer.nn']:
+            fn = os.path.join(folder_path, fn)
+            if os.path.exists(fn):
+                with open(fn, 'rb') as f:
+                    binary_states.append(f.read())
+            else:
+                binary_states.append(b'')
+
+        self.topLevelOperatorView.set_classifier(tiktorch_config, binary_model_file, *binary_states)
 
     def getFolderToOpen(cls, parent_window, defaultDirectory):
         """
