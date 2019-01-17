@@ -98,7 +98,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
     def create_and_train_pixelwise(self, feature_images, label_images, axistags=None,
                                    feature_names=None, image_ids=None):
-        logger.debug('Loading pytorch network from {}'.format(self._filename))
+        logger.debug('Loading pytorch network')
         assert self.tikTorchClient is not None, \
                "TikTorchLazyflowClassifierFactory not properly initialized."
 
@@ -111,8 +111,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         logger.info(self.description)
 
         if self._tikTorchClassifier is None:
-            self._tikTorchClassifier = TikTorchLazyflowClassifier(self.tikTorchClient,
-                                                                  self._filename)
+            self._tikTorchClassifier = TikTorchLazyflowClassifier(self.tikTorchClient)
 
         return self._tikTorchClassifier
 
@@ -166,13 +165,9 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     @property
     def description(self):
         if self._tikTorchClient:
-            return (
-                f'pytorch network loaded from {self._filename} with '
-                # f'expected input shape {self._loaded_pytorch_net.expected_input_shape} and "
-                # f'output shape {self._loaded_pytorch_net.expected_output_shape}'
-            )
+            return 'pytorch network loaded.'
         else:
-            return f'pytorch network loading from {self._filename} failed'
+            return 'pytorch network loading failed.'
 
     def estimated_ram_usage_per_requested_predictionchannel(self):
         # FIXME: compute from model size somehow??
@@ -189,7 +184,7 @@ assert issubclass(TikTorchLazyflowClassifierFactory, LazyflowPixelwiseClassifier
 class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     HDF5_GROUP_FILENAME = 'pytorch_network_path'
 
-    def __init__(self, client, filename=''):
+    def __init__(self, client):
         """
         Args:
             tiktorch_net (tiktorch): tiktorch object to be loaded into this
@@ -201,12 +196,9 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         self._opReorderAxesIn = OpReorderAxes(graph=Graph())
         self._opReorderAxesIn.AxisOrder.setValue('czyx')
         self._opReorderAxesOut = OpReorderAxes(graph=Graph())
-        self._filename = filename
         self._halo = None
         self._shrinkage = None
         self._valid_shapes = []
-        self._config = {}
-        self.read_config(filename)
 
         # Publics
         self.HALO_SIZE = 0
@@ -225,9 +217,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
 
     @property
     def halo(self):
-        if self._halo is None:
-            self.compute_halo()
-        return self._halo
+        return self.tikTorchClient.get('halo', assert_exist=True)
 
     @property
     def shrinkage(self):
@@ -236,9 +226,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         (for one border => half of the total size loss)
         :return: loss of image size per border in each dimension
         """
-        if self._shrinkage is None:
-            self.compute_shrinkage()
-        return self._shrinkage
+        self.tikTorchClient.get('shrinkage', default=(0, 0, 0, 0))
 
     @property
     def valid_shapes(self):
@@ -247,27 +235,12 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             self.compute_valid_shapes()
         return self._valid_shapes
 
-    def read_config(self, filename):
-        config_file_name = os.path.join(filename, 'tiktorch_config.yml')
-        if not os.path.exists(config_file_name):
-            raise FileNotFoundError(f"Config file not found in "
-                                    f"build_directory: {self.build_directory}.")
-        with open(config_file_name, 'r') as f:
-            self._config.update(yaml.load(f))
-        return self
-
-    def compute_halo(self):
-        self._halo = self.tikTorchClient.get('halo')
-
-    def compute_shrinkage(self):
-        self._shrinkage = self.tikTorchClient.get('shrinkage', (0, 0, 0, 0))  # czyx
-
     def compute_valid_shapes(self):
         """Computes all valid shapes in ascending order"""
         assert not self._valid_shapes, 'trying to recompute valid shapes'
         self._valid_shapes = []
         candidates = []
-        candidates.append(self._config.get('min_input_shape'))  # todo: add more valid shapes
+        candidates.append(self.tikTorchClient.get('min_input_shape'))  # todo: add more valid shapes
 
         for shape in candidates:
             if len(shape) == 2:  # assume yx
@@ -350,13 +323,11 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         """
         # todo: remove data_axes for all classifiers and set it implicitly to tczyx
         halo = self.halo
-        minimalIncrement = 32 # TODO: hardcoded for now. Better: include in TikTorch config file
-        haloBlocked = tuple(int(numpy.ceil(x / minimalIncrement) * minimalIncrement) if x > 0
-                            else minimalIncrement for x in halo)
+
         if len(halo) == 2:
-            tczyx_halo =  (0, 0, 0, *haloBlocked)
+            tczyx_halo =  (0, 0, 0, *halo)
         elif len(halo) == 3:
-            tczyx_halo =  (0, 0, *haloBlocked)
+            tczyx_halo =  (0, 0, *halo)
         else:
             raise NotImplementedError('Unknown halo length: {len(halo)}. How to interpret this halo: {halo}?')
 
