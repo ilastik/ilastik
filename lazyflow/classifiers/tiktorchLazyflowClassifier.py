@@ -30,6 +30,7 @@ import vigra
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.graph import Graph
+from lazyflow.roi import roiToSlice
 from inferno.io.transform import Compose
 from inferno.io.transform.generic import Normalize
 
