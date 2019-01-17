@@ -22,8 +22,7 @@ from functools import partial
 import numpy as np
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
-from lazyflow.operators import OpMultiArraySlicer2, OpValueCache, \
-                               OpCompressedUserLabelArray, OpSlicedBlockedArrayCache, \
+from lazyflow.operators import OpMultiArraySlicer2, OpValueCache,  OpBlockedArrayCache, \
                                OpClassifierPredict, OpTrainClassifierBlocked
 from lazyflow.operators.tiktorchClassifierOperators import OpTikTorchTrainClassifierBlocked, \
                                                            OpTikTorchClassifierPredict
@@ -311,56 +310,31 @@ class OpBlockShape(Operator):
         self.BlockShapeInference.setValue(self.setup_inference())
 
     def setup_train(self):
-        tagged_shape = self.RawImage.meta.getTaggedShape()
-        # labels are created for one channel (i.e. the label) and only in the
-        # current time slice, so we can set both c and t to 1
-        tagged_shape['c'] = 1
-        if 't' in tagged_shape:
-            tagged_shape['t'] = 1
-
-        # Aim for blocks that are roughly 20px
-        #block_shape = self.ClassifierFactory.value.determineBlockShape([tagged_shape['x'], tagged_shape['y']],
-        #                                                               train=True)
-        #return (1, *tuple(block_shape), 1)
-
-        return BLOCKSHAPE
+        return self.setup_inference()
+        # tagged_shape = self.RawImage.meta.getTaggedShape()
+        # # labels are created for one channel (i.e. the label) and only in the
+        # # current time slice, so we can set both c and t to 1
+        # tagged_shape['c'] = 1
+        # if 't' in tagged_shape:
+        #     tagged_shape['t'] = 1
+        #
+        # # Aim for blocks that are roughly 20px
+        # #block_shape = self.ClassifierFactory.value.determineBlockShape([tagged_shape['x'], tagged_shape['y']],
+        # #                                                               train=True)
+        # #return (1, *tuple(block_shape), 1)
+        #
+        # return BLOCKSHAPE
 
     def setup_inference(self):
-        axisOrder = [ tag.key for tag in self.RawImage.meta.axistags ]
-        tagged_shape = self.RawImage.meta.getTaggedShape()
+        axisOrder = self.RawImage.meta.getAxisKeys()
 
-        x = self.ClassifierFactory[:].wait()
-        print(x)
+        blockDims = { 't' : (1,1),
+                      'z' : (1,1),
+                      'y' : (BLOCKSHAPE[0], BLOCKSHAPE[1]),
+                      'x' : (BLOCKSHAPE[0], BLOCKSHAPE[1]),
+                      'c' : (100,100) }
 
-        #block_shape = self.ClassifierFactory.value.determineBlockShape([tagged_shape['x'], tagged_shape['y']],
-        #                                                               train=False)
-
-        block_shape = (BLOCKSHAPE[1], BLOCKSHAPE[2])
-
-        blockDimsX = { 't' : (1,1),
-                       'z' : (block_shape[0], block_shape[1]),
-                       'y' : (block_shape[0], block_shape[1]),
-                       'x' : (1,1),
-                       'c' : (100, 100) }
-
-        blockDimsY = { 't' : (1,1),
-                       'z' : (block_shape[0], block_shape[1]),
-                       'y' : (1,1),
-                       'x' : (block_shape[0], block_shape[1]),
-                       'c' : (100,100) }
-
-        blockDimsZ = { 't' : (1,1),
-                       'z' : (1,1),
-                       'y' : (block_shape[0], block_shape[1]),
-                       'x' : (block_shape[0], block_shape[1]),
-                       'c' : (100,100) }
-
-        blockShapeX = tuple(blockDimsX[k][1] for k in axisOrder)
-        blockShapeY = tuple(blockDimsY[k][1] for k in axisOrder)
-        blockShapeZ = tuple(blockDimsZ[k][1] for k in axisOrder)
-
-        return (blockShapeX, blockShapeY, blockShapeZ)
-
+        return tuple(blockDims[k][1] for k in axisOrder)
 
     def execute(self, slot, subindex, roi, result):
         pass
@@ -397,11 +371,11 @@ class OpPredictionPipeline(Operator):
         self.predict.LabelsCount.connect(self.NumClasses)
         self.PredictionProbabilities.connect(self.predict.PMaps)
 
-        self.prediction_cache = OpSlicedBlockedArrayCache(parent=self)
+        self.prediction_cache = OpBlockedArrayCache(parent=self)
         self.prediction_cache.name = "BlockedArrayCache"
-        self.prediction_cache.inputs["Input"].connect(self.predict.PMaps)
         self.prediction_cache.inputs["fixAtCurrent"].connect(self.FreezePredictions)
         self.prediction_cache.BlockShape.connect(self.BlockShape)
+        self.prediction_cache.inputs["Input"].connect(self.predict.PMaps)
         self.CachedPredictionProbabilities.connect(self.prediction_cache.Output)
 
         self.opPredictionSlicer = OpMultiArraySlicer2(parent=self)
