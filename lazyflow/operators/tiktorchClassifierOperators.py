@@ -113,7 +113,8 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
                     
                     label_data_blocks.append( padded_label_data )
                     image_data_blocks.append( padded_image_data )
-                    block_ids.append(tuple(block_label_bb_roi[0][i] for i, key in enumerate(axiskeys) if key != 'c'))
+                    block_ids.append(tuple(int(block_label_bb_roi[0][i])
+                                           for i, key in enumerate(axiskeys) if key != 'c'))
 
         channel_names = self.Images[0].meta.channel_names
         axistags = self.Images[0].meta.axistags
