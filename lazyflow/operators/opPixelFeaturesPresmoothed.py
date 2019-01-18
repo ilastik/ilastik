@@ -239,8 +239,7 @@ class OpPixelFeaturesPresmoothed(Operator):
         # request all channels at once to only pre-smooth once for all input channels and filters.
         c = self.Output.meta.shape[1]
 
-        # If all features are computed in 2d or z is singleton axis, requesting single z slices is ideal.
-        if all(self.ComputeIn2d.value) or self.Output.meta.shape[2] == 1:
+        if self.Output.meta.shape[2] == 1:
             ideal = (t, c, 1, 0, 0)  # 2d filter
         else:
             ideal = (t, c, 0, 0, 0)  # 3d filter
