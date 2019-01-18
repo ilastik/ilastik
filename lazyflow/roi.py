@@ -451,6 +451,7 @@ def enlargeRoiForHalo(start, stop, shape, sigma, window=3.5, enlarge_axes=None, 
     else:
         return enlarged_roi 
 
+
 def getIntersectingBlocks( blockshape, roi, asarray=False ):
     """
     Returns the start coordinate of each block that the given roi intersects.
@@ -509,14 +510,15 @@ def getIntersectingBlocks( blockshape, roi, asarray=False ):
      [  0   0]]
     """
     assert len(blockshape) == len(roi[0]) == len(roi[1]), "blockshape and roi are mismatched: {} vs {}".format( blockshape, roi )
+    assert not numpy.any(numpy.isclose(blockshape, 0)), f"blockshape ({blockshape}) should not contain zero elements"
     roistart = TinyVector( roi[0] )
     roistop = TinyVector( roi[1] )
     blockshape = TinyVector( blockshape )
-    
+
     block_index_map_start = roistart // blockshape
-    block_index_map_stop = (( roistop + (blockshape - 1) ) // blockshape) # Add (blockshape-1) first as a faster alternative to ceil() 
+    block_index_map_stop = (( roistop + (blockshape - 1) ) // blockshape) # Add (blockshape-1) first as a faster alternative to ceil()
     block_index_map_shape = block_index_map_stop - block_index_map_start
-    
+
     num_axes = len(blockshape)
     block_indices = numpy.indices( block_index_map_shape )
     block_indices = numpy.rollaxis( block_indices, 0, num_axes+1 )

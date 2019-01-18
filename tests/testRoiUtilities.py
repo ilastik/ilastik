@@ -1,6 +1,13 @@
 from builtins import object
+from unittest import TestCase
+
 import numpy
-from lazyflow.roi import determineBlockShape, getIntersection, enlargeRoiForHalo, TinyVector, nonzero_bounding_box, containing_rois
+
+from lazyflow.roi import (
+    determineBlockShape, getIntersection, enlargeRoiForHalo, TinyVector, nonzero_bounding_box, containing_rois,
+    getIntersectingBlocks
+)
+
 
 class Test_determineBlockShape(object):
     
@@ -126,6 +133,17 @@ class test_containing_rois(object):
         rois = []
         result = containing_rois( rois, ( [100,100,100], [200,200,200] ) )
         assert result.shape == (0,)
+
+
+class TestGetIntersectionBlocks(TestCase):
+    def test_invalid_parameters(self):
+        with self.assertRaises(AssertionError):
+            getIntersectingBlocks((256, 256, 0, 2), ([0, 0, 0, 0], [256, 256, 256, 2]))
+
+        with self.assertRaises(AssertionError):
+            getIntersectingBlocks(numpy.array((256, 256, 0, 2)), ([0, 0, 0, 0], [256, 256, 256, 2]))
+
+
 
 if __name__ == "__main__":
     # Run nose
