@@ -226,7 +226,7 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         (for one border => half of the total size loss)
         :return: loss of image size per border in each dimension
         """
-        self.tikTorchClient.get('shrinkage', default=(0, 0, 0, 0))
+        return self.tikTorchClient.get('shrinkage', default=(0, 0, 0, 0))
 
     @property
     def valid_shapes(self):
