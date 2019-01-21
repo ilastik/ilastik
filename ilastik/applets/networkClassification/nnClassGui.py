@@ -274,16 +274,8 @@ class NNClassGui(LabelingGui):
         self.invalidatePredictionsTimer = QTimer()
         self.invalidatePredictionsTimer.timeout.connect(self.updatePredictions)
 
-    def updatePredictions(self, forceDirty=False):
-        if forceDirty:
-            self.topLevelOperatorView.classifier_cache.Output.setDirty()
-        else:
-            pmap_source = self.topLevelOperatorView.PredictionProbabilities.upstream_slot
-            while pmap_source.upstream_slot is not None:
-                pmap_source = pmap_source.upstream_slot
-
-            pmap_source.setValue(pmap_source[:].wait() * .9)
-
+    def updatePredictions(self):
+        self.topLevelOperatorView.classifier_cache.Output.setDirty()
 
     def initViewerControls(self):
         """
@@ -440,7 +432,7 @@ class NNClassGui(LabelingGui):
                 self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.Play))
                 model.pause_training_process()
                 self.invalidatePredictionsTimer.stop()
-                self.updatePredictions(True)  # update one last time
+                self.updatePredictions()  # update one last time
 
 
     @pyqtSlot()
