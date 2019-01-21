@@ -176,7 +176,7 @@ class OpLabelingSingleLane( Operator ):
         
         ## Label Array blocks
         blockShape = tuple( blockDims[k] for k in axisOrder )
-        self.opLabelArray.blockShape.setValue( blockShape )
+        self.opLabelArray.BlockShape.setValue(blockShape)
 
     def cleanUp(self):
         self.LabelInput.disconnect()

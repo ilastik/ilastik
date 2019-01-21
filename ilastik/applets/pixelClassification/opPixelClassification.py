@@ -380,7 +380,7 @@ class OpLabelPipeline( Operator ):
         self.opLabelArray.Input.connect( self.LabelInput )
         self.opLabelArray.eraser.setValue(100)
         self.opLabelArray.deleteLabel.connect( self.DeleteLabel )
-        self.opLabelArray.blockShape.connect(self.BlockShape)
+        self.opLabelArray.BlockShape.connect(self.BlockShape)
 
         # Connect external outputs to their internal sources
         self.Output.connect( self.opLabelArray.Output )
