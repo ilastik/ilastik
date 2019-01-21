@@ -277,7 +277,7 @@ class TestOpCompressedUserLabelArray(object):
         op.Input.setValue( data[0] )
 
         blockshape = (10,10,10,1)
-        op.blockShape.setValue( blockshape )
+        op.BlockShape.setValue(blockshape)
 
         # After reconfigure, everything is set back to 0.
         # That's okay.
@@ -552,7 +552,7 @@ class TestOpCompressedUserLabelArray_masked(object):
         op.Input.setValue( data[0] )
 
         blockshape = (10,10,10,1)
-        op.blockShape.setValue( blockshape )
+        op.BlockShape.setValue(blockshape)
 
         # After reconfigure, everything is set back to 0.
         # That's okay.

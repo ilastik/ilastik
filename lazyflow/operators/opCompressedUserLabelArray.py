@@ -46,17 +46,17 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
 
     See note below about blockshape changes.
     """
-    #Input = InputSlot()
+    # Input = InputSlot()
     shape = InputSlot(optional=True) # Should not be used.
     eraser = InputSlot()
     deleteLabel = InputSlot(optional = True)
-    blockShape = InputSlot() # If the blockshape is changed after labels have been stored, all cache data is lost.
+    # BlockShape = InputSlot(optional=True) # If the blockshape is changed after labels have been stored, all cache data is lost.
 
-    #Output = OutputSlot()
-    #nonzeroValues = OutputSlot()
-    #nonzeroCoordinates = OutputSlot()
+    # Output = OutputSlot()
+    # nonzeroValues = OutputSlot()
+    # nonzeroCoordinates = OutputSlot()
     nonzeroBlocks = OutputSlot()
-    #maxLabel = OutputSlot()
+    # maxLabel = OutputSlot()
     
     Projection2D = OutputSlot(allow_mask=True) # A somewhat magic output that returns a projection of all
                                                # label data underneath a given roi, from all slices.
@@ -90,10 +90,6 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         self._purge_label(from_label, True, into_label)
     
     def setupOutputs(self):
-        # Due to a temporary naming clash, pass our subclass blockshape to the superclass
-        # TODO: Fix this by renaming the BlockShape slots to be consistent.
-        self.BlockShape.setValue( self.blockShape.value )
-        
         super( OpCompressedUserLabelArray, self ).setupOutputs()
         if self.Output.meta.NOTREADY:
             self.nonzeroBlocks.meta.NOTREADY = True
@@ -120,12 +116,12 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         # Overwrite the blockshape
         if self._blockshape is None:
             self._blockshape = numpy.minimum( self.BlockShape.value, self.Output.meta.shape )
-        elif self.blockShape.value != self._blockshape:
+        elif self.BlockShape.ready() and self.BlockShape.value != self._blockshape:
             nonzero_blocks_destination = [None]
             self._execute_nonzeroBlocks(nonzero_blocks_destination)
             nonzero_blocks = nonzero_blocks_destination[0]
             if len(nonzero_blocks) > 0:
-                raise RuntimeError( "You are not permitted to reconfigure the labeling operator after you've already stored labels in it." )
+                raise RuntimeError( "You are not permitted top reconfigure the labeling operator after you've already stored labels in it." )
 
         # Overwrite chunkshape now that blockshape has been overwritten
         self._chunkshape = self._chooseChunkshape(self._blockshape)
