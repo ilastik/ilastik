@@ -87,9 +87,6 @@ class WsdtGui(LayerViewerGui):
 
         self._threshold_colortable = [QColor(0, 0, 0, 0).rgba(), QColor(0, 255, 0, 255).rgba()]  # transparent  # green
 
-        # Any time watershed is re-computed, re-update the layer set, in case the set of debug layers has changed.
-        self.topLevelOperatorView.watershed_completed.subscribe(self.updateAllLayers)
-
     def initAppletDrawerUi(self):
         """
         Overridden from base class (LayerViewerGui)
@@ -274,7 +271,7 @@ class WsdtGui(LayerViewerGui):
             """
             Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
             """
-            self.setConfigWidgetsEnabled(False)  # Disable all widgets while updating wtsd
+            self.setConfigWidgetsEnabled(False)
             try:
                 self.topLevelOperatorView.FreezeCache.setValue(False)
 
@@ -293,6 +290,8 @@ class WsdtGui(LayerViewerGui):
             finally:
                 # Be sure the widgets are enabled again after updating
                 self.setConfigWidgetsEnabled(True)
+            # Any time watershed is updated, re-update the layer set, in case the set of debug layers has changed.
+            self.updateAllLayers()
 
         self.getLayerByName("Superpixels").visible = True
         th = threading.Thread(target=updateThread)
