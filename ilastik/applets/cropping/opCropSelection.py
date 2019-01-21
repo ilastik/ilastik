@@ -183,7 +183,7 @@ class OpCropPipeline( Operator ):
 
         # Aim for blocks that are roughly 1MB
         block_shape = determineBlockShape( list(tagged_shape.values()), 1e6 )
-        self.opCropArray.blockShape.setValue( block_shape )
+        self.opCropArray.BlockShape.setValue(block_shape)
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
