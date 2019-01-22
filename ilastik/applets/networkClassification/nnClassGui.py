@@ -222,23 +222,23 @@ class NNClassGui(LabelingGui):
         self.classifiers = OrderedDict()
 
         has_classifier_factory = self.topLevelOperatorView.ClassifierFactory.ready()
-        self.liveTraining = has_classifier_factory
-        self.livePrediction = has_classifier_factory
+        self.liveTraining = False
+        self.livePrediction = False
 
         self.__cleanup_fns = []
 
-        self.labelingDrawerUi.liveTraining.setEnabled(self.liveTraining)
-        self.set_live_predict_icon(self.liveTraining)
+        self.labelingDrawerUi.liveTraining.setEnabled(has_classifier_factory)
         self.labelingDrawerUi.liveTraining.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.set_live_training_icon(self.liveTraining)
         self.labelingDrawerUi.liveTraining.toggled.connect(self.toggleLiveTraining)
 
-        self.labelingDrawerUi.livePrediction.setEnabled(self.livePrediction)
-        self.set_live_predict_icon(self.livePrediction)
+        self.labelingDrawerUi.livePrediction.setEnabled(has_classifier_factory)
         self.labelingDrawerUi.livePrediction.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.set_live_predict_icon(self.livePrediction)
         self.labelingDrawerUi.livePrediction.toggled.connect(self.toggleLivePrediction)
 
         self.labelingDrawerUi.comboBox.clear()
-        self.labelingDrawerUi.comboBox.hide()  # atm only a single model is supported
+        self.labelingDrawerUi.comboBox.hide()  # atm only a single model at a time is supported
         self.labelingDrawerUi.addModel.clicked.connect(self.addModel)
 
         # if self.topLevelOperatorView.ModelPath.ready():
@@ -280,7 +280,11 @@ class NNClassGui(LabelingGui):
     def set_live_training_icon(self, active: bool):
         if active:
             self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.Pause))
+            self.labelingDrawerUi.liveTraining.setText('Pause and Download')
+            self.labelingDrawerUi.liveTraining.setToolTip('Pause training and download model state')
         else:
+            self.labelingDrawerUi.liveTraining.setText('Live Training')
+            self.labelingDrawerUi.liveTraining.setToolTip('')
             self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.Play))
 
     def set_live_predict_icon(self, active: bool):
@@ -292,11 +296,12 @@ class NNClassGui(LabelingGui):
     def loadModel(self, factory_slot):
         if factory_slot.ready():
             factory = factory_slot.value
-            if factory is not None:
-                self.set_NN_classifier_name(factory._tikTorchClient.get('name', default='previous model'))
+            self.set_NN_classifier_name(factory._tikTorchClient.get('name', default='previous model'))
 
     def updatePredictions(self):
+        self.topLevelOperatorView.FreezePredictions.setValue(False)
         self.topLevelOperatorView.classifier_cache.Output.setDirty()
+        self.topLevelOperatorView.FreezePredictions.setValue(True)
 
     def initViewerControls(self):
         """
@@ -447,17 +452,28 @@ class NNClassGui(LabelingGui):
         if self.liveTraining != checked:
             self.labelingDrawerUi.liveTraining.setEnabled(False)
             self.liveTraining = checked
-            model = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
-            model.train_model = checked
+            factory = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
+            factory.train_model = checked
             self.set_live_training_icon(checked)
             if checked:
                 self.toggleLivePrediction(True)
-                model.resume_training_process()
+                factory.resume_training_process()
                 self.invalidatePredictionsTimer.start(20000)  # start updating regularly
             else:
-                model.pause_training_process()
+                factory.pause_training_process()
                 self.invalidatePredictionsTimer.stop()
                 self.updatePredictions()  # update one last time
+                try:
+                    model_state = factory.get_model_state()
+                    self.topLevelOperatorView.BinaryModelState.setValue(model_state)
+                except Exception as e:
+                    logger.warning(f'Could not retrieve updated model state due to {e}')
+
+                try:
+                    optimizer_state = factory.get_optimizer_state()
+                    self.topLevelOperatorView.BinaryOptimizerState.setValue(optimizer_state)
+                except Exception as e:
+                    logger.warning(f'Could not retrieve optimizer state due to {e}')
 
             self.labelingDrawerUi.liveTraining.setEnabled(True)
 
