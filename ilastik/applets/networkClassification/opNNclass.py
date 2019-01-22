@@ -19,7 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from functools import partial
-import numpy as np
+import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 from lazyflow.operators import OpMultiArraySlicer2, OpValueCache,  OpBlockedArrayCache, \
@@ -45,11 +45,15 @@ class OpNNClassification(Operator):
 
     # Graph inputs
     InputImages = InputSlot(level=1)
-    NumClasses = InputSlot()
+    NumClasses = InputSlot(optional=True)
     LabelInputs = InputSlot(optional=True, level=1)
     FreezePredictions = InputSlot(stype='bool', value=False, nonlane=True)
-    ClassifierFactory = InputSlot()
+    ClassifierFactory = InputSlot(optional=True)
     ServerConfig = InputSlot(value=DEFAULT_SERVER_CONFIG)
+    TiktorchConfig = InputSlot(optional=True)
+    BinaryModel = InputSlot(optional=True)
+    BinaryModelState = InputSlot(value=b'')
+    BinaryOptimizerState = InputSlot(value=b'')
 
     Classifier = OutputSlot()
     PredictionProbabilities = OutputSlot(level=1)  # Classification predictions (via feature cache for interactive speed)
@@ -59,7 +63,6 @@ class OpNNClassification(Operator):
     NonzeroLabelBlocks = OutputSlot(level=1)
 
     # Gui only (not part of the pipeline)
-    ModelPath = InputSlot()  # Path
     Halo_Size = InputSlot(value=0)
     Batch_Size = InputSlot(value=1)
 
@@ -74,6 +77,29 @@ class OpNNClassification(Operator):
         self.LabelColors.meta.shape = (1,)
         self.PmapColors.meta.dtype = object
         self.PmapColors.meta.shape = (1,)
+        if not self.ClassifierFactory.ready() and \
+                self.ServerConfig.ready() and self.TiktorchConfig.ready() and self.BinaryModel.ready():
+            # todo: Deserialize sequences as tuple of ints, not as numpy.ndarray
+            # (which is a weird, implicit default in SerialDictSlot)
+            # also note: converting form numpy.int32, etc to python's int
+            def make_good(bad):
+                good = bad
+                if isinstance(bad, dict):
+                    good = {}
+                    for key, bad_value in bad.items():
+                        good[key] = make_good(bad_value)
+                elif isinstance(bad, numpy.integer):
+                    good = int(bad)
+                elif isinstance(bad, numpy.ndarray):
+                    good = tuple(make_good(v) for v in bad)
+                return good
+            tiktorch_config = make_good(self.TiktorchConfig.value)
+
+            self.ClassifierFactory.setValue(TikTorchLazyflowClassifierFactory(tiktorch_config,
+                                                                              self.BinaryModel.value,
+                                                                              self.BinaryModelState.value,
+                                                                              self.BinaryOptimizerState.value,
+                                                                              server_config=self.ServerConfig.value))
 
     def __init__(self, *args, **kwargs):
         """
@@ -178,10 +204,14 @@ class OpNNClassification(Operator):
                     s1.notifyRemoved(partial(removeSlot, s2))
 
     def set_classifier(self, tiktorch_config : dict, model_file : bytes, model_state : bytes, optimizer_state : bytes):
-        server_config = self.ServerConfig[:].wait()[0]
-        self.ClassifierFactory.setValue(
-            TikTorchLazyflowClassifierFactory(tiktorch_config, model_file, model_state, optimizer_state,
-                                              server_config=server_config))
+        self.TiktorchConfig.disconnect()  # do not create TiktorchClassifierFactory with invalid intermediate settings
+        self.ClassifierFactory.disconnect()
+        self.FreezePredictions.setValue(False)
+        self.BinaryModel.setValue(model_file)
+        self.BinaryModelState.setValue(model_state)
+        self.BinaryOptimizerState.setValue(optimizer_state)
+        # now all non-server settings are up to date...
+        self.TiktorchConfig.setValue(tiktorch_config)  # ...setupOutputs can initialize a tiktorchClassifierFactory
 
     def send_hparams(self, hparams):
         self.ClassifierFactory.meta.hparams = hparams

@@ -221,18 +221,19 @@ class NNClassGui(LabelingGui):
         self.parentApplet = parentApplet
         self.classifiers = OrderedDict()
 
-        self.liveTraining = False
-        self.livePrediction = False
+        has_classifier_factory = self.topLevelOperatorView.ClassifierFactory.ready()
+        self.liveTraining = has_classifier_factory
+        self.livePrediction = has_classifier_factory
 
         self.__cleanup_fns = []
 
-        self.labelingDrawerUi.liveTraining.setEnabled(False)
-        self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.Play))
+        self.labelingDrawerUi.liveTraining.setEnabled(self.liveTraining)
+        self.set_live_predict_icon(self.liveTraining)
         self.labelingDrawerUi.liveTraining.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveTraining.toggled.connect(self.toggleLiveTraining)
 
-        self.labelingDrawerUi.livePrediction.setEnabled(False)
-        self.labelingDrawerUi.livePrediction.setIcon(QIcon(ilastikIcons.Play))
+        self.labelingDrawerUi.livePrediction.setEnabled(self.livePrediction)
+        self.set_live_predict_icon(self.livePrediction)
         self.labelingDrawerUi.livePrediction.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.livePrediction.toggled.connect(self.toggleLivePrediction)
 
@@ -240,12 +241,12 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.comboBox.hide()  # atm only a single model is supported
         self.labelingDrawerUi.addModel.clicked.connect(self.addModel)
 
-        if self.topLevelOperatorView.ModelPath.ready():
-            modelPathList = list(self.topLevelOperatorView.ModelPath.value.values())
-            #TODO: save more networks
-            # for modelPath in modelPathList:
-            #     self.add_NN_classifiers(modelPath)
-            self.add_NN_classifiers(modelPathList[0])
+        # if self.topLevelOperatorView.ModelPath.ready():
+        #     modelPathList = list(self.topLevelOperatorView.ModelPath.value.values())
+        #     #TODO: save more networks
+        #     # for modelPath in modelPathList:
+        #     #     self.add_NN_classifiers(modelPath)
+        #     self.add_NN_classifiers(modelPathList[0])
 
         self.initViewerControls()
         self.initViewerControlUi()
@@ -273,6 +274,26 @@ class NNClassGui(LabelingGui):
 
         self.invalidatePredictionsTimer = QTimer()
         self.invalidatePredictionsTimer.timeout.connect(self.updatePredictions)
+
+        self.loadModel(self.topLevelOperatorView.ClassifierFactory)
+
+    def set_live_training_icon(self, active: bool):
+        if active:
+            self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.Pause))
+        else:
+            self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.Play))
+
+    def set_live_predict_icon(self, active: bool):
+        if active:
+            self.labelingDrawerUi.livePrediction.setIcon(QIcon(ilastikIcons.Pause))
+        else:
+            self.labelingDrawerUi.livePrediction.setIcon(QIcon(ilastikIcons.Play))
+
+    def loadModel(self, factory_slot):
+        if factory_slot.ready():
+            factory = factory_slot.value
+            if factory is not None:
+                self.set_NN_classifier_name(factory._tikTorchClient.get('name', default='previous model'))
 
     def updatePredictions(self):
         self.topLevelOperatorView.classifier_cache.Output.setDirty()
@@ -386,19 +407,21 @@ class NNClassGui(LabelingGui):
         return layers
 
     def toggleLivePrediction(self, checked):
-        assert self.topLevelOperatorView.ClassifierFactory.ready()
+        if not self.topLevelOperatorView.ClassifierFactory.ready():
+            checked = False
+
         logger.debug(f'toggling live prediction mode to {checked}')
+        self.labelingDrawerUi.livePrediction.setEnabled(False)
 
         # If we're changing modes, enable/disable our controls and other applets accordingly
         if self.livePrediction != checked:
             self.livePrediction = checked
             self.labelingDrawerUi.livePrediction.setChecked(checked)
+            self.set_live_predict_icon(checked)
             if checked:
-                self.labelingDrawerUi.livePrediction.setIcon(QIcon(ilastikIcons.Pause))
                 self.labelingDrawerUi.labelListView.allowDelete = False
                 self.labelingDrawerUi.AddLabelButton.setEnabled(False)
             else:
-                self.labelingDrawerUi.livePrediction.setIcon(QIcon(ilastikIcons.Play))
                 num_label_classes = self._labelControlUi.labelListModel.rowCount()
                 self.labelingDrawerUi.labelListView.allowDelete = (num_label_classes > self.minLabelNumber)
                 self.labelingDrawerUi.AddLabelButton.setEnabled((num_label_classes < self.maxLabelNumber))
@@ -415,25 +438,28 @@ class NNClassGui(LabelingGui):
         # (For example, the downstream pixel classification applet can
         #  be used now that there are features selected)
         self.parentApplet.appletStateUpdateRequested()
+        self.labelingDrawerUi.livePrediction.setEnabled(True)
 
     def toggleLiveTraining(self, checked):
-        assert self.topLevelOperatorView.ClassifierFactory.ready()
+        if not self.topLevelOperatorView.ClassifierFactory.ready():
+            checked = False
 
         if self.liveTraining != checked:
+            self.labelingDrawerUi.liveTraining.setEnabled(False)
             self.liveTraining = checked
             model = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
             model.train_model = checked
+            self.set_live_training_icon(checked)
             if checked:
-                self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.Pause))
                 self.toggleLivePrediction(True)
                 model.resume_training_process()
                 self.invalidatePredictionsTimer.start(20000)  # start updating regularly
             else:
-                self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.Play))
                 model.pause_training_process()
                 self.invalidatePredictionsTimer.stop()
                 self.updatePredictions()  # update one last time
 
+            self.labelingDrawerUi.liveTraining.setEnabled(True)
 
     @pyqtSlot()
     def handleShowPredictionsClicked(self):
@@ -478,27 +504,28 @@ class NNClassGui(LabelingGui):
         folder = self.getFolderToOpen(self, folder)
 
         if folder:
+            if self.topLevelOperatorView.ClassifierFactory.ready():
+                tiktorchFactory = self.topLevelOperatorView.ClassifierFactory.value
+                if tiktorchFactory is not None:
+                    tiktorchFactory._tikTorchClient.shutdown()
+
             # user did not cancel selection
             self.labelingDrawerUi.addModel.setEnabled(False)
             self.add_NN_classifiers(folder)
             PreferencesManager().set('DataSelection', 'recent model', folder)
             # disable adding another model TODO: handle new model in add_NN_Classifier
             self.labelingDrawerUi.addModel.setToolTip('Switching network model currently not supported.')
-            # self.labelingDrawerUi.addModel.setEnabled(True)
-            # self.labelingDrawerUi.addModel.setChecked(False)
             self.parentApplet.appletStateUpdateRequested()
+            self.labelingDrawerUi.addModel.setEnabled(True)
 
     def add_NN_classifiers(self, folder_path):
         """
         Adds the chosen FilePath to the classifierDictionary and to the ComboBox
         """
-        modelname = os.path.basename(os.path.normpath(folder_path))
-        self.labelingDrawerUi.addModel.setText(f'{modelname} loaded')
-        self.classifiers[modelname] = folder_path # Misleading! this attribute is an OrderedDict and contains the path to the TikTorch config and not the classifier/network itself.
 
         # clear first the comboBox or addItems will duplicate names
-        self.labelingDrawerUi.comboBox.clear()
-        self.labelingDrawerUi.comboBox.addItems(self.classifiers)
+        # self.labelingDrawerUi.comboBox.clear()
+        # self.labelingDrawerUi.comboBox.addItems(self.classifiers)
         self.labelingDrawerUi.liveTraining.setEnabled(True)
         self.labelingDrawerUi.livePrediction.setEnabled(True)
 
@@ -509,6 +536,11 @@ class NNClassGui(LabelingGui):
 
         with open(config_file_name, 'r') as f:
             tiktorch_config = yaml.load(f)
+
+        if 'name' not in tiktorch_config:
+            tiktorch_config['name'] = os.path.basename(os.path.normpath(folder_path))
+
+        self.set_NN_classifier_name(tiktorch_config['name'])
 
         # Read model.py
         file_name = os.path.join(folder_path, 'model.py')
@@ -529,6 +561,9 @@ class NNClassGui(LabelingGui):
                 binary_states.append(b'')
 
         self.topLevelOperatorView.set_classifier(tiktorch_config, binary_model_file, *binary_states)
+
+    def set_NN_classifier_name(self, name: str):
+        self.labelingDrawerUi.addModel.setText(f'{name} loaded')
 
     def getFolderToOpen(cls, parent_window, defaultDirectory):
         """
