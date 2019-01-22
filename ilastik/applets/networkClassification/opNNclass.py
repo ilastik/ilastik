@@ -32,7 +32,11 @@ from ilastik.utility import OpMultiLaneWrapper
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
 from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_SERVER_CONFIG
 
+import logging
+logger = logging.getLogger(__name__)
+
 BLOCKSHAPE = (1, 256, 256, 1) #(1, 188, 188, 1)
+logger.warning(f'Using hardcoded blockshape {BLOCKSHAPE}')
 
 
 class OpNNClassification(Operator):
@@ -100,6 +104,17 @@ class OpNNClassification(Operator):
                                                                               self.BinaryModelState.value,
                                                                               self.BinaryOptimizerState.value,
                                                                               server_config=self.ServerConfig.value))
+            try:
+                projectManager = self._parent._shell.projectManager
+                applet = self._parent._applets[2]
+                assert applet.name == 'NN Training'
+                # restore labels  # todo: clean up this workaround for resetting the user label block shape
+                top_group_name = applet.dataSerializers[0].topGroupName
+                group_name = 'LabelSets'
+                label_serial_block_slot = [s for s in applet.dataSerializers[0].serialSlots if s.name == group_name][0]
+                label_serial_block_slot.deserialize(projectManager.currentProjectFile[top_group_name])
+            except:
+                logger.debug('Could not restore labels after setting TikTorchLazyflowClassifierFactory.')
 
     def __init__(self, *args, **kwargs):
         """

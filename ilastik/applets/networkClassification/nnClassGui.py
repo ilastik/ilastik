@@ -520,6 +520,11 @@ class NNClassGui(LabelingGui):
         folder = self.getFolderToOpen(self, folder)
 
         if folder:
+            projectManager = self.parentApplet._StandardApplet__workflow._shell.projectManager
+            # save whole project (specifically important here: the labels)
+            if not projectManager.currentProjectIsReadOnly:
+                projectManager.saveProject()
+
             if self.topLevelOperatorView.ClassifierFactory.ready():
                 tiktorchFactory = self.topLevelOperatorView.ClassifierFactory.value
                 if tiktorchFactory is not None:
