@@ -38,7 +38,7 @@ import tempfile
 import h5py
 import numpy
 import warnings
-import pickle as pickle
+import pickle
 
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.utility import timeLogged
@@ -298,6 +298,21 @@ class SerialSlot(object):
                     # Since there was no data for this subslot in the project file,
                     # we disconnect the subslot.
                     subslot.disconnect()
+
+class BinarySlot(SerialSlot):
+    """Implements the logic for serializing a binary slot."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def _getValue(subgroup, slot):
+        val = subgroup[()]
+        # todo: Clean up SerialSlot/BinarySlot
+        # This commented decoding of bytes is the only difference to SerialSlot:
+        # if isinstance(val, bytes):
+        #     # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
+        #     val = val.decode('utf-8')
+        slot.setValue(val)
 
 #######################################################
 # some serial slots that are used in multiple applets #

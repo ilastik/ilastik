@@ -18,10 +18,12 @@
 # on the ilastik web site at:
 #          http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialListSlot, SerialDictSlot, SerialBlockSlot
+import pickle
+
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialListSlot, SerialDictSlot, SerialBlockSlot, \
+    BinarySlot
 
 import logging
-
 logger = logging.getLogger(__name__)
 
 
@@ -32,13 +34,17 @@ class NNClassificationSerializer(AppletSerializer):
         slots = [SerialListSlot(topLevelOperator.LabelNames),
                  SerialListSlot(topLevelOperator.LabelColors, transform=lambda x: tuple(x.flat)),
                  SerialListSlot(topLevelOperator.PmapColors, transform=lambda x: tuple(x.flat)),
-            	 SerialDictSlot(topLevelOperator.ModelPath),
             	 SerialBlockSlot(topLevelOperator.LabelImages,
                                  topLevelOperator.LabelInputs,
                                  topLevelOperator.NonzeroLabelBlocks,
                                  name='LabelSets',
                                  subname='labels{:03d}',
                                  selfdepends=False,
-                                 shrink_to_bb=True)]
+                                 shrink_to_bb=True),
+                 SerialDictSlot(topLevelOperator.TiktorchConfig),
+                 BinarySlot(topLevelOperator.BinaryModel),
+                 BinarySlot(topLevelOperator.BinaryModelState),
+                 BinarySlot(topLevelOperator.BinaryOptimizerState),
+                ]
 
-        super(NNClassificationSerializer, self).__init__(projectFileGroupName, slots)
+        super().__init__(projectFileGroupName, slots)
