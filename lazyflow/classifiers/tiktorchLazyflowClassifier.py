@@ -46,7 +46,6 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     # The version is used to determine compatibility of pickled classifier factories.
     # You must bump this if any instance members are added/removed/renamed.
     VERSION = 1
-    tikTorchServer_process = None
 
     def __init__(self, *args, server_config: dict, start_server=True):
         # Privates
@@ -133,6 +132,12 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
         # TODO: check whether loaded network has the same number of classes as specified in ilastik!
         self._tikTorchClient.train(reordered_feature_images, reordered_labels, image_ids)
+
+    def get_model_state(self):
+        return self._tikTorchClient.get_model_state()
+
+    def get_optimizer_state(self):
+        return self._tikTorchClient.get_optimizer_state()
 
     @staticmethod
     def get_view_with_axes(in_array: numpy.ndarray, in_axiskeys: str, out_axiskeys: str) -> vigra.VigraArray:
@@ -342,30 +347,32 @@ class TikTorchLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         return [tuple(vs['czyx'.index(a)] for a in data_axes) for vs in self.valid_shapes]
 
     def serialize_hdf5(self, h5py_group):
-        logger.debug('Serializing')
-        h5py_group[self.HDF5_GROUP_FILENAME] = self._filename
-        h5py_group['pickled_type'] = pickle.dumps(type(self), 0)
-
-        # HACK: can this be done more elegantly?
-        with tempfile.TemporaryFile() as f:
-            self.tikTorchClient.serialize(f)
-            f.seek(0)
-            h5py_group['classifier'] = numpy.void(f.read())
+        pass  # nothing to serialize here
+    #     logger.debug('Serializing')
+    #     h5py_group[self.HDF5_GROUP_FILENAME] = self._filename
+    #     h5py_group['pickled_type'] = pickle.dumps(type(self), 0)
+    #
+    #     # HACK: can this be done more elegantly?
+    #     with tempfile.TemporaryFile() as f:
+    #         self.tikTorchClient.serialize(f)
+    #         f.seek(0)
+    #         h5py_group['classifier'] = numpy.void(f.read())
 
     @classmethod
     def deserialize_hdf5(cls, h5py_group):
-        # TODO: load from HDF5 instead of hard coded path!
-        logger.debug('Deserializing')
-        # HACK:
-        # filename = PYTORCH_MODEL_FILE_PATH
-        filename = h5py_group[cls.HDF5_GROUP_FILENAME]
-        logger.debug('Deserializing from {}'.format(filename))
-
-        with tempfile.TemporaryFile() as f:
-            f.write(h5py_group['classifier'].value)
-            f.seek(0)
-            loaded_pytorch_net = TikTorchClient.unserialize(f)
-
-        return TikTorchLazyflowClassifier(loaded_pytorch_net, filename)
+        pass  # nothing to deserialize here
+    #     # TODO: load from HDF5 instead of hard coded path!
+    #     logger.debug('Deserializing')
+    #     # HACK:
+    #     # filename = PYTORCH_MODEL_FILE_PATH
+    #     filename = h5py_group[cls.HDF5_GROUP_FILENAME]
+    #     logger.debug('Deserializing from {}'.format(filename))
+    #
+    #     with tempfile.TemporaryFile() as f:
+    #         f.write(h5py_group['classifier'].value)
+    #         f.seek(0)
+    #         loaded_pytorch_net = TikTorchClient.unserialize(f)
+    #
+    #     return TikTorchLazyflowClassifier(loaded_pytorch_net, filename)
 
 assert issubclass(TikTorchLazyflowClassifier, LazyflowPixelwiseClassifierABC)
