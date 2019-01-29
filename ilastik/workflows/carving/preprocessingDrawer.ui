@@ -25,9 +25,6 @@
   <property name="windowTitle">
    <string>PreprocessDrawer</string>
   </property>
-  <property name="locale">
-   <locale language="German" country="Germany"/>
-  </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">
@@ -132,9 +129,6 @@
         <widget class="QDoubleSpinBox" name="sigmaSpin">
          <property name="toolTip">
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The filter scale is the width (&lt;span style=&quot; font-style:italic;&quot;&gt;sigma&lt;/span&gt;) of the convolution filter selected above. Larger sigmas in result in larger structures being recognized as boundaries.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="locale">
-          <locale language="English" country="UnitedStates"/>
          </property>
          <property name="decimals">
           <number>3</number>
