@@ -362,7 +362,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         if self._showDebug:
             #FIXME: We have to do that, because lazyflow doesn't have a way to make an operator partially ready
             curIndex = op.CurOperator.value
-            if curIndex==1:
+            if curIndex in (1, 3):
                 if op.FilteredSmallLabels.ready():
                     filteredSmallLabelsSrc = LazyflowSource(op.FilteredSmallLabels)
                     #filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
