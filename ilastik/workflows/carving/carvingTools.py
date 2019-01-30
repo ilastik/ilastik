@@ -137,7 +137,7 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, 
 
     #print("the overseg",overseg.min(), overseg.max())
     logger.info("bincount")
-    res = bincount = numpy.bincount(overseg.ravel().astype('int64'))
+    res = numpy.bincount(overseg.ravel().astype('int64'))
     n_empty  = (res==0).sum() - 1
 
     logger.info("grid rag")
