@@ -190,7 +190,7 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, 
     # convert graph segmentation
     # to pixel segmentation
 
-    seg = numpy.take(nodeSeg, overseg.astype('int64'))
+    seg = nifty.graph.rag.projectScalarNodeDataToPixels(rag, nodeSeg)
 
 
 
