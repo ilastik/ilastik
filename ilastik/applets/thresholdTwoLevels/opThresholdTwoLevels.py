@@ -175,8 +175,12 @@ class OpThresholdTwoLevels(Operator):
         self.Smoothed.connect( self.opSmootherCache.Output )
         self.InputChannel.connect( self.opFinalChannelSelector.Output )
         self.SmallRegions.connect( self.opCoreThreshold.Output )
-        self.FilteredSmallLabels.connect( self.opCoreFilter.Output )
         self.BeforeSizeFilter.connect( self.opFinalThreshold.Output )
+
+        self.opFilteredSmallLabelsCache = OpBlockedArrayCache(parent=self)
+        self.opFilteredSmallLabelsCache.CompressionEnabled.setValue(True)
+        self.opFilteredSmallLabelsCache.Input.connect(self.opCoreFilter.Output)
+        self.FilteredSmallLabels.connect(self.opFilteredSmallLabelsCache.Output)
 
         # Since hysteresis thresholding creates the big regions and immediately discards the bad ones,
         # we have to recreate it here if the user wants to view it as a debug layer 
@@ -193,6 +197,8 @@ class OpThresholdTwoLevels(Operator):
         # Cache individual t,c slices
         blockshape = tuple(1 if k in 'tc' else None for k in axes)
         self.opCache.BlockShape.setValue(blockshape)
+        # assuming (t, c, z, y, x) here.
+        self.opFilteredSmallLabelsCache.BlockShape.setValue((1, 1, None, None, None))
         
         if self.CurOperator.value in (ThresholdMethod.HYSTERESIS, ThresholdMethod.IPHT) \
         and self.Channel.value != self.CoreChannel.value:
