@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # parallel watershed with hard block boarders
 def simple_parallel_ws_impl(data, block_shape=None, max_workers=None):
-        
+
 
     if max_workers is None:
         max_workers = cpu_count()
@@ -55,7 +55,7 @@ def simple_parallel_ws_impl(data, block_shape=None, max_workers=None):
 
 
             def per_block(block_index):
-                
+
                 # get block with halo
                 block_with_halo = blocking.getBlockWithHalo(blockIndex=block_index, halo=halo)
                 #print(block_with_halo)
@@ -113,9 +113,9 @@ def simple_parallel_ws_impl(data, block_shape=None, max_workers=None):
                     #print('g',labels[inner_slicing].shape, 'l', inner_block_labels.shape)
 
                     labels[inner_slicing] = inner_block_labels[:]
-                        
 
-        
+
+
 
             #per_block(i)
             future = executor.submit(per_block, block_index=i)
@@ -125,7 +125,7 @@ def simple_parallel_ws_impl(data, block_shape=None, max_workers=None):
     #print("labels ",labels.min())
 
     return labels
-        
+
 
 
 def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, size_regularizer=0.5):
@@ -154,15 +154,15 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, 
     data = numpy.require(data,dtype='float32')
     logger.info("accumulate along boundaries")
     edge_features, node_features = nifty.graph.rag.accumulateMeanAndLength(
-        rag=rag, data=numpy.require(data,dtype='float32'), 
-        blockShape=list(block_shape), 
+        rag=rag, data=numpy.require(data,dtype='float32'),
+        blockShape=list(block_shape),
         numberOfThreads=int(max_workers), saveMemory=True)
 
     meanEdgeStrength = edge_features[:,0]
     edgeSizes = edge_features[:,1]
     nodeSizes = node_features[:,1]
 
-    
+
     node_features[:] = 1
 
     n_stop = max(1,non_empty_nodes * reduce_to)
@@ -171,20 +171,20 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, 
     clusterPolicy = nifty.graph.agglo.nodeAndEdgeWeightedClusterPolicy(
         graph=rag, edgeIndicators=meanEdgeStrength,
         nodeFeatures=node_features,
-        edgeSizes=edgeSizes, 
+        edgeSizes=edgeSizes,
         nodeSizes=nodeSizes,
         beta=0.0, numberOfNodesStop=n_stop,
         sizeRegularizer=size_regularizer)
 
     logger.info("run clustering")
     # run agglomerative clustering
-    agglomerativeClustering = nifty.graph.agglo.agglomerativeClustering(clusterPolicy) 
+    agglomerativeClustering = nifty.graph.agglo.agglomerativeClustering(clusterPolicy)
     agglomerativeClustering.run(True, 10000)
     nodeSeg = agglomerativeClustering.result()
 
 
     nodeSeg = numpy.require(nodeSeg, dtype='int64')
-    nodeSeg -=(nodeSeg.min()) 
+    nodeSeg -=(nodeSeg.min())
     nodeSeg += 1
 
 
@@ -196,7 +196,7 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, 
     logger.info("project back")
     # convert graph segmentation
     # to pixel segmentation
-    
+
     seg = numpy.take(nodeSeg, overseg.astype('int64'))
 
 
@@ -207,4 +207,3 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, 
     #seg = vigra.analysis.labelVolume(seg.astype('uint32'))
     logger.info("agglomerative supervoxel creation is done")
     return seg
-    
