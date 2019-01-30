@@ -363,6 +363,24 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             #FIXME: We have to do that, because lazyflow doesn't have a way to make an operator partially ready
             curIndex = op.CurOperator.value
             if curIndex==1:
+                if op.FilteredSmallLabels.ready():
+                    filteredSmallLabelsSrc = LazyflowSource(op.FilteredSmallLabels)
+                    #filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
+                    filteredSmallLabelsLayer = ColortableLayer(filteredSmallLabelsSrc, LayerCmap.BINARY_SHADE_2.value)
+                    filteredSmallLabelsLayer.name = "After high threshold and size filter"
+                    filteredSmallLabelsLayer.visible = False
+                    filteredSmallLabelsLayer.opacity = 1.0
+                    filteredSmallLabelsLayer.setToolTip("Results of thresholding with the high pixel value threshold,\
+                                                         followed by the size filter")
+                    layers.append(filteredSmallLabelsLayer)
+                if op.SmallRegions.ready():
+                    highThresholdSrc = LazyflowSource(op.SmallRegions)
+                    highThresholdLayer = ColortableLayer(highThresholdSrc, LayerCmap.BINARY_SHADE_1.value)
+                    highThresholdLayer.name = "After high threshold"
+                    highThresholdLayer.visible = False
+                    highThresholdLayer.opacity = 1.0
+                    highThresholdLayer.setToolTip("Results of thresholding with the high pixel value threshold")
+                    layers.append(highThresholdLayer)
                 if op.BigRegions.ready():
                     lowThresholdSrc = LazyflowSource(op.BigRegions)
                     lowThresholdLayer = ColortableLayer(lowThresholdSrc, LayerCmap.BINARY_SHADE_0.value)
@@ -371,26 +389,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                     lowThresholdLayer.opacity = 1.0
                     lowThresholdLayer.setToolTip("Results of thresholding with the low pixel value threshold")
                     layers.append(lowThresholdLayer)
-        
-                if op.FilteredSmallLabels.ready():
-                    filteredSmallLabelsSrc = LazyflowSource(op.FilteredSmallLabels)
-                    #filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
-                    filteredSmallLabelsLayer = ColortableLayer(filteredSmallLabelsSrc, LayerCmap.BINARY_SHADE_1.value)
-                    filteredSmallLabelsLayer.name = "After high threshold and size filter"
-                    filteredSmallLabelsLayer.visible = False
-                    filteredSmallLabelsLayer.opacity = 1.0
-                    filteredSmallLabelsLayer.setToolTip("Results of thresholding with the high pixel value threshold,\
-                                                         followed by the size filter")
-                    layers.append(filteredSmallLabelsLayer)
-        
-                if op.SmallRegions.ready():
-                    highThresholdSrc = LazyflowSource(op.SmallRegions)
-                    highThresholdLayer = ColortableLayer(highThresholdSrc, LayerCmap.BINARY_SHADE_2.value)
-                    highThresholdLayer.name = "After high threshold"
-                    highThresholdLayer.visible = False
-                    highThresholdLayer.opacity = 1.0
-                    highThresholdLayer.setToolTip("Results of thresholding with the high pixel value threshold")
-                    layers.append(highThresholdLayer)
+
             elif curIndex==0:
                 if op.BeforeSizeFilter.ready():
                     thSrc = LazyflowSource(op.BeforeSizeFilter)
