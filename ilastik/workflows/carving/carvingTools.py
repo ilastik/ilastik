@@ -134,17 +134,12 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, 
 
     logger.info(f"blockwise watershed with {max_workers} threads.")
     overseg = simple_parallel_ws_impl(data=data, block_shape=block_shape, max_workers=max_workers)
-
-    #print("the overseg",overseg.min(), overseg.max())
-    logger.info("bincount")
-    res = numpy.bincount(overseg.ravel().astype('int64'))
-    n_empty  = (res==0).sum() - 1
+    vigra.analysis.relabelConsecutive(overseg, out=overseg)
 
     logger.info("grid rag")
     rag = nifty.graph.rag.gridRag(overseg)
     logger.info("rag: %s"%str(rag))
     n_nodes = rag.numberOfNodes
-    non_empty_nodes = n_nodes - n_empty
 
     shape = data.shape
     ndim = len(shape)
@@ -164,9 +159,7 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, 
 
 
     node_features[:] = 1
-
-    n_stop = max(1,non_empty_nodes * reduce_to)
-    n_stop = int(n_empty + n_stop)
+    n_stop = reduce_to * n_nodes
 
     clusterPolicy = nifty.graph.agglo.nodeAndEdgeWeightedClusterPolicy(
         graph=rag, edgeIndicators=meanEdgeStrength,
