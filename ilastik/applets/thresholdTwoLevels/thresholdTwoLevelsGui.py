@@ -52,8 +52,7 @@ class DebugLayerCmap(Enum):
     """Color definitions used in debug layers"""
     BINARY_WHITE = (0, QColor(Qt.white))
     BINARY_SHADE_0 = (0, QColor('purple'))
-    BINARY_SHADE_1 = (0, QColor('mediumpurple'))
-    BINARY_SHADE_2 = (0, QColor('fuchsia'))
+    BINARY_SHADE_1 = (0, QColor('fuchsia'))
 
 
 class ThresholdTwoLevelsGui( LayerViewerGui ):
@@ -366,7 +365,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                 if op.FilteredSmallLabels.ready():
                     filteredSmallLabelsSrc = LazyflowSource(op.FilteredSmallLabels)
                     #filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
-                    filteredSmallLabelsLayer = ColortableLayer(filteredSmallLabelsSrc, DebugLayerCmap.BINARY_SHADE_2.value)
+                    filteredSmallLabelsLayer = ColortableLayer(filteredSmallLabelsSrc, DebugLayerCmap.BINARY_SHADE_1.value)
                     filteredSmallLabelsLayer.name = "After high threshold and size filter"
                     filteredSmallLabelsLayer.visible = False
                     filteredSmallLabelsLayer.opacity = 1.0
@@ -375,7 +374,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                     layers.append(filteredSmallLabelsLayer)
                 if op.SmallRegions.ready():
                     highThresholdSrc = LazyflowSource(op.SmallRegions)
-                    highThresholdLayer = ColortableLayer(highThresholdSrc, DebugLayerCmap.BINARY_SHADE_1.value)
+                    highThresholdLayer = ColortableLayer(highThresholdSrc, DebugLayerCmap.BINARY_SHADE_0.value)
                     highThresholdLayer.name = "After high threshold"
                     highThresholdLayer.visible = False
                     highThresholdLayer.opacity = 1.0
@@ -383,7 +382,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                     layers.append(highThresholdLayer)
                 if op.BigRegions.ready():
                     lowThresholdSrc = LazyflowSource(op.BigRegions)
-                    lowThresholdLayer = ColortableLayer(lowThresholdSrc, DebugLayerCmap.BINARY_SHADE_0.value)
+                    lowThresholdLayer = ColortableLayer(lowThresholdSrc, DebugLayerCmap.BINARY_WHITE.value)
                     lowThresholdLayer.name = "After low threshold"
                     lowThresholdLayer.visible = False
                     lowThresholdLayer.opacity = 1.0
@@ -393,7 +392,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             elif curIndex==0:
                 if op.BeforeSizeFilter.ready():
                     thSrc = LazyflowSource(op.BeforeSizeFilter)
-                    thLayer = ColortableLayer(thSrc, DebugLayerCmap.BINARY_SHADE_0.value)
+                    thLayer = ColortableLayer(thSrc, DebugLayerCmap.BINARY_WHITE.value)
                     thLayer.name = "Before size filter"
                     thLayer.visible = False
                     thLayer.opacity = 1.0
