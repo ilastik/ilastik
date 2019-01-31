@@ -137,7 +137,8 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, 
     vigra.analysis.relabelConsecutive(overseg, out=overseg)
 
     logger.info("grid rag")
-    rag = nifty.graph.rag.gridRag(overseg)
+    rag = nifty.graph.rag.gridRag(overseg,
+                                  numberOfThreads=max_workers)
     logger.info("rag: %s"%str(rag))
     n_nodes = rag.numberOfNodes
 
@@ -190,7 +191,8 @@ def simple_parallel_ws(data, block_shape=None, max_workers=None, reduce_to=0.2, 
     # convert graph segmentation
     # to pixel segmentation
 
-    seg = nifty.graph.rag.projectScalarNodeDataToPixels(rag, nodeSeg)
+    seg = nifty.graph.rag.projectScalarNodeDataToPixels(rag, nodeSeg,
+                                                        numberOfThreads=max_workers)
 
 
 
