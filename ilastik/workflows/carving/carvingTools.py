@@ -1,8 +1,10 @@
 from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
+from math import ceil
 
 import numpy
 import vigra
+import fastfilters
 
 import nifty
 import nifty.tools
@@ -11,6 +13,69 @@ import nifty.graph.rag
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+# small helper function to cast nifty.tools.Block to a slice
+def block_to_slicing(block):
+    return tuple(slice(b, e) for b, e in zip(block.begin, block.end))
+
+
+def parallel_filter(filter_name, data, sigma, max_workers, block_shape=None):
+    """ Compute fiter response parallel over blocks.
+    """
+    # order values for halo calculation
+    order_values = {'gaussianSmoothing': 0, 'gaussianGradientMagnitude': 1,
+                    'hessianOfGaussianEigenvalues': 2, 'structureTensorEigenvalues': 1,
+                    'differenceOfGaussians': 1, 'laplacianOfGaussian': 2}
+    filter_function = getattr(fastfilters, filter_name, None)
+    if filter_function is None:
+        raise ValueError(f"{filter_name} is not a valid filter")
+
+    ndim = data.ndim
+    shape = data.shape
+    # check for multi-channel features TODO also support structureTensor?
+    if filter_name in ('hessianOfGaussianEigenvalues'):
+        out_shape = shape + (ndim,)
+    else:
+        out_shape = shape
+
+    # get values for block shape and halo and make blocking
+    if block_shape is None:
+        # we choose different default block-shapes for 2d and 3d,
+        # but it might be worth to thinkg this through a bit further
+        block_shape = 3 * [128] if ndim == 3 else 2 * [256]
+
+    # calculate the default halo on the sigma - value, see
+    # https://github.com/ukoethe/vigra/blob/fb427440da8c42f96e14ebb60f7f22bdf0b7b1b2/include/vigra/multi_blockwise.hxx#L408
+    order = order_values[filter_name]
+    # TODO for structure tensor we would need to add up the outer scale
+    halo = ndim * [int(ceil(3. * sigma + 0.5 * order + 0.5))]
+
+    blocking = nifty.tools.blocking(ndim * [0], shape, block_shape)
+
+    # allocate the filter response
+    response = numpy.zeros(out_shape, dtype='float32')
+
+    def filter_block(block_index):
+        # get the block with halo and the slicings corresponding to
+        # the block with halo, the block without halo and the
+        # block without halo in loocal coordinates
+        block = blocking.getBlockWithHalo(blockIndex=block_index, halo=halo)
+        inner_slicing = block_to_slicing(block.innerBlock)
+        outer_slicing = block_to_slicing(block.outerBlock)
+        inner_local_slicing = block_to_slicing(block.innerBlockLocal)
+
+        block_data = data[outer_slicing]
+        block_response = filter_function(block_data, sigma)
+
+        response[inner_slicing] = block_response[inner_local_slicing]
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        tasks = [executor.submit(filter_block, block_index)
+                 for block_index in range(blocking.numberOfBlocks)]
+        [t.result() for t in tasks]
+
+    return response
 
 
 # TODO it would make sense to apply an additional size filter here
@@ -33,10 +98,6 @@ def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
     blocking = nifty.tools.blocking(roiBegin=roi_begin, roiEnd=shape, blockShape=block_shape)
     n_blocks = blocking.numberOfBlocks
 
-    # small helper function to cast nifty.tools.Block to a slice
-    def to_slicing(block):
-        return tuple(slice(b, e) for b, e in zip(block.begin, block.end))
-
     # initialise the output labels
     labels = numpy.zeros(shape, dtype='int64')
 
@@ -47,9 +108,9 @@ def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
         # the block with halo, the block without halo and the
         # block without halo in loocal coordinates
         block = blocking.getBlockWithHalo(blockIndex=block_index, halo=halo)
-        inner_slicing = to_slicing(block.innerBlock)
-        outer_slicing = to_slicing(block.outerBlock)
-        inner_local_slicing = to_slicing(block.innerBlockLocal)
+        inner_slicing = block_to_slicing(block.innerBlock)
+        outer_slicing = block_to_slicing(block.outerBlock)
+        inner_local_slicing = block_to_slicing(block.innerBlockLocal)
 
         # perform watershed on the data for the block with halo
         outer_block_data = numpy.require(data[outer_slicing], dtype='float32')
@@ -79,7 +140,7 @@ def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
 
     # add the offset to blocks to make ids unique
     def add_offset_block(block_index):
-        block = to_slicing(blocking.getBlock(block_index))
+        block = block_to_slicing(blocking.getBlock(block_index))
         labels[block] += offsets[block_index]
 
     # add offsets in parallel
