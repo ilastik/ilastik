@@ -196,7 +196,7 @@
           <string>Reduce the number of superpixels to this parameter * original number. By defalut, reduce to 20% of the original superpixel number.</string>
          </property>
          <property name="text">
-          <string>Reduce to </string>
+          <string>reduce to </string>
          </property>
         </widget>
        </item>
@@ -222,7 +222,7 @@
           <string>Cluster easy decisions in order to reduce the problem size</string>
          </property>
          <property name="text">
-          <string>Agglomerate</string>
+          <string>agglomerate</string>
          </property>
          <property name="checked">
           <bool>true</bool>
@@ -261,7 +261,7 @@
           <string>How regular should the superpixel size be? 0 - no restrictions, 1 - all the same size</string>
          </property>
          <property name="text">
-          <string>Superpixel Regularity</string>
+          <string>superpixel regularity</string>
          </property>
         </widget>
        </item>
