@@ -42,7 +42,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 #carving backend in ilastiktools
 from .watershed_segmentor import WatershedSegmentor
 
-from .carvingTools import simple_parallel_ws
+from .carvingTools import watershed_and_agglomerate
 
 import logging
 logger = logging.getLogger(__name__)
@@ -230,7 +230,7 @@ class OpSimpleBlockwiseWatershed(Operator):
                     result_view[...] = vigra.analysis.watersheds(volume_feat[...])[0].astype(numpy.int32)
 
                 else:
-                    result_view[...] = simple_parallel_ws(
+                    result_view[...] = watershed_and_agglomerate(
                         volume_feat,
                         max_workers=Request.global_thread_pool.num_workers,
                         size_regularizer=self.SizeRegularizer.value,
@@ -241,7 +241,7 @@ class OpSimpleBlockwiseWatershed(Operator):
                     result_view[...] = vigra.analysis.watersheds(volume_feat[:,:,0])[0].astype(numpy.int32)
                 else:
                     sys.stdout.write("Blockwise Watershed..."); sys.stdout.flush()
-                    labelVolume = simple_parallel_ws(
+                    labelVolume = watershed_and_agglomerate(
                         volume_feat[:, :, 0],
                         max_workers=Request.global_thread_pool.num_workers,
                         size_regularizer=self.SizeRegularizer.value,
