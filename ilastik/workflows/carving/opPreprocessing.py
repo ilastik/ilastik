@@ -173,31 +173,30 @@ class OpSimpleBlockwiseWatershed(Operator):
         volume_feat = input_image[0,...,0]
         result_view = result[0,...,0]
         with Timer() as watershedTimer:
+            # 3d watersheds
             if self.Input.meta.getTaggedShape()['z'] > 1:
-                sys.stdout.write("Blockwise Watershed 3D..."); sys.stdout.flush()
-
-                if not self.DoAgglo.value:
-                    result_view[...] = vigra.analysis.watersheds(volume_feat[...])[0].astype(numpy.int32)
-
-                else:
-                    result_view[...] = watershed_and_agglomerate(
+                logger.info("Run block-wise watershed in 3d")
+                if self.DoAgglo.value:
+                    result_view[...], max_id = watershed_and_agglomerate(
                         volume_feat,
                         max_workers=Request.global_thread_pool.num_workers,
                         size_regularizer=self.SizeRegularizer.value,
                         reduce_to=self.ReduceTo.value)
-                logger.info( "done {}".format(numpy.max(result[...]) ) )
-            else:
-                if not self.DoAgglo.value:
-                    result_view[...] = vigra.analysis.watersheds(volume_feat[:,:,0])[0].astype(numpy.int32)
                 else:
-                    sys.stdout.write("Blockwise Watershed..."); sys.stdout.flush()
-                    labelVolume = watershed_and_agglomerate(
+                    result_view[...], max_id = vigra.analysis.watershedsNew(volume_feat)
+            # 2d watersheds
+            else:
+                logger.info("Run block-wise watershed in 2d")
+                if self.DoAgglo.value:
+                    result_view[...], max_id = watershed_and_agglomerate(
                         volume_feat[:, :, 0],
                         max_workers=Request.global_thread_pool.num_workers,
                         size_regularizer=self.SizeRegularizer.value,
                         reduce_to=self.ReduceTo.value)
-                    result_view[...] = labelVolume[:,:,numpy.newaxis]
-                logger.info( "done {}".format(numpy.max(labelVolume)) )
+                else:
+                    result_view[...], max_id = vigra.analysis.watersheds(volume_feat[:,:,0])
+
+            logger.info( "done {}".format(max_id) )
 
         logger.info( "Blockwise Watershed took {} seconds".format( watershedTimer.seconds() ) )
         return result

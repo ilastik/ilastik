@@ -98,6 +98,8 @@ def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
     blocking = nifty.tools.blocking(roiBegin=roi_begin, roiEnd=shape, blockShape=block_shape)
     n_blocks = blocking.numberOfBlocks
 
+    # TODO once nifty is re-built and supports uint32 for all rag options,
+    # we should initialize the labels with uint32 here
     # initialise the output labels
     labels = numpy.zeros(shape, dtype='int64')
 
@@ -128,7 +130,7 @@ def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
     # run the watershed blocks in parallel
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         tasks = [executor.submit(ws_block, block_index) for block_index in range(n_blocks)]
-        offsets = numpy.array([t.result() for t in tasks], dtype='int64')
+        offsets = numpy.array([t.result() for t in tasks], dtype='int64')  # TODO uint32
 
     # compute the block offsets and the max id
     last_max_id = offsets[-1]
@@ -218,9 +220,9 @@ def agglomerate_labels(data, labels, block_shape=None, max_workers=None,
 
     # the ids in the output segmentation need to start at 1, otherwise
     # the graph watershed will fail
-    vigra.analysis.relabelConsecutive(seg, start_label=1, keep_zeros=False, out=seg)
+    _, max_id, _ = vigra.analysis.relabelConsecutive(seg, start_label=1, keep_zeros=False, out=seg)
     logger.info("agglomerative supervoxel creation is done")
-    return numpy.require(seg, dtype='int64')
+    return numpy.require(seg, dtype='uint32'), max_id
 
 
 def watershed_and_agglomerate(data, block_shape=None, max_workers=None,
@@ -229,7 +231,7 @@ def watershed_and_agglomerate(data, block_shape=None, max_workers=None,
     """
 
     labels, _ = parallel_watershed(data=data, block_shape=block_shape, max_workers=max_workers)
-    labels = agglomerate_labels(data, labels, block_shape=block_shape,
-                                max_workers=max_workers, reduce_to=reduce_to,
-                                size_regularizer=size_regularizer)
-    return labels
+    labels, max_id = agglomerate_labels(data, labels, block_shape=block_shape,
+                                        max_workers=max_workers, reduce_to=reduce_to,
+                                        size_regularizer=size_regularizer)
+    return labels, max_id

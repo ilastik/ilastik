@@ -34,8 +34,7 @@ class TestCarvingTools(unittest.TestCase):
         over_seg, max_id1 = parallel_watershed(x, max_workers=4, block_shape=[50, 50],
                                                halo=[10, 10])
 
-        seg = agglomerate_labels(x, over_seg, max_workers=4, reduce_to=.8)
-        max_id2 = seg.max()
+        seg, max_id2 = agglomerate_labels(x, over_seg, max_workers=4, reduce_to=.8)
         assert not numpy.allclose(seg, 0), "Expect agglomerated labels to not be empty"
         assert max_id2 < max_id1,\
             f"Expect number of labels after {max_id2} to be less than before {max_id1} agglomeration"
@@ -47,8 +46,7 @@ class TestCarvingTools(unittest.TestCase):
         over_seg, max_id1 = parallel_watershed(x, max_workers=4, block_shape=[50, 50, 50],
                                                halo=[10, 10, 10])
 
-        seg = agglomerate_labels(x, over_seg, max_workers=4, reduce_to=.8)
-        max_id2 = seg.max()
+        seg, max_id2 = agglomerate_labels(x, over_seg, max_workers=4, reduce_to=.8)
         assert not numpy.allclose(seg, 0), "Expect agglomerated labels to not be empty"
         assert max_id2 < max_id1,\
             f"Expect number of labels after {max_id2} to be less than before {max_id1} agglomeration"
@@ -57,7 +55,7 @@ class TestCarvingTools(unittest.TestCase):
         from ilastik.workflows.carving.carvingTools import watershed_and_agglomerate
         shape = (400,) * 2
         x = numpy.random.rand(*shape).astype('float32')
-        seg = watershed_and_agglomerate(x, max_workers=4)
+        seg, _ = watershed_and_agglomerate(x, max_workers=4)
         # we check that there is a reasonable number of unique ids
         ids = numpy.unique(seg)
         assert len(ids) > 5, f"Expected non trivial number of unique ids, got {len(ids)}"
