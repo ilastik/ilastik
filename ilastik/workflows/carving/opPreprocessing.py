@@ -42,7 +42,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 #carving backend in ilastiktools
 from .watershed_segmentor import WatershedSegmentor
 
-from .carvingTools import watershed_and_agglomerate
+from .carvingTools import watershed_and_agglomerate, parallel_filter
 
 import logging
 logger = logging.getLogger(__name__)
@@ -53,6 +53,12 @@ class OpFilter(Operator):
     STEP_EDGES = 2
     RAW = 3
     RAW_INVERTED = 4
+
+    FILTER_NAMES = {0: "hessianOfGaussianEigenvalues",
+                    1: "hessianOfGaussianEigenvalues",
+                    2: "gaussianGradientMagnitude",
+                    3: "gaussianSmoothing",
+                    4: "gaussianSmoothing"}
 
     Input = InputSlot()
     Filter = InputSlot(value=HESSIAN_BRIGHT)
@@ -87,63 +93,39 @@ class OpFilter(Operator):
 
         #Choose filter selected by user
         volume_filter = self.Filter.value
+        filter_name = self.FILTER_NAMES[volume_filter]
 
         logger.info( "applying filter on shape = %r" % (fvol.shape,) )
         with Timer() as filterTimer:
-            if fvol.shape[2] > 1:
-                # true 3D volume
-                if volume_filter == OpFilter.HESSIAN_BRIGHT:
-                    logger.info( "lowest eigenvalue of Hessian of Gaussian" )
-                    options = vigra.blockwise.BlockwiseConvolutionOptions3D()
-                    options.stdDev = (sigma, )*3
-                    result_view[...] = vigra.blockwise.hessianOfGaussianLastEigenvalue(fvol,options)[:,:,:]
-                    result_view[:] = numpy.max(result_view) - result_view
 
-                elif volume_filter == OpFilter.HESSIAN_DARK:
-                    logger.info( "greatest eigenvalue of Hessian of Gaussian" )
-                    options = vigra.blockwise.BlockwiseConvolutionOptions3D()
-                    options.stdDev = (sigma, )*3
-                    result_view[...] = vigra.blockwise.hessianOfGaussianFirstEigenvalue(fvol,options)[:,:,:]
+            # check dimensionality of input and reduce to 2d volume
+            # if we have actual 2d input
+            if fvol.shape[2] == 1:
+                fvol = fvol[:, :, 0]
 
-                elif volume_filter == OpFilter.STEP_EDGES:
-                    logger.info( "Gaussian Gradient Magnitude" )
-                    result_view[...] = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
+            # we need to invert the input for filter mode RAW_INVERTED
+            if volume_filter == OpFilter.RAW_INVERTED:
+                fvol = -fvol
 
-                elif volume_filter == OpFilter.RAW:
-                    logger.info( "Gaussian Smoothing" )
-                    result_view[...] = vigra.filters.gaussianSmoothing(fvol,sigma)
+            # compute the filter response block-wise
+            response = parallel_filter(filter_name, fvol, sigma,
+                                       Request.global_thread_pool.num_workers)
 
-                elif volume_filter == OpFilter.RAW_INVERTED:
-                    logger.info( "negative Gaussian Smoothing" )
-                    result_view[...] = vigra.filters.gaussianSmoothing(-fvol,sigma)
+            # if we have one of the hessian filters, we need to pick the right eigenvalue
+            if volume_filter == OpFilter.HESSIAN_BRIGHT:  # HESSIAN_BRIGHT -> last eigenvalue
+                response = response[..., -1]
+                response = numpy.max(response) - response
+            elif volume_filter == OpFilter.HESSIAN_DARK:  # HESSIAN_DARK -> first eigenvalue
+                response = response[..., 0]
 
-                logger.info( "Filter took {} seconds".format( filterTimer.seconds() ) )
+            # write the response to result view
+            if fvol.ndim == 2:
+                result_view[:, :, 0] = response
             else:
-                # 2D Image
-                fvol = fvol[:,:,0]
-                if volume_filter == OpFilter.HESSIAN_BRIGHT:
-                    logger.info( "lowest eigenvalue of Hessian of Gaussian" )
-                    volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,1]
-                    volume_feat[:] = numpy.max(volume_feat) - volume_feat
+                result_view[...] = response
 
-                elif volume_filter == OpFilter.HESSIAN_DARK:
-                    logger.info( "greatest eigenvalue of Hessian of Gaussian" )
-                    volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,0]
+            logger.info( "Filter took {} seconds".format( filterTimer.seconds() ) )
 
-                elif volume_filter == OpFilter.STEP_EDGES:
-                    logger.info( "Gaussian Gradient Magnitude" )
-                    volume_feat = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
-
-                elif volume_filter == OpFilter.RAW:
-                    logger.info( "Gaussian Smoothing" )
-                    volume_feat = vigra.filters.gaussianSmoothing(fvol,sigma)
-
-                elif volume_filter == OpFilter.RAW_INVERTED:
-                    logger.info( "negative Gaussian Smoothing" )
-                    volume_feat = vigra.filters.gaussianSmoothing(-fvol,sigma)
-
-                result_view[:,:,0] = volume_feat
-                logger.info( "Filter took {} seconds".format( filterTimer.seconds() ) )
         return result
 
     def propagateDirty(self, slot, subindex, roi):

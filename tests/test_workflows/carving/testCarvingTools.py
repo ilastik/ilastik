@@ -1,5 +1,6 @@
 import unittest
 import numpy
+import fastfilters
 
 
 class TestCarvingTools(unittest.TestCase):
@@ -61,6 +62,42 @@ class TestCarvingTools(unittest.TestCase):
         ids = numpy.unique(seg)
         assert len(ids) > 5, f"Expected non trivial number of unique ids, got {len(ids)}"
         assert ids[0] == 1, f"Expected ids to start at 1, got {ids[0]}"
+
+    def test_parallel_filter_2d(self):
+        from ilastik.workflows.carving.carvingTools  import parallel_filter
+        # tests the filters used for carving
+        filter_names = ['gaussianSmoothing', 'hessianOfGaussianEigenvalues',
+                        'gaussianGradientMagnitude']
+        sigmas = [.7, 1.6, 3.2]
+
+        shape = 2 * (256,)
+        x = numpy.random.rand(*shape).astype('float32')
+
+        for filt in filter_names:
+            filt_fu = getattr(fastfilters, filt)
+            for sig in sigmas:
+                res = parallel_filter(filt, x, sig, max_workers=4)
+                exp = filt_fu(x, sig)
+                assert res.shape == exp.shape
+                assert numpy.allclose(res, exp)
+
+    def test_parallel_filter_3d(self):
+        from ilastik.workflows.carving.carvingTools  import parallel_filter
+        # tests the filters used for carving
+        filter_names = ['gaussianSmoothing', 'hessianOfGaussianEigenvalues',
+                        'gaussianGradientMagnitude']
+        sigmas = [.7, 1.6, 3.2]
+
+        shape = 3 * (128,)
+        x = numpy.random.rand(*shape).astype('float32')
+
+        for filt in filter_names:
+            filt_fu = getattr(fastfilters, filt)
+            for sig in sigmas:
+                res = parallel_filter(filt, x, sig, max_workers=4)
+                exp = filt_fu(x, sig)
+                assert res.shape == exp.shape
+                assert numpy.allclose(res, exp)
 
 
 if __name__ == '__main__':
