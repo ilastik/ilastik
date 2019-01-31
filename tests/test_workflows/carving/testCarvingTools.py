@@ -97,6 +97,32 @@ class TestCarvingTools(unittest.TestCase):
                 assert res.shape == exp.shape
                 assert numpy.allclose(res, exp)
 
+    def test_parallel_filter_channel(self):
+        from ilastik.workflows.carving.carvingTools  import parallel_filter
+        name = 'hessianOfGaussianEigenvalues'
+        shape = 3 * (128,)
+        x = numpy.random.rand(*shape).astype('float32')
+
+        sigma = 1.6
+        exp = fastfilters.hessianOfGaussianEigenvalues(x, sigma)
+
+        for channel in range(3):
+            res = parallel_filter(name, x, sigma,
+                                  max_workers=4, return_channel=channel)
+            assert numpy.allclose(res, exp[..., channel])
+
+    def test_parallel_filter_structure_tensor(self):
+        from ilastik.workflows.carving.carvingTools  import parallel_filter
+        name = 'structureTensorEigenvalues'
+        shape = 3 * (128,)
+        x = numpy.random.rand(*shape).astype('float32')
+
+        sigma = 1.6
+        outer_scale = 2 * sigma
+        res = parallel_filter(name, x, sigma, outer_scale=outer_scale, max_workers=4)
+        exp = fastfilters.structureTensorEigenvalues(x, sigma, outer_scale)
+        assert numpy.allclose(res, exp)
+
 
 if __name__ == '__main__':
     unittest.main()

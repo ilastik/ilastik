@@ -107,16 +107,23 @@ class OpFilter(Operator):
             if volume_filter == OpFilter.RAW_INVERTED:
                 fvol = -fvol
 
+            # for the hessian filters, we only need to keep one channel,
+            # and we discard the other channels during block-wise computation to save memory
+            if volume_filter == OpFilter.HESSIAN_BRIGHT:  # HESSIAN_BRIGHT -> last eigenvalue
+                channel = fvol.ndim - 1
+            elif volume_filter == OpFilter.HESSIAN_DARK:  # HESSIAN_DARK -> first eigenvalue
+                channel = 0
+            else:
+                channel = None
+
             # compute the filter response block-wise
             response = parallel_filter(filter_name, fvol, sigma,
-                                       Request.global_thread_pool.num_workers)
+                                       Request.global_thread_pool.num_workers,
+                                       return_channel=channel)
 
-            # if we have one of the hessian filters, we need to pick the right eigenvalue
-            if volume_filter == OpFilter.HESSIAN_BRIGHT:  # HESSIAN_BRIGHT -> last eigenvalue
-                response = response[..., -1]
+            # need to invert response for hessian bright
+            if volume_filter == OpFilter.HESSIAN_BRIGHT:
                 response = numpy.max(response) - response
-            elif volume_filter == OpFilter.HESSIAN_DARK:  # HESSIAN_DARK -> first eigenvalue
-                response = response[..., 0]
 
             # write the response to result view
             if fvol.ndim == 2:
