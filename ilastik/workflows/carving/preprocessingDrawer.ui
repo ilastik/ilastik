@@ -86,7 +86,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This setting assumes that boundaries in the original image are &lt;span style=&quot; font-weight:600;&quot;&gt;bright lines&lt;/span&gt; separating &lt;span style=&quot; font-weight:600;&quot;&gt;dark background&lt;/span&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>bright lines (smoothed original image)</string>
+        <string>bright lines (smoothed image)</string>
        </property>
       </widget>
      </item>
@@ -96,7 +96,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This setting assumes that boundaries in the original image are &lt;span style=&quot; font-weight:600;&quot;&gt;dark lines&lt;/span&gt; separating &lt;span style=&quot; font-weight:600;&quot;&gt;bright background&lt;/span&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>dark lines (inverted, smoothed image)</string>
+        <string>dark lines (smoothed image)</string>
        </property>
       </widget>
      </item>
