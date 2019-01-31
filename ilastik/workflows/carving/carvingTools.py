@@ -1,6 +1,7 @@
 from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
 from math import ceil
+from functools import partial
 
 import numpy
 import vigra
@@ -15,26 +16,59 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# small helper function to cast nifty.tools.Block to a slice
+# helper function to cast nifty.tools.Block to a slice
 def block_to_slicing(block):
     return tuple(slice(b, e) for b, e in zip(block.begin, block.end))
 
 
-def parallel_filter(filter_name, data, sigma, max_workers, block_shape=None):
+# helper function to choose a channel from filter output
+def choose_channel(data, sigma, function, channel):
+    return function(data, sigma)[..., channel]
+
+
+def parallel_filter(filter_name, data, sigma, max_workers,
+                    block_shape=None, outer_scale=None, return_channel=None):
     """ Compute fiter response parallel over blocks.
     """
-    # order values for halo calculation
+    # order values for halo calculation, also used to check valid filters
     order_values = {'gaussianSmoothing': 0, 'gaussianGradientMagnitude': 1,
                     'hessianOfGaussianEigenvalues': 2, 'structureTensorEigenvalues': 1,
-                    'differenceOfGaussians': 1, 'laplacianOfGaussian': 2}
-    filter_function = getattr(fastfilters, filter_name, None)
-    if filter_function is None:
+                    'laplacianOfGaussian': 2}
+    if filter_name not in order_values:
         raise ValueError(f"{filter_name} is not a valid filter")
 
+    filter_function = getattr(fastfilters, filter_name)
+    order = order_values[filter_name]
+    if filter_name == 'structureTensorEigenvalues':
+        assert outer_scale is not None,\
+            "Need outer_scale for structureTensorEigenvalues"
+        filter_function = partial(filter_function, outerScale=outer_scale)
+        # we need to use a different value for halo calculation for the
+        # structureTensor
+        sigma_ = sigma + outer_scale
+    else:
+        sigma_ = sigma
+
     ndim = data.ndim
+    # calculate the default halo on the sigma - value, see
+    # https://github.com/ukoethe/vigra/blob/fb427440da8c42f96e14ebb60f7f22bdf0b7b1b2/include/vigra/multi_blockwise.hxx#L408
+    halo = ndim * [int(ceil(3. * sigma_ + 0.5 * order + 0.5))]
+
     shape = data.shape
-    # check for multi-channel features TODO also support structureTensor?
-    if filter_name in ('hessianOfGaussianEigenvalues'):
+    multi_channel = filter_name in ('hessianOfGaussianEigenvalues', 'structureTensorEigenvalues')
+
+    # get the correct output shape depending on whether we have multi-channel features
+    # and whether we keep all channels for thos
+    if multi_channel and return_channel is not None:
+        # multi-channel output, but we only keep a single channel
+        # -> output-shape = shape
+        assert return_channel < ndim,\
+           f"{return_channel} must be smaller than {ndim}"
+        out_shape = shape
+        filter_function = partial(choose_channel,
+                                  function=filter_function,
+                                  channel=return_channel)
+    elif multi_channel:
         out_shape = shape + (ndim,)
     else:
         out_shape = shape
@@ -44,12 +78,6 @@ def parallel_filter(filter_name, data, sigma, max_workers, block_shape=None):
         # we choose different default block-shapes for 2d and 3d,
         # but it might be worth to thinkg this through a bit further
         block_shape = 3 * [128] if ndim == 3 else 2 * [256]
-
-    # calculate the default halo on the sigma - value, see
-    # https://github.com/ukoethe/vigra/blob/fb427440da8c42f96e14ebb60f7f22bdf0b7b1b2/include/vigra/multi_blockwise.hxx#L408
-    order = order_values[filter_name]
-    # TODO for structure tensor we would need to add up the outer scale
-    halo = ndim * [int(ceil(3. * sigma + 0.5 * order + 0.5))]
 
     blocking = nifty.tools.blocking(ndim * [0], shape, block_shape)
 
