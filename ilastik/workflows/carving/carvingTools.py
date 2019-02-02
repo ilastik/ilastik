@@ -138,10 +138,8 @@ def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
     blocking = nifty.tools.blocking(roiBegin=roi_begin, roiEnd=shape, blockShape=block_shape)
     n_blocks = blocking.numberOfBlocks
 
-    # TODO once nifty is re-built and supports uint32 for all rag options,
-    # we should initialize the labels with uint32 here
     # initialise the output labels
-    labels = numpy.zeros(shape, dtype='int64')
+    labels = numpy.zeros(shape, dtype='uint32')
 
     # watershed for a single block
     def ws_block(block_index):
@@ -170,7 +168,7 @@ def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
     # run the watershed blocks in parallel
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         tasks = [executor.submit(ws_block, block_index) for block_index in range(n_blocks)]
-        offsets = numpy.array([t.result() for t in tasks], dtype='int64')  # TODO uint32
+        offsets = numpy.array([t.result() for t in tasks], dtype='uint32')
 
     # compute the block offsets and the max id
     last_max_id = offsets[-1]
@@ -198,17 +196,17 @@ def agglomerate_labels(data, labels, block_shape=None, max_workers=None,
     """ Agglomerate labels based on edge features.
     """
 
-    logger.info("computing region adjacency graph")
-    rag = nifty.graph.rag.gridRag(labels, numberOfThreads=max_workers)
-    n_nodes = rag.numberOfNodes
-
     shape = data.shape
     ndim = len(shape)
     block_shape = [100] * ndim if block_shape is None else block_shape
     max_workers = cpu_count() if max_workers is None else max_workers
 
-    logger.info("accumulate edge strength along boundaries")
+    logger.info("computing region adjacency graph")
+    rag = nifty.graph.rag.gridRag(labels, numberOfThreads=max_workers)
+    n_nodes = rag.numberOfNodes
 
+
+    logger.info("accumulate edge strength along boundaries")
     # extract edge features over the boundaries and sizes of edges and nodes
     edge_features, node_features = nifty.graph.rag.accumulateMeanAndLength(
         rag=rag, data=numpy.require(data, dtype='float32'),
@@ -242,27 +240,15 @@ def agglomerate_labels(data, labels, block_shape=None, max_workers=None,
     node_labels = agglomerative_clustering.result()
 
     logger.info("project node labels to segmentation")
-
-    # numpy.take throws a memory error for too large inputs
-    # nifty.rag has a function to project node labels back to pixels,
-    # however in the nifty version used by ilastik it is not exported
-    # for the correct combination of datatypes to just use it here.
-    # so for now, we compute a new rag with uint32 labels and then use it,
-    # only if numpy.take throws a mem error
-    try:
-        seg = numpy.take(node_labels, labels)
-    except MemoryError:
-        # TODO expose this for the right combination of dtypes in nifty and then use
-        # it by default
-        rag2 = nifty.graph.rag.gridRag(labels.astype('uint32'), numberOfThreads=max_workers)
-        seg = nifty.graph.rag.projectScalarNodeDataToPixels(rag2, node_labels.astype('uint32'),
-                                                            numberOfThreads=max_workers)
+    seg = nifty.graph.rag.projectScalarNodeDataToPixels(rag, node_labels,
+                                                        numberOfThreads=max_workers)
 
     # the ids in the output segmentation need to start at 1, otherwise
     # the graph watershed will fail
-    _, max_id, _ = vigra.analysis.relabelConsecutive(seg, start_label=1, keep_zeros=False, out=seg)
+    _, max_id, _ = vigra.analysis.relabelConsecutive(seg, start_label=1,
+                                                     keep_zeros=False, out=seg)
     logger.info("agglomerative supervoxel creation is done")
-    return numpy.require(seg, dtype='uint32'), max_id
+    return seg, max_id
 
 
 def watershed_and_agglomerate(data, block_shape=None, max_workers=None,
