@@ -28,7 +28,19 @@ def choose_channel(data, sigma, function, channel):
 
 def parallel_filter(filter_name, data, sigma, max_workers,
                     block_shape=None, outer_scale=None, return_channel=None):
-    """ Compute fiter response parallel over blocks.
+    """ Compute filter response parallel over blocks.
+
+    Args:
+        filter_name (str): name of filter function in fastfilters
+        data (ndarray[float32]): input data, 2 or 3 dimensional
+        sigma (float): filter scale
+        max_workers (int): maximum number of workers
+        block_shape (tuple): shape of blocks used for parallelization (default: None)
+        outer_scale (float): outer filter scale, only used for structureTensor (default: None)
+        return_channel (int): channel to return for multi-channel filter (default: None)
+
+    Returns:
+        ndarray[float32]: filter response
     """
     # order values for halo calculation, also used to check valid filters
     order_values = {'gaussianSmoothing': 0, 'gaussianGradientMagnitude': 1,
