@@ -205,7 +205,6 @@ def agglomerate_labels(data, labels, block_shape=None, max_workers=None,
     rag = nifty.graph.rag.gridRag(labels, numberOfThreads=max_workers)
     n_nodes = rag.numberOfNodes
 
-
     logger.info("accumulate edge strength along boundaries")
     # extract edge features over the boundaries and sizes of edges and nodes
     edge_features, node_features = nifty.graph.rag.accumulateMeanAndLength(
@@ -261,3 +260,22 @@ def watershed_and_agglomerate(data, block_shape=None, max_workers=None,
                                         max_workers=max_workers, reduce_to=reduce_to,
                                         size_regularizer=size_regularizer)
     return labels, max_id
+
+
+class WatershedSegmenter(object):
+    """
+    """
+
+    def __init__(self, labels, features, max_workers,
+                 progress_callback=None):
+        # compute the rag and the edge features
+        self.rag = nifty.graph.rag.gridRag(labels, numberOfThreads=max_workers)
+        edge_features = nifty.graph.accumulateEdgeMeanAndLength(self.rag, features,
+                                                                numberOfThreads=max_workers)
+
+    @classmethod
+    def from_serialization(cls, h5file):
+        pass
+
+    def run():
+        pass

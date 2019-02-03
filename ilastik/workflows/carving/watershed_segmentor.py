@@ -33,12 +33,10 @@ class WatershedSegmentor(object):
             else:
                 raise RuntimeError("internal error")
 
-
-            
             # fixe! which of both??!
             self.nodeNum = self.gridSegmentor.nodeNum()
             self.numNodes = self.nodeNum
-       
+
             self.hasSeg = False
         else:
             self.numNodes = h5file.attrs["numNodes"]
@@ -53,14 +51,14 @@ class WatershedSegmentor(object):
             nodeSeeds = h5file['nodeSeeds'][:]
             resultSegmentation = h5file['resultSegmentation'][:]
 
-           
+
             if(self.supervoxelUint32.squeeze().ndim == 3):
                 self.gridSegmentor.preprocessingFromSerialization(labels=self.supervoxelUint32,
-                    serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds, 
+                    serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds,
                     resultSegmentation=resultSegmentation)
             else:
                 self.gridSegmentor.preprocessingFromSerialization(labels=self.supervoxelUint32.squeeze(),
-                    serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds, 
+                    serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds,
                     resultSegmentation=resultSegmentation)
 
             self.hasSeg = resultSegmentation.max()>0
@@ -84,7 +82,7 @@ class WatershedSegmentor(object):
 
         roiShape = [e-b for b,e in zip(roiBegin,roiEnd)]
         brushStroke = brushStroke.reshape(roiShape)
-        self.gridSegmentor.addSeeds(brushStroke=brushStroke,roiBegin=roiBegin, 
+        self.gridSegmentor.addSeeds(brushStroke=brushStroke,roiBegin=roiBegin,
                                     roiEnd=roiEnd, maxValidLabel=2)
 
     def getVoxelSegmentation(self, roi):
@@ -131,7 +129,7 @@ class WatershedSegmentor(object):
         g.create_dataset("edgeWeights", data = gridSeg.getEdgeWeights())
         g.create_dataset("nodeSeeds", data = gridSeg.getNodeSeeds())
         g.create_dataset("resultSegmentation", data = gridSeg.getResultSegmentation())
-        
+
         g.file.flush()
 
 

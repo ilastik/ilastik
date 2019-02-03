@@ -39,10 +39,8 @@ from lazyflow.request import Request
 from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
 
-#carving backend in ilastiktools
-from .watershed_segmentor import WatershedSegmentor
-
 from .carvingTools import watershed_and_agglomerate, parallel_filter
+from .carvingTools import WatershedSegmenter
 
 import logging
 logger = logging.getLogger(__name__)
@@ -242,20 +240,13 @@ class OpMstSegmentorProvider(Operator):
                     self.applet.progressSignal(x)
                     self.applet.progress = x
 
-           #mst= MSTSegmentor(labelVolume[0,...,0],
-           #                  numpy.asarray(volume_feat[0,...,0], numpy.float32),
-           #                  edgeWeightFunctor = "minimum",
-           #                  progressCallback = updateProgressBar)
-           ##mst.raw is not set here in order to avoid redundant data storage
-           #mst.raw = None
-
-            newMst = WatershedSegmentor(labelVolume[0,...,0],numpy.asarray(volume_feat[0,...,0], numpy.float32),
-                              edgeWeightFunctor = "minimum",progressCallback = updateProgressBar)
+            mst = WatershedSegmenter(labelVolume[0,...,0],
+                                     volume_feat[0,...,0],
+                                     progress_callback=updateProgressBar)
+            mst.raw = None
 
             #Output is of shape 1
-            #result[0] = mst
-            newMst.raw = None
-            result[0] = newMst
+            result[0] = mst
             return result
 
         finally:
