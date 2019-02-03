@@ -35,9 +35,9 @@ def parallel_filter(filter_name, data, sigma, max_workers,
         data (ndarray[float32]): input data, 2 or 3 dimensional
         sigma (float): filter scale
         max_workers (int): maximum number of workers
-        block_shape (tuple): shape of blocks used for parallelization (default: None)
-        outer_scale (float): outer filter scale, only used for structureTensor (default: None)
-        return_channel (int): channel to return for multi-channel filter (default: None)
+        block_shape (tuple): shape of blocks used for parallelization
+        outer_scale (float): outer filter scale, only used for structureTensor
+        return_channel (int): channel to return for multi-channel filter
 
     Returns:
         ndarray[float32]: filter response
@@ -121,6 +121,16 @@ def parallel_filter(filter_name, data, sigma, max_workers,
 # TODO it would make sense to apply an additional size filter here
 def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
     """ Parallel watershed with hard block boundaries.
+
+    Args:
+        data (ndarray[float32]): heightmap for the watershed
+        block_shape (list): block shape of the blocks used for parallelization
+        halo (list): overlap of the blocks used for parallelization
+        max_workers (int): maximal number of workers
+
+    Returns:
+        ndarray[uint32]: watershed segmentation
+        int: number of labels in segmentation
     """
 
     logger.info(f"blockwise watershed with {max_workers} threads.")
@@ -194,6 +204,18 @@ def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
 def agglomerate_labels(data, labels, block_shape=None, max_workers=None,
                        reduce_to=0.2, size_regularizer=0.5):
     """ Agglomerate labels based on edge features.
+
+    Args:
+        data (ndarray[float32]): input map for edge weight accumulation
+        labels (ndarray[uint32]): input labels to be agglomerated
+        block_shape (list): block shape used to parallelize feature accumulation
+        max_workers (int): maximal number of workers
+        reduce_to (float): fraction of segments in labels after agglomeration
+        size_regularizer (float): size regularization used for agglomeration
+
+    Returns:
+        ndarray[uint32]: labels after agglomeration
+        int: number of labels in output
     """
 
     shape = data.shape
@@ -253,6 +275,17 @@ def agglomerate_labels(data, labels, block_shape=None, max_workers=None,
 def watershed_and_agglomerate(data, block_shape=None, max_workers=None,
                               reduce_to=0.2, size_regularizer=0.5):
     """ Run parallel watershed and agglomerate the resulting labels.
+
+    Args:
+        data (ndarray[float32]): input map for watershed and weight agglomeration
+        block_shape (list): block shape used for parallelization
+        max_workers (int): maximal number of workers
+        reduce_to (float): fraction of segments in labels after agglomeration
+        size_regularizer (float): size regularization used for agglomeration
+
+    Returns:
+        ndarray[uint32]: output labels
+        int: number of labels in output
     """
 
     labels, _ = parallel_watershed(data=data, block_shape=block_shape, max_workers=max_workers)
@@ -294,10 +327,10 @@ class WatershedSegmenter(object):
         h5group.create_dataset("labels", data=self.labels,
                                compression='gzip')
         # TODO make sure that serialization format is backward compatible
-        h5group.create_dataset("graph", data = gridSeg.serializeGraph())
+        h5group.create_dataset("graph", data=gridSeg.serializeGraph())
         h5group.create_dataset("edgeWeights", data=self.edge_weights)
-        h5group.create_dataset("nodeSeeds", data= ridSeg.getNodeSeeds())
-        h5group.create_dataset("resultSegmentation", data = gridSeg.getResultSegmentation())
+        h5group.create_dataset("nodeSeeds", data=ridSeg.getNodeSeeds())
+        h5group.create_dataset("resultSegmentation", data=gridSeg.getResultSegmentation())
 
         h5group.file.flush()
 
