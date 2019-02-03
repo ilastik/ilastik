@@ -266,16 +266,40 @@ class WatershedSegmenter(object):
     """
     """
 
+    # TODO use progress_callback or get rid of it !
     def __init__(self, labels, features, max_workers,
                  progress_callback=None):
+        # validate the input
+        ndim = labels.ndim
+        if ndim not in (2, 3):
+            raise RuntimeError(f"Invalid number of dimensions {ndim}, must be 2 or 3")
+        if features.ndim != ndim:
+            raise RuntimeError(f"Number of dimensions of features {features.ndim} must be equal {ndim}")
+
+        self.labels = labels
         # compute the rag and the edge features
+        logger.info("computing region adjacency graph")
         self.rag = nifty.graph.rag.gridRag(labels, numberOfThreads=max_workers)
-        edge_features = nifty.graph.accumulateEdgeMeanAndLength(self.rag, features,
-                                                                numberOfThreads=max_workers)
+        self.num_nodes = rag.numberOfNodes
+        logger.info("computing edge weights")
+        self.edge_weights = nifty.graph.accumulateEdgeMeanAndLength(self.rag, features,
+                                                                    numberOfThreads=max_workers)[:, 1]
 
     @classmethod
-    def from_serialization(cls, h5file):
+    def from_serialization(cls, h5group):
         pass
 
-    def run():
+    def serialize(self, h5group):
+        h5group.attrs["numNodes"] = self.num_nodes
+        h5group.create_dataset("labels", data=self.labels,
+                               compression='gzip')
+        # TODO make sure that serialization format is backward compatible
+        h5group.create_dataset("graph", data = gridSeg.serializeGraph())
+        h5group.create_dataset("edgeWeights", data=self.edge_weights)
+        h5group.create_dataset("nodeSeeds", data= ridSeg.getNodeSeeds())
+        h5group.create_dataset("resultSegmentation", data = gridSeg.getResultSegmentation())
+
+        h5group.file.flush()
+
+    def run(self):
         pass
