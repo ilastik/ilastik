@@ -878,14 +878,14 @@ class ObjectClassificationGui(LabelingGui):
             subslot_index = self.op.current_view_index()
             if subslot_index == -1:
                 return
-            temp = self.op.triggerTransferLabels(subslot_index)
-        else:
-            temp = None
-        if temp is not None:
-            new_labels, old_labels_lost, new_labels_lost = temp
-            labels_lost = dict(list(old_labels_lost.items()) + list(new_labels_lost.items()))
-            if sum(len(v) for v in labels_lost.values()) > 0:
-                self.warnLost(labels_lost)
+            # just clears all labels atm.
+            self.op.triggerTransferLabelsAll()
+            # FIXME: this needs to be revived once transferLabels is fixed
+            # if temp is not None:
+            #     new_labels, old_labels_lost, new_labels_lost = temp
+            #     labels_lost = dict(list(old_labels_lost.items()) + list(new_labels_lost.items()))
+            #     if sum(len(v) for v in labels_lost.values()) > 0:
+            #         self.warnLost(labels_lost)
 
     @threadRouted
     def warnLost(self, labels_lost):

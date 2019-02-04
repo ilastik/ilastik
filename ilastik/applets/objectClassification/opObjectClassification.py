@@ -491,6 +491,20 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
 #             bboxes["Coord<Maximum>"] = maxs
 #             self._labelBBoxes[imageIndex][timeCoord]=bboxes
 
+    def triggerTransferLabelsAll(self):
+        """Triggers deletion of labels on all lanes
+
+        Should only be triggered, if segmentation changed for images with
+        annotations.
+        """
+        if self._needLabelTransfer is True:
+            logger.warning('cleaning up all labels!')
+            for i in range(len(self.LabelInputs)):
+                labels = self.LabelInputs[i].value
+                if self.containsLabels(labels):
+                    self.triggerTransferLabels(i)
+        self._needLabelTransfer = False
+
     def triggerTransferLabels(self, imageIndex):
         # FIXME: This function no longer works, partly thanks to the code commented out above.  See "FIXME: TRANSFER LABELS"
         if not self._needLabelTransfer:
