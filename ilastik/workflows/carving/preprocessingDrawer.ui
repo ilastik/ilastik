@@ -25,9 +25,6 @@
   <property name="windowTitle">
    <string>PreprocessDrawer</string>
   </property>
-  <property name="locale">
-   <locale language="German" country="Germany"/>
-  </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">
@@ -89,7 +86,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This setting assumes that boundaries in the original image are &lt;span style=&quot; font-weight:600;&quot;&gt;bright lines&lt;/span&gt; separating &lt;span style=&quot; font-weight:600;&quot;&gt;dark background&lt;/span&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>bright lines (smoothed original image)</string>
+        <string>bright lines (smoothed image)</string>
        </property>
       </widget>
      </item>
@@ -99,7 +96,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This setting assumes that boundaries in the original image are &lt;span style=&quot; font-weight:600;&quot;&gt;dark lines&lt;/span&gt; separating &lt;span style=&quot; font-weight:600;&quot;&gt;bright background&lt;/span&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>dark lines (inverted, smoothed image)</string>
+        <string>dark lines (smoothed image)</string>
        </property>
       </widget>
      </item>
@@ -132,9 +129,6 @@
         <widget class="QDoubleSpinBox" name="sigmaSpin">
          <property name="toolTip">
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The filter scale is the width (&lt;span style=&quot; font-style:italic;&quot;&gt;sigma&lt;/span&gt;) of the convolution filter selected above. Larger sigmas in result in larger structures being recognized as boundaries.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="locale">
-          <locale language="English" country="UnitedStates"/>
          </property>
          <property name="decimals">
           <number>3</number>
@@ -202,7 +196,7 @@
           <string>Reduce the number of superpixels to this parameter * original number. By defalut, reduce to 20% of the original superpixel number.</string>
          </property>
          <property name="text">
-          <string>Reduce to </string>
+          <string>reduce to </string>
          </property>
         </widget>
        </item>
@@ -228,7 +222,7 @@
           <string>Cluster easy decisions in order to reduce the problem size</string>
          </property>
          <property name="text">
-          <string>Agglomerate</string>
+          <string>agglomerate</string>
          </property>
          <property name="checked">
           <bool>true</bool>
@@ -267,7 +261,7 @@
           <string>How regular should the superpixel size be? 0 - no restrictions, 1 - all the same size</string>
          </property>
          <property name="text">
-          <string>Superpixel Regularity</string>
+          <string>superpixel regularity</string>
          </property>
         </widget>
        </item>
