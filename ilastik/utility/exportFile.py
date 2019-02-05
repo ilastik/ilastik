@@ -1,4 +1,3 @@
-from __future__ import print_function
 from builtins import range
 import collections
 import numpy as np
@@ -192,7 +191,8 @@ def prepare_list(list_, names, dtypes=None):
 
     """
     n_items = len(list_)
-
+    if n_items == 0:
+        return np.array(())
     # make sure inner items are iterables
     first_row = list_[0]
     if isinstance(first_row, str) or not isinstance(first_row, collections.Iterable):
