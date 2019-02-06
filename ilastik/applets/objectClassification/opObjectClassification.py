@@ -330,6 +330,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         self._resetLabelInputs(imageIndex)
 
     def _resetLabelInputs(self, imageIndex, roi=None):
+        logger.debug(f"Resetting label inputs for {imageIndex}")
         labels = dict()
         for t in range(self.SegmentationImages[imageIndex].meta.shape[0]):
             #initialize, because volumina needs to reshape to use it as a datasink
@@ -416,9 +417,34 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot==self.SegmentationImages and len(self.LabelInputs)>0:
-            
-            self._ambiguousLabels[subindex[0]] = self.LabelInputs[subindex[0]].value
-            self._needLabelTransfer = True
+            labels = self.LabelInputs[subindex].value
+            if self.containsLabels(labels):
+                self._ambiguousLabels[subindex[0]] = self.LabelInputs[subindex[0]].value
+                self._needLabelTransfer = True
+
+    @classmethod
+    def containsLabels(self, labels: dict) -> bool:
+        """Check whether a certain lane really contains user labels
+
+        Labels are initialized with [0., 0.], per timepoint, this function just
+        checks this condition.
+
+        Args:
+            labels (dict): dict of timepoints: labels; {0: [0., 0.], 1: ...}
+
+        Returns:
+            bool: True if user has placed any labels, False otherwise
+
+        Examples:
+        >>> OpObjectClassification.containsLabels({0: [0., 0.], 1: [0., 0.]})
+        False
+        >>> OpObjectClassification.containsLabels({0: [0., 0.], 1: [0., 0., 0.]})
+        True
+        >>> OpObjectClassification.containsLabels({0: [0., 1.], 1: [0., 0.]})
+        True
+        """
+        has_labels = any(True for (_, val) in labels.items() if not (len(val)==2 and numpy.allclose(val, 0)))
+        return has_labels
 
     def assignObjectLabel(self, imageIndex, coordinate, assignedLabel):
         """
@@ -465,22 +491,38 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
 #             bboxes["Coord<Maximum>"] = maxs
 #             self._labelBBoxes[imageIndex][timeCoord]=bboxes
 
+    def triggerTransferLabelsAll(self):
+        """Triggers deletion of labels on all lanes
+
+        Should only be triggered, if segmentation changed for images with
+        annotations.
+        """
+        if self._needLabelTransfer is True:
+            logger.warning('cleaning up all labels!')
+            for i in range(len(self.LabelInputs)):
+                labels = self.LabelInputs[i].value
+                if self.containsLabels(labels):
+                    self.triggerTransferLabels(i)
+        self._needLabelTransfer = False
+
     def triggerTransferLabels(self, imageIndex):
         # FIXME: This function no longer works, partly thanks to the code commented out above.  See "FIXME: TRANSFER LABELS"
         if not self._needLabelTransfer:
             return None
         if not self.SegmentationImages[imageIndex].ready():
             return None
-        if len(list(self._labelBBoxes[imageIndex].keys()))==0:
+        # FIXME:
+        # if len(list(self._labelBBoxes[imageIndex].keys()))==0:
             #we either don't have any labels or we just read the project from file
             #nothing to transfer
-            self._needLabelTransfer = False
-            return None
+        #    self._needLabelTransfer = False
+        #    return None
         if not self.EnableLabelTransfer:
             self._resetLabelInputs(imageIndex)
             self._needLabelTransfer = False
             return None
 
+        assert False, "Should not go on here, remove once transfer is re-enabled."
         labels = dict()
         for timeCoord in range(self.SegmentationImages[imageIndex].meta.shape[0]):
             #we have to get new object features to get bounding boxes
