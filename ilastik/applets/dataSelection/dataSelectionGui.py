@@ -612,9 +612,11 @@ class DataSelectionGui(QWidget):
                 else:
                     # Not successfully repaired.  Roll back the changes
                     opTop.DatasetGroup.resize(originalSize)
+                    self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(None)
                     return False
             except OpDataSelection.InvalidDimensionalityError as ex:
                     opTop.DatasetGroup.resize( originalSize )
+                    self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(None)
                     QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
                     return False
             except Exception as ex:
@@ -622,6 +624,7 @@ class DataSelectionGui(QWidget):
                 log_exception( logger, msg )
                 QMessageBox.critical( self, "Dataset Load Error", msg )
                 opTop.DatasetGroup.resize( originalSize )
+                self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(None)
                 return False
 
         return True
