@@ -434,6 +434,10 @@ class DataSelectionGui(QWidget):
                 # For the n5 extension the attributes.json file has to be selected in the file dialog.
                 # However we need just the *.n5 directory-file.
                 for i in range(len(fileNames)):
+                    # On some OS's the open file dialog allows to return file names that do not exist
+                    assert os.path.isfile(fileNames[i]), \
+                        "The file '" + fileNames[i] + "' does not exist."
+
                     if "attributes.json" in fileNames[i] and ".n5" in fileNames[i]:
                         fileNames[i] = fileNames[i].replace(os.path.sep + "attributes.json", "")
         else:
@@ -442,6 +446,10 @@ class DataSelectionGui(QWidget):
             # For the n5 extension the attributes.json file has to be selected in the file dialog.
             # However we need just the *.n5 directory-file.
             for i in range(len(fileNames)):
+                # On some OS's the open file dialog allows to return file names that do not exist
+                assert os.path.isfile(fileNames[i]), \
+                    "The file '" + fileNames[i] + "' does not exist."
+
                 if "attributes.json" in fileNames[i] and ".n5" in fileNames[i]:
                     fileNames[i] = fileNames[i].replace(os.path.sep + "attributes.json", "")
         return fileNames
