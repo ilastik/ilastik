@@ -51,17 +51,19 @@ class AddFileButton(QPushButton):
     addRemoteVolumeRequested = pyqtSignal()
     addPrecomputedVolumeRequested = pyqtSignal()
 
-    def __init__(self, parent, index=None, new=False):
+    def __init__(self, parent, *, index=None, new=False):
         """
         -- ``new`` - boolean parameter to indicate if this button is used to
-           add new lanes or files to new roles corresponding to an
-           existing lane (such as prediction maps)
+            add new lanes or files to new roles corresponding to an
+            existing lane (such as prediction maps)
+        -- ``index`` -  QModelIndex parameter, index of the
+            gui dataset table cell to which this button is added
         """
         super(AddFileButton, self).__init__( QIcon(FILEPATH +
             "/../../shell/gui/icons/16x16/actions/list-add.png"),
             "Add..." if new == False else "Add New...", parent)
 
-        self.index = index
+        self.index = index  # This is a call to the setter function  self.index
         # drop down menu for different add options
         menu = QMenu(parent=self)
         menu.addAction("Add separate Image(s)...").triggered.\
@@ -81,9 +83,8 @@ class AddFileButton(QPushButton):
 
     @property
     def index(self):
-        return self.__index
+        return self._index
 
     @index.setter
     def index(self, index):
-        if isinstance(index, QModelIndex):
-            self.__index = index
+        self._index = index

@@ -151,7 +151,7 @@ class AddButtonDelegate(QItemDelegate):
                 button.index = index  # Just in case index got out of sync
             if button is None:
                 # this is only executed on init, but not on remove, such that row and lane get out of sync
-                button = AddFileButton(parent_view, index)
+                button = AddFileButton(parent_view, index=index)
                 button.addFilesRequested.connect(
                         partial(parent_view.handleCellAddFilesEvent, button))
                 button.addStackRequested.connect(
