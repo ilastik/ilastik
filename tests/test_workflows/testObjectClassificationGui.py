@@ -119,7 +119,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         super().teardown_class()
 
         # Clean up: Delete any test files we generated
-        # shutil.rmtree(cls.temp_dir)  # TODO: cleanup when dev is done
+        shutil.rmtree(cls.temp_dir)
 
     def test_00_check_preconditions(self):
         """Make sure the needed files exist"""
