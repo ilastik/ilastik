@@ -309,14 +309,18 @@ class WatershedSegmenter(object):
         if features.ndim != ndim:
             raise RuntimeError(f"Number of dimensions of features {features.ndim} must be equal {ndim}")
 
-        self.labels = labels
+        self.superpixel = labels
         # compute the rag and the edge features
         logger.info("computing region adjacency graph")
-        self.rag = nifty.graph.rag.gridRag(labels, numberOfThreads=max_workers)
+        self.rag = nifty.graph.rag.gridRag(self.superpixel, numberOfThreads=max_workers)
         self.num_nodes = rag.numberOfNodes
         logger.info("computing edge weights")
         self.edge_weights = nifty.graph.accumulateEdgeMeanAndLength(self.rag, features,
                                                                     numberOfThreads=max_workers)[:, 1]
+
+        # dictionaries to store the object attributes
+        self.object_lut = {}
+        self.object_names = {}
 
     @classmethod
     def from_serialization(cls, h5group):
@@ -324,7 +328,7 @@ class WatershedSegmenter(object):
 
     def serialize(self, h5group):
         h5group.attrs["numNodes"] = self.num_nodes
-        h5group.create_dataset("labels", data=self.labels,
+        h5group.create_dataset("labels", data=self.superpixel,
                                compression='gzip')
         # TODO make sure that serialization format is backward compatible
         h5group.create_dataset("graph", data=gridSeg.serializeGraph())
