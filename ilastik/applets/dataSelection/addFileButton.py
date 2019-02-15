@@ -53,11 +53,11 @@ class AddFileButton(QPushButton):
 
     def __init__(self, parent, *, index=None, new=False):
         """
-        -- ``new`` - boolean parameter to indicate if this button is used to
-            add new lanes or files to new roles corresponding to an
-            existing lane (such as prediction maps)
-        -- ``index`` -  QModelIndex parameter, index of the
-            gui dataset table cell to which this button is added
+        Args:
+            parent (QWidget): Parent widget
+            index (QModelIndex): Index of the gui dataset table cell to which this button is added
+            new (bool): Indicating if this button is used to add new lanes or files to new roles
+            corresponding to an existing lane (such as prediction maps)
         """
         super(AddFileButton, self).__init__( QIcon(FILEPATH +
             "/../../shell/gui/icons/16x16/actions/list-add.png"),
