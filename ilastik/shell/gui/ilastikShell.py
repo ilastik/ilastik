@@ -634,6 +634,9 @@ class IlastikShell(QMainWindow):
         menu.setObjectName("help_menu")
         aboutIlastikAction = menu.addAction("&About ilastik")
         aboutIlastikAction.triggered.connect(showSplashScreen)
+        readTheDocsAction = menu.addAction("&Documentation")
+        readTheDocsAction.triggered.connect(partial(QDesktopServices.openUrl,
+                                                    QUrl('http://ilastik.org/documentation/')))
         licenseAction = menu.addAction("License")
         licenseAction.triggered.connect(partial(LicenseDialog, self))
         return menu
