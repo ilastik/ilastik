@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 from __future__ import division
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,7 +19,7 @@ from __future__ import division
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
 from past.utils import old_div
@@ -42,7 +43,9 @@ from ilastik.utility.gui.threadRouter import ThreadRouter
 from .mainThreadHelpers import wait_for_main_func, run_in_main_thread
 
 from ilastik.ilastik_logging import default_config
+
 default_config.init(output_mode=default_config.OutputMode.CONSOLE)
+
 
 @atexit.register
 def quitApp():
@@ -52,6 +55,7 @@ def quitApp():
 
 class MainThreadException(Exception):
     """Raised if GUI tests are run from main thread. Can't start QT app."""
+
     pass
 
 
@@ -61,7 +65,7 @@ def run_shell_test(filename):
     import pytest
 
     def run_test():
-        pytest.main([filename, '--capture=no'])
+        pytest.main([filename, "--capture=no"])
 
     testThread = threading.Thread(target=run_test)
     testThread.start()
@@ -82,6 +86,7 @@ class ShellGuiTestCaseBase(object):
     - Subclasses must specify the workflow they are testing by overriding the workflowClass() classmethod.
     - Subclasses may access the shell and workflow via the shell and workflow class members.
     """
+
     mainThreadEvent = threading.Event()
 
     @classmethod
@@ -96,10 +101,13 @@ class ShellGuiTestCaseBase(object):
             init_complete.set()
 
         appCreationEvent = threading.Event()
+
         def createApp():
             # Create the application in the current thread.
             # The current thread is now the application main thread.
-            assert threading.current_thread().getName() == "MainThread", "Error: app must be created in the main thread."
+            assert (
+                threading.current_thread().getName() == "MainThread"
+            ), "Error: app must be created in the main thread."
             ShellGuiTestCaseBase.app = QApplication([])
             app = ShellGuiTestCaseBase.app
 
@@ -110,7 +118,7 @@ class ShellGuiTestCaseBase(object):
             ShellGuiTestCaseBase.threadRouter = ThreadRouter(app)
 
             # Set the appCreationEvent so the tests can proceed after the app's event loop has started
-            QTimer.singleShot(0, appCreationEvent.set )
+            QTimer.singleShot(0, appCreationEvent.set)
 
             # Start the event loop
             app.exec_()
@@ -121,18 +129,18 @@ class ShellGuiTestCaseBase(object):
             pytest.xfail("Launched GUI test from MainThread. Skipping test.")
         # We're currently running in a non-main thread.
         # Start the gui IN THE MAIN THREAD.  Workflow is provided by our subclass.
-        run_in_main_thread( createApp )
+        run_in_main_thread(createApp)
         appCreationEvent.wait()
 
         platform_str = platform.platform().lower()
-        if 'ubuntu' in platform_str or 'fedora' in platform_str:
+        if "ubuntu" in platform_str or "fedora" in platform_str:
             QApplication.setAttribute(Qt.AA_X11InitThreads, True)
 
         if ilastik.config.cfg.getboolean("ilastik", "debug"):
             QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
 
         # Use the thread router to launch the shell in the app thread
-        ShellGuiTestCaseBase.threadRouter.routeToParent.emit( partial(launchShell, None, [], [initTest] ) )
+        ShellGuiTestCaseBase.threadRouter.routeToParent.emit(partial(launchShell, None, [], [initTest]))
         init_complete.wait()
 
     @classmethod
@@ -229,21 +237,19 @@ class ShellGuiTestCaseBase(object):
 
         return img.pixel(point)
 
-    def moveMouseFromCenter(self, imgView, coords ,modifier =Qt.NoModifier ):
+    def moveMouseFromCenter(self, imgView, coords, modifier=Qt.NoModifier):
         centerPoint = old_div(imgView.rect().bottomRight(), 2)
         point = QPoint(*coords) + centerPoint
-        move = QMouseEvent( QEvent.MouseMove, point, Qt.NoButton, Qt.NoButton, modifier  )
-        QApplication.sendEvent(imgView, move )
+        move = QMouseEvent(QEvent.MouseMove, point, Qt.NoButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView, move)
         QApplication.processEvents()
 
-    def strokeMouseFromCenter(self, imgView, start, end, modifier = Qt.NoModifier,numSteps = 10):
+    def strokeMouseFromCenter(self, imgView, start, end, modifier=Qt.NoModifier, numSteps=10):
         """
         Drag the mouse between two coordinates.
         A modifier can be specified that will be keep pressed
         default no modifier
         """
-
-
 
         centerPoint = old_div(imgView.rect().bottomRight(), 2)
 
@@ -254,27 +260,27 @@ class ShellGuiTestCaseBase(object):
         #       mouse events intended for the ImageView MUST go through the viewport.
 
         # Move to start
-        move = QMouseEvent( QEvent.MouseMove, startPoint, Qt.NoButton, Qt.NoButton, modifier )
-        QApplication.sendEvent(imgView.viewport(), move )
+        move = QMouseEvent(QEvent.MouseMove, startPoint, Qt.NoButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView.viewport(), move)
 
         # Press left button
-        press = QMouseEvent( QEvent.MouseButtonPress, startPoint, Qt.LeftButton, Qt.NoButton, modifier)
-        QApplication.sendEvent(imgView.viewport(), press )
+        press = QMouseEvent(QEvent.MouseButtonPress, startPoint, Qt.LeftButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView.viewport(), press)
 
         # Move to end in several steps
-        #numSteps = numSteps
+        # numSteps = numSteps
         for i in range(numSteps):
-            nextPoint = startPoint + (endPoint - startPoint) * ( old_div(float(i), numSteps) )
-            move = QMouseEvent( QEvent.MouseMove, nextPoint, Qt.NoButton, Qt.NoButton, modifier )
-            QApplication.sendEvent(imgView.viewport(), move )
+            nextPoint = startPoint + (endPoint - startPoint) * (old_div(float(i), numSteps))
+            move = QMouseEvent(QEvent.MouseMove, nextPoint, Qt.NoButton, Qt.NoButton, modifier)
+            QApplication.sendEvent(imgView.viewport(), move)
 
         # Move to end
-        move = QMouseEvent( QEvent.MouseMove, endPoint, Qt.NoButton, Qt.NoButton, modifier )
-        QApplication.sendEvent(imgView.viewport(), move )
+        move = QMouseEvent(QEvent.MouseMove, endPoint, Qt.NoButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView.viewport(), move)
 
         # Release left button
-        release = QMouseEvent( QEvent.MouseButtonRelease, endPoint, Qt.LeftButton, Qt.NoButton, modifier )
-        QApplication.sendEvent(imgView.viewport(), release )
+        release = QMouseEvent(QEvent.MouseButtonRelease, endPoint, Qt.LeftButton, Qt.NoButton, modifier)
+        QApplication.sendEvent(imgView.viewport(), release)
 
         # Wait for the gui to catch up
         QApplication.processEvents()

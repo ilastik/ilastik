@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import pytest
 import threading
@@ -29,6 +29,7 @@ from PyQt5.QtGui import QPixmap, QMouseEvent
 mainThreadPauseEvent = threading.Event()
 mainFunc = None
 
+
 def run_tests_in_separate_thread(filename):
     assert threading.current_thread().getName() == "MainThread"
 
@@ -36,31 +37,34 @@ def run_tests_in_separate_thread(filename):
         pass
 
     result = [False]
+
     def run_test():
         result[0] = pytest.main([filename])
 
         # If the test didn't push his own work to the main thread,
-        #   then just push an empty function so we can proceed.        
+        #   then just push an empty function so we can proceed.
         # (Only GUI tests actually use the main thread.)
         if mainFunc is None:
-            run_in_main_thread( emptyFunc )
-    
-    testThread = threading.Thread( target=run_test )
+            run_in_main_thread(emptyFunc)
+
+    testThread = threading.Thread(target=run_test)
     testThread.start()
 
     wait_for_main_func()
     testThread.join()
     return result[0]
 
-def run_in_main_thread( f ):
+
+def run_in_main_thread(f):
     global mainFunc
     mainFunc = f
     mainThreadPauseEvent.set()
 
+
 def wait_for_main_func():
     # Must be called from main thread
     assert threading.current_thread().getName() == "MainThread"
-    
+
     # Wait until someone has given us a function to run.
     mainThreadPauseEvent.wait()
     mainFunc()

@@ -1,4 +1,5 @@
 from __future__ import print_function
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -34,33 +35,34 @@ from lazyflow.utility.timer import timeLogged
 
 
 import logging
+
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
 
 class TestDataConversionWorkflow(object):
     dir = tempfile.mkdtemp()
-    PROJECT_FILE = os.path.join(dir, 'test_project.ilp')
+    PROJECT_FILE = os.path.join(dir, "test_project.ilp")
     # SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
     @classmethod
     def setup_class(cls):
-        print('starting setup...')
+        print("starting setup...")
 
-        if hasattr(cls, 'SAMPLE_DATA'):
+        if hasattr(cls, "SAMPLE_DATA"):
             cls.using_random_data = False
         else:
             cls.using_random_data = True
             cls.create_random_tst_data()
 
-        print('looking for ilastik.py...')
+        print("looking for ilastik.py...")
         # Load the ilastik startup script as a module.
         # Do it here in setupClass to ensure that it isn't loaded more than once.
         ilastik_entry_file_path = os.path.join(os.path.split(os.path.realpath(ilastik.__file__))[0], "../ilastik.py")
         if not os.path.exists(ilastik_entry_file_path):
             raise RuntimeError("Couldn't find ilastik.py startup script: {}".format(ilastik_entry_file_path))
 
-        cls.ilastik_startup = imp.load_source('ilastik_startup', ilastik_entry_file_path)
+        cls.ilastik_startup = imp.load_source("ilastik_startup", ilastik_entry_file_path)
 
     @classmethod
     def teardown_class(cls):
@@ -77,12 +79,12 @@ class TestDataConversionWorkflow(object):
 
     @classmethod
     def create_random_tst_data(cls):
-        cls.SAMPLE_DATA = os.path.join(cls.dir, 'random_data.npy')
+        cls.SAMPLE_DATA = os.path.join(cls.dir, "random_data.npy")
         cls.data = numpy.random.random((1, 200, 200, 50, 1))
         cls.data *= 256
         numpy.save(cls.SAMPLE_DATA, cls.data.astype(numpy.uint8))
 
-        cls.SAMPLE_MASK = os.path.join(cls.dir, 'mask.npy')
+        cls.SAMPLE_MASK = os.path.join(cls.dir, "mask.npy")
         cls.data = numpy.ones((1, 200, 200, 50, 1))
         numpy.save(cls.SAMPLE_MASK, cls.data.astype(numpy.uint8))
 
@@ -99,7 +101,7 @@ class TestDataConversionWorkflow(object):
 
         # Batch export options
         # If we were actually launching from the command line, 'png sequence' would be in quotes...
-        args.append('--output_format=png sequence')
+        args.append("--output_format=png sequence")
         args.append("--output_filename_format={dataset_dir}/{nickname}_converted_{slice_index}.png")
         args.append("--export_dtype=uint8")
         args.append("--output_axis_order=ztyxc")
@@ -113,7 +115,7 @@ class TestDataConversionWorkflow(object):
         args.append("--input_axes=ztyxc")
         args.append(self.SAMPLE_DATA)
 
-        sys.argv = ['ilastik.py']  # Clear the existing commandline args so it looks like we're starting fresh.
+        sys.argv = ["ilastik.py"]  # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
@@ -122,23 +124,24 @@ class TestDataConversionWorkflow(object):
 
         output_path = self.SAMPLE_DATA[:-4] + "_converted_{slice_index}.png"
         globstring = output_path.format(slice_index=999)
-        globstring = globstring.replace('999', '*')
+        globstring = globstring.replace("999", "*")
 
         opReader = OpStackLoader(graph=Graph())
-        opReader.SequenceAxis.setValue('t')
+        opReader.SequenceAxis.setValue("t")
         opReader.globstring.setValue(globstring)
 
         # (The OpStackLoader produces tzyxc order.)
         opReorderAxes = OpReorderAxes(graph=Graph())
-        opReorderAxes.AxisOrder.setValue('ztyxc')
+        opReorderAxes.AxisOrder.setValue("ztyxc")
         opReorderAxes.Input.connect(opReader.stack)
 
         try:
             readData = opReorderAxes.Output[:].wait()
 
             # Check basic attributes
-            assert readData.shape[:-1] == self.data[0:1, 50:150, 50:150,
-                                                    0:50, 0:1].shape[:-1]  # Assume channel is last axis
+            assert (
+                readData.shape[:-1] == self.data[0:1, 50:150, 50:150, 0:50, 0:1].shape[:-1]
+            )  # Assume channel is last axis
             assert readData.shape[-1] == 1, "Wrong number of channels.  Expected 1, got {}".format(readData.shape[-1])
         finally:
             # Clean-up.

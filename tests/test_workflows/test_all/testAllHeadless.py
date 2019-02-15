@@ -34,19 +34,18 @@ from ilastik.workflow import getAvailableWorkflows
 from ilastik.shell.projectManager import ProjectManager
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
 def generate_project_file_name(temp_dir, workflow_name):
-    project_file_name = os.path.join(
-        temp_dir,
-        f'test_project_{"_".join(workflow_name.split())}.ilp'
-    )
+    project_file_name = os.path.join(temp_dir, f'test_project_{"_".join(workflow_name.split())}.ilp')
     return project_file_name
 
 
 class TestHeadlessWorkflowStartupProjectCreation(object):
     """Start a headless shell and create a project for each workflow"""
+
     @classmethod
     def setup_class(cls):
         cls.workflow_list = list(getAvailableWorkflows())
@@ -63,23 +62,20 @@ class TestHeadlessWorkflowStartupProjectCreation(object):
               with (workflow_class, workflow_name, workflow_class.workflowDisplayName)
         """
         workflow_class, workflow_name, display_name = workflow_class_tuple
-        logger.debug(f'starting {workflow_name}')
+        logger.debug(f"starting {workflow_name}")
         project_file = generate_project_file_name(temp_dir, workflow_name)
 
-        args = [
-            '--headless',
-            f'--new_project={project_file}',
-            f'--workflow={workflow_name}',
-        ]
+        args = ["--headless", f"--new_project={project_file}", f"--workflow={workflow_name}"]
         # Clear the existing commandline args so it looks like we're starting fresh.
-        sys.argv = ['ilastik.py']
+        sys.argv = ["ilastik.py"]
         sys.argv.extend(args)
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
         parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
 
         shell = ilastik_main.main(
-            parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False)
+            parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False
+        )
 
         shell.closeCurrentProject()
 
@@ -102,24 +98,22 @@ class TestHeadlessWorkflowStartupProjectCreation(object):
               with (workflow_class, workflow_name, workflow_class.workflowDisplayName)
         """
         workflow_class, workflow_name, display_name = workflow_class_tuple
-        logger.debug(f'starting {workflow_name}')
+        logger.debug(f"starting {workflow_name}")
         project_file = generate_project_file_name(temp_dir, workflow_name)
 
         self.create_project_file(workflow_class, project_file)
         assert os.path.exists(project_file), f"Project File {project_file} creation not successful"
 
-        args = [
-            '--headless',
-            f'--project={project_file}',
-        ]
+        args = ["--headless", f"--project={project_file}"]
         # Clear the existing commandline args so it looks like we're starting fresh.
-        sys.argv = ['ilastik.py']
+        sys.argv = ["ilastik.py"]
         sys.argv.extend(args)
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
         parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
         shell = ilastik_main.main(
-            parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False)
+            parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False
+        )
 
         shell.closeCurrentProject()
 
