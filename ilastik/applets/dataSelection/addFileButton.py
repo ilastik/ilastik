@@ -63,7 +63,7 @@ class AddFileButton(QPushButton):
             "/../../shell/gui/icons/16x16/actions/list-add.png"),
             "Add..." if new == False else "Add New...", parent)
 
-        self.index = index  # This is a call to the setter function  self.index
+        self._index = index
         # drop down menu for different add options
         menu = QMenu(parent=self)
         menu.addAction("Add separate Image(s)...").triggered.\
