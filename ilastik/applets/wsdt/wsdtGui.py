@@ -255,24 +255,44 @@ class WsdtGui(LayerViewerGui):
             """
             Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
             """
-            self.topLevelOperatorView.FreezeCache.setValue(False)
-            
-            # This is hacky, but for now it's the only way to do it.
-            # We need to make sure the rendering thread has actually seen that the cache
-            # has been updated before we ask it to wait for all views to be 100% rendered.
-            # If we don't wait, it might complete too soon (with the old data).
-            ndim = len(self.topLevelOperatorView.Superpixels.meta.shape)
-            self.topLevelOperatorView.Superpixels((0,)*ndim, (1,)*ndim).wait()
+            self.setConfigWidgetsEnabled(False)  # Disable all widgets while updating wtsd
+            try:
+                self.topLevelOperatorView.FreezeCache.setValue(False)
 
-            # Wait for the image to be rendered into all three image views
-            for imgView in self.editor.imageViews:
-                if imgView.isVisible():
-                    imgView.scene().joinRenderingAllTiles()
-            self.topLevelOperatorView.FreezeCache.setValue(True)
+                # This is hacky, but for now it's the only way to do it.
+                # We need to make sure the rendering thread has actually seen that the cache
+                # has been updated before we ask it to wait for all views to be 100% rendered.
+                # If we don't wait, it might complete too soon (with the old data).
+                ndim = len(self.topLevelOperatorView.Superpixels.meta.shape)
+                self.topLevelOperatorView.Superpixels((0,)*ndim, (1,)*ndim).wait()
+
+                # Wait for the image to be rendered into all three image views
+                for imgView in self.editor.imageViews:
+                    if imgView.isVisible():
+                        imgView.scene().joinRenderingAllTiles()
+                self.topLevelOperatorView.FreezeCache.setValue(True)
+            finally:
+                # Be sure the widgets are enabled again after updating
+                self.setConfigWidgetsEnabled(True)
 
         self.getLayerByName("Superpixels").visible = True
         th = threading.Thread(target=updateThread)
         th.start()
+
+    def setConfigWidgetsEnabled(self, enable):
+        """
+        Enable or disable all configuration widgets and the live update button
+        @param enable: True/False to enable/disable widgets
+        """
+        self.threshold_box.setEnabled(enable)
+        self.channel_button.setEnabled(enable)
+        self.membrane_size_box.setEnabled(enable)
+        self.seed_presmoothing_box.setEnabled(enable)
+        self.seed_method_combo.setEnabled(enable)
+        self.superpixel_size_box.setEnabled(enable)
+        self.preserve_pmaps_box.setEnabled(enable)
+        self.enable_debug_box.setEnabled(enable)
+        self.update_ws_button.setEnabled(enable)
 
     def setupLayers(self):
         layers = []
