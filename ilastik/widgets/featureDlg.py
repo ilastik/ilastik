@@ -100,6 +100,7 @@ class FeatureDlg(QDialog):
 if __name__ == "__main__":
     # make the program quit on Ctrl+C
     import signal
+
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     from PyQt5.QtWidgets import QApplication
     from featureTableWidget import FeatureEntry
@@ -114,15 +115,22 @@ if __name__ == "__main__":
     # app.setStyle("cleanlooks")
 
     ex = FeatureDlg()
-    ex.createFeatureTable([("Color", [FeatureEntry("Banananananaana", minimum_scale=.3)]),
-                           ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")])],
-                          [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0], [False, False, False, False, True, True, True], 3.5)
+    ex.createFeatureTable(
+        [
+            ("Color", [FeatureEntry("Banananananaana", minimum_scale=0.3)]),
+            ("Edge", [FeatureEntry("Mango"), FeatureEntry("Cherry")]),
+        ],
+        [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0],
+        [False, False, False, False, True, True, True],
+        3.5,
+    )
     ex.setWindowTitle("FeatureTest")
     ex.setImageToPreView(None)
 
     def handle_accepted():
         print("ACCEPTED")
         print(ex.selectionMatrix)
+
     ex.accepted.connect(handle_accepted)
     ex.exec_()
     print("DONE")

@@ -16,9 +16,10 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import logging
+
 logger = logging.getLogger(__name__)
 
 from lazyflow.roi import TinyVector
@@ -55,66 +56,66 @@ class DataConversionWorkflow(Workflow):
               or (2) cd into your project file's directory before launching ilastik.
     
     """
+
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
 
-        
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(DataConversionWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
+        super(DataConversionWorkflow, self).__init__(
+            shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
+        )
         self._applets = []
 
         # Instantiate DataSelection applet
         self.dataSelectionApplet = DataSelectionApplet(
-            self,
-            "Input Data",
-            "Input Data",
-            supportIlastik05Import=True,
-            forceAxisOrder=None)
+            self, "Input Data", "Input Data", supportIlastik05Import=True, forceAxisOrder=None
+        )
 
         # Configure global DataSelection settings
         role_names = ["Input Data"]
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( role_names )
+        opDataSelection.DatasetRoles.setValue(role_names)
 
         # Instantiate DataExport applet
         self.dataExportApplet = DataExportApplet(self, "Data Export")
 
         # Configure global DataExport settings
         opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
-        opDataExport.SelectionNames.setValue( ["Input"] )        
+        opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
+        opDataExport.SelectionNames.setValue(["Input"])
 
-        # No special data pre/post processing necessary in this workflow, 
+        # No special data pre/post processing necessary in this workflow,
         #   but this is where we'd hook it up if we needed it.
         #
-        #self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
-        #self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
-        #self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
-        #self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
+        # self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
+        # self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
+        # self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
+        # self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
 
         # Instantiate BatchProcessing applet
-        self.batchProcessingApplet = BatchProcessingApplet(self, 
-                                                           "Batch Processing", 
-                                                           self.dataSelectionApplet, 
-                                                           self.dataExportApplet)
+        self.batchProcessingApplet = BatchProcessingApplet(
+            self, "Batch Processing", self.dataSelectionApplet, self.dataExportApplet
+        )
 
         # Expose our applets in a list (for the shell to use)
-        self._applets.append( self.dataSelectionApplet )
-        self._applets.append( self.dataExportApplet )
+        self._applets.append(self.dataSelectionApplet)
+        self._applets.append(self.dataExportApplet)
         self._applets.append(self.batchProcessingApplet)
 
         # Parse command-line arguments
         # Command-line args are applied in onProjectLoaded(), below.
         if workflow_cmdline_args:
-            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( workflow_cmdline_args )
-            self._batch_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args( unused_args, role_names )
+            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args(workflow_cmdline_args)
+            self._batch_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args(
+                unused_args, role_names
+            )
         else:
             unused_args = None
             self._batch_input_args = None
             self._data_export_args = None
 
         if unused_args:
-            logger.warning("Unused command-line args: {}".format( unused_args ))
+            logger.warning("Unused command-line args: {}".format(unused_args))
 
     @property
     def applets(self):
@@ -149,12 +150,12 @@ class DataConversionWorkflow(Workflow):
         # Now connect the operators together for this lane.
         # Most workflows would have more to do here, but this workflow is super simple:
         # We just connect input to export
-        opDataExportView.RawDatasetInfo.connect( opDataSelectionView.DatasetGroup[RAW_DATA_ROLE_INDEX] )        
-        opDataExportView.Inputs.resize( 1 )
-        opDataExportView.Inputs[RAW_DATA_ROLE_INDEX].connect( opDataSelectionView.ImageGroup[RAW_DATA_ROLE_INDEX] )
+        opDataExportView.RawDatasetInfo.connect(opDataSelectionView.DatasetGroup[RAW_DATA_ROLE_INDEX])
+        opDataExportView.Inputs.resize(1)
+        opDataExportView.Inputs[RAW_DATA_ROLE_INDEX].connect(opDataSelectionView.ImageGroup[RAW_DATA_ROLE_INDEX])
 
         # There is no special "raw" display layer in this workflow.
-        #opDataExportView.RawData.connect( opDataSelectionView.ImageGroup[0] )
+        # opDataExportView.RawData.connect( opDataSelectionView.ImageGroup[0] )
 
     def handleNewLanesAdded(self):
         """
@@ -173,7 +174,7 @@ class DataConversionWorkflow(Workflow):
         """
         # Configure the data export operator.
         if self._data_export_args:
-            self.dataExportApplet.configure_operator_with_parsed_args( self._data_export_args )
+            self.dataExportApplet.configure_operator_with_parsed_args(self._data_export_args)
 
         if self._headless and self._batch_input_args and self._data_export_args:
             logger.info("Beginning Batch Processing")
@@ -189,19 +190,21 @@ class DataConversionWorkflow(Workflow):
         input_ready = len(opDataSelection.ImageGroup) > 0
 
         opDataExport = self.dataExportApplet.topLevelOperator
-        export_data_ready = input_ready and \
-                            len(opDataExport.Inputs[0]) > 0 and \
-                            opDataExport.Inputs[0][0].ready() and \
-                            (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
+        export_data_ready = (
+            input_ready
+            and len(opDataExport.Inputs[0]) > 0
+            and opDataExport.Inputs[0][0].ready()
+            and (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
+        )
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not self.batchProcessingApplet.busy)
         self._shell.setAppletEnabled(self.dataExportApplet, export_data_ready and not self.batchProcessingApplet.busy)
         self._shell.setAppletEnabled(self.batchProcessingApplet, export_data_ready)
-        
-        # Lastly, check for certain "busy" conditions, during which we 
+
+        # Lastly, check for certain "busy" conditions, during which we
         #  should prevent the shell from closing the project.
         busy = False
         busy |= self.dataSelectionApplet.busy
         busy |= self.dataExportApplet.busy
         busy |= self.batchProcessingApplet.busy
-        self._shell.enableProjectChanges( not busy )
+        self._shell.enableProjectChanges(not busy)

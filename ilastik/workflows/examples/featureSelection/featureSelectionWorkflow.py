@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.workflow import Workflow
 
@@ -25,26 +25,31 @@ from lazyflow.graph import Graph
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 
+
 class FeatureSelectionWorkflow(Workflow):
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
-        super(FeatureSelectionWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
+        super(FeatureSelectionWorkflow, self).__init__(
+            shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs
+        )
         self._applets = []
 
-        # Create applets 
-        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        # Create applets
+        self.dataSelectionApplet = DataSelectionApplet(
+            self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False
+        )
         self.featureSelectionApplet = FeatureSelectionApplet(self, "FeatureSelection", "Feature Selection")
 
-        self._applets.append( self.dataSelectionApplet )
-        self._applets.append( self.featureSelectionApplet )
+        self._applets.append(self.dataSelectionApplet)
+        self._applets.append(self.featureSelectionApplet)
 
     def connectLane(self, laneIndex):
-        opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)        
+        opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opFeatureSelection = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect top-level operators
-        opFeatureSelection.InputImage.connect( opDataSelection.Image )
+        opFeatureSelection.InputImage.connect(opDataSelection.Image)
 
     @property
     def applets(self):

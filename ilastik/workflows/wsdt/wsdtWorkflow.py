@@ -29,15 +29,16 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph
 
+
 class WsdtWorkflow(Workflow):
     workflowName = "Watershed Over Distance Transform"
     workflowDescription = "A bare-bones workflow for using the WSDT applet"
-    defaultAppletIndex = 0 # show DataSelection by default
+    defaultAppletIndex = 0  # show DataSelection by default
 
     DATA_ROLE_RAW = 0
     DATA_ROLE_PROBABILITIES = 1
-    ROLE_NAMES = ['Raw Data', 'Probabilities']
-    EXPORT_NAMES = ['Watershed']
+    ROLE_NAMES = ["Raw Data", "Probabilities"]
+    EXPORT_NAMES = ["Watershed"]
 
     @property
     def applets(self):
@@ -51,7 +52,9 @@ class WsdtWorkflow(Workflow):
         # Create a graph to be shared by all operators
         graph = Graph()
 
-        super(WsdtWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_workflow, graph=graph, *args, **kwargs)
+        super(WsdtWorkflow, self).__init__(
+            shell, headless, workflow_cmdline_args, project_creation_workflow, graph=graph, *args, **kwargs
+        )
         self._applets = []
 
         # -- DataSelection applet
@@ -60,7 +63,7 @@ class WsdtWorkflow(Workflow):
 
         # Dataset inputs
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( self.ROLE_NAMES )
+        opDataSelection.DatasetRoles.setValue(self.ROLE_NAMES)
 
         # -- Wsdt applet
         #
@@ -72,15 +75,14 @@ class WsdtWorkflow(Workflow):
 
         # Configure global DataExport settings
         opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
-        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )
+        opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
+        opDataExport.SelectionNames.setValue(self.EXPORT_NAMES)
 
         # -- BatchProcessing applet
         #
-        self.batchProcessingApplet = BatchProcessingApplet(self,
-                                                           "Batch Processing",
-                                                           self.dataSelectionApplet,
-                                                           self.dataExportApplet)
+        self.batchProcessingApplet = BatchProcessingApplet(
+            self, "Batch Processing", self.dataSelectionApplet, self.dataExportApplet
+        )
 
         # -- Expose applets to shell
         self._applets.append(self.dataSelectionApplet)
@@ -91,15 +93,17 @@ class WsdtWorkflow(Workflow):
         # -- Parse command-line arguments
         #    (Command-line args are applied in onProjectLoaded(), below.)
         if workflow_cmdline_args:
-            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( workflow_cmdline_args )
-            self._batch_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args( unused_args, role_names )
+            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args(workflow_cmdline_args)
+            self._batch_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args(
+                unused_args, role_names
+            )
         else:
             unused_args = None
             self._batch_input_args = None
             self._data_export_args = None
 
         if unused_args:
-            logger.warning("Unused command-line args: {}".format( unused_args ))
+            logger.warning("Unused command-line args: {}".format(unused_args))
 
     def connectLane(self, laneIndex):
         """
@@ -110,14 +114,14 @@ class WsdtWorkflow(Workflow):
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
         # watershed inputs
-        opWsdt.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        opWsdt.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
+        opWsdt.RawData.connect(opDataSelection.ImageGroup[self.DATA_ROLE_RAW])
+        opWsdt.Input.connect(opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES])
 
         # DataExport inputs
-        opDataExport.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        opDataExport.RawDatasetInfo.connect( opDataSelection.DatasetGroup[self.DATA_ROLE_RAW] )        
-        opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
-        opDataExport.Inputs[0].connect( opWsdt.Superpixels )
+        opDataExport.RawData.connect(opDataSelection.ImageGroup[self.DATA_ROLE_RAW])
+        opDataExport.RawDatasetInfo.connect(opDataSelection.DatasetGroup[self.DATA_ROLE_RAW])
+        opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
+        opDataExport.Inputs[0].connect(opWsdt.Superpixels)
         for slot in opDataExport.Inputs:
             assert slot.upstream_slot is not None
 
@@ -130,7 +134,7 @@ class WsdtWorkflow(Workflow):
         """
         # Configure the data export operator.
         if self._data_export_args:
-            self.dataExportApplet.configure_operator_with_parsed_args( self._data_export_args )
+            self.dataExportApplet.configure_operator_with_parsed_args(self._data_export_args)
 
         if self._headless and self._batch_input_args and self._data_export_args:
             logger.info("Beginning Batch Processing")
@@ -152,10 +156,12 @@ class WsdtWorkflow(Workflow):
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
 
-        self._shell.setAppletEnabled( self.dataSelectionApplet,   not batch_processing_busy )
-        self._shell.setAppletEnabled( self.wsdtApplet,            not batch_processing_busy and input_ready )
-        self._shell.setAppletEnabled( self.dataExportApplet,      not batch_processing_busy and input_ready and opWsdt.Superpixels.ready())
-        self._shell.setAppletEnabled( self.batchProcessingApplet, not batch_processing_busy and input_ready )
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
+        self._shell.setAppletEnabled(self.wsdtApplet, not batch_processing_busy and input_ready)
+        self._shell.setAppletEnabled(
+            self.dataExportApplet, not batch_processing_busy and input_ready and opWsdt.Superpixels.ready()
+        )
+        self._shell.setAppletEnabled(self.batchProcessingApplet, not batch_processing_busy and input_ready)
 
         # Lastly, check for certain "busy" conditions, during which we
         #  should prevent the shell from closing the project.
@@ -164,4 +170,4 @@ class WsdtWorkflow(Workflow):
         busy |= self.wsdtApplet.busy
         busy |= self.dataExportApplet.busy
         busy |= self.batchProcessingApplet.busy
-        self._shell.enableProjectChanges( not busy )
+        self._shell.enableProjectChanges(not busy)

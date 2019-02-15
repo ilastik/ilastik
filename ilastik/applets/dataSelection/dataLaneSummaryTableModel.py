@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,7 +18,7 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from PyQt5.QtCore import Qt, QAbstractItemModel, QModelIndex
 
@@ -25,12 +26,15 @@ from lazyflow.utility import PathComponents
 from ilastik.utility import bind
 from .opDataSelection import DatasetInfo
 
+
 class LaneColumn(object):
     NumColumns = 0
+
 
 class DatasetInfoColumn(object):
     Name = 0
     NumColumns = 1
+
 
 def rowOfButtonsProxy(model_cls):
     """
@@ -38,6 +42,7 @@ def rowOfButtonsProxy(model_cls):
     extra row at the end. This row is used to display "Add..." buttons in
     the GUI.
     """
+
     class ProxyModel(model_cls):
         def __init__(self, *args, **kwds):
             super(ProxyModel, self).__init__(*args, **kwds)
@@ -50,7 +55,7 @@ def rowOfButtonsProxy(model_cls):
             """
             return super(ProxyModel, self).rowCount(parent) + 1
 
-        def headerData(self, section, orientation, role=Qt.DisplayRole ):
+        def headerData(self, section, orientation, role=Qt.DisplayRole):
             """
             Return header information for row/column.
 
@@ -59,8 +64,7 @@ def rowOfButtonsProxy(model_cls):
             if orientation == Qt.Vertical:
                 if section >= super(ProxyModel, self).rowCount():
                     return ""
-            return super(ProxyModel, self).headerData(section, orientation,
-                    role)
+            return super(ProxyModel, self).headerData(section, orientation, role)
 
         def _getDisplayRoleData(self, index):
             # Last row is just buttons
@@ -81,65 +85,66 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
         QAbstractItemModel.__init__(self, parent)
         self._op = topLevelOperator
 
-        def handleNewLane( multislot, laneIndex):
+        def handleNewLane(multislot, laneIndex):
             assert multislot is self._op.DatasetGroup
-            self.beginInsertRows( QModelIndex(), laneIndex, laneIndex )
+            self.beginInsertRows(QModelIndex(), laneIndex, laneIndex)
             self.endInsertRows()
 
             def handleDatasetInfoChanged(slot):
                 # Get the row of this slot
                 laneSlot = slot.operator
-                laneIndex = laneSlot.operator.index( laneSlot )
+                laneIndex = laneSlot.operator.index(laneSlot)
                 # FIXME: For now, we update the whole row.
                 #        Later, update only the columns that correspond to this dataset.
                 firstIndex = self.createIndex(laneIndex, 0)
-                lastIndex = self.createIndex(laneIndex, self.columnCount()-1)
+                lastIndex = self.createIndex(laneIndex, self.columnCount() - 1)
                 self.dataChanged.emit(firstIndex, lastIndex)
 
             def handleNewDatasetInserted(mslot, index):
-                mslot[index].notifyDirty( bind(handleDatasetInfoChanged) )
-            
+                mslot[index].notifyDirty(bind(handleDatasetInfoChanged))
+
             for laneIndex, datasetMultiSlot in enumerate(self._op.DatasetGroup):
-                datasetMultiSlot.notifyInserted( bind(handleNewDatasetInserted) )
+                datasetMultiSlot.notifyInserted(bind(handleNewDatasetInserted))
                 for roleIndex, datasetSlot in enumerate(datasetMultiSlot):
-                    handleNewDatasetInserted( datasetMultiSlot, roleIndex )
+                    handleNewDatasetInserted(datasetMultiSlot, roleIndex)
 
-        self._op.DatasetGroup.notifyInserted( bind(handleNewLane) )
+        self._op.DatasetGroup.notifyInserted(bind(handleNewLane))
 
-        def handleLaneRemoved( multislot, laneIndex ):
+        def handleLaneRemoved(multislot, laneIndex):
             assert multislot is self._op.DatasetGroup
-            self.beginRemoveRows( QModelIndex(), laneIndex, laneIndex )
+            self.beginRemoveRows(QModelIndex(), laneIndex, laneIndex)
             self.endRemoveRows()
-        self._op.DatasetGroup.notifyRemoved( bind(handleLaneRemoved) )
 
-        # Any lanes that already exist must be added now.        
+        self._op.DatasetGroup.notifyRemoved(bind(handleLaneRemoved))
+
+        # Any lanes that already exist must be added now.
         for laneIndex, slot in enumerate(self._op.DatasetGroup):
-            handleNewLane( self._op.DatasetGroup, laneIndex )
+            handleNewLane(self._op.DatasetGroup, laneIndex)
 
     def columnCount(self, parent=QModelIndex()):
         if not self._op.DatasetRoles.ready():
             return 0
         roles = self._op.DatasetRoles.value
         return LaneColumn.NumColumns + DatasetInfoColumn.NumColumns * len(roles)
-    
+
     def rowCount(self, parent=QModelIndex()):
-        return len( self._op.ImageGroup )
-    
+        return len(self._op.ImageGroup)
+
     def data(self, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             return self._getDisplayRoleData(index)
-    
+
     def index(self, row, column, parent=QModelIndex()):
-        return self.createIndex( row, column, object=None )
-    
+        return self.createIndex(row, column, object=None)
+
     def parent(self, index):
         return QModelIndex()
-    
-    def headerData(self, section, orientation, role=Qt.DisplayRole ):
+
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role != Qt.DisplayRole:
             return None
         if orientation == Qt.Vertical:
-            return section+1
+            return section + 1
         infoColumn = section - LaneColumn.NumColumns
         roleIndex = infoColumn // DatasetInfoColumn.NumColumns
         infoColumn %= DatasetInfoColumn.NumColumns
@@ -147,34 +152,36 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             if self._op.DatasetRoles.ready():
                 return self._op.DatasetRoles.value[roleIndex]
             return ""
-        assert False, "Unknown header column: {}".format( section )
-            
+        assert False, "Unknown header column: {}".format(section)
+
     def _getDisplayRoleData(self, index):
         laneIndex = index.row()
         ## Dataset info item
         roleIndex = (index.column() - LaneColumn.NumColumns) // DatasetInfoColumn.NumColumns
         datasetInfoIndex = (index.column() - LaneColumn.NumColumns) % DatasetInfoColumn.NumColumns
-        
+
         datasetSlot = self._op.DatasetGroup[laneIndex][roleIndex]
         if not datasetSlot.ready():
             return ""
 
-        UninitializedDisplayData = { DatasetInfoColumn.Name : "<please select>" }
-        
+        UninitializedDisplayData = {DatasetInfoColumn.Name: "<please select>"}
+
         datasetSlot = self._op.DatasetGroup[laneIndex][roleIndex]
         if datasetSlot.ready():
             datasetInfo = self._op.DatasetGroup[laneIndex][roleIndex].value
         else:
-            return UninitializedDisplayData[ datasetInfoIndex ]
-        
+            return UninitializedDisplayData[datasetInfoIndex]
+
         if datasetInfoIndex == DatasetInfoColumn.Name:
             if datasetInfo.nickname is not None and datasetInfo.nickname != "":
                 return datasetInfo.nickname
-            return PathComponents( datasetInfo.filePath ).filename
+            return PathComponents(datasetInfo.filePath).filename
 
         if datasetInfoIndex == DatasetInfoColumn.Location:
-            LocationNames = { DatasetInfo.Location.FileSystem : "External File",
-                              DatasetInfo.Location.ProjectInternal : "Project File" }
-            return LocationNames[ datasetInfo.location ]
+            LocationNames = {
+                DatasetInfo.Location.FileSystem: "External File",
+                DatasetInfo.Location.ProjectInternal: "Project File",
+            }
+            return LocationNames[datasetInfo.location]
 
         assert False, "Unknown column"

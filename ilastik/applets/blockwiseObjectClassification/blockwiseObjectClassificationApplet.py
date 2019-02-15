@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,22 +18,24 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
 from .opBlockwiseObjectClassification import OpBlockwiseObjectClassification
 from .blockwiseObjectClassificationSerializer import BlockwiseObjectClassificationSerializer
 
+
 class BlockwiseObjectClassificationApplet(StandardApplet):
-    def __init__(self,
-                 workflow=None,
-                 name="Blockwise Object Classification",
-                 projectFileGroupName="BlockwiseObjectClassification"):
+    def __init__(
+        self,
+        workflow=None,
+        name="Blockwise Object Classification",
+        projectFileGroupName="BlockwiseObjectClassification",
+    ):
         super(BlockwiseObjectClassificationApplet, self).__init__(name=name, workflow=workflow)
 
-        self._serializableItems = \
-        [ BlockwiseObjectClassificationSerializer(projectFileGroupName, self.topLevelOperator) ]
+        self._serializableItems = [BlockwiseObjectClassificationSerializer(projectFileGroupName, self.topLevelOperator)]
 
     @property
     def singleLaneOperatorClass(self):
@@ -40,11 +43,12 @@ class BlockwiseObjectClassificationApplet(StandardApplet):
 
     @property
     def broadcastingSlots(self):
-        return ['Classifier', 'LabelsCount', 'SelectedFeatures', 'BlockShape3dDict', 'HaloPadding3dDict']
-    
+        return ["Classifier", "LabelsCount", "SelectedFeatures", "BlockShape3dDict", "HaloPadding3dDict"]
+
     @property
     def singleLaneGuiClass(self):
         from .blockwiseObjectClassificationGui import BlockwiseObjectClassificationGui
+
         return BlockwiseObjectClassificationGui
 
     @property

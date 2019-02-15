@@ -16,10 +16,11 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from lazyflow.graph import Operator, InputSlot
 
-class OpLabelImageViewer( Operator ):
+
+class OpLabelImageViewer(Operator):
     RawImage = InputSlot()
     LabelImage = InputSlot()

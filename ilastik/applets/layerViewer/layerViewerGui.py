@@ -16,21 +16,22 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
-#Python
+# Python
 from builtins import range
 import os
 from functools import partial
 import logging
 from future.utils import with_metaclass
+
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger('TRACE.' + __name__)
+traceLogger = logging.getLogger("TRACE." + __name__)
 
 # SciPy
 import numpy
 
-#PyQt
+# PyQt
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -38,29 +39,39 @@ from PyQt5 import uic
 
 import vigra
 
-#lazyflow
+# lazyflow
 from lazyflow.stype import ArrayLike
 from lazyflow.operators import OpSingleChannelSelector, OpWrapSlot
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-#volumina
-from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, AlphaModulatedLayer, LayerStackModel, generateRandomColors
+# volumina
+from volumina.api import (
+    LazyflowSource,
+    GrayscaleLayer,
+    RGBALayer,
+    ColortableLayer,
+    AlphaModulatedLayer,
+    LayerStackModel,
+    generateRandomColors,
+)
 from volumina.volumeEditor import VolumeEditor
 from volumina.utility import ShortcutManager
 from volumina.interpreter import ClickReportingInterpreter
 
-#ilastik
+# ilastik
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.config import cfg as ilastik_config
 from ilastik.widgets.viewerControls import ViewerControls
 
-#===----------------------------------------------------------------------------------------------------------------===
+# ===----------------------------------------------------------------------------------------------------------------===
+
 
 class LayerViewerGuiMetaclass(type(QWidget)):
     """
     Custom metaclass to enable the _after_init function.
     """
+
     def __call__(cls, *args, **kwargs):
         """
         This is where __init__ is called.
@@ -68,9 +79,10 @@ class LayerViewerGuiMetaclass(type(QWidget)):
         """
         # Base class first. (type is our baseclass)
         # type.__call__ calls instance.__init__ internally
-        instance = super(LayerViewerGuiMetaclass, cls).__call__(*args,**kwargs)
+        instance = super(LayerViewerGuiMetaclass, cls).__call__(*args, **kwargs)
         instance._after_init()
         return instance
+
 
 class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     """
@@ -86,15 +98,15 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
 
-    def centralWidget( self ):
+    def centralWidget(self):
         return self
 
     def appletDrawer(self):
         return self._drawer
 
-    def menus( self ):
+    def menus(self):
         debug_mode = ilastik_config.getboolean("ilastik", "debug")
-        return [ self.volumeEditorWidget.getViewMenu(debug_mode) ]
+        return [self.volumeEditorWidget.getViewMenu(debug_mode)]
 
     def viewerControlWidget(self):
         return self.__viewerControlWidget
@@ -108,15 +120,22 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
             fn()
-            
+
         for op in self._orphanOperators:
             op.cleanUp()
 
     ###########################################
     ###########################################
 
-    def __init__(self, parentApplet, topLevelOperatorView, additionalMonitoredSlots=[], centralWidgetOnly=False,
-                 crosshair=True, is_3d_widget_visible=False):
+    def __init__(
+        self,
+        parentApplet,
+        topLevelOperatorView,
+        additionalMonitoredSlots=[],
+        centralWidgetOnly=False,
+        crosshair=True,
+        is_3d_widget_visible=False,
+    ):
         """
         Constructor.  **All** slots of the provided *topLevelOperatorView* will be monitored for changes.
         Changes include slot resize events, and slot ready/unready status changes.
@@ -132,7 +151,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         self._initialized = False
         self.__cleanup_fns = []
 
-        self.threadRouter = ThreadRouter(self) # For using @threadRouted
+        self.threadRouter = ThreadRouter(self)  # For using @threadRouted
 
         self.topLevelOperatorView = topLevelOperatorView
 
@@ -141,10 +160,12 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         for slot in list(topLevelOperatorView.inputs.values()) + list(topLevelOperatorView.outputs.values()):
             if slot.level == 0 or slot.level == 1:
                 observedSlots.append(slot)
-        
+
         observedSlots += additionalMonitoredSlots
 
-        self._orphanOperators = [] # Operators that are owned by this GUI directly (not owned by the top-level operator)
+        self._orphanOperators = (
+            []
+        )  # Operators that are owned by this GUI directly (not owned by the top-level operator)
         self.observedSlots = []
         for slot in observedSlots:
             if slot.level == 0:
@@ -156,20 +177,20 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                 opPromoteInput = OpWrapSlot(parent=slot.getRealOperator().parent)
                 opPromoteInput.Input.connect(slot)
                 slot = opPromoteInput.Output
-                self._orphanOperators.append( opPromoteInput )
+                self._orphanOperators.append(opPromoteInput)
 
             # Each slot should now be indexed as slot[layer_index]
             assert slot.level == 1
-            self.observedSlots.append( slot )
-            slot.notifyInserted( bind(self._handleLayerInsertion) )
-            self.__cleanup_fns.append( partial( slot.unregisterInserted, bind(self._handleLayerInsertion) ) )
+            self.observedSlots.append(slot)
+            slot.notifyInserted(bind(self._handleLayerInsertion))
+            self.__cleanup_fns.append(partial(slot.unregisterInserted, bind(self._handleLayerInsertion)))
 
-            slot.notifyRemoved( bind(self._handleLayerRemoval) )
-            self.__cleanup_fns.append( partial( slot.unregisterRemoved, bind(self._handleLayerRemoval) ) )
+            slot.notifyRemoved(bind(self._handleLayerRemoval))
+            self.__cleanup_fns.append(partial(slot.unregisterRemoved, bind(self._handleLayerRemoval)))
 
             for i in range(len(slot)):
                 self._handleLayerInsertion(slot, i)
- 
+
         self.layerstack = LayerStackModel()
         self.saved_layer_visibilities = None
 
@@ -178,12 +199,12 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         self._initEditor(crosshair=crosshair, is_3d_widget_visible=is_3d_widget_visible)
         self.__viewerControlWidget = None
         if not centralWidgetOnly:
-            self.initViewerControlUi() # Might be overridden in a subclass. Default implementation loads a standard layer widget.
-            #self._drawer = QWidget( self )
-            self.initAppletDrawerUi() # Default implementation loads a blank drawer from drawer.ui.
+            self.initViewerControlUi()  # Might be overridden in a subclass. Default implementation loads a standard layer widget.
+            # self._drawer = QWidget( self )
+            self.initAppletDrawerUi()  # Default implementation loads a blank drawer from drawer.ui.
 
         self._up_to_date = False
-        
+
         # By default, we start out disabled until we have at least one layer.
         self.centralWidget().setEnabled(False)
 
@@ -195,16 +216,16 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         self._need_update = True
         if self.isVisible():
             if slot.graph:
-                slot.graph.call_when_setup_finished( self.updateAllLayers )
+                slot.graph.call_when_setup_finished(self.updateAllLayers)
             else:
                 self.updateAllLayers()
 
     def showEvent(self, event):
         if self._need_update:
             self.updateAllLayers()
-        super( LayerViewerGui, self ).showEvent(event)
+        super(LayerViewerGui, self).showEvent(event)
 
-    def setupLayers( self ):
+    def setupLayers(self):
         """
         Create a list of layers to be displayed in the central widget.
         Subclasses should override this method to create the list of layers that can be displayed.
@@ -212,13 +233,13 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         """
         layers = []
         for multiLayerSlot in self.observedSlots:
-            for j, slot in enumerate(multiLayerSlot):                
+            for j, slot in enumerate(multiLayerSlot):
                 has_space = slot.meta.axistags and slot.meta.axistags.axisTypeCount(vigra.AxisType.Space) > 2
                 if slot.ready() and has_space:
                     layer = self.createStandardLayerFromSlot(slot)
-                    
+
                     # Name the layer after the slot name.
-                    if isinstance( multiLayerSlot.getRealOperator(), OpWrapSlot ):
+                    if isinstance(multiLayerSlot.getRealOperator(), OpWrapSlot):
                         # We attached an 'upleveling' operator, so look upstream for the real slot.
                         layer.name = multiLayerSlot.getRealOperator().Input.upstream_slot.name
                     else:
@@ -232,12 +253,11 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         Make room for it in the layer GUI and subscribe to updates.
         """
         # When the slot is ready, we'll replace the blank layer with real data
-        slot[slotIndex].notifyReady( bind(self.setNeedUpdate) )
-        slot[slotIndex].notifyUnready( bind(self.setNeedUpdate) )
+        slot[slotIndex].notifyReady(bind(self.setNeedUpdate))
+        slot[slotIndex].notifyUnready(bind(self.setNeedUpdate))
 
-        self.__cleanup_fns.append( partial( slot[slotIndex].unregisterReady, bind(self.setNeedUpdate) ) )
-        self.__cleanup_fns.append( partial( slot[slotIndex].unregisterUnready, bind(self.setNeedUpdate) ) )
-
+        self.__cleanup_fns.append(partial(slot[slotIndex].unregisterReady, bind(self.setNeedUpdate)))
+        self.__cleanup_fns.append(partial(slot[slotIndex].unregisterUnready, bind(self.setNeedUpdate)))
 
     def _handleLayerRemoval(self, slot, slotIndex):
         """
@@ -262,17 +282,18 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         """
         numChannels = 1
         display_mode = "default"
-        c_index = slot.meta.axistags.index('c')
+        c_index = slot.meta.axistags.index("c")
         if c_index < len(slot.meta.axistags):
             numChannels = slot.meta.shape[c_index]
             display_mode = slot.meta.display_mode
-                
+
         if display_mode == "" or display_mode == "default":
             ## Figure out whether the default should be rgba or grayscale
             if lastChannelIsAlpha:
-                assert numChannels <= 4, \
-                    "This function doesn't support alpha for slots with more than 4 channels.  "\
+                assert numChannels <= 4, (
+                    "This function doesn't support alpha for slots with more than 4 channels.  "
                     "Your image has {} channels.".format(numChannels)
+                )
 
             # Automatically select Grayscale or RGBA based on number of channels
             if numChannels == 2 or numChannels == 3:
@@ -285,14 +306,16 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         # Override RGBA --> Grayscale if there's only 1 channel.
         if display_mode == "rgba" and numChannels == 1:
             display_mode = "grayscale"
-                
+
         if display_mode == "grayscale":
             assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
-            return cls._create_grayscale_layer_from_slot( slot, numChannels )
+            return cls._create_grayscale_layer_from_slot(slot, numChannels)
         elif display_mode == "rgba":
-            assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha), \
-                "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}"\
-                .format( numChannels, lastChannelIsAlpha, slot.meta.axistags )
+            assert numChannels > 2 or (
+                numChannels == 2 and not lastChannelIsAlpha
+            ), "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}".format(
+                numChannels, lastChannelIsAlpha, slot.meta.axistags
+            )
             return cls._create_rgba_layer_from_slot(slot, numChannels, lastChannelIsAlpha)
         elif display_mode == "random-colortable":
             return cls._create_random_colortable_layer_from_slot(slot)
@@ -301,7 +324,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         elif display_mode == "binary-mask":
             return cls._create_binary_mask_layer_from_slot(slot)
         else:
-            raise RuntimeError("unknown channel display mode: " + display_mode )
+            raise RuntimeError("unknown channel display mode: " + display_mode)
 
     @classmethod
     def _create_grayscale_layer_from_slot(cls, slot, n_channels):
@@ -310,95 +333,94 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         layer.numberOfChannels = n_channels
         layer.set_range(0, slot.meta.drange)
         normalize = cls._should_normalize_display(slot)
-        layer.set_normalize( 0, normalize )
+        layer.set_normalize(0, normalize)
         return layer
 
     @classmethod
     def _create_random_colortable_layer_from_slot(cls, slot, num_colors=256):
-        colortable = generateRandomColors(num_colors, clamp={'v': 1.0, 's' : 0.5}, zeroIsTransparent=True)
+        colortable = generateRandomColors(num_colors, clamp={"v": 1.0, "s": 0.5}, zeroIsTransparent=True)
         layer = ColortableLayer(LazyflowSource(slot), colortable)
         layer.colortableIsRandom = True
         return layer
 
     @classmethod
     def _create_alpha_modulated_layer_from_slot(cls, slot):
-        layer = AlphaModulatedLayer( LazyflowSource(slot),
-                                     tintColor=QColor( Qt.cyan ),
-                                     range=(0.0, 1.0),
-                                     normalize=(0.0, 1.0) )
+        layer = AlphaModulatedLayer(
+            LazyflowSource(slot), tintColor=QColor(Qt.cyan), range=(0.0, 1.0), normalize=(0.0, 1.0)
+        )
         return layer
 
     @classmethod
     def _create_binary_mask_layer_from_slot(cls, slot):
         # 0: black, 1-255: transparent
-        # This works perfectly for uint8.  
+        # This works perfectly for uint8.
         # For uint32, etc., values of 256,512, etc. will be appear 'off'.
-        # But why would you use uint32 for a binary mask anyway? 
-        colortable = [QColor(0,0,0,255).rgba()]
-        colortable += 255*[QColor(0,0,0,0).rgba()]
+        # But why would you use uint32 for a binary mask anyway?
+        colortable = [QColor(0, 0, 0, 255).rgba()]
+        colortable += 255 * [QColor(0, 0, 0, 0).rgba()]
         layer = ColortableLayer(LazyflowSource(slot), colortable)
         return layer
-        
+
     @classmethod
     def _create_rgba_layer_from_slot(cls, slot, numChannels, lastChannelIsAlpha):
         bindex = aindex = None
-        rindex, gindex = 0,1
+        rindex, gindex = 0, 1
         if numChannels > 3 or (numChannels == 3 and not lastChannelIsAlpha):
             bindex = 2
         if lastChannelIsAlpha:
-            aindex = numChannels-1
+            aindex = numChannels - 1
 
-        if numChannels>=2:
+        if numChannels >= 2:
             gindex = 1
-        if numChannels>=3:
+        if numChannels >= 3:
             bindex = 2
-        if numChannels>=4:
-            aindex = numChannels-1
+        if numChannels >= 4:
+            aindex = numChannels - 1
 
         redSource = None
         if rindex is not None:
             redProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
             redProvider.Input.connect(slot)
-            redProvider.Index.setValue( rindex )
-            redSource = LazyflowSource( redProvider.Output )
-            redSource.additional_owned_ops.append( redProvider )
-        
+            redProvider.Index.setValue(rindex)
+            redSource = LazyflowSource(redProvider.Output)
+            redSource.additional_owned_ops.append(redProvider)
+
         greenSource = None
         if gindex is not None:
             greenProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
             greenProvider.Input.connect(slot)
-            greenProvider.Index.setValue( gindex )
-            greenSource = LazyflowSource( greenProvider.Output )
-            greenSource.additional_owned_ops.append( greenProvider )
-        
+            greenProvider.Index.setValue(gindex)
+            greenSource = LazyflowSource(greenProvider.Output)
+            greenSource.additional_owned_ops.append(greenProvider)
+
         blueSource = None
         if bindex is not None:
             blueProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
             blueProvider.Input.connect(slot)
-            blueProvider.Index.setValue( bindex )
-            blueSource = LazyflowSource( blueProvider.Output )
-            blueSource.additional_owned_ops.append( blueProvider )
+            blueProvider.Index.setValue(bindex)
+            blueSource = LazyflowSource(blueProvider.Output)
+            blueSource.additional_owned_ops.append(blueProvider)
 
         alphaSource = None
         if aindex is not None:
             alphaProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
             alphaProvider.Input.connect(slot)
-            alphaProvider.Index.setValue( aindex )
-            alphaSource = LazyflowSource( alphaProvider.Output )
-            alphaSource.additional_owned_ops.append( alphaProvider )
-        
-        layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource)
+            alphaProvider.Index.setValue(aindex)
+            alphaSource = LazyflowSource(alphaProvider.Output)
+            alphaSource.additional_owned_ops.append(alphaProvider)
+
+        layer = RGBALayer(red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource)
         normalize = cls._should_normalize_display(slot)
         for i in range(4):
-            if [redSource,greenSource,blueSource,alphaSource][i]:
+            if [redSource, greenSource, blueSource, alphaSource][i]:
                 layer.set_range(i, slot.meta.drange)
                 layer.set_normalize(i, normalize)
 
         return layer
-    
+
     def _get_numchannels(self, slot, n_channels):
         pass
-    
+
     @classmethod
     def _should_normalize_display(cls, slot):
         if slot.meta.drange is not None and slot.meta.normalizeDisplay is False:
@@ -411,7 +433,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             #
             # Even in the case of integer data, which has more than 255 possible values,
             # (like uint16), it seems reasonable to use this setting as default
-            return None # means autoNormalize
+            return None  # means autoNormalize
 
     @threadRouted
     def updateAllLayers(self, slot=None):
@@ -435,17 +457,18 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                 break
 
         for layer in newGuiLayers:
-            assert not [l for l in self.layerstack if l is layer], \
-                "You are attempting to re-use a layer ({}).  " \
-                "Your setupOutputs() function may not re-use layer objects.  " \
-                "The layerstack retains ownership of the layers you provide and " \
-                "may choose to clean and delete them without your knowledge.".format( layer.name )
+            assert not [l for l in self.layerstack if l is layer], (
+                "You are attempting to re-use a layer ({}).  "
+                "Your setupOutputs() function may not re-use layer objects.  "
+                "The layerstack retains ownership of the layers you provide and "
+                "may choose to clean and delete them without your knowledge.".format(layer.name)
+            )
 
         newNames = set(l.name for l in newGuiLayers)
         if len(newNames) != len(newGuiLayers):
             msg = "All layers must have unique names.\n"
             msg += "You're attempting to use these layer names:\n"
-            msg += str( [l.name for l in newGuiLayers] )
+            msg += str([l.name for l in newGuiLayers])
             raise RuntimeError(msg)
 
         # If the datashape changed, tell the editor
@@ -453,9 +476,9 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         newDataShape = self.determineDatashape()
         if newDataShape is not None and self.editor.dataShape != newDataShape:
             self.editor.dataShape = newDataShape
-                       
+
             # Find the xyz midpoint
-            midpos5d = [x//2 for x in newDataShape]
+            midpos5d = [x // 2 for x in newDataShape]
 
             # center viewer there
             self.setViewerPos(midpos5d)
@@ -469,12 +492,12 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             else:
                 newLayer = list(filter(lambda l: l.name == oldLayer.name, newGuiLayers))[0]
                 needDelete = newLayer.isDifferentEnough(oldLayer)
-                
+
             if needDelete:
                 layer = self.layerstack[index]
-                if hasattr(layer, 'shortcutRegistration'):
+                if hasattr(layer, "shortcutRegistration"):
                     action_info = layer.shortcutRegistration[1]
-                    ShortcutManager().unregister( action_info )
+                    ShortcutManager().unregister(action_info)
                 self.layerstack.selectRow(index)
                 self.layerstack.deleteSelected()
 
@@ -484,11 +507,11 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         for index, layer in enumerate(newGuiLayers):
             if layer.name not in existingNames:
                 # Insert new
-                self.layerstack.insert( index, layer )
+                self.layerstack.insert(index, layer)
 
                 # If this layer has an associated shortcut, register it with the shortcut manager
-                if hasattr(layer, 'shortcutRegistration'):
-                    ShortcutManager().register( *layer.shortcutRegistration )
+                if hasattr(layer, "shortcutRegistration"):
+                    ShortcutManager().register(*layer.shortcutRegistration)
             else:
                 # Clean up the layer instance that the client just gave us.
                 # We don't want to use it.
@@ -505,7 +528,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                     stackIndex += 1
 
         if len(self.layerstack) > 0:
-            self.centralWidget().setEnabled( True )
+            self.centralWidget().setEnabled(True)
 
     def determineDatashape(self):
         newDataShape = None
@@ -521,7 +544,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             return None
         if len(matches) == 1:
             return matches[0]
-        assert False, "Found more than one matching layer with name {}".format( name )
+        assert False, "Found more than one matching layer with name {}".format(name)
 
     def toggle_show_raw(self, raw_layer_name="Raw Data"):
         """
@@ -534,7 +557,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                 layer.visible = self.saved_layer_visibilities[layer.name]
             self.saved_layer_visibilities = None
         else:
-            self.saved_layer_visibilities = {layer.name : layer.visible for layer in self.layerstack}
+            self.saved_layer_visibilities = {layer.name: layer.visible for layer in self.layerstack}
             for layer in self.layerstack:
                 layer.visible = False
             self.getLayerByName(raw_layer_name).visible = True
@@ -543,25 +566,25 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
     def setViewerPos(self, pos, setTime=False, setChannel=False):
         try:
             pos5d = self.validatePos(pos, dims=5)
-            
+
             # set xyz position
             pos3d = pos5d[1:4]
             self.editor.posModel.slicingPos = pos3d
-            
+
             # set time and channel if requested
             if setTime:
                 self.editor.posModel.time = pos5d[0]
             if setChannel:
                 self.editor.posModel.channel = pos5d[4]
 
-            self.editor.navCtrl.panSlicingViews( pos3d, [0,1,2] )
+            self.editor.navCtrl.panSlicingViews(pos3d, [0, 1, 2])
             for i in range(3):
-                self.editor.navCtrl.changeSliceAbsolute(pos3d[i],i)
+                self.editor.navCtrl.changeSliceAbsolute(pos3d[i], i)
 
         except Exception as e:
             logger.warning("Failed to navigate to position (%s): %s" % (pos, e))
         return
-    
+
     def validatePos(self, pos, dims=5):
         if not isinstance(pos, list):
             raise Exception("Wrong data format")
@@ -570,9 +593,9 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         ds = self.editor.dataShape
         for i in range(dims):
             try:
-                pos[i] = max(0, min(int(pos[i]), ds[i]-1))
+                pos[i] = max(0, min(int(pos[i]), ds[i] - 1))
             except:
-                pos[i] = 0                
+                pos[i] = 0
         return pos
 
     @classmethod
@@ -580,9 +603,9 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         shape = None
         if slot.ready() and slot.meta.axistags is not None:
             # Use an OpReorderAxes adapter to transpose the shape for us.
-            op5 = OpReorderAxes( parent=slot.getRealOperator().parent )
-            op5.Input.connect( slot )
-            op5.AxisOrder.setValue('txyzc')
+            op5 = OpReorderAxes(parent=slot.getRealOperator().parent)
+            op5.Input.connect(slot)
+            op5.AxisOrder.setValue("txyzc")
             shape = op5.Output.meta.shape
 
             # We just needed the operator to determine the transposed shape.
@@ -613,7 +636,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         """
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
-        self._drawer = uic.loadUi(localDir+"/drawer.ui")
+        self._drawer = uic.loadUi(localDir + "/drawer.ui")
 
     def getAppletDrawerUi(self):
         return self._drawer
@@ -624,26 +647,28 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         """
         # Load the ui file into this class (find it in our own directory)
         localDir = os.path.split(__file__)[0]
-        uic.loadUi(localDir+"/centralWidget.ui", self)
+        uic.loadUi(localDir + "/centralWidget.ui", self)
 
     def _initEditor(self, crosshair, is_3d_widget_visible):
         """
         Initialize the Volume Editor GUI.
         """
-        self.editor = VolumeEditor(self.layerstack, parent=self, crosshair=crosshair, is_3d_widget_visible=is_3d_widget_visible)
+        self.editor = VolumeEditor(
+            self.layerstack, parent=self, crosshair=crosshair, is_3d_widget_visible=is_3d_widget_visible
+        )
 
         # Replace the editor's navigation interpreter with one that has extra functionality
-        self.clickReporter = ClickReportingInterpreter( self.editor.navInterpret, self.editor.posModel )
-        self.editor.setNavigationInterpreter( self.clickReporter )
-        self.clickReporter.rightClickReceived.connect( self._handleEditorRightClick )
-        self.clickReporter.leftClickReceived.connect( self._handleEditorLeftClick )
-        self.clickReporter.toolTipReceived.connect( self._handleEditorToolTip )
+        self.clickReporter = ClickReportingInterpreter(self.editor.navInterpret, self.editor.posModel)
+        self.editor.setNavigationInterpreter(self.clickReporter)
+        self.clickReporter.rightClickReceived.connect(self._handleEditorRightClick)
+        self.clickReporter.leftClickReceived.connect(self._handleEditorLeftClick)
+        self.clickReporter.toolTipReceived.connect(self._handleEditorToolTip)
 
-        clickReporter2 = ClickReportingInterpreter( self.editor.brushingInterpreter, self.editor.posModel )
-        clickReporter2.rightClickReceived.connect( self._handleEditorRightClick )
+        clickReporter2 = ClickReportingInterpreter(self.editor.brushingInterpreter, self.editor.posModel)
+        clickReporter2.rightClickReceived.connect(self._handleEditorRightClick)
         self.editor.brushingInterpreter = clickReporter2
-        
-        self.editor.setInteractionMode( 'navigation' )
+
+        self.editor.setInteractionMode("navigation")
         self.volumeEditorWidget.init(self.editor)
 
         self.editor._lastImageViewFocus = 0
@@ -664,22 +689,24 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
             self.volumeEditorWidget.quadview.ensureMaximized(2)
 
     def _convertPositionToDataSpace(self, voluminaPosition):
-        taggedPosition = {k:p for k,p in zip('txyzc', voluminaPosition)}
+        taggedPosition = {k: p for k, p in zip("txyzc", voluminaPosition)}
 
         # Find the first lazyflow layer in the stack
         # We assume that all lazyflow layers have the same axistags
         dataTags = None
         for layer in self.layerstack:
             for datasource in layer.datasources:
-                try: # not all datasources have the dataSlot property, find out by trying
+                try:  # not all datasources have the dataSlot property, find out by trying
                     dataTags = datasource.dataSlot.meta.axistags
                     if dataTags is not None:
                         break
                 except AttributeError:
                     pass
 
-        if(dataTags is None):
-            raise RuntimeError("Can't convert mouse click coordinates from volumina-5d: Could not find a lazyflow data source in any layer.")
+        if dataTags is None:
+            raise RuntimeError(
+                "Can't convert mouse click coordinates from volumina-5d: Could not find a lazyflow data source in any layer."
+            )
         position = ()
         for tag in dataTags:
             position += (taggedPosition[tag.key],)

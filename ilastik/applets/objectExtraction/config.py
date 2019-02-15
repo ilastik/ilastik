@@ -16,11 +16,11 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 # FIXME: use ilastik config file
 compress_labels = False
-'''
+"""
 # all these features are precalculated in opExtractObjects
 #vigra_features = ['Count', 'Mean', 'Variance', 'Skewness', 'Kurtosis', 'RegionCenter', 'RegionAxes']
 vigra_features = ['Count', 'Mean']
@@ -49,4 +49,4 @@ if not has_skimage:
 #selected_features = ['lbp_excl', 'lbp_obj']
 
 #selected_features = ['Histogram_excl', 'Histogram_obj', 'lbp_excl', 'lbp_obj']
-'''
+"""

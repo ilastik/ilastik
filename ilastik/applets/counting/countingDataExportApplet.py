@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,7 +18,7 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from .opCountingDataExport import OpCountingDataExport
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
@@ -25,31 +26,35 @@ from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 from ilastik.applets.base.appletSerializer import SerialSlot
 
 from ilastik.utility import OpMultiLaneWrapper, log_exception
-from lazyflow.request import Request 
+from lazyflow.request import Request
 
 import logging
+
 logger = logging.getLogger(__name__)
 
-class CountingDataExportApplet( DataExportApplet ):
+
+class CountingDataExportApplet(DataExportApplet):
     """
     This a specialization of the generic data export applet that
     provides a special viewer for pixel classification predictions.
     """
-    def __init__( self, workflow, title, opCounting, isBatch=False ):
+
+    def __init__(self, workflow, title, opCounting, isBatch=False):
         # Our operator is a subclass of the generic data export operator
-        self._topLevelOperator = OpMultiLaneWrapper( OpCountingDataExport, parent=workflow,
-                                     promotedSlotNames=set(['RawData', 'Inputs', 'RawDatasetInfo']) )
+        self._topLevelOperator = OpMultiLaneWrapper(
+            OpCountingDataExport, parent=workflow, promotedSlotNames=set(["RawData", "Inputs", "RawDatasetInfo"])
+        )
         self._gui = None
         self._title = title
-        self._serializers = [ DataExportSerializer(self._topLevelOperator,
-                                                   title,
-                                                   [ SerialSlot(self._topLevelOperator.CsvFilepath) ]) ]
+        self._serializers = [
+            DataExportSerializer(self._topLevelOperator, title, [SerialSlot(self._topLevelOperator.CsvFilepath)])
+        ]
 
         self.opCounting = opCounting
 
         # Base class init
         super(CountingDataExportApplet, self).__init__(workflow, title, isBatch)
-        
+
     @property
     def dataSerializers(self):
         return self._serializers
@@ -62,7 +67,8 @@ class CountingDataExportApplet( DataExportApplet ):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from .countingDataExportGui import CountingDataExportGui
-            self._gui = CountingDataExportGui( self, self.topLevelOperator )
+
+            self._gui = CountingDataExportGui(self, self.topLevelOperator)
         return self._gui
 
     def write_csv_results(self, export_file, lane_index):

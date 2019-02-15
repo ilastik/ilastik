@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,7 +18,7 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from .opPixelClassificationDataExport import OpPixelClassificationDataExport
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
@@ -25,22 +26,27 @@ from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 
 from ilastik.utility import OpMultiLaneWrapper
 
-class PixelClassificationDataExportApplet( DataExportApplet ):
+
+class PixelClassificationDataExportApplet(DataExportApplet):
     """
     This a specialization of the generic data export applet that
     provides a special viewer for pixel classification predictions.
     """
-    def __init__( self, workflow, title, isBatch=False ):
+
+    def __init__(self, workflow, title, isBatch=False):
         # Our operator is a subclass of the generic data export operator
-        self._topLevelOperator = OpMultiLaneWrapper( OpPixelClassificationDataExport, parent=workflow,
-                                     promotedSlotNames=set(['RawData', 'Inputs', 'RawDatasetInfo', 'ConstraintDataset']) )
+        self._topLevelOperator = OpMultiLaneWrapper(
+            OpPixelClassificationDataExport,
+            parent=workflow,
+            promotedSlotNames=set(["RawData", "Inputs", "RawDatasetInfo", "ConstraintDataset"]),
+        )
         self._gui = None
         self._title = title
-        self._serializers = [ DataExportSerializer(self._topLevelOperator, title) ]
+        self._serializers = [DataExportSerializer(self._topLevelOperator, title)]
 
         # Base class init
         super(PixelClassificationDataExportApplet, self).__init__(workflow, title, isBatch)
-        
+
     @property
     def dataSerializers(self):
         return self._serializers
@@ -53,10 +59,6 @@ class PixelClassificationDataExportApplet( DataExportApplet ):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from .pixelClassificationDataExportGui import PixelClassificationDataExportGui
-            self._gui = PixelClassificationDataExportGui( self, self.topLevelOperator )
+
+            self._gui = PixelClassificationDataExportGui(self, self.topLevelOperator)
         return self._gui
-
-
-
-
-

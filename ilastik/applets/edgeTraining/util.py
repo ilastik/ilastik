@@ -11,7 +11,8 @@ from ilastikrag.util import edge_mask_for_axis, edge_ids_for_axis, unique_edge_l
 
 logger = logging.getLogger(__name__)
 
-def edge_decisions( overseg_vol, groundtruth_vol, asdict=True ):
+
+def edge_decisions(overseg_vol, groundtruth_vol, asdict=True):
     """
     Given an oversegmentation and a reference segmentation,
     return a dict of {(sp1, sp2) : bool} indicating whether or
@@ -25,17 +26,18 @@ def edge_decisions( overseg_vol, groundtruth_vol, asdict=True ):
         edge_mask = edge_mask_for_axis(overseg_vol, axis)
         sp_edges = edge_ids_for_axis(overseg_vol, edge_mask, axis)
         del edge_mask
-        sp_edges_per_axis.append( sp_edges )
-    unique_sp_edges = unique_edge_labels(sp_edges_per_axis)[['sp1', 'sp2']].values
+        sp_edges_per_axis.append(sp_edges)
+    unique_sp_edges = unique_edge_labels(sp_edges_per_axis)[["sp1", "sp2"]].values
 
     sp_to_gt_mapping = label_vol_mapping(overseg_vol, groundtruth_vol)
     decisions = sp_to_gt_mapping[unique_sp_edges[0]] != sp_to_gt_mapping[unique_sp_edges[1]]
 
-    if asdict:    
-        return dict( zip(map(tuple, unique_sp_edges), decisions) )
+    if asdict:
+        return dict(zip(map(tuple, unique_sp_edges), decisions))
     return unique_sp_edges, decisions
 
-def relabel_volume_from_edge_decisions( supervoxels, edge_ids, edge_decisions, out=None ):
+
+def relabel_volume_from_edge_decisions(supervoxels, edge_ids, edge_decisions, out=None):
     """
     Given a supervoxel volume, and a set of edge_ids and corresponding ON/OFF labels
     for the edges, compute a new label volume in which all supervoxels with at least
@@ -56,21 +58,21 @@ def relabel_volume_from_edge_decisions( supervoxels, edge_ids, edge_decisions, o
 
     out: Optional. Must be same shape as supervoxels, but may have different dtype.
     """
-    assert hasattr(supervoxels, 'axistags'), \
-        "Must provide accurate axistags, otherwise performance suffers by 10x"
-    assert out is None or hasattr(out, 'axistags'), \
-        "Must provide accurate axistags, otherwise performance suffers by 10x"
+    assert hasattr(supervoxels, "axistags"), "Must provide accurate axistags, otherwise performance suffers by 10x"
+    assert out is None or hasattr(
+        out, "axistags"
+    ), "Must provide accurate axistags, otherwise performance suffers by 10x"
 
-    inactive_edge_ids = edge_ids[np.nonzero( np.logical_not(edge_decisions) )]
+    inactive_edge_ids = edge_ids[np.nonzero(np.logical_not(edge_decisions))]
 
     logger.debug("Finding connected components in node graph...")
-    g = nx.Graph( list(inactive_edge_ids) ) 
-    
+    g = nx.Graph(list(inactive_edge_ids))
+
     # If any supervoxels are completely independent (not merged with any neighbors),
     # they haven't been added to the graph yet.
     # Add them now.
-    g.add_nodes_from(range(np.max(supervoxels)+1), dtype=edge_ids.dtype)
-    
+    g.add_nodes_from(range(np.max(supervoxels) + 1), dtype=edge_ids.dtype)
+
     sp_mapping = {}
     for i, sp_ids in enumerate(nx.connected_components(g), start=1):
         for sp_id in sp_ids:
@@ -78,35 +80,36 @@ def relabel_volume_from_edge_decisions( supervoxels, edge_ids, edge_decisions, o
     del g
 
     logger.debug("Relabeling supervoxels with connected components...")
-    segmentation_img = vigra.analysis.applyMapping( supervoxels, sp_mapping, out=out )
+    segmentation_img = vigra.analysis.applyMapping(supervoxels, sp_mapping, out=out)
     return segmentation_img
+
 
 if __name__ == "__main__":
     # 1 2
-    # 3 4    
-    vol1 = np.zeros((20,20), dtype=np.uint8)
-    vol1[ 0:10,  0:10] = 1
-    vol1[ 0:10, 10:20] = 2
-    vol1[10:20,  0:10] = 3
+    # 3 4
+    vol1 = np.zeros((20, 20), dtype=np.uint8)
+    vol1[0:10, 0:10] = 1
+    vol1[0:10, 10:20] = 2
+    vol1[10:20, 0:10] = 3
     vol1[10:20, 10:20] = 4
 
     # 2 3
     # 4 5
     vol2 = vol1.copy() + 1
-    
-    assert (label_vol_mapping(vol1, vol2) == [0,2,3,4,5]).all()
-    assert (label_vol_mapping(vol1[3:], vol2[:-3]) == [0,2,3,4,5]).all()
-    assert (label_vol_mapping(vol1[6:], vol2[:-6]) == [0,2,3,2,3]).all()
-    
+
+    assert (label_vol_mapping(vol1, vol2) == [0, 2, 3, 4, 5]).all()
+    assert (label_vol_mapping(vol1[3:], vol2[:-3]) == [0, 2, 3, 4, 5]).all()
+    assert (label_vol_mapping(vol1[6:], vol2[:-6]) == [0, 2, 3, 2, 3]).all()
+
     # 7 7
     # 4 5
-    vol2[( vol2 == 2 ).nonzero()] = 7
-    vol2[( vol2 == 3 ).nonzero()] = 7
+    vol2[(vol2 == 2).nonzero()] = 7
+    vol2[(vol2 == 3).nonzero()] = 7
 
-    assert (label_vol_mapping(vol1, vol2) == [0,7,7,4,5]).all()
-    
+    assert (label_vol_mapping(vol1, vol2) == [0, 7, 7, 4, 5]).all()
+
     decision_dict = edge_decisions(vol1, vol2, asdict=True)
-    
+
     edge_ids, decisions = edge_decisions(vol1, vol2, asdict=False)
-    relabel_volume_from_edge_decisions( vol1, edge_ids, decisions )
+    relabel_volume_from_edge_decisions(vol1, edge_ids, decisions)
     print("DONE")

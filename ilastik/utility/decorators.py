@@ -16,6 +16,7 @@ def lazy(function):
 
     f( ... , lazy=False) -> normal execution
     """
+
     @wraps(function)
     def decoree(*args, **kvargs):
         if "lazy" in kvargs:
@@ -25,6 +26,7 @@ def lazy(function):
         if is_lazy:
             return partial(function, *args, **kvargs)
         return function(*args, **kvargs)
+
     return decoree
 
 
@@ -49,6 +51,7 @@ def require(*attrs, **keyvalue):
     calling f will only succeed if self.running == True
 
     """
+
     def inner(method):
         @wraps(method)
         def decoree(self, *args, **kvargs):
@@ -59,5 +62,7 @@ def require(*attrs, **keyvalue):
                 if attrgetter(key)(self) != value:
                     return
             return method(self, *args, **kvargs)
+
         return decoree
+
     return inner

@@ -16,23 +16,25 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from PyQt5.QtGui import QColor, QPixmap, QIcon, QPainter, QPen, QImage
 from PyQt5.QtCore import QObject, QAbstractTableModel, QItemSelectionModel, Qt, QModelIndex, pyqtSignal
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 _NPIXELS = 26
 _XSTART = 8
 
-class ListElement(QObject):
-    nameChanged  = pyqtSignal(object)
 
-    def __init__(self,name, parent = None):
+class ListElement(QObject):
+    nameChanged = pyqtSignal(object)
+
+    def __init__(self, name, parent=None):
         QObject.__init__(self, parent)
-        self._name       = name
+        self._name = name
 
     @property
     def name(self):
@@ -41,35 +43,33 @@ class ListElement(QObject):
     @name.setter
     def name(self, n):
         if self._name != n:
-            logger.debug("Label '{}' has new name '{}'".format(
-                self._name, n))
+            logger.debug("Label '{}' has new name '{}'".format(self._name, n))
             self._name = n
             self.nameChanged.emit(n)
-
 
 
 class ListModel(QAbstractTableModel):
     orderChanged = pyqtSignal()
     elementSelected = pyqtSignal(int)
 
-
     class ColumnID(object):
-        '''
+        """
         Define how many column the model holds and their type
 
-        '''
-        ncols=2
-        Name=0
-        Delete=1
+        """
+
+        ncols = 2
+        Name = 0
+        Delete = 1
 
     def __init__(self, elements=None, parent=None):
-        '''
+        """
         Common interface for the labelListModel, the boxListModel, and the cropListModel
         see concrete implementations for details
 
         :param elements:
         :param parent:
-        '''
+        """
         QAbstractTableModel.__init__(self, parent)
 
         if elements is None:
@@ -79,10 +79,9 @@ class ListModel(QAbstractTableModel):
 
         def onSelectionChanged(selected, deselected):
 
-
             if selected:
                 ind = selected[0].indexes()
-                if len(ind)>0:
+                if len(ind) > 0:
                     self.elementSelected.emit(ind[0].row())
 
         self._selectionModel.selectionChanged.connect(onSelectionChanged)
@@ -90,9 +89,10 @@ class ListModel(QAbstractTableModel):
         self._allowRemove = True
         self._toolTipSuffixes = {}
 
-        self.unremovable_rows=[] #rows in this list cannot be removed from the gui,
-                                 # to add to this list call self.makeRowPermanent(int)
-                                 # to remove make the self.makeRowRemovable(int)
+        self.unremovable_rows = []  # rows in this list cannot be removed from the gui,
+        # to add to this list call self.makeRowPermanent(int)
+        # to remove make the self.makeRowRemovable(int)
+
     def makeRowPermanent(self, rowIndex):
         """
         The rowindex cannot be removed from gui
@@ -157,15 +157,16 @@ class ListModel(QAbstractTableModel):
         tooltip of the middle column.
 
         """
+
         def __init__(self, table, row):
             self._row = row
             self._table = table
+
         def toolTip(self):
             return self._table._getToolTipSuffix(self._row)
+
         def setToolTip(self, text):
             self._table._setToolTipSuffix(self._row, text)
-
-
 
     def insertRow(self, position, object, parent=QModelIndex()):
         self.beginInsertRows(parent, position, position)
@@ -186,17 +187,19 @@ class ListModel(QAbstractTableModel):
         return True
 
     def allowRemove(self, check):
-        #Allow removing of rows. Needed to be able to disallow it
-        #in interactive mode
+        # Allow removing of rows. Needed to be able to disallow it
+        # in interactive mode
         self._allowRemove = check
-        self.dataChanged.emit(self.createIndex(0, self.ColumnID.Delete),
-                              self.createIndex(self.rowCount(), self.ColumnID.Delete))
+        self.dataChanged.emit(
+            self.createIndex(0, self.ColumnID.Delete), self.createIndex(self.rowCount(), self.ColumnID.Delete)
+        )
+
     def data(self, index, role):
-        '''
+        """
         Reimplement, see labelListModel or boxListModel for concrete example
         :param index:
         :param role:
-        '''
+        """
 
         if role == Qt.EditRole and index.column() == self.ColumnID.Name:
             name = self._elements[index.row()].name
@@ -208,15 +211,15 @@ class ListModel(QAbstractTableModel):
 
         elif role == Qt.ToolTipRole and index.column() == self.ColumnID.Name:
             suffix = self._getToolTipSuffix(index.row())
-            s = "{}\nDouble click to rename {}".format(
-                self._elements[index.row()].name, suffix)
+            s = "{}\nDouble click to rename {}".format(self._elements[index.row()].name, suffix)
             return s
         elif role == Qt.DisplayRole and index.column() == self.ColumnID.Name:
             name = self._elements[index.row()].name
             return name
 
         if role == Qt.DecorationRole and index.column() == self.ColumnID.Delete:
-            if index.row() in self.unremovable_rows: return
+            if index.row() in self.unremovable_rows:
+                return
 
             row = index.row()
             pixmap = QPixmap(_NPIXELS, _NPIXELS)
@@ -240,26 +243,26 @@ class ListModel(QAbstractTableModel):
             return icon
 
     def flags(self, index):
-        '''
+        """
         Reimplement, see labelListModel or boxListModel for concrete example
         :param index:
-        '''
+        """
         if index.column() == self.ColumnID.Delete:
             if self._allowRemove:
                 return Qt.ItemIsEnabled | Qt.ItemIsSelectable
             else:
                 return Qt.NoItemFlags
-        elif  index.column() == self.ColumnID.Name:
+        elif index.column() == self.ColumnID.Name:
             return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
         else:
             return Qt.NoItemFlags
 
     def setData(self, index, value, role=Qt.EditRole):
-        '''
+        """
         Reimplement, see labelListModel or boxListModel for concrete example
         :param index:
-        '''
-        if role == Qt.EditRole  and index.column() == self.ColumnID.Name:
+        """
+        if role == Qt.EditRole and index.column() == self.ColumnID.Name:
             row = index.row()
             self._elements[row].name = value
             self.dataChanged.emit(index, index)
@@ -268,14 +271,12 @@ class ListModel(QAbstractTableModel):
         return False
 
     def select(self, row):
-        '''
+        """
         Reimplement, see labelListModel or boxListModel for concrete example
         :param row
-        '''
+        """
         self._selectionModel.clear()
-        self._selectionModel.select(self.index(row, self.ColumnID.Name),
-                                    QItemSelectionModel.Select)
+        self._selectionModel.select(self.index(row, self.ColumnID.Name), QItemSelectionModel.Select)
 
     def clearSelectionModel(self):
         self._selectionModel.clear()
-

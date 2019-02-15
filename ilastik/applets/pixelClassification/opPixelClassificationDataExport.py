@@ -16,28 +16,29 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from lazyflow.graph import InputSlot
 from ilastik.applets.dataExport.opDataExport import OpDataExport
 from ilastik.applets.base.applet import DatasetConstraintError
 
-class OpPixelClassificationDataExport( OpDataExport ):
+
+class OpPixelClassificationDataExport(OpDataExport):
     # Add these additional input slots, to be used by the GUI.
     PmapColors = InputSlot()
     LabelNames = InputSlot()
-    ConstraintDataset = InputSlot() # Any dataset from the training workflow, which we'll use for 
-                                    #   comparison purposes when checking dataset constraints.
-    
-    def __init__(self,*args,**kwargs):
+    ConstraintDataset = InputSlot()  # Any dataset from the training workflow, which we'll use for
+    #   comparison purposes when checking dataset constraints.
+
+    def __init__(self, *args, **kwargs):
         super(OpPixelClassificationDataExport, self).__init__(*args, **kwargs)
         self.ConstraintDataset.notifyReady(self._checkDataConstraint)
         self.RawData.notifyReady(self._checkDataConstraint)
-    
+
     def propagateDirty(self, slot, subindex, roi):
         if slot is not self.PmapColors and slot is not self.LabelNames:
-            super( OpPixelClassificationDataExport, self ).propagateDirty(slot, subindex, roi)
-    
+            super(OpPixelClassificationDataExport, self).propagateDirty(slot, subindex, roi)
+
     def _checkDataConstraint(self, *args):
         """
         The batch workflow uses the same classifier as the training workflow,
@@ -47,26 +48,30 @@ class OpPixelClassificationDataExport( OpDataExport ):
         """
         if not self.ConstraintDataset.ready() or not self.RawData.ready():
             return
-        
+
         trainingMeta = self.ConstraintDataset.meta
         batchMeta = self.RawData.meta
 
         # Must have same number of channels
-        training_channels = trainingMeta.getTaggedShape()['c']
-        batch_channels = batchMeta.getTaggedShape()['c']
-        if training_channels != batch_channels :
-            raise DatasetConstraintError("Batch Prediction Input",
-                                         "Batch input must have the same number of channels as training input."\
-                                         "(Batch has {} channels, but training input used {}"\
-                                         "".format( batch_channels, training_channels ))
+        training_channels = trainingMeta.getTaggedShape()["c"]
+        batch_channels = batchMeta.getTaggedShape()["c"]
+        if training_channels != batch_channels:
+            raise DatasetConstraintError(
+                "Batch Prediction Input",
+                "Batch input must have the same number of channels as training input."
+                "(Batch has {} channels, but training input used {}"
+                "".format(batch_channels, training_channels),
+            )
 
         # Other than time, Must have same set of axes (but not necessarily in the same order)
         training_axes = set(trainingMeta.getAxisKeys())
         batch_axes = set(batchMeta.getAxisKeys())
-        training_axes.discard('t')
-        batch_axes.discard('t')
-        
+        training_axes.discard("t")
+        batch_axes.discard("t")
+
         if training_axes != batch_axes:
-            raise DatasetConstraintError("Batch Prediction Input",
-                                         "Batch input file does not have the same spatial input axes as the training input:"\
-                                         "has {}, expected {}".format( batch_axes, training_axes ))
+            raise DatasetConstraintError(
+                "Batch Prediction Input",
+                "Batch input file does not have the same spatial input axes as the training input:"
+                "has {}, expected {}".format(batch_axes, training_axes),
+            )

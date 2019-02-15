@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,38 +18,46 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 from .opPixelClassification import OpPixelClassification
 from .pixelClassificationSerializer import PixelClassificationSerializer, Ilastik05ImportDeserializer
 
-class PixelClassificationApplet( StandardApplet ):
+
+class PixelClassificationApplet(StandardApplet):
     """
     Implements the pixel classification "applet", which allows the ilastik shell to use it.
     """
-    def __init__( self, workflow, projectFileGroupName ):
-        self._topLevelOperator = OpPixelClassification( parent=workflow )
-        
+
+    def __init__(self, workflow, projectFileGroupName):
+        self._topLevelOperator = OpPixelClassification(parent=workflow)
+
         def on_classifier_changed(slot, roi):
-            if self._topLevelOperator.classifier_cache.Output.ready() and \
-               self._topLevelOperator.classifier_cache.fixAtCurrent.value is True and \
-               self._topLevelOperator.classifier_cache.Output.value is None:
+            if (
+                self._topLevelOperator.classifier_cache.Output.ready()
+                and self._topLevelOperator.classifier_cache.fixAtCurrent.value is True
+                and self._topLevelOperator.classifier_cache.Output.value is None
+            ):
                 # When the classifier is deleted (e.g. because the number of features has changed,
                 #  then notify the workflow. (Export applet should be disabled.)
                 self.appletStateUpdateRequested()
-        self._topLevelOperator.classifier_cache.Output.notifyDirty( on_classifier_changed )
 
-        super(PixelClassificationApplet, self).__init__( "Training" )
+        self._topLevelOperator.classifier_cache.Output.notifyDirty(on_classifier_changed)
+
+        super(PixelClassificationApplet, self).__init__("Training")
 
         # We provide two independent serializing objects:
         #  one for the current scheme and one for importing old projects.
-        self._serializableItems = [PixelClassificationSerializer(self._topLevelOperator, projectFileGroupName), # Default serializer for new projects
-                                   Ilastik05ImportDeserializer(self._topLevelOperator)]   # Legacy (v0.5) importer
-
+        self._serializableItems = [
+            PixelClassificationSerializer(
+                self._topLevelOperator, projectFileGroupName
+            ),  # Default serializer for new projects
+            Ilastik05ImportDeserializer(self._topLevelOperator),
+        ]  # Legacy (v0.5) importer
 
         self._gui = None
-        
+
         # GUI needs access to the serializer to enable/disable prediction storage
         self.predictionSerializer = self._serializableItems[0]
 
@@ -65,6 +74,7 @@ class PixelClassificationApplet( StandardApplet ):
         least once after object init.
         """
         from .pixelClassificationGui import PixelClassificationGui  # Prevent imports of QT classes in headless mode
+
         multi_lane_gui = super(PixelClassificationApplet, self).getMultiLaneGui()
         guis = multi_lane_gui.getGuis()
         if len(guis) > 0 and isinstance(guis[0], PixelClassificationGui) and not guis[0].isInitialized:
@@ -83,4 +93,5 @@ class PixelClassificationApplet( StandardApplet ):
     @property
     def singleLaneGuiClass(self):
         from .pixelClassificationGui import PixelClassificationGui  # prevent imports of QT classes in headless mode
+
         return PixelClassificationGui

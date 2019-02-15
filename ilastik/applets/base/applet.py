@@ -16,13 +16,14 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from lazyflow.utility.orderedSignal import OrderedSignal
 from abc import ABCMeta, abstractproperty, abstractmethod
 from future.utils import with_metaclass
 
-class Applet( with_metaclass(ABCMeta, object) ):
+
+class Applet(with_metaclass(ABCMeta, object)):
     """
     Base class for all applets.  The shell and workflow depend on this interface only.
     Applets can subclass from this class directly, but in most cases it is easier to 
@@ -31,7 +32,7 @@ class Applet( with_metaclass(ABCMeta, object) ):
 
     _base_initialized = False
 
-    def __init__( self, name, syncWithImageIndex=True, interactive=True ):
+    def __init__(self, name, syncWithImageIndex=True, interactive=True):
         """
         Constructor.
         Subclasses must call this base implementation in their own ``__init__`` methods.
@@ -50,7 +51,7 @@ class Applet( with_metaclass(ABCMeta, object) ):
         #: When the applet is doing something time-consuming, this signal tells the shell to show a progress bar.
         #: Signature: ``__call__(percentComplete, canceled=False)``
         #:
-        #: .. note:: To update the progress bar correctly, the shell expects that progress updates always 
+        #: .. note:: To update the progress bar correctly, the shell expects that progress updates always
         #:           begin with at least one zero update and end with at least one 100 update.
         #:           That is:
         #:           ``self.progressSignal(0)`` ... more updates ... ``self.progressSignal(100)``
@@ -58,7 +59,7 @@ class Applet( with_metaclass(ABCMeta, object) ):
 
         #: Shell request signal is used to trigger certain shell actions.
         #: Signature: ``__call__(request)``
-        #:  where ``request`` is an integer corresponding to the action the shell should take.  
+        #:  where ``request`` is an integer corresponding to the action the shell should take.
         #: The allowable actions are enumerated in the :py:class:`ShellRequest` class.
         #: Example invocation: ``self.shellRequest(ShellRequest.RequestSave)``
         self.shellRequestSignal = OrderedSignal()
@@ -68,7 +69,7 @@ class Applet( with_metaclass(ABCMeta, object) ):
         #: Signature: ``emit()``
         self.appletStateUpdateRequested = OrderedSignal()
 
-        #: This signal tells the shell to send the dict 'data' to the (TCP) server 
+        #: This signal tells the shell to send the dict 'data' to the (TCP) server
         #: 'name' (if connected)
         #: Signature: ``__call__(servername, data)``
         self.sendMessageToServer = OrderedSignal()
@@ -103,7 +104,7 @@ class Applet( with_metaclass(ABCMeta, object) ):
         A list of dataSerializer objects for loading/saving any project data the applet is responsible for.
         Each serializer must be an instance of :py:class:`AppletSerializer<ilastik.applets.base.appletSerializer.AppletSerializer>`
         Subclasses should override this property.  By default, returns [].
-        """ 
+        """
         return []
 
     @property
@@ -128,10 +129,12 @@ class DatasetConstraintError(Exception):
     def __str__(self):
         return "Constraint of '{}' applet was violated: {}".format(self.appletName, self.message)
 
+
 class ShellRequest(object):
     """
     This class enumerates the actions that applets can ask the shell to perform via :py:attr:`Applet.shellRequestSignal`.
     At the moment, there is only one supported action.
     """
+
     #: Request that the shell perform a "save project" action.
     RequestSave = 0

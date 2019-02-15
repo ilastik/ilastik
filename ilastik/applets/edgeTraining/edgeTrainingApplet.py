@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -24,14 +25,16 @@ from ilastik.applets.base.standardApplet import StandardApplet
 from .opEdgeTraining import OpEdgeTraining
 from .edgeTrainingSerializer import EdgeTrainingSerializer
 
-class EdgeTrainingApplet( StandardApplet ):
+
+class EdgeTrainingApplet(StandardApplet):
     """
     Supervoxel edge training applet
     """
-    def __init__( self, workflow, guiName, projectFileGroupName ):
-        self._topLevelOperator = OpEdgeTraining( parent=workflow )
+
+    def __init__(self, workflow, guiName, projectFileGroupName):
+        self._topLevelOperator = OpEdgeTraining(parent=workflow)
         super(EdgeTrainingApplet, self).__init__(guiName, workflow)
-        self._serializableItems = [ EdgeTrainingSerializer(self.topLevelOperator, projectFileGroupName) ]
+        self._serializableItems = [EdgeTrainingSerializer(self.topLevelOperator, projectFileGroupName)]
 
     @property
     def topLevelOperator(self):
@@ -40,6 +43,7 @@ class EdgeTrainingApplet( StandardApplet ):
     @property
     def singleLaneGuiClass(self):
         from .edgeTrainingGui import EdgeTrainingGui
+
         return EdgeTrainingGui
 
     @property

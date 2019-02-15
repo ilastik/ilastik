@@ -37,17 +37,21 @@ logger = logging.getLogger(__name__)
 defaultScales = [0.3, 0.7, 1.0, 1.6, 3.5, 5.0, 10.0]
 
 # Map feature groups to lists of feature IDs
-FeatureGroups = [("Color/Intensity", ["GaussianSmoothing"]),
-                 ("Edge", ["LaplacianOfGaussian", "GaussianGradientMagnitude", "DifferenceOfGaussians"]),
-                 ("Texture", ["StructureTensorEigenvalues", "HessianOfGaussianEigenvalues"])]
+FeatureGroups = [
+    ("Color/Intensity", ["GaussianSmoothing"]),
+    ("Edge", ["LaplacianOfGaussian", "GaussianGradientMagnitude", "DifferenceOfGaussians"]),
+    ("Texture", ["StructureTensorEigenvalues", "HessianOfGaussianEigenvalues"]),
+]
 
 # Map feature IDs to feature names
-FeatureNames = {'GaussianSmoothing': 'Gaussian Smoothing',
-                'LaplacianOfGaussian': "Laplacian of Gaussian",
-                'GaussianGradientMagnitude': "Gaussian Gradient Magnitude",
-                'DifferenceOfGaussians': "Difference of Gaussians",
-                'StructureTensorEigenvalues': "Structure Tensor Eigenvalues",
-                'HessianOfGaussianEigenvalues': "Hessian of Gaussian Eigenvalues"}
+FeatureNames = {
+    "GaussianSmoothing": "Gaussian Smoothing",
+    "LaplacianOfGaussian": "Laplacian of Gaussian",
+    "GaussianGradientMagnitude": "Gaussian Gradient Magnitude",
+    "DifferenceOfGaussians": "Difference of Gaussians",
+    "StructureTensorEigenvalues": "Structure Tensor Eigenvalues",
+    "HessianOfGaussianEigenvalues": "Hessian of Gaussian Eigenvalues",
+}
 
 
 def getFeatureIdOrder():
@@ -61,6 +65,7 @@ class OpFeatureSelectionNoCache(Operator):
     """
     The top-level operator for the feature selection applet for headless workflows.
     """
+
     name = "OpFeatureSelection"
     category = "Top-level"
 
@@ -74,8 +79,8 @@ class OpFeatureSelectionNoCache(Operator):
 
     # The following input slots are applied uniformly to all input images
     SelectionMatrix = InputSlot()  # A matrix of bools indicating which features to output
-    FeatureIds = InputSlot(value=getFeatureIdOrder())   # The list of features to compute
-    Scales = InputSlot(value=defaultScales)             # The list of scales to use when computing features
+    FeatureIds = InputSlot(value=getFeatureIdOrder())  # The list of features to compute
+    Scales = InputSlot(value=defaultScales)  # The list of scales to use when computing features
     # A list of flags to indicate weather to use a 2d (xy) or a 3d filter for each scale in Scales
     ComputeIn2d = InputSlot(value=[])
     # The SelectionMatrix rows correspond to feature types in the order specified by the FeatureIds input.
@@ -105,13 +110,12 @@ class OpFeatureSelectionNoCache(Operator):
         self.opPixelFeatures.SelectionMatrix.connect(self.SelectionMatrix)
         self.opPixelFeatures.ComputeIn2d.connect(self.ComputeIn2d)
         self.opReorderIn = OpReorderAxes(parent=self)
-        self.opReorderIn.AxisOrder.setValue('tczyx')
+        self.opReorderIn.AxisOrder.setValue("tczyx")
         self.opReorderIn.Input.connect(self.InputImage)
         self.opPixelFeatures.Input.connect(self.opReorderIn.Output)
         self.opReorderOut = OpReorderAxes(parent=self)
         self.opReorderOut.Input.connect(self.opPixelFeatures.Output)
-        self.opReorderLayers = OperatorWrapper(OpReorderAxes, parent=self,
-                                               broadcastingSlotNames=["AxisOrder"])
+        self.opReorderLayers = OperatorWrapper(OpReorderAxes, parent=self, broadcastingSlotNames=["AxisOrder"])
         self.opReorderLayers.Input.connect(self.opPixelFeatures.Features)
 
         self.WINDOW_SIZE = self.opPixelFeatures.WINDOW_SIZE
@@ -119,21 +123,21 @@ class OpFeatureSelectionNoCache(Operator):
     def setupOutputs(self):
         # drop non-channel singleton axes
         oldAxes = self.InputImage.meta.getAxisKeys()
-        assert 'c' in oldAxes
+        assert "c" in oldAxes
 
         self.opReorderOut.AxisOrder.setValue(oldAxes)
         self.opReorderLayers.AxisOrder.setValue(oldAxes)
 
         # Get features from external file
         if self.FeatureListFilename.ready() and len(self.FeatureListFilename.value) > 0:
-            raise NotImplementedError('Not simplified yet!')
+            raise NotImplementedError("Not simplified yet!")
 
             self.OutputImage.disconnect()
             self.FeatureLayers.disconnect()
 
             axistags = self.InputImage.meta.axistags
 
-            with h5py.File(self.FeatureListFilename.value, 'r') as f:
+            with h5py.File(self.FeatureListFilename.value, "r") as f:
                 dset_names = []
                 f.visit(dset_names.append)
                 if len(dset_names) != 1:
@@ -152,7 +156,7 @@ class OpFeatureSelectionNoCache(Operator):
                 self.FeatureLayers[i].meta.shape = shape[:-1] + (1,)
                 self.FeatureLayers[i].meta.dtype = dtype
                 self.FeatureLayers[i].meta.axistags = axistags
-                self.FeatureLayers[i].meta.display_mode = 'default'
+                self.FeatureLayers[i].meta.display_mode = "default"
                 self.FeatureLayers[i].meta.description = "feature_channel_" + str(i)
 
             self.OutputImage.meta.shape = shape
@@ -163,20 +167,23 @@ class OpFeatureSelectionNoCache(Operator):
             invalid_scales, invalid_z_scales = self.opPixelFeatures.getInvalidScales()
             if invalid_scales or invalid_z_scales:
                 invalid_z_scales = [s for s in invalid_z_scales if s not in invalid_scales]  # 'do not complain twice'
-                msg = 'Some of your selected feature scales are too large for your dataset.\n'
+                msg = "Some of your selected feature scales are too large for your dataset.\n"
                 if invalid_scales:
-                    msg += f'Reduce or remove these scales:\n{invalid_scales}\n\n'
+                    msg += f"Reduce or remove these scales:\n{invalid_scales}\n\n"
 
                 if invalid_z_scales:
-                    msg += f'Reduce, remove or switch to 2D computation for these scales:\n{invalid_z_scales}\n\n'
+                    msg += f"Reduce, remove or switch to 2D computation for these scales:\n{invalid_z_scales}\n\n"
 
-                msg += 'Alternatively use another dataset.'
+                msg += "Alternatively use another dataset."
                 if self.parent.parent.featureSelectionApplet._gui is None:
                     # headless
                     fix_dlgs = []
                 else:
-                    fix_dlgs = [self.parent.parent.featureSelectionApplet._gui.currentGui(
-                        fallback_on_lane_0=True).onFeatureButtonClicked]
+                    fix_dlgs = [
+                        self.parent.parent.featureSelectionApplet._gui.currentGui(
+                            fallback_on_lane_0=True
+                        ).onFeatureButtonClicked
+                    ]
 
                 raise DatasetConstraintError("Feature Selection", msg, fixing_dialogs=fix_dlgs)
 
@@ -200,7 +207,7 @@ class OpFeatureSelectionNoCache(Operator):
         key = roiToSlice(rroi.start, rroi.stop)
 
         # Read features from external file
-        with h5py.File(self.FeatureListFilename.value, 'r') as f:
+        with h5py.File(self.FeatureListFilename.value, "r") as f:
             dset_names = []
             f.visit(dset_names.append)
 
@@ -219,6 +226,7 @@ class OpFeatureSelection(OpFeatureSelectionNoCache):
     This is the top-level operator of the feature selection applet when used in a GUI.
     It provides an extra output for cached data.
     """
+
     BypassCache = InputSlot(value=False)
     CachedOutputImage = OutputSlot()
 
@@ -252,9 +260,9 @@ class OpFeatureSelection(OpFeatureSelectionNoCache):
         else:
             # Overestimate number of feature channels:
             # Cache block dimensions will be clipped to the size of the actual feature image
-            blockDimsX = {'t': 1,  'c': 1000, 'z': 256, 'y': 256, 'x': 32} 
-            blockDimsY = {'t': 1,  'c': 1000, 'z': 256, 'y': 32, 'x': 256}
-            blockDimsZ = {'t': 1,  'c': 1000, 'z': 32, 'y': 256, 'x': 256}
+            blockDimsX = {"t": 1, "c": 1000, "z": 256, "y": 256, "x": 32}
+            blockDimsY = {"t": 1, "c": 1000, "z": 256, "y": 32, "x": 256}
+            blockDimsZ = {"t": 1, "c": 1000, "z": 32, "y": 256, "x": 256}
 
             axisOrder = self.InputImage.meta.getAxisKeys()
             blockShapeX = tuple(blockDimsX[k] for k in axisOrder)

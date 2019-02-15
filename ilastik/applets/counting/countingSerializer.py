@@ -16,29 +16,32 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
 from builtins import range
-from ilastik.applets.base.appletSerializer import \
-    AppletSerializer, deleteIfPresent, SerialSlot, SerialCountingSlot, \
-    SerialBlockSlot, SerialListSlot
+from ilastik.applets.base.appletSerializer import (
+    AppletSerializer,
+    deleteIfPresent,
+    SerialSlot,
+    SerialCountingSlot,
+    SerialBlockSlot,
+    SerialListSlot,
+)
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpH5WriterBigDataset
 from lazyflow.utility.orderedSignal import OrderedSignal
 import threading
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
 class SerialPredictionSlot(SerialSlot):
-
-    def __init__(self, slot, operator, inslot=None, name=None,
-                 subname=None, default=None, depends=None,
-                 selfdepends=True):
-        super(SerialPredictionSlot, self).__init__(
-            slot, inslot, name, subname, default, depends, selfdepends
-        )
+    def __init__(
+        self, slot, operator, inslot=None, name=None, subname=None, default=None, depends=None, selfdepends=True
+    ):
+        super(SerialPredictionSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
         self.operator = operator
         self.progressSignal = OrderedSignal()
 
@@ -66,12 +69,12 @@ class SerialPredictionSlot(SerialSlot):
             self._predictionStorageRequest.cancel()
 
     def shouldSerialize(self, group):
-        result = super(SerialPredictionSlot,self).shouldSerialize(group)
+        result = super(SerialPredictionSlot, self).shouldSerialize(group)
         result &= self.predictionStorageEnabled
         return result
 
     def _disconnect(self):
-        for i,slot in enumerate(self.operator.PredictionsFromDisk):
+        for i, slot in enumerate(self.operator.PredictionsFromDisk):
             slot.disconnect()
 
     def serialize(self, group):
@@ -95,7 +98,7 @@ class SerialPredictionSlot(SerialSlot):
 
         # Disconnect the operators that might be using the old data.
         self.deserialize(group)
-        
+
         failedToSave = False
         opWriter = None
         try:
@@ -112,7 +115,7 @@ class SerialPredictionSlot(SerialSlot):
                 datasetName = self.subname.format(imageIndex)
 
                 # Use a big dataset writer to do this in chunks
-                opWriter = OpH5WriterBigDataset(graph=self.operator.graph, parent = self.operator.parent)
+                opWriter = OpH5WriterBigDataset(graph=self.operator.graph, parent=self.operator.parent)
                 opWriter.hdf5File.setValue(predictionDir)
                 opWriter.hdf5Path.setValue(datasetName)
                 opWriter.Image.connect(slot[imageIndex])
@@ -122,14 +125,16 @@ class SerialPredictionSlot(SerialSlot):
                     if self.predictionStorageEnabled:
                         curprogress = progress + percent * (increment / 100.0)
                         self.progressSignal(curprogress)
+
                 opWriter.progressSignal.subscribe(handleProgress)
 
                 # Create the request
                 self._predictionStorageRequest = opWriter.WriteImage[...]
 
-                # Must use a threading event here because if we wait on the 
+                # Must use a threading event here because if we wait on the
                 # request from within a "real" thread, it refuses to be cancelled.
                 finishedEvent = threading.Event()
+
                 def handleFinish(result):
                     finishedEvent.set()
 
@@ -141,7 +146,7 @@ class SerialPredictionSlot(SerialSlot):
                 # Trigger the write and wait for it to complete or cancel.
                 self._predictionStorageRequest.notify_finished(handleFinish)
                 self._predictionStorageRequest.notify_cancelled(handleCancel)
-                self._predictionStorageRequest.submit() # Can't call wait().  See note above.
+                self._predictionStorageRequest.submit()  # Can't call wait().  See note above.
                 finishedEvent.wait()
                 progress += increment
                 opWriter.cleanUp()
@@ -168,9 +173,11 @@ class SerialPredictionSlot(SerialSlot):
             self.operator.FreezePredictions.setValue(False)
             self.operator.FreezePredictions.setValue(True)
 
-        #self.operator.PredictionsFromDisk.resize(len(group))
+        # self.operator.PredictionsFromDisk.resize(len(group))
         if len(list(group.keys())) > 0:
-            assert len(list(group.keys())) == len(self.operator.PredictionsFromDisk), "Expected to find the same number of on-disk predications as there are images loaded."
+            assert len(list(group.keys())) == len(
+                self.operator.PredictionsFromDisk
+            ), "Expected to find the same number of on-disk predications as there are images loaded."
         else:
             for slot in self.operator.PredictionsFromDisk:
                 slot.disconnect()
@@ -180,18 +187,17 @@ class SerialPredictionSlot(SerialSlot):
             opStreamer.InternalPath.setValue(datasetName)
             self.operator.PredictionsFromDisk[imageIndex].connect(opStreamer.OutputImage)
 
+
 class SerialBoxSlot(SerialSlot):
-    def __init__(self, slot, operator, inslot=None, name=None,
-                 subname=None, default=None, depends=None,
-                 selfdepends=True):
-        super(SerialBoxSlot, self).__init__(
-            slot, inslot, name, subname, default, depends, selfdepends
-        )
+    def __init__(
+        self, slot, operator, inslot=None, name=None, subname=None, default=None, depends=None, selfdepends=True
+    ):
+        super(SerialBoxSlot, self).__init__(slot, inslot, name, subname, default, depends, selfdepends)
         self.operator = operator
         self.progressSignal = OrderedSignal()  # Signature: __call__(percentComplete)
 
     def _serialize(self, group, name, multislot):
-        #create subgroups, one for every imagelane
+        # create subgroups, one for every imagelane
         BoxDir = group.create_group(self.name)
         self.deserialize(group)
         for i, slot in enumerate(multislot):
@@ -206,7 +212,7 @@ class SerialBoxSlot(SerialSlot):
             subslot = subgroup[slot.name]
             if "isEmpty" in subslot.attrs and not subslot.attrs["isEmpty"]:
                 slot[imageIndex].setValue(group[datasetName][slot.name].value.tolist())
-        #self.op.opTrain.BoxConstraints[i].setValue(res[i])
+        # self.op.opTrain.BoxConstraints[i].setValue(res[i])
 
 
 class CountingSerializer(AppletSerializer):
@@ -216,60 +222,29 @@ class CountingSerializer(AppletSerializer):
 
     def __init__(self, operator, projectFileGroupName):
         self.predictionSlot = SerialPredictionSlot(
-            operator.PredictionProbabilities,
-            operator,
-            name='Predictions',
-            subname='predictions{:04d}',
+            operator.PredictionProbabilities, operator, name="Predictions", subname="predictions{:04d}"
         )
 
         slots = [
-            SerialListSlot(
-                operator.LabelNames,
-            ),
-            SerialListSlot(
-                operator.LabelColors,
-                transform=lambda x: tuple(x.flat),
-            ),
-            SerialListSlot(
-                operator.PmapColors,
-                transform=lambda x: tuple(x.flat),
-            ),
+            SerialListSlot(operator.LabelNames),
+            SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
+            SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
             SerialBlockSlot(
                 operator.LabelImages,
                 operator.LabelInputs,
                 operator.NonzeroLabelBlocks,
-                name='LabelSets',
-                subname='labels{:0}',
+                name="LabelSets",
+                subname="labels{:0}",
                 selfdepends=False,
             ),
             self.predictionSlot,
+            SerialBoxSlot(operator.opTrain.BoxConstraintRois, operator.opTrain, name="Rois", subname="rois{:04d}"),
             SerialBoxSlot(
-                operator.opTrain.BoxConstraintRois,
-                operator.opTrain,
-                name='Rois',
-                subname='rois{:04d}',
+                operator.opTrain.BoxConstraintValues, operator.opTrain, name="Values", subname="values{:04d}"
             ),
-            SerialBoxSlot(
-                operator.opTrain.BoxConstraintValues,
-                operator.opTrain,
-                name='Values',
-                subname='values{:04d}',
-            ),
-            SerialSlot(
-                operator.opTrain.Sigma,
-                name='Sigma',
-            ),
-            SerialBoxSlot(
-                operator.boxViewer.rois,
-                operator.boxViewer,
-                name='ViewRois',
-                subname='viewrois{:04d}',
-            ),
-            SerialCountingSlot(
-                operator.Classifier,
-                operator.classifier_cache,
-                name='CountingWrappers',
-            ),
+            SerialSlot(operator.opTrain.Sigma, name="Sigma"),
+            SerialBoxSlot(operator.boxViewer.rois, operator.boxViewer, name="ViewRois", subname="viewrois{:04d}"),
+            SerialCountingSlot(operator.Classifier, operator.classifier_cache, name="CountingWrappers"),
         ]
 
         super(CountingSerializer, self).__init__(projectFileGroupName, slots=slots)
@@ -305,7 +280,7 @@ class Ilastik05ImportDeserializer(AppletSerializer):
     """
 
     def __init__(self, topLevelOperator):
-        super(Ilastik05ImportDeserializer, self).__init__('')
+        super(Ilastik05ImportDeserializer, self).__init__("")
         self.mainOperator = topLevelOperator
 
     def serializeToHdf5(self, hdf5Group, projectFilePath):
@@ -322,18 +297,18 @@ class Ilastik05ImportDeserializer(AppletSerializer):
 
         # The pixel classification workflow supports importing projects in the old 0.5 format
         if ilastikVersion == 0.5:
-            numImages = len(hdf5File['DataSets'])
+            numImages = len(hdf5File["DataSets"])
             self.mainOperator.LabelInputs.resize(numImages)
 
-            for index, (datasetName, datasetGroup) in enumerate(sorted(hdf5File['DataSets'].items())):
+            for index, (datasetName, datasetGroup) in enumerate(sorted(hdf5File["DataSets"].items())):
                 try:
-                    dataset = datasetGroup['labels/data']
+                    dataset = datasetGroup["labels/data"]
                 except KeyError:
                     # We'll get a KeyError if this project doesn't have labels for this dataset.
                     # That's allowed, so we simply continue.
                     pass
                 else:
-                    slicing = [slice(0,s) for s in dataset.shape]
+                    slicing = [slice(0, s) for s in dataset.shape]
                     self.mainOperator.LabelInputs[index][slicing] = dataset[...]
 
     def importClassifier(self, hdf5File):

@@ -1,5 +1,6 @@
 from __future__ import print_function
 from __future__ import division
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -18,7 +19,7 @@ from __future__ import division
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ##############################################################################
 
 # Built-in
@@ -58,20 +59,21 @@ def getMemoryUsageMb():
 class OpAnisotropicGaussianSmoothing5d(Operator):
     # raw volume, in 5d 'tzyxc' order
     Input = InputSlot()
-    Sigmas = InputSlot(value={'z': 1.0, 'y': 1.0, 'x': 1.0})
+    Sigmas = InputSlot(value={"z": 1.0, "y": 1.0, "x": 1.0})
 
     Output = OutputSlot()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
-        self.Output.meta.dtype = numpy.float32 # vigra gaussian only supports float32
+        self.Output.meta.dtype = numpy.float32  # vigra gaussian only supports float32
         self._sigmas = self.Sigmas.value
         assert isinstance(self.Sigmas.value, dict), "Sigmas slot expects a dict"
-        assert set(self._sigmas.keys()) == set('zyx'), "Sigmas slot expects three key-value pairs for z,y,x"
+        assert set(self._sigmas.keys()) == set("zyx"), "Sigmas slot expects three key-value pairs for z,y,x"
 
     def execute(self, slot, subindex, roi, result):
-        assert all(roi.stop <= self.Input.meta.shape),\
-            "Requested roi {} is too large for this input image of shape {}.".format(roi, self.Input.meta.shape)
+        assert all(
+            roi.stop <= self.Input.meta.shape
+        ), "Requested roi {} is too large for this input image of shape {}.".format(roi, self.Input.meta.shape)
 
         # Determine how much input data we'll need, and where the result will be
         # relative to that input roi
@@ -82,9 +84,8 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
         # Obtain the input data
         with Timer() as resultTimer:
             data = self.Input(*inputRoi).wait()
-        logger.debug("Obtaining input data took {} seconds for roi {}".format(
-            resultTimer.seconds(), inputRoi))
-        data = vigra.taggedView(data, axistags='tzyxc')
+        logger.debug("Obtaining input data took {} seconds for roi {}".format(resultTimer.seconds(), inputRoi))
+        data = vigra.taggedView(data, axistags="tzyxc")
 
         # input is in tzyxc order
         tIndex = 0
@@ -94,10 +95,10 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
         if data.dtype != numpy.float32:
             data = data.astype(numpy.float32)
 
-        # we need to remove a singleton z axis, otherwise we get 
+        # we need to remove a singleton z axis, otherwise we get
         # 'kernel longer than line' errors
         ts = self.Input.meta.getTaggedShape()
-        tags = [k for k in 'zyx' if ts[k] > 1]
+        tags = [k for k in "zyx" if ts[k] > 1]
         sigma = [self._sigmas[k] for k in tags]
 
         # Check if we need to smooth
@@ -109,17 +110,14 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
         for i, t in enumerate(range(roi.start[tIndex], roi.stop[tIndex])):
             for j, c in enumerate(range(roi.start[cIndex], roi.stop[cIndex])):
                 # prepare the result as an argument
-                resview = vigra.taggedView(result[i, ..., j],
-                                           axistags='zyx')
+                resview = vigra.taggedView(result[i, ..., j], axistags="zyx")
                 dataview = data[i, ..., j]
                 # TODO make this general, not just for z axis
                 resview = resview.withAxes(*tags)
                 dataview = dataview.withAxes(*tags)
 
                 # Smooth the input data
-                vigra.filters.gaussianSmoothing(
-                    dataview, sigma, window_size=2.0,
-                    roi=computeRoi, out=resview)
+                vigra.filters.gaussianSmoothing(dataview, sigma, window_size=2.0, roi=computeRoi, out=resview)
 
     def _getInputComputeRois(self, roi):
         shape = self.Input.meta.shape
@@ -128,22 +126,19 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
         n = len(stop)
         spatStart = [roi.start[i] for i in range(n) if shape[i] > 1]
         spatStop = [roi.stop[i] for i in range(n) if shape[i] > 1]
-        sigma = [0] + list(map(self._sigmas.get, 'zyx')) + [0]
+        sigma = [0] + list(map(self._sigmas.get, "zyx")) + [0]
         spatialRoi = (spatStart, spatStop)
 
-        inputSpatialRoi = enlargeRoiForHalo(roi.start, roi.stop, shape,
-                                      sigma, window=2.0)
+        inputSpatialRoi = enlargeRoiForHalo(roi.start, roi.stop, shape, sigma, window=2.0)
 
         # Determine the roi within the input data we're going to request
         inputRoiOffset = roi.start - inputSpatialRoi[0]
         computeRoi = [inputRoiOffset, inputRoiOffset + stop - start]
         for i in (0, 1):
-            computeRoi[i] = [computeRoi[i][j] for j in range(n)
-                             if shape[j] > 1 and j not in (0, 4)]
+            computeRoi[i] = [computeRoi[i][j] for j in range(n) if shape[j] > 1 and j not in (0, 4)]
 
         # make sure that vigra understands our integer types
-        computeRoi = (tuple(map(int, computeRoi[0])),
-                      tuple(map(int, computeRoi[1])))
+        computeRoi = (tuple(map(int, computeRoi[0])), tuple(map(int, computeRoi[1])))
 
         inputRoi = (list(inputSpatialRoi[0]), list(inputSpatialRoi[1]))
 
@@ -163,134 +158,151 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
 
 class OpAnisotropicGaussianSmoothing(Operator):
     Input = InputSlot()
-    Sigmas = InputSlot( value={'z':1.0, 'y':1.0, 'x':1.0} )
-    
+    Sigmas = InputSlot(value={"z": 1.0, "y": 1.0, "x": 1.0})
+
     Output = OutputSlot()
 
     def setupOutputs(self):
-        
+
         self.Output.meta.assignFrom(self.Input.meta)
-        #if there is a time of dim 1, output won't have that
-        timeIndex = self.Output.meta.axistags.index('t')
-        if timeIndex<len(self.Output.meta.shape):
+        # if there is a time of dim 1, output won't have that
+        timeIndex = self.Output.meta.axistags.index("t")
+        if timeIndex < len(self.Output.meta.shape):
             newshape = list(self.Output.meta.shape)
             newshape.pop(timeIndex)
             self.Output.meta.shape = tuple(newshape)
             del self.Output.meta.axistags[timeIndex]
-        self.Output.meta.dtype = numpy.float32 # vigra gaussian only supports float32
+        self.Output.meta.dtype = numpy.float32  # vigra gaussian only supports float32
         self._sigmas = self.Sigmas.value
         assert isinstance(self.Sigmas.value, dict), "Sigmas slot expects a dict"
-        assert set(self._sigmas.keys()) == set('zyx'), "Sigmas slot expects three key-value pairs for z,y,x"
-        print("Assigning output: {} ====> {}".format(self.Input.meta.getTaggedShape(), self.Output.meta.getTaggedShape()))
-        #self.Output.setDirty( slice(None) )
-    
+        assert set(self._sigmas.keys()) == set("zyx"), "Sigmas slot expects three key-value pairs for z,y,x"
+        print(
+            "Assigning output: {} ====> {}".format(self.Input.meta.getTaggedShape(), self.Output.meta.getTaggedShape())
+        )
+        # self.Output.setDirty( slice(None) )
+
     def execute(self, slot, subindex, roi, result):
-        assert all(roi.stop <= self.Input.meta.shape), "Requested roi {} is too large for this input image of shape {}.".format( roi, self.Input.meta.shape )
+        assert all(
+            roi.stop <= self.Input.meta.shape
+        ), "Requested roi {} is too large for this input image of shape {}.".format(roi, self.Input.meta.shape)
         # Determine how much input data we'll need, and where the result will be relative to that input roi
-        inputRoi, computeRoi = self._getInputComputeRois(roi)        
-        # Obtain the input data 
+        inputRoi, computeRoi = self._getInputComputeRois(roi)
+        # Obtain the input data
         with Timer() as resultTimer:
-            data = self.Input( *inputRoi ).wait()
-        logger.debug("Obtaining input data took {} seconds for roi {}".format( resultTimer.seconds(), inputRoi ))
-        
-        zIndex = self.Input.meta.axistags.index('z') if self.Input.meta.axistags.index('z')<len(self.Input.meta.shape) else None
-        xIndex = self.Input.meta.axistags.index('x')
-        yIndex = self.Input.meta.axistags.index('y')
-        cIndex = self.Input.meta.axistags.index('c') if self.Input.meta.axistags.index('c')<len(self.Input.meta.shape) else None
-        
+            data = self.Input(*inputRoi).wait()
+        logger.debug("Obtaining input data took {} seconds for roi {}".format(resultTimer.seconds(), inputRoi))
+
+        zIndex = (
+            self.Input.meta.axistags.index("z")
+            if self.Input.meta.axistags.index("z") < len(self.Input.meta.shape)
+            else None
+        )
+        xIndex = self.Input.meta.axistags.index("x")
+        yIndex = self.Input.meta.axistags.index("y")
+        cIndex = (
+            self.Input.meta.axistags.index("c")
+            if self.Input.meta.axistags.index("c") < len(self.Input.meta.shape)
+            else None
+        )
+
         # Must be float32
         if data.dtype != numpy.float32:
             data = data.astype(numpy.float32)
-        
-        axiskeys = self.Input.meta.getAxisKeys()
-        spatialkeys = [k for k in axiskeys if k in 'zyx']
 
-        # we need to remove a singleton z axis, otherwise we get 
+        axiskeys = self.Input.meta.getAxisKeys()
+        spatialkeys = [k for k in axiskeys if k in "zyx"]
+
+        # we need to remove a singleton z axis, otherwise we get
         # 'kernel longer than line' errors
-        reskey = [slice(None, None, None)]*len(self.Input.meta.shape)
-        reskey[cIndex]=0
-        if zIndex and self.Input.meta.shape[zIndex]==1:
+        reskey = [slice(None, None, None)] * len(self.Input.meta.shape)
+        reskey[cIndex] = 0
+        if zIndex and self.Input.meta.shape[zIndex] == 1:
             removedZ = True
             data = data.reshape((data.shape[xIndex], data.shape[yIndex]))
-            reskey[zIndex]=0
-            spatialkeys = [k for k in axiskeys if k in 'yx']
+            reskey[zIndex] = 0
+            spatialkeys = [k for k in axiskeys if k in "yx"]
         else:
             removedZ = False
 
         sigma = list(map(self._sigmas.get, spatialkeys))
-        #Check if we need to smooth
+        # Check if we need to smooth
         if any([x < 0.1 for x in sigma]):
             if removedZ:
                 resultYX = vigra.taggedView(result, axistags="".join(axiskeys))
-                resultYX = resultYX.withAxes(*'yx')
+                resultYX = resultYX.withAxes(*"yx")
                 resultYX[:] = data
             else:
                 result[:] = data
             return result
 
         # Smooth the input data
-        smoothed = vigra.filters.gaussianSmoothing(data, sigma, window_size=2.0, roi=computeRoi, out=result[tuple(reskey)]) # FIXME: Assumes channel is last axis
+        smoothed = vigra.filters.gaussianSmoothing(
+            data, sigma, window_size=2.0, roi=computeRoi, out=result[tuple(reskey)]
+        )  # FIXME: Assumes channel is last axis
         expectedShape = tuple(TinyVector(computeRoi[1]) - TinyVector(computeRoi[0]))
-        assert tuple(smoothed.shape) == expectedShape, "Smoothed data shape {} didn't match expected shape {}".format( smoothed.shape, roi.stop - roi.start )
-        
+        assert tuple(smoothed.shape) == expectedShape, "Smoothed data shape {} didn't match expected shape {}".format(
+            smoothed.shape, roi.stop - roi.start
+        )
+
         return result
-    
+
     def _getInputComputeRois(self, roi):
         axiskeys = self.Input.meta.getAxisKeys()
-        spatialkeys = [k for k in axiskeys if k in 'zyx']
-        sigma = list(map( self._sigmas.get, spatialkeys ))
+        spatialkeys = [k for k in axiskeys if k in "zyx"]
+        sigma = list(map(self._sigmas.get, spatialkeys))
         inputSpatialShape = self.Input.meta.getTaggedShape()
-        spatialRoi = ( TinyVector(roi.start), TinyVector(roi.stop) )
+        spatialRoi = (TinyVector(roi.start), TinyVector(roi.stop))
         tIndex = None
         cIndex = None
         zIndex = None
-        if 'c' in inputSpatialShape:
-            del inputSpatialShape['c']
-            cIndex = axiskeys.index('c')
-        if 't' in list(inputSpatialShape.keys()):
-            assert inputSpatialShape['t'] == 1
-            tIndex = axiskeys.index('t')
+        if "c" in inputSpatialShape:
+            del inputSpatialShape["c"]
+            cIndex = axiskeys.index("c")
+        if "t" in list(inputSpatialShape.keys()):
+            assert inputSpatialShape["t"] == 1
+            tIndex = axiskeys.index("t")
 
-        if 'z' in list(inputSpatialShape.keys()) and inputSpatialShape['z']==1:
-            #2D image, avoid kernel longer than line exception
-            del inputSpatialShape['z']
-            zIndex = axiskeys.index('z')
-            
+        if "z" in list(inputSpatialShape.keys()) and inputSpatialShape["z"] == 1:
+            # 2D image, avoid kernel longer than line exception
+            del inputSpatialShape["z"]
+            zIndex = axiskeys.index("z")
+
         indices = [tIndex, cIndex, zIndex]
         indices = sorted(indices, reverse=True)
         for ind in indices:
             if ind:
                 spatialRoi[0].pop(ind)
                 spatialRoi[1].pop(ind)
-        
-        inputSpatialRoi = enlargeRoiForHalo(spatialRoi[0], spatialRoi[1], list(inputSpatialShape.values()), sigma, window=2.0)
-        
+
+        inputSpatialRoi = enlargeRoiForHalo(
+            spatialRoi[0], spatialRoi[1], list(inputSpatialShape.values()), sigma, window=2.0
+        )
+
         # Determine the roi within the input data we're going to request
         inputRoiOffset = spatialRoi[0] - inputSpatialRoi[0]
         computeRoi = (inputRoiOffset, inputRoiOffset + spatialRoi[1] - spatialRoi[0])
-        
+
         # For some reason, vigra.filters.gaussianSmoothing will raise an exception if this parameter doesn't have the correct integer type.
         # (for example, if we give it as a numpy.ndarray with dtype=int64, we get an error)
-        computeRoi = ( tuple(map(int, computeRoi[0])),
-                       tuple(map(int, computeRoi[1])) )
-        
+        computeRoi = (tuple(map(int, computeRoi[0])), tuple(map(int, computeRoi[1])))
+
         inputRoi = (list(inputSpatialRoi[0]), list(inputSpatialRoi[1]))
         for ind in reversed(indices):
             if ind:
-                inputRoi[0].insert( ind, 0 )
-                inputRoi[1].insert( ind, 1 )
+                inputRoi[0].insert(ind, 0)
+                inputRoi[1].insert(ind, 1)
 
         return inputRoi, computeRoi
-        
+
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Input:
             # Halo calculation is bidirectional, so we can re-use the function that computes the halo during execute()
             inputRoi, _ = self._getInputComputeRois(roi)
-            self.Output.setDirty( inputRoi[0], inputRoi[1] )
+            self.Output.setDirty(inputRoi[0], inputRoi[1])
         elif slot == self.Sigmas:
-            self.Output.setDirty( slice(None) )
+            self.Output.setDirty(slice(None))
         else:
-            assert False, "Unknown input slot: {}".format( slot.name )
+            assert False, "Unknown input slot: {}".format(slot.name)
 
 
 ## Combine high and low threshold
@@ -311,7 +323,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
 #     0 1 0        0 0 0
 #
 #
-#   Given two label images, produce a copy of BigLabels, EXCEPT first remove all labels 
+#   Given two label images, produce a copy of BigLabels, EXCEPT first remove all labels
 #   from BigLabels that do not overlap with any labels in SmallLabels.
 class OpSelectLabels(Operator):
 
@@ -327,7 +339,7 @@ class OpSelectLabels(Operator):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.BigLabels.meta)
-        assert self.BigLabels.meta.getTaggedShape()['c'] == 1
+        assert self.BigLabels.meta.getTaggedShape()["c"] == 1
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output
@@ -347,7 +359,8 @@ class OpSelectLabels(Operator):
         else:
             assert False, "Unknown input slot: {}".format(slot.name)
 
-def select_labels( small_labels, big_labels ):
+
+def select_labels(small_labels, big_labels):
     """
     Given label images small_labels and big_labels, remove (overwrite with zero) objects
     from big_labels which don't overlap with any non-zero pixels in small_labels.
@@ -356,37 +369,37 @@ def select_labels( small_labels, big_labels ):
     
     Both inputs are modified: small_labels for temporary storage, big_labels for the result
     """
-    assert hasattr(small_labels, 'axistags')
-    assert hasattr(big_labels, 'axistags')
+    assert hasattr(small_labels, "axistags")
+    assert hasattr(big_labels, "axistags")
     assert small_labels.shape == big_labels.shape
 
-    small_labels = small_labels.withAxes('tzyx')
-    big_labels = big_labels.withAxes('tzyx')
+    small_labels = small_labels.withAxes("tzyx")
+    big_labels = big_labels.withAxes("tzyx")
 
     for small_labels_3d, big_labels_3d in zip(small_labels, big_labels):
         # For each non-zero small label pixel, replace it with the corresponding big label pixel
         np.copyto(small_labels_3d, big_labels_3d, where=(small_labels_3d != 0))
-    
+
         # Construct mapping to relabel big_labels
         # By default, big labels map to 0
-        orig_big_values = vigra.analysis.unique( big_labels_3d )    
-        mapping = { v:0 for v in orig_big_values }
-        
+        orig_big_values = vigra.analysis.unique(big_labels_3d)
+        mapping = {v: 0 for v in orig_big_values}
+
         # But big labels that pass the filter map to themselves.
-        filtered_big_values = vigra.analysis.unique( small_labels_3d )
-        mapping.update( { v:v for v in filtered_big_values } )
-    
+        filtered_big_values = vigra.analysis.unique(small_labels_3d)
+        mapping.update({v: v for v in filtered_big_values})
+
         vigra.analysis.applyMapping(big_labels_3d, mapping, out=big_labels_3d)
 
 
 if __name__ == "__main__":
-    small_labels = np.zeros((100,100), dtype=np.uint32)
+    small_labels = np.zeros((100, 100), dtype=np.uint32)
     small_labels[10:20, 10:20] = 1
-    small_labels[40:50, 10:20] = 2 # Won't be used.
+    small_labels[40:50, 10:20] = 2  # Won't be used.
 
-    big_labels = np.zeros((100,100), dtype=np.uint32)
-    big_labels[10:30, 10:30] = 2 # Should be preserved
-    big_labels[10:30, 40:50] = 3 # Should get dropped
+    big_labels = np.zeros((100, 100), dtype=np.uint32)
+    big_labels[10:30, 10:30] = 2  # Should be preserved
+    big_labels[10:30, 40:50] = 3  # Should get dropped
 
     small_labels_orig = small_labels.copy()
     big_labels_orig = big_labels.copy()
@@ -396,4 +409,4 @@ if __name__ == "__main__":
     expected_result = big_labels_orig.copy()
     expected_result[10:30, 40:50] = 0
     assert (big_labels == expected_result).all()
-    print('DONE')
+    print("DONE")

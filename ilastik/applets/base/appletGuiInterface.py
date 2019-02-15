@@ -16,38 +16,42 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from abc import ABCMeta, abstractmethod
 from future.utils import with_metaclass
 
-def _has_attribute( cls, attr ):
+
+def _has_attribute(cls, attr):
     return True if any(attr in B.__dict__ for B in cls.__mro__) else False
 
-def _has_attributes( cls, attrs ):
+
+def _has_attributes(cls, attrs):
     return True if all(_has_attribute(cls, a) for a in attrs) else False
+
 
 class VolumeViewerGui(with_metaclass(ABCMeta, object)):
     """
     This class defines the methods which all GUIs with a volume editor/viewer should implement
     """
-    
+
     def __init__(self, topLevelOperatorView):
         pass
-    
+
     @abstractmethod
     def setViewerPos(self, pos5d):
         """
         Abstract method. Manually set the viewer position.
         """
         raise NotImplementedError
-    
+
     @classmethod
     def __subclasshook__(cls, C):
         if cls is VolumeViewerGui:
-            return _has_attribute(C, 'setViewerPos')
+            return _has_attribute(C, "setViewerPos")
         return NotImplemented
-    
+
+
 class AppletGuiInterface(with_metaclass(ABCMeta, object)):
     """
     This is the abstract interface to which all applet GUI classes should adhere.
@@ -57,7 +61,7 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
         pass
 
     @abstractmethod
-    def centralWidget( self ):
+    def centralWidget(self):
         """
         Abstract method.  Return the widget that will be displayed in the main viewer area.
         """
@@ -69,9 +73,9 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
         Abstract method.  Return the drawer widget for this applet.
         """
         raise NotImplementedError
-    
+
     @abstractmethod
-    def menus( self ):
+    def menus(self):
         """
         Abstract method.  Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.
         """
@@ -93,7 +97,7 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
         Enable or disable the gui, including applet drawer, central widget, menus, and viewer controls.
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     def setImageIndex(self, imageIndex):
         """
@@ -113,7 +117,7 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError
 
-    @abstractmethod    
+    @abstractmethod
     def imageLaneRemoved(self, laneIndex, finalLength):
         """
         Abstract method.
@@ -123,7 +127,7 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError
 
-    @abstractmethod    
+    @abstractmethod
     def stopAndCleanUp(self):
         """
         Abstract method.
@@ -144,53 +148,57 @@ class AppletGuiInterface(with_metaclass(ABCMeta, object)):
     @classmethod
     def __subclasshook__(cls, C):
         if cls is AppletGuiInterface:
-            requiredMethods = [ 'centralWidget',
-                                'appletDrawer',
-                                'menus',
-                                'viewerControlWidget',
-                                'setEnabled',
-                                'setImageIndex',
-                                'imageLaneAdded',
-                                'imageLaneRemoved',
-                                'allowLaneSelectionChange',
-                                'stopAndCleanUp' ]
+            requiredMethods = [
+                "centralWidget",
+                "appletDrawer",
+                "menus",
+                "viewerControlWidget",
+                "setEnabled",
+                "setImageIndex",
+                "imageLaneAdded",
+                "imageLaneRemoved",
+                "allowLaneSelectionChange",
+                "stopAndCleanUp",
+            ]
             return True if _has_attributes(C, requiredMethods) else False
         return NotImplemented
 
+
 if __name__ == "__main__":
+
     class CustomGui(object):
-        def centralWidget( self ):
+        def centralWidget(self):
             """
             Return the widget that will be displayed in the main viewer area.
             """
             raise NotImplementedError
-    
+
         def appletDrawer(self):
             """
             Return a list of drawer widgets for this applet.
             """
             raise NotImplementedError
-        
-        def menus( self ):
+
+        def menus(self):
             """
             Return a list of QMenu widgets to be shown in the menu bar when this applet is visible.
             """
             raise NotImplementedError
-    
+
         def viewerControlWidget(self):
             """
             Return the widget that controls how the content of the central widget is displayed.
             Typically this consists of a layer list control.
             """
             raise NotImplementedError
-        
+
         def setEnabled(self, enabled):
             """
             Abstract method.
             Enable or disable the gui, including applet drawer, central widget, menus, and viewer controls.
             """
             raise NotImplementedError
-        
+
         def setImageIndex(self, imageIndex):
             """
             Called by the shell when the user has switched the input image he wants to view.
@@ -205,7 +213,7 @@ if __name__ == "__main__":
             Note: The default GUI provided by StandardApplet overrides this for you. 
             """
             raise NotImplementedError
-    
+
         def laneRemoved(self, laneIndex, finalLength):
             """
             Abstract method.
@@ -214,7 +222,7 @@ if __name__ == "__main__":
             Note: The default GUI provided by StandardApplet overrides this for you. 
             """
             raise NotImplementedError
-    
+
         def stopAndCleanUp(self):
             """
             Abstract method.
@@ -222,20 +230,7 @@ if __name__ == "__main__":
             The gui should stop updating all data views and should clean up any resources it created (e.g. orphan operators).
             """
             raise NotImplementedError
-    
+
     cg = CustomGui()
-    assert issubclass( type(cg), AppletGuiInterface )
-    assert isinstance( cg, AppletGuiInterface )
-
-
-
-
-
-
-
-
-
-
-
-
-
+    assert issubclass(type(cg), AppletGuiInterface)
+    assert isinstance(cg, AppletGuiInterface)

@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
 
@@ -26,11 +26,12 @@ from PyQt5.QtWidgets import QVBoxLayout, QSpacerItem, QSizePolicy
 from volumina.widgets.thresholdingWidget import ThresholdingWidget
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
+
 class ThresholdMaskingGui(LayerViewerGui):
     """
     Simple example of an applet tha  
     """
-    
+
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
@@ -42,36 +43,36 @@ class ThresholdMaskingGui(LayerViewerGui):
 
     ###########################################
     ###########################################
-    
+
     def __init__(self, parentApplet, topLevelOperatorView):
         """
         """
         self.topLevelOperatorView = topLevelOperatorView
         super(ThresholdMaskingGui, self).__init__(parentApplet, self.topLevelOperatorView)
-            
+
     def initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
-        self._drawer = uic.loadUi(localDir+"/drawer.ui")
+        self._drawer = uic.loadUi(localDir + "/drawer.ui")
 
-        # Init threshold widget        
+        # Init threshold widget
         self.thresholdWidget = ThresholdingWidget(self)
-        self.thresholdWidget.valueChanged.connect( self.apply_gui_settings_to_operator )
+        self.thresholdWidget.valueChanged.connect(self.apply_gui_settings_to_operator)
 
         # Add widget to a layout
         layout = QVBoxLayout()
         layout.setSpacing(0)
-        layout.addWidget( self.thresholdWidget )
-        layout.addSpacerItem( QSpacerItem(0,0,vPolicy=QSizePolicy.Expanding) )
+        layout.addWidget(self.thresholdWidget)
+        layout.addSpacerItem(QSpacerItem(0, 0, vPolicy=QSizePolicy.Expanding))
 
         # Apply layout to the drawer
-        self._drawer.setLayout( layout )
+        self._drawer.setLayout(layout)
 
         # Initialize the gui with the operator's current values
         self.apply_operator_settings_to_gui()
 
     def apply_operator_settings_to_gui(self):
-        minValue, maxValue = (0,255)
+        minValue, maxValue = (0, 255)
 
         if self.topLevelOperatorView.MinValue.ready():
             minValue = self.topLevelOperatorView.MinValue.value
@@ -83,7 +84,7 @@ class ThresholdMaskingGui(LayerViewerGui):
     def apply_gui_settings_to_operator(self, minVal, maxVal):
         self.topLevelOperatorView.MinValue.setValue(minVal)
         self.topLevelOperatorView.MaxValue.setValue(maxVal)
-    
+
     def setupLayers(self):
         """
         Overridden from LayerViewerGui.
@@ -94,25 +95,25 @@ class ThresholdMaskingGui(LayerViewerGui):
         # Show the thresholded data
         outputImageSlot = self.topLevelOperatorView.Output
         if outputImageSlot.ready():
-            outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
+            outputLayer = self.createStandardLayerFromSlot(outputImageSlot)
             outputLayer.name = "min <= x <= max"
             outputLayer.visible = True
             outputLayer.opacity = 0.75
             layers.append(outputLayer)
-        
+
         # Show the  data
         invertedOutputSlot = self.topLevelOperatorView.InvertedOutput
         if invertedOutputSlot.ready():
-            invertedLayer = self.createStandardLayerFromSlot( invertedOutputSlot )
+            invertedLayer = self.createStandardLayerFromSlot(invertedOutputSlot)
             invertedLayer.name = "(x < min) U (x > max)"
             invertedLayer.visible = True
             invertedLayer.opacity = 0.25
             layers.append(invertedLayer)
-        
+
         # Show the raw input data
         inputImageSlot = self.topLevelOperatorView.InputImage
         if inputImageSlot.ready():
-            inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
+            inputLayer = self.createStandardLayerFromSlot(inputImageSlot)
             inputLayer.name = "Raw Input"
             inputLayer.visible = True
             inputLayer.opacity = 1.0

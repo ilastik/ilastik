@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,25 +18,29 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-from PyQt5.QtWidgets import  QSplashScreen 
+from PyQt5.QtWidgets import QSplashScreen
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 
 import ilastik
 
 splashScreen = None
+
+
 def showSplashScreen():
-    splash_path = os.path.join(os.path.split(ilastik.__file__)[0], 'ilastik-splash.png')
+    splash_path = os.path.join(os.path.split(ilastik.__file__)[0], "ilastik-splash.png")
     splashImage = QPixmap(splash_path)
     global splashScreen
-    splashScreen = QSplashScreen(splashImage)    
-    splashScreen.showMessage( ilastik.__version__, Qt.AlignBottom | Qt.AlignRight )
+    splashScreen = QSplashScreen(splashImage)
+    splashScreen.showMessage(ilastik.__version__, Qt.AlignBottom | Qt.AlignRight)
     splashScreen.show()
+
 
 def hideSplashScreen():
     from . import startShellGui
+
     global splashScreen
     splashScreen.finish(startShellGui.shell)

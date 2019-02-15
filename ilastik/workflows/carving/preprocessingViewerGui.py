@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
 import numpy
@@ -26,25 +26,25 @@ from PyQt5.QtGui import QColor
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import ColortableLayer
 
-#ilastik
+# ilastik
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
-class PreprocessingViewerGui( LayerViewerGui ):
-    
+
+class PreprocessingViewerGui(LayerViewerGui):
     def __init__(self, *args, **kwargs):
         super(PreprocessingViewerGui, self).__init__(*args, **kwargs)
-    
+
     def setupLayers(self):
         layers = []
         opLane = self.topLevelOperatorView
-        
+
         # Supervoxels
         watershedSlot = opLane.WatershedImage
         if watershedSlot.ready():
             colortable = []
             for i in range(256):
-                r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
-                colortable.append(QColor(r,g,b).rgba())
+                r, g, b = numpy.random.randint(0, 255), numpy.random.randint(0, 255), numpy.random.randint(0, 255)
+                colortable.append(QColor(r, g, b).rgba())
             watershedLayer = ColortableLayer(LazyflowSource(watershedSlot), colortable)
             watershedLayer.name = "Watershed"
             watershedLayer.visible = False
@@ -54,7 +54,7 @@ class PreprocessingViewerGui( LayerViewerGui ):
 
             layers.append(watershedLayer)
 
-        ''' FIXME: disabled for 0.6 release
+        """ FIXME: disabled for 0.6 release
         wsSourceSlot = opLane.WatershedSourceImage
         if wsSourceSlot.ready():
             wsSourceLayer = self.createStandardLayerFromSlot( wsSourceSlot )
@@ -62,30 +62,30 @@ class PreprocessingViewerGui( LayerViewerGui ):
             wsSourceLayer.visible = False
             wsSourceLayer.opacity = 1.0
             layers.append( wsSourceLayer )
-        '''
+        """
 
         filteredSlot = opLane.FilteredImage
         if filteredSlot.ready():
-            filteredLayer = self.createStandardLayerFromSlot( filteredSlot )
+            filteredLayer = self.createStandardLayerFromSlot(filteredSlot)
             filteredLayer.name = "Filtered Data"
             filteredLayer.visible = False
             filteredLayer.opacity = 1.0
-            layers.append( filteredLayer )
+            layers.append(filteredLayer)
 
         overlaySlot = opLane.OverlayData
         if overlaySlot.ready():
-            inputLayer = self.createStandardLayerFromSlot( overlaySlot )
+            inputLayer = self.createStandardLayerFromSlot(overlaySlot)
             inputLayer.name = "Overlay Image"
             inputLayer.visible = False
             inputLayer.opacity = 1.0
-            layers.append( inputLayer )
+            layers.append(inputLayer)
 
         inputSlot = opLane.InputData
         if inputSlot.ready():
-            inputLayer = self.createStandardLayerFromSlot( inputSlot )
+            inputLayer = self.createStandardLayerFromSlot(inputSlot)
             inputLayer.name = "Input Data"
             inputLayer.visible = True
             inputLayer.opacity = 1.0
-            layers.append( inputLayer )
+            layers.append(inputLayer)
 
-        return layers 
+        return layers

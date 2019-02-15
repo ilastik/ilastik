@@ -17,16 +17,19 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
-from PyQt5.QtWidgets import  QMessageBox
+from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 
 import platform
 import ilastik
+
 ilastik_path = os.path.split(ilastik.__file__)[0]
+
+
 def get_buildem_license():
     """
     Check if ilastik is run from a binary install created by BuildEM and
@@ -37,16 +40,17 @@ def get_buildem_license():
     """
     system = platform.system()
     if system == "Windows":
-        dir_names = ['ilastik', 'ilastik', 'ilastik']
+        dir_names = ["ilastik", "ilastik", "ilastik"]
     else:
-        dir_names = ['src', 'ilastik', 'ilastik', 'ilastik']
+        dir_names = ["src", "ilastik", "ilastik", "ilastik"]
     global ilastik_path
     path_components = ilastik_path.split(os.sep)
-    if path_components[-len(dir_names):] == dir_names:
+    if path_components[-len(dir_names) :] == dir_names:
         # this is safer than
         # os.path.join(path_components[:-len(dir_names)]
-        new_components = [ilastik_path] + len(dir_names)*['..'] + \
-                ['COPYING' + ('.txt' if system == "Windows" else '')]
+        new_components = (
+            [ilastik_path] + len(dir_names) * [".."] + ["COPYING" + (".txt" if system == "Windows" else "")]
+        )
         license_path = os.path.join(*new_components)
         if os.path.isfile(license_path):
             return license_path
@@ -82,20 +86,19 @@ License information is available on the the ilastik web site at http://ilastik.o
         self.setText(self.LICENSE_SHORT)
 
         global ilastik_path
-        logo_path = os.path.join(ilastik_path, 'shell', 'gui',
-                'ilastik-logo-alternate-colors.png')
+        logo_path = os.path.join(ilastik_path, "shell", "gui", "ilastik-logo-alternate-colors.png")
 
         logo_image = QPixmap(logo_path).scaled(125, 200, Qt.KeepAspectRatio)
         self.setIconPixmap(logo_image)
 
-        license_path = os.path.join(ilastik_path, '..', 'LICENSE')
+        license_path = os.path.join(ilastik_path, "..", "LICENSE")
         # if ilastik is run from a binary
         # use the COPYING file in the distribution
         license_path_dist = get_buildem_license()
         if license_path_dist:
-            license_long = open(license_path_dist, 'r').read()
+            license_long = open(license_path_dist, "r").read()
         elif os.path.isfile(license_path):
-            license_long = open(license_path, 'r').read()
+            license_long = open(license_path, "r").read()
         else:
             license_long = self.LICENSE_ERROR
 

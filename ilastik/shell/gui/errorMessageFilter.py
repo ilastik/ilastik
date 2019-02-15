@@ -16,13 +16,14 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import copy
 
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, QTimer
 from PyQt5.QtWidgets import QMessageBox
+
 
 class ErrorMessageFilter(QObject):
     """
@@ -31,19 +32,20 @@ class ErrorMessageFilter(QObject):
     This class collects error messages for a certain time (currently: 1000ms) and then
     displays each unique message only once.
     """
+
     def __init__(self, parent):
         super(QObject, self).__init__(parent)
         self.messages = {}
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
         self.timer.setInterval(1000)
-        self.timer.timeout.connect( self.timeout )
-        
+        self.timer.timeout.connect(self.timeout)
+
     def showErrorMessage(self, caption, text):
         if not self.timer.isActive():
             self.timer.start()
         self.messages[caption] = text
-        
+
     def timeout(self):
         # Must copy now because the eventloop is allowed to run during QMessageBox.critical, below.
         # That is, self.messages might change while the loop is executing (not allowed).
@@ -51,4 +53,3 @@ class ErrorMessageFilter(QObject):
         for caption, text in messages.items():
             QMessageBox.critical(self.parent(), caption, text)
         self.messages = {}
-        

@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -31,7 +32,7 @@ this_file = os.path.abspath(__file__)
 this_file = os.path.realpath(this_file)
 ilastik_package_dir = os.path.dirname(this_file)
 ilastik_repo_dir = os.path.dirname(ilastik_package_dir)
-submodule_dir = os.path.join(ilastik_repo_dir, 'submodules')
+submodule_dir = os.path.join(ilastik_repo_dir, "submodules")
 
 # Add all submodules to the PYTHONPATH
 expose_submodules.expose_submodules(submodule_dir)
@@ -43,58 +44,62 @@ expose_submodules.expose_submodules(submodule_dir)
 
 def _format_version(t):
     """converts a tuple to a string"""
-    return '.'.join(str(i) for i in t)
+    return ".".join(str(i) for i in t)
 
 
-__version_info__ = (1, 3, '2')  # Don't forget to update the splash screen!
+__version_info__ = (1, 3, "2")  # Don't forget to update the splash screen!
 __version__ = _format_version(__version_info__)
 
-core_developers = ["Janez Ales",
-                   "Thorsten Beier",
-                   "Stuart Berg",
-                   "Fynn Beuttenmueller",
-                   "Jaime Cervantes",
-                   "Markus Doering",
-                   "Fred Hamprecht",
-                   "Carsten Haubold",
-                   "Bernhard Kausler",
-                   "Ullrich Koethe",
-                   "Anna Kreshuk",
-                   "Thorben Kroeger",
-                   "Dominik Kutra",
-                   "Martin Schiegg",
-                   "Christoph Sommer",
-                   "Christoph Straehle",
-                   "Adrian Wolny"]
+core_developers = [
+    "Janez Ales",
+    "Thorsten Beier",
+    "Stuart Berg",
+    "Fynn Beuttenmueller",
+    "Jaime Cervantes",
+    "Markus Doering",
+    "Fred Hamprecht",
+    "Carsten Haubold",
+    "Bernhard Kausler",
+    "Ullrich Koethe",
+    "Anna Kreshuk",
+    "Thorben Kroeger",
+    "Dominik Kutra",
+    "Martin Schiegg",
+    "Christoph Sommer",
+    "Christoph Straehle",
+    "Adrian Wolny",
+]
 
-developers = ["Niels Buwen",
-              "Christoph Decker",
-              "Kemal Eren",
-              "Burcin Erocal",
-              "Luca Fiaschi",
-              "Philipp Hanslovsky",
-              "Ben Heuer",
-              "Glendon Holst",
-              "Fabian Isensee",
-              "Kai Karius",
-              "Jens Kleesiek",
-              "Markus Nullmeier",
-              "Letitia Parcalabescu",
-              "Oliver Petra",
-              "Steffen Wolf",
-              "Buote Xu",
-              "Chong Zhang"]
+developers = [
+    "Niels Buwen",
+    "Christoph Decker",
+    "Kemal Eren",
+    "Burcin Erocal",
+    "Luca Fiaschi",
+    "Philipp Hanslovsky",
+    "Ben Heuer",
+    "Glendon Holst",
+    "Fabian Isensee",
+    "Kai Karius",
+    "Jens Kleesiek",
+    "Markus Nullmeier",
+    "Letitia Parcalabescu",
+    "Oliver Petra",
+    "Steffen Wolf",
+    "Buote Xu",
+    "Chong Zhang",
+]
 
 
 def convertVersion(vstring):
     if not isinstance(vstring, str):
-        raise Exception(f'tried to convert non-string version: {vstring}')
+        raise Exception(f"tried to convert non-string version: {vstring}")
 
     # We permit versions like '1.0.5b', in which case '5b'
     #  is simply converted to the integer 5 for compatibility purposes.
     int_tuple = ()
-    for i in vstring.split('.'):
-        m = re.search('(\d+)', i)
+    for i in vstring.split("."):
+        m = re.search("(\d+)", i)
         assert bool(m), "Don't understand version component: {}".format(i)
         next_int = int(m.groups()[0])
         int_tuple = int_tuple + (next_int,)
@@ -122,6 +127,7 @@ def isVersionCompatible(version):
     # Otherwise, we need an exact match (for now)
     return v1 == v2
 
+
 #######################
 # # Dependency checks ##
 #######################
@@ -137,9 +143,11 @@ def _do_check(fnd, rqd, msg):
 def _check_depends():
     import h5py
 
-    _do_check(h5py.version.version_tuple, (2, 1, 0),
-              "h5py version {0} too old; versions of h5py before {1} are not "
-              "threadsafe.")
+    _do_check(
+        h5py.version.version_tuple,
+        (2, 1, 0),
+        "h5py version {0} too old; versions of h5py before {1} are not " "threadsafe.",
+    )
 
 
 _check_depends()

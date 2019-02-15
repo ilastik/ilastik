@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -17,14 +18,14 @@ from __future__ import absolute_import
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from .vigra_objfeats import VigraObjFeats
 import unittest
 import numpy as np
 
-class VigraTest(unittest.TestCase):
 
+class VigraTest(unittest.TestCase):
     def setUp(self):
         unittest.TestCase.setUp(self)
         self.myclass = VigraObjFeats()
@@ -52,5 +53,5 @@ class VigraTest(unittest.TestCase):
         self._testFeatures(feats)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

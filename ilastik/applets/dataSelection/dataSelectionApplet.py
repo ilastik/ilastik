@@ -27,6 +27,7 @@ import glob
 import argparse
 import collections
 import logging
+
 logger = logging.getLogger(__name__)  # noqa
 
 import vigra
@@ -44,8 +45,18 @@ class DataSelectionApplet(Applet):
 
     DEFAULT_INSTRUCTIONS = "Use the controls shown to the right to add image files to this workflow."
 
-    def __init__(self, workflow, title, projectFileGroupName, supportIlastik05Import=False, batchDataGui=False,
-                 forceAxisOrder=None, instructionText=DEFAULT_INSTRUCTIONS, max_lanes=None, show_axis_details=False):
+    def __init__(
+        self,
+        workflow,
+        title,
+        projectFileGroupName,
+        supportIlastik05Import=False,
+        batchDataGui=False,
+        forceAxisOrder=None,
+        instructionText=DEFAULT_INSTRUCTIONS,
+        max_lanes=None,
+        show_axis_details=False,
+    ):
         self.__topLevelOperator = OpMultiLaneDataSelectionGroup(parent=workflow, forceAxisOrder=forceAxisOrder)
         super(DataSelectionApplet, self).__init__(title, syncWithImageIndex=False)
 
@@ -67,14 +78,17 @@ class DataSelectionApplet(Applet):
     def getMultiLaneGui(self):
         if self._gui is None:
             from .dataSelectionGui import DataSelectionGui, GuiMode
+
             guiMode = {True: GuiMode.Batch, False: GuiMode.Normal}[self._batchDataGui]
-            self._gui = DataSelectionGui(self,
-                                         self.topLevelOperator,
-                                         self._serializableItems[0],
-                                         self._instructionText,
-                                         guiMode,
-                                         self._max_lanes,
-                                         self.show_axis_details)
+            self._gui = DataSelectionGui(
+                self,
+                self.topLevelOperator,
+                self._serializableItems[0],
+                self._instructionText,
+                guiMode,
+                self._max_lanes,
+                self.show_axis_details,
+            )
         return self._gui
 
     #
@@ -114,17 +128,21 @@ class DataSelectionApplet(Applet):
         if role_names:
             for role_name in role_names:
                 arg_name = cls._role_name_to_arg_name(role_name)
-                arg_parser.add_argument('--' + arg_name, nargs='+',
-                                        help='List of input files for the {} role'.format(role_name))
+                arg_parser.add_argument(
+                    "--" + arg_name, nargs="+", help="List of input files for the {} role".format(role_name)
+                )
 
         # Finally, a catch-all for role 0 (if the workflow only has one role, there's no need to provide role names
-        arg_parser.add_argument('unspecified_input_files', nargs='*', help='List of input files to process.')
+        arg_parser.add_argument("unspecified_input_files", nargs="*", help="List of input files to process.")
 
-        arg_parser.add_argument('--preconvert_stacks',
-                                help="Convert image stacks to temporary hdf5 files before loading them.",
-                                action='store_true', default=False)
-        arg_parser.add_argument('--input_axes', help="Explicitly specify the axes of your dataset.", required=False)
-        arg_parser.add_argument('--stack_along', help="Sequence axis along which to stack", type=str, default='z')
+        arg_parser.add_argument(
+            "--preconvert_stacks",
+            help="Convert image stacks to temporary hdf5 files before loading them.",
+            action="store_true",
+            default=False,
+        )
+        arg_parser.add_argument("--input_axes", help="Explicitly specify the axes of your dataset.", required=False)
+        arg_parser.add_argument("--stack_along", help="Sequence axis along which to stack", type=str, default="z")
 
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
 
@@ -136,11 +154,13 @@ class DataSelectionApplet(Applet):
                 if getattr(parsed_args, arg_name):
                     # FIXME: This error message could be more helpful.
                     role_args = list(map(cls._role_name_to_arg_name, role_names))
-                    role_args = ['--' + s for s in role_args]
+                    role_args = ["--" + s for s in role_args]
                     role_args_str = ", ".join(role_args)
-                    raise Exception("Invalid command line arguments: All roles must be configured explicitly.\n"
-                                    "Use the following flags to specify which files are matched with which inputs:\n"
-                                    "" + role_args_str)
+                    raise Exception(
+                        "Invalid command line arguments: All roles must be configured explicitly.\n"
+                        "Use the following flags to specify which files are matched with which inputs:\n"
+                        "" + role_args_str
+                    )
 
             # Relocate to the 'default' role
             arg_name = cls._role_name_to_arg_name(role_names[0])
@@ -168,7 +188,7 @@ class DataSelectionApplet(Applet):
                 # Don't error-check urls in advance.
                 continue
             p = PathComponents(p).externalPath
-            if '*' in p:
+            if "*" in p:
                 if len(glob.glob(p)) == 0:
                     logger.error("Could not find any files for globstring: {}".format(p))
                     logger.error("Check your quotes!")
@@ -185,7 +205,7 @@ class DataSelectionApplet(Applet):
     def _role_name_to_arg_name(cls, role_name):
         arg_name = role_name
         arg_name = arg_name.lower()
-        arg_name = arg_name.replace(' ', '_').replace('-', '_')
+        arg_name = arg_name.replace(" ", "_").replace("-", "_")
         return arg_name
 
     @classmethod
@@ -221,6 +241,7 @@ class DataSelectionApplet(Applet):
             #  we generate hdf5 volumes in a temporary directory and use those files instead.
             if parsed_args.preconvert_stacks:
                 import tempfile
+
                 input_paths = self.convertStacksToH5(input_paths, tempfile.gettempdir())
 
             input_infos = [DatasetInfo(p) if p else None for p in input_paths]
@@ -238,19 +259,21 @@ class DataSelectionApplet(Applet):
             need_warning = False
             for lane_index in range(len(input_infos)):
                 output_slot = opDataSelection.ImageGroup[lane_index][role_index]
-                if output_slot.ready() and output_slot.meta.prefer_2d and 'z' in output_slot.meta.axistags:
+                if output_slot.ready() and output_slot.meta.prefer_2d and "z" in output_slot.meta.axistags:
                     need_warning = True
                     break
 
             if need_warning:
                 logger.warning(
-                    "*******************************************************************************************")
+                    "*******************************************************************************************"
+                )
                 logger.warning(
-                    "Some of your input data is stored in a format that is not efficient for 3D access patterns.")
+                    "Some of your input data is stored in a format that is not efficient for 3D access patterns."
+                )
+                logger.warning("Performance may suffer as a result.  For best performance, use a chunked HDF5 volume.")
                 logger.warning(
-                    "Performance may suffer as a result.  For best performance, use a chunked HDF5 volume.")
-                logger.warning(
-                    "*******************************************************************************************")
+                    "*******************************************************************************************"
+                )
 
     @classmethod
     def convertStacksToH5(cls, filePaths, stackVolumeCacheDir):
@@ -268,7 +291,7 @@ class DataSelectionApplet(Applet):
 
         filePaths = list(filePaths)
         for i, path in enumerate(filePaths):
-            if not path or '*' not in path:
+            if not path or "*" not in path:
                 continue
             globstring = path
 
@@ -277,12 +300,12 @@ class DataSelectionApplet(Applet):
             #  even if the dataset is located in the same location as a previous one and has the same globstring!
             # Create a sha-1 of the file name and modification date.
             sha = hashlib.sha1()
-            files = sorted([k.replace('\\', '/') for k in glob.glob(path)])
+            files = sorted([k.replace("\\", "/") for k in glob.glob(path)])
             for f in files:
                 sha.update(f)
                 sha.update(pickle.dumps(os.stat(f).st_mtime, 0))
-            stackFile = sha.hexdigest() + '.h5'
-            stackPath = os.path.join(stackVolumeCacheDir, stackFile).replace('\\', '/')
+            stackFile = sha.hexdigest() + ".h5"
+            stackPath = os.path.join(stackVolumeCacheDir, stackFile).replace("\\", "/")
 
             # Overwrite original path
             filePaths[i] = stackPath + "/volume/data"
@@ -312,8 +335,10 @@ class DataSelectionApplet(Applet):
         return filePaths
 
     def configureRoleFromJson(self, lane, role, dataset_info_namespace):
-        assert sys.version_info.major == 2, "Alert! This function has not been tested "\
+        assert sys.version_info.major == 2, (
+            "Alert! This function has not been tested "
             "under python 3. Please remove this assetion and be wary of any strnage behavior you encounter"
+        )
         opDataSelection = self.topLevelOperator
         logger.debug("Configuring dataset for role {}".format(role))
         logger.debug("Params: {}".format(dataset_info_namespace))
@@ -321,13 +346,14 @@ class DataSelectionApplet(Applet):
         datasetInfo.updateFromJson(dataset_info_namespace)
 
         # Check for globstring, which means we need to import the stack first.
-        if '*' in datasetInfo.filePath:
+        if "*" in datasetInfo.filePath:
             totalProgress = [-100]
 
             def handleStackImportProgress(progress):
                 if progress // 10 != totalProgress[0] // 10:
                     totalProgress[0] = progress
                     logger.info("Importing stack: {}%".format(totalProgress[0]))
+
             serializer = self.dataSerializers[0]
             serializer.progressSignal.subscribe(handleStackImportProgress)
             serializer.importStackAsLocalDataset(datasetInfo)

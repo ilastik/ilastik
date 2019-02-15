@@ -16,13 +16,14 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.utility import MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
 
-class StandardApplet( Applet ):
+
+class StandardApplet(Applet):
     """
     In most cases, it is easiest to use StandardApplet as a base class for your custom applet.
     StandardApplets are designed to simplify two tasks for most use-cases: Creating a *top-level operator* and creating a GUI.
@@ -57,7 +58,7 @@ class StandardApplet( Applet ):
     # Subclasses have 2 Choices:
     #   - Override topLevelOperator (advanced)
     #   - Override singleLaneOpeartorClass AND broadcastingSlots (easier; uses default topLevelOperator implementation)
-    
+
     @property
     def singleLaneOperatorClass(self):
         """
@@ -69,7 +70,7 @@ class StandardApplet( Applet ):
 
     @property
     def singleLaneOperatorInitArgs(self):
-        return ((), {}) # args, kwargs
+        return ((), {})  # args, kwargs
 
     @property
     def broadcastingSlots(self):
@@ -116,7 +117,7 @@ class StandardApplet( Applet ):
         Otherwise, this default implementation generates instances of your ``singleLaneGuiClass``.
         """
         return self.__createSingleLaneGui(imageLaneIndex)
-    
+
     def getMultiLaneGui(self):
         """
         Override from Applet base class.
@@ -124,7 +125,7 @@ class StandardApplet( Applet ):
         if self._gui is None:
             self._gui = self.__createMultiLaneGui()
         return self._gui
-    
+
     #
     # Private
     #
@@ -134,12 +135,12 @@ class StandardApplet( Applet ):
         Default implementation of createSingleLaneGui
         """
         if self.singleLaneGuiClass is NotImplemented:
-            message  = "Cannot create GUI.\n"
-            message += "StandardApplet subclasses must implement ONE of the following:\n" 
+            message = "Cannot create GUI.\n"
+            message += "StandardApplet subclasses must implement ONE of the following:\n"
             message += "singleLaneGuiClass, createSingleLaneGui, or getMultiLaneGui"
             raise NotImplementedError(message)
-        singleLaneOperator = self.topLevelOperator.getLane( imageLaneIndex )
-        return self.singleLaneGuiClass( self, singleLaneOperator )
+        singleLaneOperator = self.topLevelOperator.getLane(imageLaneIndex)
+        return self.singleLaneGuiClass(self, singleLaneOperator)
 
     def __createMultiLaneGui(self):
         """
@@ -148,14 +149,18 @@ class StandardApplet( Applet ):
         which is what the Applet interface expects.
         """
         for cls in self.__class__.__mro__:
-            if 'createMultiLaneGui' in cls.__dict__:
+            if "createMultiLaneGui" in cls.__dict__:
                 return self.createMultiLaneGui()
-            if 'createSingleLaneGui' in cls.__dict__:
-                return SingleToMultiGuiAdapter( self, self.createSingleLaneGui, self.topLevelOperator )
-            if 'singleLaneGuiClass' in cls.__dict__:
-                assert isinstance(self.topLevelOperator, MultiLaneOperatorABC), "If your applet's top-level operator doesn't satisfy MultiLaneOperatorABC, you must implement createMultiLaneGui yourself."
-                return SingleToMultiGuiAdapter( self, self.__createSingleLaneGui, self.topLevelOperator )
-        raise Exception("Your applet must override one of the GUI creation methods.  See StandardApplet docs for details.")
+            if "createSingleLaneGui" in cls.__dict__:
+                return SingleToMultiGuiAdapter(self, self.createSingleLaneGui, self.topLevelOperator)
+            if "singleLaneGuiClass" in cls.__dict__:
+                assert isinstance(
+                    self.topLevelOperator, MultiLaneOperatorABC
+                ), "If your applet's top-level operator doesn't satisfy MultiLaneOperatorABC, you must implement createMultiLaneGui yourself."
+                return SingleToMultiGuiAdapter(self, self.__createSingleLaneGui, self.topLevelOperator)
+        raise Exception(
+            "Your applet must override one of the GUI creation methods.  See StandardApplet docs for details."
+        )
 
     def __createTopLevelOperator(self):
         """
@@ -164,22 +169,23 @@ class StandardApplet( Applet ):
         assert self.__topLevelOperator is None
         operatorClass = self.singleLaneOperatorClass
         operatorInitArgs, operatorInitKwargs = self.singleLaneOperatorInitArgs
-        
+
         broadcastingSlots = self.broadcastingSlots
         if operatorClass is NotImplemented or broadcastingSlots is NotImplemented:
-            message = "Could not create top-level operator for {}\n".format( self.__class__ )
+            message = "Could not create top-level operator for {}\n".format(self.__class__)
             message += "StandardApplet subclasses must implement the singleLaneOperatorClass and broadcastingSlots"
             message += " members OR override topLevelOperator themselves."
             raise NotImplementedError(message)
 
         if self.__workflow is None:
-            message = "Could not create top-level operator for {}\n".format( self.__class__ )
+            message = "Could not create top-level operator for {}\n".format(self.__class__)
             message += "Please initialize StandardApplet base class with a workflow object."
             raise NotImplementedError(message)
-        
-        self.__topLevelOperator = OpMultiLaneWrapper( self.singleLaneOperatorClass,
-                                                      operator_args=operatorInitArgs,
-                                                      operator_kwargs=operatorInitKwargs,
-                                                      parent=self.__workflow,
-                                                      broadcastingSlotNames=self.broadcastingSlots )
 
+        self.__topLevelOperator = OpMultiLaneWrapper(
+            self.singleLaneOperatorClass,
+            operator_args=operatorInitArgs,
+            operator_kwargs=operatorInitKwargs,
+            parent=self.__workflow,
+            broadcastingSlotNames=self.broadcastingSlots,
+        )

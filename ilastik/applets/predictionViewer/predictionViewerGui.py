@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
 from PyQt5.QtCore import Qt
@@ -28,30 +28,30 @@ from volumina import colortables
 from ilastik.utility import bind
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
-class PredictionViewerGui( LayerViewerGui ):
-    
+
+class PredictionViewerGui(LayerViewerGui):
     def __init__(self, *args, **kwargs):
         super(PredictionViewerGui, self).__init__(*args, **kwargs)
-        self.topLevelOperatorView.PmapColors.notifyDirty( bind( self.updateAllLayers ) )
-        self.topLevelOperatorView.LabelNames.notifyDirty( bind( self.updateAllLayers ) )
-    
+        self.topLevelOperatorView.PmapColors.notifyDirty(bind(self.updateAllLayers))
+        self.topLevelOperatorView.LabelNames.notifyDirty(bind(self.updateAllLayers))
+
     def setupLayers(self):
         layers = []
         opLane = self.topLevelOperatorView
 
         exportedLayers = self._initPredictionLayers(opLane.PredictionProbabilities)
         layers += exportedLayers
-        
+
         # If available, also show the raw data layer
         rawSlot = opLane.RawImage
         if rawSlot.ready():
-            rawLayer = self.createStandardLayerFromSlot( rawSlot )
+            rawLayer = self.createStandardLayerFromSlot(rawSlot)
             rawLayer.name = "Raw Data"
             rawLayer.visible = True
             rawLayer.opacity = 1.0
-            layers.append( rawLayer )
+            layers.append(rawLayer)
 
-        return layers 
+        return layers
 
     def _initPredictionLayers(self, predictionSlot):
         layers = []
@@ -60,31 +60,30 @@ class PredictionViewerGui( LayerViewerGui ):
         names = []
 
         opLane = self.topLevelOperatorView
-        
+
         if opLane.PmapColors.ready():
             colors = opLane.PmapColors.value
         if opLane.LabelNames.ready():
             names = opLane.LabelNames.value
 
         # Use a slicer to provide a separate slot for each channel layer
-        opSlicer = OpMultiArraySlicer2( parent=opLane.viewed_operator().parent )
-        opSlicer.Input.connect( predictionSlot )
-        opSlicer.AxisFlag.setValue('c')
+        opSlicer = OpMultiArraySlicer2(parent=opLane.viewed_operator().parent)
+        opSlicer.Input.connect(predictionSlot)
+        opSlicer.AxisFlag.setValue("c")
 
         colors = [QColor(*c) for c in colors]
-        for channel in range( len(colors), len(opSlicer.Slices) ):
-            colors.append( PredictionViewerGui.DefaultColors[channel] )
+        for channel in range(len(colors), len(opSlicer.Slices)):
+            colors.append(PredictionViewerGui.DefaultColors[channel])
 
-        for channel in range( len(names), len(opSlicer.Slices) ):
-            names.append( "Class {}".format(channel+1) )
+        for channel in range(len(names), len(opSlicer.Slices)):
+            names.append("Class {}".format(channel + 1))
 
         for channel, channelSlot in enumerate(opSlicer.Slices):
             if channelSlot.ready() and channel < len(colors) and channel < len(names):
                 predictsrc = LazyflowSource(channelSlot)
-                predictLayer = AlphaModulatedLayer( predictsrc,
-                                                    tintColor=colors[channel],
-                                                    range=(0.0, 1.0),
-                                                    normalize=(0.0, 1.0) )
+                predictLayer = AlphaModulatedLayer(
+                    predictsrc, tintColor=colors[channel], range=(0.0, 1.0), normalize=(0.0, 1.0)
+                )
                 predictLayer.opacity = 0.25
                 predictLayer.visible = True
                 predictLayer.name = names[channel]
@@ -95,4 +94,3 @@ class PredictionViewerGui( LayerViewerGui ):
         return colors
 
     DefaultColors = colortables.default16_new
-
