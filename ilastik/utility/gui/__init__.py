@@ -20,46 +20,6 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 
-from typing import Callable, Iterable, Union
-
-from PyQt5.QtWidgets import QWidget
-
-from lazyflow.slot import Slot
-
 from .thunkEvent import ThunkEvent, ThunkEventHandler
 from .threadRouter import ThreadRouter, threadRouted, threadRoutedWithRouter
-
-
-def enable_when_ready(widgets: Union[QWidget, Iterable[QWidget]],
-                      slots: Union[Slot, Iterable[Slot]]) -> Callable[[], None]:
-    """Enable widgets only if all slots are ready.
-
-    When one of the slots becomes dirty,
-    check the ready status of all the slots.
-    If all of them are ready, enable all the widgets.
-    Otherwise, disable the widgets.
-
-    Args:
-        widgets: Widgets to enable or disable.
-        slots: Slots to check.
-
-    Returns:
-        Unsubscribe callable.
-    """
-    if not isinstance(widgets, Iterable):
-        widgets = (widgets,)
-    if not isinstance(slots, Iterable):
-        slots = (slots,)
-
-    def set_enabled(*_args):
-        enabled = all(s.ready() for s in slots)
-        for w in widgets:
-            w.setEnabled(enabled)
-
-    funcs = [s.notifyDirty(set_enabled) for s in slots]
-
-    def cleanup():
-        for f in funcs:
-            f()
-
-    return cleanup
+from .widgets import enable_when_ready
