@@ -106,9 +106,21 @@ class EdgeTrainingGui(LayerViewerGui):
                                               checkable=True,
                                               icon=QIcon(ilastikIcons.Play),
                                               toolTip="Update the edge classifier predictions",
-                                              clicked=self._handle_live_update_clicked)
+                                              clicked=self._handle_live_update_clicked,
+                                              enabled=False)
         configure_update_handlers( self.live_update_button.toggled, op.FreezeCache )
         
+        self.train_from_gt_button.clicked.connect(
+            lambda: op.FreezeClassifier.setValue(False))
+
+        def enable_live_update_on_edges_available(*args, **kwargs):
+            have_edges = (op.EdgeLabelsDict.ready() and
+                          bool(op.EdgeLabelsDict.value))
+            self.live_update_button.setEnabled(have_edges)
+        cleanup_fn = op.EdgeLabelsDict.notifyDirty(
+            enable_live_update_on_edges_available)
+        self.__cleanup_fns.append(cleanup_fn)
+
         # Layout
         label_layout = QHBoxLayout()
         label_layout.addWidget(self.clear_labels_button)
@@ -226,8 +238,20 @@ class EdgeTrainingGui(LayerViewerGui):
         op.EdgeLabelsDict.setValue( new_labels )
 
     def _handle_label_from_gt_clicked(self):
-        op = self.topLevelOperatorView
-        op.setEdgeLabelsFromGroundtruth( op.current_view_index() )
+        def train_from_gt():
+            try:
+                op = self.topLevelOperatorView
+                op.setEdgeLabelsFromGroundtruth(op.current_view_index())
+            finally:
+                self.parentApplet.busy = False
+                self.parentApplet.progressSignal(100)
+                self.parentApplet.appletStateUpdateRequested()
+
+        self.parentApplet.busy = True
+        self.parentApplet.progressSignal(-1)
+        self.parentApplet.appletStateUpdateRequested()
+
+        Request(train_from_gt).submit()
 
     def _handle_clear_labels_clicked(self):
         response = QMessageBox.warning(self, "Clear Labels?",

@@ -2,6 +2,8 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QSpacerItem, QSizeP
 
 from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingGui
 from ilastik.applets.multicut.multicutGui import MulticutGuiMixin
+import ilastik.utility.gui as guiutil
+
 
 class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
     
@@ -32,7 +34,17 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         multicut_box = QGroupBox( "Multicut", parent=self )
         multicut_box.setLayout(multicut_layout)
         multicut_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        
+        multicut_box.setEnabled(False)
+
+        op = self.topLevelOperatorView
+        multicut_required_slots = (
+            op.Superpixels,
+            op.Rag,
+            op.EdgeProbabilities,
+            op.EdgeProbabilitiesDict,
+        )
+        self.__cleanup_fns.append(guiutil.enable_when_ready(multicut_box, multicut_required_slots))
+
         drawer_layout = QVBoxLayout()
         drawer_layout.addWidget(training_box)
         drawer_layout.addWidget(multicut_box)
