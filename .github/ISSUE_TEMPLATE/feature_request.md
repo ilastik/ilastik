@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Let us know about the missing features
+about: Suggest a new feature for ilastik
 ---
 
 ## Description
