@@ -438,6 +438,7 @@ class OpBaseClassifierPredict(Operator):
             skip_prediction = not numpy.any(mask)
 
         if skip_prediction:
+            logger.debug(f"Skipping masked block {roi}")
             result[:] = 0.0
             return result
 
@@ -547,7 +548,7 @@ class OpVectorwiseClassifierPredict(OpBaseClassifierPredict):
 
         with Timer() as features_timer:
             input_data = self.Image[newKey].wait()
-        logger.debug(f"Features took {features_timer.seconds()} seconds")
+        logger.debug(f"Features took {features_timer.seconds()} seconds for roi {roi}")
 
         input_data = numpy.asarray(input_data, numpy.float32)
         shape=input_data.shape
@@ -557,7 +558,7 @@ class OpVectorwiseClassifierPredict(OpBaseClassifierPredict):
         classifier = self.Classifier.value
         with Timer() as prediction_timer:
             probabilities = classifier.predict_probabilities( features )
-        logger.debug(f"Prediction took {prediction_timer.seconds()} seconds")
+        logger.debug(f"  Prediction took {prediction_timer.seconds()} seconds for roi {roi}")
 
         probabilities.shape = shape[:-1] + (probabilities.shape[-1],)
         return probabilities
