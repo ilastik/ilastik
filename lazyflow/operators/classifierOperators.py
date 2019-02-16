@@ -507,11 +507,10 @@ class OpPixelwiseClassifierPredict(OpBaseClassifierPredict):
         input_channels = self.Image.meta.shape[-1]
         upstream_roi[:,-1] = [0, input_channels]
 
-        return self.Image(*upstream_roi).wait()
-
+        input_data = self.Image(*upstream_roi).wait()
         axistags = self.Image.meta.axistags
-        classifier = self.Classifier.value
-        return classifier.predict_probabilities_pixelwise( raw_data_block, predictions_roi, axistags )
+        probabilities = classifier.predict_probabilities_pixelwise( input_data, predictions_roi, axistags )
+        return probabilities
 
 class OpVectorwiseClassifierPredict(OpBaseClassifierPredict):
     def setupOutputs(self):
