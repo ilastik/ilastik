@@ -553,13 +553,13 @@ class OpVectorwiseClassifierPredict(Operator):
         skip_prediction = (classifier is None)
 
         # Shortcut: If the mask is totally zero, skip this request entirely
+        mask = None
         if not skip_prediction and self.PredictionMask.ready():
             mask_roi = numpy.array((roi.start, roi.stop))
             mask_roi[:,-1:] = [[0],[1]]
             start, stop = list(map(tuple, mask_roi))
             mask = self.PredictionMask( start, stop ).wait()
             skip_prediction = not numpy.any(mask)
-            del mask
 
         if skip_prediction:
             result[:] = 0.0
@@ -608,6 +608,11 @@ class OpVectorwiseClassifierPredict(Operator):
         
         # Reshape to image
         probabilities.shape = shape[:-1] + (self.PMaps.meta.shape[-1],)
+
+        #cancel out masked pixels
+        if mask is not None:
+            mask_all_channels = numpy.broadcast_to(mask == 0, probabilities.shape)
+            probabilities[mask_all_channels] = 0.0
 
         # Copy only the prediction channels the client requested.
         result[...] = probabilities[...,roi.start[-1]:roi.stop[-1]]
