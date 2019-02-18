@@ -54,5 +54,5 @@ script:
   - echo `which python`
   - echo `which pytest`
   - cd ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow 
-  - pytest --capture=no --cov=lazyflow
-  - coveralls
+  - pytest --capture=no --cov=lazyflow 
+  - coveralls || echo "Failed to submit coveralls"
