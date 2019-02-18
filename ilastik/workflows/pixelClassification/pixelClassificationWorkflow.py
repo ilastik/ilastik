@@ -221,8 +221,7 @@ class PixelClassificationWorkflow(Workflow):
         opTrainingFeatures.InputImage.connect( opData.Image )
         opClassify.InputImages.connect( opData.Image )
 
-        if ilastik_config.getboolean('ilastik', 'debug'):
-            opClassify.PredictionMasks.connect( opData.ImageGroup[self.Roles.PREDICTION_MASK] )
+        opClassify.PredictionMasks.connect( opData.ImageGroup[self.Roles.PREDICTION_MASK] )
 
         # Feature Images -> Classification Op (for training, prediction)
         opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
