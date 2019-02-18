@@ -117,6 +117,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
 
     if ilastik_config.getboolean("ilastik", "debug"):
         message = 'Starting ilastik in debug mode from "%s".' % ilastik_dir
+        logging.basicConfig(level=logging.DEBUG)
         logger.info(message)
         print(message)     # always print the startup message
     else:
