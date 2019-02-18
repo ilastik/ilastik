@@ -547,7 +547,6 @@ class OpVectorwiseClassifierPredict(OpBaseClassifierPredict):
 
         with Timer() as features_timer:
             input_data = self.Image[newKey].wait()
-        logger.debug(f"Features took {features_timer.seconds()} seconds for roi {roi}")
 
         input_data = numpy.asarray(input_data, numpy.float32)
         shape=input_data.shape
@@ -557,7 +556,9 @@ class OpVectorwiseClassifierPredict(OpBaseClassifierPredict):
         classifier = self.Classifier.value
         with Timer() as prediction_timer:
             probabilities = classifier.predict_probabilities( features )
-        logger.debug(f"  Prediction took {prediction_timer.seconds()} seconds for roi {roi}")
+
+        logger.debug(f"Features took {features_timer.seconds()} seconds."
+                     f" Prediction took {prediction_timer.seconds()} seconds. {roi}")
 
         probabilities.shape = shape[:-1] + (probabilities.shape[-1],)
         return probabilities
