@@ -90,20 +90,12 @@ from .examples.dataConversion.dataConversionWorkflow import DataConversionWorkfl
 WORKFLOW_CLASSES += [DataConversionWorkflow]
 
 # network classification, check whether required modules are available:
-can_nn = True
-try:
-    import torch
-    import inferno
-    import tiktorch
-except ImportError as e:
-    can_nn = False
-    logger.debug(f"NNClassificationWorkflow: could not import required modules: {e}")
+from lazyflow.classifiers import has_tiktorch
 
-if can_nn:
+if has_tiktorch or ilastik.config.cfg.getboolean('ilastik', 'debug'):
     if ilastik.config.cfg.getboolean('ilastik', 'hbp', fallback=False):
         from .nnClassification import NNClassificationWorkflow
         WORKFLOW_CLASSES += [NNClassificationWorkflow]
-
 
 # Examples
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
