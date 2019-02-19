@@ -37,7 +37,7 @@ from inferno.io.transform.generic import Normalize
 
 
 from tiktorch import serializers
-from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher
+from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred
 from tiktorch.client import TikTorchClient
 from tiktorch.types import NDArray, NDArrayBatch
 from tiktorch.rpc_interface import INeuralNetworkAPI
@@ -78,8 +78,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         else:
             laucher = RemoteSSHServerLauncher(
                 conn_conf,
-                user=server_config['username'],
-                password=server_config['password']
+                cred=SSHCred(server_config['username'], server_config['password'])
             )
 
         laucher.start()
