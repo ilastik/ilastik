@@ -6,9 +6,18 @@ from .sklearnLazyflowClassifier import SklearnLazyflowClassifier, SklearnLazyflo
 
 try:
     from .tiktorchLazyflowClassifier import TikTorchLazyflowClassifier, TikTorchLazyflowClassifierFactory
-except ImportError:
-    TikTorchLazyflowClassifier, TikTorchLazyflowClassifierFactory = None, None
+    has_tiktorch = True
+except ImportError as err:
+    has_tiktorch = False
+    import sys
     import warnings
+    import_err = err
+
+    class Raise:
+        def __init__(self, *args, **kwargs):
+            raise import_err
+
+    TikTorchLazyflowClassifier, TikTorchLazyflowClassifierFactory = Raise, Raise
     warnings.warn("Could not import tiktorch classifier")
 
 # Testing
