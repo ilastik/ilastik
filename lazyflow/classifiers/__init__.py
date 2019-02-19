@@ -6,7 +6,9 @@ from .sklearnLazyflowClassifier import SklearnLazyflowClassifier, SklearnLazyflo
 
 try:
     from .tiktorchLazyflowClassifier import TikTorchLazyflowClassifier, TikTorchLazyflowClassifierFactory
+    has_tiktorch = True
 except ImportError as err:
+    has_tiktorch = False
     import sys
     import warnings
     import_err = err
