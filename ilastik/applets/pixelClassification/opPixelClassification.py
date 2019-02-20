@@ -43,6 +43,7 @@ from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
+from ilastik.utility.slottools import DtypeConvertFunction
 
 #from PyQt5.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
 
@@ -493,6 +494,7 @@ class OpArgmaxChannel( Operator ):
         roi.stop[-1] = 1
         self.Output.setDirty( roi.start, roi.stop )        
 
+
 class OpPredictionPipeline(OpPredictionPipelineNoCache):
     """
     This operator extends the cacheless prediction pipeline above with additional outputs for the GUI.
@@ -566,19 +568,8 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
     def setupOutputs(self):
         input_dtype = self.InputImage.meta.dtype
 
-        # When from other libraries, the dtype could also be
-        # numpy.dtype('uint8'), which would not be the same as numpy.uint8
-        assert not isinstance(input_dtype, np.dtype)
+        fun_convert = DtypeConvertFunction(input_dtype)
 
-        if  np.dtype(input_dtype).char in np.typecodes['AllInteger']:
-            # For integer dtype scale accoring to dtype min and max to maximize
-            # precision
-            dtype_info = np.iinfo(input_dtype)
-            fun_convert = lambda a: ((dtype_info.max - dtype_info.min) * a - dtype_info.min).astype(input_dtype)
-        else:
-            # For floating points, just coerce it to the new floating point
-            # dtype.
-            fun_convert = lambda a: a.astype(input_dtype)
         self.opConvertPMapsToInputPixelType.Function.setValue(
             fun_convert
         )
