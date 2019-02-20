@@ -43,6 +43,7 @@ from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
+from ilastik.utility.slottools import DtypeConvertFunction
 
 #from PyQt5.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
 
@@ -69,7 +70,7 @@ class OpPixelClassification( Operator ):
     PredictionsFromDisk = InputSlot(optional=True, level=1)
 
     PredictionProbabilities = OutputSlot(level=1) # Classification predictions (via feature cache for interactive speed)
-    PredictionProbabilitiesUint8 = OutputSlot(level=1) # Same thing, but converted to uint8 first
+    PredictionProbabilitiesAutocontext = OutputSlot(level=1)
 
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     SegmentationChannels = OutputSlot(level=2) # Binary image of the final selections.
@@ -146,6 +147,7 @@ class OpPixelClassification( Operator ):
 
         # Hook up the prediction pipeline inputs
         self.opPredictionPipeline = OpMultiLaneWrapper( OpPredictionPipeline, parent=self )
+        self.opPredictionPipeline.InputImage.connect( self.InputImages )
         self.opPredictionPipeline.FeatureImages.connect( self.FeatureImages )
         self.opPredictionPipeline.CachedFeatureImages.connect( self.CachedFeatureImages )
         self.opPredictionPipeline.Classifier.connect( self.classifier_cache.Output )
@@ -174,7 +176,7 @@ class OpPixelClassification( Operator ):
 
         # Prediction pipeline outputs -> Top-level outputs
         self.PredictionProbabilities.connect( self.opPredictionPipeline.PredictionProbabilities )
-        self.PredictionProbabilitiesUint8.connect( self.opPredictionPipeline.PredictionProbabilitiesUint8 )
+        self.PredictionProbabilitiesAutocontext.connect( self.opPredictionPipeline.PredictionProbabilitiesAutocontext )
         self.CachedPredictionProbabilities.connect( self.opPredictionPipeline.CachedPredictionProbabilities )
         self.HeadlessPredictionProbabilities.connect( self.opPredictionPipeline.HeadlessPredictionProbabilities )
         self.HeadlessUint8PredictionProbabilities.connect( self.opPredictionPipeline.HeadlessUint8PredictionProbabilities )
@@ -492,19 +494,22 @@ class OpArgmaxChannel( Operator ):
         roi.stop[-1] = 1
         self.Output.setDirty( roi.start, roi.stop )        
 
+
 class OpPredictionPipeline(OpPredictionPipelineNoCache):
     """
     This operator extends the cacheless prediction pipeline above with additional outputs for the GUI.
     (It uses caches for these outputs, and has an extra input for cached features.)
-    """        
+    """
+    # we need access to the input image in order to determine data-type -> autocontext
+    InputImage = InputSlot()
     FreezePredictions = InputSlot()
     CachedFeatureImages = InputSlot()
 
     PredictionProbabilities = OutputSlot()
     CachedPredictionProbabilities = OutputSlot()
 
-    PredictionProbabilitiesUint8 = OutputSlot()
-    
+    PredictionProbabilitiesAutocontext = OutputSlot()
+
     PredictionProbabilityChannels = OutputSlot( level=1 )
     SegmentationChannels = OutputSlot( level=1 )
     UncertaintyEstimate = OutputSlot()
@@ -521,12 +526,10 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.predict.LabelsCount.connect( self.NumClasses )
         self.PredictionProbabilities.connect( self.predict.PMaps )
 
-        # Alternate headless output: uint8 instead of float.
-        # Note that drange is automatically updated.        
-        self.opConvertToUint8 = OpPixelOperator( parent=self )
-        self.opConvertToUint8.Input.connect( self.predict.PMaps )
-        self.opConvertToUint8.Function.setValue( lambda a: (255*a).astype(numpy.uint8) )
-        self.PredictionProbabilitiesUint8.connect( self.opConvertToUint8.Output )
+        # Prepare operator for Autocontext
+        self.opConvertPMapsToInputPixelType = OpPixelOperator( parent=self )
+        self.opConvertPMapsToInputPixelType.Input.connect( self.predict.PMaps )
+        self.PredictionProbabilitiesAutocontext.connect( self.opConvertPMapsToInputPixelType.Output )
 
         # Prediction cache for the GUI
         self.prediction_cache_gui = OpSlicedBlockedArrayCache( parent=self )
@@ -563,6 +566,13 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.UncertaintyEstimate.connect( self.opUncertaintyCache.Output )
 
     def setupOutputs(self):
+        input_dtype = self.InputImage.meta.dtype
+
+        fun_convert = DtypeConvertFunction(input_dtype)
+
+        self.opConvertPMapsToInputPixelType.Function.setValue(
+            fun_convert
+        )
         # Set the blockshapes for each input image separately, depending on which axistags it has.
         axisOrder = [ tag.key for tag in self.FeatureImages.meta.axistags ]
 
@@ -590,8 +600,6 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 
         self.prediction_cache_gui.BlockShape.setValue( (blockShapeX, blockShapeY, blockShapeZ) )
         self.opUncertaintyCache.BlockShape.setValue( (blockShapeX, blockShapeY, blockShapeZ) )
-
-        assert self.opConvertToUint8.Output.meta.drange == (0,255)
 
 class OpEnsembleMargin(Operator):
     """

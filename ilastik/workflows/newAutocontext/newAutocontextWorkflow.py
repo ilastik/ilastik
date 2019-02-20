@@ -243,12 +243,14 @@ class NewAutocontextWorkflowBase(Workflow):
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
         
         def checkConstraints(*_):
-            if opData.Image.meta.dtype != np.uint8:
-                msg = "The Autocontext Workflow only supports 8-bit images (UINT8 pixel type).\n"\
-                      "Your image has a pixel type of {}.  Please convert your data to UINT8 and try again."\
-                      .format( str(np.dtype(opData.Image.meta.dtype)) )
-                raise DatasetConstraintError( "Autocontext Workflow", msg, unfixable=True )
-                
+            # if (opData.Image.meta.dtype in [np.uint8, np.uint16]) == False:
+            #    msg = "The Autocontext Workflow only supports 8-bit images (UINT8 pixel type)\n"\
+            #          "or 16-bit images (UINT16 pixel type)\n"\
+            #          "Your image has a pixel type of {}.  Please convert your data to UINT8 and try again."\
+            #          .format( str(np.dtype(opData.Image.meta.dtype)) )
+            #    raise DatasetConstraintError( "Autocontext Workflow", msg, unfixable=True )
+            pass
+
         opData.Image.notifyReady( checkConstraints )
         
         # Input Image -> Feature Op
@@ -278,11 +280,15 @@ class NewAutocontextWorkflowBase(Workflow):
             #opDownstreamClassify.LabelInputs.connect( opUpstreamClassify.LabelInputs )
             
             # Connect data path
-            #assert opData.Image.meta.dtype == numpy.uint8, "Raw Data must be uint8, not {}".format( opData.Image.meta.dtype )
+            assert opData.Image.meta.dtype == opUpstreamClassify.PredictionProbabilitiesAutocontext.meta.dtype, (
+                "Probability dtype needs to match up with input image dtype, got: "
+                f"input: {opData.Image.meta.dtype} "
+                f"probabilities: {opUpstreamClassify.PredictionProbabilitiesAutocontext.meta.dtype}"
+            )
             opStacker = OpMultiArrayStacker(parent=self)
             opStacker.Images.resize(2)
             opStacker.Images[0].connect( opData.Image )
-            opStacker.Images[1].connect( opUpstreamClassify.PredictionProbabilitiesUint8 )
+            opStacker.Images[1].connect( opUpstreamClassify.PredictionProbabilitiesAutocontext )
             opStacker.AxisFlag.setValue('c')
             
             opDownstreamFeatures.InputImage.connect( opStacker.Output )
