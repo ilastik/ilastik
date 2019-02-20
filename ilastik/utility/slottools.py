@@ -29,7 +29,7 @@ class DtypeConvertFunction:
 
     This class was needed in order to be able to check functions for equality.
     When using this function as an input for OpPixelOperator.Function, changing
-    the input value will to the same conversion function will not result in
+    the input value to the same conversion function will not result in
     dirtyness.
     """
 
