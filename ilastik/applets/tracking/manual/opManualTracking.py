@@ -59,6 +59,7 @@ class OpManualTracking(Operator, ExportingOperator):
     # Override functions ExportingOperator mixin
     def configure_table_export_settings(self, settings, selected_features):
         self.ExportSettings.setValue( (settings, selected_features) )
+
     def get_table_export_settings(self):
         if self.ExportSettings.ready():
             (settings, selected_features) = self.ExportSettings.value
@@ -228,7 +229,7 @@ class OpManualTracking(Operator, ExportingOperator):
         :param filename_suffix: If provided, appended to the filename (before the extension).
         :return:
         """
-        
+
         obj_count = list(objects_per_frame(self.LabelImage))  # slow
         divisions = self.divisions
         t_range = (0, self.LabelImage.meta.shape[self.LabelImage.meta.axistags.index("t")])

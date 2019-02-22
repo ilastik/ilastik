@@ -157,7 +157,7 @@ class TrackingExportFormatPlugin(IPlugin):
     def __init__(self, *args, **kwargs):
         super(TrackingExportFormatPlugin, self).__init__(*args, **kwargs)
 
-    def checkFilesExist(self, filename):
+    def checkFilesExist(self, filename: str) -> bool:
         ''' Check whether the files we want to export (when appending the base filename) are already present '''
         return False
 
