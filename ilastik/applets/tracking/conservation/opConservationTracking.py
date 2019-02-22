@@ -7,7 +7,7 @@ import numpy as np
 import os
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
-from ilastik.plugins import PluginExportContext
+from ilastik.plugins import PluginExportContext, TrackingExportFormatPlugin
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 
@@ -610,7 +610,13 @@ class OpConservationTracking(Operator):
 
         return opRelabeledRegionFeatures
 
-    def exportPlugin(self, filename, plugin, checkOverwriteFiles=False, additionalPluginArgumentsSlot=None):
+    def exportPlugin(
+        self,
+        filename: str,
+        plugin: TrackingExportFormatPlugin,
+        checkOverwriteFiles: bool = False,
+        additionalPluginArgumentsSlot = None
+    ):
         if checkOverwriteFiles and plugin.checkFilesExist(filename):
             logger.info("Tracking export files already exist. Tracking export skipped")
             # do not export if we would otherwise overwrite files

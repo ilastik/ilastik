@@ -19,19 +19,28 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+import os
+import logging
+
+from typing import Callable
+
 from ilastik.applets.base.appletSerializer import SerialSlot, SerialDictSlot
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
+from ilastik.plugins import pluginManager
 from ilastik.utility import OpMultiLaneWrapper
-import os
+from lazyflow.utility import format_known_keys, PathComponents, getPathVariants, make_absolute
+
+logger = logging.getLogger(__name__)
+
 
 class TrackingBaseDataExportApplet( DataExportApplet ):
     """
     This a specialization of the generic data export applet that
     provides a special viewer for tracking output.
     """
-    def __init__(self, workflow, title, is_batch=False, default_export_filename=''):
+    def __init__(self, workflow, title, is_batch=False, default_export_filename='', doPluginExport=None):
         self.export_op = None
         self._default_export_filename = default_export_filename
 
@@ -44,6 +53,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
             SerialDictSlot(self.topLevelOperator.AdditionalPluginArguments)
         ]
         self._serializers = [DataExportSerializer(self.topLevelOperator, title, extra_serial_slots)]
+        self._doPluginExport = doPluginExport
 
         super(TrackingBaseDataExportApplet, self).__init__(workflow, title, isBatch=is_batch)
 
@@ -54,11 +64,19 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
     def set_exporting_operator(self, op):
         self.export_op = op
 
+    @property
+    def supports_plugins(self):
+        return self._doPluginExport is not None
+
     def getMultiLaneGui(self):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from .trackingBaseDataExportGui import TrackingBaseDataExportGui
-            self._gui = TrackingBaseDataExportGui( self, self.topLevelOperator )
+            self._gui = TrackingBaseDataExportGui(
+                self,
+                self.topLevelOperator,
+                enable_plugins=self.supports_plugins
+            )
 
             assert self.export_op is not None, "Exporting Operator must be set!"
             self._gui.set_exporting_operator(self.export_op)
@@ -185,4 +203,79 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
         # configure super operator
         DataExportApplet._configure_operator_with_parsed_args(parsed_args, opTrackingDataExport)
 
+    @property
+    def op(self):
+        return self.__topLevelOperator
 
+    def _export_with_plugin(self, lane_index: int, checkOverwriteFiles: bool, pluginName: str) -> bool:
+        argsSlot = self.op.AdditionalPluginArguments
+        pluginInfo = pluginManager.getPluginByName(pluginName, category="TrackingExportFormats")
+
+        if pluginInfo is None:
+            logger.error("Could not find selected plugin %s", pluginName)
+            return False
+
+        plugin = pluginInfo.plugin_object
+        logger.info("Exporting tracking result using %s", pluginName)
+
+        name_format = self.op.getLane(lane_index).OutputFilenameFormat.value
+        partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
+
+        if plugin.exportsToFile:
+            filename = partially_formatted_name
+            if os.path.basename(filename) == '':
+                filename = os.path.join(filename, 'pluginExport.txt')
+        else:
+            filename = partially_formatted_name
+
+        if not filename:
+            logger.error("Cannot export from plugin with empty output filename")
+            return False
+
+        self.progressSignal(-1)
+
+        status = self._doPluginExport(lane_index, filename, plugin, checkOverwriteFiles, argsSlot)
+
+        self.progressSignal(100)
+
+        if not status:
+            return False
+
+        logger.info("Export done")
+        return True
+
+    def post_process_lane_export(self, lane_index: int, checkOverwriteFiles: bool = False):
+        # `checkOverwriteFiles` parameter ensures we check only once for files that could be overwritten, pop up
+        # the MessageBox and then don't export. For the next round we click the export button,
+        # we really want it to export, so checkOverwriteFiles=False.
+        # Plugin export if selected
+        op = self.topLevelOperator
+
+        logger.info("Export source is: %s", op.SelectedExportSource.value)
+        plugin_export_selected = op.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName
+
+        if plugin_export_selected:
+            logger.info("Export source plugin selected!")
+            return self._export_with_plugin(lane_index, checkOverwriteFiles, op.SelectedPlugin.value)
+
+        return True
+
+    def getPartiallyFormattedName(self, lane_index: int, path_format_string: str) -> str:
+        ''' Takes the format string for the output file, fills in the most important placeholders, and returns it '''
+
+        raw_dataset_info = self.op.RawDatasetInfo[0].value
+        project_path = self.op.WorkingDirectory.value
+        dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
+        abs_dataset_dir = make_absolute(dataset_dir, cwd=project_path)
+
+        nickname = raw_dataset_info.nickname.replace('*', '')
+        if os.path.pathsep in nickname:
+            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
+
+        known_keys = {
+            'dataset_dir': abs_dataset_dir,
+            'nickname': nickname,
+            'result_type': self.op.SelectedPlugin._value,
+        }
+
+        return format_known_keys(path_format_string, known_keys)

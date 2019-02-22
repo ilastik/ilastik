@@ -47,11 +47,13 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
     def gui_applet(self):
         return self.parentApplet
 
-    def __init__(self, *args, **kwargs):
-        super(TrackingBaseDataExportGui, self).__init__(*args, **kwargs)
+    def __init__(self, applet, op, enable_plugins, *args, **kwargs):
+        self._enable_plugins = enable_plugins
         self.pluginWasSelected = False
         self._exporting_operator = None
         self._default_export_filename = None
+
+        super(TrackingBaseDataExportGui, self).__init__(applet, op, *args, **kwargs)
 
     def get_feature_names(self):
         op = self.get_exporting_operator()
@@ -156,7 +158,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
     def _initAppletDrawerUic(self):
         # first check whether "Plugins" should be made available
         availableExportPlugins = self._getAvailablePlugins()
-        if len(availableExportPlugins) > 0:
+        if self._enable_plugins and len(availableExportPlugins) > 0:
             self._includePluginOnlyOption()
 
         super()._initAppletDrawerUic()

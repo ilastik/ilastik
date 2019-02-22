@@ -68,9 +68,11 @@ class ManualTrackingWorkflow( Workflow ):
         
         self.trackingApplet = ManualTrackingApplet( workflow=self )
         self.default_export_filename = '{dataset_dir}/{nickname}-exported_data.csv'
-        self.dataExportApplet = TrackingBaseDataExportApplet(self, 
-                                                             "Tracking Result Export", 
-                                                             default_export_filename=self.default_export_filename)
+        self.dataExportApplet = TrackingBaseDataExportApplet(
+            self,
+            "Tracking Result Export",
+            default_export_filename=self.default_export_filename,
+        )
         
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.SelectionNames.setValue( ['Manual Tracking', 'Object Identities'] )
@@ -79,7 +81,7 @@ class ManualTrackingWorkflow( Workflow ):
         # Extra configuration for object export table (as CSV table or HDF5 table)
         opTracking = self.trackingApplet.topLevelOperator
         self.dataExportApplet.set_exporting_operator(opTracking)
-        self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
+        #self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
         
         self._applets = []        
         self._applets.append(self.dataSelectionApplet)        
@@ -152,6 +154,9 @@ class ManualTrackingWorkflow( Workflow ):
             input_ready = False
 
         return input_ready
+
+    def _doPluginExport(self, lane_index: int, *args, **kwargs):
+        return self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(*args, **kwargs)
 
     def handleAppletStateUpdateRequested(self):
         """
