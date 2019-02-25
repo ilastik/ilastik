@@ -39,6 +39,13 @@ class OpReorderAxes(Operator):
     AxisOrder = InputSlot(value='tzyxc') # string: The desired output axis order
     Output = OutputSlot()
 
+    def __init__(self, graph=None, parent=None, Input=None, AxisOrder=None):
+        super().__init__(graph=graph, parent=parent)
+        if Input is not None:
+            self.Input.connect(Input)
+        if AxisOrder is not None:
+            self.AxisOrder.setValue(AxisOrder)
+
     def setupOutputs(self):
         if 'c' not in self.AxisOrder.value:
             # This is helpful in order to convert our internal axis order to 'tczyx'
