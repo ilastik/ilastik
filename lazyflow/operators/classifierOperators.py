@@ -21,7 +21,7 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license/
 ###############################################################################
 #Python
-from abc import abstractmethod, ABC
+from abc import abstractmethod
 import copy
 import logging
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -390,7 +390,7 @@ class OpClassifierPredict(Operator):
         if slot == self.Classifier:
             self.PMaps.setDirty()
 
-class OpBaseClassifierPredict(Operator, ABC):
+class OpBaseClassifierPredict(Operator):
     Image = InputSlot()
     LabelsCount = InputSlot()
     Classifier = InputSlot()
