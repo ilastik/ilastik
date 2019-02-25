@@ -627,13 +627,6 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
             self._shell.currentAppletChanged.connect( self.handle_applet_changed )
 
     def connectInputs(self, laneIndex):
-        op5raw = OpReorderAxes(parent=self)
-        op5raw.AxisOrder.setValue("txyzc")
-        op5pred = OpReorderAxes(parent=self)
-        op5pred.AxisOrder.setValue("txyzc")
-        op5threshold = OpReorderAxes(parent=self)
-        op5threshold.AxisOrder.setValue("txyzc")
-        
         ## Access applet operators
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
         opClassify = self.pcApplet.topLevelOperator.getLane(laneIndex)
@@ -647,14 +640,14 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opClassify.FeatureImages.connect(opTrainingFeatures.OutputImage)
         opClassify.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
 
-        op5raw.Input.connect(rawslot)
-        op5pred.Input.connect(opClassify.CachedPredictionProbabilities)
+        op5raw = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=rawslot)
+        op5pred = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=opClassify.CachedPredictionProbabilities)
 
         opThreshold.RawInput.connect(op5raw.Output)
         opThreshold.InputImage.connect(op5pred.Output)
         opThreshold.InputChannelColors.connect( opClassify.PmapColors )
 
-        op5threshold.Input.connect(opThreshold.CachedOutput)
+        op5threshold = OpReorderAxes(parent=self, AxisOrder="txyzc", Input=opThreshold.CachedOutput)
 
         return op5raw.Output, op5threshold.Output
 
