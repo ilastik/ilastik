@@ -48,12 +48,12 @@ class PixelClassificationWorkflow(Workflow):
 
     @enum.unique
     class Roles(SlotNameEnum):
-        RAW_DATA = 0
+        RAW_DATA = enum.auto()
         PREDICTION_MASK = enum.auto()
 
     @enum.unique
     class ExportNames(SlotNameEnum):
-        PROBABILITIES = 0
+        PROBABILITIES = enum.auto()
         SIMPLE_SEGMENTATION = enum.auto()
         UNCERTAINTY = enum.auto()
         FEATURES = enum.auto()
@@ -158,14 +158,14 @@ class PixelClassificationWorkflow(Workflow):
         for perm in itertools.permutations('tzyx', 4):
             c_at_end.append(''.join(perm) + 'c')
 
-        appl = DataSelectionApplet(self,
-                                   "Input Data",
-                                   "Input Data",
-                                   supportIlastik05Import=True,
-                                   instructionText=data_instructions,
-                                   forceAxisOrder=c_at_end)
-        appl.topLevelOperator.DatasetRoles.setValue(self.Roles.asNameList())
-        return appl
+        applet = DataSelectionApplet(self,
+                                     "Input Data",
+                                     "Input Data",
+                                     supportIlastik05Import=True,
+                                     instructionText=data_instructions,
+                                     forceAxisOrder=c_at_end)
+        applet.topLevelOperator.DatasetRoles.setValue(self.Roles.asNameList())
+        return applet
 
     def createFeatureSelectionApplet(self):
         """

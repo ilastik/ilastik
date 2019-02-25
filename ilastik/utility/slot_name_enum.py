@@ -33,7 +33,7 @@ class SlotNameEnum(enum.IntEnum):
 
     @classmethod
     def getNext(cls) -> int:
-        return cls.getLast() + 1
+        return cls._generate_next_value_('', cls.getFirst(), len(cls), list(cls))
 
     @classmethod
     def getPairs(cls) -> List[Tuple[str, int]]:
@@ -48,3 +48,6 @@ class SlotNameEnum(enum.IntEnum):
                                     chain(cls.getPairs(),
                                           extra_enum.getPairs())))
 
+    @staticmethod
+    def _generate_next_value_(name, start, count, last_values):
+        return 0 if count == 0 else last_values[-1] + 1
