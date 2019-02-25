@@ -1,7 +1,4 @@
 from __future__ import absolute_import
-from builtins import zip
-from builtins import map
-from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -24,6 +21,7 @@ from builtins import range
 #		   http://ilastik.org/license/
 ###############################################################################
 #Python
+from abc import abstractmethod
 import copy
 import logging
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -426,24 +424,21 @@ class OpBaseClassifierPredict(Operator):
         classifier = self.Classifier.value
         
         # Training operator may return 'None' if there was no data to train with
-        skip_prediction = (classifier is None)
+        if classifier is None:
+            result[:] = 0.0
+            return result
 
         # Shortcut: If the mask is totally zero, skip this request entirely
         mask = None
-        if not skip_prediction and self.PredictionMask.ready():
+        if self.PredictionMask.ready():
             mask_roi = numpy.array((roi.start, roi.stop))
             mask_roi[:,-1:] = [[0],[1]]
             start, stop = list(map(tuple, mask_roi))
             mask = self.PredictionMask( start, stop ).wait()
-            skip_prediction = not numpy.any(mask)
-
-        if skip_prediction:
-            logger.debug(f"Skipping masked block {roi}")
-            result[:] = 0.0
-            return result
-
-        assert issubclass(type(classifier), self.classifierInterface), \
-            f"Classifier is of type {type(classifier)}, which does not satisfy the {self.classifierInterface} interface."
+            if not numpy.any(mask):
+                logger.debug(f"Skipping masked block {roi}")
+                result[:] = 0.0
+                return result
 
         probabilities = self._calculate_probabilities(roi)
 
@@ -460,7 +455,7 @@ class OpBaseClassifierPredict(Operator):
             
             probabilities = full_probabilities
 
-        #cancel out masked pixels
+        # Cancel out masked pixels.
         if mask is not None:
             mask_all_channels = numpy.broadcast_to(mask == 0, probabilities.shape)
             probabilities[mask_all_channels] = 0.0
@@ -468,6 +463,11 @@ class OpBaseClassifierPredict(Operator):
         # Copy only the prediction channels the client requested.
         result[...] = probabilities[..., roi.start[-1]:roi.stop[-1]]
         return result
+
+    @abstractmethod
+    def _calculate_probabilities(roi):
+        """Returns the channel-wise probability maps calculated on roi"""
+        pass
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Classifier:
@@ -479,12 +479,12 @@ class OpBaseClassifierPredict(Operator):
             self.PMaps.setDirty(roi.start, roi.stop)
 
 class OpPixelwiseClassifierPredict(OpBaseClassifierPredict):
-    @property
-    def classifierInterface(self):
-        return LazyflowPixelwiseClassifierABC
-
     def _calculate_probabilities(self, roi):
         classifier = self.Classifier.value
+
+        assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), \
+            f"Classifier {classifier} must be sublcass of {LazyflowPixelwiseClassifierABC}"
+
         upstream_roi = (roi.start, roi.stop)
         # Ask for the halo needed by the classifier
         axiskeys = self.Image.meta.getAxisKeys()
@@ -536,11 +536,12 @@ class OpVectorwiseClassifierPredict(OpBaseClassifierPredict):
         feature_ram_per_pixel = max(self.Image.meta.dtype().nbytes, 4) * input_channels
         self.PMaps.meta.ram_usage_per_requested_pixel = classifier_ram_per_pixel + feature_ram_per_pixel
 
-    @property
-    def classifierInterface(self):
-        return LazyflowVectorwiseClassifierABC
-
     def _calculate_probabilities(self, roi):
+        classifier = self.Classifier.value
+
+        assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), \
+            f"Classifier {classifier} must be sublcass of {LazyflowVectorwiseClassifierABC}"
+
         key = roi.toSlice()
         newKey = key[:-1]
         newKey += (slice(0,self.Image.meta.shape[-1],None),)
