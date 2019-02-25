@@ -18,8 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from __future__ import division
-from builtins import range
+from abc import abstractmethod
 import sys
 import os
 import enum
@@ -95,10 +94,8 @@ class ObjectClassificationWorkflow(Workflow):
                  workflow_cmdline_args,
                  project_creation_args,
                  *args, **kwargs):
-        graph = kwargs['graph'] if 'graph' in kwargs else Graph()
-        if 'graph' in kwargs:
-            del kwargs['graph']
-        super(ObjectClassificationWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
+        graph = kwargs.pop('graph') if 'graph' in kwargs else Graph()
+        super().__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
         self.stored_object_classifier = None
 
         # Parse workflow-specific command-line args
@@ -178,6 +175,7 @@ class ObjectClassificationWorkflow(Workflow):
         if unused_args:
             logger.warning("Unused command-line args: {}".format( unused_args ))
 
+    @abstractmethod
     def createInputApplets(self):
         self.dataSelectionApplet = DataSelectionApplet( self,
                                                         "Input Data",
@@ -250,6 +248,10 @@ class ObjectClassificationWorkflow(Workflow):
             return op5raw.Output
 
         return rawslot
+
+    @abstractmethod
+    def connectInputs(self, laneIndex):
+        pass
 
     def connectLane(self, laneIndex):
         rawslot, binaryslot = self.connectInputs(laneIndex)
