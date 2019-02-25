@@ -21,7 +21,7 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license/
 ###############################################################################
 #Python
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 import copy
 import logging
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -390,7 +390,7 @@ class OpClassifierPredict(Operator):
         if slot == self.Classifier:
             self.PMaps.setDirty()
 
-class OpBaseClassifierPredict(Operator):
+class OpBaseClassifierPredict(Operator, ABC):
     Image = InputSlot()
     LabelsCount = InputSlot()
     Classifier = InputSlot()
@@ -482,7 +482,7 @@ class OpPixelwiseClassifierPredict(OpBaseClassifierPredict):
     def _calculate_probabilities(self, roi):
         classifier = self.Classifier.value
 
-        assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), \
+        assert isinstance(classifier, LazyflowPixelwiseClassifierABC), \
             f"Classifier {classifier} must be sublcass of {LazyflowPixelwiseClassifierABC}"
 
         upstream_roi = (roi.start, roi.stop)
@@ -539,7 +539,7 @@ class OpVectorwiseClassifierPredict(OpBaseClassifierPredict):
     def _calculate_probabilities(self, roi):
         classifier = self.Classifier.value
 
-        assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), \
+        assert isinstance(classifier, LazyflowVectorwiseClassifierABC), \
             f"Classifier {classifier} must be sublcass of {LazyflowVectorwiseClassifierABC}"
 
         key = roi.toSlice()
