@@ -43,7 +43,7 @@ from ilastik.applets.fillMissingSlices.opFillMissingSlices import OpFillMissingS
 from ilastik.applets.blockwiseObjectClassification import BlockwiseObjectClassificationApplet, OpBlockwiseObjectClassification
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
-from lazyflow.graph import Graph, OperatorWrapper
+from lazyflow.graph import Graph, OperatorWrapper, OutputSlot
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 from lazyflow.operators.valueProviders import OpAttributeSelector
@@ -232,20 +232,22 @@ class ObjectClassificationWorkflow(Workflow):
             # Release reference
             self.stored_object_classifier = None
 
-    def createRawDataSourceSlot(self, laneIndex, canonicalOrder=True):
+    def getImageSlot(self, input_role, laneIndex) -> OutputSlot:
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        return opData.ImageGroup[input_role]
 
-        rawslot = opData.ImageGroup[self.InputImageRoles.RAW_DATA]
+    def canonicalizeSlot(self, slot):
+        return OpReorderAxes(parent=self, AxisOrder="txyzc", Input=slot).Output
+
+    def createRawDataSourceSlot(self, laneIndex, canonicalOrder=True):
+        rawslot = self.getImageSlot(self.InputImageRoles.RAW_DATA, laneIndex)
         if self.fillMissing != 'none':
             opFillMissingSlices = self.fillMissingSlicesApplet.topLevelOperator.getLane(laneIndex)
             opFillMissingSlices.Input.connect(rawslot)
             rawslot = opFillMissingSlices.Output
 
         if canonicalOrder:
-            op5raw = OpReorderAxes(parent=self)
-            op5raw.AxisOrder.setValue("txyzc")
-            op5raw.Input.connect(rawslot)
-            return op5raw.Output
+            rawslot = self.canonicalizeSlot(rawslot)
 
         return rawslot
 
