@@ -36,6 +36,7 @@ class AppletDrawerToolBox(QToolBox):
 
     def addItem(self, widget, text):
         idx = super().addItem(widget, text)
+        self.setItemText(idx, text)
         self._refreshCollapsedMarker(idx)
         return idx
 
@@ -77,19 +78,18 @@ class AppletBarManager(QObject):
         Adds applet to toolbox if it is available in interactive mode
         """
         if applet.interactive:
-            # TODO: Fixme addItem returns idx
+            # We need new id before we added item, to handle currentChangedSignal
             newToolbarId = self._toolbox.count()
             self._toolbarIdByAppletId[appletId] = newToolbarId
             self._appletIdByToolbarId[newToolbarId] = appletId
 
-            name = applet.name
             widget = applet.getMultiLaneGui().appletDrawer()
             assert isinstance(widget, QWidget), f"Not a widget: {widget}"
 
             stackedWidget = QStackedWidget()
             stackedWidget.addWidget(widget)
 
-            idx = self._toolbox.addItem(stackedWidget, name)
+            self._toolbox.addItem(stackedWidget, applet.name)
         else:
             self._toolbarIdByAppletId[appletId] = None
 
