@@ -640,10 +640,12 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
 
         rawslot = self.createRawDataSourceSlot(laneIndex, canonicalOrder=False)
+        atlas_slot = self.createAtlasSourceSlot(laneIndex)
 
         opTrainingFeatures.InputImage.connect(rawslot)
 
         opClassify.InputImages.connect(rawslot)
+        opClassify.PredictionMasks.connect(atlas_slot)
         opClassify.FeatureImages.connect(opTrainingFeatures.OutputImage)
         opClassify.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
 
