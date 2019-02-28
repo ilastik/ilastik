@@ -32,6 +32,13 @@ from ilastik.shell.gui.startShellGui import launchShell
 GUI_TEST_TIMEOUT = 20  # Seconds
 
 
+@pytest.fixture(scope='session', autouse=True)
+def config_app_settings(qapp):
+    # Allows to map application to a specific workspace
+    # useful when running tests
+    qapp.setApplicationName('TestIlastik')
+
+
 def pytest_addoption(parser):
     """Add command-line flags for pytest."""
     parser.addoption("--run-legacy-gui", action="store_true",
