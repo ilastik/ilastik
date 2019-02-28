@@ -876,22 +876,10 @@ class LabelingGui(LayerViewerGui):
 
         # Raw Input Layer
         if self._rawInputSlot is not None and self._rawInputSlot.ready():
-            layer = self.createStandardLayerFromSlot(self._rawInputSlot)
-            layer.name = "Raw Input"
-            layer.visible = True
-            layer.opacity = 1.0
-
-            # the flag window_leveling is used to determine if the contrast
-            # of the layer is adjustable
-            if isinstance(layer, GrayscaleLayer):
-                layer.window_leveling = True
-            else:
-                layer.window_leveling = False
-
+            layer = self.createStandardLayerFromSlot(self._rawInputSlot, name="Raw Input")
             layers.append(layer)
 
-            # The thresholding button can only be used if the data is displayed as grayscale.
-            if layer.window_leveling:
+            if isinstance(layer, GrayscaleLayer):
                 self.labelingDrawerUi.thresToolButton.show()
             else:
                 self.labelingDrawerUi.thresToolButton.hide()
