@@ -83,6 +83,7 @@ class ObjectClassificationWorkflow(Workflow):
         @enum.unique
         class InputImageRoles(SlotNameEnum):
             RAW_DATA = enum.auto()
+            ATLAS = enum.auto()
 
         return InputImageRoles
 
@@ -251,12 +252,17 @@ class ObjectClassificationWorkflow(Workflow):
 
         return rawslot
 
+    def createAtlasSourceSlot(self, laneIndex):
+        rawAtlasSlot = self.getImageSlot(self.InputImageRoles.ATLAS, laneIndex)
+        return self.canonicalizeSlot(rawAtlasSlot)
+
     @abstractmethod
     def connectInputs(self, laneIndex):
         pass
 
     def connectLane(self, laneIndex):
         rawslot, binaryslot = self.connectInputs(laneIndex)
+        atlas_slot = self.createAtlasSourceSlot(laneIndex)
 
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
 
@@ -267,9 +273,11 @@ class ObjectClassificationWorkflow(Workflow):
 
         opObjExtraction.RawImage.connect(rawslot)
         opObjExtraction.BinaryImage.connect(binaryslot)
+        opObjExtraction.Atlas.connect(atlas_slot)
 
         opObjClassification.RawImages.connect(rawslot)
         opObjClassification.BinaryImages.connect(binaryslot)
+        opObjClassification.Atlas.connect(atlas_slot)
 
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opObjClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
@@ -420,17 +428,14 @@ class ObjectClassificationWorkflow(Workflow):
         self._shell.enableProjectChanges( not busy )
 
     def _inputReady(self):
-        nRoles = len(self.InputImageRoles)
-        slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
-        if len(slot) > 0:
-            input_ready = True
-            for sub in slot:
-                input_ready = input_ready and \
-                    all([sub[i].ready() for i in range(nRoles)])
-        else:
-            input_ready = False
-
-        return input_ready
+        image_group_slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
+        for input_lane_slot in image_group_slot:
+            for role in self.InputImageRoles:
+                if role == self.InputImageRoles.ATLAS:
+                    continue
+                if not input_lane_slot[role].ready():
+                    return False
+        return True and len(image_group_slot)
 
     def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
         """
