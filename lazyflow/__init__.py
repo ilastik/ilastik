@@ -47,7 +47,7 @@ class N5JsonEncoder(json.JSONEncoder):
             return int(obj)
         if isinstance(obj, np.floating):
             return float(obj)
-        json.JSONEncoder.default(self, obj)
+        return super().default(obj)
 
 
 z5py.set_json_encoder(N5JsonEncoder)  # Set a json decoder for z5py

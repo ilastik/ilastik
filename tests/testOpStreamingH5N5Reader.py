@@ -24,7 +24,6 @@ from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
 import numpy
 import vigra
-import shutil
 import tempfile
 
 class TestOpStreamingH5N5Reader(object):
@@ -49,7 +48,7 @@ class TestOpStreamingH5N5Reader(object):
     def tearDown(self):
         self.h5File.close()
         self.n5File.close()
-        shutil.rmtree(self.testFileDir)
+        self.testFileDir.cleanup()
 
     def test_plain(self):
         # Write the dataset to an hdf5 file
@@ -64,8 +63,8 @@ class TestOpStreamingH5N5Reader(object):
 
         assert self.h5_op.OutputImage.meta.shape == self.data.shape
         assert self.n5_op.OutputImage.meta.shape == self.data.shape
-        assert self.h5_op.OutputImage.wait() == self.data
-        assert self.n5_op.OutputImage.wait() == self.data
+        numpy.testing.assert_array_equal(self.h5_op.OutputImage.value, self.data)
+        numpy.testing.assert_array_equal(self.n5_op.OutputImage.value, self.data)
 
     def test_withAxisTags(self):
         # Write it again, this time with weird axistags
@@ -92,13 +91,6 @@ class TestOpStreamingH5N5Reader(object):
 
         assert self.h5_op.OutputImage.meta.shape == self.data.shape
         assert self.n5_op.OutputImage.meta.shape == self.data.shape
-        assert self.h5_op.OutputImage.wait() == self.data
-        assert self.n5_op.OutputImage.wait() == self.data
+        numpy.testing.assert_array_equal(self.h5_op.OutputImage.value, self.data)
+        numpy.testing.assert_array_equal(self.n5_op.OutputImage.value, self.data)
 
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)

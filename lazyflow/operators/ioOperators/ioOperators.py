@@ -40,8 +40,6 @@ import vigra
 from lazyflow.graph import OrderedSignal, Operator, OutputSlot, InputSlot
 from lazyflow.roi import roiToSlice, roiFromShape, determineBlockShape
 from lazyflow.utility.bigRequestStreamer import BigRequestStreamer
-from lazyflow.utility.helpers import get_default_axisordering
-from lazyflow.request import Request
 
 
 class OpImageReader(Operator):
@@ -142,8 +140,8 @@ class OpStackLoader(Operator):
     class FileOpenError( Exception ):
         def __init__(self, filename):
             self.filename = filename
-            self.msg = "Unable to open file: {}".format(filename)
-            super(OpStackLoader.FileOpenError, self).__init__( self.msg )
+            self.msg = f"Unable to open file: {filename}"
+            super().__init__( self.msg )
 
     def setupOutputs(self):
         self.fileNameList = self.expandGlobStrings(self.globstring.value)
@@ -157,7 +155,7 @@ class OpStackLoader(Operator):
             self.slices_per_file = vigra.impex.numberImages(self.fileNameList[0])
         except RuntimeError as e:
             logger.error(str(e))
-            raise OpStackLoader.FileOpenError(self.fileNameList[0])
+            raise OpStackLoader.FileOpenError(self.fileNameList[0]) from e
 
         slice_shape = self.info.getShape()
         X, Y, C = slice_shape
@@ -212,7 +210,7 @@ class OpStackLoader(Operator):
         elif len(self.stack.meta.shape) == 5:
             return self._execute_5d( roi, result )
         else:
-            assert False, "Unexpected output shape: {}".format( self.stack.meta.shape )
+            assert False, f"Unexpected output shape: {self.stack.meta.shape}"
 
     def _execute_3d(self, roi, result):
         traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
@@ -225,7 +223,7 @@ class OpStackLoader(Operator):
 
         # Copy each c-slice one at a time.
         for i, fileName in enumerate(self.fileNameList[c_start//C:c_stop//C]):
-            traceLogger.debug("Reading image: {}".format(fileName))
+            traceLogger.debug(f"Reading image: {fileName}")
             file_shape = vigra.impex.ImageInfo(fileName).getShape()
             if self.info.getShape() != file_shape:
                 raise RuntimeError('not all files have the same shape')
@@ -251,7 +249,7 @@ class OpStackLoader(Operator):
 
         # Copy each z-slice one at a time.
         for result_z, fileName in enumerate(self.fileNameList[z_start:z_stop]):
-            traceLogger.debug("Reading image: {}".format(fileName))
+            traceLogger.debug(f"Reading image: {fileName}")
             file_shape = vigra.impex.ImageInfo(fileName).getShape()
             if self.info.getShape() != file_shape:
                 raise RuntimeError('not all files have the same shape')
@@ -312,7 +310,7 @@ class OpStackWriter(Operator):
     SliceIndexOffset = InputSlot(value=0) # Added to the {slice_index} in the export filename.
 
     def __init__(self, *args, **kwargs):
-        super(OpStackWriter, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
 
     def run_export(self):
@@ -361,7 +359,7 @@ class OpStackWriter(Operator):
         streamer.resultSignal.subscribe( self._write_slice )
         streamer.progressSignal.subscribe( self.progressSignal )
 
-        logger.debug("Starting Stack Export with slicing shape: {}".format( slice_shape ))
+        logger.debug(f"Starting Stack Export with slicing shape: {slice_shape}")
         streamer.execute()
 
     def setupOutputs(self):
@@ -439,7 +437,7 @@ class OpStackToH5Writer(Operator):
     WriteImage = OutputSlot(stype='bool')
 
     def __init__(self, *args, **kwargs):
-        super(OpStackToH5Writer, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
         self.opStackLoader = OpStackLoader(parent=self)
         self.opStackLoader.globstring.connect( self.GlobString )
@@ -455,7 +453,8 @@ class OpStackToH5Writer(Operator):
 
     def execute(self, slot, subindex, roi, result):
         if not self.opStackLoader.fileNameList:
-            raise Exception( "Didn't find any files to combine.  Is the glob string valid?  globstring = {}".format( self.GlobString.value ) )
+            raise Exception(f"Didn't find any files to combine.  Is the glob string valid?  "
+                            f"globstring = {self.GlobString.value}")
 
         # Copy the data image-by-image
         stackTags = self.opStackLoader.stack.meta.axistags
@@ -546,13 +545,13 @@ class OpH5N5WriterBigDataset(Operator):
     traceLogger = logging.getLogger("TRACE." + loggingName)
 
     def __init__(self, *args, **kwargs):
-        super(OpH5N5WriterBigDataset, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
         self.d = None
         self.f = None
 
     def cleanUp(self):
-        super(OpH5N5WriterBigDataset, self).cleanUp()
+        super().cleanUp()
         # Discard the reference to the dataset, to ensure that the file can be closed.
         self.d = None
         self.f = None
@@ -578,7 +577,7 @@ class OpH5N5WriterBigDataset(Operator):
                 g = self.f.create_group(h5N5GroupName)
 
         dataShape=self.Image.meta.shape
-        self.logger.info( "Data shape: {}".format(dataShape))
+        self.logger.info(f"Data shape: {dataShape}")
 
         dtype = self.Image.meta.dtype
         if isinstance(dtype, numpy.dtype):

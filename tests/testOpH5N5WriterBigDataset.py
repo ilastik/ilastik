@@ -28,13 +28,9 @@ import vigra
 import h5py
 import z5py
 import os
-import sys
 import lazyflow.graph
 
 import logging
-#logger = logging.getLogger(__name__)
-#logger.addHandler(logging.StreamHandler(sys.stdout))
-#logger.setLevel(logging.DEBUG)
 
 logger = logging.getLogger("tests.testOpH5N5WriterBigDataset")
 cacheLogger = logging.getLogger("lazyflow.operators.ioOperators.ioOperators.OpH5N5WriterBigDataset")
@@ -95,8 +91,8 @@ class TestOpH5N5WriterBigDataset(object):
         n5_dataset = n5File[self.datasetInternalPath]
         assert h5_dataset.shape == self.dataShape
         assert n5_dataset.shape == self.dataShape
-        assert numpy.all(h5_dataset[...] == self.testData.view(numpy.ndarray)[...])
-        assert numpy.all(n5_dataset[...] == self.testData.view(numpy.ndarray)[...])
+        assert (numpy.all(h5_dataset[...] == self.testData.view(numpy.ndarray)[...])).all()
+        assert (numpy.all(n5_dataset[...] == self.testData.view(numpy.ndarray)[...])).all()
         hdf5File.close()
         n5File.close()
  
@@ -159,8 +155,8 @@ class TestOpH5N5WriterBigDataset_2(object):
         n5_dataset = n5File[self.datasetInternalPath]
         assert h5_dataset.shape == self.dataShape
         assert n5_dataset.shape == self.dataShape
-        assert numpy.all(h5_dataset[...] == self.testData.view(numpy.ndarray)[...])
-        assert numpy.all(n5_dataset[...] == self.testData.view(numpy.ndarray)[...])
+        assert (numpy.all(h5_dataset[...] == self.testData.view(numpy.ndarray)[...])).all()
+        assert (numpy.all(n5_dataset[...] == self.testData.view(numpy.ndarray)[...])).all()
         hdf5File.close()
         n5File.close()
 
@@ -175,7 +171,7 @@ class TestOpH5N5WriterBigDataset_3(object):
 
         # Generate some test data
         self.dataShape = (1, 10, 128, 128, 1)
-        self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc') ) # default vigra order this time...
+        self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc'))  # default vigra order this time...
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
 
     def tearDown(self):
@@ -228,24 +224,7 @@ class TestOpH5N5WriterBigDataset_3(object):
         n5_dataset = n5File[self.datasetInternalPath]
         assert h5_dataset.shape == self.dataShape
         assert n5_dataset.shape == self.dataShape
-        assert numpy.all(h5_dataset[...] == self.testData.view(numpy.ndarray)[...])
-        assert numpy.all(n5_dataset[...] == self.testData.view(numpy.ndarray)[...])
+        assert (numpy.all(h5_dataset[...] == self.testData.view(numpy.ndarray)[...])).all()
+        assert (numpy.all(n5_dataset[...] == self.testData.view(numpy.ndarray)[...])).all()
         hdf5File.close()
         n5File.close()
-
-if __name__ == "__main__":
-    # Set up logging for debug
-    logHandler = logging.StreamHandler(sys.stdout)
-    logger.addHandler(logHandler)
-    cacheLogger.addHandler(logHandler)
-    requesterLogger.addHandler(logHandler)
-
-    logger.setLevel(logging.DEBUG)
-    cacheLogger.setLevel(logging.DEBUG)
-    requesterLogger.setLevel(logging.INFO)
-
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)

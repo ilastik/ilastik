@@ -343,8 +343,8 @@ class OpInputDataReader(Operator):
         # Check for an hdf5 or n5 extension
         pathComponents = PathComponents(filePath)
         ext = pathComponents.extension
-        if ext not in (".%s" % x for x in OpInputDataReader.h5_n5_Exts):
-            return ([], None)
+        if ext[1:] not in OpInputDataReader.h5_n5_Exts:
+            return [], None
 
         externalPath = pathComponents.externalPath
         internalPath = pathComponents.internalPath
@@ -361,7 +361,7 @@ class OpInputDataReader(Operator):
         except Exception as e:
             msg = "Unable to open H5/N5 File: {}\n{}".format(
                 externalPath, str(e))
-            raise OpInputDataReader.DatasetReadError(msg)
+            raise OpInputDataReader.DatasetReadError(msg) from e
         else:
             if not internalPath:
                 possible_internal_paths = lsH5N5(h5N5File)
@@ -384,7 +384,7 @@ class OpInputDataReader(Operator):
             except Exception as e:
                 h5N5File.close()
                 msg = "Error reading H5/N5 File: {}\n{}".format(externalPath, e)
-                raise OpInputDataReader.DatasetReadError(msg)
+                raise OpInputDataReader.DatasetReadError(msg) from e
 
             # If the h5 dataset is compressed, we'll have better performance
             #  with a multi-process hdf5 access object.
@@ -404,7 +404,7 @@ class OpInputDataReader(Operator):
             h5N5Reader.InternalPath.setValue(internalPath)
         except OpStreamingH5N5Reader.DatasetReadError as e:
             msg = "Error reading H5/N5 File: {}\n{}".format(externalPath, e.msg)
-            raise OpInputDataReader.DatasetReadError(msg)
+            raise OpInputDataReader.DatasetReadError(msg) from e
 
         return ([h5N5Reader], h5N5Reader.OutputImage)
 
@@ -432,7 +432,7 @@ class OpInputDataReader(Operator):
             npyReader.FileName.setValue(externalPath)
             return ([npyReader], npyReader.Output)
         except OpNpyFileReader.DatasetReadError as e:
-            raise OpInputDataReader.DatasetReadError(*e.args)
+            raise OpInputDataReader.DatasetReadError(*e.args) from e
 
     def _attemptOpenAsRawBinary(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
@@ -448,7 +448,7 @@ class OpInputDataReader(Operator):
                 opReader.FilePath.setValue(filePath)
                 return ([opReader], opReader.Output)
             except OpRawBinaryFileReader.DatasetReadError as e:
-                raise OpInputDataReader.DatasetReadError(*e.args)
+                raise OpInputDataReader.DatasetReadError(*e.args) from e
 
     def _attemptOpenAsH5BlockStore(self, filePath):
         if not os.path.splitext(filePath)[1] == '.json':
@@ -508,7 +508,7 @@ class OpInputDataReader(Operator):
                                       parent=self)
                 return [opDvidRoi], opDvidRoi.Output
         except OpDvidVolume.DatasetReadError as e:
-            raise OpInputDataReader.DatasetReadError(*e.args)
+            raise OpInputDataReader.DatasetReadError(*e.args) from e
 
     def _attemptOpenAsBlockwiseFileset(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
@@ -523,7 +523,7 @@ class OpInputDataReader(Operator):
             except JsonConfigParser.SchemaError:
                 opReader.cleanUp()
             except OpBlockwiseFilesetReader.MissingDatasetError as e:
-                raise OpInputDataReader.DatasetReadError(*e.args)
+                raise OpInputDataReader.DatasetReadError(*e.args) from e
         return ([], None)
 
     def _attemptOpenAsRESTfulBlockwiseFileset(self, filePath):
@@ -539,7 +539,7 @@ class OpInputDataReader(Operator):
             except JsonConfigParser.SchemaError:
                 opReader.cleanUp()
             except OpRESTfulBlockwiseFilesetReader.MissingDatasetError as e:
-                raise OpInputDataReader.DatasetReadError(*e.args)
+                raise OpInputDataReader.DatasetReadError(*e.args) from e
         return ([], None)
 
     def _attemptOpenAsTiledVolume(self, filePath):

@@ -62,46 +62,46 @@ class OpStreamingH5N5SequenceReaderM(Operator):
     class WrongFileTypeError(Exception):
         def __init__(self, globString):
             self.filename = globString
-            self.msg = "File is not a HDF5 or N5: {}".format(globString)
+            self.msg = f"File is not a HDF5 or N5: {globString}"
             super().__init__(self.msg)
 
     class InconsistentShape(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
-            self.msg = "Cannot stack dataset: {} because its shape differs from the shape of the previous " \
-                       "datasets".format(fileName + '/' + datasetName)
+            self.msg = f"Cannot stack dataset: {fileName}/{datasetName} because its shape differs from the shape of " \
+                       f"the previous datasets"
             super().__init__(self.msg)
 
     class InconsistentDType(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
-            self.msg = "Cannot stack dataset: {} because its data type differs from the type of the previous " \
-                       "datasets".format(fileName + '/' + datasetName)
+            self.msg = f"Cannot stack dataset: {fileName}/{datasetName} because its data type differs from the type " \
+                       f"of the previous datasets"
             super().__init__(self.msg)
 
     class NoExternalPlaceholderError(Exception):
         def __init__(self, globString):
             self.globString = globString
-            self.msg = "Glob string does not contain a placeholder: {}".format(globString)
+            self.msg = f"Glob string does not contain a placeholder: {globString}"
             super().__init__(self.msg)
 
     class SameFileError(Exception):
         def __init__(self, globString):
             self.globString = globString
-            self.msg = "This reader only works with multiple h5 files: {}".format(globString)
+            self.msg = f"This reader only works with multiple h5 files: {globString}"
             super().__init__(self.msg)
 
     class FileOpenError(Exception):
         def __init__(self, fileName):
             self.fileName = fileName
-            self.msg = "Could not read file: {}".format(fileName)
+            self.msg = f"Could not read file: {fileName}"
             super().__init__(self.msg)
 
     class InternalPlaceholderError(Exception):
         def __init__(self, globString):
             self.globString = globString
-            self.msg = ("Glob string does contains an internal placeholder "
-                        "(not supported!): {}".format(globString))
+            self.msg = f"Glob string does contains an internal placeholder " \
+                       f"(not supported!): {globString}"
             super().__init__(self.msg)
 
     def __init__(self, *args, **kwargs):
@@ -143,7 +143,7 @@ class OpStreamingH5N5SequenceReaderM(Operator):
             h5N5FirstImage.close()
         except RuntimeError as e:
             logger.error(str(e))
-            raise OpStreamingH5N5SequenceReaderM.FileOpenError(external_paths[0])
+            raise OpStreamingH5N5SequenceReaderM.FileOpenError(external_paths[0]) from e
 
         # Use given new axis or try to do something sensible
         if self.SequenceAxis.ready():
@@ -189,7 +189,7 @@ class OpStreamingH5N5SequenceReaderM(Operator):
                 opReader.H5N5File.setValue(h5N5File)
             except RuntimeError as e:
                 logger.error(str(e))
-                raise OpStreamingH5N5SequenceReaderM.FileOpenError(external_path)
+                raise OpStreamingH5N5SequenceReaderM.FileOpenError(external_path) from e
             else:
                 stacker_slot.connect(opReader.OutputImage)
                 self._readers.append(opReader)

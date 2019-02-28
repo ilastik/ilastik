@@ -82,7 +82,7 @@ class OpExportSlot(Operator):
                 + _4d_sequence_formats + nd_format_formats
 
     def __init__(self, *args, **kwargs):
-        super( OpExportSlot, self ).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
 
         # Set up the impl function lookup dict
@@ -235,8 +235,8 @@ class OpExportSlot(Operator):
         output_format = self.OutputFormat.value
         try:
             export_func = self._export_impls[output_format][1]
-        except KeyError:
-            raise Exception( "Unknown export format: {}".format( output_format ) )
+        except KeyError as e:
+            raise Exception(f"Unknown export format: {output_format}") from e
         else:
             mkdir_p( PathComponents(self.ExportPath.value).externalDirectory )
             export_func()
@@ -508,13 +508,13 @@ class FormatValidity(object):
             return "Unknown format {}".format(realfmt)
 
         if dtype not in cls.dtypes[realfmt]:
-            msgs.append("data type {} not supported by format {}".format(dtype, realfmt))
+            msgs.append(f"data type {dtype} not supported by format {realfmt}")
 
         if s < cls.axes[realfmt][0] or s > cls.axes[realfmt][1]:
-            msgs.append("wrong number of non-channel axes for format {}".format(realfmt))
+            msgs.append(f"wrong number of non-channel axes for format {realfmt}")
 
         if len(cls.colors[realfmt]) > 0 and c not in cls.colors[realfmt]:
-            msgs.append("wrong number of channels for format {}".format(realfmt))
+            msgs.append(f"wrong number of channels for format {realfmt}")
 
         return "; ".join(msgs)
 

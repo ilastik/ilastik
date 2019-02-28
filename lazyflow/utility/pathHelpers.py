@@ -342,14 +342,16 @@ def lsH5N5(h5N5FileObject, minShape=2, maxShape=5):
     listOfDatasets = []
 
     def addObjectNames(objectName, obj):
-        if isinstance(obj, h5py._hl.dataset.Dataset) or isinstance(obj, z5py.dataset.Dataset):
-            if minShape <= len(obj.shape) <= maxShape:
-                if isinstance(h5N5FileObject, z5py.N5File):
-                    objectName = objectName.replace(h5N5FileObject.path + '/', '')  # Need only the internal path here
-                listOfDatasets.append({
-                    'name': objectName,
-                    'object': obj
-                })
+        if not isinstance(obj, (h5py._hl.dataset.Dataset, z5py.dataset.Dataset)):
+            return
+        if len(obj.shape) not in range(minShape, maxShape + 1):
+            return
+        if isinstance(h5N5FileObject, z5py.N5File):
+            objectName = objectName.replace(h5N5FileObject.path + '/', '')  # Need only the internal path here
+        listOfDatasets.append({
+            'name': objectName,
+            'object': obj
+        })
 
     h5N5FileObject.visititems(addObjectNames)
 

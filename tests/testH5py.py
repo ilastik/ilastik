@@ -37,7 +37,7 @@ class TestH5Py(object):
     """
 
     def test(self):
-        shape = (2,100,100,6) # Make this bigger to try hammering hdf5 with bigger data accesses...
+        shape = (2,100,100,6)  # Make this bigger to try hammering hdf5 with bigger data accesses...
 
         filename1 = 'test1.h5'
         self.prepare_tstfile(shape, filename1)
@@ -68,9 +68,9 @@ class TestH5Py(object):
     
         # Combine into a slicing we can index with    
         sl = list(map(slice, lb, ub))
-    
+
         sample = h5Group[path][tuple(sl)]
-        #print sample.shape
+        # print sample.shape
     
     def prepare_tstfile(self, shape, filename):
         f = h5py.File(filename, 'w')
@@ -115,12 +115,3 @@ class TestH5Py(object):
         
         for i in range(10):
             threads[i].join()
-
-if __name__ == "__main__":
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    ret = nose.run(defaultTest=__file__)
-
-    if not ret: sys.exit(1)

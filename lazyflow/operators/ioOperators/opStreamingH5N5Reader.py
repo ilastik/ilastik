@@ -59,11 +59,11 @@ class OpStreamingH5N5Reader(Operator):
     class DatasetReadError(Exception):
         def __init__(self, internalPath):
             self.internalPath = internalPath
-            self.msg = "Unable to open Hdf5 dataset: {}".format( internalPath )
-            super(OpStreamingH5N5Reader.DatasetReadError, self).__init__(self.msg)
+            self.msg = f"Unable to open Hdf5 dataset: {internalPath}"
+            super().__init__(self.msg)
 
     def __init__(self, *args, **kwargs):
-        super(OpStreamingH5N5Reader, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._h5N5File = None
 
     def setupOutputs(self):
@@ -90,7 +90,7 @@ class OpStreamingH5N5Reader(Operator):
             axistags = vigra.defaultAxistags(str(axisorder))
 
         assert len(axistags) == len( dataset.shape ),\
-            "Mismatch between shape {} and axisorder {}".format( dataset.shape, axisorder )
+            f"Mismatch between shape {dataset.shape} and axisorder {axisorder}"
 
         # Configure our slot meta-info
         self.OutputImage.meta.dtype = dataset.dtype.type
@@ -109,9 +109,8 @@ class OpStreamingH5N5Reader(Operator):
         chunks = self._h5N5File[internalPath].chunks
         if not chunks and total_volume > 1e8:
             self.OutputImage.meta.inefficient_format = True
-            logger.warning("This dataset ({}{}) is NOT chunked.  "
-                           "Performance for 3D access patterns will be bad!"
-                           .format(self._h5N5File.filename, internalPath))
+            logger.warning(f"This dataset ({self._h5N5File.filename}{internalPath}) is NOT chunked. "
+                           f"Performance for 3D access patterns will be bad!")
         if chunks:
             self.OutputImage.meta.ideal_blockshape = chunks
 
@@ -125,7 +124,7 @@ class OpStreamingH5N5Reader(Operator):
 
         timer = None
         if logger.isEnabledFor(logging.DEBUG):
-            logger.debug("Reading HDF5/N5 block: [{}, {}]".format( roi.start, roi.stop))
+            logger.debug(f"Reading HDF5/N5 block: [{roi.start}, {roi.stop}]")
             timer = Timer()
             timer.unpause()
 
@@ -139,7 +138,7 @@ class OpStreamingH5N5Reader(Operator):
 
         if timer:
             timer.pause()
-            logger.debug("Completed HDF5 read in {} seconds: [{}, {}]".format( timer.seconds(), roi.start, roi.stop))
+            logger.debug(f"Completed HDF5 read in {timer.seconds()} seconds: [{roi.start}, {roi.stop}]")
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.H5N5File or slot == self.InternalPath:
