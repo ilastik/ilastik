@@ -595,13 +595,14 @@ class OpRegionFeatures(Operator):
         atlas_mapping = numpy.zeros(num_center_points * num_channels_in_atlas)
         atlas_mapping = atlas_mapping.reshape(num_center_points, num_channels_in_atlas)
         for objIdx, center_coords in enumerate(region_centers):
+            rounded_coords = center_coords.round().astype(numpy.uint64)
             slicing = [0] * len(axes)
             slicing[axes['c']] = slice(None)
 
-            slicing[axes['x']] = round(center_coords[0])
-            slicing[axes['y']] = round(center_coords[1])
+            slicing[axes['x']] = rounded_coords[0]
+            slicing[axes['y']] = rounded_coords[1]
             if len(center_coords) == 3:
-                slicing[axes['z']] = round(center_coords[2])
+                slicing[axes['z']] = rounded_coords[2]
 
             atlas_value = atlasImage[slicing]
             atlas_mapping[objIdx] = atlas_value
