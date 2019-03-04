@@ -594,7 +594,7 @@ class OpRegionFeatures(Operator):
         num_channels_in_atlas = atlasImage.shape[axes['c']] if 'c' in axes else 1
         atlas_mapping = numpy.zeros(num_center_points * num_channels_in_atlas)
         atlas_mapping = atlas_mapping.reshape(num_center_points, num_channels_in_atlas)
-        for objIdx, center_coords in enumerate(region_centers):
+        for obj_idx, center_coords in enumerate(region_centers):
             rounded_coords = center_coords.round().astype(numpy.uint64)
             slicing = [0] * len(axes)
             slicing[axes['c']] = slice(None)
@@ -605,7 +605,7 @@ class OpRegionFeatures(Operator):
                 slicing[axes['z']] = rounded_coords[2]
 
             atlas_value = atlasImage[slicing]
-            atlas_mapping[objIdx] = atlas_value
+            atlas_mapping[obj_idx] = atlas_value
         return atlas_mapping
 
     def _extract(self, image, labels, atlas=None):
