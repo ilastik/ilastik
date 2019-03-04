@@ -60,27 +60,26 @@ class TestOpReorderAxes(unittest.TestCase):
         self.array = None
         self.axis = list('tzyxc')
         self.tests = 20
-        graph = Graph()
-        self.operator = OpReorderAxes(graph=graph)
+        self.graph = Graph()
+        self.operator = OpReorderAxes(graph=self.graph)
 
-    def prepareVolnOp(self, possible_axes='tzyxc', num=5):
-        tags = random.sample(possible_axes,random.randint(2,num))
-        tagStr = ''
-        for s in tags:
-            tagStr += s
+    def prepareVolnOp(self, possible_axes='tzyxc', num=5, AxisOrder=None, config_via_init=False):
+        tagStr = ''.join(random.sample(possible_axes,random.randint(2,num)))
         axisTags = vigra.defaultAxistags(tagStr)
 
-        self.shape = []
-        for tag in axisTags:
-            self.shape.append(random.randint(20,30))
+        self.shape = [random.randint(20,30) for tag in axisTags]
 
-        self.array = (numpy.random.rand(*tuple(self.shape))*255)
+        self.array = (numpy.random.rand(*self.shape)*255)
         self.array =  (float(250)/255*self.array + 5).astype(int)
         self.inArray = vigra.VigraArray(self.array,axistags = axisTags)
 
-        opProvider = OpArrayProvider( graph=self.operator.graph )
+        opProvider = OpArrayProvider( graph=self.graph )
         opProvider.Input.setValue( self.inArray )
-        self.operator.Input.connect( opProvider.Output )
+
+        if config_via_init:
+            self.operator = OpReorderAxes(graph=self.graph, Input=opProvider.Output, AxisOrder=AxisOrder)
+        else:
+            self.operator.Input.connect(opProvider.Output)
 
     def test_Full(self):
         for i in range(self.tests):
@@ -156,12 +155,14 @@ class TestOpReorderAxes(unittest.TestCase):
         
     def _impl_roi_custom_order(self, axisorder):
         for i in range(self.tests):
-            self.prepareVolnOp(axisorder, len(axisorder)-1)
-            
+            use_constructor = bool(i%2)
             # Specify a strange order for the output axis tags
-            self.operator.AxisOrder.setValue(axisorder)
+            self.prepareVolnOp(axisorder, len(axisorder)-1, AxisOrder=axisorder, config_via_init=use_constructor)
+            if not use_constructor:
+                self.operator.AxisOrder.setValue(axisorder)
+
             shape = self.operator.Output.meta.shape
-            
+
             roi = [None,None]
             roi[1]=[numpy.random.randint(2,s) if s != 1 else 1 for s in shape]
             roi[0]=[numpy.random.randint(0,roi[1][i]) if s != 1 else 0 for i,s in enumerate(shape)]
@@ -245,12 +246,9 @@ class TestOpReorderAxes(unittest.TestCase):
         """
         data = numpy.zeros( (100,100,100), dtype=numpy.uint8 )
         data = vigra.taggedView( data, vigra.defaultAxistags('xyz') )
-        
-        op = OpReorderAxes( graph=Graph() )
-        op.Input.setValue( data )
-        
+
         # Attempt to drop some axes that can't be dropped.
-        op.AxisOrder.setValue( 'txc' )
+        op = OpReorderAxes(graph=Graph(), Input=data, AxisOrder='txc')
 
         # Make sure this results in an error.
         req = op.Output[:]

@@ -36,15 +36,13 @@ logger = logging.getLogger(__name__)
 
 class OpReorderAxes(Operator):
     Input = InputSlot()
-    AxisOrder = InputSlot(value='tzyxc') # string: The desired output axis order
+    AxisOrder = InputSlot() # string: The desired output axis order
     Output = OutputSlot()
 
-    def __init__(self, graph=None, parent=None, Input=None, AxisOrder=None):
+    def __init__(self, graph=None, parent=None, Input=None, AxisOrder='tzyxc'):
         super().__init__(graph=graph, parent=parent)
-        if Input is not None:
-            self.Input.connect(Input)
-        if AxisOrder is not None:
-            self.AxisOrder.setValue(AxisOrder)
+        self.Input.setOrConnectIfAvailable(Input)
+        self.AxisOrder.setOrConnectIfAvailable(AxisOrder)
 
     def setupOutputs(self):
         if 'c' not in self.AxisOrder.value:
