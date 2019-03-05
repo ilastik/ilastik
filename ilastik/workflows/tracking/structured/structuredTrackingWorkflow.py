@@ -144,7 +144,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opDataExportTracking.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
         self.dataExportTrackingApplet.set_exporting_operator(opStructuredTracking)
         self.dataExportTrackingApplet.prepare_lane_for_export = self.prepare_lane_for_export
-        self.dataExportTrackingApplet.post_process_lane_export = self.post_process_lane_export
 
         # configure export settings
         settings = {'file path': self.default_tracking_export_filename, 'compression': {}, 'file type': 'h5'}
