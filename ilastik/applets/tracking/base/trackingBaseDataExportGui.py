@@ -162,6 +162,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
             self._includePluginOnlyOption()
 
         super()._initAppletDrawerUic()
+        self.topLevelOperator.SelectedExportSource.setValue(self.drawer.inputSelectionCombo.currentText())
 
         def _handleDirty(slot, roi):
             sourceName = slot.value
