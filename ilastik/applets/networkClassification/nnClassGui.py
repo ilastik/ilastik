@@ -147,6 +147,78 @@ class ParameterDlg(QDialog):
         self.close()
 
 
+class ValidationDlg(QDialog):
+    """
+    Settings for choosing the validation set 
+    """
+    def __init__(self, parent):
+        self.valid_params = None
+
+        super(QDialog, self).__init__(parent=parent)
+
+        self.validation_size = QComboBox(self)
+        self.validation_size.addItem('10%')
+        self.validation_size.addItem('20%')
+        self.validation_size.addItem('30%')
+        self.validation_size.addItem('40%')
+
+        self.orientation = QComboBox(self)
+        self.orientation.addItem('Top - Left')
+        self.orientation.addItem('Top - Right')
+        self.orientation.addItem('Top - Mid')
+        self.orientation.addItem('Mid - Left')
+        self.orientation.addItem('Mid - Right')
+        self.orientation.addItem('Mid - Mid')
+        self.orientation.addItem('Bottom - Left')
+        self.orientation.addItem('Bottom - Right')
+        self.orientation.addItem('Bottom - Mid')
+
+        grid = QGridLayout()
+        grid.setSpacing(10)
+
+        grid.addWidget(QLabel('Validation Set Size'), 1, 0)
+        grid.addWidget(self.validation_size, 1, 1)
+
+        grid.addWidget(QLabel('Orientation'), 2, 0)
+        grid.addWidget(self.orientation, 2, 1)
+
+        okButton = QPushButton("OK")
+        okButton.clicked.connect(self.readParameters)
+        cancelButton = QPushButton("Cancel")
+        cancelButton.clicked.connect(self.close)
+
+        hbox = QHBoxLayout()
+        hbox.addStretch(1)
+        hbox.addWidget(okButton)
+        hbox.addWidget(cancelButton)
+
+        vbox = QVBoxLayout()
+        vbox.addLayout(grid)
+        vbox.addLayout(hbox)
+
+        self.setLayout(vbox)
+
+        self.center()
+
+        self.setWindowTitle("Validation Set Settings")
+        self.show()
+
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+
+        self.move(qr.topLeft())
+
+    def readParameters(self):
+        percentage = self.validation_size.currentText()[:-1]
+        orientation = self.orientation.currentText()
+        self.valid_params = dict(percentage=percentage,
+                                 orientation=orientation)
+
+        self.close()
+
+
 class NNClassGui(LabelingGui):
     """
     LayerViewerGui class for Neural Network Classification
@@ -199,6 +271,15 @@ class NNClassGui(LabelingGui):
             wizard.exec_()
 
         advanced_menu.addAction("Create TikTorch configuration").triggered.connect(object_wizard)
+
+        def validationMenu():
+            """
+            set up the validation Menu
+            """
+            dlg = ValidationDlg(parent=self)
+            dlg.exec_()
+
+        advanced_menu.addAction("Validation Set").triggered.connect(validationMenu)
 
         menus += [advanced_menu]
 
@@ -340,6 +421,8 @@ class NNClassGui(LabelingGui):
         layers = super(NNClassGui, self).setupLayers()
 
         labels = self.labelListData
+
+        # validationlayer = AlphaModulatedLayer()
 
         for channel, predictionSlot in enumerate(self.topLevelOperatorView.PredictionProbabilityChannels):
             logger.info(f"prediction_slot: {predictionSlot}")
