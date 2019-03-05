@@ -30,7 +30,6 @@ from ilastik.applets.serverConfiguration import ServerConfigApplet
 from ilastik.applets.networkClassification import NNClassApplet, NNClassificationDataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
-from lazyflow.classifiers import TikTorchLazyflowClassifier
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from lazyflow.graph import Graph
@@ -235,6 +234,7 @@ class NNClassificationWorkflow(Workflow):
         """
         # Headless batch mode.
         if self._headless and self._batch_input_args and self._batch_export_args:
+            raise NotImplementedError('headless networkclassification not implemented yet!')
             self.dataExportApplet.configure_operator_with_parsed_args(self._batch_export_args)
 
             batch_size = self.parsed_args.batch_size
@@ -290,6 +290,4 @@ class NNClassificationWorkflow(Workflow):
     def cleanUp(self):
         tiktorchFactory = self.nnClassificationApplet.topLevelOperator.ClassifierFactory
         if tiktorchFactory.ready():
-            tiktorchFactory = tiktorchFactory.value
-            if tiktorchFactory is not None:
-                tiktorchFactory._tikTorchClient.shutdown()
+            tiktorchFactory.value.launcher.stop()
