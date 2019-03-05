@@ -22,17 +22,23 @@ from __future__ import absolute_import
 import os
 import logging
 
-from typing import Callable
+from typing import Callable, Optional
 
 from ilastik.applets.base.appletSerializer import SerialSlot, SerialDictSlot
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
 from ilastik.applets.tracking.base.opTrackingBaseDataExport import OpTrackingBaseDataExport
-from ilastik.plugins import pluginManager
+from ilastik.plugins import pluginManager, TrackingExportFormatPlugin
 from ilastik.utility import OpMultiLaneWrapper
+from lazyflow.slot import InputSlot
 from lazyflow.utility import format_known_keys, PathComponents, getPathVariants, make_absolute
 
 logger = logging.getLogger(__name__)
+
+PluginExportCallable = Callable[
+    [int, str, TrackingExportFormatPlugin, bool, InputSlot],
+    None
+]
 
 
 class TrackingBaseDataExportApplet( DataExportApplet ):
@@ -40,7 +46,14 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
     This a specialization of the generic data export applet that
     provides a special viewer for tracking output.
     """
-    def __init__(self, workflow, title, is_batch=False, default_export_filename='', doPluginExport=None):
+    def __init__(
+        self,
+        workflow,
+        title,
+        is_batch: bool = False,
+        default_export_filename: str = '',
+        doPluginExport: Optional[PluginExportCallable] = None
+    ):
         self.export_op = None
         self._default_export_filename = default_export_filename
 
@@ -203,12 +216,8 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
         # configure super operator
         DataExportApplet._configure_operator_with_parsed_args(parsed_args, opTrackingDataExport)
 
-    @property
-    def op(self):
-        return self.__topLevelOperator
-
     def _export_with_plugin(self, lane_index: int, checkOverwriteFiles: bool, pluginName: str) -> bool:
-        argsSlot = self.op.AdditionalPluginArguments
+        argsSlot = self.topLevelOperator.AdditionalPluginArguments
         pluginInfo = pluginManager.getPluginByName(pluginName, category="TrackingExportFormats")
 
         if pluginInfo is None:
@@ -218,7 +227,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
         plugin = pluginInfo.plugin_object
         logger.info("Exporting tracking result using %s", pluginName)
 
-        name_format = self.op.getLane(lane_index).OutputFilenameFormat.value
+        name_format = self.topLevelOperator.getLane(lane_index).OutputFilenameFormat.value
         partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
 
         if plugin.exportsToFile:
@@ -263,8 +272,8 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
     def getPartiallyFormattedName(self, lane_index: int, path_format_string: str) -> str:
         ''' Takes the format string for the output file, fills in the most important placeholders, and returns it '''
 
-        raw_dataset_info = self.op.RawDatasetInfo[0].value
-        project_path = self.op.WorkingDirectory.value
+        raw_dataset_info = self.topLevelOperator.RawDatasetInfo[lane_index].value
+        project_path = self.topLevelOperator.WorkingDirectory.value
         dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
         abs_dataset_dir = make_absolute(dataset_dir, cwd=project_path)
 
@@ -275,7 +284,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
         known_keys = {
             'dataset_dir': abs_dataset_dir,
             'nickname': nickname,
-            'result_type': self.op.SelectedPlugin._value,
+            'result_type': self.topLevelOperator.SelectedPlugin._value,
         }
 
         return format_known_keys(path_format_string, known_keys)
