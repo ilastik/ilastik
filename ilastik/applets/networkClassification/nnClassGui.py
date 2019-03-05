@@ -376,8 +376,7 @@ class NNClassGui(LabelingGui):
 
     def loadModel(self, factory_slot):
         if factory_slot.ready():
-            factory = factory_slot.value
-            self.set_NN_classifier_name(factory._tikTorchClient.get('name', default='previous model'))
+            self.set_NN_classifier_name(factory_slot.value.name)
 
     def updatePredictions(self):
         self.topLevelOperatorView.FreezePredictions.setValue(False)
@@ -611,7 +610,7 @@ class NNClassGui(LabelingGui):
             if self.topLevelOperatorView.ClassifierFactory.ready():
                 tiktorchFactory = self.topLevelOperatorView.ClassifierFactory.value
                 if tiktorchFactory is not None:
-                    tiktorchFactory._tikTorchClient.shutdown()
+                    tiktorchFactory.shutdown()
 
             # user did not cancel selection
             self.labelingDrawerUi.addModel.setEnabled(False)
