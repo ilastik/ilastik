@@ -36,7 +36,8 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, Opera
 from lazyflow.roi import sliceToRoi, roiToSlice, getIntersection, roiFromShape, nonzero_bounding_box, enlargeRoiForHalo
 from lazyflow.utility import Timer
 from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC, \
-                                 LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
+                                 LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC, \
+                                 LazyflowOnlineClassifier
 
 from .opFeatureMatrixCache import OpFeatureMatrixCache
 from .opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
@@ -84,6 +85,8 @@ class OpTrainClassifierBlocked(Operator):
         if issubclass( type(classifier_factory), LazyflowVectorwiseClassifierFactoryABC ):
             new_mode = 'vectorwise'
         elif issubclass( type(classifier_factory), LazyflowPixelwiseClassifierFactoryABC ):
+            new_mode = 'pixelwise'
+        elif isinstance(classifier_factory, LazyflowOnlineClassifier):
             new_mode = 'pixelwise'
         else:
             raise Exception("Unknown classifier factory type: {}".format( type(classifier_factory) ) )

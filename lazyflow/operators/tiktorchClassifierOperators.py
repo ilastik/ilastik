@@ -35,7 +35,8 @@ import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
 from lazyflow.roi import sliceToRoi, roiToSlice, getIntersection, roiFromShape, nonzero_bounding_box, enlargeRoiForHalo
 from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC, \
-                                 LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
+                                 LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC, \
+                                 LazyflowOnlineClassifier
 
 from .classifierOperators import OpTrainClassifierBlocked, OpTrainPixelwiseClassifierBlocked, OpClassifierPredict, \
                                  OpPixelwiseClassifierPredict, OpVectorwiseClassifierPredict
@@ -65,7 +66,7 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
 
     def execute(self, slot, subindex, roi, result):
         classifier_factory = self.ClassifierFactory.value
-        assert issubclass(type(classifier_factory), LazyflowPixelwiseClassifierFactoryABC), \
+        assert isinstance(classifier_factory, LazyflowOnlineClassifier), \
             "Factory is of type {}, which does not satisfy the LazyflowPixelwiseClassifierFactoryABC interface."\
             "".format( type(classifier_factory) )
         
@@ -145,6 +146,8 @@ class OpTikTorchClassifierPredict(OpClassifierPredict):
         if issubclass( classifier_factory.__class__, LazyflowVectorwiseClassifierFactoryABC ):
             new_mode = 'vectorwise'
         elif issubclass( classifier_factory.__class__, LazyflowPixelwiseClassifierFactoryABC ):
+            new_mode = 'pixelwise'
+        elif isinstance(classifier_factory, LazyflowOnlineClassifier):
             new_mode = 'pixelwise'
         else:
             raise Exception("Unknown classifier factory type: {}".format( type(classifier_factory) ) )

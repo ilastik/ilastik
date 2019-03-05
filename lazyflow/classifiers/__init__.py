@@ -1,11 +1,11 @@
 from __future__ import absolute_import
-from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC, LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
+from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC, LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC, LazyflowOnlineClassifier
 from .vigraRfLazyflowClassifier import VigraRfLazyflowClassifier, VigraRfLazyflowClassifierFactory
 from .parallelVigraRfLazyflowClassifier import ParallelVigraRfLazyflowClassifier, ParallelVigraRfLazyflowClassifierFactory
 from .sklearnLazyflowClassifier import SklearnLazyflowClassifier, SklearnLazyflowClassifierFactory
 
 try:
-    from .tiktorchLazyflowClassifier import TikTorchLazyflowClassifier, TikTorchLazyflowClassifierFactory
+    from .tiktorchLazyflowClassifier import TikTorchLazyflowClassifierFactory
     has_tiktorch = True
 except ImportError as err:
     has_tiktorch = False
@@ -17,7 +17,7 @@ except ImportError as err:
         def __init__(self, *args, **kwargs):
             raise import_err
 
-    TikTorchLazyflowClassifier, TikTorchLazyflowClassifierFactory = Raise, Raise
+    TikTorchLazyflowClassifierFactory = Raise
     warnings.warn("Could not import tiktorch classifier")
 
 # Testing
