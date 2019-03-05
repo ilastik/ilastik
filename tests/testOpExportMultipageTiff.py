@@ -1,4 +1,3 @@
-from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,96 +17,74 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
-import os
-import sys
-import shutil
+
+import contextlib
+import pathlib
 import tempfile
+from typing import Any, Callable
 
 import numpy
 import vigra
 
-import lazyflow.graph
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators import OpBlockedArrayCache
-from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.graph import Graph
+from lazyflow.operator import Operator
 from lazyflow.operators.ioOperators import OpExportMultipageTiff
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
+from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-import logging
-logger = logging.getLogger('tests.testOpMultipageTiff')
 
-class TestOpMultipageTiff(object):
+class _Pipeline:
+    def __init__(self, **op_init_kwargs):
+        self._op_init_kwargs = op_init_kwargs
+        self._ops = []
 
-    def setUp(self):
-        self.graph = lazyflow.graph.Graph()
-        self._tmpdir = tempfile.mkdtemp()
+    def append(self, op_callable: Callable[..., Operator], **value_slots: Any) -> None:
+        op = op_callable(**self._op_init_kwargs)
+        for name, value in value_slots.items():
+            if self and name == "Input":
+                raise ValueError(
+                    'Setting value of the input slot "Input" is allowed only for the first operator in the pipeline'
+                )
+            op.inputs[name].setValue(value)
+        if self:
+            op.Input.connect(self[-1].Output)
+        self._ops.append(op)
 
-        # Generate some test data
-        self.dataShape = (1, 10, 64, 128, 2)
-        self._axisorder = 'tzyxc'
-        self.testData = vigra.VigraArray( self.dataShape,
-                                         axistags=vigra.defaultAxistags(self._axisorder),
-                                         order='C' ).astype(numpy.uint8)
-        self.testData[...] = numpy.indices(self.dataShape).sum(0)
+    def __len__(self) -> int:
+        return self._ops.__len__()
 
-    def tearDown(self):
-        # Clean up
-        shutil.rmtree(self._tmpdir)
-        
-    def test_basic(self):
-        opSource = OpArrayPiper(graph=self.graph)
-        opSource.Input.setValue( self.testData )
-        
-        opData = OpBlockedArrayCache( graph=self.graph )
-        opData.BlockShape.setValue( self.testData.shape )
-        opData.Input.connect( opSource.Output )
-        
-        filepath = os.path.join( self._tmpdir, 'multipage.tiff' )
-        logger.debug( "writing to: {}".format(filepath) )
-        
-        opExport = OpExportMultipageTiff(graph=self.graph)
-        opExport.Filepath.setValue( filepath )
-        opExport.Input.connect( opData.Output )
+    def __getitem__(self, item: int) -> Operator:
+        return self._ops.__getitem__(item)
 
-        # Run the export
-        opExport.run_export()
+    def close(self) -> None:
+        for op in reversed(self._ops):
+            op.cleanUp()
 
-        opReader = OpTiffReader( graph=self.graph )
-        try:
-            opReader.Filepath.setValue( filepath )
-    
-            # Re-order before comparing
-            opReorderAxes = OpReorderAxes( graph=self.graph )
-            try:
-                opReorderAxes.AxisOrder.setValue( self._axisorder )
-                opReorderAxes.Input.connect( opReader.Output )
-                
-                readData = opReorderAxes.Output[:].wait()
-                logger.debug("Expected shape={}".format( self.testData.shape ) )
-                logger.debug("Read shape={}".format( readData.shape ) )
-                
-                assert opReorderAxes.Output.meta.shape == self.testData.shape, \
-                    "Exported files were of the wrong shape or number."
-                assert (opReorderAxes.Output[:].wait() == self.testData.view( numpy.ndarray )).all(), \
-                    "Exported data was not correct"
-            finally:
-                opReorderAxes.cleanUp()
-        finally:
-            opReader.cleanUp()
 
-if __name__ == "__main__":
-    # Run this file independently to see debug output.
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(logging.StreamHandler(sys.stdout))
+def test_OpExportMultipageTiff():
+    shape = 3, 10, 64, 128, 2
+    axes = "tzyxc"
+    dtype = numpy.uint32
+    data = numpy.arange(numpy.prod(shape), dtype=dtype).reshape(shape)
+    expected = vigra.VigraArray(data, axistags=vigra.defaultAxistags(axes), order="C")
 
-    ioOpLogger = logging.getLogger('lazyflow.operators.ioOperators')
-    ioOpLogger.addHandler( logging.StreamHandler(sys.stdout) )
-    ioOpLogger.setLevel(logging.DEBUG)
+    with tempfile.TemporaryDirectory() as tempdir:
+        filepath = str(pathlib.Path(tempdir, "multipage.tiff"))
+        graph = Graph()
 
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)
+        write_tiff = _Pipeline(graph=graph)
+        write_tiff.append(OpArrayPiper, Input=expected)
+        write_tiff.append(OpExportMultipageTiff, Filepath=filepath)
+        with contextlib.closing(write_tiff):
+            write_tiff[-1].run_export()
+
+        read_tiff = _Pipeline(graph=graph)
+        read_tiff.append(OpTiffReader, Filepath=filepath)
+        read_tiff.append(OpReorderAxes, AxisOrder=axes)
+        with contextlib.closing(read_tiff):
+            actual = read_tiff[-1].Output[:].wait().astype(dtype)
+
+    numpy.testing.assert_array_equal(expected, actual)
