@@ -133,13 +133,17 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opStructuredTracking._solver = self._solver
 
         self.default_tracking_export_filename = '{dataset_dir}/{nickname}-tracking_exported_data.csv'
-        self.dataExportTrackingApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export",default_export_filename=self.default_tracking_export_filename)
+        self.dataExportTrackingApplet = TrackingBaseDataExportApplet(
+            self,
+            "Tracking Result Export",
+            default_export_filename=self.default_tracking_export_filename,
+            pluginExportFunc=self._pluginExportFunc
+        )
         opDataExportTracking = self.dataExportTrackingApplet.topLevelOperator
         opDataExportTracking.SelectionNames.setValue( ['Tracking-Result', 'Merger-Result', 'Object-Identities'] )
         opDataExportTracking.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
         self.dataExportTrackingApplet.set_exporting_operator(opStructuredTracking)
         self.dataExportTrackingApplet.prepare_lane_for_export = self.prepare_lane_for_export
-        self.dataExportTrackingApplet.post_process_lane_export = self.post_process_lane_export
 
         # configure export settings
         settings = {'file path': self.default_tracking_export_filename, 'compression': {}, 'file type': 'h5'}
@@ -192,6 +196,19 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
         if unused_args:
             logger.warning("Unused command-line args: {}".format( unused_args ))
+
+    def _pluginExportFunc(self, lane_index, filename, exportPlugin, checkOverwriteFiles, plugArgsSlot) -> int:
+        return (
+            self.trackingApplet
+            .topLevelOperator
+            .getLane(lane_index)
+            .exportPlugin(
+                filename,
+                exportPlugin,
+                checkOverwriteFiles,
+                additionalPluginArgumentsSlot
+            )
+        )
 
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -436,67 +453,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
             assert linkingFlag, "Transition results are NOT correct. They differ from your annotated transitions."
             logger.info("Transition results are correct.")
         self.result = runLearningAndTracking(withMergerResolution=parameters['withMergerResolution'])
-
-    def post_process_lane_export(self, lane_index, checkOverwriteFiles=False):
-        # Plugin export if selected
-        logger.info("Export source is: " + self.dataExportTrackingApplet.topLevelOperator.SelectedExportSource.value)
-
-        print("in post_process_lane_export")
-        if self.dataExportTrackingApplet.topLevelOperator.SelectedExportSource.value == OpTrackingBaseDataExport.PluginOnlyName:
-            logger.info("Export source plugin selected!")
-            selectedPlugin = self.dataExportTrackingApplet.topLevelOperator.SelectedPlugin.value
-            additionalPluginArgumentsSlot = self.dataExportTrackingApplet.topLevelOperator.AdditionalPluginArguments
-
-            exportPluginInfo = pluginManager.getPluginByName(selectedPlugin, category="TrackingExportFormats")
-            if exportPluginInfo is None:
-                logger.error("Could not find selected plugin %s" % exportPluginInfo)
-            else:
-                exportPlugin = exportPluginInfo.plugin_object
-                logger.info("Exporting tracking result using %s" % selectedPlugin)
-                name_format = self.dataExportTrackingApplet.topLevelOperator.getLane(lane_index).OutputFilenameFormat.value
-                partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
-
-                if exportPlugin.exportsToFile:
-                    filename = partially_formatted_name
-                    if os.path.basename(filename) == '':
-                        filename = os.path.join(filename, 'pluginExport.txt')
-                else:
-                    filename = partially_formatted_name
-
-                if filename is None or len(str(filename)) == 0:
-                    logger.error("Cannot export from plugin with empty output filename")
-                    return True
-
-                self.dataExportTrackingApplet.progressSignal(-1)
-                exportStatus = self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(
-                    filename, exportPlugin, checkOverwriteFiles, additionalPluginArgumentsSlot)
-                self.dataExportTrackingApplet.progressSignal(100)
-
-                if not exportStatus:
-                    return False
-                logger.info("Export done")
-
-            return True
-
-        return True
-
-    def getPartiallyFormattedName(self, lane_index, path_format_string):
-        ''' Takes the format string for the output file, fills in the most important placeholders, and returns it '''
-        raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
-        project_path = self.shell.projectManager.currentProjectPath
-        project_dir = os.path.dirname(project_path)
-        dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
-        abs_dataset_dir = make_absolute(dataset_dir, cwd=project_dir)
-        known_keys = {}
-        known_keys['dataset_dir'] = abs_dataset_dir
-        nickname = raw_dataset_info.nickname.replace('*', '')
-        if os.path.pathsep in nickname:
-            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
-        known_keys['nickname'] = nickname
-        known_keys['result_type'] = self.dataExportTrackingApplet.topLevelOperator.SelectedPlugin._value
-        # use partial formatting to fill in non-coordinate name fields
-        partially_formatted_name = format_known_keys(path_format_string, known_keys)
-        return partially_formatted_name
 
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
