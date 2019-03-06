@@ -158,7 +158,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
     def _initAppletDrawerUic(self):
         # first check whether "Plugins" should be made available
         availableExportPlugins = self._getAvailablePlugins()
-        if self._enable_plugins and len(availableExportPlugins) > 0:
+        if self._enable_plugins and availableExportPlugins:
             self._includePluginOnlyOption()
 
         super()._initAppletDrawerUic()

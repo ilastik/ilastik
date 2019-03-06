@@ -137,7 +137,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
             self,
             "Tracking Result Export",
             default_export_filename=self.default_tracking_export_filename,
-            doPluginExport=self._doPluginExport
+            pluginExportFunc=self._pluginExportFunc
         )
         opDataExportTracking = self.dataExportTrackingApplet.topLevelOperator
         opDataExportTracking.SelectionNames.setValue( ['Tracking-Result', 'Merger-Result', 'Object-Identities'] )
@@ -197,7 +197,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         if unused_args:
             logger.warning("Unused command-line args: {}".format( unused_args ))
 
-    def _doPluginExport(self, lane_index, filename, exportPlugin, checkOverwriteFiles, plugArgsSlot) -> int:
+    def _pluginExportFunc(self, lane_index, filename, exportPlugin, checkOverwriteFiles, plugArgsSlot) -> int:
         return (
             self.trackingApplet
             .topLevelOperator
