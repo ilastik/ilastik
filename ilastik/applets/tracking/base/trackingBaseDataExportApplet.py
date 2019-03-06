@@ -228,14 +228,10 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
         logger.info("Exporting tracking result using %s", pluginName)
 
         name_format = self.topLevelOperator.getLane(lane_index).OutputFilenameFormat.value
-        partially_formatted_name = self.getPartiallyFormattedName(lane_index, name_format)
+        filename = self.getPartiallyFormattedName(lane_index, name_format)
 
-        if plugin.exportsToFile:
-            filename = partially_formatted_name
-            if os.path.basename(filename) == '':
-                filename = os.path.join(filename, 'pluginExport.txt')
-        else:
-            filename = partially_formatted_name
+        if plugin.exportsToFile and not os.path.basename(filename):
+            filename = os.path.join(filename, 'pluginExport.txt')
 
         if not filename:
             logger.error("Cannot export from plugin with empty output filename")
