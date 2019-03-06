@@ -111,7 +111,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             self,
             "Tracking Result Export",
             default_export_filename=self.default_export_filename,
-            doPluginExport=self._doPluginExport,
+            pluginExportFunc=self._pluginExportFunc,
         )
 
         opDataExport = self.dataExportApplet.topLevelOperator
@@ -359,7 +359,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             withBatchProcessing = True
         )
 
-    def _doPluginExport(self, lane_index, filename, exportPlugin, checkOverwriteFiles, plugArgsSlot) -> int:
+    def _pluginExportFunc(self, lane_index, filename, exportPlugin, checkOverwriteFiles, plugArgsSlot) -> int:
         return (
             self.trackingApplet
             .topLevelOperator

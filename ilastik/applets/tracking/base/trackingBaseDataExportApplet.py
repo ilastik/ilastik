@@ -52,7 +52,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
         title,
         is_batch: bool = False,
         default_export_filename: str = '',
-        doPluginExport: Optional[PluginExportCallable] = None
+        pluginExportFunc: Optional[PluginExportCallable] = None
     ):
         self.export_op = None
         self._default_export_filename = default_export_filename
@@ -66,7 +66,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
             SerialDictSlot(self.topLevelOperator.AdditionalPluginArguments)
         ]
         self._serializers = [DataExportSerializer(self.topLevelOperator, title, extra_serial_slots)]
-        self._doPluginExport = doPluginExport
+        self._pluginExportFunc = pluginExportFunc
 
         super(TrackingBaseDataExportApplet, self).__init__(workflow, title, isBatch=is_batch)
 
@@ -79,7 +79,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
 
     @property
     def supports_plugins(self):
-        return self._doPluginExport is not None
+        return self._pluginExportFunc is not None
 
     def getMultiLaneGui(self):
         if self._gui is None:
@@ -243,9 +243,10 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
 
         self.progressSignal(-1)
 
-        status = self._doPluginExport(lane_index, filename, plugin, checkOverwriteFiles, argsSlot)
-
-        self.progressSignal(100)
+        try:
+            status = self._pluginExportFunc(lane_index, filename, plugin, checkOverwriteFiles, argsSlot)
+        finally:
+            self.progressSignal(100)
 
         if not status:
             return False

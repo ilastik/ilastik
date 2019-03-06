@@ -155,9 +155,6 @@ class ManualTrackingWorkflow( Workflow ):
 
         return input_ready
 
-    def _doPluginExport(self, lane_index: int, *args, **kwargs):
-        return self.trackingApplet.topLevelOperator.getLane(lane_index).exportPlugin(*args, **kwargs)
-
     def handleAppletStateUpdateRequested(self):
         """
         Overridden from Workflow base class
