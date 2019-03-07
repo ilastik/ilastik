@@ -2,11 +2,14 @@ from builtins import object
 import abc
 from future.utils import with_metaclass
 
-def _has_attribute( cls, attr ):
+
+def _has_attribute(cls, attr):
     return any(attr in B.__dict__ for B in cls.__mro__)
 
-def _has_attributes( cls, attrs ):
+
+def _has_attributes(cls, attrs):
     return all(_has_attribute(cls, a) for a in attrs)
+
 
 class LazyflowVectorwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object)):
     """
@@ -52,10 +55,11 @@ class LazyflowVectorwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object)
         """
         if cls is LazyflowVectorwiseClassifierFactoryABC:
             is_subclass = LazyflowVectorwiseClassifierFactoryABC in C.__mro__
-            is_subclass &= _has_attributes(C, ['create_and_train', 'description'])
-            is_subclass &= 'VERSION' in C.__dict__
+            is_subclass &= _has_attributes(C, ["create_and_train", "description"])
+            is_subclass &= "VERSION" in C.__dict__
             return is_subclass
         return NotImplemented
+
 
 class LazyflowVectorwiseClassifierABC(with_metaclass(abc.ABCMeta, object)):
     """
@@ -100,7 +104,7 @@ class LazyflowVectorwiseClassifierABC(with_metaclass(abc.ABCMeta, object)):
     @classmethod
     def __subclasshook__(cls, C):
         if cls is LazyflowVectorwiseClassifierABC:
-            return _has_attributes(C, ['predict_probabilities', 'known_classes', 'serialize_hdf5', 'deserialize_hdf5'])
+            return _has_attributes(C, ["predict_probabilities", "known_classes", "serialize_hdf5", "deserialize_hdf5"])
         return NotImplemented
 
     @abc.abstractmethod
@@ -110,13 +114,14 @@ class LazyflowVectorwiseClassifierABC(with_metaclass(abc.ABCMeta, object)):
         """
         raise NotImplementedError
 
-    @classmethod    
+    @classmethod
     def deserialize_hdf5(cls, h5py_group):
         """
         Class method.  Deserialize the classifier stored in the given ``h5py.Group`` object, and return it.
         """
         raise NotImplementedError
-    
+
+
 class LazyflowPixelwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object)):
     """
     Defines an interface for pixel-wise classifier 'factory' objects, 
@@ -134,8 +139,9 @@ class LazyflowPixelwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object))
         return obj
 
     @abc.abstractmethod
-    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None,
-                                   image_ids=None):
+    def create_and_train_pixelwise(
+        self, feature_images, label_images, axistags=None, feature_names=None, image_ids=None
+    ):
         """
         Create a new classifier and train it with the given list of feature images and the given list of label images.
         Generally, it is assumed that the channel dimension is the LAST axis for each image.  
@@ -145,7 +151,7 @@ class LazyflowPixelwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object))
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_halo_shape(self, data_axes='zyxc'):
+    def get_halo_shape(self, data_axes="zyxc"):
         """
         Return the halo dimensions required for optimal classifier performance.
         For example, for a classifier that performs an internal 3D convolution with sigma=1.5 and window_size = 2.0,
@@ -183,11 +189,11 @@ class LazyflowPixelwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object))
         """
         if cls is LazyflowPixelwiseClassifierFactoryABC:
             is_subclass = LazyflowPixelwiseClassifierFactoryABC in C.__mro__
-            is_subclass &= _has_attributes(C, ['create_and_train_pixelwise', 'description', 'get_halo_shape'])
-            is_subclass &= 'VERSION' in C.__dict__
+            is_subclass &= _has_attributes(C, ["create_and_train_pixelwise", "description", "get_halo_shape"])
+            is_subclass &= "VERSION" in C.__dict__
             return is_subclass
         return NotImplemented
-    
+
     def __eq__(self, other):
         """
         Classifier factories must be both copyable and (in)equality comparable.
@@ -195,7 +201,8 @@ class LazyflowPixelwiseClassifierFactoryABC(with_metaclass(abc.ABCMeta, object))
         raise NotImplementedError
 
     def __ne__(self, other):
-        raise NotImplementedError    
+        raise NotImplementedError
+
 
 class LazyflowPixelwiseClassifierABC(with_metaclass(abc.ABCMeta, object)):
     """
@@ -241,7 +248,7 @@ class LazyflowPixelwiseClassifierABC(with_metaclass(abc.ABCMeta, object)):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_halo_shape(self, data_axes='zyxc'):
+    def get_halo_shape(self, data_axes="zyxc"):
         """
         Same as LazyflowPixelwiseClassifierFactoryABC.get_halo_shape().  See that function for details.
         """
@@ -250,7 +257,16 @@ class LazyflowPixelwiseClassifierABC(with_metaclass(abc.ABCMeta, object)):
     @classmethod
     def __subclasshook__(cls, C):
         if cls is LazyflowPixelwiseClassifierABC:
-            return _has_attributes(C, ['predict_probabilities_pixelwise', 'known_classes', 'get_halo_shape', 'serialize_hdf5', 'deserialize_hdf5'])
+            return _has_attributes(
+                C,
+                [
+                    "predict_probabilities_pixelwise",
+                    "known_classes",
+                    "get_halo_shape",
+                    "serialize_hdf5",
+                    "deserialize_hdf5",
+                ],
+            )
         return NotImplemented
 
     @abc.abstractmethod

@@ -308,7 +308,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
 
     @property
     def known_classes(self):
-        nr_classes = self._config.get("output_shape")[0]
+        nr_classes = self.output_shape[0]
         if nr_classes == 1:
             nr_classes = 2
         return list(range(nr_classes))
