@@ -1,13 +1,13 @@
-from __future__ import print_function
-import sys
-import os
-
-import ilastik.config
-from ilastik.config import cfg as ilastik_config
-
 import argparse
 import faulthandler
 import logging
+import os
+import sys
+
+import ilastik.config
+from ilastik.config import cfg as ilastik_config
+from ilastik.utility import imp
+
 
 logger = logging.getLogger(__name__)
 
@@ -63,13 +63,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
                   (Useful when opening multiple projects in a Python script.)
     """
     if parsed_args.headless:
-        # If any applet imports the GUI in headless mode, that's a mistake.
-        # To help developers catch such mistakes, we replace PyQt with a dummy
-        #  module, so we'll see import errors.
-        import ilastik
-        dummy_module_dir = os.path.join(
-            os.path.split(ilastik.__file__)[0], "headless_dummy_modules")
-        sys.path.insert(0, dummy_module_dir)
+        imp.ImportBlacklist('PyQt5').install()
 
     this_path = os.path.dirname(__file__)
     ilastik_dir = os.path.abspath(
