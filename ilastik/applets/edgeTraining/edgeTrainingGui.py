@@ -25,7 +25,7 @@ import numpy as np
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QPen, QIcon
-from PyQt5.QtWidgets import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, \
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, \
                             QSpacerItem, QSizePolicy, QPushButton, QMessageBox, \
                             QAction, QMenu
 
@@ -37,7 +37,7 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import SegmentationEdgesLayer, LabelableSegmentationEdgesLayer
-from volumina.utility import ShortcutManager, PreferencesManager
+from volumina.utility import ShortcutManager
 
 from lazyflow.request import Request
 
@@ -231,7 +231,7 @@ class EdgeTrainingGui(LayerViewerGui):
 
         new_labels = dict( edge_labels )
         new_labels.update( updated_edge_labels )
-        for sp_id_pair, new_label in new_labels:
+        for sp_id_pair, new_label in dict(new_labels).items():
             if new_label == 0:
                 del new_labels[sp_id_pair]
 
