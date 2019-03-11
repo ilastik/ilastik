@@ -198,16 +198,17 @@ def parallel_watershed(data, block_shape=None, halo=None, max_workers=None):
         tasks = [executor.submit(add_offset_block, block_index) for block_index in range(n_blocks)]
         [t.result() for t in tasks]
 
-    return labels, max_id
+    return labels, int(max_id)
 
 
-def agglomerate_labels(data, labels, block_shape=None, max_workers=None,
+def agglomerate_labels(data, labels, max_id, block_shape=None, max_workers=None,
                        reduce_to=0.2, size_regularizer=0.5):
     """ Agglomerate labels based on edge features.
 
     Args:
         data (ndarray[float32]): input map for edge weight accumulation
         labels (ndarray[uint32]): input labels to be agglomerated
+        max_id (int): maximal id in labels
         block_shape (list): block shape used to parallelize feature accumulation
         max_workers (int): maximal number of workers
         reduce_to (float): fraction of segments in labels after agglomeration
@@ -224,7 +225,8 @@ def agglomerate_labels(data, labels, block_shape=None, max_workers=None,
     max_workers = cpu_count() if max_workers is None else max_workers
 
     logger.info("computing region adjacency graph")
-    rag = nifty.graph.rag.gridRag(labels, numberOfThreads=max_workers)
+    rag = nifty.graph.rag.gridRag(labels, numberOfThreads=max_workers,
+                                  numberOfLabels=max_id + 1)
     n_nodes = rag.numberOfNodes
 
     logger.info("accumulate edge strength along boundaries")
@@ -260,14 +262,15 @@ def agglomerate_labels(data, labels, block_shape=None, max_workers=None,
     agglomerative_clustering.run(True, 10000)
     node_labels = agglomerative_clustering.result()
 
+    # the ids in the output segmentation need to start at 1, otherwise
+    # the graph watershed will fail
+    _, max_id, _ = vigra.analysis.relabelConsecutive(node_labels, start_label=1,
+                                                     keep_zeros=False, out=node_labels)
+
     logger.info("project node labels to segmentation")
     seg = nifty.graph.rag.projectScalarNodeDataToPixels(rag, node_labels,
                                                         numberOfThreads=max_workers)
 
-    # the ids in the output segmentation need to start at 1, otherwise
-    # the graph watershed will fail
-    _, max_id, _ = vigra.analysis.relabelConsecutive(seg, start_label=1,
-                                                     keep_zeros=False, out=seg)
     logger.info("agglomerative supervoxel creation is done")
     return seg, max_id
 
@@ -288,10 +291,10 @@ def watershed_and_agglomerate(data, block_shape=None, max_workers=None,
         int: number of labels in output
     """
 
-    labels, _ = parallel_watershed(data=data, block_shape=block_shape, max_workers=max_workers)
+    labels, max_id = parallel_watershed(data=data, block_shape=block_shape, max_workers=max_workers)
     labels, max_id = agglomerate_labels(data, labels, block_shape=block_shape,
                                         max_workers=max_workers, reduce_to=reduce_to,
-                                        size_regularizer=size_regularizer)
+                                        size_regularizer=size_regularizer, max_id=max_id)
     return labels, max_id
 
 
