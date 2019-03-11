@@ -1,5 +1,4 @@
 import threading
-import time
 import queue
 import sys
 import warnings
@@ -19,6 +18,7 @@ import ilastik.config
 from ilastik.utility.gui.threadRouter import ThreadRouter
 from ilastik.utility.itertools import pairwise
 from ilastik.shell.gui.startShellGui import launchShell
+from ilastik.workflow import getAvailableWorkflows
 
 # Every function starting with pytest_ in this module is a pytest hook
 # that modifies specific behavior of test life cycle
@@ -27,7 +27,6 @@ from ilastik.shell.gui.startShellGui import launchShell
 # Hookspec Reference: https://docs.pytest.org/en/3.10.1/_modules/_pytest/hookspec.html
 # If hookspec hash @hookspec(firstresult=True) in its definition, this means
 # that hooks will be executed until first not None result is found.
-
 
 GUI_TEST_TIMEOUT = 20  # Seconds
 
@@ -237,3 +236,28 @@ def _sorted_guitests(iterable):
         return cls.__module__, cls.__name__, obj.name
 
     return sorted(iterable, key=_keyfunc)
+
+
+@pytest.fixture
+def noguimods():
+    """Remove GUI modules from :data:`sys.modules` and re-insert them again after the test."""
+    guiprefix = "PyQt"
+    guimods = {name: mod for name, mod in sys.modules.items() if name.startswith(guiprefix)}
+    for name in guimods:
+        del sys.modules[name]
+    yield
+    sys.modules.update(guimods)
+
+
+def pytest_collection_modifyitems(items):
+    """Called after collection has been performed, may filter or re-order the items in-place."""
+    # https://stackoverflow.com/a/50607635
+    for item in items:
+        if "headless" in item.keywords:
+            item.fixturenames.append("noguimods")
+
+
+@pytest.fixture(params=list(getAvailableWorkflows()))
+def workflow_info(request):
+    """3-tuple from :func:`getAvailableWorkflows`."""
+    return request.param

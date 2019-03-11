@@ -27,10 +27,10 @@ Also this can be used as a basis for further headless-mode testing.
 """
 import os
 import sys
-import tempfile
+
+import pytest
 
 import ilastik_main
-from ilastik.workflow import getAvailableWorkflows
 from ilastik.shell.projectManager import ProjectManager
 
 import logging
@@ -45,26 +45,14 @@ def generate_project_file_name(temp_dir, workflow_name):
     return project_file_name
 
 
+@pytest.mark.headless
 class TestHeadlessWorkflowStartupProjectCreation(object):
     """Start a headless shell and create a project for each workflow"""
-    @classmethod
-    def setup_class(cls):
-        cls.workflow_list = list(getAvailableWorkflows())
 
-    def test_workflow_creation_headless(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            for wf in self.workflow_list:
-                yield self.start_workflow_create_project_headless, wf, temp_dir
-
-    def start_workflow_create_project_headless(self, workflow_class_tuple, temp_dir):
-        """Tests project file creation via the command line
-        Args:
-            workflow_class_tuple (tuple): tuple returned from getAvailableWorkflows
-              with (workflow_class, workflow_name, workflow_class.workflowDisplayName)
-        """
-        workflow_class, workflow_name, display_name = workflow_class_tuple
+    def test_workflow_creation_headless(self, workflow_info, tmp_path):
+        workflow_class, workflow_name, display_name = workflow_info
         logger.debug(f'starting {workflow_name}')
-        project_file = generate_project_file_name(temp_dir, workflow_name)
+        project_file = generate_project_file_name(str(tmp_path), workflow_name)
 
         args = [
             '--headless',
@@ -86,24 +74,14 @@ class TestHeadlessWorkflowStartupProjectCreation(object):
         # now check if the project file has been created:
         assert os.path.exists(project_file), f"Project File {project_file} creation not successful"
 
-    def test_workflow_loading_headless(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            for wf in self.workflow_list:
-                yield self.start_workflow_load_project_headless, wf, temp_dir
-
     def create_project_file(self, workflow_class, project_file_name):
         newProjectFile = ProjectManager.createBlankProjectFile(project_file_name, workflow_class, [])
         newProjectFile.close()
 
-    def start_workflow_load_project_headless(self, workflow_class_tuple, temp_dir):
-        """Tests opening project files in headless mode via the command line
-        Args:
-            workflow_class_tuple (tuple): tuple returned from getAvailableWorkflows
-              with (workflow_class, workflow_name, workflow_class.workflowDisplayName)
-        """
-        workflow_class, workflow_name, display_name = workflow_class_tuple
+    def test_workflow_loading_headless(self, workflow_info, tmp_path):
+        workflow_class, workflow_name, display_name = workflow_info
         logger.debug(f'starting {workflow_name}')
-        project_file = generate_project_file_name(temp_dir, workflow_name)
+        project_file = generate_project_file_name(str(tmp_path), workflow_name)
 
         self.create_project_file(workflow_class, project_file)
         assert os.path.exists(project_file), f"Project File {project_file} creation not successful"

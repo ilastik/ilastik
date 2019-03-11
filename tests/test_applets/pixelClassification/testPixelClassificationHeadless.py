@@ -18,13 +18,14 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from __future__ import print_function
 import os
 import sys
 import imp
 import numpy
 import h5py
 import tempfile
+
+import pytest
 
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackLoader
@@ -41,6 +42,8 @@ import logging
 logger = logging.getLogger(__name__)
 #logger.setLevel(logging.DEBUG)
 
+
+@pytest.mark.headless
 class TestPixelClassificationHeadless(object):
     
     # Project and data are kept in different directories so we can test both absolute and relative paths.

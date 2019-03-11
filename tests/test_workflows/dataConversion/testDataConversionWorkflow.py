@@ -25,6 +25,8 @@ import imp
 import numpy
 import tempfile
 
+import pytest
+
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStackLoader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -38,6 +40,7 @@ logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
 
+@pytest.mark.headless
 class TestDataConversionWorkflow(object):
     dir = tempfile.mkdtemp()
     PROJECT_FILE = os.path.join(dir, 'test_project.ilp')

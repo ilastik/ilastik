@@ -31,6 +31,8 @@ import vigra
 import warnings
 import zipfile
 
+import pytest
+
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators.ioOperators.opFormattedDataExport import \
@@ -56,6 +58,23 @@ def detect_edges(img):
     return detect(img)
 
 
+def groupwise_products(s):
+    """Build a list of groupwise cartesian products from strings (see the example).
+
+    Example:
+        >>> groupwise_products(" a  b  , 1 2  3  \n  # this is a comment  \n  \n  z, 8 9 ")
+        [('a', '1'), ('a', '2'). ('a', '3'), ('b', '1'), ('b', '2'), ('b', '3'), ('z', '8'), ('z', '9')]
+    """
+    res = []
+    for group in s.split("\n"):
+        group = group.strip()
+        if not group or group[0] == "#":
+            continue
+        res += itertools.product(*map(str.split, group.split(",")))
+    return res
+
+
+@pytest.mark.headless
 class TestAxesOrderPreservation(object):
     dir = tempfile.mkdtemp()
     # dir = os.path.expanduser('~/Desktop/tmp')  # uncommmet for easier debugging
@@ -213,20 +232,20 @@ class TestAxesOrderPreservation(object):
             writer.run_export()
             warnings.warn(f'created comparison data: {compare_path} with axis order {input_axes}')
 
-    def test_pixel_classification(self):
-        options = []
-        options.append((['2d'], ['xy', 'yx']))
-        options.append((['2d', '2d3c'], ['cxy', 'yxc', 'xyc', 'ycx']))
-        options.append((['3d', '3d1c', '3d2c'], ['xyzc', 'czyx']))
-        options.append((['5t2d1c', '5t2d2c'], ['tyxc', 'txyc', 'xytc']))
-        options.append((['5t3d2c'], ['tzyxc', 'ztxyc', 'xyztc']))
-
-        for combination in options:
-            for dims, order in itertools.product(*combination):
-                yield self._test_pixel_classification, dims, order
-
     @timeLogged(logger)
-    def _test_pixel_classification(self, dims, input_axes):
+    @pytest.mark.parametrize(
+        "dims, input_axes",
+        groupwise_products(
+            """
+            2d, xy yx
+            2d 2d3c, cxy yxc xyc ycx
+            3d 3d1c 3d2c, xyzc czyx
+            5t2d1c 5t2d2c, tyxc txyc xytc
+            5t3d2c, tzyxc ztxyc xyztc
+            """
+        ),
+    )
+    def test_pixel_classification(self, dims, input_axes):
         # NOTE: In this test, cmd-line args to test runner will also end up
         #       getting "parsed" by ilastik. That shouldn't be an issue, since
         #       the pixel classification workflow ignores unrecognized options.
@@ -295,19 +314,17 @@ class TestAxesOrderPreservation(object):
 
         self.compare_results(opReaderResult, compare_path, input_axes, max_mse=0.001)
 
-    def test_autocontext(self):
-        options = []
-        # todo: single channel, same as for autocontext
-        # options.append((['2d'], ['xy', 'yx']))
-        options.append((['2d3c'], ['cxy', 'yxc', 'xyc', 'ycx']))
-        options.append((['5t2d1c'], ['tyxc', 'txcy', 'cxyt']))
-
-        for combination in options:
-            for dims, order in itertools.product(*combination):
-                yield self._test_autocontext, dims, order
-
     @timeLogged(logger)
-    def _test_autocontext(self, dims, input_axes):
+    @pytest.mark.parametrize(
+        "dims, input_axes",
+        groupwise_products(
+            """
+            2d3c, cxy yxc xyc ycx
+            5t2d1c, tyxc txcy cxyt
+            """
+        ),
+    )
+    def test_autocontext(self, dims, input_axes):
         # NOTE: In this test, cmd-line args to test runner will also end up
         #       getting "parsed" by ilastik. That shouldn't be an issue, since
         #       the pixel classification workflow ignores unrecognized options.
@@ -370,18 +387,18 @@ class TestAxesOrderPreservation(object):
 
         self.compare_results(opReaderResult, compare_path, input_axes)
 
-    def test_object_classification(self):
-        options = []
-        options.append((['2d', '2d3c'], ['wPred', 'wSeg'], ['yxc', 'xcy', 'cyx']))
-        options.append((['5t2d1c', '5t2d2c'], ['wPred', 'wSeg'], ['tyxc', 'txyc', 'xytc']))
-        options.append((['5t3d2c'], ['wPred', 'wSeg'], ['tzyxc', 'xztyc', 'tczyx', 'cztxy']))
-
-        for combination in options:
-            for dims, variant, order in itertools.product(*combination):
-                yield self._test_object_classification, dims, variant, order
-
     @timeLogged(logger)
-    def _test_object_classification(self, dims, variant, input_axes):
+    @pytest.mark.parametrize(
+        "dims, variant, input_axes",
+        groupwise_products(
+            """
+            2d 2d3c, wPred wSeg, yxc xcy cyx
+            5t2d1c 5t2d2c, wPred wSeg, tyxc txyc xytc
+            5t3d2c, wPred wSeg, tzyxc xztyc tczyx cztxy
+            """
+        ),
+    )
+    def test_object_classification(self, dims, variant, input_axes):
         project = f'ObjectClassification{dims}_{variant}.ilp'
         try:
             self.untested_projects.remove(project)
@@ -437,19 +454,18 @@ class TestAxesOrderPreservation(object):
 
         self.compare_results(opReaderResult, compare_path, input_axes)
 
-    def test_boundarybased_segmentation_with_multicut(self):
-        options = []
-        options.append((['3d'], ['xyz', 'zcyx', 'xycz', 'yxcz']))
-        options.append((['3d1c'], ['zyxc', 'xyzc', 'cxzy']))
-        options.append((['3d2c'], ['zyxc', 'xcyz', 'czxy']))
-
-        for combination in options:
-            for dims, order in itertools.product(*combination):
-                yield self._test_boundarybased_segmentation_with_multicut, \
-                    dims, order
-
     @timeLogged(logger)
-    def _test_boundarybased_segmentation_with_multicut(self, dims, input_axes):
+    @pytest.mark.parametrize(
+        "dims, input_axes",
+        groupwise_products(
+            """
+                3d, xyz zcyx xycz yxcz
+                3d1c, zyxc xyzc cxzy
+                3d2c, zyxc xcyz czxy
+            """
+        ),
+    )
+    def test_boundarybased_segmentation_with_multicut(self, dims, input_axes):
         project = f'Boundary-basedSegmentationwMulticut{dims}.ilp'
         try:
             self.untested_projects.remove(project)
@@ -517,19 +533,16 @@ class TestAxesOrderPreservation(object):
         self.compare_results(opReaderResult, compare_path, input_axes, post_process=detect_edges,
                              max_part_uneqaul=0.02)
 
-    def test_counting(self):
-        options = []
-        # todo: add 2d[1c] counting project (missing channel leads to 'no image data' error)
-        # options.append((['2d'], ['xy', 'yx']))
-        # options.append((['2d1c', '2d3c'], ['yxc', 'cxy']))  # 'xyc', 'cxy', 'ycx
-        options.append((['2d3c'], ['yxc', 'xyc', 'cxy', 'ycx']))
-
-        for combination in options:
-            for dims, order in itertools.product(*combination):
-                yield self._test_counting, dims, order
-
     @timeLogged(logger)
-    def _test_counting(self, dims, input_axes):
+    @pytest.mark.parametrize(
+        "dims, input_axes",
+        groupwise_products(
+            """
+                2d3c, yxc xyc cxy ycx
+            """
+        ),
+    )
+    def test_counting(self, dims, input_axes):
         project = f'CellDensityCounting{dims}.ilp'
         try:
             self.untested_projects.remove(project)
@@ -585,22 +598,21 @@ class TestAxesOrderPreservation(object):
 
         self.compare_results(opReaderResult, compare_path, input_axes, max_mse=0.001)
 
-    # todo: exchange nonsense data and labels in tracking projects (wBin)
-    def test_tracking_with_learning(self):
-        options = []
-        # test configurations
-        options.append((['5t2d'], ['_wPred'], ['tyx', 'txy', 'xyt']))
-        options.append((['5t2d1c'], ['_wBin', '_wPred'], ['tyxc', 'txyc', 'xytc']))
-        options.append((['5t2d2c'], ['_wBin'], ['tyxc', 'txyc', 'xytc']))
-        options.append((['5t2d3c'], ['_wPred'], ['tyxc', 'txyc', 'xytc']))
-        options.append((['5t3d'], ['_wPred'], ['tzyxc', 'xztyc']))
-        options.append((['5t3d2c'], ['_wBin'], ['tzyxc', 'xztyc']))
-
-        for combination in options:
-            for dims, variant, order in itertools.product(*combination):
-                yield self._test_tracking_with_learning, dims, variant, order
-
     @timeLogged(logger)
+    @pytest.mark.parametrize(
+        "dims, variant, input_axes",
+        groupwise_products(
+            """
+                5t2d, _wPred, tyx txy xyt
+                5t2d1c, _wBin _wPred, tyxc txyc xytc
+                5t2d2c, _wBin, tyxc txyc xytc
+                5t2d3c, _wPred, tyxc txyc xytc
+                5t3d, _wPred, tzyxc xztyc
+                5t3d2c, _wBin, tzyxc xztyc
+            """
+        ),
+    )
+
     def _test_tracking_with_learning(self, dims, variant, input_axes):
         project = 'TrackingwLearning' + dims + variant + '.ilp'
         try:

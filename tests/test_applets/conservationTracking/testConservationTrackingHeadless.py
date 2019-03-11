@@ -33,6 +33,8 @@ from lazyflow.utility.timer import timeLogged
 import logging
 logger = logging.getLogger(__name__)
 
+
+@pytest.mark.headless
 class TestConservationTrackingHeadless(object):
 
     logger.info('looking for tests directory ...')
@@ -81,7 +83,7 @@ class TestConservationTrackingHeadless(object):
                 pass
 
     @timeLogged(logger)
-    def testTrackingHeadless(self):        
+    def testTrackingHeadless(self):
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
             pytest.xfail("Test files not found.")
