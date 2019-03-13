@@ -89,7 +89,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
     def __init__(
             self,
             current_opFeatureSelection,
-            current_opPixelClassification,
+            current_opPixelClassificationApplet,
             labels_list_data
         ):
         '''
@@ -99,7 +99,8 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
         '''
         super(FeatureSelectionDialog, self).__init__()
 
-        self.opPixelClassification = current_opPixelClassification
+        self.pixelClassificationApplet = current_opPixelClassificationApplet
+        self.opPixelClassification = current_opPixelClassificationApplet.topLevelOperatorView
         self.opFeatureSelection = current_opFeatureSelection
 
         self._init_feature_matrix = False
@@ -589,8 +590,8 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
 
         start_time = times()[4]
 
-        old_freeze_prediction_value = self.opPixelClassification.FreezePredictions.value
-        self.opPixelClassification.FreezePredictions.setValue(False)
+        old_live_update_value = self.pixelClassificationApplet.getLiveUpdateFlag()
+        self.pixelClassificationApplet.setLiveUpdateFlag(True)
 
         # retrieve segmentation layer(s)
         slice_shape = self.raw_xy_slice.shape[:2]
@@ -626,7 +627,7 @@ class FeatureSelectionDialog(QtWidgets.QDialog):
             self.opFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
             self.opFeatureSelection.setupOutputs()
 
-        self.opPixelClassification.FreezePredictions.setValue(old_freeze_prediction_value)
+        self.pixelClassificationApplet.setLiveUpdateFlag(old_live_update_value)
 
         return segmentation, oob_err, end_time-start_time
 
