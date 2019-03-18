@@ -33,11 +33,11 @@ class SomeClass(object):
 class TestOpAttributeSelector(object):
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         pass
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         pass
 
     def test_selection(self):

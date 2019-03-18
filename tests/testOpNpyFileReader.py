@@ -29,7 +29,7 @@ from lazyflow.operators.ioOperators import OpNpyFileReader
 
 class TestOpNpyFileReader(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = lazyflow.graph.Graph()
         tmpDir = tempfile.gettempdir()
         self.testDataFilePath = os.path.join(tmpDir, 'NpyTestData.npy')
@@ -48,7 +48,7 @@ class TestOpNpyFileReader(object):
         numpy.savez(self.testDataFilePathNPZdefault, self.testData, self.testDataB)
         numpy.savez(self.testDataFilePathNPZnamed, data_A=self.testData, data_B=self.testDataB)
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Clean up: Delete the test file.
         os.remove(self.testDataFilePath)
 

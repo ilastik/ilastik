@@ -50,7 +50,7 @@ class OpRoiTest(Operator):
 
 class TestRoiInterdace(TestCase):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.testVol = vigra.VigraArray((200,200,200))
         self.testVol[:] = numpy.random.rand(200,200,200)
         self.graph = Graph()

@@ -145,7 +145,7 @@ class TestBasics(unittest.TestCase):
 
 
 class TestDetection(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self, method):
         v = _volume()
         self.op = OpDetectMissing(graph=Graph())
         self.op.InputVolume.setValue(v)
@@ -303,7 +303,7 @@ class TestDetection(unittest.TestCase):
             #check if patch is in the result
             has = False
             for i,p in enumerate(patches):
-                if np.all(p == ep):
+                if np.array_equal(p, ep):
                     has = True
                     # check if slice is ok
                     self.assertEqual(s, slices[i])
@@ -338,7 +338,7 @@ class TestInterpolation(unittest.TestCase):
     '''
     
     
-    def setUp(self):
+    def setup_method(self, method):
         g=Graph()
         op = OpInterpolate(graph = g)
         self.op = op
@@ -465,7 +465,7 @@ class TestInterpMissingData(unittest.TestCase):
     tests for the whole detection/interpolation workflow
     '''
 
-    def setUp(self):
+    def setup_method(self, method):
         g = Graph()
         op = OpInterpMissingData(graph=g)
         op.DetectionMethod.setValue('svm')

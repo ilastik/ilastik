@@ -21,7 +21,7 @@ def tempdir():
 
 class TestOpStreamingHdf5SequenceReader(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
     def test_2d_vigra_along_z(self):

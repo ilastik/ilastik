@@ -44,7 +44,7 @@ class AllowMaskException(Exception):
 
 
 class TestOpArrayPiper(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity = OpArrayPiper(graph=self.graph)
@@ -94,7 +94,7 @@ class TestOpArrayPiper(object):
 
         assert((data == output).all())
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity.Input.disconnect()
         self.operator_identity.Output.disconnect()
@@ -102,7 +102,7 @@ class TestOpArrayPiper(object):
 
 
 class TestOpArrayPiper2(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity = OpArrayPiper(graph=self.graph)
@@ -177,7 +177,7 @@ class TestOpArrayPiper2(object):
         assert(data.mask.shape == output.mask.shape)
         assert((data.mask == output.mask).all())
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity.Input.disconnect()
         self.operator_identity.Output.disconnect()
@@ -185,7 +185,7 @@ class TestOpArrayPiper2(object):
 
 
 class TestOpArrayPiper3(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity = OpArrayPiper(graph=self.graph)
@@ -265,7 +265,7 @@ class TestOpArrayPiper3(object):
         assert(data.mask.shape == output.mask.shape)
         assert((data.mask == output.mask).all())
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity.Input.disconnect()
         self.operator_identity.Output.disconnect()
@@ -273,7 +273,7 @@ class TestOpArrayPiper3(object):
 
 
 class TestOpArrayPiper4(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity = OpArrayPiper(graph=self.graph)
@@ -337,7 +337,7 @@ class TestOpArrayPiper4(object):
         except AssertionError as e:
             raise AllowMaskException(str(e))
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity.Input.disconnect()
         self.operator_identity.Output.disconnect()
@@ -345,7 +345,7 @@ class TestOpArrayPiper4(object):
 
 
 class TestOpArrayPiper5(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity = OpArrayPiper(graph=self.graph)
@@ -407,7 +407,7 @@ class TestOpArrayPiper5(object):
         except AssertionError as e:
             raise AllowMaskException(str(e))
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity.Input.disconnect()
         self.operator_identity.Output.disconnect()
@@ -415,7 +415,7 @@ class TestOpArrayPiper5(object):
 
 
 class TestOpArrayPiper6(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity_1 = OpArrayPiper(graph=self.graph)
@@ -457,7 +457,7 @@ class TestOpArrayPiper6(object):
         except AssertionError as e:
             raise AllowMaskException(str(e))
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity_2.Input.disconnect()
         self.operator_identity_2.Output.disconnect()
@@ -468,7 +468,7 @@ class TestOpArrayPiper6(object):
 
 
 class TestOpArrayPiper7(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity_1 = OpArrayPiper(graph=self.graph)
@@ -518,7 +518,7 @@ class TestOpArrayPiper7(object):
         assert(data.mask.shape == output.mask.shape)
         assert((data.mask == output.mask).all())
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity_2.Input.disconnect()
         self.operator_identity_2.Output.disconnect()

@@ -29,7 +29,7 @@ import vigra
 
 class TestOpStreamingHdf5Reader(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
         self.testDataFileName = 'test.h5'
         self.op = OpStreamingHdf5Reader(graph=self.graph)
@@ -41,7 +41,7 @@ class TestOpStreamingHdf5Reader(object):
         datashape = (1,2,3,4,5)
         self.data = numpy.indices(datashape).sum(0).astype(numpy.float32)
 
-    def tearDown(self):
+    def teardown_method(self, method):
         self.h5File.close()
         try:
             os.remove(self.testDataFileName)

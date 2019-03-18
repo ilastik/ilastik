@@ -48,7 +48,7 @@ def ClassFactory(name, Model, TestClass):
 
 
 class GeneralTestOpCache(object):
-    def setUp(self):
+    def setup_method(self, method):
         pass
 
     def testAPIConformity(self):
@@ -77,7 +77,7 @@ for subtype in iterSubclasses(Cache):
 
 
 class GeneralTestOpObservableCache(object):
-    def setUp(self):
+    def setup_method(self, method):
         pass
 
     def testAPIConformity(self):
@@ -107,7 +107,7 @@ for subtype in iterSubclasses(ObservableCache):
 
 
 class GeneralTestOpManagedCache(object):
-    def setUp(self):
+    def setup_method(self, method):
         pass
 
     def testAPIConformity(self):
@@ -143,7 +143,7 @@ for subtype in iterSubclasses(ManagedCache):
 
 
 class GeneralTestOpManagedBlockedCache(object):
-    def setUp(self):
+    def setup_method(self, method):
         pass
 
     def testAPIConformity(self):

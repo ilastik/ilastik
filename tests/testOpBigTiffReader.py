@@ -51,7 +51,7 @@ class TestOpBigTiffReader(unittest.TestCase):
             t.close()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         shutil.rmtree(cls.tmp_data_folder)
 
     def test_is_obsolete(self):

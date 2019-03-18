@@ -20,6 +20,8 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+import pytest
+
 import sys
 import numpy
 import threading
@@ -98,12 +100,8 @@ class TestRoiRequestBatch(object):
         
         # FIXME: There are multiple places where the RoiRequestBatch tool should be prepared to handle exceptions.
         #        This only tests one of them (in the notify_finished() handler)
-        try:
+        with pytest.raises(SpecialException):
             batch.execute()
-        except SpecialException:
-            pass
-        else:
-            assert False, "Expected exception to be propagated out of the RoiRequestBatch."
 
 if __name__ == "__main__":
     # Run this file independently to see debug output.

@@ -37,10 +37,10 @@ class TestOpStreamingMmfReader(object):
     # In order for this tests to work, you need to include the file 'zlatic_larvae_200frames.mmf' in the same directory. 
     # This file can be downloaded from the following GitHub repository: https://github.com/ilastik/ilastik_testdata
 
-    def setUp(self):
+    def setup_method(self, method):
         self.fileName = FILE_NAME
 
-    def tearDown(self):
+    def teardown_method(self, method):
         pass
 
     def test_OpStreamingMmfReader(self):

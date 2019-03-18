@@ -33,7 +33,7 @@ class TestThreadPool(object):
     """
     
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.thread_pool = ThreadPool(num_workers = 4)
 
 #     def testtest(self):

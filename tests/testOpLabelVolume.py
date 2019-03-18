@@ -22,7 +22,7 @@ from lazyflow.operators.opLabelVolume import haveBlocked
 
 class TestVigra(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.method = np.asarray(['vigra'], dtype=np.object)
 
     def testSimpleUsage(self):
@@ -328,7 +328,7 @@ class TestVigra(unittest.TestCase):
 if haveBlocked():
     class TestBlocked(TestVigra):
 
-        def setUp(self):
+        def setup_method(self, method):
             self.method = np.asarray(['blocked'], dtype=np.object)
 
         #@unittest.skip("Not implemented yet")
@@ -343,7 +343,7 @@ if haveBlocked():
 
 class TestLazy(TestVigra):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.method = np.asarray(['lazy'], dtype=np.object)
 
     @unittest.skip("This test does not make sense with lazy connected components")

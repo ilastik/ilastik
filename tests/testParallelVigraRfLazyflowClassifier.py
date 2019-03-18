@@ -4,7 +4,7 @@ from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, Paral
 
 class TestParallelVigraRfLazyflowClassifier(object):
     
-    def setUp(self):
+    def setup_method(self, method):
         # Classic XOR problem:
         # 2 features:
         # - negative product ==> class 1

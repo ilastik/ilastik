@@ -692,7 +692,7 @@ def _defaultTrainingHistograms():
 
     for i in range(nHists//2, nHists):
         (hists[i, :n-1], _) = np.histogram(
-            np.random.random_integers(60, 180, (64, 64)), bins=_defaultBinSize,
+            np.random.randint(60, 181, (64, 64)), bins=_defaultBinSize,
             range=(0, 255), density=True)
 
     return hists

@@ -40,7 +40,7 @@ EXPECTED_AXIS_ORDER = 'tyxc'
 
 class TestOpStreamingUfmfReader(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         # Write a simple uFMF video with 100 frames.
         tmpDir = tempfile.gettempdir()
         self.testUfmfFileName = os.path.join(tmpDir, 'ufmfTestVideo.ufmf')
@@ -65,7 +65,7 @@ class TestOpStreamingUfmfReader(object):
         
         ufmfFile.close()
         
-    def tearDown(self):
+    def teardown_method(self, method):
         # Delete the ufmf test file.
         os.remove(self.testUfmfFileName)
 

@@ -31,7 +31,7 @@ from lazyflow.operators.ioOperators import OpRawBinaryFileReader
 
 class TestOpRawBinaryFileReader(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         # Start by writing some test data to disk.
         self.testData = numpy.random.random((10, 11, 12)).astype(numpy.float32)
         self.tmpDir = tempfile.mkdtemp()
@@ -44,7 +44,7 @@ class TestOpRawBinaryFileReader(object):
         fp[:] = self.testData
         del fp # Close file
 
-    def tearDown(self):
+    def teardown_method(self, method):
         shutil.rmtree(self.tmpDir)
 
     def test_OpRawBinaryFileReader(self):
