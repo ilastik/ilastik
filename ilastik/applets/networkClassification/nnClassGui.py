@@ -26,6 +26,8 @@ from collections import OrderedDict
 import numpy
 import yaml
 
+import vigra
+
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, pyqtSlot, QTimer
 from PyQt5.QtGui import QColor, QIcon
@@ -157,10 +159,9 @@ class ValidationDlg(QDialog):
         super(QDialog, self).__init__(parent=parent)
 
         self.validation_size = QComboBox(self)
-        self.validation_size.addItem('10%')
-        self.validation_size.addItem('20%')
-        self.validation_size.addItem('30%')
-        self.validation_size.addItem('40%')
+        self.validation_size.addItem('1')
+        self.validation_size.addItem('2')
+        self.validation_size.addItem('4')
 
         self.orientation = QComboBox(self)
         self.orientation.addItem('Top - Left')
@@ -176,7 +177,7 @@ class ValidationDlg(QDialog):
         grid = QGridLayout()
         grid.setSpacing(10)
 
-        grid.addWidget(QLabel('Validation Set Size'), 1, 0)
+        grid.addWidget(QLabel('Number blocks'), 1, 0)
         grid.addWidget(self.validation_size, 1, 1)
 
         grid.addWidget(QLabel('Orientation'), 2, 0)
@@ -211,9 +212,9 @@ class ValidationDlg(QDialog):
         self.move(qr.topLeft())
 
     def readParameters(self):
-        percentage = self.validation_size.currentText()[:-1]
+        num_blocks = int(self.validation_size.currentText())
         orientation = self.orientation.currentText()
-        self.valid_params = dict(percentage=percentage,
+        self.valid_params = dict(num_blocks=num_blocks,
                                  orientation=orientation)
 
         self.close()
@@ -278,6 +279,9 @@ class NNClassGui(LabelingGui):
             """
             dlg = ValidationDlg(parent=self)
             dlg.exec_()
+
+            if dlg.valid_params:
+                self.topLevelOperatorView.get_val_layer(dlg.valid_params)
 
         advanced_menu.addAction("Validation Set").triggered.connect(validationMenu)
 
@@ -422,7 +426,16 @@ class NNClassGui(LabelingGui):
 
         labels = self.labelListData
 
-        # validationlayer = AlphaModulatedLayer()
+        validationMask = self.topLevelOperatorView.ValidationImgMask
+        #hack, axistags are none when defining in opNNclass
+        validationMask.meta.axistags = vigra.defaultAxistags('zyxc')
+
+        if validationMask.ready():
+            maskLayer = self._create_alpha_modulated_layer_from_slot(validationMask)
+            maskLayer.name = "Validation Mask"
+            maskLayer.visible = True
+            maskLayer.opacity = 0.25
+            layers.append(maskLayer)
 
         for channel, predictionSlot in enumerate(self.topLevelOperatorView.PredictionProbabilityChannels):
             logger.info(f"prediction_slot: {predictionSlot}")
