@@ -75,7 +75,7 @@ from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
 from ilastik.shell.headless.headlessShell import HeadlessShell
 
-from ilastik.shell.gui.splashScreen import showSplashScreen
+from ilastik.shell.gui.aboutDialog import showAboutDialog
 from ilastik.shell.gui.licenseDialog import LicenseDialog
 
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
@@ -633,7 +633,7 @@ class IlastikShell(QMainWindow):
         menu = QMenu("&Help", self)
         menu.setObjectName("help_menu")
         aboutIlastikAction = menu.addAction("&About ilastik")
-        aboutIlastikAction.triggered.connect(showSplashScreen)
+        aboutIlastikAction.triggered.connect(partial(showAboutDialog, self))
         readTheDocsAction = menu.addAction("&Documentation")
         readTheDocsAction.triggered.connect(partial(QDesktopServices.openUrl,
                                                     QUrl('http://ilastik.org/documentation/')))
