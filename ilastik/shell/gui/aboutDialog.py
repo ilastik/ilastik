@@ -40,12 +40,18 @@ import ilastik
 
 about_text = f"""
     <p>ilastik version {ilastik.__version__}</p>
-    <p>ilastik is developed by the ilastik development team in
-    the Kreshuk Group at the European Molecular Biology Laboratory Heidelberg.
+    <p>ilastik development has started in 2010 in the
+    <a href="https://hci.iwr.uni-heidelberg.de/mip">group of Prof. Fred Hamprecht
+    </a>at University of Heidelberg.</p>
+
+    <p>In 2018 the ilastik development team has moved with Anna Kreshuk to her
+    <a href="https://www.embl.de/research/units/cbb/kreshuk/">
+    newly established lab</a>
+    at European Molecular Biology Laboratory Heidelberg.
     More information can be found at
     <a href=https://ilastik.org/about.html>www.ilastik.org</a>.</p>
 
-    <p>For a list of contributors visit our main repositories:
+    <p>The full list of contributors over time can be found at github:
     <ul>
         <li><a href="https://github.com/ilastik/ilastik/graphs/contributors">
         ilastik contributors</a>
