@@ -39,12 +39,13 @@ import ilastik
 
 
 about_text = f"""
-    ilastik version {ilastik.__version__} <br /><br />
-    ilastik is developed by the ilastik development team in
+    <p>ilastik version {ilastik.__version__}</p>
+    <p>ilastik is developed by the ilastik development team in
     the Kreshuk Group at the European Molecular Biology Laboratory Heidelberg.
-    More information can be found at <a href=https://ilastik.org/about.html>www.ilastik.org</a>.
-    <br /><br />
-    For a list of contributors visit our main repositories:
+    More information can be found at
+    <a href=https://ilastik.org/about.html>www.ilastik.org</a>.</p>
+
+    <p>For a list of contributors visit our main repositories:
     <ul>
         <li><a href="https://github.com/ilastik/ilastik/graphs/contributors">
         ilastik contributors</a>
@@ -54,6 +55,7 @@ about_text = f"""
         <li><a href="https://github.com/ilastik/volumina/graphs/contributors">
         volumina contributors</a></li>
     </ul>
+    </p>
 """
 
 
