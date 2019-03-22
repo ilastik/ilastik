@@ -62,9 +62,9 @@ about_text = f"""
 class AboutDialog(QDialog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setup_layout()
+        self._setup_layout()
 
-    def setup_layout(self):
+    def _setup_layout(self):
         main_layout = QVBoxLayout()
         content_layout = QHBoxLayout()
         splash_path = os.path.join(
@@ -90,10 +90,10 @@ class AboutDialog(QDialog):
 
         self.setLayout(main_layout)
         self.setStyleSheet("background-color: white;")
+        self.setWindowTitle('About ilastik')
         self.setFixedSize(splash_pixmap.width() * 2.5, splash_pixmap.height() * 1.05)
 
-
-def showAboutDialog(parent=None):
-    dialog = AboutDialog(parent=parent)
-    dialog.setWindowTitle('About ilastik')
-    dialog.exec()
+    @classmethod
+    def createAndShowModal(cls, parent=None):
+        dialog = cls(parent=parent)
+        dialog.exec()
