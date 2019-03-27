@@ -425,7 +425,7 @@ class PixelClassificationGui(LabelingGui):
 
         self.labelingDrawerUi.labelListView.support_merges = True
 
-        self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.setLiveUpdateFlag)
+        self.labelingDrawerUi.liveUpdateButton.toggled.connect(self.setLiveUpdateEnabled)
 
         self.initFeatSelDlg()
         self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_feature_selection_dialog)
@@ -457,7 +457,7 @@ class PixelClassificationGui(LabelingGui):
             except:
                 self.render = False
 
-        self.setLiveUpdateFlag(False)
+        self.setLiveUpdateEnabled(False)
 
     def initFeatSelDlg(self):
         if self.topLevelOperatorView.name=="OpPixelClassification":
@@ -706,37 +706,26 @@ class PixelClassificationGui(LabelingGui):
 
     def hasFeatures(self) -> bool:
         feature_images_slot = self.topLevelOperatorView.FeatureImages
-        return feature_images_slot.ready() and feature_images_slot.meta.shape != None
+        return feature_images_slot.ready() and feature_images_slot.meta.shape is not None
 
-    def getLiveUpdateFlag(self):
+    def isLiveUpdateEnabled(self):
         return self.labelingDrawerUi.liveUpdateButton.isChecked()
 
-    def setLiveUpdateFlag(self, checked:bool):
-        liveUpdateButton = self.labelingDrawerUi.liveUpdateButton
-        liveUpdateButton.blockSignals(True)
-        liveUpdateButton.setChecked(checked)
-        liveUpdateButton.blockSignals(False)
-
-        self.topLevelOperatorView.FreezePredictions.setValue(not checked)
-
-        if checked and self.hasFeatures():
-            self.labelingDrawerUi.labelListView.allowDelete = False
-            self.labelingDrawerUi.AddLabelButton.setEnabled( False )
-
-            self._viewerControlUi.checkShowPredictions.setChecked( True )
-            self.handleShowPredictionsClicked()
-        else:
-            self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
+    def setLiveUpdateEnabled(self, checked:bool):
+        if checked:
             if not self.hasFeatures():
-                mexBox=QMessageBox()
-                mexBox.setText("There are no features selected ")
-                mexBox.exec_()
+                self.labelingDrawerUi.liveUpdateButton.blockSignals(True)
+                self.labelingDrawerUi.liveUpdateButton.setChecked(False)
+                self.labelingDrawerUi.liveUpdateButton.blockSignals(False)
+                QMessageBox.warning(self, "Error", "No features selected on previous step.")
                 return
+            self._viewerControlUi.checkShowPredictions.setChecked(True)
+            self.handleShowPredictionsClicked()
 
-            num_label_classes = self._labelControlUi.labelListModel.rowCount()
-            self.labelingDrawerUi.labelListView.allowDelete = ( num_label_classes > self.minLabelNumber )
-            self.labelingDrawerUi.AddLabelButton.setEnabled( ( num_label_classes < self.maxLabelNumber ) )
-
+        num_label_classes = self._labelControlUi.labelListModel.rowCount()
+        self.labelingDrawerUi.labelListView.allowDelete = not checked and num_label_classes > self.minLabelNumber
+        self.labelingDrawerUi.AddLabelButton.setEnabled(not checked and num_label_classes < self.maxLabelNumber)
+        self.topLevelOperatorView.FreezePredictions.setValue(not checked)
         self.labelingDrawerUi.suggestFeaturesButton.setEnabled(not checked)
 
         # Notify the workflow that some applets may have changed state now.
