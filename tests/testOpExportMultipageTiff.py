@@ -1,4 +1,3 @@
-from builtins import object
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,96 +17,42 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
-import os
-import sys
-import shutil
+
+import pathlib
 import tempfile
 
 import numpy
 import vigra
 
-import lazyflow.graph
-from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators import OpBlockedArrayCache
-from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpExportMultipageTiff
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
+from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.utility import Pipeline
 
-import logging
-logger = logging.getLogger('tests.testOpMultipageTiff')
 
-class TestOpMultipageTiff(object):
+def test_OpExportMultipageTiff():
+    shape = 3, 10, 64, 128, 2
+    axes = "tzyxc"
+    dtype = numpy.uint32
+    data = numpy.arange(numpy.prod(shape), dtype=dtype).reshape(shape)
+    expected = vigra.VigraArray(data, axistags=vigra.defaultAxistags(axes), order="C")
 
-    def setup_method(self, method):
-        self.graph = lazyflow.graph.Graph()
-        self._tmpdir = tempfile.mkdtemp()
+    with tempfile.TemporaryDirectory() as tempdir:
+        filepath = str(pathlib.Path(tempdir, "multipage.tiff"))
+        graph = Graph()
 
-        # Generate some test data
-        self.dataShape = (1, 10, 64, 128, 2)
-        self._axisorder = 'tzyxc'
-        self.testData = vigra.VigraArray( self.dataShape,
-                                         axistags=vigra.defaultAxistags(self._axisorder),
-                                         order='C' ).astype(numpy.uint8)
-        self.testData[...] = numpy.indices(self.dataShape).sum(0)
+        with Pipeline(graph=graph) as write_tiff:
+            write_tiff.add(OpArrayPiper, Input=expected)
+            write_tiff.add(OpExportMultipageTiff, Filepath=filepath)
+            write_tiff[-1].run_export()
 
-    def teardown_method(self, method):
-        # Clean up
-        shutil.rmtree(self._tmpdir)
-        
-    def test_basic(self):
-        opSource = OpArrayPiper(graph=self.graph)
-        opSource.Input.setValue( self.testData )
-        
-        opData = OpBlockedArrayCache( graph=self.graph )
-        opData.BlockShape.setValue( self.testData.shape )
-        opData.Input.connect( opSource.Output )
-        
-        filepath = os.path.join( self._tmpdir, 'multipage.tiff' )
-        logger.debug( "writing to: {}".format(filepath) )
-        
-        opExport = OpExportMultipageTiff(graph=self.graph)
-        opExport.Filepath.setValue( filepath )
-        opExport.Input.connect( opData.Output )
+        with Pipeline(graph=graph) as read_tiff:
+            read_tiff.add(OpTiffReader, Filepath=filepath)
+            read_tiff.add(OpReorderAxes, AxisOrder=axes)
+            actual = read_tiff[-1].Output[:].wait().astype(dtype)
 
-        # Run the export
-        opExport.run_export()
-
-        opReader = OpTiffReader( graph=self.graph )
-        try:
-            opReader.Filepath.setValue( filepath )
-    
-            # Re-order before comparing
-            opReorderAxes = OpReorderAxes( graph=self.graph )
-            try:
-                opReorderAxes.AxisOrder.setValue( self._axisorder )
-                opReorderAxes.Input.connect( opReader.Output )
-                
-                readData = opReorderAxes.Output[:].wait()
-                logger.debug("Expected shape={}".format( self.testData.shape ) )
-                logger.debug("Read shape={}".format( readData.shape ) )
-                
-                assert opReorderAxes.Output.meta.shape == self.testData.shape, \
-                    "Exported files were of the wrong shape or number."
-                assert (opReorderAxes.Output[:].wait() == self.testData.view( numpy.ndarray )).all(), \
-                    "Exported data was not correct"
-            finally:
-                opReorderAxes.cleanUp()
-        finally:
-            opReader.cleanUp()
-
-if __name__ == "__main__":
-    # Run this file independently to see debug output.
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(logging.StreamHandler(sys.stdout))
-
-    ioOpLogger = logging.getLogger('lazyflow.operators.ioOperators')
-    ioOpLogger.addHandler( logging.StreamHandler(sys.stdout) )
-    ioOpLogger.setLevel(logging.DEBUG)
-
-    import sys
-    import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    nose.run(defaultTest=__file__)
+    numpy.testing.assert_array_equal(expected, actual)
