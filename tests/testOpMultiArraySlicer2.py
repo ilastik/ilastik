@@ -30,7 +30,7 @@ from lazyflow.operators import OpArrayPiper, OpMultiArraySlicer2
 
 class TestOpMultiArraySlicer2(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         graph = Graph()
         self.graph = graph
         # Data is tagged by channel

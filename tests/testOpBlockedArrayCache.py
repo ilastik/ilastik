@@ -51,7 +51,7 @@ make_key = KeyMaker()
 
 class TestOpBlockedArrayCache(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.dataShape = (1,100,100,10,1)
         self.data = numpy.random.randint(0, 256, size=self.dataShape)
         self.data = self.data.astype(numpy.uint32)
@@ -455,7 +455,7 @@ class TestOpBlockedArrayCache(unittest.TestCase):
 
 class TestOpBlockedArrayCache_masked(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.dataShape = (1,100,100,10,1)
         self.data = (numpy.random.random(self.dataShape) * 100).astype(int)
         self.data = numpy.ma.masked_array(

@@ -12,7 +12,7 @@ from lazyflow.operators.ioOperators import OpImageReader
 class TestOpImageReader_multipage(object):
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls._tmpdir = tempfile.mkdtemp()
         cls._volume_file = os.path.join( cls._tmpdir, 'test_volume.tif' )
 
@@ -25,7 +25,7 @@ class TestOpImageReader_multipage(object):
         cls._testdata = a
     
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         shutil.rmtree(cls._tmpdir)
     
     def test(self):
@@ -39,7 +39,7 @@ class TestOpImageReader_multipage(object):
 class TestOpImageReader_2D(object):
     
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls._tmpdir = tempfile.mkdtemp()
         cls._file = os.path.join( cls._tmpdir, 'test_image.tif' )
 
@@ -51,7 +51,7 @@ class TestOpImageReader_2D(object):
         cls._testdata = a
     
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         shutil.rmtree(cls._tmpdir)
     
     def test(self):

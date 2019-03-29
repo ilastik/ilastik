@@ -152,13 +152,13 @@ class TestReorderAxesDecorator():
     svg_dir = tempfile.mkdtemp()
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         tags = vigra.defaultAxistags(outer_order)
         cls.a = vigra.VigraArray(outer_shape, value=1, axistags=tags)
         cls.b = vigra.VigraArray(outer_shape, value=2, axistags=tags)
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         pass
 
     @timeLogged(logger)

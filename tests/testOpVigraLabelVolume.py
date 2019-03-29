@@ -29,7 +29,7 @@ from lazyflow.utility.slicingtools import sl, slicing2shape
 
 class TestOpVigraLabelVolume(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         graph = Graph()
         
         inputData = numpy.random.random( (1,10,100,100,1) )

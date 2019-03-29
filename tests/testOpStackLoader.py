@@ -35,10 +35,10 @@ import h5py
 
 
 class TestOpStackLoader(object):
-    def setUp(self):
+    def setup_method(self, method):
         self._tmp_dir = tempfile.mkdtemp()
 
-    def tearDown(self):
+    def teardown_method(self, method):
         shutil.rmtree(self._tmp_dir)
 
     def _prepare_data(self, name, shape, axes, stack_axis,
@@ -229,12 +229,12 @@ class TestOpStackLoader(object):
         assert (vol_from_stack_tzyxc == expected_volume_tzyxc).all(), \
             "4D+c Volume from stack did not match expected data."
 
-    def test_stack_pngs(self):
+    def test_stack_pngs(self, inputdata_dir):
         graph = Graph()
         op = OpStackLoader(graph=graph)
         op.SequenceAxis.setValue('c')
 
-        globstring = os.path.join('data', 'inputdata', '3c[0-2].png')
+        globstring = os.path.join(inputdata_dir, '3c[0-2].png')
         op.globstring.setValue(globstring)
 
         assert len(op.stack.meta.axistags) == 3
@@ -242,10 +242,10 @@ class TestOpStackLoader(object):
 
         stack = op.stack[:].wait()
 
-        gt_path = os.path.join('data', 'inputdata', '3cRGB.h5')
+        gt_path = os.path.join(inputdata_dir, '3cRGB.h5')
         h5File = h5py.File(gt_path, 'r')
         expected = h5File['data']
-        
+
         assert stack.dtype == expected.dtype
         assert stack.shape == expected.shape
 

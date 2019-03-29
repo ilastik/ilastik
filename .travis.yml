@@ -52,9 +52,7 @@ install:
 script:
   - conda activate $TEST_ENV
   - echo `which python`
-  - echo `which nosetests`
-  - |
-    cd ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow/tests && nosetests --nologcapture --ignore-files=testInterpolatedFeatures.py \
-    --with-coverage --cover-xml \
-    --cover-inclusive --cover-package=lazyflow .
-  - coveralls
+  - echo `which pytest`
+  - cd ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow 
+  - pytest --capture=no --cov=lazyflow 
+  - coveralls || echo "Failed to submit coveralls"

@@ -29,11 +29,11 @@ from numpy.testing import assert_equal
 
 
 class TestMemory(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self, method):
         Memory.setAvailableRam(-1)
         Memory.setAvailableRamCaches(-1)
 
-    def tearDown(self):
+    def teardown_method(self, method):
         Memory.setAvailableRam(-1)
         Memory.setAvailableRamCaches(-1)
 

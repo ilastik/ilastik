@@ -31,7 +31,7 @@ SIMULATE_WINDOWS = False
 class TestPathHelpers(object):
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         if SIMULATE_WINDOWS:
             import ntpath
             os.sep = ntpath.sep
