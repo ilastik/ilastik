@@ -26,7 +26,7 @@ from numpy.testing import assert_array_equal
 
 
 class TestChunkHelpers(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self, method):
         pass
 
     def testChooseChunkShape(self):

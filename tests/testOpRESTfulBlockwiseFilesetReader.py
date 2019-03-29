@@ -44,7 +44,7 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 class TestOpBlockwiseFilesetReader(object):
     
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         # The openconnectome site appears to be down at the moment.
         # This test fails when that happens...
         raise nose.SkipTest
@@ -116,7 +116,7 @@ class TestOpBlockwiseFilesetReader(object):
             f.write(compositeDescription)
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         # If the user is debugging, don't clear the files we're testing with.
         if logger.level > logging.DEBUG:
             shutil.rmtree(cls.tempDir)

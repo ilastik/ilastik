@@ -41,7 +41,7 @@ logger = logging.getLogger('tests.testOpExportMultipageTiffSequence')
 
 class TestOpExportMultipageTiffSequence(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = lazyflow.graph.Graph()
         self._tmpdir = tempfile.mkdtemp()
         self._name_pattern = 'test_stack_slice_{slice_index}.tiff'
@@ -55,7 +55,7 @@ class TestOpExportMultipageTiffSequence(object):
                                          order='C' ).astype(numpy.uint8)
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Clean up
         shutil.rmtree(self._tmpdir)
         

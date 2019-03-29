@@ -40,7 +40,7 @@ requesterLogger = logging.getLogger( "lazyflow.utility.bigRequestStreamer" )
 
 class TestOpH5WriterBigDataset(object):
  
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = lazyflow.graph.Graph()
         self.testDataFileName = 'bigH5TestData.h5'
         self.datasetInternalPath = 'volume/data'
@@ -50,7 +50,7 @@ class TestOpH5WriterBigDataset(object):
         self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc'), order='C' )
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
  
-    def tearDown(self):
+    def teardown_method(self, method):
         # Clean up: Delete the test file.
         try:
             os.remove(self.testDataFileName)
@@ -84,7 +84,7 @@ class TestOpH5WriterBigDataset(object):
  
 class TestOpH5WriterBigDataset_2(object):
  
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = lazyflow.graph.Graph()
         self.testDataFileName = 'bigH5TestData.h5'
         self.datasetInternalPath = 'volume/data'
@@ -94,7 +94,7 @@ class TestOpH5WriterBigDataset_2(object):
         self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc') ) # default vigra order this time...
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
  
-    def tearDown(self):
+    def teardown_method(self, method):
         # Clean up: Delete the test file.
         try:
             os.remove(self.testDataFileName)
@@ -132,7 +132,7 @@ class TestOpH5WriterBigDataset_2(object):
 
 class TestOpH5WriterBigDataset_3(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = lazyflow.graph.Graph()
         self.testDataFileName = 'bigH5TestData.h5'
         self.datasetInternalPath = 'volume/data'
@@ -142,7 +142,7 @@ class TestOpH5WriterBigDataset_3(object):
         self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc') ) # default vigra order this time...
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Clean up: Delete the test file.
         try:
             os.remove(self.testDataFileName)

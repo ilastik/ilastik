@@ -10,7 +10,7 @@ install:
   - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  - conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge python=3.6 numpy=1.12 ilastik-dependencies-no-solvers
+  - conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge/label/cf201901 python=3.6 numpy=1.12 ilastik-dependencies-no-solvers
   - activate %ENV_NAME%
   - cd \
   # Get the current master of all submodules
@@ -37,15 +37,12 @@ test_script:
   - set DEV_PREFIX=%MINICONDA%/envs/%ENV_NAME%
   - activate %ENV_NAME%
   - cd \
-  - cd ilastik\ilastik-meta\lazyflow\tests
+  - cd ilastik\ilastik-meta\lazyflow
   - set Path=C:\ilastik\scripts;%Path%
   - >
-      nosetests
-      --nologcapture
-      --ignore-files=testInterpolatedFeatures.py
-      --with-xunit
-      --xunit-file=nosetests.lazyflow.xml
-      .
+      pytest
+      --capture=no
+      --junitxml=nosetests.lazyflow.xml
 
 # on_finish:
 #  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

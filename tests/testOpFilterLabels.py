@@ -28,7 +28,7 @@ from lazyflow.utility.slicingtools import sl, slicing2shape
 
 class TestOpFilterLabels(object):
 
-    def setUp(self):
+    def setup_method(self, method):
 
         inputData = numpy.zeros((1,10,100,100,1), dtype=int)
         inputData = inputData.view(vigra.VigraArray)

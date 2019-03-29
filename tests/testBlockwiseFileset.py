@@ -49,7 +49,7 @@ logger.setLevel(logging.INFO)
 class TestBlockwiseFileset(object):
     
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         if platform.system() == 'Windows':
             # On windows, there are errors, and we make no attempt to solve them (at the moment).
             raise nose.SkipTest
@@ -88,7 +88,7 @@ class TestBlockwiseFileset(object):
         cls.data = numpy.random.randint(255, size=cls.dataShape ).astype(numpy.uint8)
         
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         if not cls.bfs._closed:
             cls.bfs.close()
         assert not cls.bfs.purgeAllLocks(), "Some lockfiles were left lingering."
@@ -250,7 +250,7 @@ class TestObjectBlockwiseFileset(object):
     """
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         if platform.system() == 'Windows':
             # On windows, there are errors, and we make no attempt to solve them (at the moment).
             raise nose.SkipTest
@@ -293,7 +293,7 @@ class TestObjectBlockwiseFileset(object):
         cls.data = dict_data
         
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         if not cls.bfs._closed:
             cls.bfs.close()
         assert not cls.bfs.purgeAllLocks(), "Some lockfiles were left lingering."

@@ -26,7 +26,7 @@ from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators import OpArrayPiper, OpPixelOperator, OpPrecomputedInput
 
 class TestOpPrecomputedInput(object):
-    def setUp(self):
+    def setup_method(self, method):
         pass
     
     def testBasic(self):

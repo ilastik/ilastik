@@ -12,7 +12,7 @@ if DEBUG:
 
 class TestOpPixelFeaturesPresmoothed(object):
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         # cls.data = numpy.random.randint(0, 255, (2, 3, 8, 19, 20), dtype='uint8').view(vigra.VigraArray)
         cls.data = numpy.random.rand(2, 3, 10, 19, 20).view(vigra.VigraArray)
         cls.data.axistags = vigra.defaultAxistags('tczyx')

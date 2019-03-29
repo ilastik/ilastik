@@ -26,7 +26,7 @@ import numpy, vigra
 from lazyflow.graph import Graph
 
 class TestSingleChannelSelector(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.data2d = numpy.zeros((3, 3, 3))
         self.data2d[:, :, 0] = 1
         self.data2d[:, :, 1] = 2
