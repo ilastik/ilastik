@@ -26,9 +26,10 @@ import numpy
 import vigra
 import tempfile
 
+
 class TestOpStreamingH5N5Reader(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
         self.testFileDir = tempfile.TemporaryDirectory()
         self.testDataH5FileName = self.testFileDir.name + 'test.h5'
@@ -45,7 +46,7 @@ class TestOpStreamingH5N5Reader(object):
         datashape = (1, 2, 3, 4, 5)
         self.data = numpy.indices(datashape).sum(0).astype(numpy.float32)
 
-    def tearDown(self):
+    def teardown_method(self, method):
         self.h5File.close()
         self.n5File.close()
         self.testFileDir.cleanup()

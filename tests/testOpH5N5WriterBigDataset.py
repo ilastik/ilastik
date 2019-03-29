@@ -34,11 +34,12 @@ import logging
 
 logger = logging.getLogger("tests.testOpH5N5WriterBigDataset")
 cacheLogger = logging.getLogger("lazyflow.operators.ioOperators.ioOperators.OpH5N5WriterBigDataset")
-requesterLogger = logging.getLogger( "lazyflow.utility.bigRequestStreamer" )
+requesterLogger = logging.getLogger("lazyflow.utility.bigRequestStreamer")
+
 
 class TestOpH5N5WriterBigDataset(object):
  
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = lazyflow.graph.Graph()
         self.testDataH5FileName = 'bigH5TestData.h5'
         self.testDataN5FileName = 'bigN5TestData.n5'
@@ -49,7 +50,7 @@ class TestOpH5N5WriterBigDataset(object):
         self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc'), order='C' )
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
  
-    def tearDown(self):
+    def teardown_method(self, method):
         # Clean up: Delete the test file.
         try:
             os.remove(self.testDataH5FileName)
@@ -95,10 +96,11 @@ class TestOpH5N5WriterBigDataset(object):
         assert (numpy.all(n5_dataset[...] == self.testData.view(numpy.ndarray)[...])).all()
         hdf5File.close()
         n5File.close()
- 
+
+
 class TestOpH5N5WriterBigDataset_2(object):
  
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = lazyflow.graph.Graph()
         self.testDataH5FileName = 'bigH5TestData.h5'
         self.testDataN5FileName = 'bigH5TestData.n5'
@@ -109,7 +111,7 @@ class TestOpH5N5WriterBigDataset_2(object):
         self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc') ) # default vigra order this time...
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
  
-    def tearDown(self):
+    def teardown_method(self, method):
         # Clean up: Delete the test file.
         try:
             os.remove(self.testDataH5FileName)
@@ -160,9 +162,10 @@ class TestOpH5N5WriterBigDataset_2(object):
         hdf5File.close()
         n5File.close()
 
+
 class TestOpH5N5WriterBigDataset_3(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = lazyflow.graph.Graph()
         self.testDataH5FileName = 'bigH5TestData.h5'
         self.testDataN5FileName = 'bigH5TestData.n5'
@@ -174,7 +177,7 @@ class TestOpH5N5WriterBigDataset_3(object):
         self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc'))  # default vigra order this time...
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Clean up: Delete the test file.
         try:
             os.remove(self.testDataH5FileName)

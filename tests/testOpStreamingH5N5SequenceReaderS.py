@@ -15,7 +15,7 @@ import vigra
 
 class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
     def test_2d_vigra_along_z(self):
