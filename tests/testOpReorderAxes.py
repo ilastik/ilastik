@@ -80,6 +80,8 @@ class TestOpReorderAxes(unittest.TestCase):
             self.operator = OpReorderAxes(graph=self.graph, Input=opProvider.Output, AxisOrder=AxisOrder)
         else:
             self.operator.Input.connect(opProvider.Output)
+            if AxisOrder is not None:
+                self.operator.AxisOrder.setValue(AxisOrder)
 
     def test_Full(self):
         for i in range(self.tests):
@@ -155,11 +157,9 @@ class TestOpReorderAxes(unittest.TestCase):
         
     def _impl_roi_custom_order(self, axisorder):
         for i in range(self.tests):
-            use_constructor = bool(i%2)
+            config_via_init = bool(i%2)
             # Specify a strange order for the output axis tags
-            self.prepareVolnOp(axisorder, len(axisorder)-1, AxisOrder=axisorder, config_via_init=use_constructor)
-            if not use_constructor:
-                self.operator.AxisOrder.setValue(axisorder)
+            self.prepareVolnOp(axisorder, len(axisorder)-1, AxisOrder=axisorder, config_via_init=config_via_init)
 
             shape = self.operator.Output.meta.shape
 
