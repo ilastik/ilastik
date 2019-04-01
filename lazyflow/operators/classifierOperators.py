@@ -432,9 +432,16 @@ class OpBaseClassifierPredict(Operator):
         mask = None
         if self.PredictionMask.ready():
             mask_roi = numpy.array((roi.start, roi.stop))
-            mask_roi[:,-1:] = [[0],[1]]
+            num_channels_in_mask = self.PredictionMask.meta.getTaggedShape()['c']
+            mask_roi[:,-1:] = [[0],[num_channels_in_mask]]
             start, stop = list(map(tuple, mask_roi))
-            mask = self.PredictionMask( start, stop ).wait()
+            multichannel_mask = self.PredictionMask( start, stop ).wait()
+
+            #create a single-channel merged mask, which has 0 iff all PredictionMask channels are 0
+            mask = multichannel_mask[...,0:1]
+            for c in range(1, num_channels_in_mask):
+                mask = numpy.logical_or(mask, multichannel_mask[..., c:c+1])
+
             if not numpy.any(mask):
                 logger.debug(f"Skipping masked block {roi}")
                 result[:] = 0.0
@@ -457,8 +464,7 @@ class OpBaseClassifierPredict(Operator):
 
         # Cancel out masked pixels.
         if mask is not None:
-            mask_all_channels = numpy.broadcast_to(mask == 0, probabilities.shape)
-            probabilities[mask_all_channels] = 0.0
+            probabilities *= mask
 
         # Copy only the prediction channels the client requested.
         result[...] = probabilities[..., roi.start[-1]:roi.stop[-1]]
@@ -476,7 +482,7 @@ class OpBaseClassifierPredict(Operator):
         elif slot == self.Image:
             self.PMaps.setDirty()
         elif slot == self.PredictionMask:
-            self.PMaps.setDirty(roi.start, roi.stop)
+            self.PMaps.setDirty()
 
 class OpPixelwiseClassifierPredict(OpBaseClassifierPredict):
     def _calculate_probabilities(self, roi):
@@ -554,7 +560,6 @@ class OpVectorwiseClassifierPredict(OpBaseClassifierPredict):
         prod = numpy.prod(shape[:-1])
         features = input_data.reshape((prod, shape[-1]))
 
-        classifier = self.Classifier.value
         with Timer() as prediction_timer:
             probabilities = classifier.predict_probabilities( features )
 
