@@ -1,4 +1,5 @@
 from ilastik.array5d import Array5D, Roi5D, Point5D, Shape5D
+from ilastik.feature_extractor import GaussianSmoothing
 
 
 import vigra
@@ -13,3 +14,7 @@ a = Array5D.open_image("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/crop
 
 roi = Shape5D(x=100, y=200).to_roi()
 img = a.cut(roi).as_image()
+
+featCalc = GaussianSmoothing(sigma=2.0)
+
+feats = featCalc.getFeature(a)

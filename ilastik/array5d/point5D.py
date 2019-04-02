@@ -236,30 +236,22 @@ assert Point5D(**test_dict).to_dict() == test_dict
 
 partialDict = {'t':0, 'x':12, 'y':13, 'z':14}
 endpointFromDict = Point5D.endpoint(**partialDict, shape=Shape5D(c=1))
-print(f"endpoint from dict {partialDict}? {endpointFromDict}")
 assert endpointFromDict.to_dict() == {**partialDict, **{'t': 1, 'c': 1}}
 
 startpointFromDict = Point5D.startpoint(**partialDict)
 assert startpointFromDict.to_dict() == {**partialDict, **{'c': 0}}
-print(f"startpoint from dict {list(partialDict.items())}? {startpointFromDict}")
 
 
 point = Point5D.startpoint(**partialDict)
 fullRoi = Shape5D.from_point(point).to_roi()
-print(f"full roi from {partialDict}: {fullRoi}")
 
 assert Point5D.one().with_axis_as('t', 123).to_tuple() == (123,1,1,1,1)
 
 
 t1c1z1x100y200 = Point5D(t=1, c=1, z=1, x=100, y=200)
 fullRoix100y200 = Shape5D(**{'x': 100, 'y': 200}).to_roi()
-print("fullRoix100y200    :", fullRoix100y200)
 
 al = Roi5D.all()
-print("ALL: ", al)
-print("fullRoix100y200:  ", fullRoix100y200)
-print(f"all clamped with some roi:    {al.clamped_with_roi(fullRoix100y200)}")
-print(f"fullRoix100y200 clamped with al:    {fullRoix100y200.clamped_with_roi(al)}")
 
 assert fullRoix100y200.end.to_tuple('yx') == (200, 100)
 assert fullRoix100y200.shape.to_dict() == {'t': 1, 'x': 100, 'y': 200, 'z': 1, 'c': 1} 

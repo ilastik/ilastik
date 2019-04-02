@@ -542,6 +542,7 @@ class FeatureTableWidget(QTableWidget):
         return self._sigmas
 
     def setSigmas(self, sigmas, computeIn2d=[]):
+        #import pydevd; pydevd.settrace()
         assert isinstance(sigmas, list), type(sigmas)
         assert sigmas, 'sigmas cannot be empty'
         if computeIn2d:
