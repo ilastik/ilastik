@@ -344,30 +344,22 @@ class OpNNClassification(Operator):
         for laneIndex in range(len(self.InputImages)):
             self.getLane(laneIndex).opLabelPipeline.opLabelArray.clearLabel(label_value)
 
-    def get_val_layer(self, parameters):
+    def set_validationMask(self, parameters):
         img_shape = self.InputImages[0].meta.shape
-        num_blocks = parameters['num_blocks']
-        block_shape = BLOCKSHAPE
-        val_roi = []
-        
-        #works only for 1, 2 or 4 
-        for i in range(num_blocks):
-            if i < 2:
-                val_roi.append(getBlockBounds(img_shape, block_shape, [0, 0, block_shape[1] * i, 0]))
-            else:
-                val_roi.append(getBlockBounds(img_shape, block_shape, [0, block_shape[1], block_shape[1] * (i - 2), 0]))
+        z = parameters['z_coord']
+        y = parameters['y_coord']
+        x = parameters['x_coord']
 
         binarymask = numpy.zeros(img_shape, dtype='uint8')
 
-        for shapes in val_roi:
-            binarymask[:, shapes[0][1] : shapes[1][1], shapes[0][2] : shapes[1][2], :] = 1
+        binarymask[z[0]: z[1], y[0]: y[1], x[0]: x[1], :] = 1
 
         self.ValidationImgMask.meta.dtype = numpy.uint8
         self.ValidationImgMask.meta.axistags = vigra.defaultAxistags('zyxc')
         self.ValidationImgMask.setValue(binarymask)
 
-        #ToDo pass val_roi to tiktorchlazyflowclassifier
-            
+        # ToDo pass val_roi to tiktorchlazyflowclassifier
+
 
 class OpBlockShape(Operator):
     RawImage = InputSlot()

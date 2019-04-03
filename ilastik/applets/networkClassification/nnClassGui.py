@@ -151,37 +151,37 @@ class ParameterDlg(QDialog):
 
 class ValidationDlg(QDialog):
     """
-    Settings for choosing the validation set 
+    Settings for choosing the validation set
     """
     def __init__(self, parent):
         self.valid_params = None
 
         super(QDialog, self).__init__(parent=parent)
 
-        self.validation_size = QComboBox(self)
-        self.validation_size.addItem('1')
-        self.validation_size.addItem('2')
-        self.validation_size.addItem('4')
-
-        self.orientation = QComboBox(self)
-        self.orientation.addItem('Top - Left')
-        self.orientation.addItem('Top - Right')
-        self.orientation.addItem('Top - Mid')
-        self.orientation.addItem('Mid - Left')
-        self.orientation.addItem('Mid - Right')
-        self.orientation.addItem('Mid - Mid')
-        self.orientation.addItem('Bottom - Left')
-        self.orientation.addItem('Bottom - Right')
-        self.orientation.addItem('Bottom - Mid')
+        self.z_start = QLineEdit()
+        self.z_end = QLineEdit()
+        self.y_start = QLineEdit()
+        self.y_end = QLineEdit()
+        self.x_start = QLineEdit()
+        self.x_end = QLineEdit()
 
         grid = QGridLayout()
         grid.setSpacing(10)
 
-        grid.addWidget(QLabel('Number blocks'), 1, 0)
-        grid.addWidget(self.validation_size, 1, 1)
+        grid.addWidget(QLabel('Z-Axis:'), 1, 0)
+        grid.addWidget(self.z_start, 1, 1)
+        grid.addWidget(QLabel('to'), 1, 2)
+        grid.addWidget(self.z_end, 1, 3)
 
-        grid.addWidget(QLabel('Orientation'), 2, 0)
-        grid.addWidget(self.orientation, 2, 1)
+        grid.addWidget(QLabel('Y-Axis:'), 2, 0)
+        grid.addWidget(self.y_start, 2, 1)
+        grid.addWidget(QLabel('to'), 2, 2)
+        grid.addWidget(self.y_end, 2, 3)
+
+        grid.addWidget(QLabel('X-Axis:'), 3, 0)
+        grid.addWidget(self.x_start, 3, 1)
+        grid.addWidget(QLabel('to'), 3, 2)
+        grid.addWidget(self.x_end, 3, 3)
 
         okButton = QPushButton("OK")
         okButton.clicked.connect(self.readParameters)
@@ -212,10 +212,12 @@ class ValidationDlg(QDialog):
         self.move(qr.topLeft())
 
     def readParameters(self):
-        num_blocks = int(self.validation_size.currentText())
-        orientation = self.orientation.currentText()
-        self.valid_params = dict(num_blocks=num_blocks,
-                                 orientation=orientation)
+        z_coord = (int(self.z_start.text()), int(self.z_end.text()))
+        y_coord = (int(self.y_start.text()), int(self.y_end.text()))
+        x_coord = (int(self.x_start.text()), int(self.x_end.text()))
+        self.valid_params = dict(z_coord=z_coord,
+                                 y_coord=y_coord,
+                                 x_coord=x_coord)
 
         self.close()
 
@@ -281,7 +283,7 @@ class NNClassGui(LabelingGui):
             dlg.exec_()
 
             if dlg.valid_params:
-                self.topLevelOperatorView.get_val_layer(dlg.valid_params)
+                self.topLevelOperatorView.set_validationMask(dlg.valid_params)
 
         advanced_menu.addAction("Validation Set").triggered.connect(validationMenu)
 
@@ -427,7 +429,7 @@ class NNClassGui(LabelingGui):
         labels = self.labelListData
 
         validationMask = self.topLevelOperatorView.ValidationImgMask
-        #hack, axistags are none when defining in opNNclass
+        # hack, axistags are none when defining in opNNclass
         validationMask.meta.axistags = vigra.defaultAxistags('zyxc')
 
         if validationMask.ready():
