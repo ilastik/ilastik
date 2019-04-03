@@ -6,8 +6,7 @@ environment:
   MINICONDA: C:\Miniconda36-x64
 
 install:
-  - set DEV_PREFIX=%MINICONDA%/envs/%ENV_NAME%
-  - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
+  - CALL %MINICONDA%/Scripts/activate.bat
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda create -q --yes -n %ENV_NAME% -c ilastik-forge/label/nightly -c conda-forge ilastik-dependencies-no-solvers z5py
@@ -34,7 +33,7 @@ install:
 build: off
 
 test_script:
-  - set DEV_PREFIX=%MINICONDA%/envs/%ENV_NAME%
+  - CALL %MINICONDA%/Scripts/activate.bat
   - activate %ENV_NAME%
   - cd \
   - cd ilastik\ilastik-meta\lazyflow
