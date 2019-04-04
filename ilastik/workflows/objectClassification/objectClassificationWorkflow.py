@@ -84,7 +84,8 @@ class ObjectClassificationWorkflow(Workflow):
 
     @property
     def data_instructions(self):
-        return 'Use the "Raw Data" tab to load your intensity image(s).\n\n'
+        return (f'Use the "{self.InputImageRoles.RAW_DATA.displayName}" tab to load your intensity image(s).\n\n'
+                f'Use the (optional) "{self.InputImageRoles.ATLAS.displayName}" tab if you want to map your objects to colors in an Atlas image.\n\n')
 
     def __init__(self, shell, headless,
                  workflow_cmdline_args,
@@ -134,7 +135,7 @@ class ObjectClassificationWorkflow(Workflow):
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
 
-        opDataExport.SelectionNames.setValue( self.ExportNames.asNameList() )
+        opDataExport.SelectionNames.setValue( self.ExportNames.asDisplayNameList() )
 
         self._batch_export_args = None
         self._batch_input_args = None
@@ -180,7 +181,7 @@ class ObjectClassificationWorkflow(Workflow):
                                                         instructionText=self.data_instructions )
 
         opData = self.dataSelectionApplet.topLevelOperator
-        opData.DatasetRoles.setValue(self.InputImageRoles.asNameList())
+        opData.DatasetRoles.setValue(self.InputImageRoles.asDisplayNameList())
         self._applets.append(self.dataSelectionApplet)
 
     @property
@@ -193,11 +194,11 @@ class ObjectClassificationWorkflow(Workflow):
         exportImageArgGroup.add_argument(
             "--export_object_prediction_img", dest="export_source",
             action="store_const",
-            const=self.ExportNames.OBJECT_PREDICTIONS.slotName)
+            const=self.ExportNames.OBJECT_PREDICTIONS.displayName)
         exportImageArgGroup.add_argument(
             "--export_object_probability_img", dest="export_source",
             action="store_const",
-            const=self.ExportNames.OBJECT_PROBABILITIES.slotName)
+            const=self.ExportNames.OBJECT_PROBABILITIES.displayName)
         return parser, exportImageArgGroup
 
     @property
@@ -231,7 +232,7 @@ class ObjectClassificationWorkflow(Workflow):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         return opData.ImageGroup[input_role]
 
-    def canonicalizeSlot(self, slot):
+    def toDefaultAxisOrder(self, slot):
         return OpReorderAxes(parent=self, AxisOrder="txyzc", Input=slot).Output
 
     def createRawDataSourceSlot(self, laneIndex, canonicalOrder=True):
@@ -242,13 +243,13 @@ class ObjectClassificationWorkflow(Workflow):
             rawslot = opFillMissingSlices.Output
 
         if canonicalOrder:
-            rawslot = self.canonicalizeSlot(rawslot)
+            rawslot = self.toDefaultAxisOrder(rawslot)
 
         return rawslot
 
     def createAtlasSourceSlot(self, laneIndex):
         rawAtlasSlot = self.getImageSlot(self.InputImageRoles.ATLAS, laneIndex)
-        return self.canonicalizeSlot(rawAtlasSlot)
+        return self.toDefaultAxisOrder(rawAtlasSlot)
 
     @abstractmethod
     def connectInputs(self, laneIndex):
@@ -567,7 +568,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         exportImageArgGroup.add_argument(
             "--export_pixel_probability_img", dest="export_source",
             action="store_const",
-            const=self.ExportNames.PIXEL_PROBABILITIES.slotName)
+            const=self.ExportNames.PIXEL_PROBABILITIES.displayName)
         return parser, exportImageArgGroup
 
     def prepareForNewLane(self, laneIndex):
@@ -710,7 +711,7 @@ class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
     @property
     def data_instructions(self):
         return (super().data_instructions +
-                'Use the "Segmentation Image" tab to load your binary mask image(s).')
+                f'Use the "{self.InputImageRoles.SEGMENTATION_IMAGE.displayName}" tab to load your binary mask image(s).')
 
     def connectInputs(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -738,7 +739,7 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
     @property
     def data_instructions(self):
         return (super().data_instructions +
-                'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).')
+                f'Use the "{self.InputImageRoles.PREDICTION_MAPS.displayName}" tab to load your pixel-wise probability image(s).')
 
     def createInputApplets(self):
         super().createInputApplets()

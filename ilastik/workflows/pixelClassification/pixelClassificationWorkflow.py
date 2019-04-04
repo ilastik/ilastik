@@ -118,7 +118,7 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.PmapColors.connect( opClassify.PmapColors )
         opDataExport.LabelNames.connect( opClassify.LabelNames )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
-        opDataExport.SelectionNames.setValue( self.ExportNames.asNameList() )
+        opDataExport.SelectionNames.setValue( self.ExportNames.asDisplayNameList() )
 
         # Expose for shell
         self._applets.append(self.dataSelectionApplet)
@@ -164,7 +164,7 @@ class PixelClassificationWorkflow(Workflow):
                                      supportIlastik05Import=True,
                                      instructionText=data_instructions,
                                      forceAxisOrder=c_at_end)
-        applet.topLevelOperator.DatasetRoles.setValue(self.Roles.asNameList())
+        applet.topLevelOperator.DatasetRoles.setValue(self.Roles.asDisplayNameList())
         return applet
 
     def createFeatureSelectionApplet(self):

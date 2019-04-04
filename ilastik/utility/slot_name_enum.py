@@ -10,18 +10,18 @@ class SlotNameEnum(enum.IntEnum):
 
     e.g a value defined like so:
         MY_DATA_SLOT = 123
-    will have its slotName rendered as
+    will have its displayName rendered as
         'My Data Slot'
     """
 
     @property
-    def slotName(self) -> str:
+    def displayName(self) -> str:
         """A 'Human Readable Slot Name' str based on its ENUM_SLOT_NAME"""
         return self.name.replace('_', ' ').title()
 
     @classmethod
-    def asNameList(cls) -> List[str]:
-        return [item.slotName for item in cls]
+    def asDisplayNameList(cls) -> List[str]:
+        return [item.displayName for item in cls]
 
     @classmethod
     def getFirst(cls) -> int:
