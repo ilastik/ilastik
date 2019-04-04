@@ -445,9 +445,9 @@ class DataSelectionGui(QWidget):
         for i, fileName in enumerate(fileNames):
             # On some OS's the open file dialog allows to return file names that do not exist
             assert fileName.exists(), \
-                f"The file '{fileNames[i]}' does not exist."
+                f"The file '{fileName}' does not exist."
             if fileName.name.lower() == 'attributes.json' and '.n5' in fileName.as_posix():
-                fileNames[i] = fileName.parents[0]
+                fileNames[i] = fileName.parent
         fileNames = [fileName.as_posix() for fileName in fileNames]
         return fileNames
 

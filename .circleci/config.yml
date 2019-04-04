@@ -25,11 +25,11 @@ jobs:
     - restore_cache:
         keys:
         # This branch if available
-        - v1.32rc2-dep-{{ .Branch }}-
+        - v1.33a0-dep-{{ .Branch }}-
         # Default branch if not
-        - v1.32rc2-dep-master-
+        - v1.33a0-dep-master-
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-        - v1.32rc2-dep-
+        - v1.33a0-dep-
     - run: |
         if [[ ! -d ${CONDA_ROOT} ]]; then
             echo "Installing Miniconda...";
@@ -53,7 +53,7 @@ jobs:
     - run: ln -s `pwd` ${TEST_ENV_PREFIX}/ilastik-meta/ilastik
     # Save dependency cache
     - save_cache:
-        key: v1.32rc2-dep-{{ .Branch }}-{{ epoch }}
+        key: v1.33a0-dep-{{ .Branch }}-{{ epoch }}
         paths:
         - /home/ubuntu/miniconda
     # Test
