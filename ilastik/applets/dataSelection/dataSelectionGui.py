@@ -20,10 +20,10 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
-from future import standard_library
-standard_library.install_aliases()
 from builtins import range
 import os
+import pathlib
+import typing
 import sys
 import threading
 import h5py
@@ -431,27 +431,24 @@ class DataSelectionGui(QWidget):
 
             if file_dialog.exec_():
                 fileNames = file_dialog.selectedFiles()
-                # For the n5 extension the attributes.json file has to be selected in the file dialog.
-                # However we need just the *.n5 directory-file.
-                for i in range(len(fileNames)):
-                    # On some OS's the open file dialog allows to return file names that do not exist
-                    assert os.path.isfile(fileNames[i]), \
-                        "The file '" + fileNames[i] + "' does not exist."
-
-                    if "attributes.json" in fileNames[i] and ".n5" in fileNames[i]:
-                        fileNames[i] = fileNames[i].replace(os.path.sep + "attributes.json", "")
         else:
             # otherwise, use native dialog of the present platform
             fileNames, _filter = QFileDialog.getOpenFileNames(parent_window, "Select Images", defaultDirectory, filt_all_str)
-            # For the n5 extension the attributes.json file has to be selected in the file dialog.
-            # However we need just the *.n5 directory-file.
-            for i in range(len(fileNames)):
-                # On some OS's the open file dialog allows to return file names that do not exist
-                assert os.path.isfile(fileNames[i]), \
-                    "The file '" + fileNames[i] + "' does not exist."
+        fileNames = DataSelectionGui.cleanFileList(fileNames)
+        return fileNames
 
-                if "attributes.json" in fileNames[i] and ".n5" in fileNames[i]:
-                    fileNames[i] = fileNames[i].replace(os.path.sep + "attributes.json", "")
+    @staticmethod
+    def cleanFileList(fileList: typing.List[str]) -> typing.List[str]:
+        fileNames = [pathlib.Path(selected_file) for selected_file in fileList]
+        # For the n5 extension the attributes.json file has to be selected in the file dialog.
+        # However we need just the *.n5 directory-file.
+        for i, fileName in enumerate(fileNames):
+            # On some OS's the open file dialog allows to return file names that do not exist
+            assert fileName.exists(), \
+                f"The file '{fileNames[i]}' does not exist."
+            if fileName.name.lower() == 'attributes.json' and '.n5' in fileName.as_posix():
+                fileNames[i] = fileName.parents[0]
+        fileNames = [fileName.as_posix() for fileName in fileNames]
         return fileNames
 
     def _findFirstEmptyLane(self, roleIndex):
