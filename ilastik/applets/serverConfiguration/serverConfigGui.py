@@ -16,18 +16,16 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 import os
 from PyQt5 import uic
 from PyQt5.QtWidgets import QWidget, QStackedWidget
 
-from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_SERVER_CONFIG
+from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_LOCAL_SERVER_CONFIG, DEFAULT_REMOTE_SERVER_CONFIG
 
 
 class ServerConfigGui(QWidget):
-    configurables = DEFAULT_SERVER_CONFIG.keys()
-
     def centralWidget(self):
         return self
 
@@ -41,7 +39,7 @@ class ServerConfigGui(QWidget):
         return self._viewerControlWidgetStack
 
     def __init__(self, parentApplet, topLevelOperatorView):
-        super(ServerConfigGui, self).__init__()
+        super().__init__()
         self.parentApplet = parentApplet
         self._viewerControls = QWidget()
         self.topLevelOperator = topLevelOperatorView
@@ -49,9 +47,10 @@ class ServerConfigGui(QWidget):
         self._init_central_uic()
         # Disable box that contains username, password ect. while
         # local server (radio button) is activated
+
         def edit_button():
-            for el in self.configurables:
-                if self.localServerButton.isChecked() and el == 'address':
+            for el in DEFAULT_REMOTE_SERVER_CONFIG.keys():
+                if self.localServerButton.isChecked() and el == "address":
                     continue
                 getattr(self, el).setEnabled(True)
 
@@ -61,21 +60,25 @@ class ServerConfigGui(QWidget):
             if self.localServerButton.isChecked():
                 assert not self.remoteServerButton.isChecked()
                 config = self.topLevelOperator.LocalServerConfig.value
-                getattr(self, 'address').setEnabled(False)
-                getattr(self, 'username').hide()
-                getattr(self, 'usernameLabel').hide()
-                getattr(self, 'password').hide()
-                getattr(self, 'passwordLabel').hide()
+                getattr(self, "address").setEnabled(False)
+                getattr(self, "username").hide()
+                getattr(self, "usernameLabel").hide()
+                getattr(self, "ssh_key").hide()
+                getattr(self, "ssh_keyLabel").hide()
+                getattr(self, "password").hide()
+                getattr(self, "passwordLabel").hide()
             else:
                 assert self.remoteServerButton.isChecked()
                 config = self.topLevelOperator.RemoteServerConfig.value
-                getattr(self, 'username').show()
-                getattr(self, 'usernameLabel').show()
-                getattr(self, 'password').show()
-                getattr(self, 'passwordLabel').show()
+                getattr(self, "usernameLabel").show()
+                getattr(self, "password").show()
+                getattr(self, "passwordLabel").show()
+                getattr(self, "ssh_key").show()
+                getattr(self, "ssh_keyLabel").show()
+                getattr(self, "username").show()
 
-            for el in self.configurables:
-                getattr(self, el).setText(config[el])
+            for key, value in config.items():
+                getattr(self, key).setText(value)
 
             self.topLevelOperator.toggleServerConfig(use_local=self.localServerButton.isChecked())
             edit_button()  # enter 'edit mode' when switching between locale and remote server
@@ -88,16 +91,19 @@ class ServerConfigGui(QWidget):
         server_button()
 
         def save_button():
-            config = {}
-            for el in self.configurables:
-                attr = getattr(self, el)
-                attr.setEnabled(False)
-                config.update({el: attr.text()})
+            def get_config(configurables):
+                config = {}
+                for el in configurables:
+                    attr = getattr(self, el)
+                    attr.setEnabled(False)
+                    config.update({el: attr.text()})
+
+                return config
 
             if self.localServerButton.isChecked():
-                self.topLevelOperator.setLocalServerConfig(config)
+                self.topLevelOperator.setLocalServerConfig(get_config(DEFAULT_LOCAL_SERVER_CONFIG.keys()))
             else:
-                self.topLevelOperator.setRemoteServerConfig(config)
+                self.topLevelOperator.setRemoteServerConfig(get_config(DEFAULT_REMOTE_SERVER_CONFIG.keys()))
 
         self.saveButton.clicked.connect(save_button)
 
@@ -108,12 +114,12 @@ class ServerConfigGui(QWidget):
         """
         Load the ui file for the central widget.
         """
-        local_dir = os.path.split(__file__)[0] + '/'
+        local_dir = os.path.split(__file__)[0] + "/"
         uic.loadUi(local_dir + "/serverConfig.ui", self)
 
     def _init_applet_drawer_uic(self):
         """
         Load the ui file for the applet drawer.
         """
-        local_dir = os.path.split(__file__)[0] + '/'
+        local_dir = os.path.split(__file__)[0] + "/"
         self._drawer = uic.loadUi(local_dir + "/serverConfigDrawer.ui")

@@ -30,7 +30,7 @@ from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
-from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_SERVER_CONFIG
+from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_LOCAL_SERVER_CONFIG
 
 import logging
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ class OpNNClassification(Operator):
     LabelInputs = InputSlot(optional=True, level=1)
     FreezePredictions = InputSlot(stype='bool', value=False, nonlane=True)
     ClassifierFactory = InputSlot(optional=True)
-    ServerConfig = InputSlot(value=DEFAULT_SERVER_CONFIG)
+    ServerConfig = InputSlot(value=DEFAULT_LOCAL_SERVER_CONFIG)
     TiktorchConfig = InputSlot(optional=True)
     BinaryModel = InputSlot(optional=True)
     BinaryModelState = InputSlot(value=b'')
@@ -218,7 +218,7 @@ class OpNNClassification(Operator):
                         a.removeSlot(position, finalsize)
                     s1.notifyRemoved(partial(removeSlot, s2))
 
-    def set_classifier(self, tiktorch_config : dict, model_file : bytes, model_state : bytes, optimizer_state : bytes):
+    def set_classifier(self, tiktorch_config: dict, model_file: bytes, model_state: bytes, optimizer_state: bytes):
         self.TiktorchConfig.disconnect()  # do not create TiktorchClassifierFactory with invalid intermediate settings
         self.ClassifierFactory.disconnect()
         self.FreezePredictions.setValue(False)

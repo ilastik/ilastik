@@ -48,10 +48,20 @@
         </rect>
        </property>
        <layout class="QGridLayout" name="gridLayout_3">
-        <item row="1" column="0">
-         <widget class="QLabel" name="passwordLabel">
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="password"/>
+        </item>
+        <item row="6" column="0">
+         <widget class="QLabel" name="port1Label">
           <property name="text">
-           <string>Password:</string>
+           <string>1st Port:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="addressLabel">
+          <property name="text">
+           <string>Address:</string>
           </property>
          </widget>
         </item>
@@ -65,38 +75,38 @@
         <item row="0" column="1">
          <widget class="QLineEdit" name="username"/>
         </item>
-        <item row="1" column="1">
-         <widget class="QLineEdit" name="password"/>
+        <item row="6" column="1">
+         <widget class="QLineEdit" name="port1"/>
         </item>
         <item row="2" column="0">
-         <widget class="QLabel" name="addressLabel">
+         <widget class="QLabel" name="passwordLabel">
           <property name="text">
-           <string>Address:</string>
+           <string>Password:</string>
           </property>
          </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QLabel" name="portLabel">
-          <property name="text">
-           <string>Port:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="0">
-         <widget class="QLabel" name="meta_portLabel">
-          <property name="text">
-           <string>Meta port:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QLineEdit" name="address"/>
-        </item>
-        <item row="3" column="1">
-         <widget class="QLineEdit" name="port"/>
         </item>
         <item row="4" column="1">
-         <widget class="QLineEdit" name="meta_port"/>
+         <widget class="QLineEdit" name="address"/>
+        </item>
+        <item row="7" column="1">
+         <widget class="QLineEdit" name="port2"/>
+        </item>
+        <item row="7" column="0">
+         <widget class="QLabel" name="port2Label">
+          <property name="text">
+           <string>2nd Port</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="ssh_key"/>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="ssh_keyLabel">
+          <property name="text">
+           <string>SSH Key:</string>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
@@ -112,6 +122,12 @@
        <property name="text">
         <string>Save</string>
        </property>
+       <property name="autoDefault">
+        <bool>true</bool>
+       </property>
+       <property name="default">
+        <bool>false</bool>
+       </property>
       </widget>
       <widget class="QPushButton" name="editButton">
        <property name="geometry">
@@ -125,11 +141,10 @@
        <property name="text">
         <string>Edit</string>
        </property>
+       <property name="autoDefault">
+        <bool>true</bool>
+       </property>
       </widget>
-      <zorder>gridLayoutWidget_2</zorder>
-      <zorder>remoteServerButton</zorder>
-      <zorder>saveButton</zorder>
-      <zorder>editButton</zorder>
      </widget>
     </item>
     <item row="1" column="0">
@@ -142,6 +157,18 @@
    </layout>
   </widget>
  </widget>
+ <tabstops>
+  <tabstop>localServerButton</tabstop>
+  <tabstop>remoteServerButton</tabstop>
+  <tabstop>username</tabstop>
+  <tabstop>ssh_key</tabstop>
+  <tabstop>password</tabstop>
+  <tabstop>address</tabstop>
+  <tabstop>port1</tabstop>
+  <tabstop>port2</tabstop>
+  <tabstop>saveButton</tabstop>
+  <tabstop>editButton</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

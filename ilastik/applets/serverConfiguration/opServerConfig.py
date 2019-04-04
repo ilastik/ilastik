@@ -21,19 +21,21 @@
 from ilastik.utility.operatorSubView import OperatorSubView
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
-DEFAULT_SERVER_CONFIG = {'username': '', 'password': '',
-                         'address': 'localhost', 'port': '5556', 'meta_port': '5557'}
+from typing import Optional, Dict
+
+DEFAULT_LOCAL_SERVER_CONFIG = {'username': '', 'password': '',
+                         'address': 'localhost', 'port1': '5556', 'port2': '5557'}
 # use remote defaults as user hints
-DEFAULT_REMOTE_SERVER_CONFIG = {'username': 'SSH user name', 'password': 'SSH password',
-                                'address': 'remote host or IP address', 'port': '5556', 'meta_port': '5557'}
+DEFAULT_REMOTE_SERVER_CONFIG = {'username': 'SSH user name', 'password': 'SSH password (no encrytpion!)', 'ssh_key': 'SSH key',
+                                'address': 'remote host or IP address', 'port1': '5556', 'port2': '5557'}
 
 
 class OpServerConfig(Operator):
     name = "OpServerConfig"
     category = "top-level"
 
-    LocalServerConfig = InputSlot(value=DEFAULT_SERVER_CONFIG)
-    RemoteServerConfig = InputSlot(value=DEFAULT_REMOTE_SERVER_CONFIG)
+    LocalServerConfig = InputSlot(value=dict(DEFAULT_LOCAL_SERVER_CONFIG))
+    RemoteServerConfig = InputSlot(value=dict(DEFAULT_REMOTE_SERVER_CONFIG))
     UseLocalServer = InputSlot(value=True)
 
     ServerConfig = OutputSlot()
@@ -41,10 +43,14 @@ class OpServerConfig(Operator):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def setLocalServerConfig(self, config: dict = DEFAULT_SERVER_CONFIG):
+    def setLocalServerConfig(self, config: Optional[Dict] = None):
+        if config is None:
+            config = dict(DEFAULT_LOCAL_SERVER_CONFIG)
         self.LocalServerConfig.setValue(config)
 
-    def setRemoteServerConfig(self, config: dict = DEFAULT_REMOTE_SERVER_CONFIG):
+    def setRemoteServerConfig(self, config: Optional[Dict] = None):
+        if config is None:
+            config = dict(DEFAULT_REMOTE_SERVER_CONFIG)
         self.RemoteServerConfig.setValue(config)
 
     def toggleServerConfig(self, use_local=True):
