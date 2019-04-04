@@ -69,4 +69,9 @@ tests/recorded_test_cases/ObjectClassification/cube_objects_raw.npy
 .idea/
 
 
+# vim undo/swp file
+*.un~
+*.swp
 
+# pytest output
+tests/test_tracking_project.ilp
