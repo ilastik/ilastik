@@ -78,14 +78,9 @@ class ObjectClassificationWorkflow(Workflow):
 
         return ExportNames
 
-    @property
-    def InputImageRoles(self):
-        @enum.unique
-        class InputImageRoles(SlotNameEnum):
-            RAW_DATA = enum.auto()
-            ATLAS = enum.auto()
-
-        return InputImageRoles
+    class InputImageRoles(SlotNameEnum):
+        RAW_DATA = enum.auto()
+        ATLAS = enum.auto()
 
     @property
     def data_instructions(self):
@@ -176,7 +171,6 @@ class ObjectClassificationWorkflow(Workflow):
         if unused_args:
             logger.warning("Unused command-line args: {}".format( unused_args ))
 
-    @abstractmethod
     def createInputApplets(self):
         self.dataSelectionApplet = DataSelectionApplet( self,
                                                         "Input Data",
@@ -708,12 +702,10 @@ class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from binary image)"
     workflowDisplayName = "Object Classification [Inputs: Raw Data, Segmentation]"
 
-    @property
-    def InputImageRoles(self):
-        class ExtraInputImageRoles(SlotNameEnum):
-            SEGMENTATION_IMAGE = super(self.__class__, self).InputImageRoles.getNext()
-
-        return super().InputImageRoles.extendedWithEnum(ExtraInputImageRoles)
+    class InputImageRoles(SlotNameEnum):
+        RAW_DATA = enum.auto()
+        SEGMENTATION_IMAGE = enum.auto()
+        ATLAS = enum.auto()
 
     @property
     def data_instructions(self):
@@ -738,12 +730,10 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from prediction image)"
     workflowDisplayName = "Object Classification [Inputs: Raw Data, Pixel Prediction Map]"
 
-    @property
-    def InputImageRoles(self):
-        class ExtraInputImageRoles(SlotNameEnum):
-            PREDICTION_MAPS = super(self.__class__, self).InputImageRoles.getNext()
-
-        return super().InputImageRoles.extendedWithEnum(ExtraInputImageRoles)
+    class InputImageRoles(SlotNameEnum):
+        RAW_DATA = enum.auto()
+        PREDICTION_MAPS = enum.auto()
+        ATLAS = enum.auto()
 
     @property
     def data_instructions(self):
