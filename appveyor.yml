@@ -7,11 +7,10 @@ environment:
 
 
 install:
-  - set DEV_PREFIX=%MINICONDA%/envs/%ENV_NAME%
-  - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
+  - CALL %MINICONDA%/Scripts/activate.bat
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  - conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge python=3.6 numpy=1.12 ilastik-dependencies-no-solvers
+  - conda create -q --yes -n %ENV_NAME% -c ilastik-forge/label/nightly -c conda-forge ilastik-dependencies-no-solvers z5py
   - activate %ENV_NAME%
   - cd \
   # Get the current master of all submodules
