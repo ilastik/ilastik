@@ -69,4 +69,6 @@ tests/recorded_test_cases/ObjectClassification/cube_objects_raw.npy
 .idea/
 
 
-
+# vim undo/swp file
+*.un~
+*.swp
