@@ -1,8 +1,7 @@
 import unittest
-import contextlib
 import tempfile
-import shutil
 import os
+import pathlib
 
 import h5py
 import z5py
@@ -17,6 +16,9 @@ class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
 
     def setup_method(self, method):
         self.graph = Graph()
+        self.tempdir = tempfile.TemporaryDirectory()
+        # necessary to ensure forward-slashes on windows, which are assumed in our code
+        self.tempdir_normalized_name = pathlib.Path(self.tempdir.name).as_posix()
 
     def test_2d_vigra_along_z(self):
         """Test if 2d files generated through vigra are recognized correctly"""
@@ -28,10 +30,9 @@ class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
         h5_op = OpStreamingH5N5SequenceReaderS(graph=self.graph)
         n5_op = OpStreamingH5N5SequenceReaderS(graph=self.graph)
 
-        tempdir = tempfile.TemporaryDirectory()
         try:
-            testDataH5FileName = f'{tempdir.name}/test.h5'
-            testDataN5FileName = f'{tempdir.name}/test.n5'
+            testDataH5FileName = f'{self.tempdir_normalized_name}/test.h5'
+            testDataN5FileName = f'{self.tempdir_normalized_name}/test.n5'
             # Write the dataset to an hdf5 and a n5 file
             # (Note: Don't use vigra to do this, which may reorder the axes)
             h5File = h5py.File(testDataH5FileName)
@@ -82,10 +83,9 @@ class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
         h5_op = OpStreamingH5N5SequenceReaderS(graph=self.graph)
         n5_op = OpStreamingH5N5SequenceReaderS(graph=self.graph)
 
-        tempdir = tempfile.TemporaryDirectory()
         try:
-            testDataH5FileName = f'{tempdir.name}/test.h5'
-            testDataN5FileName = f'{tempdir.name}/test.n5'
+            testDataH5FileName = f'{self.tempdir_normalized_name}/test.h5'
+            testDataN5FileName = f'{self.tempdir_normalized_name}/test.n5'
             # Write the dataset to an hdf5 and a n5 file
             # (Note: Don't use vigra to do this, which may reorder the axes)
             h5File = h5py.File(testDataH5FileName)
@@ -136,10 +136,9 @@ class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
         h5_op = OpStreamingH5N5SequenceReaderS(graph=self.graph)
         n5_op = OpStreamingH5N5SequenceReaderS(graph=self.graph)
 
-        tempdir = tempfile.TemporaryDirectory()
         try:
-            testDataH5FileName = f'{tempdir.name}/test.h5'
-            testDataN5FileName = f'{tempdir.name}/test.n5'
+            testDataH5FileName = f'{self.tempdir_normalized_name}/test.h5'
+            testDataN5FileName = f'{self.tempdir_normalized_name}/test.n5'
             # Write the dataset to an hdf5 file
             # (Note: Don't use vigra to do this, which may reorder the axes)
             h5File = h5py.File(testDataH5FileName)
@@ -228,9 +227,8 @@ class TestOpStreamingH5N5SequenceReaderS(unittest.TestCase):
     def test_expandGlobStrings(self):
         expected_datasets = ['g1/g2/data2', 'g1/g2/data3']
 
-        tempdir = tempfile.TemporaryDirectory()
-        h5_file_name = f'{tempdir.name}/test.h5'
-        n5_file_name = f'{tempdir.name}/test.n5'
+        h5_file_name = f'{self.tempdir_normalized_name}/test.h5'
+        n5_file_name = f'{self.tempdir_normalized_name}/test.n5'
         try:
             h5_file = h5py.File(h5_file_name, mode='w')
             n5_file = z5py.N5File(n5_file_name, mode='w')

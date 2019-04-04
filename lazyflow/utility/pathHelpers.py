@@ -23,6 +23,7 @@ from builtins import object
 import os
 import fnmatch
 import errno
+import pathlib
 
 import h5py
 import z5py
@@ -347,7 +348,9 @@ def lsH5N5(h5N5FileObject, minShape=2, maxShape=5):
         if len(obj.shape) not in range(minShape, maxShape + 1):
             return
         if isinstance(h5N5FileObject, z5py.N5File):
-            objectName = objectName.replace(h5N5FileObject.path + '/', '')  # Need only the internal path here
+            # make sure we get a path with forward slashes on windows
+            objectName = pathlib.Path(objectName)
+            objectName = objectName.relative_to(h5N5FileObject.path).as_posix()  # Need only the internal path here
         listOfDatasets.append({
             'name': objectName,
             'object': obj
@@ -377,7 +380,7 @@ def globH5N5(fileObject, globString):
           matches occurred.
         - None if fileObject is not a h5 or n5 file object
     """
-    if isinstance(fileObject, h5py.File) or isinstance(fileObject, z5py.N5File):
+    if isinstance(fileObject, (h5py.File, z5py.N5File)):
         pathlist = [x['name'] for x in lsH5N5(fileObject)]
     else:
         return None
