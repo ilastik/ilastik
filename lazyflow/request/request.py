@@ -1,10 +1,3 @@
-from __future__ import absolute_import
-from future import standard_library
-
-standard_library.install_aliases()
-from builtins import next
-from builtins import range
-from builtins import object
 from future.utils import raise_with_traceback
 
 ###############################################################################
@@ -39,6 +32,7 @@ import platform
 import traceback
 import io
 from random import randrange
+from typing import Callable
 
 
 import logging
@@ -62,16 +56,19 @@ class RequestGreenlet(greenlet.greenlet):
         self.owning_requests = [owning_request]
 
 
-class SimpleSignal(object):
+class SimpleSignal:
     """
-    Simple callback mechanism. Not synchronized.  No unsubscribe function.
+    Simple callback mechanism.
+    Not synchronized.
     """
 
-    def __init__(self):
+    __slots__ = ("callbacks", "_cleaned")
+
+    def __init__(self) -> None:
         self.callbacks = []
         self._cleaned = False
 
-    def subscribe(self, fn):
+    def subscribe(self, fn: Callable):
         self.callbacks.append(fn)
 
     def __call__(self, *args, **kwargs):
@@ -80,7 +77,7 @@ class SimpleSignal(object):
         for f in self.callbacks:
             f(*args, **kwargs)
 
-    def clean(self):
+    def clean(self) -> None:
         self._cleaned = True
         self.callbacks = []
 
