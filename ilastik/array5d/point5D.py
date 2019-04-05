@@ -3,10 +3,19 @@ from itertools import product
 import numpy as np
 from typing import Dict, Tuple, Iterator
 
+def ensure_slice(slc):
+    if isinstance(slc, slice):
+        return slc
+    if isinstance(slc, int):
+        i = slc
+        return slice(i, i+1)
+    assert False
+
 class Point5D(object):
     LABELS = 'txyzc'
     LABEL_MAP = {label:index for index, label in enumerate(LABELS)}
     INT_TYPE = np.uint64
+    INF = np.iinfo(INT_TYPE).max #maybe this should be float's inf
 
     def __init__(self, *, t:int, x:int, y:int, z:int, c:int):
         locs = locals()
@@ -18,8 +27,9 @@ class Point5D(object):
         return cls(t=t or 0, x=x or 0, y=y or 0, z=z or 0, c=c or 0)
 
     @classmethod
-    def endpoint(cls, *, shape:'Shape5D', t:int=None, x:int=None, y:int=None, z:int=None, c:int=None):
-        return cls(t=t or shape.t, x=x or shape.x, y=y or shape.y, z=z or shape.z, c=c or shape.z)
+    def endpoint(cls, *, t:int=None, x:int=None, y:int=None, z:int=None, c:int=None):
+        inf = Point5D.INF
+        return cls(t=t or inf, x=x or inf, y=y or inf, z=z or inf, c=c or inf)
 
     @classmethod
     def from_tuple(cls, tup:Tuple[int,int,int,int,int]):
@@ -53,7 +63,7 @@ class Point5D(object):
         return np.asarray(list(self._coords.values()))
 
     def __repr__(self):
-        contents = ",".join((f"{label}:{val}" for label, val in self._coords.items()))
+        contents = ",".join((f"{label}:{val if val != self.INF else 'inf'}" for label, val in self._coords.items()))
         return f"{self.__class__.__name__}({contents})"
 
     def __str__(self):
@@ -150,108 +160,80 @@ class Shape5D(Point5D):
         assert t > 0 and x > 0 and y > 0 and z > 0 and c > 0
         super().__init__(t=t, x=x, y=y, z=z, c=c)
 
-    def to_roi(self, begin:Point5D=None) -> 'Roi5D':
-        return Roi5D(begin or Point5D.zero(), self)
+    def to_slice_5d(self, start:Point5D=None) -> 'Roi5D':
+        return Roi5D.from_start_stop(start or Point5D.zero(), self)
 
     @classmethod
     def from_point(cls, point:Point5D):
         d = {k:v or 1 for k, v in point.to_dict().items()}
         return cls(**d)
 
-class Roi5D(object):
-    def __init__(self, inclusive_begin: Point5D, exclusive_end: Point5D=None):
-        if exclusive_end is None:
-            exclusive_end = Point5D.endpoint(**inclusive_begin.to_dict())
-        assert exclusive_end > inclusive_begin, f"end: {exclusive_end}   begin {inclusive_begin}"
-        self.begin = inclusive_begin
-        self.end = exclusive_end
+    def _ranges(self, *, block_shape:'Shape5D', start_point:Point5D=None) -> Iterator[Iterator[int]]:
+        start_point = start_point or Point5D.zero()
+
+        starts = start_point.to_tuple()
+        ends = self.to_tuple()
+        steps = block_shape.to_tuple()
+        return (range(s, e, stp) for s, e, stp in zip(starts, ends, steps))
+
+    def split(self, block_shape:'Shape5D') -> Iterator['Roi5D']:
+        for begin_tuple in product(*self._ranges(block_shape)):
+            start = Point5D.from_tuple(begin_tuple)
+            stop = (start + block_shape).clamped(maximum=elf.stop)
+            yield Roi5Di.from_start_stop(start, stop)
+
+class Slice5D(object):
+    def __init__(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
+        self._slices = {'t':ensure_slice(t),
+                        'x':ensure_slice(x), 'y':ensure_slice(y), 'z':ensure_slice(z),
+                        'c':ensure_slice(c)}
+
+        self.start = Point5D.startpoint(**{label:slc.start for label, slc in self._slices.items()})
+        self.stop = Point5D.endpoint(**{label:slc.stop for label, slc in self._slices.items()})
+
+    @classmethod
+    def from_start_stop(cls, start:Point5D, stop:Point5D):
+        slices = {}
+        for label in Point5D.LABELS:
+            slice_stop = stop[label]
+            slice_stop = None if slice_stop == Point5D.INF else slice_stop
+            slices[label] = slice(start[label], slice_stop)
+        return cls(**slices)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        return self.begin == other.begin and self.end == other.end
+        return self.start == other.start and self.stop == other.stop
 
     def __ne__(self, other):
         return not self == other
 
-    def ranges(self, block_shape:Shape5D) -> Iterator[Iterator[int]]:
-        starts = self.begin.to_tuple()
-        ends = self.end.to_tuple()
-        steps = block_shape.to_tuple()
-        return (range(s, e, stp) for s, e, stp in zip(starts, ends, steps))
-
-    def split(self, block_shape:Shape5D) -> Iterator['Roi5D']:
-        for begin_tuple in product(*self.ranges(block_shape)):
-            begin = Point5D.from_tuple(begin_tuple)
-            end = (begin + block_shape).clamped(maximum=self.end)
-            yield Roi5D(begin, end)
-
     def axis_span(self, label):
-        return self.end[label] - self.begin[label]
+        return self.stop[label] - self.start[label]
 
     @classmethod
     def cutout(cls, begin_tuple:Tuple[int, int, int, int, int], end_tuple:Tuple[int,int,int,int,int],
                image_shape:Shape5D):
-        end = (v or image_shape[k] for k,v in zip(Point5D.LABELS, begin_tuple))
-        return cls(Point5D.startpoint_from_tuple(begin_tuple), Point5D.from_tuple(end))
+        stop = (v or image_shape[k] for k,v in zip(Point5D.LABELS, begin_tuple))
+        return cls(Point5D.startpoint_from_tuple(begin_tuple), Point5D.from_tuple(stop))
 
     @classmethod
     def all(cls):
-        return cls(Point5D.zero(), Point5D.inf())
+        return cls.from_start_stop(Point5D.zero(), Point5D.inf())
 
-    @property
-    def shape(self) -> Shape5D:
-        d = (self.end - self.begin).to_dict()
-        return Shape5D(**d)
-
-    def clamped(self, minimum:Point5D=None, maximum:Point5D=None) -> 'Roi5D':
-        return self.__class__(self.begin.clamped(minimum, maximum),
-                              self.end.clamped(minimum, maximum))
+    def clamped(self, *, minimum:Point5D=None, maximum:Point5D=None) -> 'Roi5D':
+        return self.__class__(self.start.clamped(minimum, maximum),
+                              self.stop.clamped(minimum, maximum))
 
     def clamped_with_roi(cls, roi):
-        return cls.clamped(minimum=roi.begin, maximum=roi.end)
+        return cls.clamped(minimum=roi.start, maximum=roi.stop)
 
-    def to_slices(self, axis_order=None):
-        slices = []
-        for begin_coord, end_coord in zip(self.begin.to_tuple(axis_order), self.end.to_tuple(axis_order)):
-            begin_coord = begin_coord if begin_coord != float('-inf') else None
-            end_coord = end_coord if end_coord != float('inf') else None
-            slices.append(slice(begin_coord, end_coord))
-
-        return tuple(slices)
+    def to_slices(self, axis_order=Point5D.LABELS):
+        return tuple([self._slices[label] for label in axis_order])
 
     def __str__(self):
         return self.__repr__()
 
     def __repr__(self):
-        return str([self.begin, self.end])
+        return str([self.start, self.stop])
 
-    def to_tuple(self, axis_order=None):
-        return (self.begin.to_tuple(axis_order), self.end.to_tuple(axis_order))
-
-
-test_dict = OrderedDict(zip('txyzc', [1,2,3,4,5]))
-assert Point5D(**test_dict).to_tuple() == tuple(test_dict.values())
-assert Point5D(**test_dict).to_dict() == test_dict
-
-partialDict = {'t':0, 'x':12, 'y':13, 'z':14}
-endpointFromDict = Point5D.endpoint(**partialDict, shape=Shape5D(c=1))
-assert endpointFromDict.to_dict() == {**partialDict, **{'t': 1, 'c': 1}}
-
-startpointFromDict = Point5D.startpoint(**partialDict)
-assert startpointFromDict.to_dict() == {**partialDict, **{'c': 0}}
-
-
-point = Point5D.startpoint(**partialDict)
-fullRoi = Shape5D.from_point(point).to_roi()
-
-assert Point5D.one().with_axis_as('t', 123).to_tuple() == (123,1,1,1,1)
-
-
-t1c1z1x100y200 = Point5D(t=1, c=1, z=1, x=100, y=200)
-fullRoix100y200 = Shape5D(**{'x': 100, 'y': 200}).to_roi()
-
-al = Roi5D.all()
-
-assert fullRoix100y200.end.to_tuple('yx') == (200, 100)
-assert fullRoix100y200.shape.to_dict() == {'t': 1, 'x': 100, 'y': 200, 'z': 1, 'c': 1} 
