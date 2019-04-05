@@ -18,11 +18,21 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
+import logging
 import os
-from PyQt5 import uic
-from PyQt5.QtWidgets import QWidget, QStackedWidget
+import socket
+
+from PyQt5 import uic, QtCore
+from PyQt5.QtWidgets import QWidget, QStackedWidget, QListWidgetItem
 
 from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_LOCAL_SERVER_CONFIG, DEFAULT_REMOTE_SERVER_CONFIG
+
+from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred
+from tiktorch.rpc_interface import INeuralNetworkAPI
+from tiktorch.rpc import Client, TCPConnConf
+
+
+logger = logging.getLogger(__name__)
 
 
 class ServerConfigGui(QWidget):
@@ -77,8 +87,19 @@ class ServerConfigGui(QWidget):
                 getattr(self, "ssh_keyLabel").show()
                 getattr(self, "username").show()
 
+            self.devices.clear()
             for key, value in config.items():
-                getattr(self, key).setText(value)
+                if key == 'devices':
+                    for d in value:
+                        print('loaded device', d)
+                        entry = QListWidgetItem(f"{d[0]} ({d[1]})", self.devices)
+                        entry.setFlags(entry.flags() | QtCore.Qt.ItemIsUserCheckable)
+                        if d[2]:
+                            entry.setCheckState(QtCore.Qt.Checked)
+                        else:
+                            entry.setCheckState(QtCore.Qt.Unchecked)
+                else:
+                    getattr(self, key).setText(value)
 
             self.topLevelOperator.toggleServerConfig(use_local=self.localServerButton.isChecked())
             edit_button()  # enter 'edit mode' when switching between locale and remote server
@@ -90,20 +111,78 @@ class ServerConfigGui(QWidget):
         self.remoteServerButton.setChecked(not use_local)
         server_button()
 
-        def save_button():
-            def get_config(configurables):
-                config = {}
-                for el in configurables:
+        def get_config(configurables, with_devices=True):
+            config = {}
+            for el in configurables:
+                if el == 'devices':
+                    if with_devices:
+                        available_devices = []
+                        for i in range(self.devices.count()):
+                            d = self.devices.item(i)
+                            available_devices.append((d.text().split(' (')[0], d.text().split(' (')[1][:-1], d.checkState()))
+                        print('here')
+                        print(available_devices)
+                        print([type(el) for el in available_devices])
+                        config['devices'] = available_devices
+                        self.devices.setEnabled(False)
+                else:
                     attr = getattr(self, el)
                     attr.setEnabled(False)
-                    config.update({el: attr.text()})
+                    config[el] = attr.text()
 
-                return config
+            return config
 
+        def get_devices_button():
+            self.get_devices_button.setEnabled(False)
+            self.devices.clear()
             if self.localServerButton.isChecked():
+                assert not self.remoteServerButton.isChecked()
+                server_config = get_config(DEFAULT_LOCAL_SERVER_CONFIG.keys(), with_devices=False)
+            else:
+                assert self.remoteServerButton.isChecked()
+                server_config = get_config(DEFAULT_REMOTE_SERVER_CONFIG.keys(), with_devices=False)
+
+            try:
+                addr, port1, port2 = socket.gethostbyname(server_config["address"]), server_config["port1"], server_config[
+                    "port2"]
+                conn_conf = TCPConnConf(addr, port1, port2)
+
+                if addr == "127.0.0.1":
+                    launcher = LocalServerLauncher(conn_conf)
+                else:
+                    launcher = RemoteSSHServerLauncher(
+                        conn_conf, cred=SSHCred(server_config["username"], server_config["password"])
+                    )
+
+                launcher.start()
+                try:
+                    tikTorchClient = Client(INeuralNetworkAPI(), conn_conf)
+                    available_devices = tikTorchClient.get_available_devices()
+                except Exception as e:
+                    logger.error(e)
+                else:
+                    for d in available_devices:
+                        entry = QListWidgetItem(f"{d[0]} ({d[1]})", self.devices)
+                        entry.setFlags(entry.flags() | QtCore.Qt.ItemIsUserCheckable)
+                        entry.setCheckState(QtCore.Qt.Unchecked)
+                finally:
+                    launcher.stop()
+            except Exception as e:
+                logger.error(e)
+
+            self.get_devices_button.setEnabled(True)
+
+        self.get_devices_button.clicked.connect(get_devices_button)
+
+        def save_button():
+            if self.localServerButton.isChecked():
+                assert not self.remoteServerButton.isChecked()
                 self.topLevelOperator.setLocalServerConfig(get_config(DEFAULT_LOCAL_SERVER_CONFIG.keys()))
             else:
+                assert self.remoteServerButton.isChecked()
                 self.topLevelOperator.setRemoteServerConfig(get_config(DEFAULT_REMOTE_SERVER_CONFIG.keys()))
+
+            print(self.topLevelOperator)
 
         self.saveButton.clicked.connect(save_button)
 

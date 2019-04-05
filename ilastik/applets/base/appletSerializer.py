@@ -765,26 +765,33 @@ class SerialDictSlot(SerialSlot):
             transform = lambda x: x
         self.transform = transform
 
+    def _encode_utf8(self, v):
+        assert v is not None, "Cannot serialize 'None' to hdf5"
+        if isinstance(v, str):
+            # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
+            return v.encode('utf-8')
+        elif isinstance(v, list) or isinstance(v, tuple):
+            return [self._encode_utf8(vv) for vv in v]
+        else:
+            return v
+
+    def _decode_utf8(self, v):
+        if isinstance(v, bytes):
+            # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
+            return v.decode('utf-8')
+        elif isinstance(v, list) or isinstance(v, numpy.ndarray):
+            return [self._decode_utf8(vv) for vv in v]
+        else:
+            print('not decoded v', v, type(v))
+            return v
+
     def _saveValue(self, group, name, value):
         sg = group.create_group(name)
         for key, v in value.items():
             if isinstance(v, dict):
                 self._saveValue(sg, key, v)
             else:
-                if isinstance(v, str):
-                    # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
-                    v = v.encode('utf-8')
-                if isinstance(v, list):
-                    vv = []
-                    for a in v:
-                        if isinstance(a, str):
-                            vv.append(a.encode('utf-8'))
-                        else:
-                            vv.append(a)
-                    v = vv
-
-                assert v is not None, "Cannot serialize 'None' to hdf5"
-                sg.create_dataset(str(key), data=v)
+                sg.create_dataset(str(key), data=self._encode_utf8(v))
 
     def _getValueHelper(self, subgroup):
         result = {}
@@ -792,10 +799,7 @@ class SerialDictSlot(SerialSlot):
             if isinstance(subgroup[key], h5py.Group):
                 value = self._getValueHelper(subgroup[key])
             else:
-                value = subgroup[key][()]
-                if isinstance(value, bytes):
-                    # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
-                    value = value.decode('utf-8')
+                value = self._decode_utf8(subgroup[key][()])
 
             result[self.transform(key)] = value
         return result

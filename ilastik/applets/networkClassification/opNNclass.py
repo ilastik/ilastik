@@ -97,6 +97,7 @@ class OpNNClassification(Operator):
                 elif isinstance(bad, numpy.ndarray):
                     good = tuple(make_good(v) for v in bad)
                 return good
+
             tiktorch_config = make_good(self.TiktorchConfig.value)
 
             self.ClassifierFactory.setValue(TikTorchLazyflowClassifierFactory(tiktorch_config,

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>545</width>
-    <height>390</height>
+    <width>527</width>
+    <height>495</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,9 +17,9 @@
    <property name="geometry">
     <rect>
      <x>40</x>
-     <y>30</y>
+     <y>20</y>
      <width>461</width>
-     <height>331</height>
+     <height>391</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout">
@@ -44,52 +44,15 @@
          <x>40</x>
          <y>30</y>
          <width>351</width>
-         <height>181</height>
+         <height>240</height>
         </rect>
        </property>
        <layout class="QGridLayout" name="gridLayout_3">
-        <item row="2" column="1">
-         <widget class="QLineEdit" name="password"/>
-        </item>
-        <item row="6" column="0">
-         <widget class="QLabel" name="port1Label">
-          <property name="text">
-           <string>1st Port:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="0">
-         <widget class="QLabel" name="addressLabel">
-          <property name="text">
-           <string>Address:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="0">
-         <widget class="QLabel" name="usernameLabel">
-          <property name="text">
-           <string>Username:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QLineEdit" name="username"/>
-        </item>
         <item row="6" column="1">
          <widget class="QLineEdit" name="port1"/>
         </item>
-        <item row="2" column="0">
-         <widget class="QLabel" name="passwordLabel">
-          <property name="text">
-           <string>Password:</string>
-          </property>
-         </widget>
-        </item>
         <item row="4" column="1">
          <widget class="QLineEdit" name="address"/>
-        </item>
-        <item row="7" column="1">
-         <widget class="QLineEdit" name="port2"/>
         </item>
         <item row="7" column="0">
          <widget class="QLabel" name="port2Label">
@@ -101,10 +64,57 @@
         <item row="1" column="1">
          <widget class="QLineEdit" name="ssh_key"/>
         </item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="password"/>
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="addressLabel">
+          <property name="text">
+           <string>Address:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="7" column="1">
+         <widget class="QLineEdit" name="port2"/>
+        </item>
+        <item row="6" column="0">
+         <widget class="QLabel" name="port1Label">
+          <property name="text">
+           <string>1st Port:</string>
+          </property>
+         </widget>
+        </item>
         <item row="1" column="0">
          <widget class="QLabel" name="ssh_keyLabel">
           <property name="text">
            <string>SSH Key:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="username"/>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="passwordLabel">
+          <property name="text">
+           <string>Password:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="usernameLabel">
+          <property name="text">
+           <string>Username:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="8" column="1">
+         <widget class="QListWidget" name="devices"/>
+        </item>
+        <item row="8" column="0">
+         <widget class="QPushButton" name="get_devices_button">
+          <property name="text">
+           <string>Get Devices</string>
           </property>
          </widget>
         </item>
@@ -113,8 +123,8 @@
       <widget class="QPushButton" name="saveButton">
        <property name="geometry">
         <rect>
-         <x>360</x>
-         <y>230</y>
+         <x>310</x>
+         <y>290</y>
          <width>85</width>
          <height>30</height>
         </rect>
@@ -132,8 +142,8 @@
       <widget class="QPushButton" name="editButton">
        <property name="geometry">
         <rect>
-         <x>250</x>
-         <y>230</y>
+         <x>210</x>
+         <y>290</y>
          <width>85</width>
          <height>30</height>
         </rect>

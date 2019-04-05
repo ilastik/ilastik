@@ -24,10 +24,10 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from typing import Optional, Dict
 
 DEFAULT_LOCAL_SERVER_CONFIG = {'username': '', 'password': '',
-                         'address': 'localhost', 'port1': '5556', 'port2': '5557'}
+                         'address': 'localhost', 'port1': '5556', 'port2': '5557', 'devices': [['cpu', 'CPU', True]]}
 # use remote defaults as user hints
 DEFAULT_REMOTE_SERVER_CONFIG = {'username': 'SSH user name', 'password': 'SSH password (no encrytpion!)', 'ssh_key': 'SSH key',
-                                'address': 'remote host or IP address', 'port1': '5556', 'port2': '5557'}
+                                'address': 'remote host or IP address', 'port1': '5556', 'port2': '5557', 'devices': [['cpu', 'CPU', True]]}
 
 
 class OpServerConfig(Operator):
