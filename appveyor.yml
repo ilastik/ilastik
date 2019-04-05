@@ -7,11 +7,12 @@ environment:
 
 
 install:
-  - set DEV_PREFIX=%MINICONDA%/envs/%ENV_NAME%
-  - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
+  - CALL %MINICONDA%/Scripts/activate.bat
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  - conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge python=3.6 numpy=1.12 ilastik-dependencies-no-solvers
+  - conda create -q --yes -n %ENV_NAME% -c ilastik-forge/label/staging -c conda-forge ilastik-dependencies-no-solvers
+  # Remove the conda ilastik-meta
+  - conda remove ilastik-meta
   - activate %ENV_NAME%
   - cd \
   # Get the current master of all submodules
@@ -19,8 +20,6 @@ install:
   - cd ilastik\ilastik-meta
   - git submodule update --init --recursive
   - git submodule foreach "git checkout master"
-  # Remove the conda ilastik-meta
-  - conda remove ilastik-meta
   - ps: rm -Force -Recurse c:\ilastik\ilastik-meta\ilastik\
   # replace with whatever version of ilastik triggered the appveyor
   - ps: cp -recurse C:\projects\ilastik c:\ilastik\ilastik-meta\ilastik
@@ -33,12 +32,10 @@ install:
 build: off
 
 test_script:
-  - set DEV_PREFIX=%MINICONDA%/envs/%ENV_NAME%
+  - CALL %MINICONDA%/Scripts/activate.bat
   - activate %ENV_NAME%
   - cd \
   - cd ilastik\ilastik-meta\ilastik\tests
-  - set Path="C:\Program Files\Git\usr\bin";%Path%
-  - set CONTINUE_ON_FAILURE=1
   - pytest --run-legacy-gui
 
 # on_finish:
