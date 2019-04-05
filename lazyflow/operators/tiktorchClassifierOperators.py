@@ -40,7 +40,6 @@ from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVector
 
 from .classifierOperators import OpTrainClassifierBlocked, OpTrainPixelwiseClassifierBlocked, OpClassifierPredict, \
                                  OpPixelwiseClassifierPredict, OpVectorwiseClassifierPredict
-from .tiktorchUtils import IlastikBlockinator
 
 logger = logging.getLogger(__name__)
 
