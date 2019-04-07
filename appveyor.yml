@@ -6,7 +6,7 @@ environment:
   MINICONDA: C:\Miniconda36-x64
 
 install:
-  - cmd: CALL %MINICONDA%/Scripts/activate.bat
+  - set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers
@@ -33,7 +33,7 @@ install:
 build: off
 
 test_script:
-  - cmd: CALL %MINICONDA%/Scripts/activate.bat
+  - set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - activate %ENV_NAME%
   - cd \
   - cd ilastik\ilastik-meta\lazyflow
