@@ -7,7 +7,7 @@ environment:
 
 
 install:
-  - cmd: CALL %MINICONDA%/Scripts/activate.bat
+  - cmd: set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - cmd: where conda
   - cmd: conda config --set always_yes yes --set changeps1 no
   - cmd: conda update -q conda
@@ -33,7 +33,7 @@ install:
 build: off
 
 test_script:
-  - cmd: CALL %MINICONDA%/Scripts/activate.bat
+  - cmd: set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - cmd: CALL activate %ENV_NAME%
   - cmd: cd \
   - cmd: cd ilastik\ilastik-meta\ilastik\tests
