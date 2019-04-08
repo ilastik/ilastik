@@ -18,13 +18,6 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from __future__ import division
-from __future__ import absolute_import
-# Standard
-from future import standard_library
-standard_library.install_aliases()
-from builtins import range
-from queue import Queue
 import re
 import os
 import time
@@ -75,14 +68,13 @@ from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
 from ilastik.shell.headless.headlessShell import HeadlessShell
 
-from ilastik.shell.gui.splashScreen import showSplashScreen
+from ilastik.shell.gui.aboutDialog import AboutDialog
 from ilastik.shell.gui.licenseDialog import LicenseDialog
 
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 from ilastik.widgets.filePathButton import FilePathButton
 
 from ilastik.shell.gui.ipcManager import IPCFacade, TCPServer, TCPClient, ZMQPublisher, ZMQSubscriber, ZMQBase
-import os
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -633,7 +625,7 @@ class IlastikShell(QMainWindow):
         menu = QMenu("&Help", self)
         menu.setObjectName("help_menu")
         aboutIlastikAction = menu.addAction("&About ilastik")
-        aboutIlastikAction.triggered.connect(showSplashScreen)
+        aboutIlastikAction.triggered.connect(partial(AboutDialog.createAndShowModal, self))
         readTheDocsAction = menu.addAction("&Documentation")
         readTheDocsAction.triggered.connect(partial(QDesktopServices.openUrl,
                                                     QUrl('http://ilastik.org/documentation/')))
