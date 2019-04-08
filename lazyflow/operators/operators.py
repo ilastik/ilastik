@@ -1,4 +1,5 @@
 from builtins import map
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,14 +19,17 @@ from builtins import map
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
-#third-party dependencies
+# third-party dependencies
 import psutil
-if list(map(int, psutil.__version__.split('.'))) < [0,6]:
-    raise RuntimeError("lazyflow requires psutil 0.6.  Please upgrade your version of psutil (e.g. easy_install -U psutil)")
 
-#lazyflow
+if list(map(int, psutil.__version__.split("."))) < [0, 6]:
+    raise RuntimeError(
+        "lazyflow requires psutil 0.6.  Please upgrade your version of psutil (e.g. easy_install -U psutil)"
+    )
+
+# lazyflow
 import lazyflow
 from lazyflow.rtype import SubRegion
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -33,9 +37,8 @@ from lazyflow.roi import sliceToRoi, roiToSlice, TinyVector, getBlockBounds
 from lazyflow import request
 from lazyflow.utility import Tracer
 
-#various cache operators
+# various cache operators
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
 from lazyflow.operators.opUnblockedArrayCache import OpUnblockedArrayCache
-

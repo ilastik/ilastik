@@ -1,4 +1,5 @@
 from __future__ import division
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,35 +19,36 @@ from __future__ import division
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
-#Python
+# Python
 import time
 import logging
 import sys
 
-#SciPy
+# SciPy
 import numpy
 
-#lazyflow
+# lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.roi import sliceToRoi
 from lazyflow.operators.opCache import MemInfoNode
 from lazyflow.operators.opCache import ObservableCache
 
+
 class OpSlicedBlockedArrayCache(Operator, ObservableCache):
     name = "OpSlicedBlockedArrayCache"
     description = ""
 
-    #Inputs
-    fixAtCurrent = InputSlot(value = False)
+    # Inputs
+    fixAtCurrent = InputSlot(value=False)
     Input = InputSlot(allow_mask=True)
     BlockShape = InputSlot()
     BypassModeEnabled = InputSlot(value=False)
     CompressionEnabled = InputSlot(value=False)
-   
-    #Outputs
+
+    # Outputs
     Output = OutputSlot(allow_mask=True)
     InnerOutputs = OutputSlot(level=1, allow_mask=True)
 
@@ -71,7 +73,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
         report.id = id(self)
         sh = self.Output.meta.shape
         if sh is not None:
-            report.roi = ([0]*len(sh), sh)
+            report.roi = ([0] * len(sh), sh)
 
         for iOp in self._innerOps:
             n = MemInfoNode()
@@ -90,7 +92,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
         for iOp in self._innerOps:
             mem = iOp.usedMemory()
             tot += mem
-            dirty += iOp.fractionOfUsedMemoryDirty()*mem
+            dirty += iOp.fractionOfUsedMemoryDirty() * mem
         if dirty > 0:
             return tot / float(dirty)
         else:
@@ -114,25 +116,25 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
             self._innerOps = []
             self._blockshapes = self.BlockShape.value
 
-            for i,innershape in enumerate(self._blockshapes):
+            for i, innershape in enumerate(self._blockshapes):
                 op = OpBlockedArrayCache(parent=self)
                 op.inputs["fixAtCurrent"].connect(self.inputs["fixAtCurrent"])
-                op.BypassModeEnabled.connect( self.BypassModeEnabled )
-                op.CompressionEnabled.connect( self.CompressionEnabled )
+                op.BypassModeEnabled.connect(self.BypassModeEnabled)
+                op.CompressionEnabled.connect(self.CompressionEnabled)
                 self._innerOps.append(op)
-                
-                op.inputs["Input"].connect(self.inputs["Input"])
-                
-                # Forward "value changed" notifications to our own output
-                op.Output.notifyValueChanged( self.Output._sig_value_changed )
 
-        for i,innershape in enumerate(self._blockshapes):
+                op.inputs["Input"].connect(self.inputs["Input"])
+
+                # Forward "value changed" notifications to our own output
+                op.Output.notifyValueChanged(self.Output._sig_value_changed)
+
+        for i, innershape in enumerate(self._blockshapes):
             op = self._innerOps[i]
             op.inputs["BlockShape"].setValue(innershape)
 
         self.Output.meta.assignFrom(self.Input.meta)
-        
-        # Estimate ram usage            
+
+        # Estimate ram usage
         ram_per_pixel = 0
         if self.Output.meta.dtype == object or self.Output.meta.dtype == numpy.object_:
             ram_per_pixel = sys.getsizeof(None)
@@ -140,31 +142,31 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
             ram_per_pixel = self.Output.meta.dtype().nbytes
 
         tagged_shape = self.Output.meta.getTaggedShape()
-        if 'c' in tagged_shape:
-            ram_per_pixel *= float(tagged_shape['c'])
+        if "c" in tagged_shape:
+            ram_per_pixel *= float(tagged_shape["c"])
 
         if self.Output.meta.ram_usage_per_requested_pixel is not None:
-            ram_per_pixel = max( ram_per_pixel, self.Output.meta.ram_usage_per_requested_pixel )
+            ram_per_pixel = max(ram_per_pixel, self.Output.meta.ram_usage_per_requested_pixel)
 
         self.Output.meta.ram_usage_per_requested_pixel = ram_per_pixel
 
-        # We also provide direct access to each of our inner cache outputs.        
-        self.InnerOutputs.resize( len(self._innerOps) )
+        # We also provide direct access to each of our inner cache outputs.
+        self.InnerOutputs.resize(len(self._innerOps))
         for i, slot in enumerate(self.InnerOutputs):
             slot.connect(self._innerOps[i].Output)
-        
+
     def execute(self, slot, subindex, roi, result):
         t = time.time()
         assert slot == self.Output
-        
+
         key = roi.toSlice()
-        start,stop=sliceToRoi(key,self.shape)
-        roishape=numpy.array(stop)-numpy.array(start)
+        start, stop = sliceToRoi(key, self.shape)
+        roishape = numpy.array(stop) - numpy.array(start)
 
-        max_dist_squared=sys.maxsize
-        index=0
+        max_dist_squared = sys.maxsize
+        index = 0
 
-        for i,blockshape in enumerate(self._blockshapes):
+        for i, blockshape in enumerate(self._blockshapes):
             blockshape = numpy.array(blockshape)
 
             diff = roishape - blockshape
@@ -176,7 +178,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
 
         op = self._innerOps[index]
         op.outputs["Output"][key].writeInto(result).wait()
-        self.logger.debug("read %r took %f msec." % (roi.pprint(), 1000.0*(time.time()-t)))
+        self.logger.debug("read %r took %f msec." % (roi.pprint(), 1000.0 * (time.time() - t)))
 
     def propagateDirty(self, slot, subindex, roi):
         key = roi.toSlice()
@@ -188,12 +190,12 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
         fixed = self.fixAtCurrent.value
         if not fixed:
             if slot == self.Input:
-                self.Output.setDirty( key )        
+                self.Output.setDirty(key)
             elif slot == self.BlockShape:
-                #self.Output.setDirty( slice(None) )
-                pass # Blockshape changes don't trigger dirty notifications
-                     # It is considered an error to change the blockshape after the initial configuration.
+                # self.Output.setDirty( slice(None) )
+                pass  # Blockshape changes don't trigger dirty notifications
+                # It is considered an error to change the blockshape after the initial configuration.
             elif slot is self.fixAtCurrent:
-                self.Output.setDirty( slice(None) )
+                self.Output.setDirty(slice(None))
             elif slot not in (self.BypassModeEnabled, self.CompressionEnabled):
                 assert False, "Unknown dirty input slot"

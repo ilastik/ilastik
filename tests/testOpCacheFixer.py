@@ -33,15 +33,16 @@ from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 from lazyflow.utility.testing import OpCallWhenDirty
 from numpy.testing import assert_array_equal
 
+
 class TestOpCacheFixer(unittest.TestCase):
     def setup_method(self, method):
         g = Graph()
 
         vol = np.random.random(size=(100, 110, 120))
-        self.vol = vigra.taggedView(vol, axistags='xyz')
+        self.vol = vigra.taggedView(vol, axistags="xyz")
 
         vol5d = np.random.random(size=(3, 100, 110, 120, 7))
-        self.vol5d = vigra.taggedView(vol5d, axistags='cxyzt')
+        self.vol5d = vigra.taggedView(vol5d, axistags="cxyzt")
 
         piper = OpArrayPiperWithAccessCount(graph=g)
         op = OpCacheFixer(graph=g)
@@ -59,6 +60,7 @@ class TestOpCacheFixer(unittest.TestCase):
         # propagateDirty is called, so we can catch it below
         def foo():
             raise PropagateDirtyCalled()
+
         self.call.function = foo
 
         with self.assertRaises(PropagateDirtyCalled):
@@ -78,11 +80,9 @@ class TestOpCacheFixer(unittest.TestCase):
         self.op.fixAtCurrent.setValue(True)
 
         try:
-            roi1 = SubRegion(self.piper.Input,
-                             (0, 10, 20), (15, 15, 35))
+            roi1 = SubRegion(self.piper.Input, (0, 10, 20), (15, 15, 35))
             self.piper.Input.setDirty(roi1)
-            roi2 = SubRegion(self.piper.Input,
-                             (15, 9, 1), (20, 14, 20))
+            roi2 = SubRegion(self.piper.Input, (15, 9, 1), (20, 14, 20))
             self.piper.Input.setDirty(roi2)
         except PropagateDirtyCalled:
             raise AssertionError("dirtyness is not fixed")

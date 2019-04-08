@@ -26,6 +26,7 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.helpers import get_default_axisordering
 
+
 class OpRawBinaryFileReader(Operator):
     """
     This operator can be used to read 'raw' binary files from disk,
@@ -40,9 +41,10 @@ class OpRawBinaryFileReader(Operator):
     
     For now, the axis order is merely guessed. 
     """
+
     name = "OpRawBinaryFileReader"
 
-    FilePath = InputSlot(stype='filestring')
+    FilePath = InputSlot(stype="filestring")
     Output = OutputSlot()
 
     class DatasetReadError(Exception):
@@ -53,37 +55,39 @@ class OpRawBinaryFileReader(Operator):
         self._memmap = None
 
     def cleanUp(self):
-        self._memmap = None # Closes the file
+        self._memmap = None  # Closes the file
         super(OpRawBinaryFileReader, self).cleanUp()
 
     def setupOutputs(self):
-        self._memmap = None # Closes the file
+        self._memmap = None  # Closes the file
         filepath = self.FilePath.value
         filename = os.path.split(filepath)[1]
-        
+
         # Infer the dimensions by parsing the filename
         # We split on . and - characters
         shape = ()
-        for s in re.split('\.|-', filename):
+        for s in re.split("\.|-", filename):
             try:
                 shape += (int(s),)
             except ValueError:
                 pass
-        
-        if not ( 3 <= len(shape) <= 5 ):
-            raise OpRawBinaryFileReader.DatasetReadError( "Binary filename does not include a valid shape: {}".format(filename) )
-        
+
+        if not (3 <= len(shape) <= 5):
+            raise OpRawBinaryFileReader.DatasetReadError(
+                "Binary filename does not include a valid shape: {}".format(filename)
+            )
+
         # Uint8 by default, but search for an explicit type in the filename
         dtype = numpy.uint8
-        for d in 'uint8 uint16 uint32 uint64 int8 int16 int32 int64 float32 float64'.split():
+        for d in "uint8 uint16 uint32 uint64 int8 int16 int32 int64 float32 float64".split():
             if d in filename:
                 dtype = numpy.dtype(d).type
                 break
 
         try:
-            self._memmap = numpy.memmap(filepath, dtype=dtype, shape=shape, mode='r')
+            self._memmap = numpy.memmap(filepath, dtype=dtype, shape=shape, mode="r")
         except:
-            raise OpRawBinaryFileReader.DatasetReadError( "Unable to open numpy dataset: {}".format( filepath ) )
+            raise OpRawBinaryFileReader.DatasetReadError("Unable to open numpy dataset: {}".format(filepath))
 
         axisorder = get_default_axisordering(shape)
 
@@ -97,4 +101,4 @@ class OpRawBinaryFileReader(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.FilePath:
-            self.Output.setDirty( slice(None) )
+            self.Output.setDirty(slice(None))

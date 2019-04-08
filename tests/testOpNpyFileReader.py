@@ -1,5 +1,6 @@
 from builtins import range
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -19,7 +20,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import os
 import tempfile
@@ -27,21 +28,21 @@ import numpy
 import lazyflow.graph
 from lazyflow.operators.ioOperators import OpNpyFileReader
 
-class TestOpNpyFileReader(object):
 
+class TestOpNpyFileReader(object):
     def setup_method(self, method):
         self.graph = lazyflow.graph.Graph()
         tmpDir = tempfile.gettempdir()
-        self.testDataFilePath = os.path.join(tmpDir, 'NpyTestData.npy')
+        self.testDataFilePath = os.path.join(tmpDir, "NpyTestData.npy")
         # per default the arrays are named arr_0, arr_1... (see numpy.savez documentation)
-        self.testDataFilePathNPZdefault = os.path.join(tmpDir, 'NpzTestDataDefault.npz')
-        self.testDataFilePathNPZnamed = os.path.join(tmpDir, 'NpzTestDataNamed.npz')
+        self.testDataFilePathNPZdefault = os.path.join(tmpDir, "NpzTestDataDefault.npz")
+        self.testDataFilePathNPZnamed = os.path.join(tmpDir, "NpzTestDataNamed.npz")
 
         # Start by writing some test data to disk.
         self.testData = numpy.zeros((10, 11))
-        for x in range(0,10):
-            for y in range(0,11):
-                self.testData[x,y] = x+y
+        for x in range(0, 10):
+            for y in range(0, 11):
+                self.testData[x, y] = x + y
         self.testDataB = numpy.arange(256, dtype=numpy.uint8).reshape((32, 8))
 
         numpy.save(self.testDataFilePath, self.testData)
@@ -57,20 +58,20 @@ class TestOpNpyFileReader(object):
         npyReader = OpNpyFileReader(graph=self.graph)
         try:
             npyReader.FileName.setValue(self.testDataFilePath)
-    
+
             # Read the entire file and verify the contents
             a = npyReader.Output[:].wait()
-            assert a.shape == (10,11) # OpNpyReader automatically added a channel axis
+            assert a.shape == (10, 11)  # OpNpyReader automatically added a channel axis
             assert npyReader.Output.meta.dtype == self.testData.dtype
-    
+
             # Why doesn't this work?  Numpy bug?
             # cmp = ( a == self.testData )
             # assert cmp.all()
-    
+
             # Check each of the values
             for i in range(10):
                 for j in range(11):
-                    assert a[i,j] == self.testData[i,j]
+                    assert a[i, j] == self.testData[i, j]
         finally:
             npyReader.cleanUp()
 
@@ -78,8 +79,7 @@ class TestOpNpyFileReader(object):
         # Now read back our test data using an OpNpyFileReader operator
         npyReader = OpNpyFileReader(graph=self.graph)
         try:
-            for internalPath, referenceData in \
-                    zip(["data_A", "data_B"], [self.testData, self.testDataB]):
+            for internalPath, referenceData in zip(["data_A", "data_B"], [self.testData, self.testDataB]):
                 npyReader.InternalPath.setValue("data_B")
                 npyReader.FileName.setValue(self.testDataFilePathNPZnamed)
 
@@ -96,7 +96,9 @@ class TestOpNpyFileReader(object):
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

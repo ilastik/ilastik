@@ -1,4 +1,3 @@
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,7 +17,7 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.helpers import get_default_axisordering
@@ -28,6 +27,7 @@ import numpy
 import copy
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,7 +35,7 @@ class OpNpyFileReader(Operator):
     name = "OpNpyFileReader"
     category = "Input"
 
-    FileName = InputSlot(stype='filestring')
+    FileName = InputSlot(stype="filestring")
     InternalPath = InputSlot(optional=True)
 
     Output = OutputSlot()
@@ -58,9 +58,9 @@ class OpNpyFileReader(Operator):
 
         try:
             # Load the file in read-only "memmap" mode to avoid reading it from disk all at once.
-            rawLoadedNumpyObject = numpy.load(str(fileName), mmap_mode='r', allow_pickle=False)
+            rawLoadedNumpyObject = numpy.load(str(fileName), mmap_mode="r", allow_pickle=False)
         except (ValueError, IOError):
-            raise OpNpyFileReader.DatasetReadError( "Unable to open numpy dataset: {}".format( fileName ) )
+            raise OpNpyFileReader.DatasetReadError("Unable to open numpy dataset: {}".format(fileName))
 
         # .npy files:
         if isinstance(rawLoadedNumpyObject, numpy.ndarray):
@@ -74,14 +74,12 @@ class OpNpyFileReader(Operator):
                 except KeyError:
                     raise OpNpyFileReader.DatasetReadError(
                         "InternalPath not found in file. Unable to open numpy npz dataset: "
-                        "{fileName}: {internalPath}".format(
-                            fileName=fileName,
-                            internalPath=self.InternalPath.value))
+                        "{fileName}: {internalPath}".format(fileName=fileName, internalPath=self.InternalPath.value)
+                    )
             else:
                 raise OpNpyFileReader.DatasetReadError(
-                    "InternalPath not given. Unable to open numpy npz dataset: "
-                    "{fileName}".format(
-                        fileName=fileName))
+                    "InternalPath not given. Unable to open numpy npz dataset: " "{fileName}".format(fileName=fileName)
+                )
 
         shape = rawNumpyArray.shape
 
@@ -102,8 +100,8 @@ class OpNpyFileReader(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.FileName:
-            self.Output.setDirty( slice(None) )
-        
+            self.Output.setDirty(slice(None))
+
     def cleanUp(self):
         if self._memmapFile is not None:
             self._memmapFile.close()

@@ -1,10 +1,12 @@
 from future import standard_library
+
 standard_library.install_aliases()
 from builtins import map
 from builtins import zip
 
 from builtins import range
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -24,7 +26,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import numpy, copy
 import pickle as pickle
@@ -36,13 +38,16 @@ from lazyflow.utility import slicingtools
 
 import logging
 from future.utils import with_metaclass
+
 logger = logging.getLogger(__name__)
+
 
 class RoiMeta(type):
     """
     Roi metaclass.  This mechanism automatically registers all roi 
     subclasses for string serialization via Roi._registerSubclass.
     """
+
     def __new__(cls, name, bases, classDict):
         cls = super(RoiMeta, cls).__new__(cls, name, bases, classDict)
         # Don't register the Roi baseclass itself.
@@ -50,10 +55,12 @@ class RoiMeta(type):
             Roi._registerSubclass(cls)
         return cls
 
+
 class Roi(with_metaclass(RoiMeta, object)):
     def __init__(self, slot):
         self.slot = slot
         pass
+
     pass
 
     all_subclasses = set()
@@ -70,7 +77,7 @@ class Roi(with_metaclass(RoiMeta, object)):
         Subclasses may override this and _fromString for more human-friendly string representations.
         """
         return pickle.dumps(roi, 0)
-    
+
     @staticmethod
     def _fromString(s):
         """
@@ -88,12 +95,15 @@ class Roi(with_metaclass(RoiMeta, object)):
     def loads(s):
         for cls in Roi.all_subclasses:
             if s.startswith(cls.__name__):
-                return cls._fromString( s[len(cls.__name__)+1:] )
+                return cls._fromString(s[len(cls.__name__) + 1 :])
         assert False, "Class name within '{}' does not refer to any Roi subclasses.".format(s)
 
+
 class Everything(Roi):
-    '''Fallback Roi for Slots that can't operate on subsets of their input data.'''
+    """Fallback Roi for Slots that can't operate on subsets of their input data."""
+
     pass
+
 
 class List(Roi):
     def __init__(self, slot, iterable=(), pslice=None):
@@ -102,17 +112,20 @@ class List(Roi):
         if pslice is not None:
             logger.debug("pslice not none, but we are in a list! {}".format(pslice))
             self._l = [pslice]
-    def __iter__( self ):
+
+    def __iter__(self):
         return iter(self._l)
-    def __len__( self ):
+
+    def __len__(self):
         return len(self._l)
-    def __str__( self ):
+
+    def __str__(self):
         return str(self._l)
 
-    
+
 class SubRegion(Roi):
-    def __init__(self, slot, start = None, stop = None, pslice = None):
-        super(SubRegion,self).__init__(slot)
+    def __init__(self, slot, start=None, stop=None, pslice=None):
+        super(SubRegion, self).__init__(slot)
         shape = None
         if slot is not None:
             shape = slot.meta.shape
@@ -125,7 +138,7 @@ class SubRegion(Roi):
                 assert slicingtools.is_bounded(pslice)
                 # Supply a dummy shape
                 shape = [0] * len(pslice)
-            self.start, self.stop = sliceToRoi(pslice,shape)
+            self.start, self.stop = sliceToRoi(pslice, shape)
         elif start is None and pslice is None:
             assert shape is not None, "Can't create a default subregion without a slot and a shape."
             self.start, self.stop = roiFromShape(shape)
@@ -135,34 +148,34 @@ class SubRegion(Roi):
         self.dim = len(self.start)
 
         for start, stop in zip(self.start, self.stop):
-            assert isinstance(start, (int, numpy.integer)), "Roi contains non-integers: {}".format( self )
-            assert isinstance(start, (int, numpy.integer)), "Roi contains non-integers: {}".format( self )
+            assert isinstance(start, (int, numpy.integer)), "Roi contains non-integers: {}".format(self)
+            assert isinstance(start, (int, numpy.integer)), "Roi contains non-integers: {}".format(self)
 
-# FIXME: This assertion is good at finding bugs, but it is currently triggered by 
-#        the DataExport applet when the output axis order is changed. 
-# 
-#         if self.slot is not None self.slot.meta.shape is not None:
-#             assert all(self.stop <= self.slot.meta.shape), \
-#                 "Roi is out of bounds. roi={}, {}.{}.meta.shape={}"\
-#                 .format((self.start, self.stop), slot.getRealOperator().name, slot.name, self.slot.meta.shape)
+    # FIXME: This assertion is good at finding bugs, but it is currently triggered by
+    #        the DataExport applet when the output axis order is changed.
+    #
+    #         if self.slot is not None self.slot.meta.shape is not None:
+    #             assert all(self.stop <= self.slot.meta.shape), \
+    #                 "Roi is out of bounds. roi={}, {}.{}.meta.shape={}"\
+    #                 .format((self.start, self.stop), slot.getRealOperator().name, slot.name, self.slot.meta.shape)
 
     def __setstate__(self, state):
         """
         Support copy.copy()
         """
-        self.slot = state['slot']
-        self.start = TinyVector( state['start'] )
-        self.stop = TinyVector( state['stop'] )
-        self.dim = len( state['start'] )
+        self.slot = state["slot"]
+        self.start = TinyVector(state["start"])
+        self.stop = TinyVector(state["stop"])
+        self.dim = len(state["start"])
 
-    def __str__( self ):
+    def __str__(self):
         return "".join(("Subregion: start '", str(self.start), "' stop '", str(self.stop), "'"))
-    
+
     def pprint(self):
         """pretty-print this object"""
         ret = ""
-        for a,b in zip(self.start, self.stop):
-            ret += "%d-%d " % (a,b)
+        for a, b in zip(self.start, self.stop):
+            ret += "%d-%d " % (a, b)
         return ret
 
     @staticmethod
@@ -175,7 +188,7 @@ class SubRegion(Roi):
     def _fromString(s):
         return eval(s)
 
-    def setInputShape(self,inputShape):
+    def setInputShape(self, inputShape):
         assert type(inputShape) == tuple
         self.inputShape = inputShape
 
@@ -192,7 +205,7 @@ class SubRegion(Roi):
             self.stop.pop(dim)
         return self
 
-    def setDim(self, dim , start, stop):
+    def setDim(self, dim, start, stop):
         """
         change the subarray at dim, to begin at start
         and to end at stop
@@ -207,33 +220,32 @@ class SubRegion(Roi):
         set start to start, stop to stop
         and the axistags to at
         """
-        self.start = self.start.insert(dim,start)
-        self.stop = self.stop.insert(dim,stop)
+        self.start = self.start.insert(dim, start)
+        self.stop = self.stop.insert(dim, stop)
         return self
-        
 
-    def expandByShape(self,shape,cIndex,tIndex):
+    def expandByShape(self, shape, cIndex, tIndex):
         """
         extend a roi by a given in shape
         """
-        #TODO: Warn if bounds are exceeded
+        # TODO: Warn if bounds are exceeded
         cStart = self.start[cIndex]
         cStop = self.stop[cIndex]
         if tIndex is not None:
             tStart = self.start[tIndex]
             tStop = self.stop[tIndex]
         if isinstance(shape, collections.Iterable):
-            #add a dummy number for the channel dimension
-            shape = shape+(1,)
+            # add a dummy number for the channel dimension
+            shape = shape + (1,)
         else:
             tmp = shape
             shape = numpy.zeros(self.dim).astype(int)
             shape[:] = tmp
-        
-        tmpStart = [int(x-s) for x,s in zip(self.start,shape)]
-        tmpStop = [int(x+s) for x,s in zip(self.stop,shape)]
-        start = [int(max(t,i)) for t,i in zip(tmpStart,numpy.zeros_like(self.inputShape))]   
-        stop = [int(min(t,i)) for t,i in zip(tmpStop,self.inputShape)]
+
+        tmpStart = [int(x - s) for x, s in zip(self.start, shape)]
+        tmpStop = [int(x + s) for x, s in zip(self.stop, shape)]
+        start = [int(max(t, i)) for t, i in zip(tmpStart, numpy.zeros_like(self.inputShape))]
+        stop = [int(min(t, i)) for t, i in zip(tmpStop, self.inputShape)]
         start[cIndex] = cStart
         stop[cIndex] = cStop
         if tIndex is not None:
@@ -242,32 +254,32 @@ class SubRegion(Roi):
         self.start = TinyVector(start)
         self.stop = TinyVector(stop)
         return self
-        
-    def adjustRoi(self,halo,cIndex=None):
+
+    def adjustRoi(self, halo, cIndex=None):
         if type(halo) != list:
-            halo = [halo]*len(self.start)
-        notAtStartEgde = list(map(lambda x,y: True if x<y else False,halo,self.start))
+            halo = [halo] * len(self.start)
+        notAtStartEgde = list(map(lambda x, y: True if x < y else False, halo, self.start))
         for i in range(len(notAtStartEgde)):
             if notAtStartEgde[i]:
-                self.stop[i] = int(self.stop[i]-self.start[i]+halo[i])
+                self.stop[i] = int(self.stop[i] - self.start[i] + halo[i])
                 self.start[i] = int(halo[i])
         return self
 
-    def adjustChannel(self,cPerC,cIndex,channelRes):
+    def adjustChannel(self, cPerC, cIndex, channelRes):
         if cPerC != 1 and channelRes == 1:
-            start = [self.start[i]//cPerC if i == cIndex else self.start[i] for i in range(len(self.start))]
-            stop = [self.stop[i]//cPerC+1 if i==cIndex else self.stop[i] for i in range(len(self.stop))]
+            start = [self.start[i] // cPerC if i == cIndex else self.start[i] for i in range(len(self.start))]
+            stop = [self.stop[i] // cPerC + 1 if i == cIndex else self.stop[i] for i in range(len(self.stop))]
             self.start = TinyVector(start)
             self.stop = TinyVector(stop)
         elif channelRes > 1:
             start = [0 if i == cIndex else self.start[i] for i in range(len(self.start))]
-            stop = [channelRes if i==cIndex else self.stop[i] for i in range(len(self.stop))]
+            stop = [channelRes if i == cIndex else self.stop[i] for i in range(len(self.stop))]
             self.start = TinyVector(start)
             self.stop = TinyVector(stop)
         return self
 
-    def toSlice(self, hardBind = False):
-        return roiToSlice(self.start,self.stop, hardBind)
+    def toSlice(self, hardBind=False):
+        return roiToSlice(self.start, self.stop, hardBind)
 
     def __eq__(self, other):
         if type(self) != type(other):

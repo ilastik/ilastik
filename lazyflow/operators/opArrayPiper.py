@@ -17,18 +17,19 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+
 
 class OpArrayPiper(Operator):
     name = "ArrayPiper"
     description = "simple piping operator"
 
-    #Inputs
+    # Inputs
     Input = InputSlot(allow_mask=True)
-   
-    #Outputs
+
+    # Outputs
     Output = OutputSlot(allow_mask=True)
 
     def setupOutputs(self):
@@ -45,7 +46,7 @@ class OpArrayPiper(Operator):
         key = roi.toSlice()
         # Check for proper name because subclasses may define extra inputs.
         # (but decline to override notifyDirty)
-        if slot.name == 'Input':
+        if slot.name == "Input":
             self.outputs["Output"].setDirty(key)
         else:
             # If some input we don't know about is dirty (i.e. we are subclassed by an operator with extra inputs),

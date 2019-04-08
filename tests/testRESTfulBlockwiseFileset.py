@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,7 +19,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import os
 import sys
@@ -27,31 +28,32 @@ import tempfile
 import numpy
 import h5py
 import nose
-import platform    
+import platform
 
 from lazyflow.roi import sliceToRoi
 
 import logging
+
 logger = logging.getLogger(__name__)
-logger.addHandler( logging.StreamHandler( sys.stdout ) )
+logger.addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.INFO)
 logger.setLevel(logging.DEBUG)
 
 from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
 from lazyflow.utility.io_util.RESTfulBlockwiseFileset import RESTfulBlockwiseFileset
 
+
 class TestRESTFullBlockwiseFilset(object):
-    
     @classmethod
     def setup_class(cls):
         # The openconnectome site appears to be down at the moment.
         # This test fails when that happens...
         raise nose.SkipTest
 
-        if platform.system() == 'Windows':
+        if platform.system() == "Windows":
             # On windows, there are errors, and we make no attempt to solve them (at the moment).
             raise nose.SkipTest
-        
+
         try:
             BlockwiseFileset._prepare_system()
         except ValueError:
@@ -59,7 +61,7 @@ class TestRESTFullBlockwiseFilset(object):
             raise nose.SkipTest
 
         cls.tempDir = tempfile.mkdtemp()
-        logger.debug("Working in {}".format( cls.tempDir ))
+        logger.debug("Working in {}".format(cls.tempDir))
 
         # Create the two sub-descriptions
         Bock11VolumeDescription = """
@@ -79,8 +81,7 @@ class TestRESTFullBlockwiseFilset(object):
         }
         """
 
-        blockwiseFilesetDescription = \
-        """
+        blockwiseFilesetDescription = """
         {
             "_schema_name" : "blockwise-fileset-description",
             "_schema_version" : 1.0,
@@ -95,10 +96,9 @@ class TestRESTFullBlockwiseFilset(object):
             "dataset_root_dir" : "blocks"
         }
         """
-        
+
         # Combine them into the composite description (see RESTfulBlockwiseFileset.DescriptionFields)
-        compositeDescription = \
-        """
+        compositeDescription = """
         {{
             "_schema_name" : "RESTful-blockwise-fileset-description",
             "_schema_version" : 1.0,
@@ -106,18 +106,20 @@ class TestRESTFullBlockwiseFilset(object):
             "remote_description" : {remote_description},
             "local_description" : {local_description}        
         }}
-        """.format( remote_description=Bock11VolumeDescription, local_description=blockwiseFilesetDescription )
-        
+        """.format(
+            remote_description=Bock11VolumeDescription, local_description=blockwiseFilesetDescription
+        )
+
         # Create the description file
         cls.descriptionFilePath = os.path.join(cls.tempDir, "description.json")
-        with open(cls.descriptionFilePath, 'w') as f:
+        with open(cls.descriptionFilePath, "w") as f:
             f.write(compositeDescription)
 
-        # Create a new fileset that views the same data and stores it the 
+        # Create a new fileset that views the same data and stores it the
         #  same way locally, but this time we'll use an offset 'view'
         # Start with a copy of the non-offset description
         offsetDescription = RESTfulBlockwiseFileset.readDescription(cls.descriptionFilePath)
-        offsetDescription.local_description.view_origin = numpy.array([0,20,0])
+        offsetDescription.local_description.view_origin = numpy.array([0, 20, 0])
         offsetDescription.local_description.dataset_root_dir = "offset_blocks"
         cls.descriptionFilePath_offset = os.path.join(cls.tempDir, "description_offset.json")
         RESTfulBlockwiseFileset.writeDescription(cls.descriptionFilePath_offset, offsetDescription)
@@ -127,58 +129,57 @@ class TestRESTFullBlockwiseFilset(object):
         # If the user is debugging, don't clear the files we're testing with.
         if logger.level > logging.DEBUG:
             shutil.rmtree(cls.tempDir)
-        
+
     def test_1_SingleDownload(self):
-        volume = RESTfulBlockwiseFileset( self.descriptionFilePath )
+        volume = RESTfulBlockwiseFileset(self.descriptionFilePath)
 
         slicing = numpy.s_[0:20, 0:20, 0:20]
-        roi = sliceToRoi(slicing, volume.description.shape)        
-        data = volume.readData( roi )
-        assert data.shape == (20,20,20)
+        roi = sliceToRoi(slicing, volume.description.shape)
+        data = volume.readData(roi)
+        assert data.shape == (20, 20, 20)
 
-        assert volume.getBlockStatus( ([0,0,0]) ) == BlockwiseFileset.BLOCK_AVAILABLE
+        assert volume.getBlockStatus(([0, 0, 0])) == BlockwiseFileset.BLOCK_AVAILABLE
 
     def test_2_MultiDownload(self):
-        volume = RESTfulBlockwiseFileset( self.descriptionFilePath )
+        volume = RESTfulBlockwiseFileset(self.descriptionFilePath)
 
         slicing = numpy.s_[0:25, 10:30, 0:20]
-        roi = sliceToRoi(slicing, volume.description.shape)        
-        data = volume.readData( roi )
-        assert data.shape == (25,20,20)
+        roi = sliceToRoi(slicing, volume.description.shape)
+        data = volume.readData(roi)
+        assert data.shape == (25, 20, 20)
 
-        assert volume.getBlockStatus( ([0,0,0]) ) == BlockwiseFileset.BLOCK_AVAILABLE
-        assert volume.getBlockStatus( ([20,0,0]) ) == BlockwiseFileset.BLOCK_AVAILABLE
-        assert volume.getBlockStatus( ([20,20,0]) ) == BlockwiseFileset.BLOCK_AVAILABLE
-        assert volume.getBlockStatus( ([0,20,0]) ) == BlockwiseFileset.BLOCK_AVAILABLE
+        assert volume.getBlockStatus(([0, 0, 0])) == BlockwiseFileset.BLOCK_AVAILABLE
+        assert volume.getBlockStatus(([20, 0, 0])) == BlockwiseFileset.BLOCK_AVAILABLE
+        assert volume.getBlockStatus(([20, 20, 0])) == BlockwiseFileset.BLOCK_AVAILABLE
+        assert volume.getBlockStatus(([0, 20, 0])) == BlockwiseFileset.BLOCK_AVAILABLE
 
     def test_4_OffsetDownload(self):
-        volume = RESTfulBlockwiseFileset( self.descriptionFilePath )
+        volume = RESTfulBlockwiseFileset(self.descriptionFilePath)
 
         slicing = numpy.s_[20:40, 20:40, 20:40]
-        roi = sliceToRoi(slicing, volume.description.shape)        
-        data = volume.readData( roi )
-        assert data.shape == (20,20,20)
-        assert volume.getBlockStatus( ([20,20,20]) ) == BlockwiseFileset.BLOCK_AVAILABLE
+        roi = sliceToRoi(slicing, volume.description.shape)
+        data = volume.readData(roi)
+        assert data.shape == (20, 20, 20)
+        assert volume.getBlockStatus(([20, 20, 20])) == BlockwiseFileset.BLOCK_AVAILABLE
 
-        offsetVolume = RESTfulBlockwiseFileset( self.descriptionFilePath_offset )
-        offsetSlicing = numpy.s_[20:40, 0:20, 20:40] # Note middle slice is offset (see view_origin in setup_class)
-        offsetRoi = sliceToRoi(offsetSlicing, offsetVolume.description.shape)        
-        offsetData = offsetVolume.readData( offsetRoi )
-        assert offsetData.shape == (20,20,20)
-        assert offsetVolume.getBlockStatus( ([20,0,20]) ) == BlockwiseFileset.BLOCK_AVAILABLE
-        
+        offsetVolume = RESTfulBlockwiseFileset(self.descriptionFilePath_offset)
+        offsetSlicing = numpy.s_[20:40, 0:20, 20:40]  # Note middle slice is offset (see view_origin in setup_class)
+        offsetRoi = sliceToRoi(offsetSlicing, offsetVolume.description.shape)
+        offsetData = offsetVolume.readData(offsetRoi)
+        assert offsetData.shape == (20, 20, 20)
+        assert offsetVolume.getBlockStatus(([20, 0, 20])) == BlockwiseFileset.BLOCK_AVAILABLE
+
         # Data should be the same
         assert (offsetData == data).all()
-        
-            
+
+
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
 
-
-
-
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

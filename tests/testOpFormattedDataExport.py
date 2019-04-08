@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,7 +19,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import os
 import tempfile
@@ -31,63 +32,63 @@ from lazyflow.graph import Graph
 from lazyflow.roi import roiToSlice
 from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
 
+
 class TestOpFormattedDataExport(object):
-    
     @classmethod
     def setup_class(cls):
         cls._tmpdir = tempfile.mkdtemp()
 
     @classmethod
     def teardown_class(cls):
-        shutil.rmtree(cls._tmpdir) 
+        shutil.rmtree(cls._tmpdir)
 
     def testBasic(self):
         graph = Graph()
         opExport = OpFormattedDataExport(graph=graph)
-        
-        data = numpy.random.random( (100,100) ).astype( numpy.float32 ) * 100
-        data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
+
+        data = numpy.random.random((100, 100)).astype(numpy.float32) * 100
+        data = vigra.taggedView(data, vigra.defaultAxistags("xy"))
         opExport.Input.setValue(data)
 
         sub_roi = [(10, 0), (None, 80)]
-        opExport.RegionStart.setValue( sub_roi[0] )
-        opExport.RegionStop.setValue( sub_roi[1] )
-        
-        opExport.ExportDtype.setValue( numpy.uint8 )
+        opExport.RegionStart.setValue(sub_roi[0])
+        opExport.RegionStop.setValue(sub_roi[1])
 
-        opExport.InputMin.setValue( 0.0 )
-        opExport.InputMax.setValue( 100.0 )
-        opExport.ExportMin.setValue( 100 )
-        opExport.ExportMax.setValue( 200 )
-        
-        opExport.OutputFormat.setValue( 'hdf5' )
-        opExport.OutputFilenameFormat.setValue( self._tmpdir + '/export_x{x_start}-{x_stop}_y{y_start}-{y_stop}' )
-        opExport.OutputInternalPath.setValue('volume/data')
-        
-        opExport.TransactionSlot.setValue( True )
+        opExport.ExportDtype.setValue(numpy.uint8)
+
+        opExport.InputMin.setValue(0.0)
+        opExport.InputMax.setValue(100.0)
+        opExport.ExportMin.setValue(100)
+        opExport.ExportMax.setValue(200)
+
+        opExport.OutputFormat.setValue("hdf5")
+        opExport.OutputFilenameFormat.setValue(self._tmpdir + "/export_x{x_start}-{x_stop}_y{y_start}-{y_stop}")
+        opExport.OutputInternalPath.setValue("volume/data")
+
+        opExport.TransactionSlot.setValue(True)
 
         assert opExport.ImageToExport.ready()
         assert opExport.ExportPath.ready()
-        assert opExport.ImageToExport.meta.drange == (100,200)
-        
-        #print "exporting data to: {}".format( opExport.ExportPath.value )
-        assert opExport.ExportPath.value == self._tmpdir + '/' + 'export_x10-100_y0-80.h5/volume/data'
+        assert opExport.ImageToExport.meta.drange == (100, 200)
+
+        # print "exporting data to: {}".format( opExport.ExportPath.value )
+        assert opExport.ExportPath.value == self._tmpdir + "/" + "export_x10-100_y0-80.h5/volume/data"
         opExport.run_export()
-        
-        opRead = OpInputDataReader( graph=graph )
+
+        opRead = OpInputDataReader(graph=graph)
         try:
-            opRead.FilePath.setValue( opExport.ExportPath.value )
-    
+            opRead.FilePath.setValue(opExport.ExportPath.value)
+
             # Compare with the correct subregion and convert dtype.
-            sub_roi[1] = (100, 80) # Replace 'None' with full extent
+            sub_roi[1] = (100, 80)  # Replace 'None' with full extent
             expected_data = data.view(numpy.ndarray)[roiToSlice(*sub_roi)]
             expected_data = expected_data.astype(numpy.uint8)
-            expected_data += 100 # see renormalization settings
-    
+            expected_data += 100  # see renormalization settings
+
             assert opRead.Output.meta.shape == expected_data.shape
             assert opRead.Output.meta.dtype == expected_data.dtype
             read_data = opRead.Output[:].wait()
-    
+
             # Due to rounding errors, the actual result and the expected result may differ by 1
             #  e.g. if the original pixel value was 32.99999999
             # Also, must promote to signed values to avoid unsigned rollover
@@ -99,11 +100,11 @@ class TestOpFormattedDataExport(object):
         finally:
             opRead.cleanUp()
 
+
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     nose.run(defaultTest=__file__)
-
-

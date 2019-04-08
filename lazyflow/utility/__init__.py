@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,7 +19,7 @@ from __future__ import absolute_import
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 from .alternative_numpy_functions import vigra_bincount, chunked_bincount
 from .memory import Memory
@@ -29,9 +30,7 @@ from .singleton import Singleton
 from .orderedSignal import OrderedSignal
 from .fileLock import FileLock
 from .tracer import Tracer, traceLogged
-from .pathHelpers import (
-    PathComponents, getPathVariants, isUrl, make_absolute,
-    globH5N5, globList, mkdir_p, lsH5N5)
+from .pathHelpers import PathComponents, getPathVariants, isUrl, make_absolute, globH5N5, globList, mkdir_p, lsH5N5
 
 from .roiRequestBatch import RoiRequestBatch
 from .bigRequestStreamer import BigRequestStreamer

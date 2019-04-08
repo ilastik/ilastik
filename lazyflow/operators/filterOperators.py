@@ -33,8 +33,9 @@ logger = logging.getLogger(__name__)
 # Sven's fast filters
 try:
     import fastfilters
+
     WITH_FAST_FILTERS = True
-    logger.info('Using fast filters.')
+    logger.info("Using fast filters.")
 except ImportError as e:
     WITH_FAST_FILTERS = False
     logger.warning("Failed to import fast filters: " + str(e))
@@ -55,7 +56,7 @@ class OpBaseFilter(Operator):
     supports_zero_scale = False
     window_size_feature = 2
     window_size_smoother = 3.5
-    minimum_scale = .7
+    minimum_scale = 0.7
     output_dtype = numpy.float32
     input_dtype = numpy.float32
 
@@ -67,7 +68,7 @@ class OpBaseFilter(Operator):
             kwargs: may contain input slot names with an initial value. The Operator, which inherits from this base
                     class has to implement those slots.
         """
-        assert hasattr(self, 'filter_fn'), 'Child class needs to implement "filter_fn"'
+        assert hasattr(self, "filter_fn"), 'Child class needs to implement "filter_fn"'
         super().__init__(parent=parent, graph=graph)
         # for now, the implementation supports anisotropic filters only if zero is a valid scale value, leading to no
         # filtering across that dimension (but simple batch processing instead)
@@ -82,15 +83,16 @@ class OpBaseFilter(Operator):
         self.invalid_z = False
 
         assert len(self.Input.meta.shape) == 5
-        assert self.Input.meta.getAxisKeys() == list('tczyx'), self.Input.meta.getAxisKeys()
+        assert self.Input.meta.getAxisKeys() == list("tczyx"), self.Input.meta.getAxisKeys()
 
-        filter_scales = {s.name: s.value for s in self.inputs.values() if s.name not in ['Input', 'ComputeIn2d']}
+        filter_scales = {s.name: s.value for s in self.inputs.values() if s.name not in ["Input", "ComputeIn2d"]}
         z_dim = self.Input.meta.shape[2]
-        self.invalid_z = z_dim == 1 or any([numpy.ceil(s * self.window_size_feature) + 1 > z_dim
-                                            for s in filter_scales.values()])
+        self.invalid_z = z_dim == 1 or any(
+            [numpy.ceil(s * self.window_size_feature) + 1 > z_dim for s in filter_scales.values()]
+        )
 
         if self.invalid_z and z_dim > 1 and not self.ComputeIn2d.value:
-            logger.warning(f'{self.name}: filtering in 2d for {filter_scales} (z dimension too small)')
+            logger.warning(f"{self.name}: filtering in 2d for {filter_scales} (z dimension too small)")
 
         if self.invalid_z or self.ComputeIn2d.value:
             if self.supports_anisotropic:
@@ -101,7 +103,7 @@ class OpBaseFilter(Operator):
         self.max_sigma = max(0.7, *filter_scales.values())
         self.filter_kwargs = filter_scales
         if self.supports_window:
-            self.filter_kwargs['window_size'] = self.window_size_feature
+            self.filter_kwargs["window_size"] = self.window_size_feature
 
         # Output meta starts with a copy of the input meta, which is then modified
         self.Output.meta.assignFrom(self.Input.meta)
@@ -111,13 +113,15 @@ class OpBaseFilter(Operator):
 
         self.Output.meta.dtype = self.output_dtype
         self.Output.meta.axistags = copy.copy(inputSlot.meta.axistags)
-        self.Output.meta.shape = (self.Input.meta.shape[0],
-                                  numChannels * self.resultingChannels(),
-                                  *self.Input.meta.shape[2:])
+        self.Output.meta.shape = (
+            self.Input.meta.shape[0],
+            numChannels * self.resultingChannels(),
+            *self.Input.meta.shape[2:],
+        )
 
         # The output data range is not necessarily the same as the input data range.
-        if 'drange' in self.Output.meta:
-            del self.Output.meta['drange']
+        if "drange" in self.Output.meta:
+            del self.Output.meta["drange"]
 
     def execute(self, slot, subindex, output_roi, target, sourceArray=None):
         assert slot == self.Output
@@ -149,11 +153,11 @@ class OpBaseFilter(Operator):
         if self.invalid_z or self.ComputeIn2d.value:
             axes2enlarge = (0, 1, 1)
             process_in_2d = True
-            axistags = vigra.defaultAxistags('cyx')
+            axistags = vigra.defaultAxistags("cyx")
         else:
             axes2enlarge = (1, 1, 1)
             process_in_2d = False
-            axistags = vigra.defaultAxistags('czyx')
+            axistags = vigra.defaultAxistags("czyx")
 
         output_shape = full_output_shape[2:]  # without tc
         assert output_shape == self.Input.meta.shape[2:], (output_shape, self.Input.meta.shape[2:])
@@ -161,8 +165,13 @@ class OpBaseFilter(Operator):
         output_stop = full_output_stop[2:]
 
         input_start, input_stop = roi.enlargeRoiForHalo(
-            output_start, output_stop, output_shape, self.max_sigma, window=self.window_size_smoother,
-            enlarge_axes=axes2enlarge)
+            output_start,
+            output_stop,
+            output_shape,
+            self.max_sigma,
+            window=self.window_size_smoother,
+            enlarge_axes=axes2enlarge,
+        )
         input_slice = roi.roiToSlice(input_start, input_stop)
 
         result_start = output_start - input_start
@@ -209,48 +218,50 @@ class OpBaseFilter(Operator):
 
                         subtarget.axistags = copy.copy(axistags)
                         logger.debug(
-                            f'r o: {self.name} {source.shape} {full_result_slice} {subtarget.shape} {filter_kwargs}')
+                            f"r o: {self.name} {source.shape} {full_result_slice} {subtarget.shape} {filter_kwargs}"
+                        )
 
                         self.filter_fn(source, roi=filter_roi, out=subtarget, **filter_kwargs)
                         return
                     except Exception:
-                        logger.error(f'r o: {self.name} {source.shape} {filter_roi} {subtarget.shape} {filter_kwargs} '
-                                     f'{process_in_2d}')
+                        logger.error(
+                            f"r o: {self.name} {source.shape} {filter_roi} {subtarget.shape} {filter_kwargs} "
+                            f"{process_in_2d}"
+                        )
                         raise
                 else:
                     try:
-                        logger.debug(
-                            f'r  : {self.name} {source.shape} {full_result_slice} {filter_kwargs}')
+                        logger.debug(f"r  : {self.name} {source.shape} {full_result_slice} {filter_kwargs}")
                         result = self.filter_fn(source, roi=filter_roi, **filter_kwargs)
                     except Exception:
-                        logger.error(
-                            f'r  : {self.name} {source.shape} {target.shape} {filter_kwargs}')
+                        logger.error(f"r  : {self.name} {source.shape} {target.shape} {filter_kwargs}")
                         raise
             else:
                 # note: support of 'out' gives no advantage, if no roi can be specified. The filter result (including a
                 #       halo) would not fit into the target (without a halo).
                 # todo: implement 'no halo exception' of above note
                 try:
-                    logger.debug(f'   : {self.name} {source.shape} {filter_kwargs} {process_in_2d}')
+                    logger.debug(f"   : {self.name} {source.shape} {filter_kwargs} {process_in_2d}")
                     result = self.filter_fn(source, **filter_kwargs)
                 except Exception:
-                    logger.error(f'   : {self.name} {source.shape} {filter_kwargs} {process_in_2d}')
+                    logger.error(f"   : {self.name} {source.shape} {filter_kwargs} {process_in_2d}")
                     raise
                 result = result[full_result_slice]
 
             try:
                 target[tstep, target_c_start:target_c_stop, target_z_slice] = result
             except Exception:
-                logger.error(f't  : {target.shape} {target[tstep, target_c_start:target_c_stop].shape} {result.shape}')
-                logger.error(f'tstep {tstep}  c {target_c_start},{target_c_stop}  z {target_z_slice} {result.shape}')
+                logger.error(f"t  : {target.shape} {target[tstep, target_c_start:target_c_stop].shape} {result.shape}")
+                logger.error(f"tstep {tstep}  c {target_c_start},{target_c_stop}  z {target_z_slice} {result.shape}")
                 raise
 
         resC = self.resultingChannels()
 
         for tstep, t in enumerate(range(full_output_start[0], full_output_stop[0])):
             target_c_stop = 0
-            for input_c in range(int(numpy.floor(full_output_start[1] / resC)),
-                                 int(numpy.ceil(full_output_stop[1] / resC))):
+            for input_c in range(
+                int(numpy.floor(full_output_start[1] / resC)), int(numpy.ceil(full_output_stop[1] / resC))
+            ):
                 output_c_start = resC * input_c
                 output_c_stop = resC * (input_c + 1)
                 result_c_start = 0
@@ -269,19 +280,25 @@ class OpBaseFilter(Operator):
 
                 if process_in_2d:
                     for target_z, input_z in enumerate(range(input_start[0], input_stop[0])):
-                        step(tstep, target_z_slice=target_z,
-                             full_input_slice=(t, input_c_slice, input_z, *input_slice[1:]),
-                             full_result_slice=(result_c_slice, *result_slice[1:]))
+                        step(
+                            tstep,
+                            target_z_slice=target_z,
+                            full_input_slice=(t, input_c_slice, input_z, *input_slice[1:]),
+                            full_result_slice=(result_c_slice, *result_slice[1:]),
+                        )
                 else:
-                    step(tstep, target_z_slice=slice(None),
-                         full_input_slice=(t, input_c_slice, *input_slice),
-                         full_result_slice=(result_c_slice, *result_slice))
+                    step(
+                        tstep,
+                        target_z_slice=slice(None),
+                        full_input_slice=(t, input_c_slice, *input_slice),
+                        full_result_slice=(result_c_slice, *result_slice),
+                    )
 
     def _n_per_space_axis(self, n=1):
         if self.invalid_z or self.ComputeIn2d.value:
-            space_axes = 'yx'
+            space_axes = "yx"
         else:
-            space_axes = 'zyx'
+            space_axes = "zyx"
 
         ret = 0
         for k, s in zip(self.Input.meta.getAxisKeys(), self.Input.meta.shape):
@@ -291,7 +308,7 @@ class OpBaseFilter(Operator):
         return ret
 
     def resultingChannels(self):
-        raise NotImplementedError('resultingChannels() not implemented')
+        raise NotImplementedError("resultingChannels() not implemented")
 
     def propagateDirty(self, slot, subindex, rroi):
         # If some input we don't know about is dirty (i.e. we are subclassed by an operator with extra inputs),
@@ -312,15 +329,22 @@ class OpBaseFilter(Operator):
             output_shape = self.Output.meta.shape
             rroi = roi.sliceToRoi(out_dirty, output_shape)
 
-            out_dirty = roi.roiToSlice(*roi.enlargeRoiForHalo(
-                rroi[0], rroi[1], output_shape, self.max_sigma, window=self.window_size_smoother,
-                enlarge_axes=axes2enlarge))
+            out_dirty = roi.roiToSlice(
+                *roi.enlargeRoiForHalo(
+                    rroi[0],
+                    rroi[1],
+                    output_shape,
+                    self.max_sigma,
+                    window=self.window_size_smoother,
+                    enlarge_axes=axes2enlarge,
+                )
+            )
 
         elif slot is self.ComputeIn2d:
             if self.invalid_z:
                 # Output is computed in 2D anyway due to a small z dimension
                 if not self.ComputeIn2d.value:
-                    logger.warning(f'{self.name}: filtering in 2d for {self.filter_kwargs} (z dimension too small)')
+                    logger.warning(f"{self.name}: filtering in 2d for {self.filter_kwargs} (z dimension too small)")
 
                 return
 
@@ -341,8 +365,9 @@ def coherenceOrientationOfStructureTensor(image, sigma0, sigma1, window_size, ou
     # FIXME: make more general
 
     # assert image.spatialDimensions==2, "Only implemented for 2 dimensional images"
-    assert len(image.shape) == 2 or (len(image.shape) ==
-                                     3 and image.shape[2] == 1), "Only implemented for 2 dimensional images"
+    assert len(image.shape) == 2 or (
+        len(image.shape) == 3 and image.shape[2] == 1
+    ), "Only implemented for 2 dimensional images"
 
     st = vigra.filters.structureTensor(image, sigma0, sigma1, window_size=window_size)
     i11 = st[:, :, 0]
@@ -355,7 +380,7 @@ def coherenceOrientationOfStructureTensor(image, sigma0, sigma1, window_size, ou
     else:
         res = numpy.ndarray((image.shape[0], image.shape[1], 2))
 
-    res[:, :, 0] = (numpy.sqrt((i22 - i11)**2 + 4 * (i12**2)) / (i11 - i22))
+    res[:, :, 0] = numpy.sqrt((i22 - i11) ** 2 + 4 * (i12 ** 2)) / (i11 - i22)
     res[:, :, 1] = (numpy.arctan(2 * i12 / (i22 - i11)) / numpy.pi) + 0.5
 
     return res
@@ -363,7 +388,7 @@ def coherenceOrientationOfStructureTensor(image, sigma0, sigma1, window_size, ou
 
 class OpGaussianSmoothing(OpBaseFilter):
     sigma = InputSlot()
-    minimum_scale = .3
+    minimum_scale = 0.3
 
     supports_window = True
 
@@ -393,8 +418,9 @@ class OpDifferenceOfGaussians(OpBaseFilter):
 
         @staticmethod
         def differenceOfGausssiansFF(image, sigma0, sigma1, window_size):
-            return (fastfilters.gaussianSmoothing(image, sigma0, window_size) -
-                    fastfilters.gaussianSmoothing(image, sigma1, window_size))
+            return fastfilters.gaussianSmoothing(image, sigma0, window_size) - fastfilters.gaussianSmoothing(
+                image, sigma1, window_size
+            )
 
         filter_fn = differenceOfGausssiansFF
     else:
@@ -402,8 +428,9 @@ class OpDifferenceOfGaussians(OpBaseFilter):
 
         @staticmethod
         def differenceOfGausssians(image, sigma0, sigma1, window_size, roi=None, out=None):
-            return (vigra.filters.gaussianSmoothing(image, sigma0, window_size=window_size, roi=roi) -
-                    vigra.filters.gaussianSmoothing(image, sigma1, window_size=window_size, roi=roi))
+            return vigra.filters.gaussianSmoothing(
+                image, sigma0, window_size=window_size, roi=roi
+            ) - vigra.filters.gaussianSmoothing(image, sigma1, window_size=window_size, roi=roi)
 
         filter_fn = differenceOfGausssians
         supports_roi = True

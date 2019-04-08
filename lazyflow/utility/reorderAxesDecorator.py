@@ -25,8 +25,7 @@ import types
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
-def reorder_options(internal_axes_order, ignore_slots=[],
-                    output_axes_order='tczyx'):
+def reorder_options(internal_axes_order, ignore_slots=[], output_axes_order="tczyx"):
     """
         Adds reorder options to the specific operator class that the decorator
         reorder accesses. This is not done by handing arguments to the reorder
@@ -61,12 +60,12 @@ def reorder_options(internal_axes_order, ignore_slots=[],
     assert isinstance(output_axes_order, str)
 
     def set_options(cls):
-        assert all([ex in [s.name for s in cls.inputSlots + cls.outputSlots]
-                    for ex in ignore_slots])
+        assert all([ex in [s.name for s in cls.inputSlots + cls.outputSlots] for ex in ignore_slots])
         cls._internal_axes_order = internal_axes_order
         cls._not_reordered_slots = ignore_slots
         cls._output_axes_order = output_axes_order
         return cls
+
     return set_options
 
 
@@ -77,18 +76,18 @@ def guard_methods(cls):
         Flag with 'self._inner_call' when methods are called from within the class
         as opposed to accessing a slot of the operator from the "outside"
     """
-    methods = [member for member, member_type in cls.__dict__.items()
-               if isinstance(member_type, types.FunctionType) and
-               member != '__getattribute__' and  # will be adapted individually
-               member != '__init__' and  # will be adapted individually
-               member != 'setupOutputs'  # will be adapted individually
-               ]
+    methods = [
+        member
+        for member, member_type in cls.__dict__.items()
+        if isinstance(member_type, types.FunctionType)
+        and member != "__getattribute__"
+        and member != "__init__"  # will be adapted individually
+        and member != "setupOutputs"  # will be adapted individually  # will be adapted individually
+    ]
 
-    class_methods = [member for member, member_type in cls.__dict__.items()
-                     if isinstance(member_type, classmethod)]
+    class_methods = [member for member, member_type in cls.__dict__.items() if isinstance(member_type, classmethod)]
 
-    property_methods = [member for member, member_type in cls.__dict__.items()
-                        if isinstance(member_type, property)]
+    property_methods = [member for member, member_type in cls.__dict__.items() if isinstance(member_type, property)]
 
     # overwrite methods with guarded versions thereof
     for meth in methods:
@@ -109,6 +108,7 @@ def guard_methods(cls):
                         raise
                     finally:
                         self._inner_call = False
+
             return wrap
 
         setattr(cls, meth, guard(old_meth))
@@ -132,6 +132,7 @@ def guard_methods(cls):
                         raise
                     finally:
                         self._inner_call = False
+
             return wrap
 
         setattr(cls, meth, guard(old_meth))
@@ -155,6 +156,7 @@ def guard_methods(cls):
                         raise
                     finally:
                         self._inner_call = False
+
             return wrap
 
         setattr(cls, meth, guard(old_get))
@@ -198,20 +200,18 @@ def reorder(cls):
                 self.childOp.InputB.connect(self.Input)
                 self.Output.connect(self.childOp.Output)
     """
-    if '_not_reordered_slots' not in dir(cls):
+    if "_not_reordered_slots" not in dir(cls):
         cls._not_reordered_slots = []
 
     cls = guard_methods(cls)
 
-    inputSlots = [s.name for s in cls.inputSlots
-                  if s.name not in cls._not_reordered_slots]
-    outputSlots = [s.name for s in cls.outputSlots
-                   if s.name not in cls._not_reordered_slots]
+    inputSlots = [s.name for s in cls.inputSlots if s.name not in cls._not_reordered_slots]
+    outputSlots = [s.name for s in cls.outputSlots if s.name not in cls._not_reordered_slots]
 
     cls._inner_call = False  # use this variable to distinguish in __getattribute__, which slot to return
 
     # change __init__ in order to squeeze in the opReorderAxes ops
-    old_init = getattr(cls, '__init__')
+    old_init = getattr(cls, "__init__")
 
     def guard(fn):
         @functools.wraps(old_init)
@@ -229,12 +229,13 @@ def reorder(cls):
                 self._opReorderOutput[name] = OpReorderAxes(parent=self)
 
             return ret
+
         return wrap
 
-    setattr(cls, '__init__', guard(old_init))
+    setattr(cls, "__init__", guard(old_init))
 
     # change setupOutputs in order to connect the squeezed in opReorderAxes ops
-    old_setupOutputs = getattr(cls, 'setupOutputs')
+    old_setupOutputs = getattr(cls, "setupOutputs")
 
     def guard(fn):
         @functools.wraps(old_setupOutputs)
@@ -257,9 +258,10 @@ def reorder(cls):
             self._inner_call = False
 
             return ret
+
         return wrap
 
-    setattr(cls, 'setupOutputs', guard(old_setupOutputs))
+    setattr(cls, "setupOutputs", guard(old_setupOutputs))
 
     # change __getattribute__ in order to squeeze in the opReorderAxes ops
     def __getattribute__(self, name):
@@ -273,5 +275,5 @@ def reorder(cls):
 
         return super(cls, self).__getattribute__(name)
 
-    setattr(cls, '__getattribute__', __getattribute__)
+    setattr(cls, "__getattribute__", __getattribute__)
     return cls

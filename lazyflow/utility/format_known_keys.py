@@ -17,7 +17,7 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import string
 
@@ -36,16 +36,16 @@ def format_known_keys_strict(s, entries):
             continue
 
         # Replicate the original stub
-        name = name or ''
-        fmt = fmt or ''
-        start, end, fmtsep = '', '', ''
+        name = name or ""
+        fmt = fmt or ""
+        start, end, fmtsep = "", "", ""
         if name or fmt:
-            start, end = '{', '}'
+            start, end = "{", "}"
         if fmt:
-            fmtsep = ':'
+            fmtsep = ":"
         pieces.append(start + name + fmtsep + fmt + end)
 
-    return ''.join(pieces)
+    return "".join(pieces)
 
 
 def format_known_keys(s, entries, strict=True):
@@ -84,4 +84,5 @@ def format_known_keys(s, entries, strict=True):
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

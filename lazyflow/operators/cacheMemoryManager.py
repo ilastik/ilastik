@@ -1,4 +1,5 @@
 from __future__ import division
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,7 +19,7 @@ from __future__ import division
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 
 # Python
@@ -39,6 +40,7 @@ from lazyflow.utility import Memory
 
 import logging
 from future.utils import with_metaclass
+
 logger = logging.getLogger(__name__)
 
 default_refresh_interval = 10
@@ -95,7 +97,7 @@ class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
         # maximum fraction of *allowed memory* used
         self._max_usage = 1.0
         # target usage fraction
-        self._target_usage = .90
+        self._target_usage = 0.90
 
         self._stopped = False
         self.start()
@@ -111,6 +113,7 @@ class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
         """
         # late import to prevent import loop
         from lazyflow.operators.opCache import Cache
+
         if isinstance(cache, Cache):
             with self._first_class_caches_lock:
                 self._first_class_caches.add(cache)
@@ -141,8 +144,8 @@ class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
         from lazyflow.operators.opCache import ObservableCache
         from lazyflow.operators.opCache import ManagedCache
         from lazyflow.operators.opCache import ManagedBlockedCache
-        assert isinstance(cache, Cache),\
-            "Only Cache instances can be managed by CacheMemoryManager"
+
+        assert isinstance(cache, Cache), "Only Cache instances can be managed by CacheMemoryManager"
         self._caches.add(cache)
         if isinstance(cache, ObservableCache):
             self._observable_caches.add(cache)
@@ -170,14 +173,15 @@ class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
         clean up once
         """
         from lazyflow.operators.opCache import ObservableCache
+
         try:
             # notify subscribed functions about current cache memory
             total = 0
-            
+
             # Avoid "RuntimeError: Set changed size during iteration"
             with self._first_class_caches_lock:
                 first_class_caches = self._first_class_caches.copy()
-            
+
             for cache in first_class_caches:
                 if isinstance(cache, ObservableCache):
                     total += cache.usedMemory()
@@ -188,10 +192,16 @@ class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
             cache_memory = Memory.getAvailableRamCaches()
             cache_pct = 0.0
             if cache_memory:
-                cache_pct = total*100.0/cache_memory
-            
-            logger.debug( "Process memory usage is {:0.2f} GB out of {:0.2f} (caches are {}, {:.1f}% of allowed)"
-                          .format( Memory.getMemoryUsage() / 2.**30, Memory.getAvailableRam() / 2.**30 , Memory.format(total), cache_pct ) )
+                cache_pct = total * 100.0 / cache_memory
+
+            logger.debug(
+                "Process memory usage is {:0.2f} GB out of {:0.2f} (caches are {}, {:.1f}% of allowed)".format(
+                    Memory.getMemoryUsage() / 2.0 ** 30,
+                    Memory.getAvailableRam() / 2.0 ** 30,
+                    Memory.format(total),
+                    cache_pct,
+                )
+            )
 
             if total <= self._max_usage * cache_memory:
                 return
@@ -212,23 +222,19 @@ class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
             c = None
             caches = None
 
-            while (total > self._target_usage * cache_memory
-                   and len(q) > 0):
+            while total > self._target_usage * cache_memory and len(q) > 0:
                 t, info, cleanupFun = q.pop()
                 mem = cleanupFun()
-                logger.debug("Cleaned up {} ({})".format(
-                    info, Memory.format(mem)))
+                logger.debug("Cleaned up {} ({})".format(info, Memory.format(mem)))
                 total -= mem
             gc.collect()
             # don't keep a reference until next loop iteration
             cleanupFun = None
             q = None
 
-            msg = "Done cleaning up, cache memory usage is now at {}"\
-                  .format( Memory.format(total))
+            msg = "Done cleaning up, cache memory usage is now at {}".format(Memory.format(total))
             if cache_memory > 0:
-                msg += " ({:.1f}% of allowed)"\
-                       .format( total*100.0/cache_memory )
+                msg += " ({:.1f}% of allowed)".format(total * 100.0 / cache_memory)
             logger.debug(msg)
         except:
             log_exception(logger)

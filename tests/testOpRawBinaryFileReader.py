@@ -1,5 +1,6 @@
 from builtins import map
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -29,8 +30,8 @@ import numpy
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpRawBinaryFileReader
 
-class TestOpRawBinaryFileReader(object):
 
+class TestOpRawBinaryFileReader(object):
     def setup_method(self, method):
         # Start by writing some test data to disk.
         self.testData = numpy.random.random((10, 11, 12)).astype(numpy.float32)
@@ -38,11 +39,11 @@ class TestOpRawBinaryFileReader(object):
 
         # Filename must follow conventions in used by OpRawBinaryFileReader
         shape_string = "-".join(map(str, self.testData.shape))
-        self.testDataFilePath = os.path.join(self.tmpDir, 'random-test-data-{}-float32.bin'.format(shape_string))
+        self.testDataFilePath = os.path.join(self.tmpDir, "random-test-data-{}-float32.bin".format(shape_string))
 
-        fp = numpy.memmap(self.testDataFilePath, dtype=self.testData.dtype, shape=self.testData.shape, mode='w+')
+        fp = numpy.memmap(self.testDataFilePath, dtype=self.testData.dtype, shape=self.testData.shape, mode="w+")
         fp[:] = self.testData
-        del fp # Close file
+        del fp  # Close file
 
     def teardown_method(self, method):
         shutil.rmtree(self.tmpDir)
@@ -52,18 +53,21 @@ class TestOpRawBinaryFileReader(object):
         op = OpRawBinaryFileReader(graph=Graph())
         try:
             op.FilePath.setValue(self.testDataFilePath)
-    
+
             # Read the entire file and verify the contents
             a = op.Output[:].wait()
             assert (a == self.testData).all()
-    
+
         finally:
             op.cleanUp()
+
 
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

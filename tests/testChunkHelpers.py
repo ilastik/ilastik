@@ -17,7 +17,7 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 
 import unittest
@@ -45,4 +45,3 @@ class TestChunkHelpers(unittest.TestCase):
         a = (17, 33)  # roughly 1:2
         b = chooseChunkShape(a, 3)
         assert_array_equal(b, (1, 2))
-        

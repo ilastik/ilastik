@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from builtins import next
 import sys
+
 if sys.version_info.major >= 3:
     unicode = str
 
@@ -29,11 +30,19 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
 from .opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import (
-    OpBlockwiseFilesetReader, OpKlbReader, OpRESTfulBlockwiseFilesetReader,
-    OpStreamingH5N5Reader, OpStreamingH5N5SequenceReaderS,
-    OpStreamingH5N5SequenceReaderM, OpTiffReader,
-    OpTiffSequenceReader, OpCachedTiledVolumeReader, OpRawBinaryFileReader,
-    OpStackLoader, OpRESTfulPrecomputedChunkedVolumeReader, OpImageReader
+    OpBlockwiseFilesetReader,
+    OpKlbReader,
+    OpRESTfulBlockwiseFilesetReader,
+    OpStreamingH5N5Reader,
+    OpStreamingH5N5SequenceReaderS,
+    OpStreamingH5N5SequenceReaderM,
+    OpTiffReader,
+    OpTiffSequenceReader,
+    OpCachedTiledVolumeReader,
+    OpRawBinaryFileReader,
+    OpStackLoader,
+    OpRESTfulPrecomputedChunkedVolumeReader,
+    OpImageReader,
 )
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import lsH5N5, isUrl, PathComponents
@@ -43,20 +52,23 @@ from .opStreamingMmfReader import OpStreamingMmfReader
 
 try:
     from .opBigTiffReader import OpBigTiffReader
+
     _supports_bigtiff = True
 except ImportError:
     _supports_bigtiff = False
 
 try:
     from lazyflow.operators.ioOperators import OpDvidVolume, OpDvidRoi
+
     _supports_dvid = True
 except ImportError as ex:
-    if 'OpDvidVolume' not in ex.args[0] and 'OpDvidRoi' not in ex.args[0]:
+    if "OpDvidVolume" not in ex.args[0] and "OpDvidRoi" not in ex.args[0]:
         raise
     _supports_dvid = False
 
 try:
     from lazyflow.operators.ioOperators.opH5BlockStoreReader import OpH5BlockStoreReader
+
     _supports_h5blockreader = True
 except ImportError as ex:
     _supports_h5blockreader = False
@@ -75,30 +87,32 @@ class OpInputDataReader(Operator):
     This operator can read input data of any supported type.
     The data format is determined from the file extension.
     """
+
     name = "OpInputDataReader"
     category = "Input"
 
-    videoExts = ['ufmf', 'mmf']
-    h5_n5_Exts = ['h5', 'hdf5', 'ilp', 'n5']
-    n5Selection = ['json']  # n5 stores data in a directory, containing a json-file which we use to select the n5-file
-    klbExts = ['klb']
-    npyExts = ['npy']
-    npzExts = ['npz']
-    rawExts = ['dat', 'bin', 'raw']
-    blockwiseExts = ['json']
-    tiledExts = ['json']
-    tiffExts = ['tif', 'tiff']
+    videoExts = ["ufmf", "mmf"]
+    h5_n5_Exts = ["h5", "hdf5", "ilp", "n5"]
+    n5Selection = ["json"]  # n5 stores data in a directory, containing a json-file which we use to select the n5-file
+    klbExts = ["klb"]
+    npyExts = ["npy"]
+    npzExts = ["npz"]
+    rawExts = ["dat", "bin", "raw"]
+    blockwiseExts = ["json"]
+    tiledExts = ["json"]
+    tiffExts = ["tif", "tiff"]
     vigraImpexExts = vigra.impex.listExtensions().split()
 
-    SupportedExtensions = h5_n5_Exts + n5Selection + npyExts + npzExts + rawExts + \
-                          vigraImpexExts + blockwiseExts + videoExts + klbExts
+    SupportedExtensions = (
+        h5_n5_Exts + n5Selection + npyExts + npzExts + rawExts + vigraImpexExts + blockwiseExts + videoExts + klbExts
+    )
 
     if _supports_dvid:
-        dvidExts = ['dvidvol']
+        dvidExts = ["dvidvol"]
         SupportedExtensions += dvidExts
 
     if _supports_h5blockreader:
-        h5blockstoreExts = ['json']
+        h5blockstoreExts = ["json"]
         SupportedExtensions += h5blockstoreExts
 
     # FilePath is inspected to determine data type.
@@ -106,8 +120,8 @@ class OpInputDataReader(Operator):
     #  e.g. /mydir/myfile.h5/internal/path/to/dataset
     # For stacks, provide a globstring, e.g. /mydir/input*.png
     # Other types are determined via file extension
-    WorkingDirectory = InputSlot(stype='filestring', optional=True)
-    FilePath = InputSlot(stype='filestring')
+    WorkingDirectory = InputSlot(stype="filestring", optional=True)
+    FilePath = InputSlot(stype="filestring")
     SequenceAxis = InputSlot(optional=True)
 
     # FIXME: Document this.
@@ -139,8 +153,9 @@ class OpInputDataReader(Operator):
         TODO: Handle datasets of non-standard (non-5d) dimensions.
         """
         filePath = self.FilePath.value
-        assert isinstance(filePath, (str, unicode)
-                          ), "Error: filePath is not of type str.  It's of type {}".format(type(filePath))
+        assert isinstance(filePath, (str, unicode)), "Error: filePath is not of type str.  It's of type {}".format(
+            type(filePath)
+        )
 
         # Does this look like a relative path?
         useRelativePath = not isUrl(filePath) and not os.path.isabs(filePath)
@@ -151,8 +166,7 @@ class OpInputDataReader(Operator):
                 return
             else:
                 # Convert this relative path into an absolute path
-                filePath = os.path.normpath(os.path.join(
-                    self.WorkingDirectory.value, filePath)).replace('\\', '/')
+                filePath = os.path.normpath(os.path.join(self.WorkingDirectory.value, filePath)).replace("\\", "/")
 
         # Clean up before reconfiguring
         if self.internalOperators:
@@ -165,24 +179,26 @@ class OpInputDataReader(Operator):
         if self._file is not None:
             self._file.close()
 
-        openFuncs = [self._attemptOpenAsKlb,
-                     self._attemptOpenAsUfmf,
-                     self._attemptOpenAsMmf,
-                     self._attemptOpenAsRESTfulPrecomputedChunkedVolume,
-                     self._attemptOpenAsDvidVolume,
-                     self._attemptOpenAsH5N5Stack,
-                     self._attemptOpenAsTiffStack,
-                     self._attemptOpenAsStack,
-                     self._attemptOpenAsH5N5,
-                     self._attemptOpenAsNpy,
-                     self._attemptOpenAsRawBinary,
-                     self._attemptOpenAsTiledVolume,
-                     self._attemptOpenAsH5BlockStore,
-                     self._attemptOpenAsBlockwiseFileset,
-                     self._attemptOpenAsRESTfulBlockwiseFileset,
-                     self._attemptOpenAsBigTiff,
-                     self._attemptOpenAsTiff,
-                     self._attemptOpenWithVigraImpex]
+        openFuncs = [
+            self._attemptOpenAsKlb,
+            self._attemptOpenAsUfmf,
+            self._attemptOpenAsMmf,
+            self._attemptOpenAsRESTfulPrecomputedChunkedVolume,
+            self._attemptOpenAsDvidVolume,
+            self._attemptOpenAsH5N5Stack,
+            self._attemptOpenAsTiffStack,
+            self._attemptOpenAsStack,
+            self._attemptOpenAsH5N5,
+            self._attemptOpenAsNpy,
+            self._attemptOpenAsRawBinary,
+            self._attemptOpenAsTiledVolume,
+            self._attemptOpenAsH5BlockStore,
+            self._attemptOpenAsBlockwiseFileset,
+            self._attemptOpenAsRESTfulBlockwiseFileset,
+            self._attemptOpenAsBigTiff,
+            self._attemptOpenAsTiff,
+            self._attemptOpenWithVigraImpex,
+        ]
 
         # Try every method of opening the file until one works.
         iterFunc = openFuncs.__iter__()
@@ -194,8 +210,7 @@ class OpInputDataReader(Operator):
             self.internalOperators, self.internalOutput = openFunc(filePath)
 
         if self.internalOutput is None:
-            raise RuntimeError("Can't read " + filePath +
-                               " because it has an unrecognized format.")
+            raise RuntimeError("Can't read " + filePath + " because it has an unrecognized format.")
 
         # If we've got a ROI, append a subregion operator.
         if self.SubVolumeRoi.ready():
@@ -210,10 +225,9 @@ class OpInputDataReader(Operator):
         # Add metadata for estimated RAM usage if the internal operator didn't already provide it.
         if self.internalOutput.meta.ram_per_pixelram_usage_per_requested_pixel is None:
             ram_per_pixel = self.internalOutput.meta.dtype().nbytes
-            if 'c' in self.internalOutput.meta.getTaggedShape():
-                ram_per_pixel *= self.internalOutput.meta.getTaggedShape()['c']
-            self.opInjector.Metadata.setValue(
-                {'ram_per_pixelram_usage_per_requested_pixel': ram_per_pixel})
+            if "c" in self.internalOutput.meta.getTaggedShape():
+                ram_per_pixel *= self.internalOutput.meta.getTaggedShape()["c"]
+            self.opInjector.Metadata.setValue({"ram_per_pixelram_usage_per_requested_pixel": ram_per_pixel})
         else:
             # Nothing to add
             self.opInjector.Metadata.setValue({})
@@ -222,7 +236,7 @@ class OpInputDataReader(Operator):
         self.Output.connect(self.opInjector.Output)
 
     def _attemptOpenAsKlb(self, filePath):
-        if not os.path.splitext(filePath)[1].lower() == '.klb':
+        if not os.path.splitext(filePath)[1].lower() == ".klb":
             return ([], None)
 
         opReader = OpKlbReader(parent=self)
@@ -230,13 +244,13 @@ class OpInputDataReader(Operator):
         return [opReader, opReader.Output]
 
     def _attemptOpenAsMmf(self, filePath):
-        if '.mmf' in filePath:
+        if ".mmf" in filePath:
             mmfReader = OpStreamingMmfReader(parent=self)
             mmfReader.FileName.setValue(filePath)
 
             return ([mmfReader], mmfReader.Output)
 
-            '''
+            """
             # Cache the frames we read
             frameShape = mmfReader.Output.meta.ideal_blockshape
 
@@ -246,19 +260,19 @@ class OpInputDataReader(Operator):
             mmfCache.Input.connect( mmfReader.Output )
 
             return ([mmfReader, mmfCache], mmfCache.Output)
-            '''
+            """
         else:
             return ([], None)
 
     def _attemptOpenAsUfmf(self, filePath):
-        if '.ufmf' in filePath:
+        if ".ufmf" in filePath:
             ufmfReader = OpStreamingUfmfReader(parent=self)
             ufmfReader.FileName.setValue(filePath)
 
             return ([ufmfReader], ufmfReader.Output)
 
             # Cache the frames we read
-            '''
+            """
             frameShape = ufmfReader.Output.meta.ideal_blockshape
 
             ufmfCache = OpBlockedArrayCache( parent=self )
@@ -267,21 +281,21 @@ class OpInputDataReader(Operator):
             ufmfCache.Input.connect( ufmfReader.Output )
 
             return ([ufmfReader, ufmfCache], ufmfCache.Output)
-            '''
+            """
         else:
             return ([], None)
 
     def _attemptOpenAsRESTfulPrecomputedChunkedVolume(self, filePath):
-        if not filePath.lower().startswith('precomputed://'):
+        if not filePath.lower().startswith("precomputed://"):
             return ([], None)
         else:
-            url = filePath.lstrip('precomputed://')
+            url = filePath.lstrip("precomputed://")
             reader = OpRESTfulPrecomputedChunkedVolumeReader(parent=self)
             reader.BaseUrl.setValue(url)
             return [reader], reader.Output
 
     def _attemptOpenAsH5N5Stack(self, filePath):
-        if not ('*' in filePath or os.path.pathsep in filePath):
+        if not ("*" in filePath or os.path.pathsep in filePath):
             return ([], None)
 
         # Now use the .checkGlobString method of the stack readers
@@ -290,20 +304,24 @@ class OpInputDataReader(Operator):
             OpStreamingH5N5SequenceReaderS.checkGlobString(filePath)
         except OpStreamingH5N5SequenceReaderS.WrongFileTypeError:
             return ([], None)
-        except (OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError,
-                OpStreamingH5N5SequenceReaderS.NotTheSameFileError,
-                OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError):
+        except (
+            OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError,
+            OpStreamingH5N5SequenceReaderS.NotTheSameFileError,
+            OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError,
+        ):
             isSingleFile = False
 
         isMultiFile = True
         try:
             OpStreamingH5N5SequenceReaderM.checkGlobString(filePath)
-        except (OpStreamingH5N5SequenceReaderM.NoExternalPlaceholderError,
-                OpStreamingH5N5SequenceReaderM.SameFileError,
-                OpStreamingH5N5SequenceReaderM.InternalPlaceholderError):
+        except (
+            OpStreamingH5N5SequenceReaderM.NoExternalPlaceholderError,
+            OpStreamingH5N5SequenceReaderM.SameFileError,
+            OpStreamingH5N5SequenceReaderM.InternalPlaceholderError,
+        ):
             isMultiFile = False
 
-        assert(not(isMultiFile and isSingleFile))
+        assert not (isMultiFile and isSingleFile)
 
         if isSingleFile is True:
             opReader = OpStreamingH5N5SequenceReaderS(parent=self)
@@ -314,12 +332,11 @@ class OpInputDataReader(Operator):
             opReader.SequenceAxis.connect(self.SequenceAxis)
             opReader.GlobString.setValue(filePath)
             return ([opReader], opReader.OutputImage)
-        except (OpStreamingH5N5SequenceReaderM.WrongFileTypeError,
-                OpStreamingH5N5SequenceReaderS.WrongFileTypeError):
+        except (OpStreamingH5N5SequenceReaderM.WrongFileTypeError, OpStreamingH5N5SequenceReaderS.WrongFileTypeError):
             return ([], None)
 
     def _attemptOpenAsTiffStack(self, filePath):
-        if not ('*' in filePath or os.path.pathsep in filePath):
+        if not ("*" in filePath or os.path.pathsep in filePath):
             return ([], None)
 
         try:
@@ -331,7 +348,7 @@ class OpInputDataReader(Operator):
             return ([], None)
 
     def _attemptOpenAsStack(self, filePath):
-        if '*' in filePath or os.path.pathsep in filePath:
+        if "*" in filePath or os.path.pathsep in filePath:
             stackReader = OpStackLoader(parent=self)
             stackReader.SequenceAxis.connect(self.SequenceAxis)
             stackReader.globstring.setValue(filePath)
@@ -350,34 +367,32 @@ class OpInputDataReader(Operator):
         internalPath = pathComponents.internalPath
 
         if not os.path.exists(externalPath):
-            raise OpInputDataReader.DatasetReadError(
-                "Input file does not exist: " + externalPath)
+            raise OpInputDataReader.DatasetReadError("Input file does not exist: " + externalPath)
 
         # Open the h5/n5 file in read-only mode
         try:
-            h5N5File = OpStreamingH5N5Reader.get_h5_n5_file(externalPath, 'r')
+            h5N5File = OpStreamingH5N5Reader.get_h5_n5_file(externalPath, "r")
         except OpInputDataReader.DatasetReadError:
             raise
         except Exception as e:
-            msg = "Unable to open H5/N5 File: {}\n{}".format(
-                externalPath, str(e))
+            msg = "Unable to open H5/N5 File: {}\n{}".format(externalPath, str(e))
             raise OpInputDataReader.DatasetReadError(msg) from e
         else:
             if not internalPath:
                 possible_internal_paths = lsH5N5(h5N5File)
                 if len(possible_internal_paths) == 1:
-                    internalPath = possible_internal_paths[0]['name']
+                    internalPath = possible_internal_paths[0]["name"]
                 elif len(possible_internal_paths) == 0:
                     h5N5File.close()
-                    msg = "H5/N5 file contains no datasets: {}".format(
-                        externalPath)
+                    msg = "H5/N5 file contains no datasets: {}".format(externalPath)
                     raise OpInputDataReader.DatasetReadError(msg)
                 else:
                     h5N5File.close()
-                    msg = "When using hdf5/n5, you must append the hdf5 internal path to the "\
-                          "data set to your filename, e.g. myfile.h5/volume/data  "\
-                          "No internal path provided for dataset in file: {}".format(
-                              externalPath)
+                    msg = (
+                        "When using hdf5/n5, you must append the hdf5 internal path to the "
+                        "data set to your filename, e.g. myfile.h5/volume/data  "
+                        "No internal path provided for dataset in file: {}".format(externalPath)
+                    )
                     raise OpInputDataReader.DatasetReadError(msg)
             try:
                 compression_setting = h5N5File[internalPath].compression
@@ -389,11 +404,12 @@ class OpInputDataReader(Operator):
             # If the h5 dataset is compressed, we'll have better performance
             #  with a multi-process hdf5 access object.
             # (Otherwise, single-process is faster.)
-            allow_multiprocess_hdf5 = "LAZYFLOW_MULTIPROCESS_HDF5" in os.environ and os.environ[
-                "LAZYFLOW_MULTIPROCESS_HDF5"] != ""
+            allow_multiprocess_hdf5 = (
+                "LAZYFLOW_MULTIPROCESS_HDF5" in os.environ and os.environ["LAZYFLOW_MULTIPROCESS_HDF5"] != ""
+            )
             if compression_setting is not None and allow_multiprocess_hdf5 and isinstance(h5N5File, h5py.File):
                 h5N5File.close()
-                h5N5File = MultiProcessHdf5File(externalPath, 'r')
+                h5N5File = MultiProcessHdf5File(externalPath, "r")
 
         self._file = h5N5File
 
@@ -420,14 +436,13 @@ class OpInputDataReader(Operator):
         # FIXME: check whether path is valid?!
 
         if not os.path.exists(externalPath):
-            raise OpInputDataReader.DatasetReadError(
-                "Input file does not exist: " + externalPath)
+            raise OpInputDataReader.DatasetReadError("Input file does not exist: " + externalPath)
 
         try:
             # Create an internal operator
             npyReader = OpNpyFileReader(parent=self)
             if internalPath is not None:
-                internalPath = internalPath.replace('/', '')
+                internalPath = internalPath.replace("/", "")
             npyReader.InternalPath.setValue(internalPath)
             npyReader.FileName.setValue(externalPath)
             return ([npyReader], npyReader.Output)
@@ -436,7 +451,7 @@ class OpInputDataReader(Operator):
 
     def _attemptOpenAsRawBinary(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
-        fileExtension = fileExtension.lstrip('.')  # Remove leading dot
+        fileExtension = fileExtension.lstrip(".")  # Remove leading dot
 
         # Check for numpy extension
         if fileExtension not in OpInputDataReader.rawExts:
@@ -451,7 +466,7 @@ class OpInputDataReader(Operator):
                 raise OpInputDataReader.DatasetReadError(*e.args) from e
 
     def _attemptOpenAsH5BlockStore(self, filePath):
-        if not os.path.splitext(filePath)[1] == '.json':
+        if not os.path.splitext(filePath)[1] == ".json":
             return ([], None)
 
         op = OpH5BlockStoreReader(parent=self)
@@ -471,48 +486,46 @@ class OpInputDataReader(Operator):
         1) via a file that contains the hostname, uuid, and dataset name (1 per line)
         2) as a url, e.g. http://localhost:8000/api/node/uuid/dataname
         """
-        if os.path.splitext(filePath)[1] == '.dvidvol':
+        if os.path.splitext(filePath)[1] == ".dvidvol":
             with open(filePath) as f:
                 filetext = f.read()
                 hostname, uuid, dataname = filetext.splitlines()
             opDvidVolume = OpDvidVolume(hostname, uuid, dataname, parent=self)
             return [opDvidVolume], opDvidVolume.Output
 
-        if '://' not in filePath:
+        if "://" not in filePath:
             return ([], None)  # not a url
 
         url_format = "^protocol://hostname/api/node/uuid/dataname(\\?query_string)?"
-        for field in ['protocol', 'hostname', 'uuid', 'dataname', 'query_string']:
-            url_format = url_format.replace(field, '(?P<' + field + '>[^?]+)')
+        for field in ["protocol", "hostname", "uuid", "dataname", "query_string"]:
+            url_format = url_format.replace(field, "(?P<" + field + ">[^?]+)")
         match = re.match(url_format, filePath)
         if not match:
             # DVID is the only url-based format we support right now.
             # So if it looks like the user gave a URL that isn't a valid DVID node, then error.
-            raise OpInputDataReader.DatasetReadError(
-                "Invalid URL format for DVID: {}".format(filePath))
+            raise OpInputDataReader.DatasetReadError("Invalid URL format for DVID: {}".format(filePath))
 
         fields = match.groupdict()
         try:
-            query_string = fields['query_string']
+            query_string = fields["query_string"]
             query_args = {}
             if query_string:
-                query_args = dict([s.split('=')
-                                   for s in query_string.split('&')])
+                query_args = dict([s.split("=") for s in query_string.split("&")])
             try:
-                opDvidVolume = OpDvidVolume(fields['hostname'], fields['uuid'], fields['dataname'], query_args,
-                                            parent=self)
+                opDvidVolume = OpDvidVolume(
+                    fields["hostname"], fields["uuid"], fields["dataname"], query_args, parent=self
+                )
                 return [opDvidVolume], opDvidVolume.Output
             except:
                 # Maybe this is actually a roi
-                opDvidRoi = OpDvidRoi(fields['hostname'], fields['uuid'], fields['dataname'],
-                                      parent=self)
+                opDvidRoi = OpDvidRoi(fields["hostname"], fields["uuid"], fields["dataname"], parent=self)
                 return [opDvidRoi], opDvidRoi.Output
         except OpDvidVolume.DatasetReadError as e:
             raise OpInputDataReader.DatasetReadError(*e.args) from e
 
     def _attemptOpenAsBlockwiseFileset(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
-        fileExtension = fileExtension.lstrip('.')  # Remove leading dot
+        fileExtension = fileExtension.lstrip(".")  # Remove leading dot
 
         if fileExtension in OpInputDataReader.blockwiseExts:
             opReader = OpBlockwiseFilesetReader(parent=self)
@@ -528,7 +541,7 @@ class OpInputDataReader(Operator):
 
     def _attemptOpenAsRESTfulBlockwiseFileset(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
-        fileExtension = fileExtension.lstrip('.')  # Remove leading dot
+        fileExtension = fileExtension.lstrip(".")  # Remove leading dot
 
         if fileExtension in OpInputDataReader.blockwiseExts:
             opReader = OpRESTfulBlockwiseFilesetReader(parent=self)
@@ -544,7 +557,7 @@ class OpInputDataReader(Operator):
 
     def _attemptOpenAsTiledVolume(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
-        fileExtension = fileExtension.lstrip('.')  # Remove leading dot
+        fileExtension = fileExtension.lstrip(".")  # Remove leading dot
 
         if fileExtension in OpInputDataReader.tiledExts:
             opReader = OpCachedTiledVolumeReader(parent=self)
@@ -561,14 +574,13 @@ class OpInputDataReader(Operator):
             return ([], None)
 
         fileExtension = os.path.splitext(filePath)[1].lower()
-        fileExtension = fileExtension.lstrip('.')  # Remove leading dot
+        fileExtension = fileExtension.lstrip(".")  # Remove leading dot
 
         if fileExtension not in OpInputDataReader.tiffExts:
             return ([], None)
 
         if not os.path.exists(filePath):
-            raise OpInputDataReader.DatasetReadError(
-                "Input file does not exist: " + filePath)
+            raise OpInputDataReader.DatasetReadError("Input file does not exist: " + filePath)
 
         opReader = OpBigTiffReader(parent=self)
         try:
@@ -580,14 +592,13 @@ class OpInputDataReader(Operator):
 
     def _attemptOpenAsTiff(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
-        fileExtension = fileExtension.lstrip('.')  # Remove leading dot
+        fileExtension = fileExtension.lstrip(".")  # Remove leading dot
 
         if fileExtension not in OpInputDataReader.tiffExts:
             return ([], None)
 
         if not os.path.exists(filePath):
-            raise OpInputDataReader.DatasetReadError(
-                "Input file does not exist: " + filePath)
+            raise OpInputDataReader.DatasetReadError("Input file does not exist: " + filePath)
 
         opReader = OpTiffReader(parent=self)
         opReader.Filepath.setValue(filePath)
@@ -604,14 +615,13 @@ class OpInputDataReader(Operator):
 
     def _attemptOpenWithVigraImpex(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
-        fileExtension = fileExtension.lstrip('.')  # Remove leading dot
+        fileExtension = fileExtension.lstrip(".")  # Remove leading dot
 
         if fileExtension not in OpInputDataReader.vigraImpexExts:
             return ([], None)
 
         if not os.path.exists(filePath):
-            raise OpInputDataReader.DatasetReadError(
-                "Input file does not exist: " + filePath)
+            raise OpInputDataReader.DatasetReadError("Input file does not exist: " + filePath)
 
         vigraReader = OpImageReader(parent=self)
         vigraReader.Filename.setValue(filePath)
@@ -624,9 +634,9 @@ class OpInputDataReader(Operator):
         cacheBlockShape = vigraReader.Image.meta.shape
 
         taggedShape = vigraReader.Image.meta.getTaggedShape()
-        if 'z' in list(taggedShape.keys()):
+        if "z" in list(taggedShape.keys()):
             # 3D: blocksize is one slice.
-            taggedShape['z'] = 1
+            taggedShape["z"] = 1
             cacheBlockShape = tuple(taggedShape.values())
 
         imageCache.fixAtCurrent.setValue(False)
@@ -641,4 +651,3 @@ class OpInputDataReader(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly conncted to internal operators
         pass
-

@@ -34,8 +34,15 @@ from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.rtype import SubRegion
 
 from .operators import OpArrayPiper
-from .filterOperators import OpGaussianSmoothing, OpDifferenceOfGaussians, OpHessianOfGaussianEigenvalues, \
-    OpStructureTensorEigenvalues, OpGaussianGradientMagnitude, OpLaplacianOfGaussian, WITH_FAST_FILTERS
+from .filterOperators import (
+    OpGaussianSmoothing,
+    OpDifferenceOfGaussians,
+    OpHessianOfGaussianEigenvalues,
+    OpStructureTensorEigenvalues,
+    OpGaussianGradientMagnitude,
+    OpLaplacianOfGaussian,
+    WITH_FAST_FILTERS,
+)
 
 if WITH_FAST_FILTERS:
     import fastfilters
@@ -53,12 +60,16 @@ class OpPixelFeaturesPresmoothed(Operator):
     ComputeIn2d = InputSlot()
 
     # Specify a default set & order for the features we compute
-    FeatureIds = InputSlot(value=['GaussianSmoothing',
-                                  'LaplacianOfGaussian',
-                                  'GaussianGradientMagnitude',
-                                  'DifferenceOfGaussians',
-                                  'StructureTensorEigenvalues',
-                                  'HessianOfGaussianEigenvalues'])
+    FeatureIds = InputSlot(
+        value=[
+            "GaussianSmoothing",
+            "LaplacianOfGaussian",
+            "GaussianGradientMagnitude",
+            "DifferenceOfGaussians",
+            "StructureTensorEigenvalues",
+            "HessianOfGaussianEigenvalues",
+        ]
+    )
 
     Output = OutputSlot()  # The entire block of features as a single image (many channels)
     Features = OutputSlot(level=1)  # Each feature image listed separately, with feature name provided in metadata
@@ -101,7 +112,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             else:
                 self.parent.ComputeIn2d.setValue([False] * len(self.Scales.value))
 
-        assert self.Input.meta.getAxisKeys() == list('tczyx'), self.Input.meta.getAxisKeys()
+        assert self.Input.meta.getAxisKeys() == list("tczyx"), self.Input.meta.getAxisKeys()
         assert isinstance(self.ComputeIn2d.value, list), type(self.ComputeIn2d.value)
         self.scales = self.Scales.value
         self.matrix = self.SelectionMatrix.value
@@ -111,10 +122,12 @@ class OpPixelFeaturesPresmoothed(Operator):
         dimCol = len(self.scales)
         dimRow = len(self.FeatureIds.value)
 
-        assert dimRow == self.matrix.shape[0], \
-            f'Number of features ({dimRow}) is incompatible with feature matrix ({self.matrix.shape})'
-        assert dimCol == self.matrix.shape[1], \
-            f'Number of scales ({dimCol}) is incompatible with feature matrix ({self.matrix.shape})'
+        assert (
+            dimRow == self.matrix.shape[0]
+        ), f"Number of features ({dimRow}) is incompatible with feature matrix ({self.matrix.shape})"
+        assert (
+            dimCol == self.matrix.shape[1]
+        ), f"Number of scales ({dimCol}) is incompatible with feature matrix ({self.matrix.shape})"
 
         featureNameArray = []
         oparray = []
@@ -125,9 +138,9 @@ class OpPixelFeaturesPresmoothed(Operator):
         self.newScales = []
 
         for j in range(dimCol):
-            if self.scales[j] > 1.:
-                self.newScales.append(1.)
-                logger.debug(f'Replacing scale {self.scales[j]} with new scale {self.newScales[j]}')
+            if self.scales[j] > 1.0:
+                self.newScales.append(1.0)
+                logger.debug(f"Replacing scale {self.scales[j]} with new scale {self.newScales[j]}")
             else:
                 self.newScales.append(self.scales[j])
 
@@ -140,35 +153,35 @@ class OpPixelFeaturesPresmoothed(Operator):
         for i, featureId in enumerate(self.FeatureIds.value):
             for j in range(dimCol):
                 if self.matrix[i, j]:
-                    if featureId == 'GaussianSmoothing':
+                    if featureId == "GaussianSmoothing":
                         op = OpGaussianSmoothing(self, sigma=self.newScales[j])
-                        featureName = f'Gaussian Smoothing (σ={self.scales[j]})'
-                    elif featureId == 'LaplacianOfGaussian':
+                        featureName = f"Gaussian Smoothing (σ={self.scales[j]})"
+                    elif featureId == "LaplacianOfGaussian":
                         op = OpLaplacianOfGaussian(self, scale=self.newScales[j])
-                        featureName = f'Laplacian of Gaussian (σ={self.scales[j]})'
-                    elif featureId == 'StructureTensorEigenvalues':
+                        featureName = f"Laplacian of Gaussian (σ={self.scales[j]})"
+                    elif featureId == "StructureTensorEigenvalues":
                         op = OpStructureTensorEigenvalues(
-                            self, innerScale=self.newScales[j], outerScale=self.newScales[j] * 0.5)
+                            self, innerScale=self.newScales[j], outerScale=self.newScales[j] * 0.5
+                        )
                         # Note: If you need to change the inner or outer scale,
                         #       you must make a new feature (with a new feature ID) and
                         #       leave this feature here to preserve backwards compatibility
-                        featureName = f'Structure Tensor Eigenvalues (σ={self.scales[j]})'
-                    elif featureId == 'HessianOfGaussianEigenvalues':
+                        featureName = f"Structure Tensor Eigenvalues (σ={self.scales[j]})"
+                    elif featureId == "HessianOfGaussianEigenvalues":
                         op = OpHessianOfGaussianEigenvalues(self, scale=self.newScales[j])
-                        featureName = f'Hessian of Gaussian Eigenvalues (σ={self.scales[j]})'
-                    elif featureId == 'GaussianGradientMagnitude':
+                        featureName = f"Hessian of Gaussian Eigenvalues (σ={self.scales[j]})"
+                    elif featureId == "GaussianGradientMagnitude":
                         op = OpGaussianGradientMagnitude(self, sigma=self.newScales[j])
-                        featureName = f'Gaussian Gradient Magnitude (σ={self.scales[j]})'
-                    elif featureId == 'DifferenceOfGaussians':
-                        op = OpDifferenceOfGaussians(
-                            self, sigma0=self.newScales[j], sigma1=self.newScales[j] * 0.66)
+                        featureName = f"Gaussian Gradient Magnitude (σ={self.scales[j]})"
+                    elif featureId == "DifferenceOfGaussians":
+                        op = OpDifferenceOfGaussians(self, sigma0=self.newScales[j], sigma1=self.newScales[j] * 0.66)
                         # Note: If you need to change sigma0 or sigma1, you must make a new
                         #       feature (with a new feature ID) and leave this feature here
                         #       to preserve backwards compatibility
-                        featureName = f'Difference of Gaussians (σ={self.scales[j]})'
+                        featureName = f"Difference of Gaussians (σ={self.scales[j]})"
 
                     if self.ComputeIn2d.value[j]:
-                        featureName += ' in 2D'
+                        featureName += " in 2D"
 
                     # note: set ComputeIn2d first, to avoid a second call of setupOutputs, due to ComptueIn2d's default
                     op.ComputeIn2d.setValue(self.ComputeIn2d.value[j])
@@ -183,13 +196,13 @@ class OpPixelFeaturesPresmoothed(Operator):
                     featureMeta = op.Output.meta
                     featureChannels = op.Output.meta.shape[1]
                     assert featureChannels == featureMeta.shape[1]
-                    assert featureMeta.axistags.index('c') == 1
+                    assert featureMeta.axistags.index("c") == 1
 
                     if featureChannels == 1:
                         channel_names.append(featureName)
                     else:
                         for feature_channel_index in range(featureChannels):
-                            channel_names.append(featureName + f' [{feature_channel_index}]')
+                            channel_names.append(featureName + f" [{feature_channel_index}]")
 
                     self.Features[featureCount].meta.assignFrom(featureMeta)
                     # Discard any semantics related to the input channels
@@ -228,7 +241,7 @@ class OpPixelFeaturesPresmoothed(Operator):
         self.Output.meta.ram_usage_per_requested_pixel = 4.0 * self.Output.meta.shape[1]
 
     def _get_ideal_blockshape(self):
-        assert self.Output.meta.getAxisKeys() == list('tczyx')
+        assert self.Output.meta.getAxisKeys() == list("tczyx")
 
         # There is no advantage to grouping time in a single request.
         t = 1
@@ -269,10 +282,12 @@ class OpPixelFeaturesPresmoothed(Operator):
                     dirtyRoi.stop[1] = stopChannel
                     self.Output.setDirty(dirtyRoi)
 
-        elif (inputSlot == self.SelectionMatrix or
-              inputSlot == self.Scales or
-              inputSlot == self.FeatureIds or
-              inputSlot == self.ComputeIn2d):
+        elif (
+            inputSlot == self.SelectionMatrix
+            or inputSlot == self.Scales
+            or inputSlot == self.FeatureIds
+            or inputSlot == self.ComputeIn2d
+        ):
             self.Output.setDirty(slice(None))
         else:
             assert False, "Unknown dirty input slot."
@@ -286,8 +301,9 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             # Translate channel slice of this feature to the channel slice of the output slot.
             output_channel_offset = self.featureOutputChannels[index][0]
-            feature_slice[1] = slice(output_channel_offset + feature_slice[1].start,
-                                     output_channel_offset + feature_slice[1].stop)
+            feature_slice[1] = slice(
+                output_channel_offset + feature_slice[1].start, output_channel_offset + feature_slice[1].stop
+            )
             slot_roi = SubRegion(self.Output, pslice=feature_slice)
 
             # Get output slot region for this channel
@@ -308,7 +324,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             full_output_slice = slot_roi.toSlice()
 
-            logger.debug(f'OpPixelFeaturesPresmoothed: request {slot_roi.pprint()}')
+            logger.debug(f"OpPixelFeaturesPresmoothed: request {slot_roi.pprint()}")
 
             assert (slot_roi.stop <= self.Output.meta.shape).all()
 
@@ -331,12 +347,18 @@ class OpPixelFeaturesPresmoothed(Operator):
             # filter roi in input frame
             # sigma = 0.7, because the features receive a pre-smoothed array and don't need much of a neighborhood
             input_filter_start, input_filter_stop = roi.enlargeRoiForHalo(
-                output_start, output_stop, output_shape, 0.7, self.WINDOW_SIZE, enlarge_axes=axes2enlarge)
+                output_start, output_stop, output_shape, 0.7, self.WINDOW_SIZE, enlarge_axes=axes2enlarge
+            )
 
             # smooth roi in input frame
             input_smooth_start, input_smooth_stop = roi.enlargeRoiForHalo(
-                input_filter_start, input_filter_stop, output_shape, self.max_sigma, self.WINDOW_SIZE,
-                enlarge_axes=axes2enlarge)
+                input_filter_start,
+                input_filter_stop,
+                output_shape,
+                self.max_sigma,
+                self.WINDOW_SIZE,
+                enlarge_axes=axes2enlarge,
+            )
 
             # target roi in filter frame
             filter_target_start = roi.TinyVector(output_start - input_filter_start)
@@ -373,8 +395,10 @@ class OpPixelFeaturesPresmoothed(Operator):
             presmoothed_source = [None] * dimCol
 
             source_smooth_shape = tuple(smooth_filter_stop - smooth_filter_start)
-            full_source_smooth_shape = (full_output_stop[0] - full_output_start[0], self.Input.meta.shape[1]) + \
-                source_smooth_shape
+            full_source_smooth_shape = (
+                full_output_stop[0] - full_output_start[0],
+                self.Input.meta.shape[1],
+            ) + source_smooth_shape
             try:
                 for j in range(dimCol):
                     for i in range(dimRow):
@@ -385,23 +409,28 @@ class OpPixelFeaturesPresmoothed(Operator):
                         # There is no filter op at this scale
                         continue
 
-                    if self.scales[j] > 1.:
-                        tempSigma = math.sqrt(self.scales[j]**2 - 1.)
+                    if self.scales[j] > 1.0:
+                        tempSigma = math.sqrt(self.scales[j] ** 2 - 1.0)
                     else:
                         tempSigma = self.scales[j]
 
                     presmoothed_source[j] = numpy.ndarray(full_source_smooth_shape, numpy.float32)
 
-                    droi = ((0, *tuple(smooth_filter_start._asint())),
-                            (sourceV.shape[1], *tuple(smooth_filter_stop._asint())))
+                    droi = (
+                        (0, *tuple(smooth_filter_start._asint())),
+                        (sourceV.shape[1], *tuple(smooth_filter_stop._asint())),
+                    )
                     for i, vsa in enumerate(sourceV.timeIter()):
-                        presmoothed_source[j][i, ...] = self._computeGaussianSmoothing(vsa, tempSigma, droi,
-                                                                                       in2d=self.ComputeIn2d.value[j])
+                        presmoothed_source[j][i, ...] = self._computeGaussianSmoothing(
+                            vsa, tempSigma, droi, in2d=self.ComputeIn2d.value[j]
+                        )
 
             except RuntimeError as e:
-                if 'kernel longer than line' in str(e):
-                    raise RuntimeError('Feature computation error:\nYour image is too small to apply a filter with '
-                                       f'sigma={self.scales[j]:.1f}. Please select features with smaller sigmas.')
+                if "kernel longer than line" in str(e):
+                    raise RuntimeError(
+                        "Feature computation error:\nYour image is too small to apply a filter with "
+                        f"sigma={self.scales[j]:.1f}. Please select features with smaller sigmas."
+                    )
                 else:
                     raise e
 
@@ -423,9 +452,11 @@ class OpPixelFeaturesPresmoothed(Operator):
                         oslot = self.featureOps[i][j].Output
                         req = None
                         slices = oslot.meta.shape[1]
-                        if cnt + slices >= slot_roi.start[1] and \
-                                slot_roi.start[1] - cnt < slices and \
-                                slot_roi.start[1] + written < slot_roi.stop[1]:
+                        if (
+                            cnt + slices >= slot_roi.start[1]
+                            and slot_roi.start[1] - cnt < slices
+                            and slot_roi.start[1] + written < slot_roi.stop[1]
+                        ):
                             begin = 0
                             if cnt < slot_roi.start[1]:
                                 begin = slot_roi.start[1] - cnt
@@ -434,15 +465,21 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 end = slot_roi.stop[1] - cnt
 
                             # feature slice in output frame
-                            feature_slice = (slice(None), slice(written, written + end - begin)) + (slice(None), ) * 3
+                            feature_slice = (slice(None), slice(written, written + end - begin)) + (slice(None),) * 3
 
                             subtarget = target[feature_slice]
                             # readjust the roi for the new source array
                             full_filter_target_slice = [full_output_slice[0], slice(begin, end), *filter_target_slice]
                             filter_target_roi = SubRegion(oslot, pslice=full_filter_target_slice)
 
-                            closure = partial(oslot.operator.execute, oslot, (), filter_target_roi,
-                                              subtarget, sourceArray=presmoothed_source[j])
+                            closure = partial(
+                                oslot.operator.execute,
+                                oslot,
+                                (),
+                                filter_target_roi,
+                                subtarget,
+                                sourceArray=presmoothed_source[j],
+                            )
                             closures.append(closure)
 
                             written += end - begin
@@ -471,8 +508,9 @@ class OpPixelFeaturesPresmoothed(Operator):
                 if in2d:
 
                     for z in range(vol.shape[1]):
-                        result[c_slice, z:z + 1] = fastfilters.gaussianSmoothing(vol[c_slice, z: z + 1], sigma,
-                                                                                 window_size=self.WINDOW_SIZE)
+                        result[c_slice, z : z + 1] = fastfilters.gaussianSmoothing(
+                            vol[c_slice, z : z + 1], sigma, window_size=self.WINDOW_SIZE
+                        )
                 else:
                     result[c_slice] = fastfilters.gaussianSmoothing(vol[c_slice], sigma, window_size=self.WINDOW_SIZE)
 

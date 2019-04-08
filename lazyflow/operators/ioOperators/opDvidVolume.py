@@ -1,8 +1,10 @@
 from __future__ import division
 from future import standard_library
+
 standard_library.install_aliases()
 
 from builtins import zip
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,7 +24,7 @@ from builtins import zip
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import os
 import http.client
@@ -39,14 +41,15 @@ from libdvid.voxels import VoxelsAccessor
 
 logger = logging.getLogger(__name__)
 
+
 class OpDvidVolume(Operator):
     Output = OutputSlot()
 
     class DatasetReadError(Exception):
         pass
-    
+
     def __init__(self, hostname, uuid, dataname, query_args, *args, **kwargs):
-        super( OpDvidVolume, self ).__init__(*args, **kwargs)
+        super(OpDvidVolume, self).__init__(*args, **kwargs)
         self._default_accessor = None
         self._throttled_accessor = None
         self._hostname = hostname
@@ -66,76 +69,84 @@ class OpDvidVolume(Operator):
         This serves as an alternative init function, from which we are allowed to raise exceptions.
         """
         try:
-            self._default_accessor = VoxelsAccessor( self._hostname, self._uuid, self._dataname, self._query_args )
-            self._throttled_accessor = VoxelsAccessor( self._hostname, self._uuid, self._dataname, self._query_args, throttle=True )
+            self._default_accessor = VoxelsAccessor(self._hostname, self._uuid, self._dataname, self._query_args)
+            self._throttled_accessor = VoxelsAccessor(
+                self._hostname, self._uuid, self._dataname, self._query_args, throttle=True
+            )
         except DVIDException as ex:
             if ex.status == http.client.NOT_FOUND:
                 raise OpDvidVolume.DatasetReadError("DVIDException: " + ex.message)
             raise
         except ErrMsg as ex:
             raise OpDvidVolume.DatasetReadError("ErrMsg: " + str(ex))
-    
+
     def cleanUp(self):
         self._default_accessor = None
         self._throttled_accessor = None
-        super( OpDvidVolume, self ).cleanUp()
-    
+        super(OpDvidVolume, self).cleanUp()
+
     def setupOutputs(self):
-        shape, dtype, axiskeys = self._default_accessor.shape, self._default_accessor.dtype, self._default_accessor.axiskeys
-        
+        shape, dtype, axiskeys = (
+            self._default_accessor.shape,
+            self._default_accessor.dtype,
+            self._default_accessor.axiskeys,
+        )
+
         try:
             no_extents_checking = bool(int(os.getenv("LAZYFLOW_NO_DVID_EXTENTS", 0)))
         except ValueError:
-            raise RuntimeError("Didn't understand value for environment variable "\
-                               "LAZYFLOW_NO_DVID_EXTENTS: '{}'.  Please use either 0 or 1."
-                               .format(os.getenv("LAZYFLOW_NO_DVID_EXTENTS")))
+            raise RuntimeError(
+                "Didn't understand value for environment variable "
+                "LAZYFLOW_NO_DVID_EXTENTS: '{}'.  Please use either 0 or 1.".format(
+                    os.getenv("LAZYFLOW_NO_DVID_EXTENTS")
+                )
+            )
 
         if no_extents_checking or (None in shape):
             # In headless mode, we allow the users to request regions outside the currently valid regions of the image.
             # For now, the easiest way to allow that is to simply hard-code DVID volumes to have a really large (1M cubed) shape.
             logger.info("Using absurdly large DVID volume extents, to allow out-of-bounds requests.")
-            tagged_shape = collections.OrderedDict( list(zip(axiskeys, shape)) )
-            for k,v in list(tagged_shape.items()):
-                if k in 'xyz':
+            tagged_shape = collections.OrderedDict(list(zip(axiskeys, shape)))
+            for k, v in list(tagged_shape.items()):
+                if k in "xyz":
                     tagged_shape[k] = int(1e6)
             shape = tuple(tagged_shape.values())
-        
+
         num_channels = shape[-1]
         self.Output.meta.shape = shape
         self.Output.meta.dtype = dtype.type
-        self.Output.meta.axistags = vigra.defaultAxistags( axiskeys ) # FIXME: Also copy resolution, etc.
-        
+        self.Output.meta.axistags = vigra.defaultAxistags(axiskeys)  # FIXME: Also copy resolution, etc.
+
         # To avoid requesting extremely large blocks, limit each request to 500MB each.
         # Note that this isn't a hard max: halos, etc. may increase this somewhat.
-        max_pixels = 2**29 // self.Output.meta.dtype().nbytes
-        max_blockshape = determineBlockShape( self.Output.meta.shape, max_pixels )
+        max_pixels = 2 ** 29 // self.Output.meta.dtype().nbytes
+        max_blockshape = determineBlockShape(self.Output.meta.shape, max_pixels)
         self.Output.meta.max_blockshape = max_blockshape
         self.Output.meta.ideal_blockshape = max_blockshape
-        
+
         # For every request, we probably need room RAM for the array and for the http buffer
         # (and hopefully nothing more)
         self.Output.meta.ram_usage_per_requested_pixel = 2 * dtype.type().nbytes * num_channels
 
     def execute(self, slot, subindex, roi, result):
         if numpy.prod(roi.stop - roi.start) > 1e9:
-            logger.error("Requesting a very large volume from DVID: {}\n"\
-                         "Is that really what you meant to do?"
-                         .format( roi ))
-            
+            logger.error(
+                "Requesting a very large volume from DVID: {}\n" "Is that really what you meant to do?".format(roi)
+            )
+
         # TODO: Modify accessor implementation to accept a pre-allocated array.
 
-# FIXME: Disabled throttling for now.  Need a better heuristic or explicit setting.
-#         # For "heavy" requests, we'll use the throttled accessor
-#         HEAVY_REQ_SIZE = 256*256*10
-#         if numpy.prod(result.shape) > HEAVY_REQ_SIZE:
-#             accessor = self._throttled_accessor
-#         else:
-#             accessor = self._default_accessor
+        # FIXME: Disabled throttling for now.  Need a better heuristic or explicit setting.
+        #         # For "heavy" requests, we'll use the throttled accessor
+        #         HEAVY_REQ_SIZE = 256*256*10
+        #         if numpy.prod(result.shape) > HEAVY_REQ_SIZE:
+        #             accessor = self._throttled_accessor
+        #         else:
+        #             accessor = self._default_accessor
 
-        accessor = self._default_accessor # FIXME (see above)
+        accessor = self._default_accessor  # FIXME (see above)
         result[:] = accessor.get_ndarray(roi.start, roi.stop)
         return result
 
     def propagateDirty(self, *args):
         pass
-

@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,7 +19,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 
 import unittest
@@ -38,10 +39,11 @@ def iterSubclasses(cls):
             yield more
     yield cls
 
+
 def ClassFactory(name, Model, TestClass):
-    '''
+    """
     construct a new test case for 'TestClass' with tests from 'Model'
-    '''
+    """
     newclass = type(name, (TestClass, unittest.TestCase), {})
     newclass.Model = Model
     return newclass
@@ -63,10 +65,7 @@ class GeneralTestOpCache(object):
 
 # automagically test all implementations of Cache *and* Operator
 opClasses = set(iterSubclasses(Operator))
-knownAbstractBases = [Cache,
-                      ObservableCache,
-                      ManagedCache,
-                      ManagedBlockedCache]
+knownAbstractBases = [Cache, ObservableCache, ManagedCache, ManagedBlockedCache]
 for subtype in iterSubclasses(Cache):
     if subtype in knownAbstractBases or subtype not in opClasses:
         # skip known abstract implementations and classes that are
@@ -85,7 +84,7 @@ class GeneralTestOpObservableCache(object):
         op = self.Model(graph=g)
         r = MemInfoNode()
         op.generateReport(r)
-        
+
         used = op.usedMemory()
         assert used is not None
         assert used >= 0
@@ -115,7 +114,7 @@ class GeneralTestOpManagedCache(object):
         op = self.Model(graph=g)
         r = MemInfoNode()
         op.generateReport(r)
-        
+
         t = op.lastAccessTime()
         assert t is not None
         assert t >= 0.0
@@ -151,7 +150,7 @@ class GeneralTestOpManagedBlockedCache(object):
         op = self.Model(graph=g)
         r = MemInfoNode()
         op.generateReport(r)
-        
+
         t = op.lastAccessTime()
         assert t is not None
         assert t >= 0.0
@@ -175,6 +174,4 @@ for subtype in iterSubclasses(ManagedBlockedCache):
         # skip known abstract implementations
         continue
     name = "TestOpManagedBlockedCache_Test" + subtype.__name__
-    globals()[name] = ClassFactory(name, subtype,
-                                   GeneralTestOpManagedBlockedCache)
-
+    globals()[name] = ClassFactory(name, subtype, GeneralTestOpManagedBlockedCache)

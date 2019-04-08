@@ -1,5 +1,6 @@
 from builtins import range
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -19,7 +20,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 # Built-in
 import atexit
@@ -41,10 +42,10 @@ class ThreadPool(object):
     Manages a set of worker threads and dispatches tasks to them.
     """
 
-    #_DefaultQueueType = FifoQueue
-    #_DefaultQueueType = LifoQueue
+    # _DefaultQueueType = FifoQueue
+    # _DefaultQueueType = LifoQueue
     _DefaultQueueType = PriorityQueue
-    
+
     def __init__(self, num_workers, queue_type=_DefaultQueueType):
         """
         Constructor.  Starts all workers.
@@ -55,13 +56,13 @@ class ThreadPool(object):
         """
         self.job_condition = threading.Condition()
         self.unassigned_tasks = queue_type()
-        #self.memory = MemoryWatcher(self)
-        #self.memory.start()
+        # self.memory = MemoryWatcher(self)
+        # self.memory.start()
         self.num_workers = num_workers
-        self.workers = self._start_workers( num_workers, queue_type )
+        self.workers = self._start_workers(num_workers, queue_type)
 
         # ThreadPools automatically stop upon program exit
-        atexit.register( self.stop )
+        atexit.register(self.stop)
 
     def wake_up(self, task):
         """
@@ -69,8 +70,8 @@ class ThreadPool(object):
         If it has no assigned worker yet, assign it to the first worker that becomes available.
         """
         # Once a task has been assigned, it must always be processed in the same worker
-        if hasattr(task, 'assigned_worker') and task.assigned_worker is not None:
-            task.assigned_worker.wake_up( task )
+        if hasattr(task, "assigned_worker") and task.assigned_worker is not None:
+            task.assigned_worker.wake_up(task)
         else:
             self.unassigned_tasks.push(task)
             # Notify all currently waiting workers that there's new work
@@ -81,17 +82,17 @@ class ThreadPool(object):
         Stop all threads in the pool, and block for them to complete.
         Postcondition: All worker threads have stopped.  Unfinished tasks are simply dropped.
         """
-        #self.memory.stop()
-        
+        # self.memory.stop()
+
         for w in self.workers:
             w.stop()
-        
+
         for w in self.workers:
             w.join()
-    
+
     def get_states(self):
         return [w.state for w in self.workers]
-    
+
     def _start_workers(self, num_workers, queue_type):
         """
         Start a set of workers and return the set.
@@ -99,7 +100,7 @@ class ThreadPool(object):
         workers = set()
         for i in range(num_workers):
             w = _Worker(self, i, queue_type=queue_type)
-            workers.add( w )
+            workers.add(w)
             w.start()
         return workers
 
@@ -120,11 +121,11 @@ class ThreadPool(object):
         while not done:
             while self.unassigned_tasks:
                 time.sleep(0.1)
-            
+
             for worker in self.workers:
                 while worker.job_queue:
                     time.sleep(0.1)
-            
+
             # Second pass: did any of those completing tasks launch new tasks?
             done = True
             for worker in self.workers:
@@ -132,7 +133,7 @@ class ThreadPool(object):
                     done = False
             if self.unassigned_tasks:
                 done = False
-                    
+
 
 class _Worker(threading.Thread):
     """
@@ -140,39 +141,39 @@ class _Worker(threading.Thread):
     The loop pops one task from the threadpool and executes it.
     """
 
-    def __init__(self, thread_pool, index, queue_type ):
+    def __init__(self, thread_pool, index, queue_type):
         name = "Worker #{}".format(index)
-        super(_Worker, self).__init__( name=name )
-        self.daemon = True # kill automatically on application exit!
+        super(_Worker, self).__init__(name=name)
+        self.daemon = True  # kill automatically on application exit!
         self.thread_pool = thread_pool
         self.stopped = False
         self.job_queue_condition = threading.Condition()
         self.job_queue = queue_type()
-        self.state = 'initialized'
-        
+        self.state = "initialized"
+
     def run(self):
         """
         Keep executing available tasks until we're stopped.
         """
         # Try to get some work.
-        self.state = 'waiting'
+        self.state = "waiting"
         next_task = self._get_next_job()
 
         while not self.stopped:
             # Start (or resume) the work by switching to its greenlet
-            self.state = 'running task'
+            self.state = "running task"
             next_task()
 
             # We're done with this request.
             # Free it immediately for garbage collection.
-            self.state = 'freeing task'
+            self.state = "freeing task"
             next_task = None
 
             if self.stopped:
                 return
-            
+
             # Now try to get some work (wait if necessary).
-            self.state = 'waiting'
+            self.state = "waiting"
             next_task = self._get_next_job()
 
     def stop(self):
@@ -202,7 +203,7 @@ class _Worker(threading.Thread):
             - a task is available (return it) OR
             - the worker has been stopped (might return None)
         """
-        # Keep trying until we get a job        
+        # Keep trying until we get a job
         with self.job_queue_condition:
             if self.stopped:
                 return None
@@ -220,7 +221,7 @@ class _Worker(threading.Thread):
             assert next_task.assigned_worker is self
 
         return next_task
-    
+
     def _pop_job(self):
         """
         Non-blocking.
@@ -232,17 +233,19 @@ class _Worker(threading.Thread):
         if len(self.job_queue) > 0:
             return self.job_queue.pop()
 
-        # Otherwise, try to claim a job from the global unassigned list            
+        # Otherwise, try to claim a job from the global unassigned list
         try:
-            #task = self.thread_pool.memory.filter(self.thread_pool.unassigned_tasks.pop())
+            # task = self.thread_pool.memory.filter(self.thread_pool.unassigned_tasks.pop())
             task = self.thread_pool.unassigned_tasks.pop()
         except IndexError:
             return None
         else:
-            task.assigned_worker = self # If this fails, then your callable is some built-in that doesn't allow arbitrary  
-                                        #  members (e.g. .assigned_worker) to be "monkey-patched" onto it.  You may have to wrap it in a custom class first.
+            task.assigned_worker = (
+                self
+            )  # If this fails, then your callable is some built-in that doesn't allow arbitrary
+            #  members (e.g. .assigned_worker) to be "monkey-patched" onto it.  You may have to wrap it in a custom class first.
             return task
-    
+
     def raise_exc(self, excobj):
         """
         I HAVEN'T TESTED THIS YET.  (But it looks useful.)
@@ -268,7 +271,7 @@ class _Worker(threading.Thread):
         if res == 0:
             raise ValueError("nonexistent thread id")
         elif res > 1:
-            # """if it returns a number greater than one, you're in trouble, 
+            # """if it returns a number greater than one, you're in trouble,
             # and you should call it again with exc=NULL to revert the effect"""
             ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, 0)
             raise SystemError("PyThreadState_SetAsyncExc failed")

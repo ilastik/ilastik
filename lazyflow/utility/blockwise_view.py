@@ -5,11 +5,13 @@ import numpy
 try:
     # If you use vigra, we do special handling to preserve axistags
     import vigra
+
     _vigra_available = True
 except ImportError:
     _vigra_available = False
 
-def blockwise_view( a, blockshape, aslist=False, require_aligned_blocks=True ):
+
+def blockwise_view(a, blockshape, aslist=False, require_aligned_blocks=True):
     """
     Return a 2N-D view of the given N-D array, rearranged so each ND block (tile) 
     of the original array is indexed by its block address using the first N 
@@ -60,15 +62,15 @@ def blockwise_view( a, blockshape, aslist=False, require_aligned_blocks=True ):
 
     Inspired by the 2D example shown here: http://stackoverflow.com/a/8070716/162094
     """
-    assert a.flags['C_CONTIGUOUS'], "This function relies on the memory layout of the array."
+    assert a.flags["C_CONTIGUOUS"], "This function relies on the memory layout of the array."
     blockshape = tuple(blockshape)
     outershape = tuple(numpy.array(a.shape) // blockshape)
     view_shape = outershape + blockshape
 
     if require_aligned_blocks:
-        assert (numpy.mod(a.shape, blockshape) == 0).all(), \
-            "blockshape {} must divide evenly into array shape {}"\
-            .format( blockshape, a.shape )
+        assert (
+            numpy.mod(a.shape, blockshape) == 0
+        ).all(), "blockshape {} must divide evenly into array shape {}".format(blockshape, a.shape)
 
     # inner strides: strides within each block (same as original array)
     intra_block_strides = a.strides
@@ -78,12 +80,10 @@ def blockwise_view( a, blockshape, aslist=False, require_aligned_blocks=True ):
 
     # This is where the magic happens.
     # Generate a view with our new strides (outer+inner).
-    view = numpy.lib.stride_tricks.as_strided(a,
-                                              shape=view_shape, 
-                                              strides=(inter_block_strides+intra_block_strides))
+    view = numpy.lib.stride_tricks.as_strided(a, shape=view_shape, strides=(inter_block_strides + intra_block_strides))
 
     # Special handling for VigraArrays
-    if _vigra_available and isinstance(a, vigra.VigraArray) and hasattr(a, 'axistags'):
+    if _vigra_available and isinstance(a, vigra.VigraArray) and hasattr(a, "axistags"):
         view_axistags = vigra.AxisTags([vigra.AxisInfo() for _ in blockshape] + list(a.axistags))
         view = vigra.taggedView(view, view_axistags)
 
@@ -91,6 +91,8 @@ def blockwise_view( a, blockshape, aslist=False, require_aligned_blocks=True ):
         return list(map(view.__getitem__, numpy.ndindex(outershape)))
     return view
 
+
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

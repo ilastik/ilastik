@@ -5,7 +5,9 @@ from lazyflow.utility import Timer
 from lazyflow.utility.io_util import TiledVolume
 
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 def export_from_tiled_volume(tiles_description_json_path, roi, output_hdf5_path, output_dataset_name):
     """
@@ -23,34 +25,32 @@ def export_from_tiled_volume(tiles_description_json_path, roi, output_hdf5_path,
     start, stop = numpy.array(roi)
     shape = tuple(stop - start)
 
-    tiled_volume = TiledVolume( tiles_description_json_path )
+    tiled_volume = TiledVolume(tiles_description_json_path)
 
     with Timer() as timer:
-        result_array = numpy.ndarray(shape, tiled_volume.description.dtype)    
+        result_array = numpy.ndarray(shape, tiled_volume.description.dtype)
 
-        logger.info("Reading cutout volume of shape: {}".format(shape))            
-        tiled_volume.read( (start, stop), result_out=result_array )
+        logger.info("Reading cutout volume of shape: {}".format(shape))
+        tiled_volume.read((start, stop), result_out=result_array)
 
-        logger.info("Writing data to: {}/{}".format( output_hdf5_path, output_dataset_name ))
-        with h5py.File( output_hdf5_path, 'a' ) as output_h5_file:
+        logger.info("Writing data to: {}/{}".format(output_hdf5_path, output_dataset_name))
+        with h5py.File(output_hdf5_path, "a") as output_h5_file:
             if output_dataset_name in output_h5_file:
                 del output_h5_file[output_dataset_name]
-            dset = output_h5_file.create_dataset( output_dataset_name, 
-                                                  shape, 
-                                                  result_array.dtype, 
-                                                  chunks=True,
-                                                  data=result_array )            
+            dset = output_h5_file.create_dataset(
+                output_dataset_name, shape, result_array.dtype, chunks=True, data=result_array
+            )
             try:
                 import vigra
             except ImportError:
                 pass
             else:
-                # Attach axistags to the exported dataset, so ilastik 
+                # Attach axistags to the exported dataset, so ilastik
                 #  automatically interprets the volume correctly.
                 output_axes = tiled_volume.description.output_axes
-                dset.attrs['axistags'] = vigra.defaultAxistags(output_axes).toJSON()    
+                dset.attrs["axistags"] = vigra.defaultAxistags(output_axes).toJSON()
 
-        logger.info("Exported {:.1e} pixels in {:.1f} seconds.".format( numpy.prod(shape), timer.seconds() ))
+        logger.info("Exported {:.1e} pixels in {:.1f} seconds.".format(numpy.prod(shape), timer.seconds()))
 
 
 # EXAMPLE USAGE:
@@ -61,16 +61,19 @@ if __name__ == "__main__":
 
     # Make the program quit on Ctrl+C
     import signal
+
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("tiles_description_json_path")
     parser.add_argument("cutout_start", help="A Python tuple in Z-Y-X order, provided as a string, e.g. '(0,0,0)'")
-    parser.add_argument("cutout_stop", help="A Python tuple in Z-Y-X order, provided as a string, e.g. '(1000,1000,1000)'")
+    parser.add_argument(
+        "cutout_stop", help="A Python tuple in Z-Y-X order, provided as a string, e.g. '(1000,1000,1000)'"
+    )
     parser.add_argument("output_hdf5_path")
     parser.add_argument("output_dataset_name")
     parsed_args = parser.parse_args()
-    
+
     # Parse ROI start
     try:
         start = eval(parsed_args.cutout_start)
@@ -78,7 +81,7 @@ if __name__ == "__main__":
     except:
         sys.stderr.write("cutout_start not understood: " + parsed_args.cutout_start + "\n")
         sys.exit(1)
-    
+
     # Parse ROI stop
     try:
         stop = eval(parsed_args.cutout_stop)
@@ -92,13 +95,16 @@ if __name__ == "__main__":
     assert all([isinstance(x, int) for x in stop]), "cutout_stop must contain integers only."
 
     # Enable logging.
-    handler = logging.StreamHandler( sys.stdout )
-    logger.addHandler( handler )
+    handler = logging.StreamHandler(sys.stdout)
+    logger.addHandler(handler)
     logger.setLevel(logging.INFO)
 
     # Export.
-    sys.exit( export_from_tiled_volume( parsed_args.tiles_description_json_path,
-                                        (start, stop),
-                                        parsed_args.output_hdf5_path,
-                                        parsed_args.output_dataset_name ) )
-    
+    sys.exit(
+        export_from_tiled_volume(
+            parsed_args.tiles_description_json_path,
+            (start, stop),
+            parsed_args.output_hdf5_path,
+            parsed_args.output_dataset_name,
+        )
+    )

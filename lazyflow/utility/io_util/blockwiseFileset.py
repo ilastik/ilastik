@@ -1,8 +1,10 @@
 from future import standard_library
+
 standard_library.install_aliases()
 from builtins import zip
 from builtins import map
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,7 +24,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import os
 import copy
@@ -32,25 +34,28 @@ import platform
 import numpy
 import h5py
 import logging
+
 logger = logging.getLogger(__name__)
 
 import pickle as pickle
 
 # The natural thing to do here is to use numpy.vectorize,
 #  but that somehow interacts strangely with pickle.
-#vectorized_pickle_dumps = numpy.vectorize( pickle.dumps, otypes=[str], 0 )
-#vectorized_pickle_loads = numpy.vectorize( pickke.loads, otypes=[object] )
+# vectorized_pickle_dumps = numpy.vectorize( pickle.dumps, otypes=[str], 0 )
+# vectorized_pickle_loads = numpy.vectorize( pickke.loads, otypes=[object] )
+
 
 def vectorized_pickle_dumps(a):
-    out = numpy.ndarray(shape=a.shape, dtype='O')
-    for i,x in enumerate(a.flat):
+    out = numpy.ndarray(shape=a.shape, dtype="O")
+    for i, x in enumerate(a.flat):
         # Must use protocol 0 to avoid null bytes in the h5py dataset
         out.flat[i] = pickle.dumps(x, 0)
     return out
 
+
 def vectorized_pickle_loads(a):
     out = numpy.ndarray(shape=a.shape, dtype=object)
-    for i,s in enumerate(a.flat):
+    for i, s in enumerate(a.flat):
         out.flat[i] = pickle.loads(s)
     return out
 
@@ -63,25 +68,28 @@ from lazyflow.roi import getIntersectingBlocks, getBlockBounds, TinyVector
 
 try:
     import vigra
+
     _use_vigra = True
 except:
     _use_vigra = False
 
+
 class BlockwiseFilesetFactory(object):
-    
+
     creationFns = set()
-    
+
     @classmethod
-    def register(cls, creationFn ):
+    def register(cls, creationFn):
         BlockwiseFilesetFactory.creationFns.add(creationFn)
-    
+
     @classmethod
     def create(cls, descriptionPath, mode):
         for fn in BlockwiseFilesetFactory.creationFns:
             bfs = fn(descriptionPath, mode)
             if bfs is not None:
                 return bfs
-        raise RuntimeError( "Wasn't able to create a blockwise fileset from your file: {} ".format(descriptionPath) )
+        raise RuntimeError("Wasn't able to create a blockwise fileset from your file: {} ".format(descriptionPath))
+
 
 class BlockwiseFileset(object):
     """
@@ -98,36 +106,39 @@ class BlockwiseFileset(object):
     """
 
     #: These fields describe the schema of the description file.
-    #: See the source code comments for a description of each field.    
-    DescriptionFields = \
-    {
-        "_schema_name" : "blockwise-fileset-description",
-        "_schema_version" : 1.1,
-
-        "name" : str,
-        "format" : str,
-        "axes" : str,
-        "shape" : AutoEval(numpy.array), # This is the shape of the dataset on disk
-        "dtype" : AutoEval(),
-        "drange" : AutoEval(tuple), # Optional. Data range, e.g. (0.0, 1.0)
-        "chunks" : AutoEval(numpy.array), # Optional.  If null, no chunking. Only used when writing data.
-        "compression" : str, # Optional.  Options include 'lzf' and 'gzip', among others.  Note: h5py automatically enables chunking on compressed datasets.
-        "compression_opts" : AutoEval(int), # Optional. Hdf5-specific
-        "block_shape" : AutoEval(numpy.array),
-        "view_origin" : AutoEval(numpy.array), # Optional.  Defaults to zeros.  All requests will be translated before the data is accessed.
-                                # For example, if the offset is [100, 200, 300], then a request for roi([0,0,0],[2,2,2]) 
-                                #  will pull from the dataset on disk as though the request was ([100,200,300],[102,202,302]).
-                                # It is an error to specify an view_origin that is not a multiple of the block_shape.
-        "view_shape" : AutoEval(numpy.array), # Optional.  Defaults to (shape - view_origin) Limits the shape of the provided data.
-        "block_file_name_format" : FormattedField( requiredFields=["roiString"] ), # For hdf5, include dataset name, e.g. myfile_block{roiString}.h5/volume/data
-        "dataset_root_dir" : str, # Abs path or relative to the description file itself. Defaults to "." if left blank.
-        "hash_id" : str, # Not user-defined (clients may use this)
-
+    #: See the source code comments for a description of each field.
+    DescriptionFields = {
+        "_schema_name": "blockwise-fileset-description",
+        "_schema_version": 1.1,
+        "name": str,
+        "format": str,
+        "axes": str,
+        "shape": AutoEval(numpy.array),  # This is the shape of the dataset on disk
+        "dtype": AutoEval(),
+        "drange": AutoEval(tuple),  # Optional. Data range, e.g. (0.0, 1.0)
+        "chunks": AutoEval(numpy.array),  # Optional.  If null, no chunking. Only used when writing data.
+        "compression": str,  # Optional.  Options include 'lzf' and 'gzip', among others.  Note: h5py automatically enables chunking on compressed datasets.
+        "compression_opts": AutoEval(int),  # Optional. Hdf5-specific
+        "block_shape": AutoEval(numpy.array),
+        "view_origin": AutoEval(
+            numpy.array
+        ),  # Optional.  Defaults to zeros.  All requests will be translated before the data is accessed.
+        # For example, if the offset is [100, 200, 300], then a request for roi([0,0,0],[2,2,2])
+        #  will pull from the dataset on disk as though the request was ([100,200,300],[102,202,302]).
+        # It is an error to specify an view_origin that is not a multiple of the block_shape.
+        "view_shape": AutoEval(
+            numpy.array
+        ),  # Optional.  Defaults to (shape - view_origin) Limits the shape of the provided data.
+        "block_file_name_format": FormattedField(
+            requiredFields=["roiString"]
+        ),  # For hdf5, include dataset name, e.g. myfile_block{roiString}.h5/volume/data
+        "dataset_root_dir": str,  # Abs path or relative to the description file itself. Defaults to "." if left blank.
+        "hash_id": str,  # Not user-defined (clients may use this)
         # Added in schema v1.1
-        "sub_block_shape" : AutoEval(numpy.array) # Optional.  Must divide evenly into the block shape.
+        "sub_block_shape": AutoEval(numpy.array),  # Optional.  Must divide evenly into the block shape.
     }
 
-    DescriptionSchema = JsonConfigParser( DescriptionFields )
+    DescriptionSchema = JsonConfigParser(DescriptionFields)
 
     @classmethod
     def readDescription(cls, descriptionFilePath):
@@ -138,7 +149,7 @@ class BlockwiseFileset(object):
         
         :param descriptionFilePath: The path to the description file to parse.
         """
-        return BlockwiseFileset.DescriptionSchema.parseConfigFile( descriptionFilePath )
+        return BlockwiseFileset.DescriptionSchema.parseConfigFile(descriptionFilePath)
 
     @classmethod
     def writeDescription(cls, descriptionFilePath, descriptionFields):
@@ -148,12 +159,13 @@ class BlockwiseFileset(object):
         :param descriptionFilePath: The path to overwrite with the description fields.
         :param descriptionFields: The fields to write.
         """
-        BlockwiseFileset.DescriptionSchema.writeConfigFile( descriptionFilePath, descriptionFields )
+        BlockwiseFileset.DescriptionSchema.writeConfigFile(descriptionFilePath, descriptionFields)
 
     class BlockNotReadyError(Exception):
         """
         This exception is raised if `readData()` is called for data that isn't available on disk.
         """
+
         def __init__(self, block_start):
             self.block_start = block_start
 
@@ -167,7 +179,7 @@ class BlockwiseFileset(object):
     @classmethod
     def _createAndReturnBlockwiseFileset(self, descriptionFilePath, mode):
         try:
-            bfs = BlockwiseFileset( descriptionFilePath, mode )
+            bfs = BlockwiseFileset(descriptionFilePath, mode)
         except JsonConfigParser.SchemaError:
             bfs = None
         return bfs
@@ -176,18 +188,20 @@ class BlockwiseFileset(object):
     def _prepare_system(cls):
         # None of this code is tested on Windows.
         # It might work, but you'll need to improve the unit tests to know for sure.
-        assert platform.system() != 'Windows', "This code is all untested on Windows, and probably needs some modification before it will work."
+        assert (
+            platform.system() != "Windows"
+        ), "This code is all untested on Windows, and probably needs some modification before it will work."
 
         # If you get a "Too many open files" error, this soft limit may need to be increased.
         # The way to set this limit in bash is via "ulimit -n 4096"
         # Fortunately, Python lets us increase the limit via the resource module.
         import resource
-        softlimit, hardlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
-        softlimit = max( 4096, softlimit )
-        resource.setrlimit(resource.RLIMIT_NOFILE, ( softlimit, hardlimit ))
-            
 
-    def __init__( self, descriptionFilePath, mode='r', preparsedDescription=None ):
+        softlimit, hardlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+        softlimit = max(4096, softlimit)
+        resource.setrlimit(resource.RLIMIT_NOFILE, (softlimit, hardlimit))
+
+    def __init__(self, descriptionFilePath, mode="r", preparsedDescription=None):
         """
         Constructor.  Uses `readDescription` interally.
         
@@ -196,22 +210,28 @@ class BlockwiseFileset(object):
         :param preparsedDescription: (Optional) Provide pre-parsed description fields, in which case the provided description file will not be parsed.
         """
         self._prepare_system()
-        
-        assert mode == 'r' or mode == 'a', "Valid modes are 'r' or 'a', not '{}'".format(mode)
+
+        assert mode == "r" or mode == "a", "Valid modes are 'r' or 'a', not '{}'".format(mode)
         self.mode = mode
-        
-        assert descriptionFilePath is not None, "Must provide a path to the description file, even if you are providing pre-parsed fields. (Path is used to find block directory)."
+
+        assert (
+            descriptionFilePath is not None
+        ), "Must provide a path to the description file, even if you are providing pre-parsed fields. (Path is used to find block directory)."
         self._descriptionFilePath = descriptionFilePath
-        
+
         if preparsedDescription is not None:
             self._description = preparsedDescription
         else:
-            self._description = BlockwiseFileset.readDescription( descriptionFilePath )
+            self._description = BlockwiseFileset.readDescription(descriptionFilePath)
 
         # Check for errors
-        assert self._description.format == "hdf5", "Only hdf5 blockwise filesets are supported so far."        
+        assert self._description.format == "hdf5", "Only hdf5 blockwise filesets are supported so far."
         if self._description.compression_opts is not None:
-            assert self._description.compression is not None, "You specified compression_opts={} without specifying a compression type".format( self._description.compression )
+            assert (
+                self._description.compression is not None
+            ), "You specified compression_opts={} without specifying a compression type".format(
+                self._description.compression
+            )
         drange = self._description.drange
         if drange is not None:
             assert len(drange) == 2, "Invalid drange: {}".format(drange)
@@ -220,36 +240,47 @@ class BlockwiseFileset(object):
         sub_block_shape = self._description.sub_block_shape
         if sub_block_shape is not None:
             block_shape = self._description.block_shape
-            block_shape_mods = (numpy.mod(block_shape , sub_block_shape) != 0)
-            nonfull_block_shape_dims = (block_shape != self._description.view_shape)
+            block_shape_mods = numpy.mod(block_shape, sub_block_shape) != 0
+            nonfull_block_shape_dims = block_shape != self._description.view_shape
             invalid_sub_block_dims = numpy.logical_and(nonfull_block_shape_dims, block_shape_mods)
-            assert ( invalid_sub_block_dims == False ).all(), "Each dimension of sub_block_shape must divide evenly into block_shape,"\
-                                    " unless the total dataset is only one block wide in that dimension."
+            assert (invalid_sub_block_dims == False).all(), (
+                "Each dimension of sub_block_shape must divide evenly into block_shape,"
+                " unless the total dataset is only one block wide in that dimension."
+            )
 
-        # default view_origin        
+        # default view_origin
         if self._description.view_origin is None:
-            self._description.view_origin = numpy.array( (0,) * len(self._description.shape) )
-        assert (numpy.mod( self._description.view_origin, self._description.block_shape ) == 0).all(), "view_origin is not compatible with block_shape.  Must be a multiple!"
+            self._description.view_origin = numpy.array((0,) * len(self._description.shape))
+        assert (
+            numpy.mod(self._description.view_origin, self._description.block_shape) == 0
+        ).all(), "view_origin is not compatible with block_shape.  Must be a multiple!"
 
-        # default view_shape        
+        # default view_shape
         if self._description.view_shape is None:
-            self._description.view_shape = numpy.subtract( self._description.shape, self._description.view_origin )
-        view_roi = (self._description.view_origin, numpy.add(self._description.view_origin, self._description.view_shape))
-        assert (numpy.subtract( self._description.shape, view_roi[1] ) >= 0).all(), "View ROI must not exceed on-disk shape: View roi: {}, on-disk shape: {}".format( view_roi, self._description.shape )
+            self._description.view_shape = numpy.subtract(self._description.shape, self._description.view_origin)
+        view_roi = (
+            self._description.view_origin,
+            numpy.add(self._description.view_origin, self._description.view_shape),
+        )
+        assert (
+            numpy.subtract(self._description.shape, view_roi[1]) >= 0
+        ).all(), "View ROI must not exceed on-disk shape: View roi: {}, on-disk shape: {}".format(
+            view_roi, self._description.shape
+        )
 
         if self._description.dataset_root_dir is None:
             # Default to same directory as the description file
             self._description.dataset_root_dir = "."
-        
+
         self._lock = threading.Lock()
         self._openBlockFiles = {}
         self._fileLocks = {}
         self._closed = False
 
     def __del__(self):
-        if hasattr(self, '_closed') and not self._closed:
+        if hasattr(self, "_closed") and not self._closed:
             self.close()
-            
+
     def __enter__(self):
         return self
 
@@ -266,13 +297,13 @@ class BlockwiseFileset(object):
             for path in paths:
                 blockFile = self._openBlockFiles[path]
                 blockFile.close()
-                if self.mode == 'a':
+                if self.mode == "a":
                     fileLock = self._fileLocks[path]
                     fileLock.release()
             self._openBlockFiles = {}
             self._fileLocks = {}
             self._closed = True
-    
+
     def reopen(self, mode):
         assert self._closed, "Can't reopen a fileset that isn't closed."
         self.mode = mode
@@ -287,10 +318,10 @@ class BlockwiseFileset(object):
         :returns: The requested data.  If out_array was provided, returns out_array.
         """
         if out_array is None:
-            out_array = numpy.ndarray( shape=numpy.subtract(roi[1], roi[0]), dtype=self._description.dtype )
+            out_array = numpy.ndarray(shape=numpy.subtract(roi[1], roi[0]), dtype=self._description.dtype)
         roi_shape = numpy.subtract(roi[1], roi[0])
-        assert ( roi_shape == out_array.shape ).all(), "out_array must match roi shape"
-        assert (roi_shape != 0).all(), "Requested roi {} has zero volume!".format( roi )
+        assert (roi_shape == out_array.shape).all(), "out_array must match roi shape"
+        assert (roi_shape != 0).all(), "Requested roi {} has zero volume!".format(roi)
         self._transferData(roi, out_array, read=True)
         return out_array
 
@@ -301,23 +332,23 @@ class BlockwiseFileset(object):
         :param roi: The region of interest to write the data to.  Must be a tuple of iterables: (start, stop).
         :param data: The data to write.  Must be the correct size for the given roi.
         """
-        assert self.mode != 'r'
-        assert (numpy.subtract(roi[1], roi[0]) != 0).all(), "Requested roi {} has zero volume!".format( roi )
+        assert self.mode != "r"
+        assert (numpy.subtract(roi[1], roi[0]) != 0).all(), "Requested roi {} has zero volume!".format(roi)
 
         self._transferData(roi, data, read=False)
 
-    def getDatasetDirectory( self, blockstart ):
+    def getDatasetDirectory(self, blockstart):
         """
         Return the directory that contains the block that starts at the given coordinates.
         """
         # Add the view origin to find the on-disk block coordinates
-        blockstart = numpy.add( blockstart, self._description.view_origin )
+        blockstart = numpy.add(blockstart, self._description.view_origin)
         descriptionFileDir = os.path.split(self._descriptionFilePath)[0]
-        absPath, _ = getPathVariants( self._description.dataset_root_dir, descriptionFileDir )
+        absPath, _ = getPathVariants(self._description.dataset_root_dir, descriptionFileDir)
         blockFilePath = absPath
 
         for axis, start in zip(self._description.axes, blockstart):
-            blockFilePath = os.path.join( blockFilePath, "{}_{:08d}".format( axis, start ) )
+            blockFilePath = os.path.join(blockFilePath, "{}_{:08d}".format(axis, start))
         return blockFilePath
 
     def _getBlockFileName(self, block_start):
@@ -325,11 +356,11 @@ class BlockwiseFileset(object):
         Get the path to the block file that starts at the given coordinate.
         """
         # Translate to find disk block start
-        block_start = numpy.add( self._description.view_origin, block_start )
+        block_start = numpy.add(self._description.view_origin, block_start)
         # Get true (disk) block bounds (i.e. use on-disk shape, not view_shape)
-        entire_block_roi = getBlockBounds( self._description.shape, self._description.block_shape, block_start )
-        roiString = "{}".format( (list(entire_block_roi[0]), list(entire_block_roi[1]) ) )
-        datasetFilename = self._description.block_file_name_format.format( roiString=roiString )
+        entire_block_roi = getBlockBounds(self._description.shape, self._description.block_shape, block_start)
+        roiString = "{}".format((list(entire_block_roi[0]), list(entire_block_roi[1])))
+        datasetFilename = self._description.block_file_name_format.format(roiString=roiString)
         return datasetFilename
 
     def getDatasetPathComponents(self, block_start):
@@ -337,13 +368,14 @@ class BlockwiseFileset(object):
         Return a PathComponents object for the block file that corresponds to the given block start coordinate.
         """
         datasetFilename = self._getBlockFileName(block_start)
-        datasetDir = self.getDatasetDirectory( block_start )
-        datasetPath = os.path.join( datasetDir, datasetFilename )
+        datasetDir = self.getDatasetDirectory(block_start)
+        datasetPath = os.path.join(datasetDir, datasetFilename)
 
-        return PathComponents( datasetPath )
+        return PathComponents(datasetPath)
 
     BLOCK_NOT_AVAILABLE = 0
     BLOCK_AVAILABLE = 1
+
     def getBlockStatus(self, blockstart):
         """
         Check a block's status.
@@ -353,7 +385,7 @@ class BlockwiseFileset(object):
         blockDir = self.getDatasetDirectory(blockstart)
         statusFilePath = os.path.join(blockDir, "STATUS.txt")
 
-        if not os.path.exists( statusFilePath ):
+        if not os.path.exists(statusFilePath):
             return BlockwiseFileset.BLOCK_NOT_AVAILABLE
         else:
             return BlockwiseFileset.BLOCK_AVAILABLE
@@ -365,9 +397,9 @@ class BlockwiseFileset(object):
         """
         datasetPathComponents = self.getDatasetPathComponents(blockstart)
         hdf5FilePath = datasetPathComponents.externalPath
-        testLock = FileLock( hdf5FilePath )
+        testLock = FileLock(hdf5FilePath)
         return not testLock.available()
-        
+
     def setBlockStatus(self, blockstart, status):
         """
         Set a block status on disk.
@@ -375,15 +407,15 @@ class BlockwiseFileset(object):
         
         :param status: Must be either ``BlockwiseFileset.BLOCK_AVAILABLE`` or ``BlockwiseFileset.BLOCK_NOT_AVAILABLE``.
         """
-        blockDir = self.getDatasetDirectory( blockstart )
+        blockDir = self.getDatasetDirectory(blockstart)
         statusFilePath = os.path.join(blockDir, "STATUS.txt")
-        
+
         if status == BlockwiseFileset.BLOCK_AVAILABLE:
             # touch the status file.
-            open( statusFilePath, 'w' ).close()
-        elif os.path.exists( statusFilePath ):
+            open(statusFilePath, "w").close()
+        elif os.path.exists(statusFilePath):
             # Remove the status file
-            os.remove( statusFilePath )
+            os.remove(statusFilePath)
 
     def setBlockStatusesForRoi(self, roi, status):
         block_starts = getIntersectingBlocks(self._description.block_shape, roi)
@@ -394,20 +426,20 @@ class BlockwiseFileset(object):
         """
         Return the roi for the entire block that starts at the given coordinate.
         """
-        return getBlockBounds( self._description.view_shape, self._description.block_shape, block_start )
+        return getBlockBounds(self._description.view_shape, self._description.block_shape, block_start)
 
     def getAllBlockRois(self):
         """
         Return the list of rois for all VIEWED blocks in the dataset.
         """
-        entire_dataset_roi = ([0]*len(self._description.view_shape), self._description.view_shape)
+        entire_dataset_roi = ([0] * len(self._description.view_shape), self._description.view_shape)
         block_starts = getIntersectingBlocks(self._description.block_shape, entire_dataset_roi)
         rois = []
         for block_start in block_starts:
             rois.append(self.getEntireBlockRoi(block_start))
         return rois
 
-    def _transferData( self, roi, array_data, read ):
+    def _transferData(self, roi, array_data, read):
         """
         Read or write data from/to the fileset.
         
@@ -416,23 +448,33 @@ class BlockwiseFileset(object):
         :param read: If True, read data from the fileset into ``array_data``.  Otherwise, write data from ``array_data`` into the fileset on disk.
         :type read: bool
         """
-        entire_dataset_roi = ([0] *len(self._description.view_shape), self._description.view_shape)
-        clipped_roi = getIntersection( roi, entire_dataset_roi )
-        assert (numpy.array(clipped_roi) == numpy.array(roi)).all(), "Roi {} does not fit within dataset bounds: {}".format(roi, self._description.view_shape)
-        
+        entire_dataset_roi = ([0] * len(self._description.view_shape), self._description.view_shape)
+        clipped_roi = getIntersection(roi, entire_dataset_roi)
+        assert (
+            numpy.array(clipped_roi) == numpy.array(roi)
+        ).all(), "Roi {} does not fit within dataset bounds: {}".format(roi, self._description.view_shape)
+
         block_starts = getIntersectingBlocks(self._description.block_shape, roi)
-        
+
         # TODO: Parallelize this loop?
         for block_start in block_starts:
-            entire_block_roi = self.getEntireBlockRoi(block_start) # Roi of this whole block within the whole dataset
-            transfer_block_roi = getIntersection( entire_block_roi, roi ) # Roi of data needed from this block within the whole dataset
-            block_relative_roi = ( transfer_block_roi[0] - block_start, transfer_block_roi[1] - block_start ) # Roi of needed data from this block, relative to the block itself
-            array_data_roi = (transfer_block_roi[0] - roi[0], transfer_block_roi[1] - roi[0]) # Roi of data needed from this block within array_data
+            entire_block_roi = self.getEntireBlockRoi(block_start)  # Roi of this whole block within the whole dataset
+            transfer_block_roi = getIntersection(
+                entire_block_roi, roi
+            )  # Roi of data needed from this block within the whole dataset
+            block_relative_roi = (
+                transfer_block_roi[0] - block_start,
+                transfer_block_roi[1] - block_start,
+            )  # Roi of needed data from this block, relative to the block itself
+            array_data_roi = (
+                transfer_block_roi[0] - roi[0],
+                transfer_block_roi[1] - roi[0],
+            )  # Roi of data needed from this block within array_data
 
-            array_slicing = roiToSlice( *array_data_roi )
-            self._transferBlockData( entire_block_roi, block_relative_roi, array_data, array_slicing, read )
+            array_slicing = roiToSlice(*array_data_roi)
+            self._transferBlockData(entire_block_roi, block_relative_roi, array_data, array_slicing, read)
 
-    def _transferBlockData( self, entire_block_roi, block_relative_roi, array_data, array_slicing, read ):
+    def _transferBlockData(self, entire_block_roi, block_relative_roi, array_data, array_slicing, read):
         """
         Read or write data to a single block in the fileset.
         
@@ -445,11 +487,15 @@ class BlockwiseFileset(object):
         datasetPathComponents = self.getDatasetPathComponents(entire_block_roi[0])
 
         if self._description.format == "hdf5":
-            self._transferBlockDataHdf5( entire_block_roi, block_relative_roi, array_data, array_slicing, read, datasetPathComponents )
+            self._transferBlockDataHdf5(
+                entire_block_roi, block_relative_roi, array_data, array_slicing, read, datasetPathComponents
+            )
         else:
-            assert False, "Unknown format"        
+            assert False, "Unknown format"
 
-    def _transferBlockDataHdf5(self, entire_block_roi, block_relative_roi, array_data, array_slicing, read, datasetPathComponents ):
+    def _transferBlockDataHdf5(
+        self, entire_block_roi, block_relative_roi, array_data, array_slicing, read, datasetPathComponents
+    ):
         """
         Transfer a block of data to/from an hdf5 dataset.
         See _transferBlockData() for details.
@@ -461,30 +507,38 @@ class BlockwiseFileset(object):
         datasetDir = path_parts.externalDirectory
         hdf5FilePath = path_parts.externalPath
         if len(path_parts.internalPath) == 0:
-            raise RuntimeError("Your hdf5 block filename format MUST specify an internal path, e.g. block{roiString}.h5/volume/blockdata")
+            raise RuntimeError(
+                "Your hdf5 block filename format MUST specify an internal path, e.g. block{roiString}.h5/volume/blockdata"
+            )
 
         block_start = entire_block_roi[0]
         if read:
             # Check for problems before reading.
-            if self.getBlockStatus( block_start ) is not BlockwiseFileset.BLOCK_AVAILABLE:
-                raise BlockwiseFileset.BlockNotReadyError( block_start )
+            if self.getBlockStatus(block_start) is not BlockwiseFileset.BLOCK_AVAILABLE:
+                raise BlockwiseFileset.BlockNotReadyError(block_start)
 
-            hdf5File = self._getOpenHdf5Blockfile( hdf5FilePath )
+            hdf5File = self._getOpenHdf5Blockfile(hdf5FilePath)
 
-            if self._description.dtype != object and isinstance(array_data, numpy.ndarray) and array_data.flags.c_contiguous:
-                hdf5File[ path_parts.internalPath ].read_direct( array_data, roiToSlice( *block_relative_roi ), array_slicing )
+            if (
+                self._description.dtype != object
+                and isinstance(array_data, numpy.ndarray)
+                and array_data.flags.c_contiguous
+            ):
+                hdf5File[path_parts.internalPath].read_direct(
+                    array_data, roiToSlice(*block_relative_roi), array_slicing
+                )
             elif self._description.dtype == object:
                 # We store arrays of dtype=object as arrays of pickle strings.
-                array_pickled_data = hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ]
-                array_data[ array_slicing ] = vectorized_pickle_loads(array_pickled_data)
+                array_pickled_data = hdf5File[path_parts.internalPath][roiToSlice(*block_relative_roi)]
+                array_data[array_slicing] = vectorized_pickle_loads(array_pickled_data)
             else:
-                array_data[ array_slicing ] = hdf5File[ path_parts.internalPath ][ roiToSlice( *block_relative_roi ) ]
-                
+                array_data[array_slicing] = hdf5File[path_parts.internalPath][roiToSlice(*block_relative_roi)]
+
         else:
             # Create the directory
-            if not os.path.exists( datasetDir ):
-                os.makedirs( datasetDir )
-                # For debug purposes, output a copy of the settings 
+            if not os.path.exists(datasetDir):
+                os.makedirs(datasetDir)
+                # For debug purposes, output a copy of the settings
                 #  that were active **when this block was created**
                 descriptionFileName = os.path.split(self._descriptionFilePath)[1]
                 debugDescriptionFileCopyPath = os.path.join(datasetDir, descriptionFileName)
@@ -492,16 +546,16 @@ class BlockwiseFileset(object):
 
             # Clear the block status.
             # The CALLER is responsible for setting it again.
-            self.setBlockStatus( block_start, BlockwiseFileset.BLOCK_NOT_AVAILABLE )
+            self.setBlockStatus(block_start, BlockwiseFileset.BLOCK_NOT_AVAILABLE)
 
             # Write the block data file
-            hdf5File = self._getOpenHdf5Blockfile( hdf5FilePath )
+            hdf5File = self._getOpenHdf5Blockfile(hdf5FilePath)
             if path_parts.internalPath not in hdf5File:
-                self._createDatasetInFile( hdf5File, path_parts.internalPath, entire_block_roi )
-            dataset = hdf5File[ path_parts.internalPath ]
-            data = array_data[ array_slicing ]
+                self._createDatasetInFile(hdf5File, path_parts.internalPath, entire_block_roi)
+            dataset = hdf5File[path_parts.internalPath]
+            data = array_data[array_slicing]
             if data.dtype != object:
-                dataset[ roiToSlice( *block_relative_roi ) ] = data
+                dataset[roiToSlice(*block_relative_roi)] = data
             else:
                 # hdf5 can't handle datasets with dtype=object,
                 #  so we have to pickle each item first.
@@ -510,32 +564,33 @@ class BlockwiseFileset(object):
                     block_index = index + numpy.array(block_relative_roi[0])
                     dataset[tuple(block_index)] = list(pickled_data[index])
 
-
     def _createDatasetInFile(self, hdf5File, datasetName, roi):
-        shape = tuple( roi[1] - roi[0] )
+        shape = tuple(roi[1] - roi[0])
         chunks = self._description.chunks
         if chunks is not None:
             # chunks must not be bigger than the data in any dim
-            chunks = numpy.minimum( chunks, shape )
+            chunks = numpy.minimum(chunks, shape)
             chunks = tuple(chunks)
         compression = self._description.compression
         compression_opts = self._description.compression_opts
-        
-        dtype=self._description.dtype
+
+        dtype = self._description.dtype
         if dtype == object:
             dtype = h5py.special_dtype(vlen=numpy.uint8)
-        dataset = hdf5File.create_dataset( datasetName,
-                                 shape=shape,
-                                 dtype=dtype,
-                                 chunks=chunks,
-                                 compression=compression,
-                                 compression_opts=compression_opts )
+        dataset = hdf5File.create_dataset(
+            datasetName,
+            shape=shape,
+            dtype=dtype,
+            chunks=chunks,
+            compression=compression,
+            compression_opts=compression_opts,
+        )
 
         # Set data attributes
         if self._description.drange is not None:
-            dataset.attrs['drange'] = self._description.drange
+            dataset.attrs["drange"] = self._description.drange
         if _use_vigra:
-            dataset.attrs['axistags'] = vigra.defaultAxistags( str(self._description.axes) ).toJSON()
+            dataset.attrs["axistags"] = vigra.defaultAxistags(str(self._description.axes)).toJSON()
 
     def _getOpenHdf5Blockfile(self, blockFilePath):
         """
@@ -544,26 +599,28 @@ class BlockwiseFileset(object):
         """
         # Try once without locking
         if blockFilePath in list(self._openBlockFiles.keys()):
-            return self._openBlockFiles[ blockFilePath ]
+            return self._openBlockFiles[blockFilePath]
 
         # Obtain the lock and try again
         with self._lock:
             if blockFilePath not in list(self._openBlockFiles.keys()):
                 try:
-                    writeLock = FileLock( blockFilePath, timeout=10 )
-                    if self.mode == 'a':
-                        acquired = writeLock.acquire( blocking=False )
-                        assert acquired, "Couldn't obtain an exclusive lock for writing to file: {}".format( blockFilePath )
+                    writeLock = FileLock(blockFilePath, timeout=10)
+                    if self.mode == "a":
+                        acquired = writeLock.acquire(blocking=False)
+                        assert acquired, "Couldn't obtain an exclusive lock for writing to file: {}".format(
+                            blockFilePath
+                        )
                         self._fileLocks[blockFilePath] = writeLock
-                    elif self.mode == 'r':
+                    elif self.mode == "r":
                         assert writeLock.available(), "Can't read from a file that is being written to elsewhere."
-                    else: 
+                    else:
                         assert False, "Unsupported mode"
-                    self._openBlockFiles[ blockFilePath ] = h5py.File( blockFilePath, self.mode )
+                    self._openBlockFiles[blockFilePath] = h5py.File(blockFilePath, self.mode)
                 except:
-                    log_exception( logger, "Couldn't open {}".format(blockFilePath) )
+                    log_exception(logger, "Couldn't open {}".format(blockFilePath))
                     raise
-            return self._openBlockFiles[ blockFilePath ]
+            return self._openBlockFiles[blockFilePath]
 
     def getOpenHdf5FileForBlock(self, block_start):
         """
@@ -572,7 +629,7 @@ class BlockwiseFileset(object):
         block_start = tuple(block_start)
         path_components = self.getDatasetPathComponents(block_start)
         return self._getOpenHdf5Blockfile(path_components.externalPath)
-    
+
     def purgeAllLocks(self):
         """
         Clears all .lock files from the local blockwise fileset.
@@ -581,17 +638,17 @@ class BlockwiseFileset(object):
         For example, in a master/worker situation, call this only from the master, before the workers have been started.
         """
         found_lock = False
-        
+
         view_shape = self.description.view_shape
-        view_roi = ([0]*len(view_shape), view_shape)
-        block_starts = list( getIntersectingBlocks(self.description.block_shape, view_roi) )
+        view_roi = ([0] * len(view_shape), view_shape)
+        block_starts = list(getIntersectingBlocks(self.description.block_shape, view_roi))
         for block_start in block_starts:
-            blockFilePathComponents = self.getDatasetPathComponents( block_start )
-            fileLock = FileLock( blockFilePathComponents.externalPath )
+            blockFilePathComponents = self.getDatasetPathComponents(block_start)
+            fileLock = FileLock(blockFilePathComponents.externalPath)
             found_lock |= fileLock.purge()
             if found_lock:
-                logger.warning( "Purged lock for block: {}".format( tuple(block_start) ) )
-        
+                logger.warning("Purged lock for block: {}".format(tuple(block_start)))
+
         return found_lock
 
     def exportRoiToHdf5(self, roi, exportDirectory, use_view_coordinates=True):
@@ -605,26 +662,29 @@ class BlockwiseFileset(object):
         :param use_view_coordinates: If True, assume the roi was given relative to the view start.
                                      Otherwise, assume it was given relative to the on-disk coordinates.
         """
-        roi = list(map( TinyVector, roi ))
+        roi = list(map(TinyVector, roi))
         if not use_view_coordinates:
             abs_roi = roi
-            assert (abs_roi[0] >= self.description.view_origin), \
-                "Roi {} is out-of-bounds: must not span lower than the view origin: ".format( roi, self.description.origin )
+            assert (
+                abs_roi[0] >= self.description.view_origin
+            ), "Roi {} is out-of-bounds: must not span lower than the view origin: ".format(
+                roi, self.description.origin
+            )
             view_roi = roi - self.description.view_origin
         else:
             view_roi = roi
             abs_roi = view_roi + self.description.view_origin
-        
+
         # Always name the file according to the absolute roi
-        roiString = "{}".format( (list(abs_roi[0]), list(abs_roi[1]) ) )
-        datasetPath = self._description.block_file_name_format.format( roiString=roiString )
-        fullDatasetPath = os.path.join( exportDirectory, datasetPath )
-        path_parts = PathComponents( fullDatasetPath )
-        
-        with h5py.File(path_parts.externalPath, 'w') as f:
-            self._createDatasetInFile( f, path_parts.internalPath, view_roi )
-            dataset = f[ path_parts.internalPath ]
-            self.readData( view_roi, dataset )
+        roiString = "{}".format((list(abs_roi[0]), list(abs_roi[1])))
+        datasetPath = self._description.block_file_name_format.format(roiString=roiString)
+        fullDatasetPath = os.path.join(exportDirectory, datasetPath)
+        path_parts = PathComponents(fullDatasetPath)
+
+        with h5py.File(path_parts.externalPath, "w") as f:
+            self._createDatasetInFile(f, path_parts.internalPath, view_roi)
+            dataset = f[path_parts.internalPath]
+            self.readData(view_roi, dataset)
 
         return fullDatasetPath
 
@@ -638,107 +698,76 @@ class BlockwiseFileset(object):
         # For now, this implementation assumes it can simply copy EVERYTHING in the block directories,
         #  including lock files.  Therefore, we require that the fileset be opened in read-only mode.
         # If that's a problem, change this function to ignore lock files when copying (or purge them afterwards).
-        roi = list(map( TinyVector, roi ))
+        roi = list(map(TinyVector, roi))
         if not use_view_coordinates:
             abs_roi = roi
-            assert (abs_roi[0] >= self.description.view_origin), \
-                "Roi {} is out-of-bounds: must not span lower than the view origin: ".format( roi, self.description.origin )
+            assert (
+                abs_roi[0] >= self.description.view_origin
+            ), "Roi {} is out-of-bounds: must not span lower than the view origin: ".format(
+                roi, self.description.origin
+            )
         else:
             abs_roi = roi + self.description.view_origin
 
-        assert self.mode == 'r', "Can't export from a fileset that is open in read/write mode."
-        
+        assert self.mode == "r", "Can't export from a fileset that is open in read/write mode."
+
         block_shape = self._description.block_shape
         abs_shape = self._description.shape
         view_origin = self._description.view_origin
 
         assert (abs_roi[0] % block_shape == 0).all(), "exportSubset() requires roi to start on a block boundary"
-        assert (( abs_roi[1] % block_shape == 0) | ( abs_roi[1] == abs_shape )).all(), "exported subset must end on block or dataset boundary."
-        
-        if not os.path.exists( exportDirectory ):
-            os.makedirs( exportDirectory )
-        
+        assert (
+            (abs_roi[1] % block_shape == 0) | (abs_roi[1] == abs_shape)
+        ).all(), "exported subset must end on block or dataset boundary."
+
+        if not os.path.exists(exportDirectory):
+            os.makedirs(exportDirectory)
+
         source_desc_path = self._descriptionFilePath
-        source_desc_dir, source_desc_filename = os.path.split( source_desc_path )
+        source_desc_dir, source_desc_filename = os.path.split(source_desc_path)
         source_root_dir = self.description.dataset_root_dir
-        
+
         # Copy/update description file
         dest_desc_path = os.path.join(exportDirectory, source_desc_filename)
-        if os.path.exists( dest_desc_path ):
+        if os.path.exists(dest_desc_path):
             dest_description = BlockwiseFileset.readDescription(dest_desc_path)
         else:
             dest_description = copy.copy(self._description)
             dest_description.view_shape = abs_roi[1] - view_origin
             dest_description.hash_id = None
-        
+
         BlockwiseFileset.writeDescription(dest_desc_path, dest_description)
 
-        # Determine destination root block dir        
+        # Determine destination root block dir
         if os.path.isabs(source_root_dir):
             source_root_dir = os.path.normpath(source_root_dir)
             source_root_dir_name = os.path.split(source_root_dir)[1]
-            dest_root_dir = os.path.join( exportDirectory, source_root_dir_name )
+            dest_root_dir = os.path.join(exportDirectory, source_root_dir_name)
         else:
-            dest_root_dir = os.path.join( exportDirectory, source_root_dir )
+            dest_root_dir = os.path.join(exportDirectory, source_root_dir)
 
-        source_root_dir, _ = getPathVariants( source_root_dir, source_desc_dir )
+        source_root_dir, _ = getPathVariants(source_root_dir, source_desc_dir)
 
         view_roi = abs_roi - view_origin
-        block_starts = getIntersectingBlocks( block_shape, view_roi )
+        block_starts = getIntersectingBlocks(block_shape, view_roi)
         for block_start in block_starts:
-            source_block_dir = self.getDatasetDirectory( block_start )
-            rel_block_dir = os.path.relpath( source_block_dir, source_root_dir )
-            dest_block_dir = os.path.join( dest_root_dir, rel_block_dir )
+            source_block_dir = self.getDatasetDirectory(block_start)
+            rel_block_dir = os.path.relpath(source_block_dir, source_root_dir)
+            dest_block_dir = os.path.join(dest_root_dir, rel_block_dir)
 
-            if os.path.exists( dest_block_dir ):
-                logger.info( "Skipping existing block directory: {}".format( dest_block_dir ) )
-            elif not os.path.exists( source_block_dir ):
-                logger.info( "Skipping missing block directory: {}".format( source_block_dir ) )
+            if os.path.exists(dest_block_dir):
+                logger.info("Skipping existing block directory: {}".format(dest_block_dir))
+            elif not os.path.exists(source_block_dir):
+                logger.info("Skipping missing block directory: {}".format(source_block_dir))
             else:
                 # Copy the entire block directory
-                assert dest_block_dir[-1] != '/'
-                dest_block_dir_parent = os.path.split( dest_block_dir )[0]
+                assert dest_block_dir[-1] != "/"
+                dest_block_dir_parent = os.path.split(dest_block_dir)[0]
                 if not os.path.exists(dest_block_dir_parent):
-                    os.makedirs( dest_block_dir_parent )
-                shutil.copytree( source_block_dir, dest_block_dir )
-        
+                    os.makedirs(dest_block_dir_parent)
+                shutil.copytree(source_block_dir, dest_block_dir)
+
         return dest_desc_path
 
-BlockwiseFilesetFactory.register( BlockwiseFileset._createAndReturnBlockwiseFileset )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+BlockwiseFilesetFactory.register(BlockwiseFileset._createAndReturnBlockwiseFileset)

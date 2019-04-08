@@ -17,7 +17,7 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 """
 This module implements the basic flow graph
@@ -46,7 +46,7 @@ result = operator2.outputs["Output"][:].wait()
 """
 from builtins import object
 
-#Python
+# Python
 import sys
 import copy
 import functools
@@ -57,20 +57,19 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-#third-party
+# third-party
 import psutil
-if (int(psutil.__version__.split(".")[0]) < 1 and
-    int(psutil.__version__.split(".")[1]) < 3):
-    msg = "Lazyflow: Please install a psutil python module version"\
-          " of at least >= 0.3.0" 
+
+if int(psutil.__version__.split(".")[0]) < 1 and int(psutil.__version__.split(".")[1]) < 3:
+    msg = "Lazyflow: Please install a psutil python module version" " of at least >= 0.3.0"
     sys.stderr.write(msg)
-    logger.error( msg )
+    logger.error(msg)
     sys.exit(1)
 
-#SciPy
+# SciPy
 import numpy
 
-#lazyflow
+# lazyflow
 from lazyflow import rtype
 from lazyflow.request import Request
 from lazyflow.stype import ArrayLike
@@ -80,11 +79,13 @@ from lazyflow.operator import Operator, InputDict, OutputDict, OperatorMetaClass
 from lazyflow.operatorWrapper import OperatorWrapper
 from lazyflow.metaDict import MetaDict
 
+
 class Graph(object):
     """
     A Graph instance is shared by all connected operators and contains any 
     bookkeeping or globally accessible state needed by all operators/slots in the graph.
     """
+
     def __init__(self):
         self._setup_depth = 0
         self._sig_setup_complete = None
@@ -108,15 +109,16 @@ class Graph(object):
         else:
             # Subscribe to the next completion.
             self._sig_setup_complete.subscribe(fn)
-    
+
     class SetupDepthContext(object):
         """
         A context manager to manage the "depth" of a setup operation.
         When the depth reaches zero, the graph's `_sig_setup_complete` signal is emitted.
         """
+
         def __init__(self, g):
             self._graph = g
-            
+
         def __enter__(self):
             if self._graph:
                 with self._graph._lock:

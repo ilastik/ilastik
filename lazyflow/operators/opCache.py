@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,12 +19,12 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 
 from abc import abstractmethod, ABCMeta
 
-#lazyflow
+# lazyflow
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 from future.utils import with_metaclass
 
@@ -59,7 +60,6 @@ class Cache(with_metaclass(ABCMeta, object)):
             manager.addFirstClassCache(self)
         else:
             manager.addCache(self)
-        
 
     def generateReport(self, memInfoNode):
         rs = []
@@ -110,8 +110,7 @@ class ObservableCache(Cache):
     def generateReport(self, memInfoNode):
         super(ObservableCache, self).generateReport(memInfoNode)
         memInfoNode.usedMemory = self.usedMemory()
-        memInfoNode.fractionOfUsedMemoryDirty =\
-            self.fractionOfUsedMemoryDirty()
+        memInfoNode.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
 
 
 class ManagedCache(ObservableCache):
@@ -146,8 +145,7 @@ class ManagedCache(ObservableCache):
 
         @return amount of bytes freed (if applicable)
         """
-        raise NotImplementedError(
-            "No default implementation for freeMemory()")
+        raise NotImplementedError("No default implementation for freeMemory()")
 
     @abstractmethod
     def freeDirtyMemory(self):
@@ -159,8 +157,7 @@ class ManagedCache(ObservableCache):
 
         @return amount of bytes freed (if applicable)
         """
-        raise NotImplementedError(
-            "No default implementation for freeDirtyMemory()")
+        raise NotImplementedError("No default implementation for freeDirtyMemory()")
 
     def generateReport(self, memInfoNode):
         super(ManagedCache, self).generateReport(memInfoNode)
@@ -189,8 +186,7 @@ class ManagedBlockedCache(ManagedCache):
         """
         get a list of block ids and their time stamps
         """
-        raise NotImplementedError(
-            "No default implementation for getBlockAccessTimes()")
+        raise NotImplementedError("No default implementation for getBlockAccessTimes()")
 
     @abstractmethod
     def freeBlock(self, block_id):
@@ -203,14 +199,14 @@ class ManagedBlockedCache(ManagedCache):
 
         @return amount of bytes freed (if applicable)
         """
-        raise NotImplementedError(
-            "No default implementation for freeBlock()")
+        raise NotImplementedError("No default implementation for freeBlock()")
 
 
 class MemInfoNode(object):
     """
     aggregation of cache status indicators
     """
+
     # type
     type = None
 

@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,10 +19,11 @@ from __future__ import absolute_import
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
-import traceback, os,  sys
+import traceback, os, sys
 import logging
+
 logger = logging.getLogger(__name__)
 
 import lazyflow
@@ -39,7 +41,7 @@ ops = itersubclasses(Operator)
 logger.debug("Loading default Operators...")
 loaded = ""
 for i, o in enumerate(ops):
-    loaded += o.__name__ + ' '
+    loaded += o.__name__ + " "
     globals()[o.__name__] = o
 loaded += os.linesep
 logger.debug(loaded)
@@ -61,7 +63,7 @@ from .opRelabelConsecutive import OpRelabelConsecutive
 from .opPixelFeaturesPresmoothed import OpPixelFeaturesPresmoothed
 
 ops = list(itersubclasses(Operator))
-'''
+"""
 dirs = lazyflow.graph.CONFIG.get("Operators","directories", lazyflow.graph.CONFIG_DIR + "operators")
 dirs = dirs.split(",")
 for d in dirs:
@@ -85,5 +87,5 @@ for d in dirs:
     for o in newOps:
         print "    Adding", o.__name__
         globals()[o.__name__] = o
-    '''
-#sys.stdout.write(os.linesep)
+    """
+# sys.stdout.write(os.linesep)

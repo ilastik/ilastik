@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,14 +19,16 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 from collections import OrderedDict
+
 
 class OrderedSignal(object):
     """
     A simple callback mechanism that ensures callbacks occur in the same order as subscription.
     """
+
     def __init__(self, hide_cancellation_exceptions=False):
         self.callbacks = OrderedDict()
         self.hide_cancellation_exceptions = hide_cancellation_exceptions
@@ -66,17 +69,17 @@ class OrderedSignal(object):
         except KeyError:
             pass
 
-
     def __call__(self, *args):
         """
         Emit the signal.  Calls each callback in the subscription list, in order, with the specified arguments.
         """
-        from lazyflow.request import Request # Late import to work around circular dependency
+        from lazyflow.request import Request  # Late import to work around circular dependency
+
         for f, kw in list(self.callbacks.items()):
             try:
                 f(*args, **kw)
             except Request.CancellationException:
-                # We cannot allow graph setup operations to fail due to 
+                # We cannot allow graph setup operations to fail due to
                 # cancellation exceptions from our client functions.
                 if not self.hide_cancellation_exceptions:
                     raise

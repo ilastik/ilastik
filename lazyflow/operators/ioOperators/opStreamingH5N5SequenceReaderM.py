@@ -28,6 +28,7 @@ from lazyflow.operators.ioOperators.opStreamingH5N5Reader import OpStreamingH5N5
 from lazyflow.utility.pathHelpers import PathComponents
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -52,6 +53,7 @@ class OpStreamingH5N5SequenceReaderM(Operator):
 
             ['/a/b/c.txt', '/d/e/f.txt', '../g/i/h.txt']
     """
+
     GlobString = InputSlot()
     SequenceAxis = InputSlot(optional=True)  # The axis to stack across.
     OutputImage = OutputSlot()
@@ -68,15 +70,19 @@ class OpStreamingH5N5SequenceReaderM(Operator):
     class InconsistentShape(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
-            self.msg = f"Cannot stack dataset: {fileName}/{datasetName} because its shape differs from the shape of " \
-                       f"the previous datasets"
+            self.msg = (
+                f"Cannot stack dataset: {fileName}/{datasetName} because its shape differs from the shape of "
+                f"the previous datasets"
+            )
             super().__init__(self.msg)
 
     class InconsistentDType(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
-            self.msg = f"Cannot stack dataset: {fileName}/{datasetName} because its data type differs from the type " \
-                       f"of the previous datasets"
+            self.msg = (
+                f"Cannot stack dataset: {fileName}/{datasetName} because its data type differs from the type "
+                f"of the previous datasets"
+            )
             super().__init__(self.msg)
 
     class NoExternalPlaceholderError(Exception):
@@ -100,8 +106,7 @@ class OpStreamingH5N5SequenceReaderM(Operator):
     class InternalPlaceholderError(Exception):
         def __init__(self, globString):
             self.globString = globString
-            self.msg = f"Glob string does contains an internal placeholder " \
-                       f"(not supported!): {globString}"
+            self.msg = f"Glob string does contains an internal placeholder " f"(not supported!): {globString}"
             super().__init__(self.msg)
 
     def __init__(self, *args, **kwargs):
@@ -122,8 +127,7 @@ class OpStreamingH5N5SequenceReaderM(Operator):
 
     def setupOutputs(self):
         self.checkGlobString(self.GlobString.value)
-        external_paths, internal_paths = self.expandGlobStrings(
-            self.GlobString.value)
+        external_paths, internal_paths = self.expandGlobStrings(self.GlobString.value)
 
         num_files = len(external_paths)
         if num_files == 0:
@@ -134,7 +138,7 @@ class OpStreamingH5N5SequenceReaderM(Operator):
         self.OutputImage.connect(self._opStacker.Output)
         # Get slice axes from first image
         try:
-            h5N5FirstImage = OpStreamingH5N5Reader.get_h5_n5_file(external_paths[0], mode='r')
+            h5N5FirstImage = OpStreamingH5N5Reader.get_h5_n5_file(external_paths[0], mode="r")
             opFirstImg = OpStreamingH5N5Reader(parent=self)
             opFirstImg.InternalPath.setValue(internal_paths[0])
             opFirstImg.H5N5File.setValue(h5N5FirstImage)
@@ -149,14 +153,14 @@ class OpStreamingH5N5SequenceReaderM(Operator):
         if self.SequenceAxis.ready():
             new_axis = self.SequenceAxis.value
             assert len(new_axis) == 1
-            assert new_axis in 'tzyxc'
+            assert new_axis in "tzyxc"
         else:
             # Try to pick an axis that doesn't already exist in each volume
-            for new_axis in 'tzc0':
+            for new_axis in "tzc0":
                 if new_axis not in slice_axes:
                     break
 
-            if new_axis == '0':
+            if new_axis == "0":
                 # All axes used already.
                 # Stack across first existing axis
                 new_axis = slice_axes[0]
@@ -172,11 +176,10 @@ class OpStreamingH5N5SequenceReaderM(Operator):
         self._readers = []
         dtype = None
         shape = None
-        for external_path, internal_path, stacker_slot in zip(
-                external_paths, internal_paths, self._opStacker.Images):
+        for external_path, internal_path, stacker_slot in zip(external_paths, internal_paths, self._opStacker.Images):
             opReader = OpStreamingH5N5Reader(parent=self)
             try:
-                h5N5File = OpStreamingH5N5Reader.get_h5_n5_file(external_path, mode='r')
+                h5N5File = OpStreamingH5N5Reader.get_h5_n5_file(external_path, mode="r")
                 if dtype is None:
                     dtype = h5N5File[internal_path].dtype
                     shape = h5N5File[internal_path].shape
@@ -219,8 +222,7 @@ class OpStreamingH5N5SequenceReaderM(Operator):
             components = PathComponents(s)
             tmp = sorted(glob.glob(components.externalPath))
             external_paths.extend(tmp)
-            internal_paths.extend(
-                [components.internalPath for i in range(len(tmp))])
+            internal_paths.extend([components.internalPath for i in range(len(tmp))])
         return external_paths, internal_paths
 
     @staticmethod
@@ -254,20 +256,18 @@ class OpStreamingH5N5SequenceReaderM(Operator):
         pathComponents = [PathComponents(p.strip()) for p in pathStrings]
         assert len(pathComponents) > 0
 
-        if not all(p.extension in OpStreamingH5N5Reader.H5EXTS + OpStreamingH5N5Reader.N5EXTS
-                   for p in pathComponents):
+        if not all(p.extension in OpStreamingH5N5Reader.H5EXTS + OpStreamingH5N5Reader.N5EXTS for p in pathComponents):
             raise OpStreamingH5N5SequenceReaderM.WrongFileTypeError(globString)
 
         if len(pathComponents) == 1:
-            if '*' in pathComponents[0].internalPath:
+            if "*" in pathComponents[0].internalPath:
                 raise OpStreamingH5N5SequenceReaderM.InternalPlaceholderError(globString)
-            if '*' not in pathComponents[0].externalPath:
+            if "*" not in pathComponents[0].externalPath:
                 raise OpStreamingH5N5SequenceReaderM.NoExternalPlaceholderError(globString)
         else:
-            sameExternal = any(pathComponents[0].externalPath == x.externalPath
-                               for x in pathComponents[1::])
+            sameExternal = any(pathComponents[0].externalPath == x.externalPath for x in pathComponents[1::])
             if sameExternal is True:
                 raise OpStreamingH5N5SequenceReaderM.SameFileError(globString)
-            internalPlaceHolder = any('*' in x.internalPath for x in pathComponents[1::])
+            internalPlaceHolder = any("*" in x.internalPath for x in pathComponents[1::])
             if internalPlaceHolder is True:
                 raise OpStreamingH5N5SequenceReaderM.InternalPlaceholderError(globString)

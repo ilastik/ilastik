@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,28 +19,27 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import numpy
 import vigra
 from lazyflow.graph import Graph
-from lazyflow.operators.opVigraLabelVolume\
-    import _OpVigraLabelVolume as OpVigraLabelVolume
+from lazyflow.operators.opVigraLabelVolume import _OpVigraLabelVolume as OpVigraLabelVolume
 from lazyflow.utility.slicingtools import sl, slicing2shape
 
-class TestOpVigraLabelVolume(object):
 
+class TestOpVigraLabelVolume(object):
     def setup_method(self, method):
         graph = Graph()
-        
-        inputData = numpy.random.random( (1,10,100,100,1) )
-        inputData = ( inputData < 0.1 ).astype(numpy.uint8)
+
+        inputData = numpy.random.random((1, 10, 100, 100, 1))
+        inputData = (inputData < 0.1).astype(numpy.uint8)
         inputData = inputData.view(vigra.VigraArray)
-        inputData.axistags = vigra.defaultAxistags('txyzc')
+        inputData.axistags = vigra.defaultAxistags("txyzc")
         self.inputData = inputData
 
         self.op = OpVigraLabelVolume(graph=graph)
-        self.op.Input.setValue( inputData )
+        self.op.Input.setValue(inputData)
 
     def testBasic(self):
         labeled = self.op.Output[...].wait()
@@ -54,7 +54,9 @@ class TestOpVigraLabelVolume(object):
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

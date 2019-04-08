@@ -1,5 +1,6 @@
 from builtins import range
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -19,7 +20,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 
 import weakref
@@ -32,18 +33,18 @@ from lazyflow import operators
 import numpy
 from lazyflow.graph import OperatorWrapper
 
+
 class OpA(graph.Operator):
     name = "OpA"
 
-    Input1 = graph.InputSlot()                # required slot
-    Input2 = graph.InputSlot(optional = True) # optional slot
-    Input3 = graph.InputSlot(value = 3)       # required slot with default value, i.e. already connected
-    Input4 = graph.InputSlot(level = 1)       # required slot with default value, i.e. already connected
+    Input1 = graph.InputSlot()  # required slot
+    Input2 = graph.InputSlot(optional=True)  # optional slot
+    Input3 = graph.InputSlot(value=3)  # required slot with default value, i.e. already connected
+    Input4 = graph.InputSlot(level=1)  # required slot with default value, i.e. already connected
 
     Output1 = graph.OutputSlot()
     Output2 = graph.OutputSlot()
     Output3 = graph.OutputSlot()
-
 
     def __init__(self, *args, **kwargs):
         graph.Operator.__init__(self, *args, **kwargs)
@@ -57,7 +58,7 @@ class OpA(graph.Operator):
         self.Output2.meta.dtype = self.Input1.meta.dtype
         self.Output3.meta.shape = self.Input1.meta.shape
         self.Output3.meta.dtype = self.Input1.meta.dtype
-        #print "OpInternal shape=%r, dtype=%r" % (self.Input1.meta.shape, self.Input1.meta.dtype)
+        # print "OpInternal shape=%r, dtype=%r" % (self.Input1.meta.shape, self.Input1.meta.dtype)
 
     def execute(self, slot, subindex, roi, result):
         if slot == self.Output1:
@@ -75,6 +76,7 @@ class OpA(graph.Operator):
             self.Output2.setDirty(roi)
         if inputSlot == self.Input3:
             self.Output3.setDirty(roi)
+
 
 class OpTesting5ToMulti(graph.Operator):
     name = "OpTesting5ToMulti"
@@ -98,7 +100,7 @@ class OpTesting5ToMulti(graph.Operator):
         for sname in sorted(self.inputs.keys()):
             slot = self.inputs[sname]
             if slot.connected():
-                self.outputs["Outputs"][i].meta.assignFrom( slot.meta )
+                self.outputs["Outputs"][i].meta.assignFrom(slot.meta)
                 i += 1
 
     def execute(self, slot, subindex, roi, result):
@@ -120,12 +122,11 @@ class OpTesting5ToMulti(graph.Operator):
                 self.outputs["Outputs"][i].setDirty(roi)
                 break
             if slot.connected():
-                self.outputs["Outputs"][i].meta.assignFrom( slot.meta )
+                self.outputs["Outputs"][i].meta.assignFrom(slot.meta)
                 i += 1
-    
+
 
 class TestOperator_setupOutputs(object):
-
     def setup_method(self, method):
         self.g = graph.Graph()
 
@@ -142,7 +143,7 @@ class TestOperator_setupOutputs(object):
         # check that the operator is configued
         # after connecting the slot without default value
         op.Input1.setValue(1)
-        op.Input4.setValues([1,2])
+        op.Input4.setValues([1, 2])
         assert op._configured == True
         op._configured = False
 
@@ -151,7 +152,6 @@ class TestOperator_setupOutputs(object):
         # to another value
         op.Input3.setValue(2)
         assert op._configured == True
-
 
     def test_set_values(self):
         op = OpA(graph=self.g)
@@ -168,16 +168,15 @@ class TestOperator_setupOutputs(object):
         assert op.Input4.connected()
         assert op.Input4.configured()
 
-
         # check that the length of Input4 is 2
-        op.Input4.setValues([1,2])
+        op.Input4.setValues([1, 2])
         assert len(op.Input4) == 2
 
         # check that the values of the subslots are correct
         assert op.Input4[0].value == 1
         assert op.Input4[1].value == 2
 
-        #check that the normal setValue propagates to all subslots
+        # check that the normal setValue propagates to all subslots
         op.Input4.setValue(3)
         assert len(op.Input4) == 2
         assert op.Input4[0].value == 3
@@ -187,7 +186,6 @@ class TestOperator_setupOutputs(object):
         op = OpA(graph=self.g)
         op.Input1.setValue(1)
         op.Input4.setValues([1])
-
 
         # check that the slot with default value
         # returns the correct value
@@ -201,7 +199,6 @@ class TestOperator_setupOutputs(object):
         result = op.Output3[:].wait()[0]
         assert result == 2
 
-
     def test_connect_propagate(self):
         # check that connecting a required slot to an
         # already configured slots notifes the operator
@@ -213,7 +210,6 @@ class TestOperator_setupOutputs(object):
         op2.Input1.connect(op1.Output1)
         op2.Input4.setValues([1])
         assert op2._configured == True
-
 
     def test_deferred_connect_propagate(self):
         # check that connecting a required slot to an
@@ -233,7 +229,7 @@ class TestOperator_setupOutputs(object):
 class OpMultiOutput(graph.Operator):
     Input = graph.InputSlot()
     Outputs = graph.OutputSlot(level=3)
-    
+
     def __init__(self, *args, **kwargs):
         super(OpMultiOutput, self).__init__(*args, **kwargs)
 
@@ -243,8 +239,8 @@ class OpMultiOutput(graph.Operator):
             s.resize(4)
             for j, t in enumerate(s):
                 t.resize(4)
-                for k,u in enumerate(t):
-                    u.meta.assignFrom(self.Input.meta)                    
+                for k, u in enumerate(t):
+                    u.meta.assignFrom(self.Input.meta)
 
     def execute(self, slot, subindex, roi, result):
         """Result of the output slot is the subslot's subindex."""
@@ -255,20 +251,21 @@ class OpMultiOutput(graph.Operator):
     def propagateDirty(self, inputSlot, subindex, roi):
         pass
 
+
 class TestOperatorMultiSlotExecute(object):
     def setup(self):
         self.g = graph.Graph()
-    
+
     def test(self):
         op = OpMultiOutput(graph=self.g)
-        op.Input.setValue( () )
+        op.Input.setValue(())
         # Index the output slot with every possible getitem syntax that we support
-        assert op.Outputs[1][2][3][...].wait()[0] == (1,2,3)
-        assert op.Outputs[3,2,1][...].wait()[0] == (3,2,1)
-        assert op.Outputs[(2,1,3)][...].wait()[0] == (2,1,3)
+        assert op.Outputs[1][2][3][...].wait()[0] == (1, 2, 3)
+        assert op.Outputs[3, 2, 1][...].wait()[0] == (3, 2, 1)
+        assert op.Outputs[(2, 1, 3)][...].wait()[0] == (2, 1, 3)
+
 
 class TestOperator_meta(object):
-
     def setup_method(self, method):
         self.g = graph.Graph()
 
@@ -285,7 +282,6 @@ class TestOperator_meta(object):
         op2.Input4.setValues([1])
         assert op2.Output1.meta.shape == (10,)
 
-
     def test_deferred_meta_propagate(self):
         # check that connecting a required slot to an
         # not yet  configured slots notifes the operator
@@ -294,13 +290,14 @@ class TestOperator_meta(object):
         # between the slots
         op1 = OpA(graph=self.g)
         op2 = OpA(graph=self.g)
-        op1.Input4.setValues([1,2])
-        op2.Input4.setValues([1,2])
+        op1.Input4.setValues([1, 2])
+        op2.Input4.setValues([1, 2])
         op2.Input1.connect(op1.Output1)
         op1.Input1.setValue(numpy.ndarray((10,)))
         assert op2.Output1.meta.shape == (10,)
         op1.Input1.setValue(numpy.ndarray((20,)))
         assert op2.Output1.meta.shape == (20,)
+
 
 class OpWithMultiInputs(graph.Operator):
     Input = graph.InputSlot(level=1)
@@ -315,172 +312,177 @@ class OpWithMultiInputs(graph.Operator):
         if slot.name == "Output":
             result[...] = self.Input[index][key]
 
+
 class TestMultiSlotResize(object):
     def setup_method(self, method):
         self.g = graph.Graph()
         self.op1 = OpWithMultiInputs(graph=self.g)
         self.op2 = OpWithMultiInputs(graph=self.g)
 
-        self.wrappedOp = OperatorWrapper( OpA, graph=self.g )
-        
+        self.wrappedOp = OperatorWrapper(OpA, graph=self.g)
+
         self.wrappedOp.Input1.connect(self.op1.Input)
         self.wrappedOp.Input2.connect(self.op2.Input)
 
     def testResizeToSmaller(self):
         self.op1.Input.resize(5)
         self.op1.Input.resize(0)
-    
+
     def testDefaultValuesInWrappedOperator(self):
         self.op1.Input.resize(1)
         assert self.wrappedOp.Input3.value == 3
 
+
 class OpDirectConnection(graph.Operator):
     Input = graph.InputSlot()
     Output = graph.OutputSlot()
-    
+
     def propagateDirty(self, inputSlot, subindex, roi):
         pass
-    
+
     def setupOutputs(self):
-        self.Output.connect( self.Input )
+        self.Output.connect(self.Input)
+
 
 class TestSlotStates(object):
-
     def setup(self):
         self.g = graph.Graph()
 
     def teardown(self):
         pass
-    
+
     def test_directlyConnectedOutputs(self):
         op = OpDirectConnection(graph=self.g)
-        
+
         assert not op.Input.connected()
         assert not op.Output.connected()
-        
+
         assert not op.Input.ready()
         assert not op.Output.ready()
-        
-        connectedSlots = { op.Input  : False,
-                           op.Output : False }
+
+        connectedSlots = {op.Input: False, op.Output: False}
+
         def handleConnect(slot):
             connectedSlots[slot] = True
-        
+
         # Test notifyConnect
-        op.Input._notifyConnect( handleConnect )
-        op.Output._notifyConnect( handleConnect )
-        
-        readySlots = { op.Input  : False,
-                       op.Output : False }
+        op.Input._notifyConnect(handleConnect)
+        op.Output._notifyConnect(handleConnect)
+
+        readySlots = {op.Input: False, op.Output: False}
+
         def handleReady(slot):
             readySlots[slot] = True
-        
-        # Test notifyReady
-        op.Input.notifyReady( handleReady )
-        op.Output.notifyReady( handleReady )
 
-        data = numpy.zeros((10,10,10,10,10))
-        op.Input.setValue( data )
-        
+        # Test notifyReady
+        op.Input.notifyReady(handleReady)
+        op.Output.notifyReady(handleReady)
+
+        data = numpy.zeros((10, 10, 10, 10, 10))
+        op.Input.setValue(data)
+
         assert op.Input.ready()
         assert op.Output.ready()
-        
+
         assert op.Input.connected()
         assert op.Output.connected()
-        
+
         assert connectedSlots[op.Input] == True
         assert connectedSlots[op.Output] == True
 
     def test_implicitlyConnectedOutputs(self):
         # The array piper copies its input to its output, creating an "implicit" connection
         op = operators.OpArrayPiper(graph=self.g)
-        
+
         assert not op.Input.connected()
         assert not op.Output.connected()
-        
+
         assert not op.Input.ready()
         assert not op.Output.ready()
-        
-        connectedSlots = { op.Input  : False,
-                           op.Output : False }
+
+        connectedSlots = {op.Input: False, op.Output: False}
+
         def handleConnect(slot):
             connectedSlots[slot] = True
-        
+
         # Test notifyConnect
-        op.Input._notifyConnect( handleConnect )
-        op.Output._notifyConnect( handleConnect )
-        
-        readySlots = { op.Input  : False,
-                       op.Output : False }
+        op.Input._notifyConnect(handleConnect)
+        op.Output._notifyConnect(handleConnect)
+
+        readySlots = {op.Input: False, op.Output: False}
+
         def handleReady(slot):
             readySlots[slot] = True
-        
-        # Test notifyReady
-        op.Input.notifyReady( handleReady )
-        op.Output.notifyReady( handleReady )
 
-        data = numpy.zeros((10,10,10,10,10))
-        op.Input.setValue( data )
-        
+        # Test notifyReady
+        op.Input.notifyReady(handleReady)
+        op.Output.notifyReady(handleReady)
+
+        data = numpy.zeros((10, 10, 10, 10, 10))
+        op.Input.setValue(data)
+
         assert op.Input.ready()
         assert op.Output.ready()
-                
+
         assert op.Input.connected()
-        assert not op.Output.connected() # Not connected
-        
+        assert not op.Output.connected()  # Not connected
+
         assert connectedSlots[op.Input] == True
         assert connectedSlots[op.Output] == False
 
         assert readySlots[op.Input] == True
         assert readySlots[op.Output] == True
-        
+
     def test_implicitlyConnectedMultiOutputs(self):
         # The array piper copies its input to its output, creating an "implicit" connection
         op = OpTesting5ToMulti(graph=self.g)
-        
+
         assert not op.Input0.connected()
         assert not op.Outputs.connected()
-        
+
         assert not op.Input0.ready()
         assert not op.Outputs.ready()
-        
+
         connectedSlots = set()
+
         def handleConnect(slot):
             connectedSlots.add(slot)
-        
+
         # Test notifyConnect
-        op.Input0._notifyConnect( handleConnect )
-        op.Outputs._notifyConnect( handleConnect )
-        
+        op.Input0._notifyConnect(handleConnect)
+        op.Outputs._notifyConnect(handleConnect)
+
         readySlots = set()
+
         def handleReady(slot):
             readySlots.add(slot)
-        
+
         # Test notifyReady
-        op.Input0.notifyReady( handleReady )
-        op.Outputs.notifyReady( handleReady )
+        op.Input0.notifyReady(handleReady)
+        op.Outputs.notifyReady(handleReady)
 
         def subscribeToReady(slot, index, *args):
             slot[index].notifyReady(handleReady)
-        op.Outputs.notifyInserted( subscribeToReady )
 
-        data = numpy.zeros((10,10,10,10,10))
-        op.Input0.setValue( data )
-        
+        op.Outputs.notifyInserted(subscribeToReady)
+
+        data = numpy.zeros((10, 10, 10, 10, 10))
+        op.Input0.setValue(data)
+
         assert op.Input0.ready()
         assert op.Outputs.ready()
-                
+
         assert op.Input0.connected()
-        assert not op.Outputs.connected() # Not connected
-        
+        assert not op.Outputs.connected()  # Not connected
+
         assert op.Input0 in connectedSlots
-        assert op.Outputs not in connectedSlots # Not connected
+        assert op.Outputs not in connectedSlots  # Not connected
         assert op.Outputs[0] not in connectedSlots
 
         assert op.Input0 in readySlots
         assert op.Outputs in readySlots
         assert op.Outputs[0] in readySlots
-        
+
     def test_clonedSlotState(self):
         """
         Create a graph that involves "cloned" inputs and outputs,
@@ -488,51 +490,51 @@ class TestSlotStates(object):
         """
         # The array piper copies its input to its output, creating an "implicit" connection
         op = operators.OpArrayPiper(graph=self.g)
-        
+
         # op2 gets his input as a clone from op.Input
         op2 = operators.OpArrayPiper(graph=self.g)
-        op2.Input.connect( op.Input )
-        
+        op2.Input.connect(op.Input)
+
         # op3 gets his input as a clone from op.Output
         op3 = operators.OpArrayPiper(graph=self.g)
-        op3.Input.connect( op.Output )
-        
+        op3.Input.connect(op.Output)
+
         assert not op.Input.connected()
         assert not op.Output.connected()
-        
+
         assert not op.Input.ready()
         assert not op.Output.ready()
         assert not op2.Input.ready()
         assert not op2.Output.ready()
         assert not op3.Input.ready()
         assert not op3.Output.ready()
-        
-        connectedSlots = { op.Input  : False,
-                           op.Output : False }
+
+        connectedSlots = {op.Input: False, op.Output: False}
+
         def handleConnect(slot):
             connectedSlots[slot] = True
-        
+
         # Test notifyConnect
-        op.Input._notifyConnect( handleConnect )
-        op.Output._notifyConnect( handleConnect )
-        
-        readySlots = { op.Input  : False,
-                       op.Output : False }
+        op.Input._notifyConnect(handleConnect)
+        op.Output._notifyConnect(handleConnect)
+
+        readySlots = {op.Input: False, op.Output: False}
+
         def handleReady(slot):
             readySlots[slot] = True
-        
+
         # Test notifyReady
-        op.Input.notifyReady( handleReady )
-        op.Output.notifyReady( handleReady )
-        op2.Input.notifyReady( handleReady )
-        op2.Output.notifyReady( handleReady )
-        op3.Input.notifyReady( handleReady )
-        op3.Output.notifyReady( handleReady )
+        op.Input.notifyReady(handleReady)
+        op.Output.notifyReady(handleReady)
+        op2.Input.notifyReady(handleReady)
+        op2.Output.notifyReady(handleReady)
+        op3.Input.notifyReady(handleReady)
+        op3.Output.notifyReady(handleReady)
 
         # This should trigger setupOutputs and everything to become ready
-        data = numpy.zeros((10,10,10,10,10))
-        op.Input.setValue( data )
-        
+        data = numpy.zeros((10, 10, 10, 10, 10))
+        op.Input.setValue(data)
+
         assert op.Input.ready()
         assert op.Output.ready()
         assert op2.Input.ready()
@@ -541,42 +543,42 @@ class TestSlotStates(object):
         assert op3.Output.ready()
 
         assert op.Input.connected()
-        assert not op.Output.connected() # Not connected
-        
+        assert not op.Output.connected()  # Not connected
+
         assert connectedSlots[op.Input] == True
         assert connectedSlots[op.Output] == False
-        
+
         assert readySlots[op.Input] == True
         assert readySlots[op.Output] == True
         assert readySlots[op2.Input] == True
         assert readySlots[op2.Output] == True
         assert readySlots[op3.Input] == True
         assert readySlots[op3.Output] == True
-        
+
     def test_unready_propagation(self):
         # The array piper copies its input to its output, creating an "implicit" connection
         op = operators.OpArrayPiper(graph=self.g)
-        op.name = 'op'
-        
+        op.name = "op"
+
         # op2 gets his input as a clone from op.Input
         op2 = operators.OpArrayPiper(graph=self.g)
-        op2.Input.connect( op.Input )
-        op2.name = 'op2'
-        
+        op2.Input.connect(op.Input)
+        op2.name = "op2"
+
         # op3 gets his input as a clone from op.Output
         op3 = operators.OpArrayPiper(graph=self.g)
-        op3.Input.connect( op.Output )
-        op3.name = 'op3'
-        
+        op3.Input.connect(op.Output)
+        op3.name = "op3"
+
         #
         # op.Input  --> op2.Input
         #   .Output --> op3.Input
         #
 
         # This should trigger setupOutputs and everything to become ready
-        data = numpy.zeros((10,10,10,10,10))
-        op.Input.setValue( data )
-        
+        data = numpy.zeros((10, 10, 10, 10, 10))
+        op.Input.setValue(data)
+
         assert op.Input.ready()
         assert op.Output.ready()
         assert op2.Input.ready()
@@ -585,24 +587,24 @@ class TestSlotStates(object):
         assert op3.Output.ready()
 
         assert op.Input.connected()
-        assert not op.Output.connected() # Not connected
+        assert not op.Output.connected()  # Not connected
 
         # Disonnecting the head of the chain should cause everything to become unready
         op.Input.disconnect()
-        
+
         assert not op.Input.ready()
         assert not op.Output.ready()
         assert not op2.Input.ready()
         assert not op2.Output.ready()
         assert not op3.Input.ready()
         assert not op3.Output.ready()
-        
+
     def test_slicing(self):
         op = operators.OpArrayPiper(graph=self.g)
-        
-        a = numpy.zeros( 5*(10,), dtype=int )
-        op.Input.setValue( a )
-        
+
+        a = numpy.zeros(5 * (10,), dtype=int)
+        op.Input.setValue(a)
+
         b = op.Output[:, :, :].wait()
         assert b.shape == a.shape
 
@@ -611,22 +613,23 @@ class TestSlotStates(object):
         op = operators.OpArrayPiper(graph=self.g)
 
         dirty_flag = [False]
+
         def handleDirty(*args):
             dirty_flag[0] = True
-        
+
         op.Input.notifyDirty(handleDirty)
-        
-        a = numpy.zeros( 5*(10,), dtype=int )
-        op.Input.setValue( a )
+
+        a = numpy.zeros(5 * (10,), dtype=int)
+        op.Input.setValue(a)
         dirty_flag[0] = False
-        
+
         # If setting the same value, still not dirty...
         op.Input.setValue(a)
         assert dirty_flag[0] is False
 
         # Now if we set an array with different shape, but still broadcastable to the original,
         #  dirtiness should be detected.
-        a = numpy.zeros( 4*(10,) + (1,), dtype=int)
+        a = numpy.zeros(4 * (10,) + (1,), dtype=int)
         op.Input.setValue(a)
         assert dirty_flag[0] is True
 
@@ -666,20 +669,18 @@ class TestOperatorCleanup(object):
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
 
-#    test = TestSlotStates()
-#    test.setup()    
-#    test.test_implicitlyConnectedMultiOutputs()
+    #    test = TestSlotStates()
+    #    test.setup()
+    #    test.test_implicitlyConnectedMultiOutputs()
 
-#    test = TestOperator_setupOutputs()
-#    test.setUp()
-#    test.test_disconnected_connected()    
-    
+    #    test = TestOperator_setupOutputs()
+    #    test.setUp()
+    #    test.test_disconnected_connected()
 
-
-
-
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

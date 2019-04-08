@@ -17,7 +17,7 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
 from builtins import next
@@ -35,9 +35,11 @@ from lazyflow.request import Request, SimpleRequestCondition, log_exception
 
 
 import logging
+
 logger = logging.getLogger(__name__)
 
-class RoiRequestBatch( object ):
+
+class RoiRequestBatch(object):
     """
     A simple utility for requesting a list of rois from an output slot.
     The number of rois requested in parallel is throttled by the batch size given to the constructor.
@@ -94,7 +96,8 @@ class RoiRequestBatch( object ):
     >>> print "Processed {} result blocks with a total sum of: {}".format( result_count[0], result_total_sum[0] )
     Processed 5 result blocks with a total sum of: 14500
     """
-    def __init__( self, outputSlot, roiIterator, totalVolume=None, batchSize=2, allowParallelResults=False ):
+
+    def __init__(self, outputSlot, roiIterator, totalVolume=None, batchSize=2, allowParallelResults=False):
         """
         Constructor.
 
@@ -110,24 +113,25 @@ class RoiRequestBatch( object ):
         self._resultSignal = OrderedSignal()
         self._progressSignal = OrderedSignal()
 
-        assert isinstance(outputSlot.stype, lazyflow.stype.ArrayLike), \
-            "Only Array-like slots supported." # Because progress reporting depends on the roi shape
+        assert isinstance(
+            outputSlot.stype, lazyflow.stype.ArrayLike
+        ), "Only Array-like slots supported."  # Because progress reporting depends on the roi shape
         self._outputSlot = outputSlot
         self._roiIter = roiIterator
         self._batchSize = batchSize
         self._allowParallelResults = allowParallelResults
-        
+
         self._condition = SimpleRequestCondition()
 
         self._activated_count = 0
         self._completed_count = 0
-        
+
         self._failure_excinfo = None
 
         # Progress bookkeeping
         self._totalVolume = totalVolume
         self._processedVolume = 0
-    
+
     @property
     def resultSignal(self):
         """
@@ -135,14 +139,14 @@ class RoiRequestBatch( object ):
         Guaranteed not to be called from multiple threads in parallel.
         """
         return self._resultSignal
-    
+
     @property
     def progressSignal(self):
         """
         Progress Signal Signature: ``f(progress_percent)``
         """
         return self._progressSignal
-    
+
     def execute(self):
         """
         Execute the batch of requests and wait for all of them to complete.
@@ -153,11 +157,11 @@ class RoiRequestBatch( object ):
         This method returns ``None``.  All results must be handled via the 
         :py:obj:`resultSignal`.
         """
-        self.progressSignal( 0 )
+        self.progressSignal(0)
 
         ## In the lines below, we acquire/release self._condition with high frequency,
         ## to allow finishing requests to be handled in _handleCompletedRequest as soon as possible,
-        ## instead of forcing them to wait for the entire batch to be launched before the first 
+        ## instead of forcing them to wait for the entire batch to be launched before the first
         ## finished request can be handled and discarded.
 
         try:
@@ -171,7 +175,9 @@ class RoiRequestBatch( object ):
             while True:
                 # Wait for at least one active request to finish
                 with self._condition:
-                    while not self._failure_excinfo and (self._activated_count - self._completed_count) == self._batchSize:
+                    while (
+                        not self._failure_excinfo and (self._activated_count - self._completed_count) == self._batchSize
+                    ):
                         self._condition.wait()
 
                 if self._failure_excinfo:
@@ -181,7 +187,7 @@ class RoiRequestBatch( object ):
                 # Launch new requests until we have the correct number of active requests
                 while not self._failure_excinfo and self._activated_count - self._completed_count < self._batchSize:
                     with self._condition:
-                        self._activateNewRequest() # Eventually raises StopIteration
+                        self._activateNewRequest()  # Eventually raises StopIteration
                         self._activated_count += 1
 
                 if self._failure_excinfo:
@@ -199,7 +205,7 @@ class RoiRequestBatch( object ):
                 exc_type, exc_value, exc_tb = self._failure_excinfo
                 raise_with_traceback(exc_type(exc_value), exc_tb)
 
-        self.progressSignal( 100 )
+        self.progressSignal(100)
 
     def _activateNewRequest(self):
         """
@@ -208,17 +214,16 @@ class RoiRequestBatch( object ):
         """
         # This could raise StopIteration
         roi = next(self._roiIter)
-        req = self._outputSlot( roi[0], roi[1] )
-        
+        req = self._outputSlot(roi[0], roi[1])
+
         # We have to make sure that we didn't get a so-called "ValueRequest"
         # because those don't work the same way.
         # (This can happen if array data was given to a slot via setValue().)
-        assert isinstance( req, Request ), \
-            "Can't use RoiRequestBatch with non-standard requests.  See comment above."
-        
-        req.notify_finished( partial( self._handleCompletedRequest, roi ) )
-        req.notify_failed( partial( self._handleFailedRequest, roi ) )
-        req.notify_cancelled( partial( self._handleCancelledRequest, roi ) )
+        assert isinstance(req, Request), "Can't use RoiRequestBatch with non-standard requests.  See comment above."
+
+        req.notify_finished(partial(self._handleCompletedRequest, roi))
+        req.notify_failed(partial(self._handleFailedRequest, roi))
+        req.notify_cancelled(partial(self._handleCancelledRequest, roi))
         req.submit()
 
     def _handleCompletedRequest(self, roi, result):
@@ -238,35 +243,38 @@ class RoiRequestBatch( object ):
                 if not self._allowParallelResults:
                     # Signal here, inside the critical section.
                     self.resultSignal(roi, result)
-    
+
                 # Report progress (if possible)
                 if self._totalVolume is not None:
-                    self._processedVolume += numpy.prod( numpy.subtract(roi[1], roi[0]) )
+                    self._processedVolume += numpy.prod(numpy.subtract(roi[1], roi[0]))
                     progress = 100 * self._processedVolume // self._totalVolume
-                    self.progressSignal( progress )
+                    self.progressSignal(progress)
 
                 logger.debug("Request completed for roi: {}".format(roi))
                 self._completed_count += 1
             finally:
-                # Always notify in this finally section, 
+                # Always notify in this finally section,
                 #  even if the client result/progress handler raised.
                 self._condition.notify()
 
     def _handleFailedRequest(self, roi, exc, exc_info):
         with self._condition:
-            msg = "Encountered exception while processing roi: {}".format( roi )
-            log_exception( logger, msg, exc_info )
+            msg = "Encountered exception while processing roi: {}".format(roi)
+            log_exception(logger, msg, exc_info)
             self._failure_excinfo = exc_info
             self._condition.notify()
-    
+
     def _handleCancelledRequest(self, roi):
-        # I can't think of a use-case for cancelling our child requests independent of our 
-        assert Request.current_request_is_cancelled(), \
-            "You can cancel the parent request of this batch request action,"\
+        # I can't think of a use-case for cancelling our child requests independent of our
+        assert Request.current_request_is_cancelled(), (
+            "You can cancel the parent request of this batch request action,"
             " but you can't cancel the child requests independently."
+        )
         with self._condition:
             self._condition.notify()
 
+
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

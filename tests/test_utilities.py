@@ -4,11 +4,13 @@ import functools
 import threading
 import platform
 
+
 class TimeoutError(Exception):
     def __init__(self, seconds):
-        super( TimeoutError, self ).__init__(seconds)
+        super(TimeoutError, self).__init__(seconds)
 
-def fail_after_timeout( seconds ):
+
+def fail_after_timeout(seconds):
     """
     Returns a decorator that causes the wrapped function to asynchronously 
     fail with a TimeoutError exception if the function takes too long to execute.
@@ -23,21 +25,23 @@ def fail_after_timeout( seconds ):
     EXAMPLE: See example usage at the bottom of this file.
     """
     assert isinstance(seconds, int), "signal.alarm() requires an int"
+
     def decorator(func):
-        if platform.system() == 'Windows':
+        if platform.system() == "Windows":
             # Windows doesn't support SIGALRM
             # Therefore, on Windows, we let this decorator be a no-op.
             return func
-        
+
         def raise_timeout(signum, frame):
             raise TimeoutError(seconds)
 
         @functools.wraps(func)
-        def fail_after_timeout_wrapper( *args, **kwargs ):
-            assert threading.current_thread().name == "MainThread", \
-                "Non-Main-Thread detected: This decorator relies on the signal"\
+        def fail_after_timeout_wrapper(*args, **kwargs):
+            assert threading.current_thread().name == "MainThread", (
+                "Non-Main-Thread detected: This decorator relies on the signal"
                 " module, which may only be used from the MainThread"
-            
+            )
+
             old_handler = signal.getsignal(signal.SIGALRM)
             signal.signal(signal.SIGALRM, raise_timeout)
 
@@ -52,17 +56,20 @@ def fail_after_timeout( seconds ):
                 # Restore old handler, clear alarm
                 signal.signal(signal.SIGALRM, old_handler)
                 signal.alarm(0)
-        fail_after_timeout_wrapper.__wrapped__ = func # Emulate python 3 behavior of @functools.wraps
+
+        fail_after_timeout_wrapper.__wrapped__ = func  # Emulate python 3 behavior of @functools.wraps
         return fail_after_timeout_wrapper
+
     return decorator
+
 
 if __name__ == "__main__":
     import time
-    
+
     @fail_after_timeout(2)
     def long_running_function():
         time.sleep(3)
-    
+
     try:
         long_running_function()
     except TimeoutError as ex:

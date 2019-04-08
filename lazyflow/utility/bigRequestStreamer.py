@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from builtins import next
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -21,17 +22,25 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import numpy
 from lazyflow.request import Request
 from lazyflow.utility import RoiRequestBatch
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, determine_optimal_request_blockshape, determineBlockShape
+from lazyflow.roi import (
+    getIntersectingBlocks,
+    getBlockBounds,
+    getIntersection,
+    determine_optimal_request_blockshape,
+    determineBlockShape,
+)
 
 import logging
 import warnings
 from .memory import Memory
+
 logger = logging.getLogger(__name__)
+
 
 class BigRequestStreamer(object):
     """
@@ -83,7 +92,10 @@ class BigRequestStreamer(object):
     >>> print "Processed {} result blocks with a total sum of: {}".format( result_count[0], result_total_sum[0] )
     Processed 6 result blocks with a total sum of: 68400
     """
-    def __init__(self, outputSlot, roi, blockshape=None, batchSize=None, blockAlignment='absolute', allowParallelResults=False):
+
+    def __init__(
+        self, outputSlot, roi, blockshape=None, batchSize=None, blockAlignment="absolute", allowParallelResults=False
+    ):
         """
         Constructor.
         
@@ -99,21 +111,20 @@ class BigRequestStreamer(object):
         self._bigRoi = roi
         self._num_threads = max(1, Request.global_thread_pool.num_workers)
 
+        totalVolume = numpy.prod(numpy.subtract(roi[1], roi[0]))
 
-        totalVolume = numpy.prod( numpy.subtract(roi[1], roi[0]) )
-        
         if batchSize is None:
             batchSize = self._num_threads
-        
+
         if blockshape is None:
             blockshape = self._determine_blockshape(outputSlot)
 
-        assert blockAlignment in ['relative', 'absolute']
-        if blockAlignment == 'relative':
+        assert blockAlignment in ["relative", "absolute"]
+        if blockAlignment == "relative":
             # Align the blocking with the start of the roi
             offsetRoi = ([0] * len(roi[0]), numpy.subtract(roi[1], roi[0]))
             block_starts = getIntersectingBlocks(blockshape, offsetRoi)
-            block_starts += roi[0] # Un-offset
+            block_starts += roi[0]  # Un-offset
 
             # For now, simply iterate over the min blocks
             # TODO: Auto-dialate block sizes based on CPU/RAM usage.
@@ -130,19 +141,22 @@ class BigRequestStreamer(object):
                         # Use offset blocking
                         offset_block_start = block_start - self._bigRoi[0]
                         offset_data_shape = numpy.subtract(self._bigRoi[1], self._bigRoi[0])
-                        offset_block_bounds = getBlockBounds( offset_data_shape, blockshape, offset_block_start )
-                        
+                        offset_block_bounds = getBlockBounds(offset_data_shape, blockshape, offset_block_start)
+
                         # Un-offset
-                        block_bounds = ( offset_block_bounds[0] + self._bigRoi[0],
-                                         offset_block_bounds[1] + self._bigRoi[0] )
-                        logger.debug( "Requesting Roi: {}".format( block_bounds ) )
+                        block_bounds = (
+                            offset_block_bounds[0] + self._bigRoi[0],
+                            offset_block_bounds[1] + self._bigRoi[0],
+                        )
+                        logger.debug("Requesting Roi: {}".format(block_bounds))
                         yield block_bounds
-            
+
         else:
             # Absolute blocking.
             # Blocks are simply relative to (0,0,0,...)
             # But we still clip the requests to the overall roi bounds.
             block_starts = getIntersectingBlocks(blockshape, roi)
+
             def roiGen():
                 block_iter = block_starts.__iter__()
                 while True:
@@ -153,13 +167,13 @@ class BigRequestStreamer(object):
                         # https://www.python.org/dev/peps/pep-0479
                         break
                     else:
-                        block_bounds = getBlockBounds( outputSlot.meta.shape, blockshape, block_start )
-                        block_intersecting_portion = getIntersection( block_bounds, roi )
-        
-                        logger.debug( "Requesting Roi: {}".format( block_bounds ) )
+                        block_bounds = getBlockBounds(outputSlot.meta.shape, blockshape, block_start)
+                        block_intersecting_portion = getIntersection(block_bounds, roi)
+
+                        logger.debug("Requesting Roi: {}".format(block_bounds))
                         yield block_intersecting_portion
-                
-        self._requestBatch = RoiRequestBatch( self._outputSlot, roiGen(), totalVolume, batchSize, allowParallelResults )
+
+        self._requestBatch = RoiRequestBatch(self._outputSlot, roiGen(), totalVolume, batchSize, allowParallelResults)
 
     def _determine_blockshape(self, outputSlot):
         """
@@ -174,76 +188,79 @@ class BigRequestStreamer(object):
         tagged_shape = outputSlot.meta.getTaggedShape()
 
         available_ram = Memory.getAvailableRamComputation()
-        
+
         # Generally, we don't want to split requests across channels.
-        if 'c' in list(tagged_shape.keys()):
-            num_channels = tagged_shape['c']
-            channel_index = list(tagged_shape.keys()).index('c')
-            input_shape = input_shape[:channel_index] + input_shape[channel_index+1:]
-            max_blockshape = max_blockshape[:channel_index] + max_blockshape[channel_index+1:]
+        if "c" in list(tagged_shape.keys()):
+            num_channels = tagged_shape["c"]
+            channel_index = list(tagged_shape.keys()).index("c")
+            input_shape = input_shape[:channel_index] + input_shape[channel_index + 1 :]
+            max_blockshape = max_blockshape[:channel_index] + max_blockshape[channel_index + 1 :]
             if ideal_blockshape:
                 # Never enlarge 'ideal' in the channel dimension.
                 num_channels = ideal_blockshape[channel_index]
-                ideal_blockshape = ideal_blockshape[:channel_index] + ideal_blockshape[channel_index+1:]
-            del tagged_shape['c']
+                ideal_blockshape = ideal_blockshape[:channel_index] + ideal_blockshape[channel_index + 1 :]
+            del tagged_shape["c"]
 
         # Generally, we don't want to join time slices
-        if 't' in tagged_shape.keys():
+        if "t" in tagged_shape.keys():
             blockshape_time_steps = 1
-            time_index = list(tagged_shape.keys()).index('t')
-            input_shape = input_shape[:time_index] + input_shape[time_index+1:]
-            max_blockshape = max_blockshape[:time_index] + max_blockshape[time_index+1:]
+            time_index = list(tagged_shape.keys()).index("t")
+            input_shape = input_shape[:time_index] + input_shape[time_index + 1 :]
+            max_blockshape = max_blockshape[:time_index] + max_blockshape[time_index + 1 :]
             if ideal_blockshape:
                 # Never enlarge 'ideal' in the time dimension.
                 blockshape_time_steps = ideal_blockshape[time_index]
-                ideal_blockshape = ideal_blockshape[:time_index] + ideal_blockshape[time_index+1:]
+                ideal_blockshape = ideal_blockshape[:time_index] + ideal_blockshape[time_index + 1 :]
                 available_ram /= blockshape_time_steps
-            del tagged_shape ['t']
+            del tagged_shape["t"]
 
         if ram_usage_per_requested_pixel is None:
             # Make a conservative guess: 2*(bytes for dtype) * (num channels) + (fudge factor=4)
-            ram_usage_per_requested_pixel = 2*outputSlot.meta.dtype().nbytes*num_channels + 4
-            warnings.warn( "Unknown per-pixel RAM requirement.  Making a guess." )
+            ram_usage_per_requested_pixel = 2 * outputSlot.meta.dtype().nbytes * num_channels + 4
+            warnings.warn("Unknown per-pixel RAM requirement.  Making a guess.")
 
         # Safety factor (fudge factor): Double the estimated RAM usage per pixel
         safety_factor = 2.0
-        logger.info("Estimated RAM usage per pixel is {} * safety factor ({})"
-                    .format( Memory.format(ram_usage_per_requested_pixel), safety_factor ) )
+        logger.info(
+            "Estimated RAM usage per pixel is {} * safety factor ({})".format(
+                Memory.format(ram_usage_per_requested_pixel), safety_factor
+            )
+        )
         ram_usage_per_requested_pixel *= safety_factor
-        
+
         if ideal_blockshape is None:
-            blockshape = determineBlockShape( input_shape, (available_ram // (self._num_threads*ram_usage_per_requested_pixel)) )
+            blockshape = determineBlockShape(
+                input_shape, (available_ram // (self._num_threads * ram_usage_per_requested_pixel))
+            )
             blockshape = tuple(numpy.minimum(max_blockshape, blockshape))
-            warnings.warn( "Chose an arbitrary request blockshape" )
+            warnings.warn("Chose an arbitrary request blockshape")
         else:
-            logger.info("determining blockshape assuming available_ram is {}"
-                        ", split between {} threads"
-                        .format(Memory.format(available_ram), self._num_threads))
-            
+            logger.info(
+                "determining blockshape assuming available_ram is {}"
+                ", split between {} threads".format(Memory.format(available_ram), self._num_threads)
+            )
+
             # By convention, ram_usage_per_requested_pixel refers to the ram used when requesting ALL channels of a 'pixel'
             # Therefore, we do not include the channel dimension in the blockshapes here.
             #
             # Also, it rarely makes sense to request more than one time slice, so we omit that, too. (See above.)
-            blockshape = determine_optimal_request_blockshape( max_blockshape,
-                                                               ideal_blockshape,
-                                                               ram_usage_per_requested_pixel, 
-                                                               self._num_threads, 
-                                                               available_ram )
+            blockshape = determine_optimal_request_blockshape(
+                max_blockshape, ideal_blockshape, ram_usage_per_requested_pixel, self._num_threads, available_ram
+            )
 
         # If we removed time and channel from consideration, add them back now before returning
-        if 't' in outputSlot.meta.getAxisKeys():
+        if "t" in outputSlot.meta.getAxisKeys():
             blockshape = blockshape[:time_index] + (blockshape_time_steps,) + blockshape[time_index:]
 
-        if 'c' in outputSlot.meta.getAxisKeys():
+        if "c" in outputSlot.meta.getAxisKeys():
             blockshape = blockshape[:channel_index] + (num_channels,) + blockshape[channel_index:]
 
-        logger.info( "Chose blockshape: {}".format( blockshape ) )
-        fmt = Memory.format(ram_usage_per_requested_pixel *
-                            numpy.prod(blockshape[:-1]))
+        logger.info("Chose blockshape: {}".format(blockshape))
+        fmt = Memory.format(ram_usage_per_requested_pixel * numpy.prod(blockshape[:-1]))
         logger.info("Estimated RAM usage per block is {}".format(fmt))
 
         return blockshape
-        
+
     @property
     def resultSignal(self):
         """
@@ -272,6 +289,8 @@ class BigRequestStreamer(object):
         """
         self._requestBatch.execute()
 
+
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

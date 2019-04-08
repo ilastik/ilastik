@@ -25,14 +25,13 @@ import tempfile
 import h5py
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import (
-    RESTfulPrecomputedChunkedVolume
-)
+from lazyflow.utility.io_util.RESTfulPrecomputedChunkedVolume import RESTfulPrecomputedChunkedVolume
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 import lazyflow.roi
 import logging
 
 import numpy
+
 logger = logging.getLogger(__name__)
 
 
@@ -41,6 +40,7 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
     An operator to retrieve precomputed chunked volumes from a remote server.
     These types of volumes are e.g. used in neuroglancer.
     """
+
     name = "OpRESTfulPrecomputedChunkedVolumeReader"
 
     # Base url of the chunked volume
@@ -77,7 +77,6 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         self.Output.meta.dtype = numpy.dtype(self._volume_object.dtype).type
         self.Output.meta.axistags = vigra.defaultAxistags(self._axes)
 
-
         # scale needs to be defined for the following, so:
         # override whatever was set before to the lowest available scale:
         # is this a good idea? Triggers setupOutputs again
@@ -111,10 +110,8 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         block_aligned_subimage_start = blocks_array.min(axis=0)
         block_aligned_subimage_end = blocks_array.max(axis=0)
 
-        assert (block_aligned_subimage_start == blocks_array).all(axis=1).any(), \
-            "roi does not seem to be block aligned"
-        assert (block_aligned_subimage_end == blocks_array).all(axis=1).any(), \
-            "roi does not seem to be block aligned"
+        assert (block_aligned_subimage_start == blocks_array).all(axis=1).any(), "roi does not seem to be block aligned"
+        assert (block_aligned_subimage_end == blocks_array).all(axis=1).any(), "roi does not seem to be block aligned"
 
         # get the real end of the image:
         block_aligned_subimage_end += blockshape
@@ -124,10 +121,7 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         subimage_shape = block_aligned_subimage_end - block_aligned_subimage_start
         block_offsets = blocks_array - block_aligned_subimage_start
         subimage_start = roi[0] - block_aligned_subimage_start
-        subimage_roi = (
-            (subimage_start),
-            (subimage_start + (roi[1] - roi[0]))
-        )
+        subimage_roi = ((subimage_start), (subimage_start + (roi[1] - roi[0])))
 
         return blocks_array, block_offsets, subimage_roi, subimage_shape
 
@@ -148,21 +142,15 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
         assert all(len(x) == len(self._volume_object.get_shape(scale)) for x in roi)
         block_shape = self._volume_object.get_block_shape(scale)
         image_shape = self._volume_object.get_shape(scale)
-        array_of_blocks, block_offsets, subimage_roi, subimage_shape = \
-            self.get_intersecting_blocks(
-                blockshape=block_shape,
-                roi=roi,
-                shape=image_shape
-            )
+        array_of_blocks, block_offsets, subimage_roi, subimage_shape = self.get_intersecting_blocks(
+            blockshape=block_shape, roi=roi, shape=image_shape
+        )
         subimage = numpy.zeros((subimage_shape))
         assert array_of_blocks.shape[-1] == 4
 
         for block, offset in zip(array_of_blocks, block_offsets):
             slicing = lazyflow.roi.roiToSlice(offset, offset + block_shape)
-            subimage[slicing] = self._volume_object.download_block(
-                block,
-                scale
-            )
+            subimage[slicing] = self._volume_object.download_block(block, scale)
         slicing = lazyflow.roi.roiToSlice(subimage_roi[0], subimage_roi[1])
         result[...] = subimage[slicing]
         return result
@@ -172,7 +160,7 @@ class OpRESTfulPrecomputedChunkedVolumeReaderNoCache(Operator):
 
 
 class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
-    fixAtCurrent = InputSlot(value=False, stype='bool')
+    fixAtCurrent = InputSlot(value=False, stype="bool")
 
     BaseUrl = InputSlot()
 
@@ -192,7 +180,6 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
         self.RESTfulReader.Scale.backpropagate_values = True
         self.RESTfulReader.Scale.connect(self.Scale)
 
-
         self.cache = OpBlockedArrayCache(parent=self)
         self.cache.name = "input_image_cache"
         self.cache.fixAtCurrent.connect(self.fixAtCurrent)
@@ -210,25 +197,26 @@ class OpRESTfulPrecomputedChunkedVolumeReader(Operator):
         self.cache.Input.disconnect()
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     # assumes there is a server running at localhost
     logging.basicConfig(level=logging.DEBUG)
-    volume_url = 'http://localhost:8000/cremi'
+    volume_url = "http://localhost:8000/cremi"
 
     from lazyflow import graph
+
     g = graph.Graph()
     op = OpRESTfulPrecomputedChunkedVolumeReader(graph=g)
     op.BaseUrl.setValue(volume_url)
-    print(f'available scales: {op.AvailableScales.value}')
-    print(f'Selected scale: {op.Scale.value}')
+    print(f"available scales: {op.AvailableScales.value}")
+    print(f"Selected scale: {op.Scale.value}")
 
     # get some data
     roi = ((0, 0, 0, 0), (1, 10, 100, 100))
     data = op.Output(*roi).wait()
     import h5py
-    with h5py.File('/tmp/temph5.h5', 'w') as f:
-        f.create_dataset('exported', data=data)
+
+    with h5py.File("/tmp/temph5.h5", "w") as f:
+        f.create_dataset("exported", data=data)
 
     # get some data for the second time, check on server that it has only
     # been requested once

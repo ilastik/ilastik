@@ -2,6 +2,7 @@ from __future__ import print_function
 from __future__ import division
 from builtins import range
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -21,12 +22,13 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import time
 import datetime
 import functools
 import logging
+
 
 class Timer(object):
     """
@@ -36,12 +38,13 @@ class Timer(object):
     
     .. note:: This class provides WALL timing of long-running tasks, not cpu benchmarking for short tasks.
     """
+
     def __init__(self):
         """
         Creates a paused timer.  Call `unpause()` to start the timer.
         """
         self.reset()
-    
+
     def reset(self):
         self.paused = True
         self.start_time = None
@@ -49,11 +52,11 @@ class Timer(object):
 
         self._last_start = None
         self._total_time = datetime.timedelta()
-    
+
     def __enter__(self):
         self.unpause()
         return self
-    
+
     def __exit__(self, *args):
         self.pause()
 
@@ -70,21 +73,22 @@ class Timer(object):
         self._last_stop = datetime.datetime.now()
         self._total_time += self._last_stop - self._last_start
         self.stop_time = self._last_stop
-    
+
     def seconds(self):
         """
         Return the total elapsed time of the timer, not counting the time spent while paused.
         """
         timedelta = self._total_time
         if not self.paused:
-            timedelta +=  datetime.datetime.now() - self._last_start
-        return timedelta.seconds + (timedelta.microseconds / 1000000.0)
+            timedelta += datetime.datetime.now() - self._last_start
+        return timedelta.seconds + (timedelta.microseconds / 1_000_000.0)
 
     def sleep_until(self, seconds):
         assert not self.paused
         remaining = seconds - self.seconds()
         if remaining > 0:
-            time.sleep( remaining )
+            time.sleep(remaining)
+
 
 def timed(func):
     """
@@ -103,6 +107,7 @@ def timed(func):
        print "Last run of do_stuff() took", do_stuff.prev_run_timer.seconds(), "seconds to run"
     """
     prev_run_timer = Timer()
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         prev_run_timer.reset()
@@ -110,10 +115,11 @@ def timed(func):
             return func(*args, **kwargs)
 
     wrapper.prev_run_timer = prev_run_timer
-    wrapper.__wrapped__ = func # Emulate python 3 behavior of @functools.wraps
+    wrapper.__wrapped__ = func  # Emulate python 3 behavior of @functools.wraps
     return wrapper
 
-def timeLogged(logger, level=logging.DEBUG, prefix=''):
+
+def timeLogged(logger, level=logging.DEBUG, prefix=""):
     """
     Decorator. Times the decorated function and logs a message to the provided logger.
     
@@ -138,6 +144,7 @@ def timeLogged(logger, level=logging.DEBUG, prefix=''):
         # myfunc execution took 3.1e-05 seconds
 
     """
+
     def _timelogged(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -146,30 +153,33 @@ def timeLogged(logger, level=logging.DEBUG, prefix=''):
                 return func(*args, **kwargs)
             finally:
                 stop = time.time()
-                logger.log(level, f'{prefix}{func.__name__} execution took {stop - start} seconds')
+                logger.log(level, f"{prefix}{func.__name__} execution took {stop - start} seconds")
+
         return wrapper
+
     return _timelogged
 
+
 if __name__ == "__main__":
-    import sys    
+    import sys
+
     logger = logging.getLogger(__name__)
-    logger.addHandler( logging.StreamHandler(sys.stdout) )
-    logger.setLevel( logging.INFO )
+    logger.addHandler(logging.StreamHandler(sys.stdout))
+    logger.setLevel(logging.INFO)
     import time
-    
+
     t = Timer()
     for _ in range(10):
         with t:
             t.sleep_until(1)
-        print(t.seconds())        
-    
+        print(t.seconds())
+
     @timeLogged(logger, logging.INFO)
     def myfunc(x):
         time.sleep(0.2)
 
     print("Calling...")
-    
+
     myfunc(2)
     myfunc(2)
     print("Finished.")
-    

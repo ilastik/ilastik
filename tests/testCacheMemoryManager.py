@@ -1,5 +1,5 @@
-
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -19,7 +19,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 
 import gc
@@ -38,28 +38,28 @@ from lazyflow.request import Request
 from lazyflow.utility import BigRequestStreamer
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 from lazyflow.utility import Memory
-from lazyflow.operators.cacheMemoryManager\
-    import default_refresh_interval
+from lazyflow.operators.cacheMemoryManager import default_refresh_interval
 from lazyflow.operators.opCache import Cache
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
-from lazyflow.operators.opSplitRequestsBlockwise\
-    import OpSplitRequestsBlockwise
+from lazyflow.operators.opSplitRequestsBlockwise import OpSplitRequestsBlockwise
 from lazyflow.operators.filterOperators import OpGaussianSmoothing
 
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
 import logging
+
 logger = logging.getLogger("tests.testCacheMemoryManager")
 mgrLogger = logging.getLogger("lazyflow.operators.cacheMemoryManager")
+
 
 class NonRegisteredCache(object):
     def __init__(self, name):
         self.name = name
-        self._randn = np.random.randint(2**16)
+        self._randn = np.random.randint(2 ** 16)
+
 
 Cache.register(NonRegisteredCache)
 assert issubclass(NonRegisteredCache, Cache)
-
 
 
 class TestCacheMemoryManager(unittest.TestCase):
@@ -83,6 +83,7 @@ class TestCacheMemoryManager(unittest.TestCase):
         mgr.disable()
 
         import weakref
+
         d = NonRegisteredCache("testwr")
         s = weakref.WeakSet()
         s.add(d)
@@ -128,8 +129,8 @@ class TestCacheMemoryManager(unittest.TestCase):
 
     def testCacheHandling(self):
         n, k = 10, 5
-        vol = np.zeros((n,)*5, dtype=np.uint8)
-        vol = vigra.taggedView(vol, axistags='txyzc')
+        vol = np.zeros((n,) * 5, dtype=np.uint8)
+        vol = vigra.taggedView(vol, axistags="txyzc")
 
         g = Graph()
         pipe = OpArrayPiperWithAccessCount(graph=g)
@@ -141,10 +142,10 @@ class TestCacheMemoryManager(unittest.TestCase):
         Memory.setAvailableRamCaches(0)
 
         # set to frequent cleanup
-        mgr.setRefreshInterval(.01)
+        mgr.setRefreshInterval(0.01)
         mgr.enable()
 
-        cache.BlockShape.setValue((k,)*5)
+        cache.BlockShape.setValue((k,) * 5)
         cache.Input.connect(pipe.Output)
         pipe.Input.setValue(vol)
 
@@ -155,7 +156,7 @@ class TestCacheMemoryManager(unittest.TestCase):
 
         # let the manager clean up
         mgr.enable()
-        time.sleep(.5)
+        time.sleep(0.5)
         gc.collect()
 
         cache.Output[...].wait()
@@ -164,8 +165,8 @@ class TestCacheMemoryManager(unittest.TestCase):
 
     def testBlockedCacheHandling(self):
         n, k = 10, 5
-        vol = np.zeros((n,)*5, dtype=np.uint8)
-        vol = vigra.taggedView(vol, axistags='txyzc')
+        vol = np.zeros((n,) * 5, dtype=np.uint8)
+        vol = vigra.taggedView(vol, axistags="txyzc")
 
         g = Graph()
         pipe = OpArrayPiperWithAccessCount(graph=g)
@@ -177,10 +178,10 @@ class TestCacheMemoryManager(unittest.TestCase):
         Memory.setAvailableRamCaches(0)
 
         # set to frequent cleanup
-        mgr.setRefreshInterval(.01)
+        mgr.setRefreshInterval(0.01)
         mgr.enable()
 
-        cache.BlockShape.setValue((k,)*5)
+        cache.BlockShape.setValue((k,) * 5)
         cache.Input.connect(pipe.Output)
         pipe.Input.setValue(vol)
 
@@ -191,7 +192,7 @@ class TestCacheMemoryManager(unittest.TestCase):
 
         # let the manager clean up
         mgr.enable()
-        time.sleep(.5)
+        time.sleep(0.5)
         gc.collect()
 
         cache.Output[...].wait()
@@ -210,19 +211,19 @@ class TestCacheMemoryManager(unittest.TestCase):
         """
 
         mgr = CacheMemoryManager()
-        mgr.setRefreshInterval(.01)
+        mgr.setRefreshInterval(0.01)
         mgr.enable()
 
         d = 2
-        tags = 'xy'
+        tags = "xy"
 
-        shape = (999,)*d
-        blockshape = (333,)*d
+        shape = (999,) * d
+        blockshape = (333,) * d
 
         # restrict memory for computation to one block (including fudge
         # factor 2 of bigRequestStreamer)
         cacheMem = np.prod(shape)
-        Memory.setAvailableRam(np.prod(blockshape)*2 + cacheMem)
+        Memory.setAvailableRam(np.prod(blockshape) * 2 + cacheMem)
 
         # restrict cache memory to the whole volume
         Memory.setAvailableRamCaches(cacheMem)
@@ -254,17 +255,16 @@ class TestCacheMemoryManager(unittest.TestCase):
         split.BlockShape.setValue(blockshape)
         split.Input.connect(op.Output)
 
-        streamer = BigRequestStreamer(
-            split.Output, [(0,)*len(shape), shape])
+        streamer = BigRequestStreamer(split.Output, [(0,) * len(shape), shape])
         streamer.execute()
 
         # in the worst case, we have 4*4 + 4*6 + 9 = 49 requests to pipe
         # in the best case, we have 9
         np.testing.assert_equal(pipe.accessCount, 9)
 
-        
+
 class OpEnlarge(OpArrayPiperWithAccessCount):
-    delay = .1
+    delay = 0.1
 
     def setupOutputs(self):
         self.Output.meta.ram_usage_per_requested_pixel = 1
@@ -273,8 +273,8 @@ class OpEnlarge(OpArrayPiperWithAccessCount):
     def execute(self, slot, subindex, roi, result):
         sigma = 3.0
         roi_with_halo, result_roi = enlargeRoiForHalo(
-            roi.start, roi.stop, self.Input.meta.shape, sigma,
-            return_result_roi=True)
+            roi.start, roi.stop, self.Input.meta.shape, sigma, return_result_roi=True
+        )
         start, stop = roi_with_halo
         newroi = SubRegion(self.Input, start=start, stop=stop)
         data = self.Input.get(newroi).wait()
@@ -284,17 +284,20 @@ class OpEnlarge(OpArrayPiperWithAccessCount):
 
 if __name__ == "__main__":
     import sys
-    # Set up logging for debug
-    logHandler = logging.StreamHandler( sys.stdout )
-    logger.addHandler( logHandler )
-    mgrLogger.addHandler( logHandler )
 
-    logger.setLevel( logging.DEBUG )
-    mgrLogger.setLevel( logging.DEBUG )
+    # Set up logging for debug
+    logHandler = logging.StreamHandler(sys.stdout)
+    logger.addHandler(logHandler)
+    mgrLogger.addHandler(logHandler)
+
+    logger.setLevel(logging.DEBUG)
+    mgrLogger.setLevel(logging.DEBUG)
 
     # Run nose
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

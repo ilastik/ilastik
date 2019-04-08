@@ -17,25 +17,27 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
-#Python
+# Python
 import copy
 import logging
 import threading
 
 from builtins import object
 import sys
+
 if sys.version_info.major >= 3:
     unicode = str
 
-#SciPy
+# SciPy
 import numpy
 
-#lazyflow
+# lazyflow
 from lazyflow.request import Request
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opCache import ObservableCache
+
 
 class ListToMultiOperator(Operator):
     name = "List to Multislot converter"
@@ -56,19 +58,21 @@ class ListToMultiOperator(Operator):
         liste = self.inputs["List"].value
         result[0] = liste[index]
 
+
 class OpAttributeSelector(Operator):
     """
     Given an input slot of type object, outputs a slot (also of type object)
      that selects just one of the fields (attributes) of the input object.
     Note: This operator caches a copy of the value.  It should not be used for large objects.
     """
+
     name = "OpAttributeSelector"
     category = "Value provider"
 
-    InputObject = InputSlot(stype='object')
-    AttributeName = InputSlot(stype='string')
+    InputObject = InputSlot(stype="object")
+    AttributeName = InputSlot(stype="string")
 
-    Result = OutputSlot(stype='object')
+    Result = OutputSlot(stype="object")
 
     def __init__(self, *args, **kwargs):
         super(OpAttributeSelector, self).__init__(*args, **kwargs)
@@ -102,21 +106,22 @@ class OpAttributeSelector(Operator):
         if needToPropagate:
             self.Result.setDirty(slice(None))
 
+
 class OpMetadataInjector(Operator):
     name = "Metadata injector"
     category = "Value provider"
 
     Input = InputSlot()
-    Metadata = InputSlot() # Dict of { string : value }
+    Metadata = InputSlot()  # Dict of { string : value }
 
     Output = OutputSlot()
 
     def setupOutputs(self):
-        self.Output.meta.assignFrom( self.Input.meta )
+        self.Output.meta.assignFrom(self.Input.meta)
 
         # Inject the additional metadata attributes
         extraMetadata = self.Metadata.value
-        for k,v in list(extraMetadata.items()):
+        for k, v in list(extraMetadata.items()):
             setattr(self.Output.meta, k, v)
 
     def execute(self, slot, subindex, roi, result):
@@ -130,21 +135,22 @@ class OpMetadataInjector(Operator):
             # Forward to the output slot
             self.Output.setDirty(roi)
 
+
 class OpMetadataSelector(Operator):
     name = "OpMetadataSelector"
     category = "Value provider"
-    
+
     Input = InputSlot()
-    MetadataKey = InputSlot( stype='string' )
-    
-    Output = OutputSlot(stype='object')
-    
+    MetadataKey = InputSlot(stype="string")
+
+    Output = OutputSlot(stype="object")
+
     def setupOutputs(self):
         key = self.MetadataKey.value
-        self.Output.setValue( self.Input.meta[key] )
+        self.Output.setValue(self.Input.meta[key])
 
     def execute(self, slot, subindex, roi, result):
-        assert False # Output is directly connected
+        assert False  # Output is directly connected
 
     def propagateDirty(self, slot, subindex, roi):
         # Output is dirty if the meta data attribute of interest changed.
@@ -152,22 +158,23 @@ class OpMetadataSelector(Operator):
         if slot.name == "MetadataKey":
             self.Output.setDirty(slice(None))
 
+
 class OpMetadataMerge(Operator):
     Input = InputSlot()
     MetadataSource = InputSlot()
-    FieldsToClone = InputSlot(stype='list') # list of strings
+    FieldsToClone = InputSlot(stype="list")  # list of strings
 
     Output = OutputSlot()
 
     def setupOutputs(self):
         # Start with the original metadata
-        self.Output.meta.assignFrom( self.Input.meta )
+        self.Output.meta.assignFrom(self.Input.meta)
 
         # Merge in additional fields, selected from the source connection.
         for key in self.FieldsToClone.value:
             assert isinstance(key, (str, unicode)), "Metadata field names are expected to be strings"
             if key in self.MetadataSource.meta:
-                setattr( self.Output.meta, key, self.MetadataSource.meta[key] )
+                setattr(self.Output.meta, key, self.MetadataSource.meta[key])
 
     def execute(self, slot, subindex, roi, result):
         result[...] = self.Input(roi.start, roi.stop).wait()
@@ -177,21 +184,22 @@ class OpMetadataMerge(Operator):
         # Forward to the output slot
         self.Output.setDirty(roi)
 
+
 class OpOutputProvider(Operator):
     name = "OpOutputProvider"
     category = "test"
-    
+
     Output = OutputSlot()
-    
+
     def __init__(self, data, meta, *args, **kwargs):
         super(OpOutputProvider, self).__init__(*args, **kwargs)
-        
+
         self._data = data
         self.Output.meta.assignFrom(meta)
-    
+
     def setupOutputs(self):
         pass
-    
+
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         result[...] = self._data[key]
@@ -203,18 +211,18 @@ class OpValueCache(Operator, ObservableCache):
     and allows for the value to be "forced in" from an external user.
     No memory management, no blockwise access.
     """
-    
+
     name = "OpValueCache"
     category = "Cache"
-    
+
     Input = InputSlot()
     fixAtCurrent = InputSlot(value=False)
     Output = OutputSlot()
-    
+
     loggerName = __name__ + ".OpValueCache"
     logger = logging.getLogger(loggerName)
     traceLogger = logging.getLogger("TRACE." + loggerName)
-    
+
     def __init__(self, *args, **kwargs):
         super(OpValueCache, self).__init__(*args, **kwargs)
         self._dirty = True
@@ -224,15 +232,16 @@ class OpValueCache(Operator, ObservableCache):
 
         # Now that we're initialized, it's safe to register with the memory manager
         self.registerWithMemoryManager()
-        
+
         def handle_unready(slot):
             self._dirty = True
+
         self.Input.notifyUnready(handle_unready)
-        
+
     def usedMemory(self):
         if isinstance(self._value, numpy.ndarray):
             return self._value.nbytes
-        return 0 #FIXME
+        return 0  # FIXME
 
     def fractionOfUsedMemoryDirty(self):
         if self._dirty:
@@ -246,13 +255,13 @@ class OpValueCache(Operator, ObservableCache):
             s = "no value"
         else:
             t = str(type(self._value))
-            t = t[len("<type '"):-len("'>")]
+            t = t[len("<type '") : -len("'>")]
             s = "value of type '{}'".format(t)
         report.info = s
-    
+
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
-    
+
     def execute(self, slot, subindex, roi, result):
         if self.fixAtCurrent.value is True or self._dirty is False:
             if result.shape == (1,):
@@ -260,7 +269,7 @@ class OpValueCache(Operator, ObservableCache):
             else:
                 result[:] = self._value
             return result
-        
+
         # Optimization: We don't let more than one caller trigger the value to be computed at the same time
         # If some other caller has already requested the value, we'll just wait for the request he already made.
         class State(object):
@@ -279,10 +288,10 @@ class OpValueCache(Operator, ObservableCache):
             else:
                 state = State.Dirty
 
-            self.traceLogger.debug("State is: {}".format( {State.Dirty : 'Dirty',
-                                                           State.Waiting : 'Waiting',
-                                                           State.Clean : 'Clean'}[state]) )
-            
+            self.traceLogger.debug(
+                "State is: {}".format({State.Dirty: "Dirty", State.Waiting: "Waiting", State.Clean: "Clean"}[state])
+            )
+
             # Obtain the request to wait for (create it if necessary)
             if state == State.Dirty:
                 request = self.Input[...]
@@ -303,7 +312,7 @@ class OpValueCache(Operator, ObservableCache):
                         value = request.wait()
                     success = True
                 except Request.InvalidRequestException:
-                    # Oops, we're sharing the request with another thread 
+                    # Oops, we're sharing the request with another thread
                     #  and that other thread cancelled it before we got a chance to call wait().
                     # Just regenerate the request and try again...
                     with self._lock:
@@ -319,14 +328,14 @@ class OpValueCache(Operator, ObservableCache):
                             # If no other request has 'taken responsibility' since we were cancelled
                             # (i.e. self._request is still the request that raised this exception.)
                             if request == self._request:
-                                self._request = None # This is mostly to aid testing.
+                                self._request = None  # This is mostly to aid testing.
                     raise
-        
+
         if result.shape == (1,):
             result[0] = value
         else:
             result[:] = value
-        
+
         # If we made the request, set the members
         if state == State.Dirty:
             with self._lock:
@@ -346,7 +355,6 @@ class OpValueCache(Operator, ObservableCache):
             if self.fixAtCurrent.value is False and self._dirty:
                 self.Output.setDirty()
 
-
     def forceValue(self, value):
         """
         Allows a 'back door' to force data into this cache.
@@ -356,7 +364,7 @@ class OpValueCache(Operator, ObservableCache):
             self._value = value
             self._dirty = False
         self.Output.setDirty()
-        
+
     def resetValue(self):
         """
         Remove the value from the cache.
@@ -365,22 +373,24 @@ class OpValueCache(Operator, ObservableCache):
             self._value = None
             self._dirty = True
         self.Output.setDirty()
-        
+
+
 class OpPrecomputedInput(Operator):
     """
     Think of this operator like a railroad switch.  The output is connected to one of the two inputs.
     If the 'PrecomputedInput' slot is clean, then output comes directly from there.
     Otherwise, the output slot is connected to the 'SlowInput' slot.
     """
+
     name = "OpPrecomputedInput"
     category = "Value provider"
-    
-    SlowInput = InputSlot() # Used if the precomputed slot is dirty
-    PrecomputedInput = InputSlot(optional=True) # Only used while the slow input stays clean.
-    Reset = InputSlot(optional = True, value = False)
-    
+
+    SlowInput = InputSlot()  # Used if the precomputed slot is dirty
+    PrecomputedInput = InputSlot(optional=True)  # Only used while the slow input stays clean.
+    Reset = InputSlot(optional=True, value=False)
+
     Output = OutputSlot()
-    
+
     def __init__(self, ignore_dirty_input, *args, **kwargs):
         """
         ignore_dirty_input:
@@ -390,7 +400,7 @@ class OpPrecomputedInput(Operator):
         super(OpPrecomputedInput, self).__init__(*args, **kwargs)
         self._lock = threading.Lock()
         self._ignore_dirty_input = ignore_dirty_input
-    
+
     def setupOutputs(self):
         if self.PrecomputedInput.ready():
             self.reset()
@@ -412,7 +422,7 @@ class OpPrecomputedInput(Operator):
             pass
         else:
             assert False, "Unknown dirty input slot."
-    
+
     def reset(self):
         """
         Called by the user when the precomputed input is valid again.
@@ -429,7 +439,8 @@ class OpDummyData(Operator):
     This operator provides a hard-coded test pattern that is a simple function of the requested output roi.
     It can be useful for cases where the desired output is not available, but you want to show something in the GUI anyway.
     """
-    Input = InputSlot() # Used only to format the output metadata
+
+    Input = InputSlot()  # Used only to format the output metadata
     Output = OutputSlot()
 
     def setupOutputs(self):
@@ -438,32 +449,34 @@ class OpDummyData(Operator):
     def execute(self, slot, subindex, roi, result):
         # Replace this entire request with a simple pattern to indicate "not available"
         # The pattern is simply a bunch of diagonal planes.
-        pattern = numpy.indices( roi.stop - roi.start ).sum(0)
+        pattern = numpy.indices(roi.stop - roi.start).sum(0)
         pattern += numpy.sum(roi.start)
         pattern = ((pattern // 20) == (pattern + 10) // 20).astype(int)
         # If dtype is a float, use 0/1.
         # If its an int, use 0/255
         if isinstance(result.dtype, numpy.integer):
             pattern *= 255
-    
+
         result[:] = pattern
         return result
-    
+
     def propagateDirty(self, slot, subindex, roi):
         pass
-    
+
+
 class OpZeroDefault(Operator):
     """
     Provides an output that is always 'ready'.  
     Acts as a simple pass-through if 'Input' is ready().  Otherwise, provides zeros.  
     Marks everything dirty as soon as the Input becomes ready().
     """
-    MetaInput = InputSlot() # Output metadata is copied from this slot
-    Input = InputSlot(optional=True) # 'Real' data comes from this slot
-    Output = OutputSlot() # This slot is always ready (as long as MetaInput is ready)
+
+    MetaInput = InputSlot()  # Output metadata is copied from this slot
+    Input = InputSlot(optional=True)  # 'Real' data comes from this slot
+    Output = OutputSlot()  # This slot is always ready (as long as MetaInput is ready)
 
     def __init__(self, *args, **kwargs):
-        super( OpZeroDefault, self ).__init__(*args, **kwargs)
+        super(OpZeroDefault, self).__init__(*args, **kwargs)
         self._input_ready = True
 
     def setupOutputs(self):
@@ -475,11 +488,11 @@ class OpZeroDefault(Operator):
 
     def execute(self, slot, subindex, roi, result):
         if self._input_ready:
-            self.Input(roi.start, roi.stop).writeInto( result ).wait()
+            self.Input(roi.start, roi.stop).writeInto(result).wait()
         else:
             result[...] = 0
         return result
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Input:
-            self.Output.setDirty( roi )
+            self.Output.setDirty(roi)

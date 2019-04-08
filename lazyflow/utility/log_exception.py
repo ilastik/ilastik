@@ -1,11 +1,13 @@
 from future import standard_library
+
 standard_library.install_aliases()
 import traceback
 import io
 import sys
 import logging
 
-def log_exception( logger, msg=None, exc_info=None, level=logging.ERROR ):
+
+def log_exception(logger, msg=None, exc_info=None, level=logging.ERROR):
     """
     Log the current exception to the given logger, and also log the given error message.
     If exc_info is provided, log that exception instead of the current exception provided by sys.exc_info.
@@ -18,10 +20,10 @@ def log_exception( logger, msg=None, exc_info=None, level=logging.ERROR ):
     else:
         sio = io.StringIO()
     if exc_info:
-        traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
+        traceback.print_exception(exc_info[0], exc_info[1], exc_info[2], file=sio)
     else:
-        traceback.print_exc( file=sio )
+        traceback.print_exc(file=sio)
 
-    logger.log(level, sio.getvalue() )
+    logger.log(level, sio.getvalue())
     if msg:
-        logger.log(level, msg )
+        logger.log(level, msg)

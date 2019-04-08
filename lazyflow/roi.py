@@ -3,6 +3,7 @@ from __future__ import division
 from builtins import zip
 from builtins import map
 from builtins import range
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -22,16 +23,17 @@ from builtins import range
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 if __name__ == "__main__":
     # When executing this file directly for doctest purposes,
     #  we must remove the lazyflow module from sys.path
-    # This is due to the fact that the builtin collections module 
+    # This is due to the fact that the builtin collections module
     #  ALSO has an 'operator' module,
-    #  which conflicts with lazyflow.operator in this case.    
+    #  which conflicts with lazyflow.operator in this case.
     import sys
-    assert sys.path[0].endswith('lazyflow/lazyflow')
+
+    assert sys.path[0].endswith("lazyflow/lazyflow")
     sys.path.pop(0)
 
 import numpy
@@ -39,6 +41,7 @@ from math import ceil, floor, pow, log10
 import collections
 from functools import partial
 from itertools import combinations
+
 
 class TinyVector(list):
     __slots__ = []
@@ -48,9 +51,9 @@ class TinyVector(list):
 
     def __add__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x+y for x,y in zip(self,other))
+            return TinyVector(x + y for x, y in zip(self, other))
         else:
-            return TinyVector(x+other for x in self)
+            return TinyVector(x + other for x in self)
 
     __radd__ = __add__
 
@@ -58,166 +61,166 @@ class TinyVector(list):
         # Must explicitly override list.__iadd__
         # Others (e.g. isub, imul) can use default implementation.
         if isinstance(other, collections.Iterable):
-            self =  TinyVector(x+y for x,y in zip(self,other))
+            self = TinyVector(x + y for x, y in zip(self, other))
             return self
         else:
-            self = TinyVector(x+other for x in self)
+            self = TinyVector(x + other for x in self)
             return self
 
     def __sub__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x-y for x,y in zip(self,other))
+            return TinyVector(x - y for x, y in zip(self, other))
         else:
-            return TinyVector(x-other for x in self)
+            return TinyVector(x - other for x in self)
 
     def __rsub__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(y-x for x,y in zip(self,other))
+            return TinyVector(y - x for x, y in zip(self, other))
         else:
-            return TinyVector(other-x for x in self)
+            return TinyVector(other - x for x in self)
 
     def __mul__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x*y for x,y in zip(self,other))
+            return TinyVector(x * y for x, y in zip(self, other))
         else:
-            return TinyVector(x*other for x in self)
+            return TinyVector(x * other for x in self)
 
     __rmul__ = __mul__
 
     def __div__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x/y for x,y in zip(self,other))
+            return TinyVector(x / y for x, y in zip(self, other))
         else:
-            return TinyVector(x/other for x in self)
+            return TinyVector(x / other for x in self)
 
     def __rdiv__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector((y/x) for x,y in zip(self,other))
+            return TinyVector((y / x) for x, y in zip(self, other))
         else:
-            return TinyVector((other/x) for x in self)
+            return TinyVector((other / x) for x in self)
 
     def __truediv__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x/y for x,y in zip(self,other))
+            return TinyVector(x / y for x, y in zip(self, other))
         else:
-            return TinyVector(x/other for x in self)
+            return TinyVector(x / other for x in self)
 
     def __rtruediv__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(y/x for x,y in zip(self,other))
+            return TinyVector(y / x for x, y in zip(self, other))
         else:
-            return TinyVector(other/x for x in self)
+            return TinyVector(other / x for x in self)
 
     def __mod__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x%y for x,y in zip(self,other))
+            return TinyVector(x % y for x, y in zip(self, other))
         else:
-            return TinyVector(x%other for x in self)
+            return TinyVector(x % other for x in self)
 
     def __rmod__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(y%x for x,y in zip(self,other))
+            return TinyVector(y % x for x, y in zip(self, other))
         else:
-            return TinyVector(other%x for x in self)
+            return TinyVector(other % x for x in self)
 
     def __floordiv__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x//y for x,y in zip(self,other))
+            return TinyVector(x // y for x, y in zip(self, other))
         else:
-            return TinyVector(x//other for x in self)
+            return TinyVector(x // other for x in self)
 
     def __rfloordiv__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(y//x for x,y in zip(self,other))
+            return TinyVector(y // x for x, y in zip(self, other))
         else:
-            return TinyVector(other//x for x in self)
+            return TinyVector(other // x for x in self)
 
     def __eq__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x==y for x,y in zip(self,other))
+            return TinyVector(x == y for x, y in zip(self, other))
         else:
-            return TinyVector(x==other for x in self)
+            return TinyVector(x == other for x in self)
 
     def __ne__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x!=y for x,y in zip(self,other))
+            return TinyVector(x != y for x, y in zip(self, other))
         else:
-            return TinyVector(x!=other for x in self)
+            return TinyVector(x != other for x in self)
 
     def __ge__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x>=y for x,y in zip(self,other))
+            return TinyVector(x >= y for x, y in zip(self, other))
         else:
-            return TinyVector(x>=other for x in self)
+            return TinyVector(x >= other for x in self)
 
     def __le__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x<=y for x,y in zip(self,other))
+            return TinyVector(x <= y for x, y in zip(self, other))
         else:
-            return TinyVector(x<=other for x in self)
+            return TinyVector(x <= other for x in self)
 
     def __gt__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x>y for x,y in zip(self,other))
+            return TinyVector(x > y for x, y in zip(self, other))
         else:
-            return TinyVector(x>other for x in self)
+            return TinyVector(x > other for x in self)
 
     def __lt__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x<y for x,y in zip(self,other))
+            return TinyVector(x < y for x, y in zip(self, other))
         else:
-            return TinyVector(x<other for x in self)
+            return TinyVector(x < other for x in self)
 
     def __and__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x&y for x,y in zip(self,other))
+            return TinyVector(x & y for x, y in zip(self, other))
         else:
-            return TinyVector(x&other for x in self)
+            return TinyVector(x & other for x in self)
 
     __rand__ = __and__
 
     def __or__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x|y for x,y in zip(self,other))
+            return TinyVector(x | y for x, y in zip(self, other))
         else:
-            return TinyVector(x|other for x in self)
+            return TinyVector(x | other for x in self)
 
     __ror__ = __or__
 
     def __xor__(self, other):
         if isinstance(other, collections.Iterable):
-            return TinyVector(x^y for x,y in zip(self,other))
+            return TinyVector(x ^ y for x, y in zip(self, other))
         else:
             return TinyVector(x ^ other for x in self)
 
     __rxor__ = __xor__
-    
+
     def __neg__(self):
-        return TinyVector( -x for x in self )
-    
+        return TinyVector(-x for x in self)
+
     def __abs__(self):
-        return TinyVector( list(map(abs, self)) )
+        return TinyVector(list(map(abs, self)))
 
     def __pos__(self):
         return TinyVector(self)
-    
+
     def __invert__(self):
         return TinyVector(~x for x in self)
-    
+
     def ceil(self):
-        return TinyVector(list(map(ceil ,self)))
-        #return numpy.ceil(numpy.array(self))
+        return TinyVector(list(map(ceil, self)))
+        # return numpy.ceil(numpy.array(self))
 
     def floor(self):
-        return TinyVector(list(map(floor ,self)))
-        #return numpy.floor(numpy.array(self))
+        return TinyVector(list(map(floor, self)))
+        # return numpy.floor(numpy.array(self))
 
     def _asint(self):
         return TinyVector([x.__int__() for x in self])
 
-    def insert(self,index, value):
+    def insert(self, index, value):
         l = list(self)
-        l.insert(index,value)
+        l.insert(index, value)
         return TinyVector(l)
 
     def all(self):
@@ -235,6 +238,7 @@ class TinyVector(list):
                 answer = True
                 break
         return answer
+
 
 def expandSlicing(s, shape):
     """
@@ -265,28 +269,32 @@ def expandSlicing(s, shape):
 
     # Compute number of axes missing from the slicing
     if len(shape) - len(s) < 0:
-        assert s == (Ellipsis,) or s == (slice(None),), \
-            "Slicing must not have more elements than the shape, except for [:] and [...] slices.\n"\
-            "Your slicing: {}, your shape: {}".format( s, shape )            
+        assert s == (Ellipsis,) or s == (slice(None),), (
+            "Slicing must not have more elements than the shape, except for [:] and [...] slices.\n"
+            "Your slicing: {}, your shape: {}".format(s, shape)
+        )
 
     # Replace Ellipsis with (:,:,:)
     if Ellipsis in s:
-        ei = s.index(Ellipsis) # Ellipsis Index
-        s = s[0:ei] + (len(shape) - len(s) + 1)*(slice(None),) + s[ei+1:]
+        ei = s.index(Ellipsis)  # Ellipsis Index
+        s = s[0:ei] + (len(shape) - len(s) + 1) * (slice(None),) + s[ei + 1 :]
 
     # Append (:,) until we get the right length
-    s += (len(shape) - len(s))*(slice(None),)
-    
+    s += (len(shape) - len(s)) * (slice(None),)
+
     # Special case: we allow [:] and [...] for empty shapes ()
     if shape == ():
         s = ()
-    
+
     return s
 
-sTrl1 =   lambda x: x if type(x) != slice else x.start if x.start != None else 0
-sTrl2 =  lambda x,y: y if type(y) != slice else y.stop if y.stop != None else x
-sTrl3 = lambda x,y: y + 1 if x == y else y
-def sliceToRoi(s, shape, extendSingleton = True):
+
+sTrl1 = lambda x: x if type(x) != slice else x.start if x.start != None else 0
+sTrl2 = lambda x, y: y if type(y) != slice else y.stop if y.stop != None else x
+sTrl3 = lambda x, y: y + 1 if x == y else y
+
+
+def sliceToRoi(s, shape, extendSingleton=True):
     """Args:
             slice: slice object (1D) or list of slice objects (N-D)
             shape: the shape of the array to be sliced
@@ -296,31 +304,37 @@ def sliceToRoi(s, shape, extendSingleton = True):
     """
     s = expandSlicing(s, shape)
     start = list(map(sTrl1, s))
-    stop = list(map(sTrl2, shape,s))
+    stop = list(map(sTrl2, shape, s))
     if extendSingleton:
-        stop = list(map(sTrl3,start,stop))
+        stop = list(map(sTrl3, start, stop))
     return TinyVector(start), TinyVector(stop)
+
 
 def roiFromShape(shape):
     start = TinyVector([0] * len(shape))
     stop = TinyVector(shape)
-    return ( start, stop )
+    return (start, stop)
+
 
 def fullSlicing(shape):
     return roiToSlice(*roiFromShape(shape))
 
-def getIntersection( roiA, roiB, assertIntersect=True ):    
-    start = numpy.maximum( roiA[0], roiB[0] )    
-    stop = numpy.minimum( roiA[1], roiB[1] )
+
+def getIntersection(roiA, roiB, assertIntersect=True):
+    start = numpy.maximum(roiA[0], roiB[0])
+    stop = numpy.minimum(roiA[1], roiB[1])
 
     if ((stop - start) <= 0).any():
         if assertIntersect:
-            assert ((stop - start) > 0).all(), "Rois do not intersect: {} and {}".format( roiA, roiB )
+            assert ((stop - start) > 0).all(), "Rois do not intersect: {} and {}".format(roiA, roiB)
         else:
-            return None    
+            return None
     return (start, stop)
 
-rTsl1 = lambda x,y:slice(x.__int__(),y.__int__())
+
+rTsl1 = lambda x, y: slice(x.__int__(), y.__int__())
+
+
 def roiToSlice(start, stop, hardBind=False):
     """Args:
             start (N-D coordinate): inclusive start
@@ -331,14 +345,15 @@ def roiToSlice(start, stop, hardBind=False):
     """
     if hardBind:
         res = []
-        for sta, stp in zip(start,stop):
+        for sta, stp in zip(start, stop):
             if stp == sta + 1 or stp == sta:
                 res.append(int(sta))
             else:
-                res.append(slice(int(sta),int(stp)))
+                res.append(slice(int(sta), int(stp)))
         return tuple(res)
     else:
-        return tuple(map(rTsl1,start,stop))
+        return tuple(map(rTsl1, start, stop))
+
 
 def nonzero_bounding_box(data):
     """
@@ -356,12 +371,14 @@ def nonzero_bounding_box(data):
     """
     nonzero_coords = numpy.nonzero(data)
     if len(nonzero_coords[0]) == 0:
-        block_bounding_box_roi = numpy.array( ([0]*data.ndim, [0]*data.ndim) )
+        block_bounding_box_roi = numpy.array(([0] * data.ndim, [0] * data.ndim))
     else:
-        block_bounding_box_roi = numpy.array( [ list(map( numpy.min, nonzero_coords )),
-                                                list(map( numpy.max, nonzero_coords )) ] )
-        block_bounding_box_roi[1,:] += 1
+        block_bounding_box_roi = numpy.array(
+            [list(map(numpy.min, nonzero_coords)), list(map(numpy.max, nonzero_coords))]
+        )
+        block_bounding_box_roi[1, :] += 1
     return block_bounding_box_roi
+
 
 def containing_rois(rois, inner_roi):
     """
@@ -383,11 +400,12 @@ def containing_rois(rois, inner_roi):
     if not rois:
         return numpy.array([])
     rois = numpy.asarray(rois)
-    left_matches = (rois[:,0] <= inner_roi[0])
-    right_matches = (rois[:,1] >= inner_roi[1])
+    left_matches = rois[:, 0] <= inner_roi[0]
+    right_matches = rois[:, 1] >= inner_roi[1]
     both_matches = numpy.logical_and(left_matches, right_matches)
     matching_rows = numpy.logical_and.reduce(both_matches, axis=1).nonzero()
     return rois[matching_rows]
+
 
 def enlargeRoiForHalo(start, stop, shape, sigma, window=3.5, enlarge_axes=None, return_result_roi=False):
     """
@@ -417,42 +435,42 @@ def enlargeRoiForHalo(start, stop, shape, sigma, window=3.5, enlarge_axes=None, 
     assert len(start) == len(stop) == len(shape)
     shape = TinyVector(shape)
     if enlarge_axes is None:
-        enlarge_axes = TinyVector((1,)*len(start))
+        enlarge_axes = TinyVector((1,) * len(start))
     else:
-        enlarge_axes = TinyVector(enlarge_axes)*1
-    
+        enlarge_axes = TinyVector(enlarge_axes) * 1
+
     # non-enlarged axes are zero'd out while we enlarge the rest.
     assert len(enlarge_axes) == len(shape)
-    max_spatial_shape = enlarge_axes*shape
-    spatial_start = enlarge_axes*start
-    spatial_stop = enlarge_axes*stop
+    max_spatial_shape = enlarge_axes * shape
+    spatial_start = enlarge_axes * start
+    spatial_stop = enlarge_axes * stop
 
-    if isinstance( sigma, collections.Iterable ):
+    if isinstance(sigma, collections.Iterable):
         sigma = TinyVector(sigma)
-    if isinstance( start, collections.Iterable ):
+    if isinstance(start, collections.Iterable):
         ret_type = type(start[0])
     else:
         ret_type = type(start)
 
     zeros = TinyVector(start) - start
 
-    enlarged_start = numpy.maximum(spatial_start - numpy.ceil(window * sigma), zeros).astype( ret_type )
-    enlarged_stop = numpy.minimum(spatial_stop + numpy.ceil(window * sigma), max_spatial_shape).astype( ret_type )
-    
+    enlarged_start = numpy.maximum(spatial_start - numpy.ceil(window * sigma), zeros).astype(ret_type)
+    enlarged_stop = numpy.minimum(spatial_stop + numpy.ceil(window * sigma), max_spatial_shape).astype(ret_type)
+
     # Restore non-halo elements exactly as they were
     enlarged_start += (enlarge_axes == 0) * start
     enlarged_stop += (enlarge_axes == 0) * stop
-    
+
     enlarged_roi = numpy.array((enlarged_start, enlarged_stop))
     if return_result_roi:
-        inner_roi = numpy.asarray( (start, stop) )
+        inner_roi = numpy.asarray((start, stop))
         result_roi = inner_roi - enlarged_roi[0]
         return enlarged_roi, result_roi
     else:
-        return enlarged_roi 
+        return enlarged_roi
 
 
-def getIntersectingBlocks( blockshape, roi, asarray=False ):
+def getIntersectingBlocks(blockshape, roi, asarray=False):
     """
     Returns the start coordinate of each block that the given roi intersects.
     By default, returned as an array of shape (N,M) (N indexes with M coordinates each).
@@ -509,19 +527,23 @@ def getIntersectingBlocks( blockshape, roi, asarray=False ):
      [  0 -20]
      [  0   0]]
     """
-    assert len(blockshape) == len(roi[0]) == len(roi[1]), "blockshape and roi are mismatched: {} vs {}".format( blockshape, roi )
+    assert len(blockshape) == len(roi[0]) == len(roi[1]), "blockshape and roi are mismatched: {} vs {}".format(
+        blockshape, roi
+    )
     assert not numpy.any(numpy.isclose(blockshape, 0)), f"blockshape ({blockshape}) should not contain zero elements"
-    roistart = TinyVector( roi[0] )
-    roistop = TinyVector( roi[1] )
-    blockshape = TinyVector( blockshape )
+    roistart = TinyVector(roi[0])
+    roistop = TinyVector(roi[1])
+    blockshape = TinyVector(blockshape)
 
     block_index_map_start = roistart // blockshape
-    block_index_map_stop = (( roistop + (blockshape - 1) ) // blockshape) # Add (blockshape-1) first as a faster alternative to ceil()
+    block_index_map_stop = (
+        roistop + (blockshape - 1)
+    ) // blockshape  # Add (blockshape-1) first as a faster alternative to ceil()
     block_index_map_shape = block_index_map_stop - block_index_map_start
 
     num_axes = len(blockshape)
-    block_indices = numpy.indices( block_index_map_shape )
-    block_indices = numpy.rollaxis( block_indices, 0, num_axes+1 )
+    block_indices = numpy.indices(block_index_map_shape)
+    block_indices = numpy.rollaxis(block_indices, 0, num_axes + 1)
     block_indices += block_index_map_start
 
     # Multiply by blockshape to get the list of start coordinates
@@ -533,18 +555,21 @@ def getIntersectingBlocks( blockshape, roi, asarray=False ):
         # Reshape into N*M matrix for easy iteration
         num_indexes = numpy.prod(block_indices.shape[0:-1])
         axiscount = block_indices.shape[-1]
-        return numpy.reshape( block_indices, (num_indexes, axiscount) )
+        return numpy.reshape(block_indices, (num_indexes, axiscount))
+
 
 def getIntersectingRois(dataset_shape, blockshape, roi, clip_blocks_to_roi=True):
     block_starts = getIntersectingBlocks(blockshape, roi)
-    block_rois = list(map( partial(getBlockBounds, dataset_shape, blockshape), block_starts ))
+    block_rois = list(map(partial(getBlockBounds, dataset_shape, blockshape), block_starts))
     if clip_blocks_to_roi:
         block_rois = [getIntersection(block_roi, roi) for block_roi in block_rois]
     return block_rois
 
-def is_fully_contained( inner_roi, outer_roi ):
+
+def is_fully_contained(inner_roi, outer_roi):
     inner_roi = numpy.asarray(inner_roi)
     return (inner_roi[0] >= outer_roi[0]).all() and (inner_roi[1] <= outer_roi[1]).all()
+
 
 def getBlockBounds(dataset_shape, block_shape, block_start):
     """
@@ -554,19 +579,20 @@ def getBlockBounds(dataset_shape, block_shape, block_start):
     >>> getBlockBounds( [35,35,35], [10,10,10], [10,20,30] )
     (array([10, 20, 30]), array([20, 30, 35]))
     """
-    assert (numpy.mod( block_start, block_shape ) == 0).all(), \
-        "Invalid block_start: {}.  Must be a multiple of the block shape: {}"\
-        .format( block_start, block_shape )
+    assert (
+        numpy.mod(block_start, block_shape) == 0
+    ).all(), "Invalid block_start: {}.  Must be a multiple of the block shape: {}".format(block_start, block_shape)
 
-    entire_dataset_roi = roiFromShape( dataset_shape )
-    block_shape = TinyVector( block_shape )
-    block_bounds = ( block_start, block_start + block_shape )
-    
+    entire_dataset_roi = roiFromShape(dataset_shape)
+    block_shape = TinyVector(block_shape)
+    block_bounds = (block_start, block_start + block_shape)
+
     # Clip to dataset bounds
-    block_bounds = getIntersection( block_bounds, entire_dataset_roi )
+    block_bounds = getIntersection(block_bounds, entire_dataset_roi)
     return block_bounds
 
-def determineBlockShape( max_shape, target_block_volume ):
+
+def determineBlockShape(max_shape, target_block_volume):
     """
     Choose a blockshape that is close to the target_block_volume (in pixels), 
     without exceeding max_shape in any dimension.
@@ -581,34 +607,37 @@ def determineBlockShape( max_shape, target_block_volume ):
     >>> determineBlockShape( (1,100,5,200,3), 1000 )
     (1, 8, 5, 8, 3)
     """
-    assert (TinyVector(max_shape) > 0).all(), "Invalid max_shape: {}".format( max_shape )
-    ndims = len( max_shape )
-    
+    assert (TinyVector(max_shape) > 0).all(), "Invalid max_shape: {}".format(max_shape)
+    ndims = len(max_shape)
+
     # Attach indexes to remember where each max_shape element came from
-    max_with_index = list(zip( max_shape, list(range( len(max_shape))) ))
-    
+    max_with_index = list(zip(max_shape, list(range(len(max_shape)))))
+
     # Sort from smallest to largest, to ensure that larger dimensions
     #   will pick up the slack that smaller dims can't accommodate.
-    sorted_max = sorted( max_with_index )
-    
+    sorted_max = sorted(max_with_index)
+
     volume_so_far = 1
     block_shape = []
-    
+
     for (m, i), num_remaining_axes in zip(sorted_max, list(range(ndims, 0, -1))):
         # Make a block_shape that is isometric in the remaining dimensions
-        remaining_factor = target_block_volume//volume_so_far
-        block_side = int( pow( remaining_factor, (1.0/num_remaining_axes) ) + 0.5 )
-        block_side = min( block_side, m )
-        block_shape.append( block_side )
-        volume_so_far *= block_side        
-    
+        remaining_factor = target_block_volume // volume_so_far
+        block_side = int(pow(remaining_factor, (1.0 / num_remaining_axes)) + 0.5)
+        block_side = min(block_side, m)
+        block_shape.append(block_side)
+        volume_so_far *= block_side
+
     # Sort block_shape dimensions back to the original axis order
-    index_order = list(zip( *sorted_max ))[1]
-    indexed_block_shape = list(zip( index_order, block_shape ))
-    block_shape = list(zip( *sorted( indexed_block_shape ) ))[1]
+    index_order = list(zip(*sorted_max))[1]
+    indexed_block_shape = list(zip(index_order, block_shape))
+    block_shape = list(zip(*sorted(indexed_block_shape)))[1]
     return tuple(block_shape)
 
-def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_usage_per_requested_pixel, num_threads, available_ram ):
+
+def determine_optimal_request_blockshape(
+    max_blockshape, ideal_blockshape, ram_usage_per_requested_pixel, num_threads, available_ram
+):
     """
     Choose a blockshape for requests subject to the following constraints:
     - not larger than max_blockshape in any dimension
@@ -630,23 +659,23 @@ def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_
     (1000, 1000, 24)
     
     """
-    assert len( max_blockshape ) == len( ideal_blockshape )
-    
+    assert len(max_blockshape) == len(ideal_blockshape)
+
     # Convert to numpy for convenience.
-    max_blockshape = numpy.asarray( max_blockshape )
-    ideal_blockshape = numpy.asarray( ideal_blockshape )
+    max_blockshape = numpy.asarray(max_blockshape)
+    ideal_blockshape = numpy.asarray(ideal_blockshape)
 
     target_block_volume_bytes = available_ram // num_threads
-    target_block_volume_pixels = (target_block_volume_bytes // ram_usage_per_requested_pixel)
-    
+    target_block_volume_pixels = target_block_volume_bytes // ram_usage_per_requested_pixel
+
     # Replace 0's in the ideal_blockshape with the corresponding piece of max_blockshape
-    complete_ideal_blockshape = numpy.where( ideal_blockshape == 0, max_blockshape, ideal_blockshape )
-    
+    complete_ideal_blockshape = numpy.where(ideal_blockshape == 0, max_blockshape, ideal_blockshape)
+
     # Clip to max
-    clipped_ideal_blockshape = numpy.minimum( max_blockshape, complete_ideal_blockshape )
-    
-    atomic_blockshape = determineBlockShape( clipped_ideal_blockshape, target_block_volume_pixels )
-    atomic_blockshape = numpy.asarray( atomic_blockshape )
+    clipped_ideal_blockshape = numpy.minimum(max_blockshape, complete_ideal_blockshape)
+
+    atomic_blockshape = determineBlockShape(clipped_ideal_blockshape, target_block_volume_pixels)
+    atomic_blockshape = numpy.asarray(atomic_blockshape)
 
     if numpy.prod(clipped_ideal_blockshape) >= target_block_volume_pixels:
         # Target volume is too small for us to stack the atomic blockshape, anyway
@@ -654,19 +683,20 @@ def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_
 
     # Need to stack the ideal_blockshape to come up with something larger.
     # Start with an isotropic block, clipped to the nearest multiple of the atomic_blockshape
-    blockshape = numpy.array( determineBlockShape( max_blockshape, target_block_volume_pixels ) )
+    blockshape = numpy.array(determineBlockShape(max_blockshape, target_block_volume_pixels))
     blockshape -= blockshape % atomic_blockshape
-        
+
     while True:
         # Find a dimension of atomic_blockshape that isn't already maxed out,
-        # And see if we have enough RAM to 
+        # And see if we have enough RAM to
         candidate_blockshapes = []
-        for index in range( len(blockshape) ):
+        for index in range(len(blockshape)):
             # If we were to expand the blockshape in this dimension, would the block still fit in RAM?
             candidate_blockshape = blockshape.copy()
             candidate_blockshape[index] += clipped_ideal_blockshape[index]
-            if (candidate_blockshape <= max_blockshape).all() and \
-               (numpy.prod(candidate_blockshape) < target_block_volume_pixels):
+            if (candidate_blockshape <= max_blockshape).all() and (
+                numpy.prod(candidate_blockshape) < target_block_volume_pixels
+            ):
                 candidate_blockshapes.append(candidate_blockshape)
 
         if len(candidate_blockshapes) == 0:
@@ -674,18 +704,19 @@ def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_
 
         def normalized_surface_area(shape):
             pairs = numpy.array(list(combinations(shape, 2)))
-            surface_area = 2*(pairs[:,0] * pairs[:,1]).sum()
+            surface_area = 2 * (pairs[:, 0] * pairs[:, 1]).sum()
             volume = numpy.prod(shape)
             return surface_area / volume
 
         # Choose the best among the canidates
         scores = list(map(normalized_surface_area, candidate_blockshapes))
-        (best_shape, best_score) = min(zip(candidate_blockshapes, scores), key=lambda shape_score: shape_score[1] )
+        (best_shape, best_score) = min(zip(candidate_blockshapes, scores), key=lambda shape_score: shape_score[1])
         blockshape = best_shape
-        
+
     return tuple(blockshape)
 
-def slicing_to_string( slicing, max_shape=None ):
+
+def slicing_to_string(slicing, max_shape=None):
     """
     Returns a string representation of the given slicing, which has been 
     formatted with spaces so that multiple such slicings could be printed 
@@ -696,19 +727,21 @@ def slicing_to_string( slicing, max_shape=None ):
                for each slicing field.
     """
     if max_shape:
-        max_digits = [int(log10(s))+1 for s in max_shape]
+        max_digits = [int(log10(s)) + 1 for s in max_shape]
     else:
         max_digits = [0] * len(slicing)
     slice_strings = []
     for i, sl in enumerate(slicing):
         s = ""
-        s += ("{:" + str(max_digits[i]) + "}").format( sl.start )
+        s += ("{:" + str(max_digits[i]) + "}").format(sl.start)
         s += " : "
-        s += ("{:" + str(max_digits[i]) + "}").format( sl.stop )
+        s += ("{:" + str(max_digits[i]) + "}").format(sl.stop)
         assert sl.step is None
         slice_strings.append(s)
-    return "(" + ",  ".join( slice_strings ) + ")"
+    return "(" + ",  ".join(slice_strings) + ")"
+
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

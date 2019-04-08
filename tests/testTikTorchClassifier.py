@@ -50,24 +50,17 @@ class TestDummyTikTorchNet(object):
     @classmethod
     def setup_class(cls):
         cls.graph = Graph()
-        cls.model = TinyConvNet2D(
-            num_input_channels=1,
-            num_output_channels=2
-        )
+        cls.model = TinyConvNet2D(num_input_channels=1, num_output_channels=2)
         cls.tiktorch_net = TikTorch(model=cls.model)
         # HACK: Window size catered to settings in tiktorchLazyflowClassifier :/
-        cls.tiktorch_net.configure(
-            window_size=[192, 192],
-            num_input_channels=1,
-            num_output_channels=2
-        )
+        cls.tiktorch_net.configure(window_size=[192, 192], num_input_channels=1, num_output_channels=2)
 
         # HACK: this is also catered to the hardcoded settings in tiktorchLazyflowClassifier
         cls.data = numpy.arange(3 * 192 * 192).astype(numpy.uint8).reshape((3, 1, 192, 192))
 
         cls.tmp_dir = tempfile.mkdtemp()
-        cls.h5_file = h5py.File(os.path.join(cls.tmp_dir, 'h5_file.h5'), mode='a')
-        cls.classifier_group = cls.h5_file.create_group('classifier')
+        cls.h5_file = h5py.File(os.path.join(cls.tmp_dir, "h5_file.h5"), mode="a")
+        cls.classifier_group = cls.h5_file.create_group("classifier")
 
     @classmethod
     def teardown_class(cls):
@@ -79,7 +72,7 @@ class TestDummyTikTorchNet(object):
 
         classifier = TikTorchLazyflowClassifier(self.tiktorch_net, filename=file_name)
 
-        assert len(classifier.known_classes) == self.tiktorch_net.get('num_output_channels')
+        assert len(classifier.known_classes) == self.tiktorch_net.get("num_output_channels")
         # TODO: test more stuff ;)
 
     def test_classifier_serialization_derserialization(self):
@@ -87,11 +80,10 @@ class TestDummyTikTorchNet(object):
         classifier = TikTorchLazyflowClassifier(self.tiktorch_net, filename=file_name)
         classifier.serialize_hdf5(self.classifier_group)
 
-        assert self.classifier_group['pytorch_network_path'].value == ""
+        assert self.classifier_group["pytorch_network_path"].value == ""
         # TODO: test more stuff!
 
-        classifier_deserialized = TikTorchLazyflowClassifier.deserialize_hdf5(
-            self.classifier_group)
+        classifier_deserialized = TikTorchLazyflowClassifier.deserialize_hdf5(self.classifier_group)
 
         # TODO: add __eq__ to tiktorch?!
         assert str(classifier_deserialized._tiktorch_net.model) == str(self.tiktorch_net.model)
@@ -101,9 +93,8 @@ class TestDummyTikTorchNet(object):
 
         roi = ((0, 0, 32, 32), (3, 1, 160, 160))
 
-        axistags = vigra.defaultAxistags('zcyx')
-        output = classifier.predict_probabilities_pixelwise(
-            self.data, roi, axistags)
+        axistags = vigra.defaultAxistags("zcyx")
+        output = classifier.predict_probabilities_pixelwise(self.data, roi, axistags)
 
         assert output.shape == (3, 2, 128, 128)
         # TODO: test more stuff!
