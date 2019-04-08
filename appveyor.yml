@@ -37,6 +37,7 @@ test_script:
   - cmd: CALL activate %ENV_NAME%
   - cmd: cd \
   - cmd: cd ilastik\ilastik-meta\ilastik\tests
+  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
   - cmd: pytest --run-legacy-gui
 
 # on_finish:
