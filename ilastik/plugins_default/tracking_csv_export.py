@@ -37,7 +37,10 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
                 formats.append('%f')
 
         # check which features are present and construct table of the appropriate size
-        frame, _ = next(graph.nodes_iter())
+        # need to awkwardly grab one node in the for loop since networkx 2.0
+        for node in graph.nodes():
+            frame = node[0]
+            break
 
         # the feature categories can contain 'Default features' and 'Standard Object Features',
         # which actually reference the same features. Hence we block all of the one group from the other to prevent duplicates.
@@ -70,7 +73,7 @@ class TrackingCSVExportFormatPlugin(TrackingExportFormatPlugin):
 
         table = np.zeros([graph.number_of_nodes(), len(headers)])
 
-        for rowIdx, node in enumerate(graph.nodes_iter()):
+        for rowIdx, node in enumerate(graph.nodes()):
             frame, label = node
             trackId = graph.node[node]['trackId']
             lineageId = graph.node[node]['lineageId']

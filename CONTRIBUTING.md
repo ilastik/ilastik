@@ -229,7 +229,7 @@ After making changes, please confirm that nothing else got broken by running the
    ```bash
    # in ~/source/ilastik-meta/ilastik/tests
    source activate idev
-   CONTINUE_ON_FAILURE=1 ./run_each_unit_test.sh
+   pytest --run-legacy-gui
    ```
  * Changes made in lazyflow:
    ```bash

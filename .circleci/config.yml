@@ -25,11 +25,11 @@ jobs:
     - restore_cache:
         keys:
         # This branch if available
-        - v1.33a0-dep-{{ .Branch }}-
+        - v1.33b3-dep-{{ .Branch }}-
         # Default branch if not
-        - v1.33a0-dep-master-
+        - v1.33b3-dep-master-
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-        - v1.33a0-dep-
+        - v1.33b3-dep-
     - run: |
         if [[ ! -d ${CONDA_ROOT} ]]; then
             echo "Installing Miniconda...";
@@ -40,9 +40,9 @@ jobs:
         fi
     - run: |
         if [ ! -d ${TEST_ENV_PREFIX} ]; then
-            conda create -y -n ${TEST_ENV_NAME} -c ilastik-forge/label/nightly -c conda-forge ilastik-dependencies-no-solvers z5py;
+            conda create -y -n ${TEST_ENV_NAME} -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers;
         else
-            conda install -y -n ${TEST_ENV_NAME} -c ilastik-forge/label/nightly -c conda-forge ilastik-dependencies-no-solvers z5py;
+            conda install -y -n ${TEST_ENV_NAME} -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers;
         fi
     - run: rm -rf ${TEST_ENV_PREFIX}/ilastik-meta
     - run: git clone http://github.com/ilastik/ilastik-meta ${TEST_ENV_PREFIX}/ilastik-meta
@@ -53,7 +53,7 @@ jobs:
     - run: ln -s `pwd` ${TEST_ENV_PREFIX}/ilastik-meta/ilastik
     # Save dependency cache
     - save_cache:
-        key: v1.33a0-dep-{{ .Branch }}-{{ epoch }}
+        key: v1.33b3-dep-{{ .Branch }}-{{ epoch }}
         paths:
         - /home/ubuntu/miniconda
     # Test

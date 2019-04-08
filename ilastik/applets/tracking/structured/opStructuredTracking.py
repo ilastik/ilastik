@@ -554,13 +554,13 @@ class OpStructuredTracking(OpConservationTracking):
         traxelToUuidMap, uuidToTraxelMap = traxelgraph.getMappingsBetweenUUIDsAndTraxels()
 
         # reset all values
-        for n in traxelgraph._graph.nodes_iter():
-            traxelgraph._graph.node[n]['value'] = 0
-            traxelgraph._graph.node[n]['divisionValue'] = False
+        for n in traxelgraph._graph.nodes():
+            traxelgraph._graph.nodes[n]['value'] = 0
+            traxelgraph._graph.nodes[n]['divisionValue'] = False
 
-        for e in traxelgraph._graph.edges_iter():
-            traxelgraph._graph.edge[e[0]][e[1]]['value'] = 0
-            traxelgraph._graph.edge[e[0]][e[1]]['gap'] = 1 # only single step transitions supported in annotations
+        for e in traxelgraph._graph.edges():
+            traxelgraph._graph.edges[e]['value'] = 0
+            traxelgraph._graph.edges[e]['gap'] = 1 # only single step transitions supported in annotations
 
         labels = annotations['labels']
         divisions = annotations['divisions']
