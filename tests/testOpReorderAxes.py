@@ -36,7 +36,6 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 import logging
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler(sys.stdout))
 
 
 class OpArrayProvider(Operator):
