@@ -14,7 +14,7 @@ class Array5D:
             self._data = self._data.astype(force_dtype)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} {self.shape_5d}>"
+        return f"<{self.__class__.__name__} {self.shape}>"
 
     @classmethod
     def allocate(cls, shape:Shape5D, dtype, axistags:str=Point5D.LABELS):
@@ -61,12 +61,12 @@ class Array5D:
         return [tag.key for tag in self.axistags]
 
     @property
-    def shape(self):
+    def _shape(self):
         return self._data.shape
 
     @property
-    def shape_5d(self):
-        return Shape5D(**{key:value for key, value in zip(self.axiskeys, self.shape)})
+    def shape(self) -> Shape5D:
+        return Shape5D(**{key:value for key, value in zip(self.axiskeys, self._shape)})
 
     def timeIter(self):
         for timepoint in self._data.timeIter():
@@ -87,6 +87,9 @@ class Array5D:
 
     def raw(self):
         return self._data
+
+    def cut_with(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
+        return self.cut(Slice5D(t=t, c=c, x=x, y=y, z=z))
 
     def cut(self, roi:Slice5D):
         slices = roi.to_slices(self.axiskeys)
