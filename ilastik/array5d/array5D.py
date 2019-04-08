@@ -6,13 +6,15 @@ from .point5D import Point5D, Slice5D, Shape5D
 
 class Array5D:
     @classmethod
-    def from_flat_image(cls, arr:np.ndarray):
-        return cls(vigra.Image(arr, dtype=arr.dtype))
+    def from_flat_image(cls, arr:np.ndarray, force_dtype=None):
+        return cls(vigra.Image(arr, dtype=force_dtype or arr.dtype))
 
-    def __init__(self, arr:vigra.VigraArray):
+    def __init__(self, arr:vigra.VigraArray, force_dtype=None):
         missing_infos = [getattr(AxisInfo, tag) for tag in Point5D.LABELS if tag not in  arr.axistags]
         slices = tuple([vigra.newaxis(info) for info in missing_infos] + [...])
         self._data = arr[slices]
+        if force_dtype is not None and force_dtype != self._data.dtype:
+            self._data = self._data.astype(force_dtype)
 
     def __repr__(self):
         return f"<{self.__class__.__name__} {self.tagged_shape}>"
@@ -65,11 +67,19 @@ class Array5D:
         for timepoint in self._data.timeIter():
             yield self.__class__(timepoint)
 
+    def channelIter(self):
+        for channel in self._data.channelIter():
+            yield self.__class__(channel)
+
     def sliceIter(self, key='z'):
         for slc in self._data.sliceIter(key):
             yield self.__class__(slc)
 
-    def as_xyc(self) -> np.ndarray:
+    def raw_xy(self) -> np.ndarray:
+        assert self.shape_5d.t == 1 and self.shape_5d.z == 1 and self.shape_5d.c == 1
+        return self._data.squeeze()
+
+    def raw_xyc(self) -> np.ndarray:
         assert self.shape_5d.t == 1 and self.shape_5d.z == 1
         return self._data.squeeze()
 
@@ -81,11 +91,11 @@ class Array5D:
     def open_image(cls, path):
         from PIL import Image
         image_data = np.asarray(Image.open(path))
-        return cls.from_flat_image(image_data)
+        return cls.from_flat_image(image_data, force_dtype=np.float32)
 
     def as_images(self):
         from PIL import Image
-        return [Image.fromarray(tp.as_xyc()) for tp in self.timeIter()]
+        return [Image.fromarray(tp.raw_xyc().astype(np.uint8)) for tp in self.timeIter()]
 
 class ImageXYC:
     def __init__(self, arr:np.array):
