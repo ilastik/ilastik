@@ -23,8 +23,10 @@ from builtins import object
 import os
 import fnmatch
 import errno
+import pathlib
 
 import h5py
+import z5py
 
 
 class PathComponents(object):
@@ -35,6 +37,7 @@ class PathComponents(object):
 
     # Only files with these extensions are allowed to have an 'internal' path
     HDF5_EXTS = ['.ilp', '.h5', '.hdf5']
+    N5_EXTS = ['.n5']
     NPZ_EXTS = ['.npz']
 
     def __init__(self, totalPath, cwd=None):
@@ -70,8 +73,8 @@ class PathComponents(object):
         # convention for Windows: use "/"
         totalPath = totalPath.replace("\\","/")
 
-        # For hdf5 paths, split into external, extension, and internal paths
-        for x in (self.HDF5_EXTS + self.NPZ_EXTS):
+        # For hdf5/n5 paths, split into external, extension, and internal paths
+        for x in (self.HDF5_EXTS + self.NPZ_EXTS + self.N5_EXTS):
             if totalPath.find(x) > extIndex:
                 extIndex = totalPath.find(x)
                 ext = x
@@ -327,11 +330,11 @@ def mkdir_p(path):
             raise
 
 
-def lsHdf5(hdf5FileObject, minShape=2, maxShape=5):
-    """Generates dataset list of given h5py file object
+def lsH5N5(h5N5FileObject, minShape=2, maxShape=5):
+    """Generates dataset list of given h5py or z5py file object
 
     Args:
-        hdf5FileObject (h5py.FIle): Opened hdf5 file
+        h5N5FileObject (h5py.FIle): Opened hdf5 file
         minShape (int, optional): minimum shape of data
 
     Returns:
@@ -340,37 +343,47 @@ def lsHdf5(hdf5FileObject, minShape=2, maxShape=5):
     listOfDatasets = []
 
     def addObjectNames(objectName, obj):
-        if isinstance(obj, h5py.Dataset):
-            if (len(obj.shape) >= minShape) and (len(obj.shape) <= maxShape):
-                listOfDatasets.append({
-                    'name': objectName,
-                    'object': obj
-                })
+        if not isinstance(obj, (h5py._hl.dataset.Dataset, z5py.dataset.Dataset)):
+            return
+        if len(obj.shape) not in range(minShape, maxShape + 1):
+            return
+        if isinstance(h5N5FileObject, z5py.N5File):
+            # make sure we get a path with forward slashes on windows
+            objectName = pathlib.Path(objectName)
+            objectName = objectName.relative_to(h5N5FileObject.path).as_posix()  # Need only the internal path here
+        listOfDatasets.append({
+            'name': objectName,
+            'object': obj
+        })
 
-    hdf5FileObject.visititems(addObjectNames)
+    h5N5FileObject.visititems(addObjectNames)
 
     return listOfDatasets
 
-
-def globHdf5(hdf5FileObject, globString):
-    """globs a hdf5 file like a file system for datasets
+def globH5N5(fileObject, globString):
+    """
+    globs a hdf5/n5 file like a file system for datasets
 
     Note: does not glob Attributes, only data sets.
 
-    Recurses through the hdf5 tree using .visititems and matches the provided
+    Recurses through the hdf5/n5 tree using .visititems and matches the provided
     globstring to the respective object names using the fnmatch standard module.
 
 
     Args:
-        hdf5FileObject: h5py.File object
+        fileObject: h5py.File/z5py.N5File object
         globString: String describing the internal path of the dataset(s) with
             glob-like placeholders
 
     Returns
-        A sorted list of matched object names. This list is empty if no
-        matches occurred.
+        - A sorted list of matched object names. This list is empty if no
+          matches occurred.
+        - None if fileObject is not a h5 or n5 file object
     """
-    pathlist = [x['name'] for x in lsHdf5(hdf5FileObject)]
+    if isinstance(fileObject, (h5py.File, z5py.N5File)):
+        pathlist = [x['name'] for x in lsH5N5(fileObject)]
+    else:
+        return None
     matches = globList(pathlist, globString)
     return sorted(matches)
 

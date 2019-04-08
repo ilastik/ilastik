@@ -23,7 +23,7 @@ from builtins import object
 import os
 import h5py
 from lazyflow.utility.pathHelpers import (
-    compressPathForDisplay, getPathVariants, PathComponents, globHdf5
+    compressPathForDisplay, getPathVariants, PathComponents, globH5N5
 )
 
 SIMULATE_WINDOWS = False
@@ -124,7 +124,7 @@ class TestPathHelpers(object):
                          for index in range(5)
                          ]
 
-        globbedPaths = globHdf5(hdf5File, globString)
+        globbedPaths = globH5N5(hdf5File, globString)
         assert all([a == b
                     for a, b in zip(globbedPaths, expectedPaths)])
 
