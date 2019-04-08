@@ -3,43 +3,42 @@ clone_folder: c:\projects\ilastik
 environment:
   ENV_NAME: test-env
   # set miniconda version explicitly
-  MINICONDA: C:\Miniconda36-x64
+  MINICONDA: C:\Miniconda37-x64
 
 
 install:
-  - set DEV_PREFIX=%MINICONDA%/envs/%ENV_NAME%
-  - "set PATH=%MINICONDA%;%MINICONDA%\\Scripts;%PATH%"
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  - conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge python=3.6 numpy=1.12 ilastik-dependencies-no-solvers
-  - activate %ENV_NAME%
-  - cd \
-  # Get the current master of all submodules
-  - git clone https://github.com/ilastik/ilastik-meta c:\ilastik\ilastik-meta
-  - cd ilastik\ilastik-meta
-  - git submodule update --init --recursive
-  - git submodule foreach "git checkout master"
+  - cmd: set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
+  - cmd: where conda
+  - cmd: conda config --set always_yes yes --set changeps1 no
+  - cmd: conda update -q conda
+  - cmd: conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers
   # Remove the conda ilastik-meta
-  - conda remove ilastik-meta
+  # --force in order not to remove/update anything else
+  - cmd: conda remove -n %ENV_NAME% --force ilastik-meta
+  - cmd: CALL activate %ENV_NAME%
+  - cmd: cd \
+  # Get the current master of all submodules
+  - cmd: git clone https://github.com/ilastik/ilastik-meta c:\ilastik\ilastik-meta
+  - cmd: cd ilastik\ilastik-meta
+  - cmd: git submodule update --init --recursive
+  - cmd: git submodule foreach "git checkout master"
   - ps: rm -Force -Recurse c:\ilastik\ilastik-meta\ilastik\
   # replace with whatever version of ilastik triggered the appveyor
   - ps: cp -recurse C:\projects\ilastik c:\ilastik\ilastik-meta\ilastik
   # Point to the current ilastik-meta
-  - set ILASTIK_PTH=%MINICONDA%/envs/%ENV_NAME%/Lib/site-packages/ilastik-meta.pth
-  - echo C:/ilastik/ilastik-meta/lazyflow > %ILASTIK_PTH%
-  - echo C:/ilastik/ilastik-meta/volumina >> %ILASTIK_PTH%
-  - echo C:/ilastik/ilastik-meta/ilastik >> %ILASTIK_PTH%
+  - cmd: set ILASTIK_PTH=%MINICONDA%/envs/%ENV_NAME%/Lib/site-packages/ilastik-meta.pth
+  - cmd: echo C:/ilastik/ilastik-meta/lazyflow > %ILASTIK_PTH%
+  - cmd: echo C:/ilastik/ilastik-meta/volumina >> %ILASTIK_PTH%
+  - cmd: echo C:/ilastik/ilastik-meta/ilastik >> %ILASTIK_PTH%
 
 build: off
 
 test_script:
-  - set DEV_PREFIX=%MINICONDA%/envs/%ENV_NAME%
-  - activate %ENV_NAME%
-  - cd \
-  - cd ilastik\ilastik-meta\ilastik\tests
-  - set Path="C:\Program Files\Git\usr\bin";%Path%
-  - set CONTINUE_ON_FAILURE=1
-  - pytest --run-legacy-gui
+  - cmd: set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
+  - cmd: CALL activate %ENV_NAME%
+  - cmd: cd \
+  - cmd: cd ilastik\ilastik-meta\ilastik\tests
+  - cmd: pytest --run-legacy-gui
 
 # on_finish:
 #  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

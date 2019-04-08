@@ -58,7 +58,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
 
         # first loop over all nodes to find present features
         presentTrackIds = set([])
-        for node in graph.nodes_iter():
+        for node in graph.nodes():
             frame, label = node
             # print(f"Node {node} has value={graph.node[node]['value']} and trackId={graph.node[node]['trackId']}")
             if graph.node[node]['value'] > 0:
@@ -85,8 +85,8 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
                 break
 
         # insert edges
-        for edge in graph.edges_iter():
-            if graph.edge[edge[0]][edge[1]]['value'] > 0:
+        for edge in graph.edges():
+            if graph.edges[edge]['value'] > 0:
                 builder.addLink(graph.node[edge[0]]['trackId'], graph.node[edge[0]]['id'], graph.node[edge[1]]['id'])
                 presentTrackIds.add(int(graph.node[edge[0]]['trackId']))
 
@@ -97,7 +97,7 @@ class TrackingMamutExportFormatPlugin(TrackingExportFormatPlugin):
             builder.setTrackFeatures(trackId, {'Track_color': randomColorPerTrack[trackId]})
 
         # second pass over the nodes passes features and tracks to the builder
-        for node in graph.nodes_iter():
+        for node in graph.nodes():
             frame, label = node
             if graph.node[node]['value'] > 0:
                 t = graph.node[node]['traxel']
