@@ -13,7 +13,8 @@ install:
   - cmd: conda update -q conda
   - cmd: conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers
   # Remove the conda ilastik-meta
-  - cmd: conda remove -n %ENV_NAME% ilastik-meta
+  # --force in order not to remove/update anything else
+  - cmd: conda remove -n %ENV_NAME% --force ilastik-meta
   - cmd: CALL activate %ENV_NAME%
   - cmd: cd \
   # Get the current master of all submodules
@@ -37,7 +38,6 @@ test_script:
   - cmd: CALL activate %ENV_NAME%
   - cmd: cd \
   - cmd: cd ilastik\ilastik-meta\ilastik\tests
-  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
   - cmd: pytest --run-legacy-gui
 
 # on_finish:
