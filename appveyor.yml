@@ -3,13 +3,13 @@ clone_folder: c:\projects\lazyflow
 environment:
   ENV_NAME: test-env
   # set miniconda version explicitly
-  MINICONDA: C:\Miniconda36-x64
+  MINICONDA: C:\Miniconda37-x64
 
 install:
-  - CALL %MINICONDA%/Scripts/activate.bat
+  - set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  - conda create -q --yes -n %ENV_NAME% -c ilastik-forge/label/nightly -c conda-forge ilastik-dependencies-no-solvers z5py
+  - conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers
   - activate %ENV_NAME%
   - cd \
   # Get the current master of all submodules
@@ -33,7 +33,7 @@ install:
 build: off
 
 test_script:
-  - CALL %MINICONDA%/Scripts/activate.bat
+  - set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - activate %ENV_NAME%
   - cd \
   - cd ilastik\ilastik-meta\lazyflow
