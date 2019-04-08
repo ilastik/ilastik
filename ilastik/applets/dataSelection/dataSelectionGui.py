@@ -417,25 +417,19 @@ class DataSelectionGui(QWidget):
 
         fileNames = []
         
+        file_dialog = QFileDialog(
+            parent_window, caption="Select Images", directory=defaultDirectory, filter=filt_all_str)
         if ilastik_config.getboolean("ilastik", "debug"):
             # use Qt dialog in debug mode (more portable?)
-            file_dialog = QFileDialog(parent_window, "Select Images")
             file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-            # do not display file types associated with a filter
-            # the line for "Image files" is too long otherwise
-            file_dialog.setNameFilters([filt_all_str] + filters)
             #file_dialog.setNameFilterDetailsVisible(False)
             # select multiple files
             file_dialog.setFileMode(QFileDialog.ExistingFiles)
-            file_dialog.setDirectory( defaultDirectory )
 
-            if file_dialog.exec_():
-                fileNames = file_dialog.selectedFiles()
-        else:
-            # otherwise, use native dialog of the present platform
-            fileNames, _filter = QFileDialog.getOpenFileNames(parent_window, "Select Images", defaultDirectory, filt_all_str)
-        fileNames = DataSelectionGui.cleanFileList(fileNames)
-        return fileNames
+        if not file_dialog.exec_():
+            return []
+        return cls.cleanFileList(file_dialog.selectedFiles())
+
 
     @staticmethod
     def cleanFileList(fileList: typing.List[str]) -> typing.List[str]:
@@ -446,7 +440,7 @@ class DataSelectionGui(QWidget):
             # On some OS's the open file dialog allows to return file names that do not exist
             assert fileName.exists(), \
                 f"The file '{fileName}' does not exist."
-            if fileName.name.lower() == 'attributes.json' and '.n5' in fileName.as_posix():
+            if fileName.name.lower() == 'attributes.json' and fileName.parent.suffix == ".n5":
                 fileNames[i] = fileName.parent
         fileNames = [fileName.as_posix() for fileName in fileNames]
         return fileNames
