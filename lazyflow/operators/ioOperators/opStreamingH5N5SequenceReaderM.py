@@ -181,7 +181,7 @@ class OpStreamingH5N5SequenceReaderM(Operator):
                     dtype = h5N5File[internal_path].dtype
                     shape = h5N5File[internal_path].shape
                 else:
-                    if dtype is not h5N5File[internal_path].dtype:
+                    if dtype != h5N5File[internal_path].dtype:
                         raise OpStreamingH5N5SequenceReaderM.InconsistentDType(external_path, internal_path)
                     if shape != h5N5File[internal_path].shape:
                         raise OpStreamingH5N5SequenceReaderM.InconsistentShape(external_path, internal_path)
