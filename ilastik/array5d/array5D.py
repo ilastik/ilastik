@@ -1,14 +1,11 @@
 import numpy as np
+from PIL import Image as PilImage
 import vigra
 from vigra import VigraArray, AxisInfo, AxisTags
 
 from .point5D import Point5D, Slice5D, Shape5D
 
 class Array5D:
-    @classmethod
-    def from_flat_image(cls, arr:np.ndarray, force_dtype=None):
-        return cls(vigra.Image(arr, dtype=force_dtype or arr.dtype))
-
     def __init__(self, arr:vigra.VigraArray, force_dtype=None):
         missing_infos = [getattr(AxisInfo, tag) for tag in Point5D.LABELS if tag not in  arr.axistags]
         slices = tuple([vigra.newaxis(info) for info in missing_infos] + [...])
@@ -17,7 +14,7 @@ class Array5D:
             self._data = self._data.astype(force_dtype)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} {self.tagged_shape}>"
+        return f"<{self.__class__.__name__} {self.shape_5d}>"
 
     @classmethod
     def allocate(cls, shape:Shape5D, dtype, axistags:str=Point5D.LABELS):
@@ -36,6 +33,30 @@ class Array5D:
         return self._data.axistags
 
     @property
+    def squeezed_axistags(self):
+        return self._data.squeeze().axistags
+
+    @property
+    def spatial_tags(self):
+        return [tag for tag in self.squeezed_axistags if tag.isSpatial()]
+
+    @property
+    def is_video(self):
+        return 't' in self.squeezed_axistags
+
+    @property
+    def is_volume(self):
+        return len(self.spatial_tags) >= 3
+
+    @property
+    def is_flat(self):
+        return len(self.spatial_tags) <= 2
+
+    @property
+    def is_scalar(self):
+        return 'c' not in self.squeezed_axistags
+
+    @property
     def axiskeys(self):
         return [tag.key for tag in self.axistags]
 
@@ -44,63 +65,98 @@ class Array5D:
         return self._data.shape
 
     @property
-    def tagged_shape(self):
-        return {key:value for key, value in zip(self.axiskeys, self.shape)}
-
-    @property
     def shape_5d(self):
-        return Shape5D(**self.tagged_shape)
-
-    def _create_slicing(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
-        slice_dict = {'t':t, 'x':x, 'y':y, 'z':z, 'c':c}
-
-        ordered_slices = []
-        for key in self.axiskeys:
-            slc = slice_dict[key]
-            if isinstance(slc, int):
-                slc = slice(slc, slc+1)
-            ordered_slices.append(slc)
-
-        return tuple(ordered_slices)
+        return Shape5D(**{key:value for key, value in zip(self.axiskeys, self.shape)})
 
     def timeIter(self):
         for timepoint in self._data.timeIter():
-            yield self.__class__(timepoint)
+            yield Array5D(timepoint)
+
+    def sliceIter(self, key='z'):
+        for slc in self._data.sliceIter(key):
+            yield Array5D(slc)
 
     def channelIter(self):
         for channel in self._data.channelIter():
             yield self.__class__(channel)
 
-    def sliceIter(self, key='z'):
-        for slc in self._data.sliceIter(key):
-            yield self.__class__(slc)
+    def imageIter(self, through_axis='z'):
+        for volume in self.timeIter():
+            for z_slice in volume.sliceIter(through_axis):
+                yield Image(z_slice._data)
 
-    def raw_xy(self) -> np.ndarray:
-        assert self.shape_5d.t == 1 and self.shape_5d.z == 1 and self.shape_5d.c == 1
-        return self._data.squeeze()
-
-    def raw_xyc(self) -> np.ndarray:
-        assert self.shape_5d.t == 1 and self.shape_5d.z == 1
-        return self._data.squeeze()
+    def raw(self):
+        return self._data
 
     def cut(self, roi:Slice5D):
         slices = roi.to_slices(self.axiskeys)
         return self.__class__(self._data[slices])
 
+    def as_pil_images(self):
+        return [img.as_pil_image() for img in self.imageIter()]
+
+class Video3D(Array5D):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert self.is_video
+        assert self.is_volume
+
+    def timeIter(self):
+        for tp in self._data.timeIter():
+            yield Volume(self._data)
+
+class Volume(Array5D):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert not self.is_video
+        assert self.is_volume
+
+    def sliceIter(self, key='z'):
+        for slc in super().sliceIter(key):
+            yield Image(slc._data)
+
+    def channelIter(self):
+        for channel in super().channelIter():
+            yield ScalarVolume(channel._data)
+
+class ScalarVolume(Volume):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert self.is_scalar
+
+    def sliceIter(self, key='z'):
+        for slc in super().sliceIter(key):
+            yield ScalarImage(slc._data)
+
+class Video2D(Array5D):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert self.is_video
+        assert self.is_flat
+
+    def timeIter(self):
+        for frame in super().timeIter():
+            yield Image(frame._data)
+
+class Image(Array5D):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert self.is_flat
+        assert not self.is_video
+
     @classmethod
-    def open_image(cls, path):
-        from PIL import Image
-        image_data = np.asarray(Image.open(path))
-        return cls.from_flat_image(image_data, force_dtype=np.float32)
+    def open_image(cls, path:str):
+        image_data = np.asarray(PilImage.open(path))
+        return cls(vigra.Image(image_data), force_dtype=np.float32)
 
-    def as_images(self):
-        from PIL import Image
-        return [Image.fromarray(tp.raw_xyc().astype(np.uint8)) for tp in self.timeIter()]
+    def channelIter(self):
+        for channel in self._data.channelIter():
+            yield ScalarImage(channel)
 
-class ImageXYC:
-    def __init__(self, arr:np.array):
-        assert(2 <= len(arr.shape) <= 3)
-        self._data = vigra.Image(arr, dtype=arr.dtype)
+    def as_pil_image(self):
+        return PilImage.fromarray(self._data.astype(np.uint8).squeeze())
 
-    
-
+class ScalarImage(Image):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert self.is_scalar

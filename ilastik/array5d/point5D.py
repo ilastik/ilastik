@@ -104,9 +104,13 @@ class Point5D(object):
     def c(self):
         return self._coords['c']
 
-    def with_axis_as(self, label, value):
+    def with_coord(self, *, t=None, c=None, x=None, y=None, z=None):
         params = self.to_dict()
-        params[label] = value
+        params['t'] = t if t is not None else params['t']
+        params['c'] = c if c is not None else params['c']
+        params['x'] = x if x is not None else params['x']
+        params['y'] = y if y is not None else params['y']
+        params['z'] = z if z is not None else params['z']
         return self.__class__(**params)
 
     def __np_op(self, other, op):
