@@ -104,8 +104,8 @@ class OpPixelFeaturesPresmoothed(Operator):
         """
         Check each of the scales the user selected against the shape of the input dataset (in space only).
         Return a list of the selected scales that are too large for the input dataset.
-        
-        .. note:: This function is NOT called automatically.  Clients are expected to call it after 
+
+        .. note:: This function is NOT called automatically.  Clients are expected to call it after
                   configuring the operator, before they attempt to execute() the operator.
                   If this function returns a non-empty list of scales, then calling execute()
                   would generate errors.

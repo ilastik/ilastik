@@ -156,7 +156,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         """
         Scan through all labeled pixels.
         (1) Reassign all pixels of the given value (set to replacement_value)
-        (2) If decrement_remaining=True, decrement all labels above that 
+        (2) If decrement_remaining=True, decrement all labels above that
             value so the set of stored labels remains consecutive.
             Note that the decrement is performed AFTER replacement.
         """
@@ -400,7 +400,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         """
         Since this is a label array, inserting pixels has a special meaning:
         We only overwrite the new non-zero pixels. In the new data, zeros mean "don't change".
-        
+
         So, here's what each pixel we're adding means:
         0: don't change
         1: change to 1
@@ -466,7 +466,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         """
         Read the data from the given slot and copy it into this cache.
         The rules about special pixel meanings apply here, just like setInSlot
-        
+
         Returns: the max label found in the slot.
         """
         assert self._blockshape is not None

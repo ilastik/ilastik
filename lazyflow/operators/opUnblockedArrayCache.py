@@ -40,11 +40,11 @@ logger = logging.getLogger(__name__)
 
 class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
     """
-    This cache operator stores the results of all requests that pass through 
+    This cache operator stores the results of all requests that pass through
     it, in exactly the same blocks that were requested.
 
-    - If there are any overlapping requests, then the data for the overlapping portion will 
-        be stored multiple times, except for the special case where the new request happens 
+    - If there are any overlapping requests, then the data for the overlapping portion will
+        be stored multiple times, except for the special case where the new request happens
         to fall ENTIRELY within an existing block of data.
     - If any portion of a stored block is marked dirty, the entire block is discarded.
 

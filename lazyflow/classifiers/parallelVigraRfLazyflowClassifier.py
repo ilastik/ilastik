@@ -72,17 +72,17 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
     ):
         """
         num_trees_total: The number of trees to train
-        
+
         num_forests: How many forests in which to distribute the trees (forests can train and predict in parallel)
-                     If not provided, the number of forests is automatically determined 
+                     If not provided, the number of forests is automatically determined
                      to match the number of available lazyflow worker threads.
-        
+
         variable_importance_enabled: If True, RFs are trained with feature-importance calculation enabled,
                                      and the importances are logged to the console. (Slower.)
-        
+
         variable_importance_path: If provided, the feature importance table will also be writen to a file.
-                                  (May only be used with variable_importance_enabled=True) 
-        
+                                  (May only be used with variable_importance_enabled=True)
+
         kwargs: Additional keyword args, passed directly to the vigra.RandomForest constructor.
         """
         assert (
@@ -194,7 +194,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         """
         Train all RFs (in parallel) and compute feature importances while doing so.
         The importances table will be logged as INFO, and also exported to a file if export_path is given.
-        
+
         Returns: oobs and importances
         """
         oobs = [None] * len(forests)
@@ -256,9 +256,9 @@ assert issubclass(ParallelVigraRfLazyflowClassifierFactory, LazyflowVectorwiseCl
 
 def generate_importance_table(named_importances_dict, sort=None, export_path=None):
     """
-    Return a string of the given importances dict, in csv format, 
+    Return a string of the given importances dict, in csv format,
     but also with extra spaces for pretty-printing.
-    
+
     named_importances_dict: A dict of { feature_name : importance }, i.e. {str : float}
     sort: Must be a class index (1..N) or one of "name", "gini", or "overall"
     export_path: If provided, the table will also be (over)written to the given file path.

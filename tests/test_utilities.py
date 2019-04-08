@@ -12,16 +12,16 @@ class TimeoutError(Exception):
 
 def fail_after_timeout(seconds):
     """
-    Returns a decorator that causes the wrapped function to asynchronously 
+    Returns a decorator that causes the wrapped function to asynchronously
     fail with a TimeoutError exception if the function takes too long to execute.
-    
-    TODO: Right now, timeout must be an int.  If we used signal.setitimer() instead 
+
+    TODO: Right now, timeout must be an int.  If we used signal.setitimer() instead
           of signal.alarm, we could probably support float, but I don't care right now.
-    
-    CAVEATS: Apparently signal.alarm() can only interrupt Python bytecode, so it can't 
+
+    CAVEATS: Apparently signal.alarm() can only interrupt Python bytecode, so it can't
              be used to detect timeouts during C-functions, such as threading.Lock.acquire(), for example.
              Also, the function you're wrapping must only be called from the main thread.
-    
+
     EXAMPLE: See example usage at the bottom of this file.
     """
     assert isinstance(seconds, int), "signal.alarm() requires an int"

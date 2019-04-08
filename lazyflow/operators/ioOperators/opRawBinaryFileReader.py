@@ -35,11 +35,11 @@ class OpRawBinaryFileReader(Operator):
     Since there is no metadata in the file, we must infer the volume's shape and
     dtype from the filename. By convention, we expect the volume dimensions to be
     separated by '-'  characters, and the dtype name must be present in the filename.
-    
+
     For example:
         /path/to/myvolume-100-200-300-3-uint8.bin
-    
-    For now, the axis order is merely guessed. 
+
+    For now, the axis order is merely guessed.
     """
 
     name = "OpRawBinaryFileReader"

@@ -2,7 +2,7 @@
 (This script is not generally useful for most ilastik users or developers.)
 
 Input: hdf5 volume
-Output: directory of .png tiles representing the volume.  
+Output: directory of .png tiles representing the volume.
 """
 if __name__ == "__main__":
     import sys

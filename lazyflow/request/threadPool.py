@@ -49,7 +49,7 @@ class ThreadPool(object):
     def __init__(self, num_workers, queue_type=_DefaultQueueType):
         """
         Constructor.  Starts all workers.
-        
+
         :param num_workers: The number of worker threads to create.
         :param queue_type: The type of queue to use for prioritizing tasks.  Possible queue types include :py:class:`PriorityQueue`,
                            :py:class:`FifoQueue`, and :py:class:`LifoQueue`, or any class with ``push()``, ``pop()``, and ``__len__()`` methods.

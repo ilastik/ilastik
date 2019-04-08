@@ -70,8 +70,8 @@ class OpUnmanagedCompressedCache(Operator):
 
     Note: This class is not managed by the memory manager, so there can be non-managed subclasses.
           The "managed" version is OpCompressedCache, defined below.
-    
-    Note: 
+
+    Note:
       * It is not safe to call execute() and change the blockshape
         simultaneously.
       * it is not safe to reuse this cache #FIXME
@@ -211,7 +211,7 @@ class OpUnmanagedCompressedCache(Operator):
 
     def _executeCleanBlocks(self, destination):
         """
-        Execute function for the CleanBlocks output slot, which produces 
+        Execute function for the CleanBlocks output slot, which produces
         an *unsorted* list of block rois that the cache currently holds.
         """
         # Set difference: clean = existing - dirty
@@ -483,7 +483,7 @@ class OpUnmanagedCompressedCache(Operator):
     def _setInSlotInput(self, slot, subindex, roi, value, store_zero_blocks=True):
         """
         Write the data in the array 'value' into the cache.
-        If the optional store_zero_blocks param is False, then don't bother 
+        If the optional store_zero_blocks param is False, then don't bother
         creating cache blocks for blocks that are totally zero.
         """
         assert len(roi.stop) == len(

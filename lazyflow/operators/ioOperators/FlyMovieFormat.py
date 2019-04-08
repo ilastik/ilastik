@@ -362,12 +362,12 @@ class FlyMovieSaver(object):
           --------------
           compressor -- None or 'lzo' (only used if version == 2)
           comp_level -- compression level (only used if compressed)
-          
+
           For version 3:
           --------------
           format     -- string representing format (e.g. 'MONO8' or 'YUV422')
           bits_per_pixel -- number of bytes per pixel (MONO8 = 8, YUV422 = 16)
-          
+
 
         """
 

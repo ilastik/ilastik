@@ -27,7 +27,7 @@ def roi_to_slice(start, stop):
 class VigraRfPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """
     An implementation of LazyflowPixelwiseClassifierFactoryABC using a vigra RandomForest.
-    This exists for testing purposes only. (it is normally better to use the vector-wise 
+    This exists for testing purposes only. (it is normally better to use the vector-wise
     classifier so lazyflow can cache the feature matrices).
     This implementation is simple and un-optimized.
     """
@@ -99,13 +99,13 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
         """
         For each pixel in the given feature_image, predict the probabilities that the
         pixel belongs to each label class the classifier was trained with.
-        
+
         X: An ND image.  Last axis must be channel.
         roi: The region of interest (start, stop) within feature_image to predict (e.g. without the halo region)
              Note: roi parameter should not include channel.
                    For example, a valid roi for a zyxc image could be ((0,0,0), (10,20,30))
         axistags: Optional.  A vigra.AxisTags object describing the feature_image.
-        
+
         Returns: A multi-channel image (each channel corresponds to a different label class).
                  The result image size is determined by the roi parameter.
         """

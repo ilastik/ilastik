@@ -33,7 +33,7 @@ def chooseChunkShape(outerShape, desiredChunkSize):
     Note that you will most likely have to handle channel and time dimension
     differently (i.e. set them to 1 or max).
     Each dimension will be at least 1 and at most the outer shape.
-    
+
     @param outerShape the shape of the volume as tuple of ints
     @param desiredChunkSize the chunk size in pixels (not bytes!)
     @return the 'optimal' chunk shape as tuple of ints

@@ -48,21 +48,21 @@ logger = logging.getLogger(__name__)
 
 class OpDvidRoi(Operator):
     """
-    DVID supports a special type of dataset called 'ROI', which represents a mask 
-    of blocks that contain a particular object of interest.  ROIs are only 
-    defined with block-level resolution. (In DVID, voxels are stored natively in 
-    blocks of size 32,32,32.)  Therefore, the resolution of a ROI is 32x lower 
+    DVID supports a special type of dataset called 'ROI', which represents a mask
+    of blocks that contain a particular object of interest.  ROIs are only
+    defined with block-level resolution. (In DVID, voxels are stored natively in
+    blocks of size 32,32,32.)  Therefore, the resolution of a ROI is 32x lower
     than the grayscale dataset it accompanies.
-    
+
     This operator fetches the entire contents of a given ROI and stores it as an in-memory hdf5 file.
     The output slot exposes a voxel-level interface for requesting ROI mask pixels.
     The stored ROI mask is upsampled by 32x in each dimension to provide the requested mask.
-    
+
     A note on terminology:
-    Throughout lazyflow, we use the term 'roi' for something different: for 
-    representing rectangular regions of ND images, specifically as start/stop 
-    coordinate pairs.  We continue to use that convention in this file, with the 
-    exception of the words 'OpDvidRoi' and 'DVIDNodeService.get_roi()', which 
+    Throughout lazyflow, we use the term 'roi' for something different: for
+    representing rectangular regions of ND images, specifically as start/stop
+    coordinate pairs.  We continue to use that convention in this file, with the
+    exception of the words 'OpDvidRoi' and 'DVIDNodeService.get_roi()', which
     refer to the DVID concept.
     """
 

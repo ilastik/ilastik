@@ -7,20 +7,20 @@ import vigra
 
 def hessian_eigenvectors(a, sigma, sort=True):
     """
-    For the given grayscale image, return the eigenvalues and eigenvectors 
+    For the given grayscale image, return the eigenvalues and eigenvectors
     of its scaled hessian matrix image.
-    
-    The input image must not have a channel dimension.  That is, it must 
+
+    The input image must not have a channel dimension.  That is, it must
     only contain spatial dimensions, no singleton channel dimension.
 
     NOTE: This function relies on the broadcasting behavior in the numpy.linalg module.
           Older versions of numpy do not provide that behavior.
-    
+
     Args:
         a: The image to process.  Must not have a channel dimension.
         sigma: The scale of the hessian computation
-        sort: If True, sort the results in descending order by eigenvalue 
-              (i.e. from largest to smallest eigenvalue)     
+        sort: If True, sort the results in descending order by eigenvalue
+              (i.e. from largest to smallest eigenvalue)
     """
     assert list(map(int, numpy.__version__.split("."))) >= [
         1,
@@ -82,13 +82,13 @@ def convert_symmetric_tensor_vector_to_full_tensor_matrix(tensor_vector_image, t
     """
     The Vigra API often uses vectors for tensor images (such as a Hessian image)
     instead of the full tensor matrix image.  See vigra docs for details.
-    
+
     For example, a symmetric 2x2 tensor [[t00, t01], [t10, t11] in vigra is stored as a 3-element vector:
     [t00, t01, t11] (since t01 == t10 due to symmetry)
-    
+
     This function converts such a vector image into a full tensor image.
     For example, an image with shape (100,100,3) would be converted to a new image (100,100,2,2).
-    
+
     If upper_only is True, then the lower triangular elements will be left UNINITIALIZED.
     """
     image_shape = tensor_vector_image.shape[:-1]  # Shape WITHOUT tensor dimensions

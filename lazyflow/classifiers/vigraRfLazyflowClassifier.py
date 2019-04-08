@@ -64,7 +64,7 @@ class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
     @classmethod
     def generate_importance_table(cls, named_importances_dict, sort=True):
         """
-        Return a string of the given importances dict, in csv format, 
+        Return a string of the given importances dict, in csv format,
         but also with extra spaces for pretty-printing.
         """
         import csv

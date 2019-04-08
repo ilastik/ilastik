@@ -35,14 +35,14 @@ import numpy  # We import numpy here so that eval() understands names like "nump
 class Namespace(object):
     """
     Provides the same functionality as:
-    
+
     .. code-block:: python
-    
+
         class Namespace(object):
             pass
 
     except that ``self.__dict__`` is replaced with an instance of collections.OrderedDict
-        
+
     """
 
     def __init__(self):
@@ -200,26 +200,26 @@ class JsonConfigParser(object):
     Parser for json config files that match a specific schema.
     Currently, only a very small set of json is supported.
     The schema fields must be a dictionary of name : type (or pseudo-type) pairs.
-    
+
     A schema dict is also allowed as a pseudo-type value, which permits nested schemas.
-    
+
     >>> # Specify schema as a dict
     >>> SchemaFields = {
     ...
     ...   "_schema_name" : "example-schema",
     ...   "_schema_version" : 1.0,
-    ... 
+    ...
     ...   "shoe size" : int,
     ...   "color" : str
     ... }
-    >>> 
+    >>>
     >>> # Write a config file to disk for this example.
     >>> example_file_str = \\
     ... \"""
     ... {
     ...   "_schema_name" : "example-schema",
     ...   "_schema_version" : 1.0,
-    ... 
+    ...
     ...   "shoe size" : 12,
     ...   "color" : "red",
     ...   "ignored_field" : "Fields that are unrecognized by the schema are ignored."
@@ -227,10 +227,10 @@ class JsonConfigParser(object):
     ... \"""
     >>> with open('/tmp/example_config.json', 'w') as f:
     ...   f.write(example_file_str)
-    >>> 
+    >>>
     >>> # Create a parser that understands your schema
     >>> parser = JsonConfigParser( SchemaFields )
-    >>> 
+    >>>
     >>> # Parse the config file
     >>> parsedFields = parser.parseConfigFile('/tmp/example_config.json')
     >>> print parsedFields.color
@@ -288,7 +288,7 @@ class JsonConfigParser(object):
 
     def writeConfigFile(self, configFilePath, configNamespace):
         """
-        Simply write the given object to a json file as a dict, 
+        Simply write the given object to a json file as a dict,
         but check it for errors first by parsing each field with the schema.
         """
         # Check for errors by parsing the fields
@@ -379,7 +379,7 @@ class JsonConfigParser(object):
     def _createOrderedDictWithoutRepeats(self, pairList):
         """
         Used as the ``object_pairs_hook`` when parsing a json file.
-        Creates an instance of collections.OrderedDict, but raises an exception 
+        Creates an instance of collections.OrderedDict, but raises an exception
         if there are any repeated keys in the list of pairs.
         We only care about keys that are actually part of the schema.
         Note: There are some cases where this would do the wrong thing for NESTED schemas, but they are quite pathological.

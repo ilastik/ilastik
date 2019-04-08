@@ -111,7 +111,7 @@ class TiledVolume(object):
     def updateDescription(cls, description):
         """
         Some description fields are optional.
-        If they aren't provided in the description JSON file, then this function provides 
+        If they aren't provided in the description JSON file, then this function provides
         them with default values, based on the other description fields.
         """
         # Augment with default parameters.
@@ -220,10 +220,10 @@ class TiledVolume(object):
 
     def _get_rest_args(self, tile_blockshape, tile_roi_in):
         """
-        For a single tile, return a dict of all possible parameters that can be substituted 
+        For a single tile, return a dict of all possible parameters that can be substituted
         into the tile_url_format string from the volume json description file.
-        
-        tile_blockshape: The 3D blockshape of the tile 
+
+        tile_blockshape: The 3D blockshape of the tile
                          (since tiles are only 1 slice thick, the blockshape always begins with 1).
         tile_roi_in: The ROI within the total volume for a particular tile.
                      (Note that the size of the ROI is usually, but not always, the same as tile_blockshape.
@@ -404,7 +404,7 @@ class TiledVolume(object):
     def _create_session(cls):
         """
         Generate a requests.Session object to use for this TiledVolume.
-        Using a session allows us to benefit from a connection pool 
+        Using a session allows us to benefit from a connection pool
           instead of establishing a new connection for every request.
         """
         # Late import

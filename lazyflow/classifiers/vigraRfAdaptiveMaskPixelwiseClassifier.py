@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class VigraRfAdaptiveMaskPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """
     An implementation of LazyflowPixelwiseClassifierFactoryABC using a vigra RandomForest with adaptive masking.
-    This exists for testing purposes only. (it is normally better to use the vector-wise 
+    This exists for testing purposes only. (it is normally better to use the vector-wise
     classifier so lazyflow can cache the feature matrices).
     This implementation is simple and un-optimized.
     """
@@ -84,8 +84,8 @@ assert issubclass(VigraRfAdaptiveMaskPixelwiseClassifierFactory, LazyflowPixelwi
 
 class VigraRfAdaptiveMaskPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
     """
-    This class adapt the vigra RandomForest class to the interface expected by lazyflow, and implements pixel-wise adaptive masking for prediction. 
-    
+    This class adapt the vigra RandomForest class to the interface expected by lazyflow, and implements pixel-wise adaptive masking for prediction.
+
     TODO:
     -Find an alternative to scipy binary dilation, since the running-time takes too long.
     -Enable the user to set the parameters FRAME_SPAN, DILATION_RADIUS, and BACKGROUND_LABEL in the class constructor.

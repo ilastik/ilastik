@@ -407,12 +407,12 @@ class OpSingleChannelSelector(Operator):
 class OpSubRegion(Operator):
     """
     Select a subregion from a larger input.
-    For example, could be used to select a (10,10) region from an input of (100,100), 
+    For example, could be used to select a (10,10) region from an input of (100,100),
         in which case the Input has shape (100,100) and the Output has shape (10,10)
-    
+
     This operator has been rewritten and has the following differences compared old implementation of OpSubRegion:
     - Takes a single Roi input instead of separate Start/Stop inputs.
-    - Since start/stop are provided in one slot, they are applied at the same time and can never be out-of-sync. 
+    - Since start/stop are provided in one slot, they are applied at the same time and can never be out-of-sync.
     - Always propagates dirty state.
     - Simpler implementation...
     """
@@ -518,7 +518,7 @@ class OpMultiArrayMerger(Operator):
 class OpMaxChannelIndicatorOperator(Operator):
     """
     Produces a bool image where each value is either 0 or 1, depending on whether
-    or not that channel of the input is the max value at that pixel compared 
+    or not that channel of the input is the max value at that pixel compared
     to the other channels.
     """
 
@@ -732,8 +732,8 @@ class OpTransposeSlots(Operator):
     """
     Takes an input slot indexed as [i][j] and produces an output slot indexed as [j][i]
     Note: Only works for a slot of level 2.
-    
-    This operator is designed to be usable even if the inputs are only partially 
+
+    This operator is designed to be usable even if the inputs are only partially
     configured (e.g. if not all input multi-slots have the same length).
     The length of the output multi-slot must be specified explicitly.
     """
@@ -789,12 +789,12 @@ class OpDtypeView(Operator):
     Connect an input slot of one dtype to an output with a different
      (but compatible) dtype, WITHOUT creating a copy.
     For example, convert uint32 to int32.
-    
+
     Note: This operator uses ndarray.view() and must be used with care.
-          For example, don't use it to convert a float to an int (or vice-versa), 
+          For example, don't use it to convert a float to an int (or vice-versa),
              and don't use it to convert e.g. uint8 to uint32.
           See ndarray.view() documentation for details.
-          
+
           For converting between int and float, consider OpPixelOperator,
           which will copy the data.
     """

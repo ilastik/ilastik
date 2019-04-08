@@ -34,7 +34,7 @@ Stack of common background images, beginning with this header:
 Then the background image, as an IplImage, starting with the 112 byte image header, followed by the image data
 Then nframes background removed images containing only differences from the background, in this format:
 BackgroundRemovedImage: header is a1024 byte zero padded header with the following data fields (all 4 byte ints, except id code)
-4 byte unsigned long idcode = f80921af, headersize (number of bytes in header), depth (IplImage depth), nChannels (IplImage number of channels), numims (number of 
+4 byte unsigned long idcode = f80921af, headersize (number of bytes in header), depth (IplImage depth), nChannels (IplImage number of channels), numims (number of
 image blocks that differ from background) then metadata:
 Name-Value MetaData: idcode (unsigned long) = c15ac674, int number of key-value pairs stored, then each pair
 in the format \0-terminated string of chars then 8 byte double value

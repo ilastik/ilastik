@@ -40,16 +40,16 @@ logger = logging.getLogger(__name__)
 class RESTfulVolume(object):
     """
     This class provides access to data obtained via a RESTful API (e.g. from http://openconnecto.me).
-    A description of the remote volume must be provided via a JSON file, 
+    A description of the remote volume must be provided via a JSON file,
     whose schema is specified by :py:data:`RESTfulVolume.DescriptionFields`.
-    
+
     See the unit tests in ``tests/testRESTfulVolume.py`` for example usage.
-    
-    .. note:: This class does not keep track of the data you've already downloaded.  
+
+    .. note:: This class does not keep track of the data you've already downloaded.
               Every call to :py:func:`downloadSubVolume()` results in a new download.
               For automatic blockwise local caching of remote datasets, see :py:class:`RESTfulBlockwiseFileset`.
 
-    .. note:: See the unit tests in ``tests/testRESTfulVolume.py`` for example usage.              
+    .. note:: See the unit tests in ``tests/testRESTfulVolume.py`` for example usage.
     """
 
     #: These fields describe the schema of the description file.
@@ -75,11 +75,11 @@ class RESTfulVolume(object):
     @classmethod
     def readDescription(cls, descriptionFilePath):
         """
-        Parse the description file at the given path and return a 
+        Parse the description file at the given path and return a
         :py:class:`jsonConfig.Namespace` object with the description parameters.
         The file will be parsed according to the schema given by :py:data:`RESTfulVolume.DescriptionFields`.
         Any optional parameters not provided by the user are filled in automatically.
-        
+
         :param descriptionFilePath: The path to the description file to parse.
         """
         # Read file
@@ -91,7 +91,7 @@ class RESTfulVolume(object):
     def updateDescription(cls, description):
         """
         Some description fields are optional.
-        If they aren't provided in the description JSON file, then this function provides 
+        If they aren't provided in the description JSON file, then this function provides
         them with default values, based on the other description fields.
         """
         # Augment with default parameters.
@@ -104,7 +104,7 @@ class RESTfulVolume(object):
     def writeDescription(cls, descriptionFilePath, descriptionFields):
         """
         Write a :py:class:`jsonConfig.Namespace` object to the given path.
-        
+
         :param descriptionFilePath: The path to overwrite with the description fields.
         :param descriptionFields: The fields to write.
         """
@@ -113,9 +113,9 @@ class RESTfulVolume(object):
     def __init__(self, descriptionFilePath=None, preparsedDescription=None):
         """
         Constructor.  Uses `readDescription` interally.
-        
+
         :param descriptionFilePath: The path to the .json file that describes the remote volume.
-        :param preparsedDescription: (Optional) Provide pre-parsed description fields, in which 
+        :param preparsedDescription: (Optional) Provide pre-parsed description fields, in which
                                      case the provided description file will not be parsed.
         """
         if preparsedDescription is not None:
@@ -142,7 +142,7 @@ class RESTfulVolume(object):
     def downloadSubVolume(self, roi, outputDatasetPath):
         """
         Download a cutout volume from the remote dataset.
-        
+
         :param roi: The subset of the volume to download, specified as a tuple of coordinates: ``(start, stop)``
         :param outputDatasetPath: The path to overwrite with the downloaded hdf5 file.
         """

@@ -27,14 +27,14 @@ def write_numpy_structured_array_to_HDF5(fid, internalPath, data, overwrite=Fals
         the individual keys as different array. Also, additional attributes are added to the
         group to store the shape and dtype of the NumPy structure array to allow for serialization
         out. Also, will handle normal NumPy arrays as well.
-        
+
         Note:
             HDF5 does not support generic Python objects. So, serialization of objects to something
             else (perhaps strs of fixed size) must be performed first.
-        
+
         Note:
             TODO: Write doctests.
-        
+
         Args:
             fid(HDF5 file):         either an HDF5 file or an HDF5 filename.
             internalPath(str):      an internal path for the HDF5 file.
@@ -71,19 +71,19 @@ def read_numpy_structured_array_from_HDF5(fid, internalPath):
         all the arrays needed by the NumPy structure array. Also, additional attributes are
         added to the group to store the shape and dtype of the NumPy structure array to allow
         for serialization out. Also, it will handle normal NumPy arrays as well.
-        
+
         Note:
             HDF5 does not support generic Python objects. So, serialization of objects to something
             else (perhaps strs of fixed size) must be performed first.
-        
+
         Args:
             fid(HDF5 file):         either an HDF5 file or an HDF5 filename.
-            
+
             internalPath(str):      an internal path for the HDF5 file.
-        
+
         Note:
             TODO: Write doctests.
-        
+
         Returns:
             data(numpy.ndarray):  the NumPy structure array.
     """

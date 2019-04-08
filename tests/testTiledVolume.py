@@ -30,14 +30,14 @@ volume_description_text = """
 {
     "_schema_name" : "tiled-volume-description",
     "_schema_version" : 1.0,
- 
+
     "name" : "My Tiled Data",
     "format" : "png",
     "dtype" : "uint8",
-    "bounds_zyx" : [100, 600, 600], 
- 
+    "bounds_zyx" : [100, 600, 600],
+
     "tile_shape_2d_yx" : [200,200],
- 
+
     "tile_url_format" : "http://localhost:{port}/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
     "extend_slices" : [ [40, [41]],
                         [44, [45, 46, 47]] ]
@@ -71,9 +71,9 @@ class DataSetup(object):
     def setup(self):
         """
         Generate a directory with all the files needed for this test.
-        We use the same temporary directory every time, so we don't 
+        We use the same temporary directory every time, so we don't
         waste time regenerating the data if the test has already been run recently.
-        
+
         The directory consists of the following files:
         - reference_volume.h5
         - volume_description.json
@@ -400,7 +400,7 @@ class TestSpecialZTranslation(object):
 
     def test_special_z_translation(self):
         """
-        This tests the special 
+        This tests the special
         """
         tiled_volume = TiledVolume(self.data_setup.SPECIAL_Z_VOLUME_DESCRIPTION_FILE)
         tiled_volume.TEST_MODE = True

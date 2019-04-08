@@ -95,12 +95,12 @@ paused = True
 def _impl_test_lock(lockA, lockB, task_class, num_tasks):
     """
     Simple test to start a lot of tasks that acquire/release the same two locks.
-    
+
     We want to make sure that the test itself has sound logic,
     so it is written to be agnostic to the lock/task type.
-    
-    This test should work for both Requests (with RequestLocks) or 'normal' 
-    threading.Threads and Locks (as long as the API is adapted a bit to look 
+
+    This test should work for both Requests (with RequestLocks) or 'normal'
+    threading.Threads and Locks (as long as the API is adapted a bit to look
     like Requests via ThreadRequest, above.)
     """
     global paused
@@ -162,7 +162,7 @@ def _impl_test_lock(lockA, lockB, task_class, num_tasks):
 
 def test_cancellation_behavior():
     """
-    If a request is cancelled while it was waiting on a lock, 
+    If a request is cancelled while it was waiting on a lock,
     it should raise the CancellationException.
     """
     lock = RequestLock()

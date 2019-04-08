@@ -248,9 +248,9 @@ def expandSlicing(s, shape):
            - slice
            - Ellipsis (i.e. ...)
            - Some combo of the above as a tuple or list
-        
+
         shape: The shape of the array that will be accessed
-        
+
     Returns:
         A tuple of length N where N=len(shape)
         slice(None) is inserted in missing positions so as not to change the meaning of the slicing.
@@ -259,7 +259,7 @@ def expandSlicing(s, shape):
             (0:1) --> (0:1,:,:,:,:)
             : --> (:,:,:,:,:)
             ... --> (:,:,:,:,:)
-            (0,0,...,4) --> (0,0,:,:,4)            
+            (0,0,...,4) --> (0,0,:,:,4)
     """
     if type(s) == list:
         s = tuple(s)
@@ -360,7 +360,7 @@ def nonzero_bounding_box(data):
     For an array with sparsely distributed non-zero values,
       find the bounding box (a ROI) of the non-zero values.
 
-    Example:    
+    Example:
         >>> data = numpy.zeros( (10,100,100) )
         >>> data[4, 30:40, 50:60] = 1
         >>> data[7, 45:55, 30:35] = 255
@@ -382,14 +382,14 @@ def nonzero_bounding_box(data):
 
 def containing_rois(rois, inner_roi):
     """
-    Given a list of rois and an "inner roi" which may or may not be fully 
+    Given a list of rois and an "inner roi" which may or may not be fully
     contained within some of the rois from the list,
     return the subset of rois that entirely envelop the given inner roi.
-    
+
     Example:
         >>> rois = [([0,0,0], [10,10,10]),
         ...         ([5,3,2], [11,12,13]),
-        ...         ([4,6,4], [5,9,9])]        
+        ...         ([4,6,4], [5,9,9])]
         >>> containing_rois( rois, ( [4,7,6], [5,8,8] ) )
         array([[[ 0,  0,  0],
                 [10, 10, 10]],
@@ -409,22 +409,22 @@ def containing_rois(rois, inner_roi):
 
 def enlargeRoiForHalo(start, stop, shape, sigma, window=3.5, enlarge_axes=None, return_result_roi=False):
     """
-    Enlarge the given roi (start,stop) with a halo according to the given 
+    Enlarge the given roi (start,stop) with a halo according to the given
     sigma and window size, without exceeding the given total image shape given.
-    
-    Except for clipping near the image borders, the halo on all sides of the 
+
+    Except for clipping near the image borders, the halo on all sides of the
     image will have width = sigma*window
-    
+
     start: ROI start coordinate
     stop: ROI stop coordinate
     shape: Total shape of the image (not to be exceeded)
     sigma: The sigma of the filter.
     window: The window size, expressed in units of sigma.
     enlarge_axes: If provided, indicates which axes to expand with the halo.
-                  Should be a list of bools (or 1/0 values). 
+                  Should be a list of bools (or 1/0 values).
                   For example, halo_axes=(0,1,1,1,0) means: "enlarge roi for axes 1,2,3 but not axes 0,4"
-    return_result_roi: If True, also return the "result roi".  
-                       That is, the roi which you can use to extract the inner data 
+    return_result_roi: If True, also return the "result roi".
+                       That is, the roi which you can use to extract the inner data
                        from an array retrieved using the enlarged roi.
                        For example:
                            roi_with_halo, result_roi = enlargeRoiForHalo(start, stop, sigma, return_result_roi=True)
@@ -498,7 +498,7 @@ def getIntersectingBlocks(blockshape, roi, asarray=False):
      [20 40]]
 
     Now the same two examples, with asarray=True.  Note the shape of the result.
-    
+
     >>> block_start_matrix = getIntersectingBlocks( (10, 20), [(15, 25),(23, 40)], asarray=True )
     >>> block_start_matrix.shape
     (2, 1, 2)
@@ -516,12 +516,12 @@ def getIntersectingBlocks(blockshape, roi, asarray=False):
     <BLANKLINE>
      [[20 20]
       [20 40]]]
- 
+
 
     This function works for negative rois, too.
-    
+
     >>> block_starts = getIntersectingBlocks( (10, 20), [(-10, -5),(5, 5)] )
-    >>> print block_starts 
+    >>> print block_starts
     [[-10 -20]
      [-10   0]
      [  0 -20]
@@ -573,9 +573,9 @@ def is_fully_contained(inner_roi, outer_roi):
 
 def getBlockBounds(dataset_shape, block_shape, block_start):
     """
-    Given a block start coordinate and block shape, return a roi for 
+    Given a block start coordinate and block shape, return a roi for
     the whole block, clipped to fit within the given dataset shape.
-    
+
     >>> getBlockBounds( [35,35,35], [10,10,10], [10,20,30] )
     (array([10, 20, 30]), array([20, 30, 35]))
     """
@@ -594,13 +594,13 @@ def getBlockBounds(dataset_shape, block_shape, block_start):
 
 def determineBlockShape(max_shape, target_block_volume):
     """
-    Choose a blockshape that is close to the target_block_volume (in pixels), 
+    Choose a blockshape that is close to the target_block_volume (in pixels),
     without exceeding max_shape in any dimension.
-    
-    The resulting blockshape will be as isometric as possible, except 
-    for those dimensions must be restricted due to small max_shape.  If possible, the 
+
+    The resulting blockshape will be as isometric as possible, except
+    for those dimensions must be restricted due to small max_shape.  If possible, the
     block's other dimensions are expanded to achieve a total volume of target_block_volume.
-    
+
     >>> determineBlockShape( (1000,2000,3000,1), 1e6 )
     (100, 100, 100, 1)
 
@@ -642,22 +642,22 @@ def determine_optimal_request_blockshape(
     Choose a blockshape for requests subject to the following constraints:
     - not larger than max_blockshape in any dimension
     - not too large to run in parallel without exceeding available ram (according to num_threads and available_ram)
-    
-    Within those constraints, choose the largest blockshape possible.  
+
+    Within those constraints, choose the largest blockshape possible.
     The blockshape will be chosen according to the following heuristics:
     - If any dimensions in ideal_blockshape are 0, prefer to expand those first until max_blockshape is reached.
     (The result is known as atomic_blockshape.)
     - After that, attempt to expand the blockshape by incrementing a dimension according to its width in atomic_blockshape.
-    
+
     Note: For most use-cases, the ``ram_usage_per_requested_pixel`` parameter refers to the ram consumed when requesting ALL channels of an image.
           Therefore, you probably want to omit the channel dimension from your max_blockshape and ideal_blockshape parameters.
-    
+
     >>> determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 4, 10, 1e6 )
     (158, 158, 1)
-    
+
     >>> determine_optimal_request_blockshape( (1000,1000,100), (0,0,1), 4, 10, 1e9 )
     (1000, 1000, 24)
-    
+
     """
     assert len(max_blockshape) == len(ideal_blockshape)
 
@@ -718,12 +718,12 @@ def determine_optimal_request_blockshape(
 
 def slicing_to_string(slicing, max_shape=None):
     """
-    Returns a string representation of the given slicing, which has been 
-    formatted with spaces so that multiple such slicings could be printed 
+    Returns a string representation of the given slicing, which has been
+    formatted with spaces so that multiple such slicings could be printed
     in rows with their columns lined up.
-    
+
     slicing: A tuple or slice objects, e.g. as returned by numpy.s_
-    max_shape: If provided, used to determine how many columns to use 
+    max_shape: If provided, used to determine how many columns to use
                for each slicing field.
     """
     if max_shape:

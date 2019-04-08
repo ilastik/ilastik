@@ -35,7 +35,7 @@ class Timer(object):
     Context manager.
     Takes a START timestamp on __enter__ and takes a STOP timestamp on __exit__.
     Call ``seconds()`` to get the elapsed time so far, or the total time if the timer has already stopped.
-    
+
     .. note:: This class provides WALL timing of long-running tasks, not cpu benchmarking for short tasks.
     """
 
@@ -97,12 +97,12 @@ def timed(func):
     The timer is created as an attribute on the function itself called prev_run_timer.
 
     For example:
-    
+
     .. code-block:: python
 
        @timed
        def do_stuff(): pass
-       
+
        do_stuff()
        print "Last run of do_stuff() took", do_stuff.prev_run_timer.seconds(), "seconds to run"
     """
@@ -122,23 +122,23 @@ def timed(func):
 def timeLogged(logger, level=logging.DEBUG, prefix=""):
     """
     Decorator. Times the decorated function and logs a message to the provided logger.
-    
+
     For Example:
 
     .. code-block:: python
-    
+
         import sys
         import logging
         logger = logging.getLogger(__name__)
         logger.addHandler( logging.StreamHandler(sys.stdout) )
         logger.setLevel( logging.INFO )
-        
+
         @timeLogged(logger, logging.INFO)
         def myfunc(x):
             print x**100
-        
+
         myfunc(2)
-        
+
         # Output:
         # 1267650600228229401496703205376
         # myfunc execution took 3.1e-05 seconds

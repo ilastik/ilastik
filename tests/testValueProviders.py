@@ -216,9 +216,9 @@ class TestOpValueCache(object):
 
     def test_cancel(self):
         """
-        This ensures that the Output can be acessed from multiple 
+        This ensures that the Output can be acessed from multiple
         threads, even if one thread cancels its request.
-        The OpValueCache must handle Request.InvalidRequestException errors correctly. 
+        The OpValueCache must handle Request.InvalidRequestException errors correctly.
         """
         n = 20
         graph = lazyflow.graph.Graph()

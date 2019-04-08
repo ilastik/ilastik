@@ -99,7 +99,7 @@ class TestRequest(unittest.TestCase):
     @traceLogged(traceLogger)
     def test_callWaitDuringCallback(self):
         """
-        When using request.notify_finished(...) to handle request completions, 
+        When using request.notify_finished(...) to handle request completions,
         the handler should be allowed to call request.wait() on the request that it's handling.
         """
 
@@ -479,11 +479,11 @@ class TestRequest(unittest.TestCase):
             time.sleep(0.001)
             destination[0] = "Hello,"
             return destination
- 
+
         callback_result = [ [] ]
         def callback(result):
             callback_result[0] = result[0]
- 
+
         def test(s, destination=None,):
             req = Request(someWork)
             req.onFinish(callback)
@@ -493,23 +493,23 @@ class TestRequest(unittest.TestCase):
                 destination = [""]
             destination[0] = s2 + s
             return destination
- 
+
         req = Request( partial(test, s = " World!") )
         preAllocatedResult = [""]
         req.writeInto(preAllocatedResult)
         req.notify(callback)
-         
+
         # Wait for the result
         assert req.wait()[0] == "Hello, World!"      # Wait for it
         assert callback_result[0] == "Hello, World!" # From the callback
- 
+
         assert preAllocatedResult[0] == req.wait()[0], "This might fail if the request was started BEFORE writeInto() was called"
- 
+
         requests = []
         for i in range(10):
             req = Request( partial(test, s = "hallo %d" %i) )
             requests.append(req)
- 
+
         for r in requests:
             r.wait()
     '''
@@ -519,7 +519,7 @@ class TestRequest(unittest.TestCase):
         """
         If the user adds callbacks to the request via notify_finished() BEFORE the request is submitted,
         then wait() should block for the completion of all those callbacks before returning.
-        Any callbacks added AFTER the request has already been submitted are NOT guaranteed 
+        Any callbacks added AFTER the request has already been submitted are NOT guaranteed
         to be executed before wait() returns, but they will still be executed.
         """
 
@@ -571,7 +571,7 @@ class TestRequest(unittest.TestCase):
     def testRequestLock(self):
         """
         Test the special Request-aware lock.
-         
+
         Launch 99 requests and threads that all must fight over access to the same list.
         The list will eventually be 0,1,2...99, and each request will append a single number to the list.
         Each request must wait its turn before it can append it's number and finish.

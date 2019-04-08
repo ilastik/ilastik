@@ -45,48 +45,48 @@ logger = logging.getLogger(__name__)
 class RESTfulBlockwiseFileset(BlockwiseFileset):
     """
     This class combines the functionality of :py:class:`RESTfulVolume` and :py:class:`BlockwiseFileset`
-    to provide access to a remote dataset (e.g. from http://openconnecto.me), with all downloaded data 
+    to provide access to a remote dataset (e.g. from http://openconnecto.me), with all downloaded data
     cached locally as blocks stored in a directory tree of hdf5 files.
 
-    This class must be constructed with a description of both the remote dataset and the local 
-    storage format, provided in a JSON file with a composite schema specified by 
+    This class must be constructed with a description of both the remote dataset and the local
+    storage format, provided in a JSON file with a composite schema specified by
     :py:data:`RESTfulBlockwiseFileset.DescriptionFields`.
 
     .. note:: See the unit tests in ``tests/testRESTfulBlockwiseFileset.py`` for example usage.
 
     Here's an example description file.
-    
+
     .. code-block:: json
 
         {
             "_schema_name" : "RESTful-blockwise-fileset-description",
             "_schema_version" : 1.0,
-        
-            "remote_description" : 
+
+            "remote_description" :
             {
                 "_schema_name" : "RESTful-volume-description",
                 "_schema_version" : 1.0,
-            
+
                 "name" : "Bock11-level0",
                 "format" : "hdf5",
                 "axes" : "zyx",
-        
+
                 "## NOTE": "The origin offset determines how coordinates are translated when converted to a url.",
                 "## NOTE": "The origin_offset for the bock11 dataset must be at least 2917, because for some reason that's where it starts.",
                 "origin_offset" : [2917, 0, 0],
-        
+
                 "## NOTE": "The website says that the data goes up to plane 4156, but it actually errors out past 4150",
                 "bounds" : [4150, 135424, 119808],
                 "dtype" : "numpy.uint8",
                 "url_format" : "http://openconnecto.me/emca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
                 "hdf5_dataset" : "cube"
             },
-        
+
             "local_description" :
             {
                 "_schema_name" : "blockwise-fileset-description",
                 "_schema_version" : 1.0,
-        
+
                 "name" : "bock11-blocks",
                 "format" : "hdf5",
                 "axes" : "zyx",
@@ -95,7 +95,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
                 "block_shape" : [32, 256, 256],
                 "block_file_name_format" : "block-{roiString}.h5/cube",
                 "dataset_root_dir" : "blocks-256x256x32",
-        
+
                 "## NOTE":"These optional parameters tell ilastik to view only a portion of the on-disk dataset.",
                 "## NOTE":"view_origin MUST be aligned to a block start corner.",
                 "## NOTE":"view_shape is optional, but recommended because volumina slows down when there are 1000s of tiles.",
@@ -121,11 +121,11 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
     @classmethod
     def readDescription(cls, descriptionFilePath):
         """
-        Parse the description file at the given path and return a 
+        Parse the description file at the given path and return a
         :py:class:`jsonConfig.Namespace` object with the description parameters.
         The file will be parsed according to the schema given by :py:data:`RESTfulBlockwiseFileset.DescriptionFields`.
         Any optional parameters not provided by the user are filled in automatically.
-        
+
         :param descriptionFilePath: The path to the description file to parse.
         """
         description = RESTfulBlockwiseFileset.DescriptionSchema.parseConfigFile(descriptionFilePath)
@@ -136,7 +136,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
     def writeDescription(cls, descriptionFilePath, descriptionFields):
         """
         Write a :py:class:`jsonConfig.Namespace` object to the given path.
-        
+
         :param descriptionFilePath: The path to overwrite with the description fields.
         :param descriptionFields: The fields to write.
         """
@@ -154,9 +154,9 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
     def __init__(self, compositeDescriptionPath):
         """
         Constructor.  Uses `readDescription` interally.
-        
-        :param compositeDescriptionPath: The path to a JSON file that describes both the remote 
-                                         volume and local storage structure.  The JSON file schema is specified by 
+
+        :param compositeDescriptionPath: The path to a JSON file that describes both the remote
+                                         volume and local storage structure.  The JSON file schema is specified by
                                          :py:data:`RESTfulBlockwiseFileset.DescriptionFields`.
         """
         # Parse the description file, which contains sub-configs for the blockwise description and RESTful description
@@ -194,7 +194,7 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
     def readData(self, roi, out_array=None):
         """
         Read data from the fileset.  If any of the requested data is not yet available locally, download it first.
-        
+
         :param roi: The region of interest to read from the dataset.  Must be a tuple of iterables: (start, stop).
         :param out_array: The location to store the read data.  Must be the correct size for the given roi.  If not provided, an array is created for you.
         :returns: The requested data.  If out_array was provided, returns out_array.
@@ -264,10 +264,10 @@ class RESTfulBlockwiseFileset(BlockwiseFileset):
     def _downloadBlock(self, fileLock, entire_block_roi, blockFilePathComponents):
         """
         Download the data for the given block, then release its file lock.
-        
+
         :param fileLock: The lock for the file we are about to create.  MUST BE LOCKED already.
         :param entire_block_roi: The roi for the block to download.
-        :param blockFilePathComponents: A lazyflow.utility.PathComponents object describing the location of the block dataset file. 
+        :param blockFilePathComponents: A lazyflow.utility.PathComponents object describing the location of the block dataset file.
         """
         try:
             # The blockFilePath has already been offset to accomodate any view offset, but the roi has not.

@@ -58,28 +58,28 @@ class TestParallelVigraRfLazyflowClassifier(object):
 
     def test_pickle_fields(self):
         """
-        Classifier factories are meant to be pickled and restored, but that only 
-        works if the thing we're restoring has the EXACT SAME MEMBERS as the 
+        Classifier factories are meant to be pickled and restored, but that only
+        works if the thing we're restoring has the EXACT SAME MEMBERS as the
         current version of the class.
-        
+
         Any changes to the factory's member variables will change it's pickled representation.
         Therefore, we store a special member named VERSION as both a class member
         AND instance member (see LazyflowVectorwiseClassifierFactoryABC.__new__),
         so we can check for compatibility before attempting to unpickle a factory.
-        
+
         In this test, we verify that the pickle interface hasn't changed.
-        
+
         IF THIS TEST FAILS:
             - Think about whether that's what you intended (see below)
             - Update ParallelVigraRfLazyflowClassifierFactory.VERSION
             - and then change the version and members listed below.
-        
+
         ... but think hard about whether or not the changes you made to
-        ParallelVigraRfLazyflowClassifierFactory are important, because they will 
+        ParallelVigraRfLazyflowClassifierFactory are important, because they will
         invalidate stored classifiers in existing ilastik project files.
-        (The project file should still load, but a warning will be shown, explaining that 
+        (The project file should still load, but a warning will be shown, explaining that
         the user will need to train a new classifer.)
-        
+
         """
         factory = ParallelVigraRfLazyflowClassifierFactory(10, variable_importance_enabled=True)
         members = set(factory.__dict__.keys())

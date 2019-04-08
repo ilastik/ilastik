@@ -262,7 +262,7 @@ class TestOpCompressedUserLabelArray(object):
 
     def testDimensionalityChange(self):
         """
-        What happens if we configure the operator, use it a bit, 
+        What happens if we configure the operator, use it a bit,
         then reconfigure it with a different input shape and dimensionality?
         """
         op = self.op
@@ -287,7 +287,7 @@ class TestOpCompressedUserLabelArray(object):
 
     def testIngestData(self):
         """
-        The ingestData() function can be used to import an entire slot's 
+        The ingestData() function can be used to import an entire slot's
         data into the label array, but copied one block at a time.
         """
         op = self.op

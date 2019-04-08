@@ -40,13 +40,13 @@ class OpFeatureMatrixCache(Operator):
     - For nonzero label pixels in each block, extract the label image
     - Cache the feature matrix for each block separately
     - Output the concatenation of all feature matrices
-    
+
     Note: This operator does not currently have "NonZeroLabelBlocks" input slot.
           Instead, it only requests labels for blocks that have been
           marked dirty via dirty notifications from the LabelImage slot.
-          As a result, you MUST connect/configure this operator before you 
+          As a result, you MUST connect/configure this operator before you
           load your upstream label cache with values.
-          This operator must already be "watching" when when the label operator 
+          This operator must already be "watching" when when the label operator
           is initialized with its first labels.
     """
 

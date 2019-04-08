@@ -27,13 +27,13 @@ from lazyflow.roi import roiFromShape, roiToSlice
 
 class OpCacheFixer(Operator):
     """
-    Can be inserted in front of a cache operator to implement the "fixAtCurrent" 
+    Can be inserted in front of a cache operator to implement the "fixAtCurrent"
     behavior currently implemented by multiple lazyflow caches.
-    
+
     While fixAtCurrent=False, this operator is merely a pass-through.
-    
-    While fixAtCurrent=True, this operator does not forward dirty notifications 
-    to downstream operators. Instead, it remembers the total ROI of the dirty area 
+
+    While fixAtCurrent=True, this operator does not forward dirty notifications
+    to downstream operators. Instead, it remembers the total ROI of the dirty area
     (as a bounding box), and emits the entire dirty ROI at once as soon as it becomes "unfixed".
     Also, this operator returns only zeros while fixAtCurrent=True.
     """

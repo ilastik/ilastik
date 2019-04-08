@@ -45,7 +45,7 @@ class TestOpTiffReader(object):
     def test_3d_with_compression(self):
         """
         This tests that we can read a compressed (LZW) TIFF file.
-        
+
         Note: It would be nice to test JPEG compression here, but strangely when vigra
         writes a JPEG-compressed TIFF, it is somehow messed up.  The image has two image
         'series' in it, so the thing seems to have twice as many planes as it should.

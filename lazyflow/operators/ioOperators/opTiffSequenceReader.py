@@ -24,10 +24,10 @@ class OpTiffSequenceReader(Operator):
 
     :param globstring: A glob string as defined by the glob module. We
         also support the following special extension to globstring
-        syntax: A single string can hold a *list* of globstrings. 
-        The delimiter that separates the globstrings in the list is 
+        syntax: A single string can hold a *list* of globstrings.
+        The delimiter that separates the globstrings in the list is
         OS-specific via os.path.pathsep.
-        
+
         For example, on Linux the pathsep is':', so
 
             '/a/b/c.txt:/d/e/f.txt:../g/i/h.txt'

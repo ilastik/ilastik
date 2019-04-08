@@ -50,19 +50,19 @@ def format_known_keys_strict(s, entries):
 
 def format_known_keys(s, entries, strict=True):
     """
-    Like str.format(), but 
-     (1) accepts only a dict and 
-     (2) allows the dict to be incomplete, 
+    Like str.format(), but
+     (1) accepts only a dict and
+     (2) allows the dict to be incomplete,
          in which case those entries are left alone.
-    
+
     Setting strict to False returns the original format string
     if that string is malformed.
 
     Examples:
-    
+
     >>> format_known_keys("Hello, {first_name}, my name is {my_name}", {'first_name' : 'Jim', 'my_name' : "Jon"})
     'Hello, Jim, my name is Jon'
-    
+
     >>> format_known_keys("Hello, {first_name:}, my name is {my_name}!", {"first_name" : [1,2,2]})
     'Hello, [1, 2, 2], my name is {my_name}!'
 

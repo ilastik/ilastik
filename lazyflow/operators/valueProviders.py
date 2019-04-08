@@ -207,7 +207,7 @@ class OpOutputProvider(Operator):
 
 class OpValueCache(Operator, ObservableCache):
     """
-    This operator caches a value in its entirety, 
+    This operator caches a value in its entirety,
     and allows for the value to be "forced in" from an external user.
     No memory management, no blockwise access.
     """
@@ -394,7 +394,7 @@ class OpPrecomputedInput(Operator):
     def __init__(self, ignore_dirty_input, *args, **kwargs):
         """
         ignore_dirty_input:
-            If true, the PrecomputedInput will *always* be preferred if it is 
+            If true, the PrecomputedInput will *always* be preferred if it is
             available at all (regardless of any dirty state on the other input).
         """
         super(OpPrecomputedInput, self).__init__(*args, **kwargs)
@@ -466,8 +466,8 @@ class OpDummyData(Operator):
 
 class OpZeroDefault(Operator):
     """
-    Provides an output that is always 'ready'.  
-    Acts as a simple pass-through if 'Input' is ready().  Otherwise, provides zeros.  
+    Provides an output that is always 'ready'.
+    Acts as a simple pass-through if 'Input' is ready().  Otherwise, provides zeros.
     Marks everything dirty as soon as the Input becomes ready().
     """
 

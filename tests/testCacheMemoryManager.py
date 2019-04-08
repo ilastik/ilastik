@@ -203,7 +203,7 @@ class TestCacheMemoryManager(unittest.TestCase):
         """
         TestCacheMemoryManager.testBadMemoryConditions
 
-        This test is a proof of the proposition in 
+        This test is a proof of the proposition in
             https://github.com/ilastik/lazyflow/issue/185
         which states that, given certain memory constraints, the cache
         cleanup strategy in use is inefficient. An advanced strategy

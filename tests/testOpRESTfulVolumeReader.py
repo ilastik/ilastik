@@ -49,7 +49,7 @@ class TestRESTfulVolume(object):
         {
             "_schema_name" : "RESTful-volume-description",
             "_schema_version" : 1.0,
-        
+
             "name" : "Bock11-level0",
             "format" : "hdf5",
             "axes" : "zyx",
@@ -66,7 +66,7 @@ class TestRESTfulVolume(object):
         {
             "_schema_name" : "RESTful-volume-description",
             "_schema_version" : 1.0,
-        
+
             "name" : "Bock11-level4",
             "format" : "hdf5",
             "axes" : "zyx",

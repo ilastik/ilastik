@@ -45,13 +45,13 @@ logger = logging.getLogger(__name__)
 class BigRequestStreamer(object):
     """
     Execute a big request by breaking it up into smaller requests.
-    
+
     This class encapsulates the logic for dividing big rois into smaller ones to be executed separately.
     It relies on a :py:class:`RoiRequestBatch<lazyflow.utility.roiRequestBatch.RoiRequestBatch>` object,
     which is responsible for creating and scheduling the request for each roi.
-    
+
     Example:
-    
+
     >>> import sys
     >>> import vigra
     >>> from lazyflow.graph import Graph
@@ -88,7 +88,7 @@ class BigRequestStreamer(object):
 
     >>> # Execute the batch of requests, and block for the result.
     >>> streamer.execute()
-    Progress: 0 16 33 50 66 83 100 100 
+    Progress: 0 16 33 50 66 83 100 100
     >>> print "Processed {} result blocks with a total sum of: {}".format( result_count[0], result_total_sum[0] )
     Processed 6 result blocks with a total sum of: 68400
     """
@@ -98,7 +98,7 @@ class BigRequestStreamer(object):
     ):
         """
         Constructor.
-        
+
         :param outputSlot: The slot to request data from.
         :param roi: The roi `(start, stop)` of interest.  Will be broken up and requested via smaller requests.
         :param blockshape: The amount of data to request in each request. If omitted, a default blockshape is chosen by inspecting the metadata of the given slot.
@@ -280,11 +280,11 @@ class BigRequestStreamer(object):
         """
         Request the data for the entire roi by breaking it up into many smaller requests,
         and wait for all of them to complete.
-        A batch of N requests is launched, and subsequent requests are 
-        launched one-by-one as the earlier requests complete.  Thus, there 
+        A batch of N requests is launched, and subsequent requests are
+        launched one-by-one as the earlier requests complete.  Thus, there
         will be N requests executing in parallel at all times.
-        
-        This method returns ``None``.  All results must be handled via the 
+
+        This method returns ``None``.  All results must be handled via the
         :py:obj:`resultSignal`.
         """
         self._requestBatch.execute()

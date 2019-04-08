@@ -105,14 +105,14 @@ class ValueRequest(object):
 
 def is_setup_fn(func):
     """
-    Decorator.  Marks the function as a 'setup' function, 
+    Decorator.  Marks the function as a 'setup' function,
     which means it affects the state of the graph connections.
-    All Slot methods that will result in any operator setupOutputs() 
+    All Slot methods that will result in any operator setupOutputs()
     calls should be marked as setup functions using this decorator.
-    
-    Executes the function within the context of a 
-    Graph setup operation, which tells the Graph that we are 
-    making graph setup changes by incrementing a counter for 
+
+    Executes the function within the context of a
+    Graph setup operation, which tells the Graph that we are
+    making graph setup changes by incrementing a counter for
     each nested setup function call. See graph.py for details.
     """
 
@@ -270,16 +270,16 @@ class Slot(object):
     def _notifyGeneric(self, sig, function, **kwargs):
         """
         Subscribe the given callback function (with optional kwargs) to the given signal.
-        
+
         Special feature:
             If kwargs['defer'] is True, then we'll defer executing the
             callback until after the graph is completed setup.
-            
+
             In other words, when the signal is fired, the callback isn't executed immediately.
             Instead, it's queued to the Graph's call_when_setup_finished signal.
             This is useful when you have a GUI callback that you want to execute after the
             graph setup operation is totally finished.
-        
+
         Returns:
             A callable that will unsubscribe your function from the signal.
         """
@@ -1169,10 +1169,10 @@ class Slot(object):
         value.
 
         If check_changed is True, the new value is compared to the
-        current one and updates are only triggered if the new value differs 
+        current one and updates are only triggered if the new value differs
         from the old one according to the __eq__ operator.
         The check can be turned off with the check_changed flag.
-        
+
         If the value is a VigraArray, then shape/axistags/dtype will be automatically
         assigned in self.meta.  Additional metadata fields can be added via the
         extra_meta parameter.

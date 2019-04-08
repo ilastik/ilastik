@@ -15,7 +15,7 @@ class OpKlbReader(Operator):
     """
     Reads .klb files (Keller Lab Block Filetype).
     Requires the 'pyklb' package.
-    
+
     See:
         - https://bitbucket.org/fernandoamat/keller-lab-block-filetype
         - https://github.com/bhoeckendorf/pyklb

@@ -108,11 +108,11 @@ class TestJsonConfig(object):
             "array_setting" : [1,2,3,4],
             "array_from_string_setting" : "[1, 1*2, 1*3, 1*4]",
             "roi_setting" : [[1,2,3,4,5], [6,7,8,9,10]],
-            
+
             "subconfig" :   {
                                 "_schema_name" : "sub-schema",
                                 "_schema_version" : 1.0,
-                                
+
                                 "sub_settingA" : "yes",
                                 "sub_settingB" : "no"
                             }

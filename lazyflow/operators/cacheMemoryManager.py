@@ -54,7 +54,7 @@ class CacheMemoryManager(with_metaclass(Singleton, threading.Thread)):
     in use and cleans them up when the total memory consumption by the
     process exceeds the limit defined by the `lazyflow.utility.Memory`
     class. See the definition of the cache interfaces (opCache.py) to
-    get an overview over the possible caches. 
+    get an overview over the possible caches.
 
     Usage:
     This manager is a singleton - just call its constructor somewhere

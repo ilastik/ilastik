@@ -29,7 +29,7 @@ from lazyflow.roi import roiToSlice
 class OpDenseLabelArray(Operator):
     """
     The simplest, most naive implementation of a labeling operator.
-    
+
     - Does not track max label value correctly
     - Does not ensure consecutive labeling (i.e. If you delete a label, the other labels are not 'shifted down'.
     """

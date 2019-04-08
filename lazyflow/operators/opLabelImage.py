@@ -32,7 +32,7 @@ from lazyflow.utility.helpers import warn_deprecated
 
 class _OpLabelImage(Operator):
     """
-    Produces labeled 5D volumes.  If multiple time slices and/or channels are present, 
+    Produces labeled 5D volumes.  If multiple time slices and/or channels are present,
     each time/channel combo is treated as a separate volume for labeling,
     which are then stacked at the output.
     """

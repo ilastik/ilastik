@@ -89,8 +89,8 @@ def log_exception(logger, msg=None, exc_info=None, level=logging.ERROR):
     """
     Log the current exception to the given logger, and also log the given error message.
     If exc_info is provided, log that exception instead of the current exception provided by sys.exc_info.
-    
-    It is better to log exceptions this way instead of merely printing them to the console, 
+
+    It is better to log exceptions this way instead of merely printing them to the console,
     so that other logger outputs (such as log files) show the exception, too.
     """
     if sys.version_info.major == 2:
@@ -129,12 +129,12 @@ class Request(object):
                             For more details, see:
                             https://github.com/ilastik/ilastik/issues/1458
 
-        As a special case, you may set ``num_workers`` to 0.  
-        In that case, the normal thread pool is not used at all.  
-        Instead, all requests will execute synchronously, from within the submitting thread.  
-        Utilities like ``RequestLock``, ``SimpleRequestCondition`` will use alternate 
-        implementations based on equivalent classes in the builtin ``threading`` module. 
-        
+        As a special case, you may set ``num_workers`` to 0.
+        In that case, the normal thread pool is not used at all.
+        Instead, all requests will execute synchronously, from within the submitting thread.
+        Utilities like ``RequestLock``, ``SimpleRequestCondition`` will use alternate
+        implementations based on equivalent classes in the builtin ``threading`` module.
+
         .. note:: It is only valid to call this function during startup.
                   Any existing requests will be dropped from the pool!
         """
@@ -150,7 +150,7 @@ class Request(object):
         This is raised when the whole request has been cancelled.
         If you catch this exception from within a request, clean up and return immediately.
         If you have nothing to clean up, you are not required to handle this exception.
-        
+
         Implementation details:
         This exception is raised when the cancel flag is checked in the wait() function:
         - immediately before the request is suspended OR
@@ -162,7 +162,7 @@ class Request(object):
     class InvalidRequestException(Exception):
         """
         This is raised when calling wait on a request that has already been cancelled,
-        which can only happen if the request you're waiting for was spawned elsewhere 
+        which can only happen if the request you're waiting for was spawned elsewhere
         (i.e. you are waiting for someone else's request to avoid duplicate work).
         When this occurs, you will typically want to restart the request yourself.
         """
@@ -285,7 +285,7 @@ class Request(object):
         """
         Delete all state from the request, for cleanup purposes.
         Removes references to callbacks, children, and the result.
-        
+
         :param _fullClean: Internal use only.  If False, only clean internal bookkeeping members.
                            Otherwise, delete everything, including the result.
         """
@@ -520,11 +520,11 @@ class Request(object):
     def wait(self, timeout=None):
         """
         Start this request if necessary, then wait for it to complete.  Return the request's result.
-        
+
         :param timeout: If running within a request, this parameter must be None.
-                        If running within the context of a foreign (non-request) thread, 
+                        If running within the context of a foreign (non-request) thread,
                         a timeout may be specified in seconds (floating-point).
-                        If the request does not complete within the timeout period, 
+                        If the request does not complete within the timeout period,
                         then a Request.TimeoutException is raised.
         """
         assert not self._cleaned, "Can't wait() for a request that has already been cleaned."
@@ -702,7 +702,7 @@ class Request(object):
         """
         Register a callback function to be called when this request is finished.
         If we're already finished, call it now.
-        
+
         :param fn: The callback to be notified.  Signature: fn(result)
         """
         assert not self._cleaned, "This request has been cleaned() already."
@@ -720,7 +720,7 @@ class Request(object):
         """
         Register a callback function to be called when this request is finished due to cancellation.
         If we're already finished and cancelled, call it now.
-        
+
         :param fn: The callback to call if the request is cancelled.  Signature: fn()
         """
         assert not self._cleaned, "This request has been cleaned() already."
@@ -846,10 +846,10 @@ class RequestLock(object):
     Request-aware lock.  Implements the same interface as threading.Lock.
     If acquire() is called from a normal thread, the the lock blocks the thread as usual.
     If acquire() is called from a Request, then the request is suspended so that another Request can be resumed on the thread.
-    
+
     Requests and normal threads can *share* access to a RequestLock.
     That is, they compete equally for access to the lock.
-    
+
     Implementation detail:  Depends on the ability to call two *private* Request methods: _suspend() and _wake_up().
     """
 
@@ -881,13 +881,13 @@ class RequestLock(object):
         Suppose you pop an item (the highest priority item), but you discover you're not
         able to use it immediately for some reason (e.g. it's a request that is still
         waiting for a lock). Hence, you simply 'push' it back into this data structure.
-        
+
         If there were only one queue, it would end up a the front of the queue again (it was the
         highest priority item, after all).
-        
+
         That is, you would never make any progress on the queue because you would just pop and
         push the same item over and over!
-        
+
         But since this data structure uses TWO queues, the pushed item will be put on the
         'pushing queue' instead and, it won't be popped again until the popping queue is depleted
         (at which point the two queues are swapped).
@@ -911,7 +911,7 @@ class RequestLock(object):
 
         def __len__(self):
             """
-            Returns the number of waiting threads, but NOT the number of 
+            Returns the number of waiting threads, but NOT the number of
             """
             return len(self._pushing_queue) + len(self._popping_queue)
 
@@ -944,7 +944,7 @@ class RequestLock(object):
         For debug purposes, the user can use an empty threadpool.
         In that case, all requests are executing synchronously.
         (See Request.submit().)
-        In this debug mode, this class is simply a stand-in for an 
+        In this debug mode, this class is simply a stand-in for an
         RLock object from the builtin threading module.
         """
         # Special debugging scenario:
@@ -966,8 +966,8 @@ class RequestLock(object):
         """
         Acquire the lock.  If `blocking` is True, block until the lock is available.
         If `blocking` is False, don't wait and return False if the lock couldn't be acquired immediately.
-        
-        :param blocking: Same as in threading.Lock 
+
+        :param blocking: Same as in threading.Lock
         """
         current_request = Request._current_request()
         if current_request is None:
@@ -1061,21 +1061,21 @@ class SimpleRequestCondition(object):
     subset of the features implemented by the standard ``threading.Condition``.
 
     **Limitations:**
-    
+
     - Only one request may call :py:meth:`wait()` at a time.
     - Likewise, :py:meth:`notify()` doesn't accept the ``n`` arg.
     - Likewise, there is no ``notify_all()`` method.
     - :py:meth:`wait()` doesn't support the ``timeout`` arg.
-    
-    .. note:: It would be nice if we could simply use ``threading.Condition( RequestLock() )`` instead of rolling 
-             our own custom condition variable class, but that doesn't quite work in cases where we need to call 
+
+    .. note:: It would be nice if we could simply use ``threading.Condition( RequestLock() )`` instead of rolling
+             our own custom condition variable class, but that doesn't quite work in cases where we need to call
              ``wait()`` from a worker thread (a non-foreign thread).
              (``threading.Condition`` uses ``threading.Lock()`` as its 'waiter' lock, which blocks the entire worker.)
 
     **Example:**
-    
+
     .. code-block:: python
-        
+
         cond = SimpleRequestCondition()
 
         def process_all_data():
@@ -1089,7 +1089,7 @@ class SimpleRequestCondition(object):
             get_some_data()
             with cond:
                 cond.notify()
-        
+
         req1 = Request( retrieve_some_data )
         req2 = Request( retrieve_some_data )
         req3 = Request( retrieve_some_data )
@@ -1100,7 +1100,7 @@ class SimpleRequestCondition(object):
 
         # Wait for them all to finish...
         process_all_data()
-        
+
     """
 
     logger = logging.getLogger(__name__ + ".SimpleRequestCondition")
@@ -1123,7 +1123,7 @@ class SimpleRequestCondition(object):
         For debug purposes, the user can use an empty threadpool.
         In that case, all requests are executing synchronously.
         (See Request.submit().)
-        In this debug mode, this class is simply a stand-in for a 'real' 
+        In this debug mode, this class is simply a stand-in for a 'real'
         condition variable from the builtin threading module.
         """
         # Special debug mode initialization:
@@ -1152,13 +1152,13 @@ class SimpleRequestCondition(object):
 
     def wait(self):
         """
-        Wait for another request to call py:meth:``notify()``.  
+        Wait for another request to call py:meth:``notify()``.
         The caller **must** own (acquire) the condition before calling this method.
-        The condition is automatically ``released()`` while this method waits for 
+        The condition is automatically ``released()`` while this method waits for
         ``notify()`` to be called, and automatically ``acquired()`` again before returning.
 
-        .. note:: Unlike ``threading.Condition``, it is **NOT** valid to call ``wait()`` 
-                  from multiple requests in parallel.  That is, this class supports only 
+        .. note:: Unlike ``threading.Condition``, it is **NOT** valid to call ``wait()``
+                  from multiple requests in parallel.  That is, this class supports only
                   one 'consumer' thread.
 
         .. note:: Unlike ``threading.Condition``, no ``timeout`` parameter is accepted here.
@@ -1190,9 +1190,9 @@ class SimpleRequestCondition(object):
         """
         Notify the condition that it can stop ``wait()``-ing.
         The called **must** own (acquire) the condition before calling this method.
-        Also, the waiting request cannot return from ``wait()`` until the condition is released, 
+        Also, the waiting request cannot return from ``wait()`` until the condition is released,
         so the caller should generally release the condition shortly after calling this method.
-        
+
         .. note:: It is okay to call this from more than one request in parallel.
         """
         assert (
@@ -1258,7 +1258,7 @@ class RequestPool(object):
         """
         Returns the number of requests that we haven't discarded yet
         and therefore haven't completely finished.
-        
+
         This len will decrease until the RequestPool has completed or failed.
         """
         with self._set_lock:
@@ -1281,22 +1281,22 @@ class RequestPool(object):
     def wait(self):
         """
         Launch all requests and return after they have all completed, including their callback handlers.
-        
+
         First, N requests are launched (N=_max_active).
         As each one completes, launch a new request to replace it until
         there are no unsubmitted requests remaining.
-        
+
         The block() function is called on every request after it has completed, to ensure
         that any exceptions from those requests are re-raised by the RequestPool.
 
-        (If we didn't block for 'finishing' requests at all, we'd be violating the Request 'Callback Timing Guarantee', 
-        which must hold for *both* Requests and RequestPools.  See Request docs for details.)        
-        
+        (If we didn't block for 'finishing' requests at all, we'd be violating the Request 'Callback Timing Guarantee',
+        which must hold for *both* Requests and RequestPools.  See Request docs for details.)
+
         After that, each request is discarded, so that it's reference dies immediately
         and any memory it consumed is reclaimed.
-        
+
         So, requests fall into four categories:
-        
+
         1. unsubmitted
             Not started yet.
 
@@ -1395,8 +1395,8 @@ class RequestPool(object):
 
     def _transfer_request_to_finishing_queue(self, req, reason, *args):
         """
-        Called (via a callback) when a request is finished executing, 
-        but not yet done with its callbacks.  We mark the state change by 
+        Called (via a callback) when a request is finished executing,
+        but not yet done with its callbacks.  We mark the state change by
         removing it from _active_requests and adding it to _finishing_requests.
         """
         with self._request_completed_condition:
@@ -1408,25 +1408,25 @@ class RequestPool(object):
 
     def _clear_finishing_requests(self):
         """
-        Requests execute in two stages: 
-            (1) the main workload, and 
+        Requests execute in two stages:
+            (1) the main workload, and
             (2) the completion callbacks (i.e. the notify_finished handlers)
-        
-        Once a request in the pool has completed stage 1, it is added to the 
+
+        Once a request in the pool has completed stage 1, it is added to the
         set of 'finishing_requests', which may still be in the middle of stage 2.
-        
+
         In this function, we block() for all requests that have completed stage 1, and then finally discard them.
         This way, any RAM consumed by their results is immediately discarded (if possible).
-        
+
         We must call block() on every request in the Pool, for two reasons:
-            (1) RequestPool.wait() should not return until all requests are 
+            (1) RequestPool.wait() should not return until all requests are
                 complete (unless some failed), INCLUDING the requests' notify_finished callbacks.
                 (See the 'Callback Timing Guarantee' in the Request docs.)
             (2) If any requests failed, we want their exception to be raised in our own context.
                 The proper way to do that is to call Request.block() on the failed request.
-                Since we call Request.block() on all of our requests, we'll definitely see the 
+                Since we call Request.block() on all of our requests, we'll definitely see the
                 exception if there was a failed request.
-        
+
         Note: This function assumes that the current context owns _request_completed_condition.
         """
         with self._set_lock:
@@ -1493,7 +1493,7 @@ class RequestPool_SIMPLE(object):
 
     def wait(self):
         """
-        If the pool hasn't been submitted yet, submit it. 
+        If the pool hasn't been submitted yet, submit it.
         Then wait for all requests in the pool to complete in the simplest way possible.
         """
         if self._started:

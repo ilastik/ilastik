@@ -237,7 +237,7 @@ class _Group(object):
 class MultiProcessHdf5File(_Group):
     """
     Stand-in proxy object for an h5py.File object.
-    Users requesting a group or 
+    Users requesting a group or
     """
 
     def __init__(self, filepath, mode="r"):
@@ -290,7 +290,7 @@ def slice_to_roi(slicing, shape):
     Given a slicing tuple and a shape, return equivalent start/stop bounds for the slicing.
 
     For example:
-    
+
     >>> slice_to_roi(numpy.s_[:,0:10,17], (100,100,100))
     array([[  0,   0,  17],
            [100,  10,  18]])
@@ -322,9 +322,9 @@ def expandSlicing(s, shape):
            - slice
            - Ellipsis (i.e. ...)
            - Some combo of the above as a tuple or list
-        
+
         shape: The shape of the array that will be accessed
-        
+
     Returns:
         A tuple of length N where N=len(shape)
         slice(None) is inserted in missing positions so as not to change the meaning of the slicing.
@@ -333,7 +333,7 @@ def expandSlicing(s, shape):
             (0:1) --> (0:1,:,:,:,:)
             : --> (:,:,:,:,:)
             ... --> (:,:,:,:,:)
-            (0,0,...,4) --> (0,0,:,:,4)            
+            (0,0,...,4) --> (0,0,:,:,4)
     """
     if type(s) == list:
         s = tuple(s)

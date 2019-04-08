@@ -81,7 +81,7 @@ class ObservableCache(Cache):
 
     This interface is intended for caches that can be measured, but for
     which no (easy) cleanup method is known, or which do not want to
-    be cleaned up by the cache memory manager. 
+    be cleaned up by the cache memory manager.
     """
 
     @abstractmethod
@@ -141,7 +141,7 @@ class ManagedCache(ObservableCache):
         >>> a = cache.usedMemory()
         >>> d = cache.freeMemory()
         >>> a - d == cache.usedMemory()
-        True  
+        True
 
         @return amount of bytes freed (if applicable)
         """

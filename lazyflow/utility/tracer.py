@@ -32,19 +32,19 @@ import inspect
 class Tracer(object):
     """
     Context manager to simplify function entry/exit logging trace statements.
-    
+
     Example Usage:
 
     >>> # Create a TRACE logger
     >>> import sys, logging
     >>> traceLogger = logging.getLogger("TRACE.examplemodule1")
     >>> traceLogger.addHandler( logging.StreamHandler(sys.stdout) )
-    
+
     >>> # Use the context manager
     >>> def f():
     ...     with Tracer(traceLogger):
     ...         print "Function f is running..."
-    
+
     >>> # If TRACE logging isn't enabled, there's no extra output
     >>> f()
     Function f is running...
@@ -52,10 +52,10 @@ class Tracer(object):
     >>> # Enable TRACE logging to see enter/exit log statements.
     >>> traceLogger.setLevel(logging.DEBUG)
     >>> f()
-    (enter) f 
+    (enter) f
     Function f is running...
     (exit) f
-    
+
     >>> # Disable TRACE logging by setting the level above DEBUG.
     >>> traceLogger.setLevel(logging.INFO)
     """
@@ -101,7 +101,7 @@ def traceLogged(logger, level=logging.DEBUG, msg="", caller_name=""):
     >>> @traceLogged(traceLogger)
     ... def f():
     ...     print "Function f is running..."
-    
+
     >>> # If TRACE logging isn't enabled, there's no extra output
     >>> f()
     Function f is running...
@@ -109,7 +109,7 @@ def traceLogged(logger, level=logging.DEBUG, msg="", caller_name=""):
     >>> # Enable TRACE logging to see enter/exit log statements.
     >>> traceLogger.setLevel(logging.DEBUG)
     >>> f()
-    (enter) f 
+    (enter) f
     Function f is running...
     (exit) f
 

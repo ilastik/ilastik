@@ -124,7 +124,7 @@ class TagFormatter(object):
     Generates a function that formats an svg tag.
     The generated function will have a signature of the form:
         def my_tag(standard_attr1, standard_attr2, ..., **generic_attrs)
-    
+
     All underscores in attribute names are replaced with hyphens when the svg tag is produced.
     For example, calling: my_tag(some_attr1='A', attr2='B', generic_attr='C')
     produces svg tag: <my_tag some-attr1="A", attr2="B", generic-attr="C"/>

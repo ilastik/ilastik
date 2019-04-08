@@ -71,7 +71,7 @@ class TestOpBlockwiseFilesetReader(object):
         {
             "_schema_name" : "RESTful-volume-description",
             "_schema_version" : 1.0,
-        
+
             "name" : "Bock11-level0",
             "format" : "hdf5",
             "axes" : "zyx",
@@ -107,7 +107,7 @@ class TestOpBlockwiseFilesetReader(object):
             "_schema_version" : 1.0,
 
             "remote_description" : {remote_description},
-            "local_description" : {local_description}        
+            "local_description" : {local_description}
         }}
         """.format(
             remote_description=Bock11VolumeDescription, local_description=blockwiseFilesetDescription

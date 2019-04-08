@@ -19,7 +19,7 @@ class TransposedView(object):
             - ndim
             - transpose()
             - __getitem__()
-        
+
         permutation
             A tuple of index orders, as you would pass to ndarray.transpose(), with one extra feature:
             You may insert None into the permutation, which inserts a singleton dimension into view.

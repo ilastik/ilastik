@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 class RoiMeta(type):
     """
-    Roi metaclass.  This mechanism automatically registers all roi 
+    Roi metaclass.  This mechanism automatically registers all roi
     subclasses for string serialization via Roi._registerSubclass.
     """
 

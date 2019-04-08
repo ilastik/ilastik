@@ -97,7 +97,7 @@ class BlockwiseFileset(object):
     A 'blockwise file set' is a directory with a particular structure, which contains the entire dataset broken up into blocks.
     Important parameters (e.g. shape, dtype, blockshape) are specified in a JSON file, which must match the schema given by :py:data:`BlockwiseFileset.DescriptionFields`.
     The parent directory of the description file is considered to be the top-most directory in the blockwise dataset hierarchy.
-    
+
     - Simultaneous reads are threadsafe.
     - NOT threadsafe for reading and writing simultaneously (or writing and writing).
     - NOT threadsafe for closing.  Do not call close() while reading or writing.
@@ -143,10 +143,10 @@ class BlockwiseFileset(object):
     @classmethod
     def readDescription(cls, descriptionFilePath):
         """
-        Parse the description file at the given path and return a 
+        Parse the description file at the given path and return a
         :py:class:`jsonConfig.Namespace` object with the description parameters.
         The file will be parsed according to the schema given by :py:data:`BlockwiseFileset.DescriptionFields`.
-        
+
         :param descriptionFilePath: The path to the description file to parse.
         """
         return BlockwiseFileset.DescriptionSchema.parseConfigFile(descriptionFilePath)
@@ -155,7 +155,7 @@ class BlockwiseFileset(object):
     def writeDescription(cls, descriptionFilePath, descriptionFields):
         """
         Write a :py:class:`jsonConfig.Namespace` object to the given path.
-        
+
         :param descriptionFilePath: The path to overwrite with the description fields.
         :param descriptionFields: The fields to write.
         """
@@ -204,7 +204,7 @@ class BlockwiseFileset(object):
     def __init__(self, descriptionFilePath, mode="r", preparsedDescription=None):
         """
         Constructor.  Uses `readDescription` interally.
-        
+
         :param descriptionFilePath: The path to the .json file that describes the dataset.
         :param mode: Set to ``'r'`` if the fileset should be read-only.
         :param preparsedDescription: (Optional) Provide pre-parsed description fields, in which case the provided description file will not be parsed.
@@ -312,7 +312,7 @@ class BlockwiseFileset(object):
     def readData(self, roi, out_array=None):
         """
         Read data from the fileset.
-        
+
         :param roi: The region of interest to read from the dataset.  Must be a tuple of iterables: (start, stop).
         :param out_array: The location to store the read data.  Must be the correct size for the given roi.  If not provided, an array is created for you.
         :returns: The requested data.  If out_array was provided, returns out_array.
@@ -328,7 +328,7 @@ class BlockwiseFileset(object):
     def writeData(self, roi, data):
         """
         Write data to the fileset.
-        
+
         :param roi: The region of interest to write the data to.  Must be a tuple of iterables: (start, stop).
         :param data: The data to write.  Must be the correct size for the given roi.
         """
@@ -404,7 +404,7 @@ class BlockwiseFileset(object):
         """
         Set a block status on disk.
         We use a simple convention: If the status file exists, the block is available.  Otherwise, it ain't.
-        
+
         :param status: Must be either ``BlockwiseFileset.BLOCK_AVAILABLE`` or ``BlockwiseFileset.BLOCK_NOT_AVAILABLE``.
         """
         blockDir = self.getDatasetDirectory(blockstart)
@@ -442,7 +442,7 @@ class BlockwiseFileset(object):
     def _transferData(self, roi, array_data, read):
         """
         Read or write data from/to the fileset.
-        
+
         :param roi: The region of interest.
         :param array_data: If ``read`` is True, ``array_data`` is the destination array for the read data.  If ``read`` is False, array_data contains the data to write to disk.
         :param read: If True, read data from the fileset into ``array_data``.  Otherwise, write data from ``array_data`` into the fileset on disk.
@@ -477,7 +477,7 @@ class BlockwiseFileset(object):
     def _transferBlockData(self, entire_block_roi, block_relative_roi, array_data, array_slicing, read):
         """
         Read or write data to a single block in the fileset.
-        
+
         :param entire_block_roi: The roi of the entire block, relative to the whole dataset.
         :param block_relative_roi: The roi of the data being read/written, relative to the block itself (not the whole dataset).
         :param array_data: Either the source or the destination of the data being transferred to/from the fileset on disk.
@@ -499,7 +499,7 @@ class BlockwiseFileset(object):
         """
         Transfer a block of data to/from an hdf5 dataset.
         See _transferBlockData() for details.
-        
+
         We use separate parameters for array_data and array_slicing to allow users to pass an hdf5 dataset for array_data.
         """
         # For the hdf5 format, the full path format INCLUDES the dataset name, e.g. /path/to/myfile.h5/volume/data
@@ -656,7 +656,7 @@ class BlockwiseFileset(object):
         Export an arbitrary roi to a single hdf5 file.
         The file will be placed in the given exportDirectory,
         and will be named according to the exported roi.
-        
+
         :param roi: The roi to export
         :param exportDirectory: The directory in which the result should be placed.
         :param use_view_coordinates: If True, assume the roi was given relative to the view start.
@@ -691,7 +691,7 @@ class BlockwiseFileset(object):
     def exportSubset(self, roi, exportDirectory, use_view_coordinates=True):
         """
         Create a new blockwise fileset by copying a subset of this blockwise fileset.
-        
+
         :param roi: The portion to export.  Must be along block boundaries, in ABSOLUTE coordinates.
         :param exportDirectory: The directory to copy the new blockwise fileset to.
         """

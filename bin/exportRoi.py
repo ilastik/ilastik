@@ -25,8 +25,8 @@
 Executable script for obtaining cutout volumes from a blockwise fileset.
 Two export formats are supported:
 - 'single-hdf5' exports an arbitrary roi to a single hdf5 output file
-- 'blockwise-subset' creates a new blockwise fileset directory tree, simply 
-    by copying the necessary files from the original fileset. This is much 
+- 'blockwise-subset' creates a new blockwise fileset directory tree, simply
+    by copying the necessary files from the original fileset. This is much
     faster than 'single-hdf5' for large cutout volumes.
 """
 from __future__ import print_function

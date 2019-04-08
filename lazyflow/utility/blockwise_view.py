@@ -13,31 +13,31 @@ except ImportError:
 
 def blockwise_view(a, blockshape, aslist=False, require_aligned_blocks=True):
     """
-    Return a 2N-D view of the given N-D array, rearranged so each ND block (tile) 
-    of the original array is indexed by its block address using the first N 
+    Return a 2N-D view of the given N-D array, rearranged so each ND block (tile)
+    of the original array is indexed by its block address using the first N
     indexes of the output array.
-    
+
     Note: This function is nearly identical to ``skimage.util.view_as_blocks()``, except:
           - "imperfect" block shapes are permitted (via require_aligned_blocks=False)
           - only contiguous arrays are accepted.  (This function will NOT silently copy your array.)
             As a result, the return value is *always* a view of the input.
-    
+
     Args:
         a: The ND array
 
         blockshape: The tile shape
-        
+
         aslist: If True, return all blocks as a list of ND blocks
                 instead of a 2D array indexed by ND block coordinate.
 
-        require_aligned_blocks: If True, check to make sure no data is "left over" 
+        require_aligned_blocks: If True, check to make sure no data is "left over"
                                 in each row/column/etc. of the output view.
                                 That is, the blockshape must divide evenly into the full array shape.
-                                If False, "leftover" items that cannot be made into complete blocks 
+                                If False, "leftover" items that cannot be made into complete blocks
                                 will be discarded from the output view.
- 
+
     Here's a 2D example (this function also works for ND):
-    
+
     >>> a = numpy.arange(1,21).reshape(4,5)
     >>> print a
     [[ 1  2  3  4  5]

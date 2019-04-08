@@ -42,7 +42,7 @@ def test_2d():
 
 def test_3d():
     """
-    Copy a 3D array block-by-block into a 6D array, 
+    Copy a 3D array block-by-block into a 6D array,
     and verify that the result matches blockwise_view()
     """
     orig_data = numpy.random.random((6, 9, 16))

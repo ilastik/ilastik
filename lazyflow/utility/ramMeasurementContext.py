@@ -8,7 +8,7 @@ this_process = psutil.Process(os.getpid())
 
 class RamMeasurementContext(object):
     """
-    Simple context manager to track the difference in this processes's 
+    Simple context manager to track the difference in this processes's
     resident memory usage between the start and stop of the context.
     """
 

@@ -288,7 +288,7 @@ class TestDetection(unittest.TestCase):
         from lazyflow.operators.opDetectMissingData import _patchify as patchify
 
         X = np.vander(np.arange(2, 5))
-        """ results in 
+        """ results in
         X = array([[ 4,  2,  1],
                    [ 9,  3,  1],
                    [16,  4,  1]])
@@ -442,7 +442,7 @@ class TestInterpolation(unittest.TestCase):
     def testIntegerRange(self):
         """
         test if the output is in the right integer range
-        in particular, too large values should be set to max and too small 
+        in particular, too large values should be set to max and too small
         values to min
         """
         v = np.zeros((1, 1, 5), dtype=np.uint8)

@@ -64,7 +64,7 @@ def test_basic():
 @fail_after_timeout(5)
 def test_pool_with_failed_requests():
     """
-    When one of the requests in a RequestPool fails, 
+    When one of the requests in a RequestPool fails,
     the exception should be propagated back to the caller of RequestPool.wait()
     """
 

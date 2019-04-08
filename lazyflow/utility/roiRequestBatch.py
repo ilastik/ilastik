@@ -46,7 +46,7 @@ class RoiRequestBatch(object):
     The result of each requested roi is provided as a signal, which the user should subscribe() to.
 
     Example usage:
-    
+
     >>> import sys
     >>> import vigra
     >>> from lazyflow.graph import Graph
@@ -92,7 +92,7 @@ class RoiRequestBatch(object):
 
     >>> # Execute the batch of requests, and block for the result.
     >>> batch_requester.execute()
-    Progress: 0 20 40 60 80 100 100 
+    Progress: 0 20 40 60 80 100 100
     >>> print "Processed {} result blocks with a total sum of: {}".format( result_count[0], result_total_sum[0] )
     Processed 5 result blocks with a total sum of: 14500
     """
@@ -103,8 +103,8 @@ class RoiRequestBatch(object):
 
         :param outputSlot: The slot to request data from.
         :param roiIterator: An iterator providing new rois.
-        :param totalVolume: The total volume to be processed.  
-                            Used to provide the progress reporting signal. 
+        :param totalVolume: The total volume to be processed.
+                            Used to provide the progress reporting signal.
                             If not provided, then no intermediate progress will be signaled.
         :param batchSize: The maximum number of requests to launch in parallel.
         :param allowParallelResults: If False, The resultSignal will not be called in parallel.
@@ -150,11 +150,11 @@ class RoiRequestBatch(object):
     def execute(self):
         """
         Execute the batch of requests and wait for all of them to complete.
-        A batch of N requests is launched, and subsequent requests are 
-        launched one-by-one as the earlier requests complete.  Thus, there 
+        A batch of N requests is launched, and subsequent requests are
+        launched one-by-one as the earlier requests complete.  Thus, there
         will be N requests executing in parallel at all times.
 
-        This method returns ``None``.  All results must be handled via the 
+        This method returns ``None``.  All results must be handled via the
         :py:obj:`resultSignal`.
         """
         self.progressSignal(0)

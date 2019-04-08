@@ -14,7 +14,7 @@ from lazyflow.utility import OrderedSignal
 
 class OpConcatenateFeatureMatrices(Operator):
     """
-    Designed to receive a multi-slot of FeatureMatrix outputs from OpFeatureMatrixCache, 
+    Designed to receive a multi-slot of FeatureMatrix outputs from OpFeatureMatrixCache,
     and concatenate the results into one big feature matrix.
     """
 

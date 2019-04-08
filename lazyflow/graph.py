@@ -82,7 +82,7 @@ from lazyflow.metaDict import MetaDict
 
 class Graph(object):
     """
-    A Graph instance is shared by all connected operators and contains any 
+    A Graph instance is shared by all connected operators and contains any
     bookkeeping or globally accessible state needed by all operators/slots in the graph.
     """
 
@@ -97,10 +97,10 @@ class Graph(object):
         # The entire setup is "finished" when the initially invoked setup function returns.
         """
         See comment above.
-        
+
         If the graph is not in the middle of a setup operation as described above,
-        immediately call the given callback.  Otherwise, save the callback and 
-        execute it when the setup operation completes.  The callback is executed 
+        immediately call the given callback.  Otherwise, save the callback and
+        execute it when the setup operation completes.  The callback is executed
         only once, and then it is discarded.
         """
         if self._setup_depth == 0:

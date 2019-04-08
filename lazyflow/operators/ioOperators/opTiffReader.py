@@ -29,14 +29,14 @@ logger = logging.getLogger(__name__)
 class OpTiffReader(Operator):
     """
     Reads TIFF files as an ND array. We use two different libraries:
-    
+
     - To read the image metadata (determine axis order), we use tifffile.py (by Christoph Gohlke)
     - To actually read the data, we use vigra (which supports more compression types, e.g. JPEG)
-    
-    Note: This operator intentionally ignores any colormap 
+
+    Note: This operator intentionally ignores any colormap
           information and uses only the raw stored pixel values.
           (In fact, avoiding the colormapping is not trivial using the tifffile implementation.)
-    
+
     TODO: Add an option to output color-mapped pixels.
     """
 

@@ -21,7 +21,7 @@
 ###############################################################################
 """
 Implementation of a simple cross-platform file locking mechanism.
-This is a modified version of code retrieved on 2013-01-01 from 
+This is a modified version of code retrieved on 2013-01-01 from
 http://www.evanfosmark.com/2009/01/cross-platform-file-locking-support-in-python.
 (The original code was released under the BSD License.  See below for details.)
 
@@ -36,10 +36,10 @@ Modifications in this version:
  - Expanded API to mimic ``threading.Lock interface``:
    - ``__enter__`` always calls ``acquire()``, and therefore blocks if ``acquire()`` was called previously.
    - ``__exit__`` always calls ``release()``.  It is therefore a bug to call ``release()`` from within a context manager.
-   - Added ``locked()`` function. 
+   - Added ``locked()`` function.
    - Added blocking parameter to ``acquire()`` method
 
-WARNINGS: 
+WARNINGS:
  - The locking mechanism used here may need to be changed to support old NFS filesystems:
    http://lwn.net/Articles/251004
    (Newer versions of NFS should be okay, e.g. NFSv3 with Linux kernel 2.6. Check the open(2) man page for details about O_EXCL.)
@@ -92,7 +92,7 @@ import errno
 
 
 class FileLock(object):
-    """ A file locking mechanism that has context-manager support so 
+    """ A file locking mechanism that has context-manager support so
         you can use it in a ``with`` statement. This should be relatively cross
         compatible as it doesn't rely on ``msvcrt`` or ``fcntl`` for the locking.
     """
@@ -154,15 +154,15 @@ class FileLock(object):
         return True
 
     def release(self):
-        """ Get rid of the lock by deleting the lockfile. 
-            When working in a `with` statement, this gets automatically 
+        """ Get rid of the lock by deleting the lockfile.
+            When working in a `with` statement, this gets automatically
             called at the end.
         """
         self.is_locked = False
         os.unlink(self.lockfile)
 
     def __enter__(self):
-        """ Activated when used in the with statement. 
+        """ Activated when used in the with statement.
             Should automatically acquire a lock to be used in the with block.
         """
         self.acquire()

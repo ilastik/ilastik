@@ -54,7 +54,7 @@ class OpExportMultipageTiffSequence(Operator):
     def run_export(self):
         """
         Request the volume in slices (running in parallel), and write each slice to the correct page.
-        Note: We can't use BigRequestStreamer here, because the data for each slice wouldn't be 
+        Note: We can't use BigRequestStreamer here, because the data for each slice wouldn't be
               guaranteed to arrive in the correct order.
         """
         # Make the directory first if necessary
