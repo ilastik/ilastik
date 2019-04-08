@@ -3,7 +3,7 @@ clone_folder: c:\projects\lazyflow
 environment:
   ENV_NAME: test-env
   # set miniconda version explicitly
-  MINICONDA: C:\Miniconda36-x64
+  MINICONDA: C:\Miniconda37-x64
 
 install:
   - set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
