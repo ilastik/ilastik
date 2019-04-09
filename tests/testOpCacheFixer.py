@@ -34,7 +34,7 @@ from lazyflow.utility.testing import OpCallWhenDirty
 from numpy.testing import assert_array_equal
 
 class TestOpCacheFixer(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self, method):
         g = Graph()
 
         vol = np.random.random(size=(100, 110, 120))

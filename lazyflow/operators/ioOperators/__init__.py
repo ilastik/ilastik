@@ -20,16 +20,17 @@ from __future__ import absolute_import
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-from .ioOperators import OpImageReader, OpStackLoader, OpStackWriter, OpStackToH5Writer, OpH5WriterBigDataset
+from .ioOperators import (OpImageReader, OpStackLoader, OpStackWriter,
+                          OpStackToH5Writer, OpH5N5WriterBigDataset)
 
 # All "Read" operators must come before OpInputDataReader, which uses them.
 from .opStreamingMmfReader import OpStreamingMmfReader
 from .opStreamingUfmfReader import OpStreamingUfmfReader
 from .opRawBinaryFileReader import OpRawBinaryFileReader
 from .opNpyFileReader import OpNpyFileReader
-from .opStreamingHdf5Reader import OpStreamingHdf5Reader
-from .opStreamingHdf5SequenceReaderS import OpStreamingHdf5SequenceReaderS
-from .opStreamingHdf5SequenceReaderM import OpStreamingHdf5SequenceReaderM
+from .opStreamingH5N5Reader import OpStreamingH5N5Reader
+from .opStreamingH5N5SequenceReaderS import OpStreamingH5N5SequenceReaderS
+from .opStreamingH5N5SequenceReaderM import OpStreamingH5N5SequenceReaderM
 from .opBlockwiseFilesetReader import OpBlockwiseFilesetReader
 from .opRESTfulBlockwiseFilesetReader import OpRESTfulBlockwiseFilesetReader
 from .opTiledVolumeReader import OpTiledVolumeReader

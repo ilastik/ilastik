@@ -44,7 +44,7 @@ class AllowMaskException(Exception):
 
 
 class TestOpArrayPiperWithAccessCount(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity = OpArrayPiperWithAccessCount(graph=self.graph)
@@ -89,7 +89,7 @@ class TestOpArrayPiperWithAccessCount(object):
         assert (self.operator_identity.accessCount == 1)
         assert((output == 0).all())
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity.Input.disconnect()
         self.operator_identity.Output.disconnect()
@@ -97,7 +97,7 @@ class TestOpArrayPiperWithAccessCount(object):
 
 
 class TestOpArrayPiperWithAccessCount2(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity = OpArrayPiperWithAccessCount(graph=self.graph)
@@ -165,7 +165,7 @@ class TestOpArrayPiperWithAccessCount2(object):
         assert(data.mask.shape == output.mask.shape)
         assert((output.mask == False).all())
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity.Input.disconnect()
         self.operator_identity.Output.disconnect()
@@ -173,7 +173,7 @@ class TestOpArrayPiperWithAccessCount2(object):
 
 
 class TestOpArrayPiperWithAccessCount3(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity = OpArrayPiperWithAccessCount(graph=self.graph)
@@ -246,7 +246,7 @@ class TestOpArrayPiperWithAccessCount3(object):
         assert(data.mask.shape == output.mask.shape)
         assert((output.mask == False).all())
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity.Input.disconnect()
         self.operator_identity.Output.disconnect()
@@ -254,7 +254,7 @@ class TestOpArrayPiperWithAccessCount3(object):
 
 
 class TestOpArrayPiperWithAccessCount4(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity = OpArrayPiperWithAccessCount(graph=self.graph)
@@ -318,7 +318,7 @@ class TestOpArrayPiperWithAccessCount4(object):
         except AssertionError as e:
             raise AllowMaskException(str(e))
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity.Input.disconnect()
         self.operator_identity.Output.disconnect()
@@ -326,7 +326,7 @@ class TestOpArrayPiperWithAccessCount4(object):
 
 
 class TestOpArrayPiperWithAccessCount5(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity = OpArrayPiperWithAccessCount(graph=self.graph)
@@ -383,7 +383,7 @@ class TestOpArrayPiperWithAccessCount5(object):
         except AssertionError as e:
             raise AllowMaskException(str(e))
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity.Input.disconnect()
         self.operator_identity.Output.disconnect()
@@ -391,7 +391,7 @@ class TestOpArrayPiperWithAccessCount5(object):
 
 
 class TestOpArrayPiperWithAccessCount6(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity_1 = OpArrayPiperWithAccessCount(graph=self.graph)
@@ -433,7 +433,7 @@ class TestOpArrayPiperWithAccessCount6(object):
         except AssertionError as e:
             raise AllowMaskException(str(e))
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity_2.Input.disconnect()
         self.operator_identity_2.Output.disconnect()
@@ -444,7 +444,7 @@ class TestOpArrayPiperWithAccessCount6(object):
 
 
 class TestOpArrayPiperWithAccessCount7(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.graph = Graph()
 
         self.operator_identity_1 = OpArrayPiperWithAccessCount(graph=self.graph)
@@ -498,7 +498,7 @@ class TestOpArrayPiperWithAccessCount7(object):
         assert(data.mask.shape == output.mask.shape)
         assert((data.mask == output.mask).all())
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # Take down operators
         self.operator_identity_2.Input.disconnect()
         self.operator_identity_2.Output.disconnect()

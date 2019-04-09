@@ -34,11 +34,11 @@ from lazyflow.operators.ioOperators import OpInputDataReader, OpNpyWriter
 class TestOpNpyWriter(object):
     
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls._tmpdir = tempfile.mkdtemp()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         shutil.rmtree(cls._tmpdir) 
     
     def testBasic(self):

@@ -63,10 +63,10 @@ assert issubclass(NonRegisteredCache, Cache)
 
 
 class TestCacheMemoryManager(unittest.TestCase):
-    def setUp(self):
+    def setup_method(self, method):
         pass
 
-    def tearDown(self):
+    def teardown_method(self, method):
         # reset cleanup frequency to sane value
         # reset max memory
         Memory.setAvailableRamCaches(-1)

@@ -1,7 +1,4 @@
 from __future__ import absolute_import
-from builtins import zip
-from builtins import map
-from builtins import range
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -24,6 +21,7 @@ from builtins import range
 #		   http://ilastik.org/license/
 ###############################################################################
 #Python
+from abc import abstractmethod
 import copy
 import logging
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -395,7 +393,7 @@ class OpClassifierPredict(Operator):
         if slot == self.Classifier:
             self.PMaps.setDirty()
 
-class OpPixelwiseClassifierPredict(Operator):
+class OpBaseClassifierPredict(Operator):
     Image = InputSlot()
     LabelsCount = InputSlot()
     Classifier = InputSlot()
@@ -407,7 +405,7 @@ class OpPixelwiseClassifierPredict(Operator):
     PMaps = OutputSlot()
     
     def __init__(self, *args, **kwargs):
-        super( OpPixelwiseClassifierPredict, self ).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Make sure the entire image is dirty if the prediction mask is removed.
         self.PredictionMask.notifyUnready( lambda s: self.PMaps.setDirty() )
@@ -420,8 +418,8 @@ class OpPixelwiseClassifierPredict(Operator):
                                                 #ilastik operators, setting it to 2 causes errors in pixel classification
                                                 #(live prediction doesn't work when only two labels are present)
 
+        self.PMaps.meta.assignFrom( self.Image.meta )
         self.PMaps.meta.dtype = numpy.float32
-        self.PMaps.meta.axistags = copy.copy(self.Image.meta.axistags)
         self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,) # FIXME: This assumes that channel is the last axis
         self.PMaps.meta.drange = (0.0, 1.0)
 
@@ -429,23 +427,72 @@ class OpPixelwiseClassifierPredict(Operator):
         classifier = self.Classifier.value
         
         # Training operator may return 'None' if there was no data to train with
-        skip_prediction = (classifier is None)
-
-        # Shortcut: If the mask is totally zero, skip this request entirely
-        if not skip_prediction and self.PredictionMask.ready():
-            mask_roi = numpy.array((roi.start, roi.stop))
-            mask_roi[:,-1:] = [[0],[1]]
-            start, stop = list(map(tuple, mask_roi))
-            mask = self.PredictionMask( start, stop ).wait()
-            skip_prediction = not numpy.any(mask)
-
-        if skip_prediction:
+        if classifier is None:
             result[:] = 0.0
             return result
 
-        assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), \
-            "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."\
-            "".format( type(classifier) )
+        # Shortcut: If the mask is totally zero, skip this request entirely
+        mask = None
+        if self.PredictionMask.ready():
+            mask_roi = numpy.array((roi.start, roi.stop))
+            num_channels_in_mask = self.PredictionMask.meta.getTaggedShape()['c']
+            mask_roi[:,-1:] = [[0],[num_channels_in_mask]]
+            start, stop = list(map(tuple, mask_roi))
+            multichannel_mask = self.PredictionMask( start, stop ).wait()
+
+            #create a single-channel merged mask, which has 0 iff all PredictionMask channels are 0
+            mask = multichannel_mask[...,0:1]
+            for c in range(1, num_channels_in_mask):
+                mask = numpy.logical_or(mask, multichannel_mask[..., c:c+1])
+
+            if not numpy.any(mask):
+                logger.debug(f"Skipping masked block {roi}")
+                result[:] = 0.0
+                return result
+
+        probabilities = self._calculate_probabilities(roi)
+
+        # We're expecting a channel for each label class.
+        # If we didn't provide at least one sample for each label,
+        #  we may get back fewer channels.
+        if probabilities.shape[-1] != self.PMaps.meta.shape[-1]:
+            # Copy to an array of the correct shape
+            # This is slow, but it's an unusual case
+            assert probabilities.shape[-1] == len(classifier.known_classes)
+            full_probabilities = numpy.zeros( probabilities.shape[:-1] + (self.PMaps.meta.shape[-1],), dtype=numpy.float32 )
+            for i, label in enumerate(classifier.known_classes):
+                full_probabilities[..., label-1] = probabilities[..., i]
+            
+            probabilities = full_probabilities
+
+        # Cancel out masked pixels.
+        if mask is not None:
+            probabilities *= mask
+
+        # Copy only the prediction channels the client requested.
+        result[...] = probabilities[..., roi.start[-1]:roi.stop[-1]]
+        return result
+
+    @abstractmethod
+    def _calculate_probabilities(roi):
+        """Returns the channel-wise probability maps calculated on roi"""
+        pass
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.Classifier:
+            self.logger.debug("classifier changed, setting dirty")
+            self.PMaps.setDirty()
+        elif slot == self.Image:
+            self.PMaps.setDirty()
+        elif slot == self.PredictionMask:
+            self.PMaps.setDirty()
+
+class OpPixelwiseClassifierPredict(OpBaseClassifierPredict):
+    def _calculate_probabilities(self, roi):
+        classifier = self.Classifier.value
+
+        assert isinstance(classifier, LazyflowPixelwiseClassifierABC), \
+            f"Classifier {classifier} must be sublcass of {LazyflowPixelwiseClassifierABC}"
 
         upstream_roi = (roi.start, roi.stop)
         # Ask for the halo needed by the classifier
@@ -469,67 +516,16 @@ class OpPixelwiseClassifierPredict(Operator):
         input_channels = self.Image.meta.shape[-1]
         upstream_roi[:,-1] = [0, input_channels]
 
-        # Request the data
         input_data = self.Image(*upstream_roi).wait()
         axistags = self.Image.meta.axistags
         probabilities = classifier.predict_probabilities_pixelwise( input_data, predictions_roi, axistags )
-        
-        # We're expecting a channel for each label class.
-        # If we didn't provide at least one sample for each label,
-        #  we may get back fewer channels.
-        if probabilities.shape[-1] != self.PMaps.meta.shape[-1]:
-            # Copy to an array of the correct shape
-            # This is slow, but it's an unusual case
-            assert probabilities.shape[-1] == len(classifier.known_classes)
-            full_probabilities = numpy.zeros( probabilities.shape[:-1] + (self.PMaps.meta.shape[-1],), dtype=numpy.float32 )
-            for i, label in enumerate(classifier.known_classes):
-                full_probabilities[..., label-1] = probabilities[..., i]
-            
-            probabilities = full_probabilities
+        return probabilities
 
-        # Copy only the prediction channels the client requested.
-        result[...] = probabilities[..., roi.start[-1]:roi.stop[-1]]
-        return result
-
-    def propagateDirty(self, slot, subindex, roi):
-        if slot == self.Classifier:
-            self.logger.debug("classifier changed, setting dirty")
-            self.PMaps.setDirty()
-        elif slot == self.Image:
-            self.PMaps.setDirty()
-        elif slot == self.PredictionMask:
-            self.PMaps.setDirty(roi.start, roi.stop)
-
-class OpVectorwiseClassifierPredict(Operator):
-    Image = InputSlot()
-    LabelsCount = InputSlot()
-    Classifier = InputSlot()
-    
-    # An entire prediction request is skipped if the mask is all zeros for the requested roi.
-    # Otherwise, the request is serviced as usual and the mask is ignored.
-    PredictionMask = InputSlot(optional=True)
-    
-    PMaps = OutputSlot()
-
-    def __init__(self, *args, **kwargs):
-        super( OpVectorwiseClassifierPredict, self ).__init__(*args, **kwargs)
-
-        # Make sure the entire image is dirty if the prediction mask is removed.
-        self.PredictionMask.notifyUnready( lambda s: self.PMaps.setDirty() )
-
+class OpVectorwiseClassifierPredict(OpBaseClassifierPredict):
     def setupOutputs(self):
-        assert self.Image.meta.getAxisKeys()[-1] == 'c'
-        
-        nlabels = max(self.LabelsCount.value, 1) #we'll have at least 2 labels once we actually predict something
-                                                #not setting it to 0 here is friendlier to possible downstream
-                                                #ilastik operators, setting it to 2 causes errors in pixel classification
-                                                #(live prediction doesn't work when only two labels are present)
+        super().setupOutputs()
+        nlabels = max(self.LabelsCount.value, 1)
 
-        self.PMaps.meta.assignFrom( self.Image.meta )
-        self.PMaps.meta.dtype = numpy.float32
-        self.PMaps.meta.shape = self.Image.meta.shape[:-1]+(nlabels,) # FIXME: This assumes that channel is the last axis
-        self.PMaps.meta.drange = (0.0, 1.0)
-        
         ideal_blockshape = self.Image.meta.ideal_blockshape
         if ideal_blockshape is None:
             ideal_blockshape = (0,) * len( self.Image.meta.shape )
@@ -549,28 +545,11 @@ class OpVectorwiseClassifierPredict(Operator):
         feature_ram_per_pixel = max(self.Image.meta.dtype().nbytes, 4) * input_channels
         self.PMaps.meta.ram_usage_per_requested_pixel = classifier_ram_per_pixel + feature_ram_per_pixel
 
-    def execute(self, slot, subindex, roi, result):
+    def _calculate_probabilities(self, roi):
         classifier = self.Classifier.value
-        
-        # Training operator may return 'None' if there was no data to train with
-        skip_prediction = (classifier is None)
 
-        # Shortcut: If the mask is totally zero, skip this request entirely
-        if not skip_prediction and self.PredictionMask.ready():
-            mask_roi = numpy.array((roi.start, roi.stop))
-            mask_roi[:,-1:] = [[0],[1]]
-            start, stop = list(map(tuple, mask_roi))
-            mask = self.PredictionMask( start, stop ).wait()
-            skip_prediction = not numpy.any(mask)
-            del mask
-
-        if skip_prediction:
-            result[:] = 0.0
-            return result
-
-        assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), \
-            "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface."\
-            "".format( type(classifier) )
+        assert isinstance(classifier, LazyflowVectorwiseClassifierABC), \
+            f"Classifier {classifier} must be sublcass of {LazyflowVectorwiseClassifierABC}"
 
         key = roi.toSlice()
         newKey = key[:-1]
@@ -580,7 +559,6 @@ class OpVectorwiseClassifierPredict(Operator):
             input_data = self.Image[newKey].wait()
 
         input_data = numpy.asarray(input_data, numpy.float32)
-
         shape=input_data.shape
         prod = numpy.prod(shape[:-1])
         features = input_data.reshape((prod, shape[-1]))
@@ -588,40 +566,8 @@ class OpVectorwiseClassifierPredict(Operator):
         with Timer() as prediction_timer:
             probabilities = classifier.predict_probabilities( features )
 
-        logger.debug( "Features took {} seconds, Prediction took {} seconds for roi: {} : {}"\
-                      .format( features_timer.seconds(), prediction_timer.seconds(), roi.start, roi.stop ) )
+        logger.debug(f"Features took {features_timer.seconds()} seconds."
+                     f" Prediction took {prediction_timer.seconds()} seconds. {roi}")
 
-        assert probabilities.shape[1] <= self.PMaps.meta.shape[-1], \
-            "Error: Somehow the classifier has more label classes than expected:"\
-            " Got {} classes, expected {} classes"\
-            .format( probabilities.shape[1], self.PMaps.meta.shape[-1] )
-        
-        # We're expecting a channel for each label class.
-        # If we didn't provide at least one sample for each label,
-        #  we may get back fewer channels.
-        if probabilities.shape[1] < self.PMaps.meta.shape[-1]:
-            # Copy to an array of the correct shape
-            # This is slow, but it's an unusual case
-            assert probabilities.shape[-1] == len(classifier.known_classes)
-            full_probabilities = numpy.zeros( probabilities.shape[:-1] + (self.PMaps.meta.shape[-1],), dtype=numpy.float32 )
-            for i, label in enumerate(classifier.known_classes):
-                full_probabilities[:, label-1] = probabilities[:, i]
-            
-            probabilities = full_probabilities
-        
-        # Reshape to image
-        probabilities.shape = shape[:-1] + (self.PMaps.meta.shape[-1],)
-
-        # Copy only the prediction channels the client requested.
-        result[...] = probabilities[...,roi.start[-1]:roi.stop[-1]]
-        return result
-
-    def propagateDirty(self, slot, subindex, roi):
-        if slot == self.Classifier:
-            self.logger.debug("classifier changed, setting dirty")
-            self.PMaps.setDirty()
-        elif slot == self.Image:
-            self.PMaps.setDirty()
-        elif slot == self.PredictionMask:
-            self.PMaps.setDirty(roi.start, roi.stop)
-
+        probabilities.shape = shape[:-1] + (probabilities.shape[-1],)
+        return probabilities

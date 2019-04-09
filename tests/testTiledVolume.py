@@ -211,12 +211,12 @@ class DataSetup(object):
 class TestTiledVolume(object):
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.data_setup = DataSetup()
         cls.data_setup.setup()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.data_setup.teardown()
 
     def testBasic(self):
@@ -285,12 +285,12 @@ class TestTiledVolume(object):
 class TestLocalTiledVolume(object):
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.data_setup = DataSetup()
         cls.data_setup.setup()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.data_setup.teardown()
 
     def testBasic(self):
@@ -314,12 +314,12 @@ class TestLocalTiledVolume(object):
 class TestCustomAxes(object):
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.data_setup = DataSetup()
         cls.data_setup.setup()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.data_setup.teardown()
         
     def testCustomAxes(self):
@@ -347,12 +347,12 @@ class TestCustomAxes(object):
 class TestViewOriginOffset(object):
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.data_setup = DataSetup()
         cls.data_setup.setup()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.data_setup.teardown()
         
     def testViewOriginOffset(self):
@@ -379,12 +379,12 @@ class TestViewOriginOffset(object):
 class TestSpecialZTranslation(object):
 
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls.data_setup = DataSetup()
         cls.data_setup.setup()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         cls.data_setup.teardown()
         
     def test_special_z_translation(self):

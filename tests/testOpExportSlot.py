@@ -41,11 +41,11 @@ from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceRe
 class TestOpExportSlot(object):
     
     @classmethod
-    def setupClass(cls):
+    def setup_class(cls):
         cls._tmpdir = tempfile.mkdtemp()
 
     @classmethod
-    def teardownClass(cls):
+    def teardown_class(cls):
         shutil.rmtree(cls._tmpdir) 
     
     def testBasic_Hdf5(self):

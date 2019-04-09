@@ -68,7 +68,7 @@ class OpInner(Operator):
 
 class TestOutputOutputConnection(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.g = Graph()
         self.op = OpOuter(graph=self.g)
 

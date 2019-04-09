@@ -1,5 +1,6 @@
 .project
 .pydevproject
+.coverage
 #KDevelop project files
 *.kdev4
 *.pyc

@@ -483,6 +483,17 @@ class Slot(object):
             self.meta._ready = False
             self._sig_unready(self)
 
+    def setOrConnect(self, value_or_slot):
+        if isinstance(value_or_slot, Slot):
+            self.connect(value_or_slot)
+        else:
+            self.setValue(value_or_slot)
+
+    def setOrConnectIfAvailable(self, value_or_slot):
+        if value_or_slot is None:
+            return
+        self.setOrConnect(value_or_slot)
+
     @is_setup_fn
     def connect(self, upstream_slot, notify=True, permit_distant_connection=False):
         """

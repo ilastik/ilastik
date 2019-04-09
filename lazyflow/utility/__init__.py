@@ -30,8 +30,8 @@ from .orderedSignal import OrderedSignal
 from .fileLock import FileLock
 from .tracer import Tracer, traceLogged
 from .pathHelpers import (
-    PathComponents, getPathVariants, isUrl, make_absolute, 
-    globHdf5, globList, mkdir_p, lsHdf5)
+    PathComponents, getPathVariants, isUrl, make_absolute,
+    globH5N5, globList, mkdir_p, lsH5N5)
 
 from .roiRequestBatch import RoiRequestBatch
 from .bigRequestStreamer import BigRequestStreamer
@@ -47,3 +47,4 @@ from .priorityQueue import PriorityQueue
 from .log_exception import log_exception
 from .transposed_view import TransposedView
 from .reorderAxesDecorator import reorder_options, reorder
+from .pipeline import Pipeline

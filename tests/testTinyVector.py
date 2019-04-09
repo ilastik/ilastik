@@ -31,7 +31,7 @@ from lazyflow.roi import TinyVector
 
 class TestTinyVector(object):
     
-    def setUp(self):
+    def setup_method(self, method):
         self.v1 = TinyVector(list(range(1,11)))
         self.v2 = TinyVector(list(range(11,21)))
         

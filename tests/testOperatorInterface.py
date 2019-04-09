@@ -126,7 +126,7 @@ class OpTesting5ToMulti(graph.Operator):
 
 class TestOperator_setupOutputs(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.g = graph.Graph()
 
     def test_disconnected_connected(self):
@@ -269,7 +269,7 @@ class TestOperatorMultiSlotExecute(object):
 
 class TestOperator_meta(object):
 
-    def setUp(self):
+    def setup_method(self, method):
         self.g = graph.Graph()
 
     def test_meta_propagate(self):
@@ -316,7 +316,7 @@ class OpWithMultiInputs(graph.Operator):
             result[...] = self.Input[index][key]
 
 class TestMultiSlotResize(object):
-    def setUp(self):
+    def setup_method(self, method):
         self.g = graph.Graph()
         self.op1 = OpWithMultiInputs(graph=self.g)
         self.op2 = OpWithMultiInputs(graph=self.g)

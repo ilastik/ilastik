@@ -1,6 +1,13 @@
 from builtins import object
+from unittest import TestCase
+
 import numpy
-from lazyflow.roi import determineBlockShape, getIntersection, enlargeRoiForHalo, TinyVector, nonzero_bounding_box, containing_rois
+
+from lazyflow.roi import (
+    determineBlockShape, getIntersection, enlargeRoiForHalo, TinyVector, nonzero_bounding_box, containing_rois,
+    getIntersectingBlocks
+)
+
 
 class Test_determineBlockShape(object):
     
@@ -57,7 +64,7 @@ class Test_getIntersection(object):
         intersection = getIntersection( roiA, roiB , assertIntersect=False)
         assert intersection is None, "Expected None because {} doesn't intersect with {}".format(  )
 
-class test_enlargeRoiForHalo(object):
+class TestEnlargeRoiForHalo(object):
     
     def testBasic(self):
         start = TinyVector([10, 100, 200, 300, 1])
@@ -87,7 +94,7 @@ class test_enlargeRoiForHalo(object):
         assert enlarged_stop[2] == stop[2] + full_halo_width
         assert enlarged_stop[3] == 500
 
-class test_nonzero_bounding_box(object):
+class TestNonzeroBoundingBox(object):
     
     def testBasic(self):
         data = numpy.zeros( (10,100,100), numpy.uint8 )
@@ -103,7 +110,7 @@ class test_nonzero_bounding_box(object):
         assert isinstance(bb_roi, numpy.ndarray)
         assert (bb_roi == [[0,0,0], [0,0,0]]).all()
 
-class test_containing_rois(object):
+class TestContainingRois(object):
     
     def testBasic(self):
         rois = [([0,0,0], [10,10,10]),
@@ -126,6 +133,17 @@ class test_containing_rois(object):
         rois = []
         result = containing_rois( rois, ( [100,100,100], [200,200,200] ) )
         assert result.shape == (0,)
+
+
+class TestGetIntersectionBlocks(TestCase):
+    def test_invalid_parameters(self):
+        with self.assertRaises(AssertionError):
+            getIntersectingBlocks((256, 256, 0, 2), ([0, 0, 0, 0], [256, 256, 256, 2]))
+
+        with self.assertRaises(AssertionError):
+            getIntersectingBlocks(numpy.array((256, 256, 0, 2)), ([0, 0, 0, 0], [256, 256, 256, 2]))
+
+
 
 if __name__ == "__main__":
     # Run nose
