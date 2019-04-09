@@ -77,7 +77,7 @@ then
     ILASTIK_META_SOURCE=$(readlink -m "${ILASTIK_META_SOURCE}")
     echo "linking to existing sources in ${ILASTIK_META_SOURCE}"
     DEV_PREFIX=${CONDA_ROOT}/envs/${ENV_NAME}
-    eval "conda remove -y -n ${ENV_NAME} ilastik-meta"
+    eval "conda remove -y --force -n ${ENV_NAME} ilastik-meta"
     # Re-install ilastik-meta.pth
     cat > "${DEV_PREFIX}"/lib/python3.7/site-packages/ilastik-meta.pth << EOF
 ../../../ilastik-meta/lazyflow

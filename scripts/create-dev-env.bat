@@ -113,7 +113,7 @@ goto :init
     if defined OptVerbose (echo creating conda environment done)
 
     if defined OptVerbose (if defined IlastikMetaPath echo removing ilastik-meta...)
-    if defined IlastikMetaPath call conda remove -y -n %EnvName% ilastik-meta
+    if defined IlastikMetaPath call conda remove -y --force -n %EnvName% ilastik-meta
     if %errorlevel% neq 0 goto :end
     if defined OptVerbose (if defined IlastikMetaPath echo removing ilastik-meta done)
 
