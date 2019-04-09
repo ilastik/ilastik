@@ -1,6 +1,7 @@
 from __future__ import print_function
 from builtins import zip
 from builtins import range
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -20,7 +21,7 @@ from builtins import range
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import copy
 import vigra
@@ -38,7 +39,9 @@ from numpy.testing import assert_array_equal
 import unittest
 
 import signal
+
 signal.signal(signal.SIGINT, signal.SIG_DFL)
+
 
 class OpMultiArraySlicer_REDUCE_DIM(Operator):
     """
@@ -46,6 +49,7 @@ class OpMultiArraySlicer_REDUCE_DIM(Operator):
     Same as the slicer operator below, but reduces the dimensionality of the data.
     The sliced axis is discarded in the output image shape.
     """
+
     Input = InputSlot()
     AxisFlag = InputSlot()
     Slices = OutputSlot(level=1)
@@ -54,31 +58,31 @@ class OpMultiArraySlicer_REDUCE_DIM(Operator):
     category = "Misc"
 
     def setupOutputs(self):
-        flag=self.inputs["AxisFlag"].value
+        flag = self.inputs["AxisFlag"].value
 
-        indexAxis=self.inputs["Input"].meta.axistags.index(flag)
-        outshape=list(self.inputs["Input"].meta.shape)
-        n=outshape.pop(indexAxis)
-        outshape=tuple(outshape)
-        
+        indexAxis = self.inputs["Input"].meta.axistags.index(flag)
+        outshape = list(self.inputs["Input"].meta.shape)
+        n = outshape.pop(indexAxis)
+        outshape = tuple(outshape)
+
         if self.Input.meta.ideal_blockshape:
-            ideal_blockshape = list( self.Input.meta.ideal_blockshape )
+            ideal_blockshape = list(self.Input.meta.ideal_blockshape)
             ideal_blockshape.pop(indexAxis)
             ideal_blockshape = tuple(ideal_blockshape)
 
         if self.Input.meta.max_blockshape:
-            max_blockshape = list( self.Input.meta.max_blockshape )
+            max_blockshape = list(self.Input.meta.max_blockshape)
             max_blockshape.pop(indexAxis)
             max_blockshape = tuple(max_blockshape)
-        
-        outaxistags=copy.copy(self.inputs["Input"].meta.axistags)
+
+        outaxistags = copy.copy(self.inputs["Input"].meta.axistags)
         del outaxistags[flag]
 
         self.outputs["Slices"].resize(n)
 
         for o in self.outputs["Slices"]:
             # Output metadata is a modified copy of the input's metadata
-            o.meta.assignFrom( self.Input.meta )
+            o.meta.assignFrom(self.Input.meta)
             o.meta.axistags = outaxistags
             o.meta.shape = outshape
             if self.Input.meta.drange is not None:
@@ -93,19 +97,19 @@ class OpMultiArraySlicer_REDUCE_DIM(Operator):
     def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
         index = subindex[0]
-        #print "SLICER: key", key, "indexes[0]", indexes[0], "result", result.shape
-        start,stop=sliceToRoi(key,self.outputs["Slices"][index].meta.shape)
+        # print "SLICER: key", key, "indexes[0]", indexes[0], "result", result.shape
+        start, stop = sliceToRoi(key, self.outputs["Slices"][index].meta.shape)
 
-        start=list(start)
-        stop=list(stop)
+        start = list(start)
+        stop = list(stop)
 
-        flag=self.inputs["AxisFlag"].value
-        indexAxis=self.inputs["Input"].meta.axistags.index(flag)
+        flag = self.inputs["AxisFlag"].value
+        indexAxis = self.inputs["Input"].meta.axistags.index(flag)
 
-        start.insert(indexAxis,index)
-        stop.insert(indexAxis,index)
+        start.insert(indexAxis, index)
+        stop.insert(indexAxis, index)
 
-        newKey=roiToSlice(numpy.array(start),numpy.array(stop))
+        newKey = roiToSlice(numpy.array(start), numpy.array(stop))
 
         ttt = self.inputs["Input"][newKey].wait()
 
@@ -113,47 +117,48 @@ class OpMultiArraySlicer_REDUCE_DIM(Operator):
         writeKey.insert(indexAxis, 0)
         writeKey = tuple(writeKey)
 
-        return ttt[writeKey ]#+ (0,)]
+        return ttt[writeKey]  # + (0,)]
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.AxisFlag:
-            for i,s in enumerate(self.Slices):
-                s.setDirty( slice(None) )
+            for i, s in enumerate(self.Slices):
+                s.setDirty(slice(None))
         elif slot == self.Input:
             key = roi.toSlice()
             reducedKey = list(key)
             inputTags = self.Input.meta.axistags
             flag = self.AxisFlag.value
-            axisSlice = reducedKey.pop( inputTags.index(flag) )
-            
+            axisSlice = reducedKey.pop(inputTags.index(flag))
+
             axisStart, axisStop = axisSlice.start, axisSlice.stop
             if axisStart is None:
                 axisStart = 0
             if axisStop is None:
-                axisStop = len( self.Slices )
-    
+                axisStop = len(self.Slices)
+
             for i in range(axisStart, axisStop):
-                self.Slices[i].setDirty( reducedKey )
+                self.Slices[i].setDirty(reducedKey)
         else:
             assert False, "Unknown dirty input slot"
-        
 
 
 class OpTrackedOutputProvider(OpOutputProvider):
     """
     Simply provides access to an array, but records the requests it processes.
     """
+
     def __init__(self, *args, **kwargs):
-        super( OpTrackedOutputProvider, self ).__init__( *args, **kwargs )
+        super(OpTrackedOutputProvider, self).__init__(*args, **kwargs)
         self.requested_rois = []
         self._lock = threading.Lock()
 
     def execute(self, slot, subindex, roi, result):
         print("Requesting roi: {}".format(roi))
         with self._lock:
-            self.requested_rois.append( copy.copy(roi) )
-        super( OpTrackedOutputProvider, self ).execute( slot, subindex, roi, result )
-    
+            self.requested_rois.append(copy.copy(roi))
+        super(OpTrackedOutputProvider, self).execute(slot, subindex, roi, result)
+
+
 def testMinimalRequest():
     """
     Make sure that unneeded slices are not requested by the stacker.
@@ -161,31 +166,29 @@ def testMinimalRequest():
     graph = Graph()
     ops = []
     for op in range(10):
-        data = numpy.random.random( (100,100) )
-        data = vigra.taggedView( data, 'yx' )
-        meta = MetaDict( { 'shape' : data.shape, 
-                 'dtype' : data.dtype, 
-                 'axistags' : data.axistags } )
-        opData = OpTrackedOutputProvider( data, meta, graph=graph )
-        ops.append( opData )
-    
-    opStacker = OpMultiArrayStacker(graph=graph)    
-    opStacker.AxisFlag.setValue('z')
+        data = numpy.random.random((100, 100))
+        data = vigra.taggedView(data, "yx")
+        meta = MetaDict({"shape": data.shape, "dtype": data.dtype, "axistags": data.axistags})
+        opData = OpTrackedOutputProvider(data, meta, graph=graph)
+        ops.append(opData)
+
+    opStacker = OpMultiArrayStacker(graph=graph)
+    opStacker.AxisFlag.setValue("z")
     opStacker.AxisIndex.setValue(0)
-    opStacker.Images.resize( len(ops) )
-    for islot, opData in zip( opStacker.Images, ops ):
-        islot.connect( opData.Output )
-    
-    assert opStacker.Output.meta.getTaggedShape()['z'] == len(ops)
-    
-    stacked_data = opStacker.Output[3:5,:,:].wait()
-    assert stacked_data.shape == (2, 100, 100)                      
-    stacked_data = vigra.taggedView( stacked_data, 'zyx' )
-    expected_data = numpy.concatenate( (ops[3]._data[numpy.newaxis, :], ops[4]._data[numpy.newaxis, :]) )
-    expected_data = vigra.taggedView( expected_data, 'zyx' )
+    opStacker.Images.resize(len(ops))
+    for islot, opData in zip(opStacker.Images, ops):
+        islot.connect(opData.Output)
+
+    assert opStacker.Output.meta.getTaggedShape()["z"] == len(ops)
+
+    stacked_data = opStacker.Output[3:5, :, :].wait()
+    assert stacked_data.shape == (2, 100, 100)
+    stacked_data = vigra.taggedView(stacked_data, "zyx")
+    expected_data = numpy.concatenate((ops[3]._data[numpy.newaxis, :], ops[4]._data[numpy.newaxis, :]))
+    expected_data = vigra.taggedView(expected_data, "zyx")
     assert (stacked_data == expected_data).all(), "Stacker returned the wrong data"
     for index, op in enumerate(ops):
-        assert len(op.requested_rois) == 0 or index in range(3,5), "Stacker requested more data than it needed."
+        assert len(op.requested_rois) == 0 or index in range(3, 5), "Stacker requested more data than it needed."
 
 
 def testFullAllocate():
@@ -194,19 +197,19 @@ def testFullAllocate():
     ny = 10
     nz = 2
     nc = 7
-    stack = vigra.VigraArray((nx, ny, nz, nc), axistags=vigra.defaultAxistags('xyzc'))
+    stack = vigra.VigraArray((nx, ny, nz, nc), axistags=vigra.defaultAxistags("xyzc"))
     stack[...] = numpy.random.rand(nx, ny, nz, nc)
 
     g = Graph()
 
-    #assume that the slicer works
+    # assume that the slicer works
     slicerX = OpMultiArraySlicer_REDUCE_DIM(graph=g)
     slicerX.inputs["Input"].setValue(stack)
-    slicerX.inputs["AxisFlag"].setValue('x')
+    slicerX.inputs["AxisFlag"].setValue("x")
 
-    #insert the x dimension
+    # insert the x dimension
     stackerX = OpMultiArrayStacker(graph=g)
-    stackerX.inputs["AxisFlag"].setValue('x')
+    stackerX.inputs["AxisFlag"].setValue("x")
     stackerX.inputs["AxisIndex"].setValue(0)
     stackerX.inputs["Images"].connect(slicerX.outputs["Slices"])
 
@@ -214,9 +217,9 @@ def testFullAllocate():
     assert_array_equal(newdata, stack.view(numpy.ndarray))
 
     print("1st part ok.................")
-    #merge stuff that already has an x dimension
-    stack2 = vigra.VigraArray((nx-1, ny, nz, nc), axistags=vigra.defaultAxistags('xyzc'))
-    stack2[...] = numpy.random.rand(nx-1, ny, nz, nc)
+    # merge stuff that already has an x dimension
+    stack2 = vigra.VigraArray((nx - 1, ny, nz, nc), axistags=vigra.defaultAxistags("xyzc"))
+    stack2[...] = numpy.random.rand(nx - 1, ny, nz, nc)
 
     stackerX2 = OpMultiArrayStacker(graph=g)
 
@@ -229,31 +232,31 @@ def testFullAllocate():
     stackerX2.Images[0].connect(ap1.Output)
     stackerX2.Images[1].connect(ap2.Output)
 
-    stackerX2.inputs["AxisFlag"].setValue('x')
+    stackerX2.inputs["AxisFlag"].setValue("x")
     stackerX2.inputs["AxisIndex"].setValue(0)
 
-    #print "STACKER: ", stackerX2.outputs["Output"].meta.shape
+    # print "STACKER: ", stackerX2.outputs["Output"].meta.shape
 
     newdata = stackerX2.outputs["Output"][:].wait()
     bothstacks = numpy.concatenate((stack, stack2), axis=0)
     assert_array_equal(newdata, bothstacks.view(numpy.ndarray))
-    #print newdata.shape, bothstacks.shape
+    # print newdata.shape, bothstacks.shape
 
     print("2nd part ok.................")
-    #print "------------------------------------------------------------"
-    #print "------------------------------------------------------------"
-    #print "------------------------------------------------------------"
+    # print "------------------------------------------------------------"
+    # print "------------------------------------------------------------"
+    # print "------------------------------------------------------------"
     ##### channel
 
-    #assume that the slicer works
+    # assume that the slicer works
     slicerC = OpMultiArraySlicer_REDUCE_DIM(graph=g)
     slicerC.inputs["Input"].setValue(stack)
-    slicerC.inputs["AxisFlag"].setValue('c')
+    slicerC.inputs["AxisFlag"].setValue("c")
 
-    #insert the c dimension
+    # insert the c dimension
 
     stackerC = OpMultiArrayStacker(graph=g)
-    stackerC.inputs["AxisFlag"].setValue('c')
+    stackerC.inputs["AxisFlag"].setValue("c")
     stackerC.inputs["AxisIndex"].setValue(3)
     stackerC.inputs["Images"].connect(slicerC.outputs["Slices"])
 
@@ -261,17 +264,17 @@ def testFullAllocate():
     assert_array_equal(newdata, stack.view(numpy.ndarray))
 
     print("3rd part ok.................")
-    #print "STACKER: ", stackerC.outputs["Output"].meta.shape
+    # print "STACKER: ", stackerC.outputs["Output"].meta.shape
 
-    #merge stuff that already has an x dimension
-    stack3 = vigra.VigraArray((nx, ny, nz, nc-1), axistags=vigra.defaultAxistags('xyzc'))
-    stack3[...] = numpy.random.rand(nx, ny, nz, nc-1)
+    # merge stuff that already has an x dimension
+    stack3 = vigra.VigraArray((nx, ny, nz, nc - 1), axistags=vigra.defaultAxistags("xyzc"))
+    stack3[...] = numpy.random.rand(nx, ny, nz, nc - 1)
 
     ap3 = operators.OpArrayPiper(graph=g)
     ap3.Input.setValue(stack3)
 
     stackerC2 = OpMultiArrayStacker(graph=g)
-    stackerC2.inputs["AxisFlag"].setValue('c')
+    stackerC2.inputs["AxisFlag"].setValue("c")
     stackerC2.inputs["AxisIndex"].setValue(3)
     stackerC2.Images.resize(2)
     stackerC2.Images[0].connect(ap1.Output)
@@ -289,19 +292,19 @@ def testPartialAllocate():
     ny = 20
     nz = 17
     nc = 7
-    stack = vigra.VigraArray((nx, ny, nz, nc), axistags=vigra.defaultAxistags('xyzc'))
+    stack = vigra.VigraArray((nx, ny, nz, nc), axistags=vigra.defaultAxistags("xyzc"))
     stack[...] = numpy.random.rand(nx, ny, nz, nc)
 
     g = Graph()
 
-    #assume that the slicer works
+    # assume that the slicer works
     slicerX = OpMultiArraySlicer_REDUCE_DIM(graph=g)
     slicerX.inputs["Input"].setValue(stack)
-    slicerX.inputs["AxisFlag"].setValue('x')
+    slicerX.inputs["AxisFlag"].setValue("x")
 
-    #insert the x dimension
+    # insert the x dimension
     stackerX = OpMultiArrayStacker(graph=g)
-    stackerX.inputs["AxisFlag"].setValue('x')
+    stackerX.inputs["AxisFlag"].setValue("x")
     stackerX.inputs["AxisIndex"].setValue(0)
     stackerX.inputs["Images"].connect(slicerX.outputs["Slices"])
 
@@ -316,7 +319,7 @@ class TestAxisIndex(unittest.TestCase):
     def setup_method(self, method):
         vol = numpy.random.randint(0, 256, size=(100, 200, 300, 2))
         vol = vol.astype(numpy.uint8)
-        vol = vigra.taggedView(vol, 'xyzc')
+        vol = vigra.taggedView(vol, "xyzc")
         self.vol = vol
         self.nc = vol.shape[-1]
 
@@ -324,22 +327,23 @@ class TestAxisIndex(unittest.TestCase):
         pipers = []
         g = Graph()
         op = OpMultiArrayStacker(graph=g)
-        op.AxisFlag.setValue('c')
+        op.AxisFlag.setValue("c")
         op.AxisIndex.setValue(0)
         op.Images.resize(self.nc)
-        
+
         for i in range(self.nc):
             piper = OpArrayPiper(graph=g)
             piper.Input.setValue(self.vol[..., i])
             op.Images[i].connect(piper.Output)
             pipers.append(piper)
-        
+
         out = op.Output[...].wait()
-        out = vigra.taggedView(out, axistags='cxyz').withAxes(*'xyzc')
+        out = vigra.taggedView(out, axistags="cxyz").withAxes(*"xyzc")
         assert_array_equal(out, self.vol)
 
         class OpCheckRoi(Operator):
             Input = InputSlot()
+
             def propagateDirty(self, slot, subindex, roi):
                 print("also here")
                 print(roi.stop)
@@ -354,17 +358,16 @@ class TestAxisIndex(unittest.TestCase):
 
 
 class TestOpMultiArrayStacker(unittest.TestCase):
-
     def setup_method(self, method):
         self.g = Graph()
-        vol = numpy.zeros((100,200,2))
-        vol = vigra.taggedView(vol, axistags='xyz')
+        vol = numpy.zeros((100, 200, 2))
+        vol = vigra.taggedView(vol, axistags="xyz")
         self.vol = vol
 
     def testSimpleUsage(self):
         n = self.vol.shape[2]
         op = OpMultiArrayStacker(graph=self.g)
-        op.AxisFlag.setValue('z')
+        op.AxisFlag.setValue("z")
 
         provider = OperatorWrapper(OpArrayPiper, graph=self.g)
         vol = self.vol
@@ -376,13 +379,13 @@ class TestOpMultiArrayStacker(unittest.TestCase):
             provider.Input[i].setValue(vol[..., i])
 
         out = op.Output[...].wait()
-        out = vigra.taggedView(out, axistags='xyz')
+        out = vigra.taggedView(out, axistags="xyz")
         numpy.testing.assert_array_equal(out, vol)
 
     def testIndexing(self):
         n = self.vol.shape[2]
         op = OpMultiArrayStacker(graph=self.g)
-        op.AxisFlag.setValue('z')
+        op.AxisFlag.setValue("z")
         op.AxisIndex.setValue(0)
 
         provider = OperatorWrapper(OpArrayPiper, graph=self.g)
@@ -395,20 +398,19 @@ class TestOpMultiArrayStacker(unittest.TestCase):
             provider.Input[i].setValue(vol[..., i])
 
         out = op.Output[...].wait()
-        out = vigra.taggedView(out, axistags='zxy')
+        out = vigra.taggedView(out, axistags="zxy")
         out = out.withAxes(*"xyz")
         numpy.testing.assert_array_equal(out, vol)
-
 
     ## slots could become unready after a while, the old implementation used to
     ## ignore this
     def testNonReady(self):
         n = self.vol.shape[2]
         op = OpMultiArrayStacker(graph=self.g)
-        op.AxisFlag.setValue('z')
+        op.AxisFlag.setValue("z")
         op.AxisIndex.setValue(0)
 
-        providers = [OpNonReady(graph=self.g),OpNonReady(graph=self.g)]
+        providers = [OpNonReady(graph=self.g), OpNonReady(graph=self.g)]
         provider = OperatorWrapper(OpArrayPiper, graph=self.g)
         provider.Input.resize(n)
         vol = self.vol
@@ -421,14 +423,13 @@ class TestOpMultiArrayStacker(unittest.TestCase):
             op.Images[i].connect(providers[i].Output)
 
         req = op.Output[...]
-        req.notify_failed( lambda *args: None ) # Replace the default handler: dont' show a traceback
+        req.notify_failed(lambda *args: None)  # Replace the default handler: dont' show a traceback
         out = req.wait()
-
 
         with self.assertRaises(InputSlot.SlotNotReadyError):
             providers[0].screwWithOutput()
             req = op.Output[...]
-            req.notify_failed( lambda *args: None ) # Replace the default handler: dont' show a traceback
+            req.notify_failed(lambda *args: None)  # Replace the default handler: dont' show a traceback
             out = req.wait()
 
 
@@ -452,11 +453,12 @@ class OpNonReady(Operator):
         self.Output.meta.NOTREADY = True
 
 
-
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

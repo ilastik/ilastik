@@ -17,25 +17,33 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
-#Python
+# Python
 import functools
 import logging
 
-#lazyflow
+# lazyflow
 from lazyflow.operator import Operator
+
 
 class OperatorWrapper(Operator):
     name = "OperatorWrapper"
 
-    loggerName = __name__ + '.OperatorWrapper'
+    loggerName = __name__ + ".OperatorWrapper"
     logger = logging.getLogger(loggerName)
-    traceLogger = logging.getLogger('TRACE.' + loggerName)
+    traceLogger = logging.getLogger("TRACE." + loggerName)
 
-    def __init__(self, operatorClass, operator_args=None,
-                 operator_kwargs=None, parent=None, graph=None,
-                 promotedSlotNames=None, broadcastingSlotNames=None):
+    def __init__(
+        self,
+        operatorClass,
+        operator_args=None,
+        operator_kwargs=None,
+        parent=None,
+        graph=None,
+        promotedSlotNames=None,
+        broadcastingSlotNames=None,
+    ):
         """Constructs a wrapper for the given operator. That is,
         manages a list of copies of the original operator, and
         provides access to these inner operators' slots via external
@@ -79,9 +87,7 @@ class OperatorWrapper(Operator):
             operator_kwargs = {}
         assert isinstance(operator_args, (tuple, list))
         assert isinstance(operator_kwargs, dict)
-        self._createInnerOperator = functools.partial(
-            operatorClass, parent=self,
-            *operator_args, **operator_kwargs)
+        self._createInnerOperator = functools.partial(operatorClass, parent=self, *operator_args, **operator_kwargs)
 
         self._initialized = False
 
@@ -95,25 +101,31 @@ class OperatorWrapper(Operator):
         allInputSlotNames = set([s.name for s in operatorClass.inputSlots])
 
         if promotedSlotNames is not None:
-            assert broadcastingSlotNames is None, \
-                ("Please specify either the promoted slots or the"
-                 " broadcasting slots, not both.")
+            assert broadcastingSlotNames is None, (
+                "Please specify either the promoted slots or the" " broadcasting slots, not both."
+            )
             for name in promotedSlotNames:
-                assert name in allInputSlotNames, \
-                    "Didn't recognize slot name to promote: '{}' is not a valid input slot name for this operator".format( name )
+                assert (
+                    name in allInputSlotNames
+                ), "Didn't recognize slot name to promote: '{}' is not a valid input slot name for this operator".format(
+                    name
+                )
 
             # 'Promoted' slots will be exposed as multi-slots
             # All others will be broadcasted
             promotedSlotNames = set(promotedSlotNames)
-            
+
         elif broadcastingSlotNames is not None:
             # 'Broadcasting' slots are NOT exposed as multi-slots.
             # Each is exposed as a single slot that is shared by all
             # inner operators.
 
             for name in broadcastingSlotNames:
-                assert name in allInputSlotNames, \
-                    "Didn't recognize slot name to broadcast: '{}' is not a valid input slot name for this operator".format( name )
+                assert (
+                    name in allInputSlotNames
+                ), "Didn't recognize slot name to broadcast: '{}' is not a valid input slot name for this operator".format(
+                    name
+                )
 
             # set difference
             promotedSlotNames = allInputSlotNames - set(broadcastingSlotNames)
@@ -129,13 +141,10 @@ class OperatorWrapper(Operator):
         self.promotedSlotNames = promotedSlotNames
 
         self.innerOperators = []
-        self.logger.log(logging.DEBUG,
-                        "wrapping operator '{}'".format(
-                            operatorClass.name))
+        self.logger.log(logging.DEBUG, "wrapping operator '{}'".format(operatorClass.name))
 
         # replicate input slot definitions
-        for innerSlot in sorted(operatorClass.inputSlots,
-                                key=lambda s: s._global_slot_id):
+        for innerSlot in sorted(operatorClass.inputSlots, key=lambda s: s._global_slot_id):
             level = innerSlot.level
             if innerSlot.name in self.promotedSlotNames:
                 level += 1
@@ -144,8 +153,7 @@ class OperatorWrapper(Operator):
             setattr(self, outerSlot.name, outerSlot)
 
         # replicate output slot definitions
-        for innerSlot in sorted(operatorClass.outputSlots,
-                                key=lambda s: s._global_slot_id):
+        for innerSlot in sorted(operatorClass.outputSlots, key=lambda s: s._global_slot_id):
             level = innerSlot.level + 1
             outerSlot = innerSlot._getInstance(self, level=level)
             self.outputs[outerSlot.name] = outerSlot
@@ -242,10 +250,12 @@ class OperatorWrapper(Operator):
             else:
                 upstream_slot = outerSlot
             if op.inputs[key].upstream_slot is not None:
-                msg = ("Can't set up OperatorWrapper connections."
-                       " Input slot {} is already connected to a"
-                       " upstream_slot (must have happened in {}'s"
-                       " constructor".format(key, op.name))
+                msg = (
+                    "Can't set up OperatorWrapper connections."
+                    " Input slot {} is already connected to a"
+                    " upstream_slot (must have happened in {}'s"
+                    " constructor".format(key, op.name)
+                )
                 raise RuntimeError(msg)
             op.inputs[key].connect(upstream_slot)
 
@@ -255,12 +265,11 @@ class OperatorWrapper(Operator):
             mslot[index].backpropagate_values = True
             mslot[index].connect(op.outputs[key])
             mslot[index].notifyDisconnect(self.handleEarlyDisconnect)
-            #mslot[index]._changed()
+            # mslot[index]._changed()
         return op
 
     def handleEarlyDisconnect(self, slot):
-        assert self._cleaningUp, "You aren't allowed to disconnect the internal"\
-                                 " connections of an operator wrapper."
+        assert self._cleaningUp, "You aren't allowed to disconnect the internal" " connections of an operator wrapper."
 
     def _removeInnerOperator(self, index, length):
         if len(self.innerOperators) <= length:
@@ -285,10 +294,11 @@ class OperatorWrapper(Operator):
         pass
 
     def execute(self, slot, subindex, roi, result):
-        #this should never be called !!!
-        assert False, \
-            "OperatorWrapper execute() function should never be called.  "\
+        # this should never be called !!!
+        assert False, (
+            "OperatorWrapper execute() function should never be called.  "
             "You can only ask for data from SUBslots, not the outer multi-slots themselves."
+        )
 
     def setInSlot(self, slot, subindex, key, value):
         # Nothing to do here. Calls to Slot.setitem are already

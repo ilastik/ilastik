@@ -17,7 +17,7 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 
 import unittest
@@ -57,10 +57,10 @@ class TestMemory(unittest.TestCase):
     def testSettings(self):
         assert Memory.getAvailableRam() > 0
         assert Memory.getAvailableRamCaches() > 0
-        ram = 47*1111
+        ram = 47 * 1111
         Memory.setAvailableRam(ram)
         assert Memory.getAvailableRam() == ram
-        cache_ram = ram//3
+        cache_ram = ram // 3
         Memory.setAvailableRamCaches(cache_ram)
         assert Memory.getAvailableRamCaches() == cache_ram
 
@@ -74,7 +74,7 @@ class TestMemory(unittest.TestCase):
         assert_equal(d, 1024)
 
         d = parse("2.25MiB")
-        assert_equal(d, int(2.25*1024**2))
+        assert_equal(d, int(2.25 * 1024 ** 2))
 
         with self.assertRaises(FormatError):
             d = parse("bla")
@@ -85,7 +85,7 @@ class TestMemory(unittest.TestCase):
     def testScientific(self):
         sci = Memory.toScientific
 
-        x = 2.2 * 1024**3
+        x = 2.2 * 1024 ** 3
         (mant, exp) = sci(x)
         assert_equal(mant, 2.2)
         assert_equal(exp, 3)

@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -30,71 +31,73 @@ from .opCacheFixer import OpCacheFixer
 from .opCache import ManagedBlockedCache
 from .opSimpleBlockedArrayCache import OpSimpleBlockedArrayCache
 
+
 class OpBlockedArrayCache(Operator, ManagedBlockedCache):
     """
-    A blockwise array cache designed to replace the old OpBlockedArrayCache.  
+    A blockwise array cache designed to replace the old OpBlockedArrayCache.
     Instead of a monolithic implementation, this operator is a small pipeline of three simple operators.
-    
-    The actual caching of data is handled by an unblocked cache, so the "blocked" functionality is 
+
+    The actual caching of data is handled by an unblocked cache, so the "blocked" functionality is
     implemented via separate "splitting" operator that comes after the cache.
-    Also, the "fixAtCurrent" feature is implemented in a special operator, which comes before the cache.    
+    Also, the "fixAtCurrent" feature is implemented in a special operator, which comes before the cache.
     """
+
     fixAtCurrent = InputSlot(value=False)
     Input = InputSlot(allow_mask=True)
-    #BlockShape = InputSlot()
-    BlockShape = InputSlot(optional=True) # If 'None' is present, those items will be treated as max for the dimension.
-                                          # If not provided, will be set to Input.meta.shape
+    # BlockShape = InputSlot()
+    BlockShape = InputSlot(optional=True)  # If 'None' is present, those items will be treated as max for the dimension.
+    # If not provided, will be set to Input.meta.shape
     BypassModeEnabled = InputSlot(value=False)
     CompressionEnabled = InputSlot(value=False)
-    
+
     Output = OutputSlot(allow_mask=True)
-    CleanBlocks = OutputSlot() # A list of slicings indicating which blocks are stored in the cache and clean.
+    CleanBlocks = OutputSlot()  # A list of slicings indicating which blocks are stored in the cache and clean.
 
     def __init__(self, *args, **kwargs):
-        super( OpBlockedArrayCache, self ).__init__(*args, **kwargs)
-        
+        super(OpBlockedArrayCache, self).__init__(*args, **kwargs)
+
         # SCHEMATIC WHEN BypassModeEnabled == False:
-        # 
+        #
         # Input ---------> opCacheFixer -> opSimpleBlockedArrayCache -> (indirectly via execute) -> Output
         #                 /               /
         # fixAtCurrent --                /
         #                               /
         # BlockShape -------------------
-        
+
         # SCHEMATIC WHEN BypassModeEnabled == True:
         #
         # Input --> (indirectly via execute) -> Output
-        
-        self._opCacheFixer = OpCacheFixer( parent=self )
-        self._opCacheFixer.Input.connect( self.Input )
-        self._opCacheFixer.fixAtCurrent.connect( self.fixAtCurrent )
 
-        self._opSimpleBlockedArrayCache = OpSimpleBlockedArrayCache( parent=self )
-        self._opSimpleBlockedArrayCache.Input.connect( self._opCacheFixer.Output )
-        self._opSimpleBlockedArrayCache.CompressionEnabled.connect( self.CompressionEnabled )
-        self._opSimpleBlockedArrayCache.Input.connect( self._opCacheFixer.Output )
-        self._opSimpleBlockedArrayCache.BlockShape.connect( self.BlockShape )
-        self._opSimpleBlockedArrayCache.BypassModeEnabled.connect( self.BypassModeEnabled )
-        self.CleanBlocks.connect( self._opSimpleBlockedArrayCache.CleanBlocks )
-        self.Output.connect( self._opSimpleBlockedArrayCache.Output )
+        self._opCacheFixer = OpCacheFixer(parent=self)
+        self._opCacheFixer.Input.connect(self.Input)
+        self._opCacheFixer.fixAtCurrent.connect(self.fixAtCurrent)
+
+        self._opSimpleBlockedArrayCache = OpSimpleBlockedArrayCache(parent=self)
+        self._opSimpleBlockedArrayCache.Input.connect(self._opCacheFixer.Output)
+        self._opSimpleBlockedArrayCache.CompressionEnabled.connect(self.CompressionEnabled)
+        self._opSimpleBlockedArrayCache.Input.connect(self._opCacheFixer.Output)
+        self._opSimpleBlockedArrayCache.BlockShape.connect(self.BlockShape)
+        self._opSimpleBlockedArrayCache.BypassModeEnabled.connect(self.BypassModeEnabled)
+        self.CleanBlocks.connect(self._opSimpleBlockedArrayCache.CleanBlocks)
+        self.Output.connect(self._opSimpleBlockedArrayCache.Output)
 
         # Instead of connecting our Output directly to our internal pipeline,
         # We manually forward the data via the execute() function,
         #  which allows us to implement a bypass for the internal pipeline if Enabled
-        #self.Output.connect( self._opSimpleBlockedArrayCache.Output )
+        # self.Output.connect( self._opSimpleBlockedArrayCache.Output )
 
-        # Since we didn't directly connect the pipeline to our output, explicitly forward dirty notifications 
-        self._opSimpleBlockedArrayCache.Output.notifyDirty( lambda slot, roi: self.Output.setDirty(roi.start, roi.stop) )
+        # Since we didn't directly connect the pipeline to our output, explicitly forward dirty notifications
+        self._opSimpleBlockedArrayCache.Output.notifyDirty(lambda slot, roi: self.Output.setDirty(roi.start, roi.stop))
 
         # This member is used by tests that check RAM usage.
         self.setup_ram_context = RamMeasurementContext()
         self.registerWithMemoryManager()
-        
+
     def setupOutputs(self):
         if not self.BlockShape.connected() and not self.BlockShape.ready():
-            self.BlockShape.setValue( self.Input.meta.shape )
+            self.BlockShape.setValue(self.Input.meta.shape)
         # Copy metadata from the internal pipeline to the output
-        self.Output.meta.assignFrom( self._opSimpleBlockedArrayCache.Output.meta )
+        self.Output.meta.assignFrom(self._opSimpleBlockedArrayCache.Output.meta)
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here"
@@ -103,7 +106,7 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         pass
 
     def setInSlot(self, slot, subindex, key, value):
-        pass # Nothing to do here: Input is connected to an internal operator
+        pass  # Nothing to do here: Input is connected to an internal operator
 
     # ======= mimic cache interface for wrapping operators =======
 

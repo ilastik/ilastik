@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 from builtins import range
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -35,18 +36,20 @@ from . import MmfParser
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
-AXIS_ORDER = 'tyxc'
+AXIS_ORDER = "tyxc"
+
 
 class OpStreamingMmfReader(Operator):
     """
     Imports videos in MMF format.
-    """    
+    """
+
     name = "OpStreamingMmfReader"
     category = "Input"
 
     position = None
-    
-    FileName = InputSlot(stype='filestring')
+
+    FileName = InputSlot(stype="filestring")
     Output = OutputSlot()
 
     class DatasetReadError(Exception):
@@ -64,7 +67,7 @@ class OpStreamingMmfReader(Operator):
 
         self.mmf = MmfParser.MmfParser(str(fileName))
         frameNum = self.mmf.getNumberOfFrames()
-        
+
         self.frame = self.mmf.getFrame(0)
 
         self.Output.meta.dtype = self.frame.dtype.type
@@ -74,12 +77,12 @@ class OpStreamingMmfReader(Operator):
 
     def execute(self, slot, subindex, roi, result):
         start, stop = roi.start, roi.stop
-        
+
         tStart, tStop = start[0], stop[0]
         yStart, yStop = start[1], stop[1]
         xStart, xStop = start[2], stop[2]
         cStart, cStop = start[3], stop[3]
-  
+
         for tResult, tFrame in enumerate(range(tStart, tStop)):
             with self._lock:
                 if self.position != tFrame:
@@ -89,9 +92,8 @@ class OpStreamingMmfReader(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.FileName:
-            self.Output.setDirty( slice(None) )
-    
+            self.Output.setDirty(slice(None))
+
     def cleanUp(self):
         self.mmf.close()
         super(OpStreamingMmfReader, self).cleanUp()
-

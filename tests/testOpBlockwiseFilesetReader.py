@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,7 +19,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import os
 import sys
@@ -35,30 +36,30 @@ from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
 from lazyflow.operators.ioOperators import OpBlockwiseFilesetReader
 
 import logging
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
 logger.setLevel(logging.INFO)
-#logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
+
 
 class TestOpBlockwiseFilesetReader(object):
-    
     def setup_method(self, method):
         """
         Create a blockwise fileset to test with.
         """
-        if platform.system() == 'Windows':
+        if platform.system() == "Windows":
             # On windows, there are errors, and we make no attempt to solve them (at the moment).
             raise nose.SkipTest
-        
+
         try:
             BlockwiseFileset._prepare_system()
         except ValueError:
             # If the system isn't configured to allow lots of open files, we can't run this test.
             raise nose.SkipTest
-        
-        testConfig = \
-        """
+
+        testConfig = """
         {
             "_schema_name" : "blockwise-fileset-description",
             "_schema_version" : 1.0,
@@ -75,18 +76,18 @@ class TestOpBlockwiseFilesetReader(object):
         self.tempDir = tempfile.mkdtemp()
         self.configpath = os.path.join(self.tempDir, "config.json")
 
-        logger.debug( "Loading config file..." )
-        with open(self.configpath, 'w') as f:
+        logger.debug("Loading config file...")
+        with open(self.configpath, "w") as f:
             f.write(testConfig)
-        
-        logger.debug( "Creating random test data..." )
-        bfs = BlockwiseFileset( self.configpath, 'a' )
+
+        logger.debug("Creating random test data...")
+        bfs = BlockwiseFileset(self.configpath, "a")
         dataShape = tuple(bfs.description.shape)
-        self.data = numpy.random.randint( 255, size=dataShape ).astype(numpy.uint8)
-        
-        logger.debug( "Writing test data..." )
-        datasetRoi = ([0,0,0,0,0], dataShape)
-        bfs.writeData( datasetRoi, self.data )
+        self.data = numpy.random.randint(255, size=dataShape).astype(numpy.uint8)
+
+        logger.debug("Writing test data...")
+        datasetRoi = ([0, 0, 0, 0, 0], dataShape)
+        bfs.writeData(datasetRoi, self.data)
         block_starts = getIntersectingBlocks(bfs.description.block_shape, datasetRoi)
         for block_start in block_starts:
             bfs.setBlockStatus(block_start, BlockwiseFileset.BLOCK_AVAILABLE)
@@ -98,19 +99,21 @@ class TestOpBlockwiseFilesetReader(object):
     def testRead(self):
         graph = Graph()
         op = OpBlockwiseFilesetReader(graph=graph)
-        op.DescriptionFilePath.setValue( self.configpath )
-        
-        slice1 = numpy.s_[ :, 20:150, 20:150, 20:100, : ]
-        readData = op.Output[ slice1 ].wait()
+        op.DescriptionFilePath.setValue(self.configpath)
+
+        slice1 = numpy.s_[:, 20:150, 20:150, 20:100, :]
+        readData = op.Output[slice1].wait()
         assert (readData == self.data[slice1]).all()
         op.cleanUp()
+
 
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
 
-
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

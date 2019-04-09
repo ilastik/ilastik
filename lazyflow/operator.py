@@ -17,7 +17,7 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import collections
 import functools
@@ -31,15 +31,14 @@ from lazyflow.slot import InputSlot, OutputSlot, Slot
 
 
 class InputDict(collections.OrderedDict):
-
     def __init__(self, operator):
         super().__init__()
         self.operator = operator
 
     def __setitem__(self, key, value):
-        assert isinstance(value, InputSlot), \
-            ("ERROR: all elements of .inputs must be of type InputSlot."
-             " You provided {}!".format(value))
+        assert isinstance(
+            value, InputSlot
+        ), "ERROR: all elements of .inputs must be of type InputSlot." " You provided {}!".format(value)
         return super(InputDict, self).__setitem__(key, value)
 
     def __getitem__(self, key):
@@ -48,21 +47,23 @@ class InputDict(collections.OrderedDict):
         elif hasattr(self.operator, key):
             return getattr(self.operator, key)
         else:
-            raise Exception("Operator {} (class: {}) has no input slot named '{}'."
-                            " Available input slots are: {}".format(
-                                self.operator.name, self.operator.__class__, key, list(self.keys())))
+            raise Exception(
+                "Operator {} (class: {}) has no input slot named '{}'."
+                " Available input slots are: {}".format(
+                    self.operator.name, self.operator.__class__, key, list(self.keys())
+                )
+            )
 
 
 class OutputDict(collections.OrderedDict):
-
     def __init__(self, operator):
         super().__init__()
         self.operator = operator
 
     def __setitem__(self, key, value):
-        assert isinstance(value, OutputSlot), \
-            ("ERROR: all elements of .outputs must be of type"
-             " OutputSlot. You provided {}!".format(value))
+        assert isinstance(
+            value, OutputSlot
+        ), "ERROR: all elements of .outputs must be of type" " OutputSlot. You provided {}!".format(value)
         return super().__setitem__(key, value)
 
     def __getitem__(self, key):
@@ -71,9 +72,12 @@ class OutputDict(collections.OrderedDict):
         elif hasattr(self.operator, key):
             return getattr(self.operator, key)
         else:
-            raise Exception("Operator {} (class: {}) has no output slot named '{}'."
-                            " Available output slots are: {}".format(
-                                self.operator.name, self.operator.__class__, key, list(self.keys())))
+            raise Exception(
+                "Operator {} (class: {}) has no output slot named '{}'."
+                " Available output slots are: {}".format(
+                    self.operator.name, self.operator.__class__, key, list(self.keys())
+                )
+            )
 
 
 class OperatorMetaClass(ABCMeta):
@@ -122,6 +126,7 @@ class OperatorMetaClass(ABCMeta):
             import traceback
             import sys
             import io
+
             if sys.version_info.major == 2:
                 s = io.BytesIO()
             else:
@@ -164,14 +169,14 @@ class Operator(metaclass=OperatorMetaClass):
 
     """
 
-    loggerName = __name__ + '.Operator'
+    loggerName = __name__ + ".Operator"
     logger = logging.getLogger(loggerName)
-    traceLogger = logging.getLogger('TRACE.' + loggerName)
+    traceLogger = logging.getLogger("TRACE." + loggerName)
 
-    #definition of inputs slots
-    inputSlots  = []
+    # definition of inputs slots
+    inputSlots = []
 
-    #definition of output slots -> operators instances
+    # definition of output slots -> operators instances
     outputSlots = []
     name = "Operator (base class)"
     description = ""
@@ -187,7 +192,7 @@ class Operator(metaclass=OperatorMetaClass):
         return obj
 
     def __init__(self, parent=None, graph=None):
-        '''
+        """
         Either parent or graph have to be given. If both are given
         parent.graph has to be identical with graph.
 
@@ -195,16 +200,19 @@ class Operator(metaclass=OperatorMetaClass):
         root operator
         :param graph: a Graph instance
 
-        '''
-        if not(parent is None or isinstance(parent, Operator)):
-            raise Exception("parent of operator name='{}' must be an operator,"
-                            " not {} of type {}".format(self.name, parent, type(parent)))
-        if (parent and graph and parent.graph is not graph):
+        """
+        if not (parent is None or isinstance(parent, Operator)):
+            raise Exception(
+                "parent of operator name='{}' must be an operator,"
+                " not {} of type {}".format(self.name, parent, type(parent))
+            )
+        if parent and graph and parent.graph is not graph:
             raise Exception("graph of parent and graph of operator name='%s' have to be the same" % self.name)
         if graph is None:
             if parent is None:
-                raise Exception("Operator.__init__() [self.name='{}']:"
-                                " parent and graph can't be both None".format(self.name))
+                raise Exception(
+                    "Operator.__init__() [self.name='{}']:" " parent and graph can't be both None".format(self.name)
+                )
             graph = parent.graph
 
         self._cleaningUp = False
@@ -228,7 +236,7 @@ class Operator(metaclass=OperatorMetaClass):
         # you know what you're doing, and you weren't planning to use
         # that operator, anyway.
         self.externally_managed = False
-        
+
         self._debug_text = None
         self._setup_count = 0
 
@@ -245,27 +253,31 @@ class Operator(metaclass=OperatorMetaClass):
 
     # continue initialization, when user overrides __init__
     def _after_init(self):
-        #provide simple default name for lazy users
+        # provide simple default name for lazy users
         if self.name == Operator.name:
             self.name = type(self).__name__
-        assert self.graph is not None, \
-            ("Operator {}: self.graph is None, the parent ({})"
-             " given to the operator must have a valid .graph attribute!".format(
-                 self, self._parent))
+        assert self.graph is not None, (
+            "Operator {}: self.graph is None, the parent ({})"
+            " given to the operator must have a valid .graph attribute!".format(self, self._parent)
+        )
         # check for slot uniqueness
         temp = {}
         for i in self.inputSlots:
             if i.name in temp:
-                raise Exception("ERROR: Operator {} has multiple slots with name {},"
-                                " please make sure that all input and output slot"
-                                " names are unique".format(self.name, i.name))
+                raise Exception(
+                    "ERROR: Operator {} has multiple slots with name {},"
+                    " please make sure that all input and output slot"
+                    " names are unique".format(self.name, i.name)
+                )
             temp[i.name] = True
 
         for i in self.outputSlots:
             if i.name in temp:
-                raise Exception("ERROR: Operator {} has multiple slots with name {},"
-                                " please make sure that all input and output slot"
-                                " names are unique".format(self.name, i.name))
+                raise Exception(
+                    "ERROR: Operator {} has multiple slots with name {},"
+                    " please make sure that all input and output slot"
+                    " names are unique".format(self.name, i.name)
+                )
             temp[i.name] = True
 
         self._instantiate_slots()
@@ -274,7 +286,6 @@ class Operator(metaclass=OperatorMetaClass):
 
         for islot in list(self.inputs.values()):
             islot.notifyUnready(self.handleInputBecameUnready)
-
 
         self._initialized = True
         if self.configured():
@@ -313,9 +324,10 @@ class Operator(metaclass=OperatorMetaClass):
         """
         if "inputs" in self.__dict__ and "outputs" in self.__dict__:
             if name in self.inputs or name in self.outputs:
-                assert isinstance(value, Slot), \
-                    ("ERROR: trying to set attribute {} of operator {}"
-                     " to value {}, which is not of type Slot !".format(name, self, value))
+                assert isinstance(value, Slot), (
+                    "ERROR: trying to set attribute {} of operator {}"
+                    " to value {}, which is not of type Slot !".format(name, self, value)
+                )
         object.__setattr__(self, name, value)
 
     def configured(self):
@@ -325,14 +337,12 @@ class Operator(metaclass=OperatorMetaClass):
         """
         allConfigured = self._initialized
         for slot in list(self.inputs.values()):
-            allConfigured &= (slot.ready() or slot._optional)
+            allConfigured &= slot.ready() or slot._optional
         return allConfigured
 
     def _setDefaultInputValues(self):
         for i in list(self.inputs.values()):
-            if (i.upstream_slot is None and
-                i._value is None and
-                i._defaultValue is not None):
+            if i.upstream_slot is None and i._value is None and i._defaultValue is not None:
                 i.setValue(i._defaultValue)
 
     def _disconnect(self):
@@ -376,16 +386,19 @@ class Operator(metaclass=OperatorMetaClass):
 
         for s in list(self.inputs.values()) + list(self.outputs.values()):
             # See note about the externally_managed flag in Operator.__init__
-            downstream_slots = list(p for p in s.downstream_slots
-                            if p.getRealOperator() is not None and
-                            not p.getRealOperator().externally_managed)
+            downstream_slots = list(
+                p
+                for p in s.downstream_slots
+                if p.getRealOperator() is not None and not p.getRealOperator().externally_managed
+            )
             if len(downstream_slots) > 0:
-                msg = ("Cannot clean up this operator ({}): Slot '{}'"
-                       " is still providing data to downstream"
-                       " operators!\n".format( self.name, s.name))
+                msg = (
+                    "Cannot clean up this operator ({}): Slot '{}'"
+                    " is still providing data to downstream"
+                    " operators!\n".format(self.name, s.name)
+                )
                 for i, p in enumerate(s.downstream_slots):
-                    msg += "Downstream Partner {}: {}.{}".format(
-                        i, p.getRealOperator().name, p.name)
+                    msg += "Downstream Partner {}: {}.{}".format(i, p.getRealOperator().name, p.name)
                 raise RuntimeError(msg)
 
         self._parent = None
@@ -408,8 +421,7 @@ class Operator(metaclass=OperatorMetaClass):
         of the corresponding outputslots.
 
         """
-        raise NotImplementedError(".propagateDirty() of Operator {}"
-                                  " is not implemented !".format(self.name))
+        raise NotImplementedError(".propagateDirty() of Operator {}" " is not implemented !".format(self.name))
 
     @staticmethod
     def forbidParallelExecute(func):
@@ -424,6 +436,7 @@ class Operator(metaclass=OperatorMetaClass):
         it allows execute() to be run in parallel with itself.
 
         """
+
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             with self._condition:
@@ -436,7 +449,8 @@ class Operator(metaclass=OperatorMetaClass):
                 finally:
                     self._settingUp = False
                     self._condition.notifyAll()
-        wrapper.__wrapped__ = func # Emulate python 3 behavior of @wraps
+
+        wrapper.__wrapped__ = func  # Emulate python 3 behavior of @wraps
         return wrapper
 
     def _setupOutputs(self):
@@ -447,9 +461,9 @@ class Operator(metaclass=OperatorMetaClass):
                 self._condition.wait()
             self._settingUp = True
 
-            # Keep a copy of the old metadata for comparison. 
+            # Keep a copy of the old metadata for comparison.
             #  We only trigger downstream changes if something really changed.
-            old_metadata = { s: s.meta.copy() for s in list(self.outputs.values()) }
+            old_metadata = {s: s.meta.copy() for s in list(self.outputs.values())}
 
             # Call the subclass
             self.setupOutputs()
@@ -465,27 +479,29 @@ class Operator(metaclass=OperatorMetaClass):
                     # Special case, operators can flag an output as not actually being ready yet,
                     #  in which case we do NOT notify downstream connections.
                     if oslot.meta.NOTREADY:
-                        oslot.disconnect() # Forces unready state
+                        oslot.disconnect()  # Forces unready state
                     else:
                         # All unconnected outputs are ready after
                         # setupOutputs
                         oslot._setReady()
                 else:
-                    assert oslot.meta.NOTREADY is None, \
-                        "The special NOTREADY setting can only be used for output " \
+                    assert oslot.meta.NOTREADY is None, (
+                        "The special NOTREADY setting can only be used for output "
                         "slots that have no explicit upstream connection."
+                    )
 
-            #notify outputs of probably changed meta information
+            # notify outputs of probably changed meta information
             for oslot in list(self.outputs.values()):
-                if ( old_metadata[oslot] != oslot.meta and  # No need to call _changed() if nothing changed...
-                    not (not old_metadata[oslot]._ready and oslot.meta._ready)): # No need to call _changed() if it was already called in _setReady() above.
+                if old_metadata[oslot] != oslot.meta and not (  # No need to call _changed() if nothing changed...
+                    not old_metadata[oslot]._ready and oslot.meta._ready
+                ):  # No need to call _changed() if it was already called in _setReady() above.
                     oslot._changed()
         except:
             # Something went wrong
             # Make the operator-supplied outputs unready again
             for k, oslot in list(self.outputs.items()):
                 if oslot.upstream_slot is None:
-                    oslot.disconnect() # Forces unready state
+                    oslot.disconnect()  # Forces unready state
             raise
 
     def handleInputBecameUnready(self, slot):
@@ -495,12 +511,13 @@ class Operator(metaclass=OperatorMetaClass):
             return
 
         newly_unready_slots = []
+
         def set_output_unready(s):
             for ss in s._subSlots:
                 set_output_unready(ss)
             if s.upstream_slot is None and s._value is None:
                 was_ready = s.meta._ready
-                s.meta._ready &= (s.upstream_slot is not None)
+                s.meta._ready &= s.upstream_slot is not None
                 if was_ready and not s.meta._ready:
                     newly_unready_slots.append(s)
 
@@ -529,11 +546,12 @@ class Operator(metaclass=OperatorMetaClass):
             # This assert is here to force subclasses to override this method if the situation requires it.
             # If you have any output slots that aren't directly connected to an internal operator,
             #  you probably need to override this method.
-            # If your subclass provides an implementation of this method, there 
+            # If your subclass provides an implementation of this method, there
             #  is no need for it to call super().setupOutputs()
-            assert slot.upstream_slot is not None, \
-                "Output slot '{}' of operator '{}' has no upstream_slot, " \
-                "so you must override setupOutputs()".format( slot.name, self.name )
+            assert slot.upstream_slot is not None, (
+                "Output slot '{}' of operator '{}' has no upstream_slot, "
+                "so you must override setupOutputs()".format(slot.name, self.name)
+            )
 
     def execute(self, slot, subindex, roi, result):
         """ This method of the operator is called when a connected
@@ -552,19 +570,19 @@ class Operator(metaclass=OperatorMetaClass):
         input slots, run the calculation and put the results into the
         provided result argument. """
 
-        raise NotImplementedError("Operator {} does not implement"
-                                  " execute()".format(self.name))
+        raise NotImplementedError("Operator {} does not implement" " execute()".format(self.name))
 
     def setInSlot(self, slot, subindex, roi, value):
-        raise NotImplementedError("Can't use __setitem__ with Operator {}"
-                                  " because it doesn't implement"
-                                  " setInSlot()".format(self.name))
+        raise NotImplementedError(
+            "Can't use __setitem__ with Operator {}" " because it doesn't implement" " setInSlot()".format(self.name)
+        )
 
     @property
     def debug_text(self):
-        #return self._debug_text
-        return "setups: {}".format( self._setup_count )
-    
+        # return self._debug_text
+        return "setups: {}".format(self._setup_count)
+
+
 #    @debug_text.setter
 #    def debug_text(self, text):
 #        self._debug_text = text

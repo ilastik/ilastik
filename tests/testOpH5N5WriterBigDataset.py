@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,7 +19,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.ioOperators import OpH5N5WriterBigDataset
@@ -38,18 +39,17 @@ requesterLogger = logging.getLogger("lazyflow.utility.bigRequestStreamer")
 
 
 class TestOpH5N5WriterBigDataset(object):
- 
     def setup_method(self, method):
         self.graph = lazyflow.graph.Graph()
-        self.testDataH5FileName = 'bigH5TestData.h5'
-        self.testDataN5FileName = 'bigN5TestData.n5'
-        self.datasetInternalPath = 'volume/data'
- 
+        self.testDataH5FileName = "bigH5TestData.h5"
+        self.testDataN5FileName = "bigN5TestData.n5"
+        self.datasetInternalPath = "volume/data"
+
         # Generate some test data
         self.dataShape = (1, 10, 128, 128, 1)
-        self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc'), order='C' )
+        self.testData = vigra.VigraArray(self.dataShape, axistags=vigra.defaultAxistags("txyzc"), order="C")
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
- 
+
     def teardown_method(self, method):
         # Clean up: Delete the test file.
         try:
@@ -57,7 +57,7 @@ class TestOpH5N5WriterBigDataset(object):
             rmtree(self.testDataN5FileName)
         except:
             pass
- 
+
     def test_Writer(self):
         # Create the h5 file
         hdf5File = h5py.File(self.testDataH5FileName)
@@ -65,7 +65,7 @@ class TestOpH5N5WriterBigDataset(object):
 
         opPiper = OpArrayPiper(graph=self.graph)
         opPiper.Input.setValue(self.testData)
-         
+
         h5_opWriter = OpH5N5WriterBigDataset(graph=self.graph)
         n5_opWriter = OpH5N5WriterBigDataset(graph=self.graph)
         h5_opWriter.h5N5File.setValue(hdf5File)
@@ -81,13 +81,13 @@ class TestOpH5N5WriterBigDataset(object):
 
         assert h5_success
         assert n5_success
- 
+
         hdf5File.close()
         n5File.close()
 
         # Check the file.
-        hdf5File = h5py.File(self.testDataH5FileName, 'r')
-        n5File = z5py.N5File(self.testDataN5FileName, 'r')
+        hdf5File = h5py.File(self.testDataH5FileName, "r")
+        n5File = z5py.N5File(self.testDataN5FileName, "r")
         h5_dataset = hdf5File[self.datasetInternalPath]
         n5_dataset = n5File[self.datasetInternalPath]
         assert h5_dataset.shape == self.dataShape
@@ -99,18 +99,19 @@ class TestOpH5N5WriterBigDataset(object):
 
 
 class TestOpH5N5WriterBigDataset_2(object):
- 
     def setup_method(self, method):
         self.graph = lazyflow.graph.Graph()
-        self.testDataH5FileName = 'bigH5TestData.h5'
-        self.testDataN5FileName = 'bigH5TestData.n5'
-        self.datasetInternalPath = 'volume/data'
- 
+        self.testDataH5FileName = "bigH5TestData.h5"
+        self.testDataN5FileName = "bigH5TestData.n5"
+        self.datasetInternalPath = "volume/data"
+
         # Generate some test data
         self.dataShape = (1, 10, 128, 128, 1)
-        self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc') ) # default vigra order this time...
+        self.testData = vigra.VigraArray(
+            self.dataShape, axistags=vigra.defaultAxistags("txyzc")
+        )  # default vigra order this time...
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
- 
+
     def teardown_method(self, method):
         # Clean up: Delete the test file.
         try:
@@ -118,22 +119,22 @@ class TestOpH5N5WriterBigDataset_2(object):
             rmtree(self.testDataN5FileName)
         except:
             pass
- 
+
     def test_Writer(self):
-         
+
         # Create the h5 file
         hdf5File = h5py.File(self.testDataH5FileName)
         n5File = z5py.N5File(self.testDataN5FileName)
 
         opPiper = OpArrayPiper(graph=self.graph)
         opPiper.Input.setValue(self.testData)
-         
+
         h5_opWriter = OpH5N5WriterBigDataset(graph=self.graph)
         n5_opWriter = OpH5N5WriterBigDataset(graph=self.graph)
 
         # This checks that you can give a preexisting group as the file
-        h5_g = hdf5File.create_group('volume')
-        n5_g = n5File.create_group('volume')
+        h5_g = hdf5File.create_group("volume")
+        n5_g = n5File.create_group("volume")
         h5_opWriter.h5N5File.setValue(h5_g)
         n5_opWriter.h5N5File.setValue(n5_g)
         h5_opWriter.h5N5Path.setValue("data")
@@ -151,8 +152,8 @@ class TestOpH5N5WriterBigDataset_2(object):
         n5File.close()
 
         # Check the file.
-        hdf5File = h5py.File(self.testDataH5FileName, 'r')
-        n5File = h5py.File(self.testDataH5FileName, 'r')
+        hdf5File = h5py.File(self.testDataH5FileName, "r")
+        n5File = h5py.File(self.testDataH5FileName, "r")
         h5_dataset = hdf5File[self.datasetInternalPath]
         n5_dataset = n5File[self.datasetInternalPath]
         assert h5_dataset.shape == self.dataShape
@@ -164,17 +165,18 @@ class TestOpH5N5WriterBigDataset_2(object):
 
 
 class TestOpH5N5WriterBigDataset_3(object):
-
     def setup_method(self, method):
         self.graph = lazyflow.graph.Graph()
-        self.testDataH5FileName = 'bigH5TestData.h5'
-        self.testDataN5FileName = 'bigH5TestData.n5'
+        self.testDataH5FileName = "bigH5TestData.h5"
+        self.testDataN5FileName = "bigH5TestData.n5"
 
-        self.datasetInternalPath = 'volume/data'
+        self.datasetInternalPath = "volume/data"
 
         # Generate some test data
         self.dataShape = (1, 10, 128, 128, 1)
-        self.testData = vigra.VigraArray( self.dataShape, axistags=vigra.defaultAxistags('txyzc'))  # default vigra order this time...
+        self.testData = vigra.VigraArray(
+            self.dataShape, axistags=vigra.defaultAxistags("txyzc")
+        )  # default vigra order this time...
         self.testData[...] = numpy.indices(self.dataShape).sum(0)
 
     def teardown_method(self, method):
@@ -197,13 +199,13 @@ class TestOpH5N5WriterBigDataset_3(object):
         opPiper.Output.meta.ideal_blockshape = (1, 1, 0, 0, 1)
         # Pretend the RAM usage will be really high to force lots of tiny blocks
         opPiper.Output.meta.ram_usage_per_requested_pixel = 1000000.0
-        
+
         h5_opWriter = OpH5N5WriterBigDataset(graph=self.graph)
         n5_opWriter = OpH5N5WriterBigDataset(graph=self.graph)
 
         # This checks that you can give a preexisting group as the file
-        h5_g = hdf5File.create_group('volume')
-        n5_g = n5File.create_group('volume')
+        h5_g = hdf5File.create_group("volume")
+        n5_g = n5File.create_group("volume")
         h5_opWriter.h5N5File.setValue(h5_g)
         n5_opWriter.h5N5File.setValue(n5_g)
         h5_opWriter.h5N5Path.setValue("data")
@@ -221,8 +223,8 @@ class TestOpH5N5WriterBigDataset_3(object):
         n5File.close()
 
         # Check the file.
-        hdf5File = h5py.File(self.testDataH5FileName, 'r')
-        n5File = h5py.File(self.testDataH5FileName, 'r')
+        hdf5File = h5py.File(self.testDataH5FileName, "r")
+        n5File = h5py.File(self.testDataH5FileName, "r")
         h5_dataset = hdf5File[self.datasetInternalPath]
         n5_dataset = n5File[self.datasetInternalPath]
         assert h5_dataset.shape == self.dataShape

@@ -1,6 +1,7 @@
 from builtins import zip
 from builtins import range
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -20,7 +21,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 
 import unittest
@@ -30,6 +31,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from lazyflow.utility.priorityQueue import PriorityQueue
+
 
 @total_ordering
 class Comp(object):
@@ -57,7 +59,7 @@ class TestPriorityQueue(unittest.TestCase):
         pass
 
     def testIntegers(self):
-        x = np.random.randint(0, 2**15, size=(100,)).astype(int)
+        x = np.random.randint(0, 2 ** 15, size=(100,)).astype(int)
         y = np.sort(x)
         pq = PriorityQueue()
         for a in x:
@@ -106,7 +108,7 @@ class TestPriorityQueue(unittest.TestCase):
         for pair in combined:
             pq.push(pair)
 
-        s = sorted(combined, key=lambda x: x[0]+x[1])
+        s = sorted(combined, key=lambda x: x[0] + x[1])
         x = [a[2] for a in s]
         y = [pq.pop()[2] for i in range(len(pq))]
 

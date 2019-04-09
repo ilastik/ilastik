@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,12 +19,13 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import nose
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
 from lazyflow import stype
 from lazyflow import operators
+
 
 class OpOuter(Operator):
 
@@ -50,6 +52,7 @@ class OpOuter(Operator):
     def propagateDirty(self, inputSlot, subindex, roi):
         self.Output.setDirty(roi)
 
+
 class OpInner(Operator):
 
     Input = InputSlot()
@@ -66,8 +69,8 @@ class OpInner(Operator):
     def propagateDirty(self, inputSlot, subindex, roi):
         self.Output.setDirty(roi)
 
-class TestOutputOutputConnection(object):
 
+class TestOutputOutputConnection(object):
     def setup_method(self, method):
         self.g = Graph()
         self.op = OpOuter(graph=self.g)
@@ -96,10 +99,13 @@ class TestOutputOutputConnection(object):
         result = self.op.Output[:].wait()[0]
         assert self.op._was_executed is False
 
+
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

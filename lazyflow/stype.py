@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from builtins import range
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -20,7 +21,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import numpy, vigra
 import collections
@@ -31,14 +32,15 @@ from lazyflow.utility.helpers import warn_deprecated
 
 import h5py
 
-class SlotType( object ):
-    def __init__( self, slot):
+
+class SlotType(object):
+    def __init__(self, slot):
         self.slot = slot
 
-    def allocateDestination( self, roi ):
+    def allocateDestination(self, roi):
         pass
 
-    def writeIntoDestination( self, destination, value, roi ):
+    def writeIntoDestination(self, destination, value, roi):
         pass
 
     def isCompatible(self, value):
@@ -61,7 +63,6 @@ class SlotType( object ):
         """
         pass
 
-
     def isConfigured(self):
         """
         Slot types must implement this method.
@@ -72,9 +73,8 @@ class SlotType( object ):
         """
         return False
 
-    def connect(self,slot):
+    def connect(self, slot):
         pass
-
 
     def copy_data(self, dst, src):
         """
@@ -99,14 +99,16 @@ class SlotType( object ):
         return True
 
 
-class ArrayLike( SlotType ):
-    def allocateDestination( self, roi ):
+class ArrayLike(SlotType):
+    def allocateDestination(self, roi):
         # If we do not support masked arrays, ensure that we are not allocating one.
-        assert self.slot.allow_mask or (not self.slot.meta.has_mask), \
-            "Allocation of a masked array is expected by the slot, \"%s\", of operator, " "\"%s\"," \
-            " even though it is not supported. If you believe this message to be incorrect, " \
-            "please pass the keyword argument `allow_mask=True` to the slot constructor." \
+        assert self.slot.allow_mask or (not self.slot.meta.has_mask), (
+            'Allocation of a masked array is expected by the slot, "%s", of operator, '
+            '"%s",'
+            " even though it is not supported. If you believe this message to be incorrect, "
+            "please pass the keyword argument `allow_mask=True` to the slot constructor."
             % (self.slot.operator.name, self.slot.name)
+        )
 
         shape = roi.stop - roi.start if roi else self.slot.meta.shape
         storage = numpy.ndarray(shape, dtype=self.slot.meta.dtype)
@@ -129,18 +131,24 @@ class ArrayLike( SlotType ):
 
         return storage
 
-    def writeIntoDestination( self, destination, value, roi ):
+    def writeIntoDestination(self, destination, value, roi):
         # If we do not support masked arrays, ensure that we are not being passed one.
-        assert self.slot.allow_mask or (not self.slot.meta.has_mask), \
-            "A masked array was provided as a destination. However," \
-            " the slot, \"%s\", of operator, " "\"%s\", does not support masked arrays." \
-            " If you believe this message to be incorrect, " \
-            "please pass the keyword argument `allow_mask=True` to the slot constructor." \
+        assert self.slot.allow_mask or (not self.slot.meta.has_mask), (
+            "A masked array was provided as a destination. However,"
+            ' the slot, "%s", of operator, '
+            '"%s", does not support masked arrays.'
+            " If you believe this message to be incorrect, "
+            "please pass the keyword argument `allow_mask=True` to the slot constructor."
             % (self.slot.operator.name, self.slot.name)
+        )
 
         if destination is not None:
             if not isinstance(destination, list):
-                assert(roi.dim == destination.ndim), "%r ndim=%r, shape=%r" % (roi.toSlice(), destination.ndim, destination.shape)
+                assert roi.dim == destination.ndim, "%r ndim=%r, shape=%r" % (
+                    roi.toSlice(),
+                    destination.ndim,
+                    destination.shape,
+                )
             sl = roiToSlice(roi.start, roi.stop)
             try:
                 self.copy_data(destination, value[sl])
@@ -148,7 +156,7 @@ class ArrayLike( SlotType ):
                 # FIXME: This warning used to be triggered by a corner case that could be encountered by "value slots".
                 #        The behavior here isn't truly deprecated.  But we need a better solution for lazyflow 2.0.
                 # See ilastik/ilastik#704
-                #warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
+                # warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
                 self.copy_data(destination, value)
         else:
             sl = roiToSlice(roi.start, roi.stop)
@@ -158,7 +166,7 @@ class ArrayLike( SlotType ):
                 # FIXME: This warning used to be triggered by a corner case that could be encountered by "value slots".
                 #        The behavior here isn't truly deprecated.  But we need a better solution for lazyflow 2.0.
                 # See ilastik/ilastik#704
-                #warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
+                # warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
                 destination = [value]
 
             if isinstance(destination, numpy.ndarray) and destination.shape == ():
@@ -171,32 +179,31 @@ class ArrayLike( SlotType ):
                 # FIXME: This warning used to be triggered by a corner case that could be encountered by "value slots".
                 #        The behavior here isn't truly deprecated.  But we need a better solution for lazyflow 2.0.
                 # See ilastik/ilastik#704
-                #warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
+                # warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
                 destination = [value]
         return destination
-
-
 
     def isCompatible(self, value):
         warnings.warn("ArrayLike.isCompatible: FIXME here")
         return True
 
-
     def setupMetaForValue(self, value):
         if isinstance(value, numpy.ndarray):
             self.slot.meta.shape = value.shape
             self.slot.meta.dtype = value.dtype.type
-            if hasattr(value,"axistags"):
+            if hasattr(value, "axistags"):
                 self.slot.meta.axistags = value.axistags
             if isinstance(value, numpy.ma.masked_array):
                 self.slot.meta.has_mask = True
         else:
             self.slot.meta.shape = (1,)
-            if isinstance(value, int) or \
-               isinstance(value, float) or \
-               isinstance(value, numpy.floating) or \
-               isinstance(value, numpy.integer) or \
-               isinstance(value, numpy.bool_):
+            if (
+                isinstance(value, int)
+                or isinstance(value, float)
+                or isinstance(value, numpy.floating)
+                or isinstance(value, numpy.integer)
+                or isinstance(value, numpy.bool_)
+            ):
                 self.slot.meta.dtype = type(value)
             else:
                 self.slot.meta.dtype = object
@@ -208,7 +215,6 @@ class ArrayLike( SlotType ):
         else:
             return False
 
-
     def copy_data(self, dst, src):
         # Unfortunately, there appears to be a bug when copying masked arrays
         # ( https://github.com/numpy/numpy/issues/5558 ).
@@ -219,18 +225,23 @@ class ArrayLike( SlotType ):
             dst.mask[...] = numpy.ma.getmaskarray(src_val)
             if isinstance(src_val, numpy.ma.masked_array):
                 dst.fill_value = src_val.fill_value
-        elif isinstance(dst, collections.MutableSequence) or \
-                isinstance(src, collections.MutableSequence):
+        elif isinstance(dst, collections.MutableSequence) or isinstance(src, collections.MutableSequence):
             dst[:] = src[:]
         else:
             dst[...] = src[...]
 
     def check_result_valid(self, roi, result):
         if isinstance(result, numpy.ndarray):
-            assert len(roi.start) == result.ndim, "check_result_valid: result has wrong number of dimensions (%d instead of %d)" % (result.ndim, len(roi.start))
+            assert len(roi.start) == result.ndim, (
+                "check_result_valid: result has wrong number of dimensions (%d instead of %d)"
+                % (result.ndim, len(roi.start))
+            )
             for d in range(result.ndim):
-                assert (result.shape == (roi.stop - roi.start)).all(), \
-                    "check_result_valid: result has wrong shape.  Got {}, expected {}".format( result.shape, roi.stop - roi.start )
+                assert (
+                    result.shape == (roi.stop - roi.start)
+                ).all(), "check_result_valid: result has wrong shape.  Got {}, expected {}".format(
+                    result.shape, roi.stop - roi.start
+                )
         elif isinstance(result, list):
             s = roi.stop[0] - roi.start[0]
             assert len(result) == s, "check_result_valid: result has wrong shape (%d instead of %d)" % (len(result), s)
@@ -242,6 +253,7 @@ class ArrayLike( SlotType ):
         else:
             assert False, "check_result_valid: result type is not supported"
 
+
 class Opaque(SlotType):
     def allocateDestination(self, roi):
         return None
@@ -251,7 +263,7 @@ class Opaque(SlotType):
         # destination = [value]
         # ...which is also why, for 'Opaque' slots, slot.value is not the same as slot[:].wait().
         # But for now, I'm leaving this alone.
-        # "Fixing" this breaks many parts of the object classification workflow 
+        # "Fixing" this breaks many parts of the object classification workflow
         #  that are written to use the existing API, awkward as it is.
         # See also: ilastik/ilastik#704, and ilastik/ilastik#705.
         return value
@@ -266,6 +278,6 @@ class Opaque(SlotType):
 
     def isConfigured(self):
         return True
-    
+
     def copy_data(self, dst, src):
-        raise("Not Implemented")
+        raise ("Not Implemented")

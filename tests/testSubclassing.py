@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,21 +19,22 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
+
 
 class OpBase(Operator):
     InputA = InputSlot()
     InputB = InputSlot()
-    
+
     OutputA = OutputSlot()
     OutputB = OutputSlot()
 
     def setupOutputs(self):
         self.OutputA.meta.assignFrom(self.InputA.meta)
         self.OutputB.meta.assignFrom(self.InputB.meta)
-    
+
     def execute(self, slot, subindex, roi, result):
         if slot == self.OutputA:
             return self.InputA(roi.start, roi.stop)
@@ -46,40 +48,40 @@ class OpBase(Operator):
 class OpSubclass(OpBase):
     InputC = InputSlot()
     InputD = InputSlot()
-    
+
     OutputC = OutputSlot()
     OutputD = OutputSlot()
 
     def setupOutputs(self):
         self.OutputC.meta.assignFrom(self.InputC.meta)
         self.OutputD.meta.assignFrom(self.InputD.meta)
-    
+
     def execute(self, slot, subindex, roi, result):
         if slot == self.OutputC:
             return self.InputC(roi.start, roi.stop)
         if slot == self.OutputD:
             return self.InputD(roi.start, roi.stop)
-        
-        return super(OpSubclass, self).execute( slot, subindex, roi, result )
+
+        return super(OpSubclass, self).execute(slot, subindex, roi, result)
 
     def propagateDirty(self, slot, subindex, roi):
         pass
 
+
 class TestSubclassing(object):
-    
     def test(self):
-        op = OpSubclass( graph=Graph() )
-        
+        op = OpSubclass(graph=Graph())
+
         assert list(op.inputs.keys()) == ["InputA", "InputB", "InputC", "InputD"]
         assert list(op.outputs.keys()) == ["OutputA", "OutputB", "OutputC", "OutputD"]
-        
-        
 
 
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 from builtins import range
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -36,20 +37,22 @@ from . import UfmfParser
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import Timer
 
-logger = logging.getLogger(__name__)    
+logger = logging.getLogger(__name__)
 
-AXIS_ORDER = 'tyxc'
+AXIS_ORDER = "tyxc"
+
 
 class OpStreamingUfmfReader(Operator):
     """
     Imports videos in uFMF format. For more information refer to the Ctrax file tracker: http://ctrax.sourceforge.net/
-    """    
+    """
+
     name = "OpStreamingUfmfReader"
     category = "Input"
 
     position = None
-    
-    FileName = InputSlot(stype='filestring')
+
+    FileName = InputSlot(stype="filestring")
     Output = OutputSlot()
 
     class DatasetReadError(Exception):
@@ -69,7 +72,7 @@ class OpStreamingUfmfReader(Operator):
         frameNum = self.fmf.get_n_frames()
         width = self.fmf.get_width()
         height = self.fmf.get_height()
-        
+
         try:
             self.frame, timestamp = self.fmf.get_next_frame()
         except FMF.NoMoreFramesException as err:
@@ -79,28 +82,27 @@ class OpStreamingUfmfReader(Operator):
         self.Output.meta.axistags = vigra.defaultAxistags(AXIS_ORDER)
         self.Output.meta.shape = (frameNum, self.frame.shape[0], self.frame.shape[1], 1)
         self.Output.meta.ideal_blockshape = (1,) + self.Output.meta.shape[1:]
-        
+
     def execute(self, slot, subindex, roi, result):
         start, stop = roi.start, roi.stop
-        
+
         tStart, tStop = start[0], stop[0]
         yStart, yStop = start[1], stop[1]
         xStart, xStop = start[2], stop[2]
-        cStart, cStop = start[3], stop[3]    
-  
+        cStart, cStop = start[3], stop[3]
+
         for tResult, tFrame in enumerate(range(tStart, tStop)):
             with self._lock:
                 if self.position != tFrame:
                     self.position = tFrame
                     self.fmf.seek(tFrame)
                     self.frame, timestamp = self.fmf.get_next_frame()
-                result[tResult, ..., 0] = self.frame[yStart:yStop, xStart:xStop] 
+                result[tResult, ..., 0] = self.frame[yStart:yStop, xStart:xStop]
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.FileName:
-            self.Output.setDirty( slice(None) )
-    
+            self.Output.setDirty(slice(None))
+
     def cleanUp(self):
         self.fmf.close()
         super(OpStreamingUfmfReader, self).cleanUp()
-

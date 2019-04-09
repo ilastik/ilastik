@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,16 +19,19 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 from abc import ABCMeta, abstractmethod
 from future.utils import with_metaclass
 
-def _has_attribute( cls, attr ):
+
+def _has_attribute(cls, attr):
     return True if any(attr in B.__dict__ for B in cls.__mro__) else False
 
-def _has_attributes( cls, attrs ):
-    return True if all(_has_attribute(cls, a) for a in attrs) else False    
+
+def _has_attributes(cls, attrs):
+    return True if all(_has_attribute(cls, a) for a in attrs) else False
+
 
 class DrawableABC(with_metaclass(ABCMeta, object)):
     @abstractmethod
@@ -44,14 +48,15 @@ class DrawableABC(with_metaclass(ABCMeta, object)):
     @classmethod
     def __subclasshook__(cls, C):
         if cls is DrawableABC:
-            return True if _has_attributes(C, ['size', 'drawAt']) else False
+            return True if _has_attributes(C, ["size", "drawAt"]) else False
         return NotImplemented
+
 
 class ConnectableABC(with_metaclass(ABCMeta, object)):
     @abstractmethod
     def key(self):
         return NotImplemented
-    
+
     @abstractmethod
     def upstream_slot_key(self):
         return NotImplemented
@@ -59,5 +64,5 @@ class ConnectableABC(with_metaclass(ABCMeta, object)):
     @classmethod
     def __subclasshook__(cls, C):
         if cls is DrawableABC:
-            return True if _has_attributes(C, ['key', 'upstream_slot_key']) else False
+            return True if _has_attributes(C, ["key", "upstream_slot_key"]) else False
         return NotImplemented

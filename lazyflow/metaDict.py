@@ -1,4 +1,5 @@
 from builtins import zip
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -20,23 +21,25 @@ from builtins import zip
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
-#Python
+# Python
 import copy
 import numpy
 from collections import OrderedDict, defaultdict
+
 
 class MetaDict(defaultdict):
     """
     Helper class that manages the dirty state of the meta data of a slot.
     changing a meta dicts attributes sets it _dirty flag True.
     """
+
     def __init__(self, other=None, *args, **kwargs):
         if other is None:
             defaultdict.__init__(self, lambda: None, **kwargs)
         else:
             defaultdict.__init__(self, lambda: None, other, **kwargs)
 
-        if not '_ready' in self:
+        if not "_ready" in self:
             # flag that indicates whether all dependencies of the slot
             # are ready
             self._ready = False
@@ -51,17 +54,18 @@ class MetaDict(defaultdict):
         """
         if self[name] != value:
             self["_dirty"] = True
-            
-        if name == 'NOTREADY' and value is None:
-            if 'NOTREADY' in self:
-                del self['NOTREADY']
-        
+
+        if name == "NOTREADY" and value is None:
+            if "NOTREADY" in self:
+                del self["NOTREADY"]
+
         # Special check: shape must be a tuple.
         # This avoids some common mistakes.
-        if name == 'shape' and not isinstance(value, tuple):
+        if name == "shape" and not isinstance(value, tuple):
             import logging
+
             logger = logging.getLogger(__name__)
-            msg = "Slot.meta.shape must always be a tuple, not {}".format( type(value) )
+            msg = "Slot.meta.shape must always be a tuple, not {}".format(type(value))
             logger.error(msg)
             raise Exception(msg)
 
@@ -76,12 +80,12 @@ class MetaDict(defaultdict):
 
     def copy(self):
         return MetaDict(dict.copy(self))
-    
+
     def __eq__(self, other):
         if other is None:
             return False
         for k in set(list(self.keys()) + list(other.keys())):
-            if k.startswith('__') or k == 'NOTREADY':
+            if k.startswith("__") or k == "NOTREADY":
                 continue
             if k not in other or k not in self:
                 return False
@@ -100,7 +104,7 @@ class MetaDict(defaultdict):
     def __hash__(self):
         # This ensures that a given MetaDict can be relocated in a dict/set,
         # but doesn't ensure that identical MetaDicts hash to the same place.
-        return hash( id(self) )
+        return hash(id(self))
 
     def assignFrom(self, other):
         """
@@ -181,7 +185,7 @@ class MetaDict(defaultdict):
         if isinstance(dtype, numpy.dtype):
             # Make sure we're dealing with a type (e.g. numpy.float64),
             #  not a numpy.dtype
-            dtype = dtype.type        
+            dtype = dtype.type
         return dtype().nbytes
 
     def __str__(self):
@@ -190,16 +194,26 @@ class MetaDict(defaultdict):
         """
         pairs = []
         # For easy comparison, start with these in the same order every time.
-        standard_keys = ['_ready', 'NOTREADY', 'shape', 'axistags', 'original_axistags', 'dtype', 'drange', 'has_mask', '_dirty' ]
+        standard_keys = [
+            "_ready",
+            "NOTREADY",
+            "shape",
+            "axistags",
+            "original_axistags",
+            "dtype",
+            "drange",
+            "has_mask",
+            "_dirty",
+        ]
         for key in standard_keys:
             if key in self:
-                pairs.append( key + ' : ' + repr(self[key]) )
-        
+                pairs.append(key + " : " + repr(self[key]))
+
         for key, value in list(self.items()):
             if key not in standard_keys:
-                pairs.append( key + ' : ' + repr(value) )
-        
+                pairs.append(key + " : " + repr(value))
+
         return "{" + ", ".join(pairs) + "}"
-                
+
     def __repr__(self):
         return self.__str__()

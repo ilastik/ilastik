@@ -17,7 +17,7 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 
 from __future__ import division
@@ -44,20 +44,27 @@ class Memory(object):
         # assess available RAM more precisely
         _physically_available_ram -= psutil.virtual_memory().wired
 
-    # keep 1GiB reserved for other apps 
+    # keep 1GiB reserved for other apps
     # (systems with less than 1GiB RAM are not a target platform)
-    _default_allowed_ram = max(_physically_available_ram - 1024.0**3, 0)
-    _default_cache_fraction = .25
+    _default_allowed_ram = max(_physically_available_ram - 1024.0 ** 3, 0)
+    _default_cache_fraction = 0.25
     _allowed_ram = _default_allowed_ram
-    _user_limits_specified = {'total': False,
-                              'caches': False}
+    _user_limits_specified = {"total": False, "caches": False}
 
-    _magnitude_strings = {0: "B", 1: "KiB", 2: "MiB",
-                          3: "GiB", 4: "TiB"}
-    _magnitude_aliases = {"KB": "KiB", "kB": "KiB", "kiB": "KiB",
-                          "MB": "MiB", "GB": "GiB", "TB": "TiB",
-                          "B": "B", "KiB": "KiB", "MiB": "MiB",
-                          "GiB": "GiB", "TiB": "TiB"}
+    _magnitude_strings = {0: "B", 1: "KiB", 2: "MiB", 3: "GiB", 4: "TiB"}
+    _magnitude_aliases = {
+        "KB": "KiB",
+        "kB": "KiB",
+        "kiB": "KiB",
+        "MB": "MiB",
+        "GB": "GiB",
+        "TB": "TiB",
+        "B": "B",
+        "KiB": "KiB",
+        "MiB": "MiB",
+        "GiB": "GiB",
+        "TiB": "TiB",
+    }
 
     @classmethod
     def getMemoryUsage(cls):
@@ -88,31 +95,28 @@ class Memory(object):
         """
 
         if ram < 0:
-            cls._user_limits_specified['total'] = False
+            cls._user_limits_specified["total"] = False
             cls._allowed_ram = cls._default_allowed_ram
             logger.info("Available memory set to default")
         else:
-            cls._user_limits_specified['total'] = True
+            cls._user_limits_specified["total"] = True
             cls._allowed_ram = int(ram)
-            logger.info("Available memory set to {}".format(
-                Memory.format(cls._allowed_ram)))
+            logger.info("Available memory set to {}".format(Memory.format(cls._allowed_ram)))
             if cls._allowed_ram > cls._physically_available_ram:
-                logger.warning("User specified memory exceeds memory "
-                            "physically available. Please check the"
-                            "configuration.")
+                logger.warning(
+                    "User specified memory exceeds memory " "physically available. Please check the" "configuration."
+                )
 
-        if cls._user_limits_specified['caches'] and \
-                cls._allowed_ram_caches > cls._allowed_ram:
-            logger.warning("User specified cache memory exceeds total RAM "
-                        "available, resetting to default")
-            cls._user_limits_specified['caches'] = False
+        if cls._user_limits_specified["caches"] and cls._allowed_ram_caches > cls._allowed_ram:
+            logger.warning("User specified cache memory exceeds total RAM " "available, resetting to default")
+            cls._user_limits_specified["caches"] = False
 
     @classmethod
     def getAvailableRamCaches(cls):
         """
         get the amount of memory, in bytes, that lazyflow may use for caches
         """
-        if cls._user_limits_specified['caches']:
+        if cls._user_limits_specified["caches"]:
             return cls._allowed_ram_caches
         else:
             return cls._allowed_ram * cls._default_cache_fraction
@@ -127,17 +131,18 @@ class Memory(object):
         """
 
         if ram < 0:
-            cls._user_limits_specified['caches'] = False
+            cls._user_limits_specified["caches"] = False
             logger.info("Memory for caches set to default")
         else:
-            cls._user_limits_specified['caches'] = True
+            cls._user_limits_specified["caches"] = True
             cls._allowed_ram_caches = int(ram)
-            logger.info("Memory for caches set to {}".format(
-                Memory.format(cls._allowed_ram_caches)))
+            logger.info("Memory for caches set to {}".format(Memory.format(cls._allowed_ram_caches)))
             if cls._allowed_ram_caches > cls.getAvailableRam():
-                logger.warning("User specified memory for caches exceeds "
-                            "memory available for the application. "
-                            "Please check the configuration.")
+                logger.warning(
+                    "User specified memory for caches exceeds "
+                    "memory available for the application. "
+                    "Please check the configuration."
+                )
 
     @classmethod
     def getAvailableRamComputation(cls):
@@ -162,7 +167,7 @@ class Memory(object):
     def toScientific(ram, base=1024, expstep=1, explimit=4):
         exp = 0
         mant = float(ram)
-        step = base**expstep
+        step = base ** expstep
         while mant >= step and exp + expstep <= explimit:
             mant /= step
             exp += expstep
@@ -184,10 +189,9 @@ class Memory(object):
             mag = Memory._magnitude_aliases[mag]
             for d in Memory._magnitude_strings:
                 if Memory._magnitude_strings[d] == mag:
-                    
-                    return int(x*1024**d)
-        raise FormatError("invalid format for memory string: "
-                          "{}".format(s))
+
+                    return int(x * 1024 ** d)
+        raise FormatError("invalid format for memory string: " "{}".format(s))
 
 
 class FormatError(Exception):

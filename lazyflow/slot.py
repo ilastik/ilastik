@@ -4,6 +4,7 @@ from builtins import range
 from builtins import object
 from future.utils import raise_with_traceback
 import sys
+
 if sys.version_info.major >= 3:
     unicode = str
 
@@ -26,9 +27,9 @@ if sys.version_info.major >= 3:
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
-#Python
+# Python
 import logging
 import collections
 import itertools
@@ -36,18 +37,19 @@ import threading
 from functools import partial, wraps
 import warnings
 
-#SciPy
+# SciPy
 import numpy
 
 import vigra
 
-#lazyflow
+# lazyflow
 from lazyflow import rtype
 from lazyflow.roi import TinyVector
 from lazyflow.request import Request
 from lazyflow.stype import ArrayLike
 from lazyflow.metaDict import MetaDict
 from lazyflow.utility import slicingtools, OrderedSignal
+
 
 class ValueRequest(object):
     """Pseudo request that behaves like a request.Request object.
@@ -56,6 +58,7 @@ class ValueRequest(object):
     Request objects in simple cases where they are not needed.
 
     """
+
     def __init__(self, value):
         self.result = value
         self.started = False
@@ -90,48 +93,52 @@ class ValueRequest(object):
             destination.mask[...] = numpy.ma.getmaskarray(self.result)
             if isinstance(self.result, numpy.ma.masked_array):
                 destination.fill_value = self.result.fill_value
-        elif isinstance(destination, collections.MutableSequence) or \
-             isinstance(self.result, collections.MutableSequence):
+        elif isinstance(destination, collections.MutableSequence) or isinstance(
+            self.result, collections.MutableSequence
+        ):
             destination[:] = self.result[:]
         else:
             destination[...] = self.result[...]
 
         return self
 
+
 def is_setup_fn(func):
     """
-    Decorator.  Marks the function as a 'setup' function, 
+    Decorator.  Marks the function as a 'setup' function,
     which means it affects the state of the graph connections.
-    All Slot methods that will result in any operator setupOutputs() 
+    All Slot methods that will result in any operator setupOutputs()
     calls should be marked as setup functions using this decorator.
-    
-    Executes the function within the context of a 
-    Graph setup operation, which tells the Graph that we are 
-    making graph setup changes by incrementing a counter for 
+
+    Executes the function within the context of a
+    Graph setup operation, which tells the Graph that we are
+    making graph setup changes by incrementing a counter for
     each nested setup function call. See graph.py for details.
     """
+
     @wraps(func)
     def call_in_setup_context(self, *args, **kwargs):
         if not self.graph:
             return func(self, *args, **kwargs)
         with self.graph.SetupDepthContext(self.graph):
             return func(self, *args, **kwargs)
-    call_in_setup_context.__wrapped__ = func # Emulate python 3 behavior of @wraps
+
+    call_in_setup_context.__wrapped__ = func  # Emulate python 3 behavior of @wraps
     return call_in_setup_context
+
 
 class Slot(object):
     """
     Base class for InputSlot, OutputSlot
     """
 
-    loggerName = __name__ + '.Slot'
+    loggerName = __name__ + ".Slot"
     logger = logging.getLogger(loggerName)
-    traceLogger = logging.getLogger('TRACE.' + loggerName)
+    traceLogger = logging.getLogger("TRACE." + loggerName)
 
     # Allow slots to be sorted by their order of creation for debug
     # output and diagramming purposes.
     _global_counter = itertools.count()
-
 
     class SlotNotReadyError(Exception):
         pass
@@ -139,10 +146,19 @@ class Slot(object):
     @property
     def graph(self):
         return (self.operator or None) and self.operator.graph
-    
-    def __init__(self, name="", operator=None, stype=ArrayLike,
-                 rtype=rtype.SubRegion, value=None, optional=False,
-                 level=0, nonlane=False, allow_mask=False):
+
+    def __init__(
+        self,
+        name="",
+        operator=None,
+        stype=ArrayLike,
+        rtype=rtype.SubRegion,
+        value=None,
+        optional=False,
+        level=0,
+        nonlane=False,
+        allow_mask=False,
+    ):
         """Constructor of the Slot class.
 
         :param name: user readable name of the slot, is normally
@@ -170,18 +186,20 @@ class Slot(object):
         """
         # This assertion is here for a reason: default values do NOT work on OutputSlots.
         # (We should probably change that at some point...)
-        assert value is None or isinstance(self, InputSlot), "Only InputSlots can have default values.  OutputSlots cannot."
+        assert value is None or isinstance(
+            self, InputSlot
+        ), "Only InputSlots can have default values.  OutputSlots cannot."
 
         # If we do not support masked arrays, ensure that we are not being passed one.
-        assert allow_mask or not isinstance(value, numpy.ma.masked_array), \
-            "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
-            " This is currently not supported." \
-            % (self.operator.name, self.name)
-        
+        assert allow_mask or not isinstance(value, numpy.ma.masked_array), (
+            'The operator, "%s", is being setup to receive a masked array as input to slot, "%s".'
+            " This is currently not supported." % (self.operator.name, self.name)
+        )
+
         # Check for simple mistakes in parameter order...
         assert isinstance(name, (str, unicode))
         assert isinstance(optional, bool)
-        
+
         if not hasattr(self, "_type"):
             self._type = None
         if isinstance(stype, (str, unicode)):
@@ -191,7 +209,7 @@ class Slot(object):
         self._optional = optional
         self.operator = operator
         self.allow_mask = allow_mask
-        self._real_operator = None # Memoized in getRealOperator()
+        self._real_operator = None  # Memoized in getRealOperator()
 
         # in the case of an InputSlot this is the slot to which it is
         # connected
@@ -246,37 +264,37 @@ class Slot(object):
         # debug output and diagramming purposes.
         self._global_slot_id = next(Slot._global_counter)
 
-
     ###########################
     #  A p i    M e t h o d s #
     ###########################
     def _notifyGeneric(self, sig, function, **kwargs):
         """
         Subscribe the given callback function (with optional kwargs) to the given signal.
-        
+
         Special feature:
             If kwargs['defer'] is True, then we'll defer executing the
             callback until after the graph is completed setup.
-            
+
             In other words, when the signal is fired, the callback isn't executed immediately.
             Instead, it's queued to the Graph's call_when_setup_finished signal.
             This is useful when you have a GUI callback that you want to execute after the
             graph setup operation is totally finished.
-        
+
         Returns:
             A callable that will unsubscribe your function from the signal.
         """
-        if 'defer' in kwargs and kwargs['defer']:
-            del kwargs['defer']
+        if "defer" in kwargs and kwargs["defer"]:
+            del kwargs["defer"]
 
             def queue_callback(*args):
-                self.graph.call_when_setup_finished( partial(function, *args, **kwargs) )
-            sig.subscribe( queue_callback )
+                self.graph.call_when_setup_finished(partial(function, *args, **kwargs))
+
+            sig.subscribe(queue_callback)
             return partial(sig.unsubscribe, queue_callback)
         else:
             sig.subscribe(function, **kwargs)
             return partial(sig.unsubscribe, function)
-    
+
     def notifyDirty(self, function, **kwargs):
         """
         calls the corresponding function when the slot gets dirty
@@ -509,98 +527,108 @@ class Slot(object):
                 return
 
             assert isinstance(upstream_slot, Slot), (
-                "Slot.connect() can only be used to connect other Slots. Did "
-                "you mean to use Slot.setValue()?")
-            assert self.allow_mask or (not upstream_slot.meta.has_mask), \
-                        "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"," \
-                        " from the output slot, \"%s\", on operator, \"%s\". This is currently not supported." \
-                        % (self.operator.name, self.name, upstream_slot.name, upstream_slot.operator.name)
+                "Slot.connect() can only be used to connect other Slots. Did " "you mean to use Slot.setValue()?"
+            )
+            assert self.allow_mask or (not upstream_slot.meta.has_mask), (
+                'The operator, "%s", is being setup to receive a masked array as input to slot, "%s",'
+                ' from the output slot, "%s", on operator, "%s". This is currently not supported.'
+                % (self.operator.name, self.name, upstream_slot.name, upstream_slot.operator.name)
+            )
 
             my_op = self.getRealOperator()
             partner_op = upstream_slot.getRealOperator()
-            if partner_op and not( partner_op.parent is my_op.parent or \
-                    (self._type == "output" and partner_op.parent is my_op) or \
-                    (self._type == "input" and my_op.parent is partner_op) or \
-                    my_op is partner_op):
+            if partner_op and not (
+                partner_op.parent is my_op.parent
+                or (self._type == "output" and partner_op.parent is my_op)
+                or (self._type == "input" and my_op.parent is partner_op)
+                or my_op is partner_op
+            ):
                 if not permit_distant_connection:
-                    msg = "It is forbidden to connect slots of operators that are not siblings "\
-                          "or not directly related as parent and child."
+                    msg = (
+                        "It is forbidden to connect slots of operators that are not siblings "
+                        "or not directly related as parent and child."
+                    )
                     if partner_op.parent is None or my_op.parent is None:
                         msg += "\n(For one of your operators, parent=None.  Was it already cleaned up?"
                     raise Exception(msg)
-    
+
             if self.upstream_slot is upstream_slot and upstream_slot.level == self.level:
                 return
             if self.level == 0:
                 self.disconnect()
-    
+
             if upstream_slot is not None:
-                upstream_slot._sig_unready.subscribe( self._handleUpstreamUnready )
+                upstream_slot._sig_unready.subscribe(self._handleUpstreamUnready)
                 self._value = None
                 if upstream_slot.level == self.level:
-                    assert upstream_slot.stype.isCompatible(type(self.stype)), \
-                        "Can't connect slots of non-matching stypes!" \
-                        f"Tried to connect {self.getRealOperator()} with {upstream_slot.getRealOperator()}." \
+                    assert upstream_slot.stype.isCompatible(type(self.stype)), (
+                        "Can't connect slots of non-matching stypes!"
+                        f"Tried to connect {self.getRealOperator()} with {upstream_slot.getRealOperator()}."
                         " Attempting to connect '{}' (stype: {}) to '{}' (stype: {})".format(
-                            self.name, self.stype, upstream_slot.name, upstream_slot.stype)
+                            self.name, self.stype, upstream_slot.name, upstream_slot.stype
+                        )
+                    )
 
                     self.upstream_slot = upstream_slot
-                    notifyReady = (self.upstream_slot.meta._ready and
-                                   not self.meta._ready)
+                    notifyReady = self.upstream_slot.meta._ready and not self.meta._ready
                     self.meta = self.upstream_slot.meta.copy()
-    
+
                     # the slot with more sub-slots determines
                     # the number of subslots
                     if len(self) < len(upstream_slot):
                         self.resize(len(upstream_slot))
                     elif len(self) > len(upstream_slot):
                         upstream_slot.resize(len(self))
-    
+
                     upstream_slot.downstream_slots.append(self)
                     for i in range(len(self.upstream_slot)):
                         p = self.upstream_slot[i]
                         self[i].connect(p)
-    
+
                     # call slot type connect function
                     self.stype.connect(upstream_slot)
-    
+
                     if self.level > 0 or self.stype.isConfigured():
                         self._changed()
-    
+
                     # call connect callbacks
                     self._sig_connect(self)
-    
+
                     # Notify readiness after upstream_slot is updated
                     if notifyReady:
                         self._sig_ready(self)
-    
+
                 elif upstream_slot.level < self.level:
                     self.upstream_slot = upstream_slot
-                    notifyReady = (self.upstream_slot.meta._ready and not
-                                   self.meta._ready)
+                    notifyReady = self.upstream_slot.meta._ready and not self.meta._ready
                     self.meta = self.upstream_slot.meta.copy()
                     for i, slot in enumerate(self._subSlots):
                         slot.connect(upstream_slot)
-    
+
                     if notifyReady:
                         self._sig_ready(self)
-    
+
                     self._changed()
                     # call connect callbacks
                     self._sig_connect(self)
-    
+
                 elif upstream_slot.level > self.level:
-                    msg = str("Can't connect slots:"
-                           " {}.{}.level={}, but"
-                           " {}.{}.level={}"
-                           " (Implicit OpearatorWrapper creation"
-                           " is no longer supported.)").format(
-                               self.getRealOperator().name,
-                               self.name, self.level,
-                               upstream_slot.getRealOperator().name,
-                               upstream_slot.name, upstream_slot.level)
+                    msg = str(
+                        "Can't connect slots:"
+                        " {}.{}.level={}, but"
+                        " {}.{}.level={}"
+                        " (Implicit OpearatorWrapper creation"
+                        " is no longer supported.)"
+                    ).format(
+                        self.getRealOperator().name,
+                        self.name,
+                        self.level,
+                        upstream_slot.getRealOperator().name,
+                        upstream_slot.name,
+                        upstream_slot.level,
+                    )
                     raise RuntimeError(msg)
-    
+
                 # propagate value changed signals from inner to outer
                 # operators.
                 if self._type == upstream_slot._type == "output":
@@ -626,13 +654,13 @@ class Slot(object):
                     # Well, this is bad.  We caused an exception while handling an exception.
                     # We're more interested in the FIRST exception, so print this one out and
                     #  continue unwinding the stack with the first one.
-                    self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
+                    self.logger.error("Error: Caught a secondary exception while handling a different exception.")
                     import traceback
+
                     traceback.print_exc()
                     pass
-            
 
-    @is_setup_fn    
+    @is_setup_fn
     def disconnect(self):
         """
         Disconnect a InputSlot from its upstream_slot
@@ -674,7 +702,7 @@ class Slot(object):
         if oldReady:
             self._sig_unready(self)
 
-    @is_setup_fn    
+    @is_setup_fn
     def resize(self, size):
         """
         Resizes a slot to the desired length
@@ -682,8 +710,7 @@ class Slot(object):
         Arguments:
           size    : the desired number of subslots
         """
-        assert numpy.issubdtype(type(size), numpy.integer), \
-            "Bug: 'size' must be int, not {}".format( type(size) )
+        assert numpy.issubdtype(type(size), numpy.integer), "Bug: 'size' must be int, not {}".format(type(size))
 
         if self._resizing:
             return
@@ -696,19 +723,18 @@ class Slot(object):
 
         self._resizing = True
         if self.operator is not None:
-            self.logger.debug("Resizing slot {} of operator {} to size {}".format(
-                self.name, self.operator.name, size))
+            self.logger.debug("Resizing slot {} of operator {} to size {}".format(self.name, self.operator.name, size))
 
         # call before resize callbacks
         self._sig_resize(self, oldsize, size)
 
         new_subslots = []
         while size > len(self):
-            self.insertSlot(len(self), len(self)+1, propagate=False)
-            new_subslots.append( len(self) - 1 )
+            self.insertSlot(len(self), len(self) + 1, propagate=False)
+            new_subslots.append(len(self) - 1)
 
         while size < len(self):
-            self.removeSlot(len(self)-1, len(self)-1, propagate=False)
+            self.removeSlot(len(self) - 1, len(self) - 1, propagate=False)
 
         # propagate size change downward
         for c in self.downstream_slots:
@@ -716,7 +742,7 @@ class Slot(object):
                 c.resize(size)
 
         # propagate size change upward
-        if (self.upstream_slot and len(self.upstream_slot) < size and self.upstream_slot.level == self.level):
+        if self.upstream_slot and len(self.upstream_slot) < size and self.upstream_slot.level == self.level:
             self.upstream_slot.resize(size)
 
         # connect newly added slots
@@ -730,9 +756,7 @@ class Slot(object):
 
         self._resizing = False
 
-
-
-    @is_setup_fn    
+    @is_setup_fn
     def insertSlot(self, position, finalsize, propagate=True):
         """
         Insert a new slot at the specified position
@@ -744,16 +768,19 @@ class Slot(object):
         # call after insert callbacks
         self._sig_insert(self, position, finalsize)
 
-        slot =  self._insertNew(position)
+        slot = self._insertNew(position)
 
         # New slot inherits our settings
         slot.backpropagate_values = self.backpropagate_values
 
-        operator_name = '<NO OPERATOR>'
+        operator_name = "<NO OPERATOR>"
         if self.operator:
             operator_name = self.operator.name
-        self.logger.debug("Inserting slot {} into slot {} of operator {} to size {}".format(
-            position, self.name, operator_name, finalsize))
+        self.logger.debug(
+            "Inserting slot {} into slot {} of operator {} to size {}".format(
+                position, self.name, operator_name, finalsize
+            )
+        )
         if propagate:
             if self.upstream_slot is not None and self.upstream_slot.level == self.level:
                 self.upstream_slot.insertSlot(position, finalsize)
@@ -764,12 +791,11 @@ class Slot(object):
 
             self._connectSubSlot(position)
 
-
         # call after insert callbacks
         self._sig_inserted(self, position, finalsize)
         return slot
 
-    @is_setup_fn    
+    @is_setup_fn
     def removeSlot(self, position, finalsize, propagate=True):
         """
         Remove the slot at position
@@ -779,8 +805,11 @@ class Slot(object):
             return None
         assert position < len(self)
         if self.operator is not None:
-            self.logger.debug("Removing slot {} into slot {} of operator {} to size {}".format(
-                position, self.name, self.operator.name, finalsize))
+            self.logger.debug(
+                "Removing slot {} into slot {} of operator {} to size {}".format(
+                    position, self.name, self.operator.name, finalsize
+                )
+            )
 
         # call before-remove callbacks
         self._sig_remove(self, position, finalsize)
@@ -828,15 +857,13 @@ class Slot(object):
                 # Something is wrong.  Are we cancelled?
                 Request.raise_if_cancelled()
 
-                msg = "Can't get data from slot {}.{} yet."\
-                      " It isn't ready."\
-                      "First upstream problem slot is: {}"
+                msg = "Can't get data from slot {}.{} yet." " It isn't ready." "First upstream problem slot is: {}"
                 problem_slot = Slot._findUpstreamProblemSlot(self)
-                problem_str = str( problem_slot )
-                if isinstance( problem_slot, Slot ):
+                problem_str = str(problem_slot)
+                if isinstance(problem_slot, Slot):
                     problem_op = problem_slot.getRealOperator()
-                    problem_str = problem_op.name + '/' + str( problem_slot )
-                msg = msg.format( self.getRealOperator() and self.getRealOperator().__class__, self.name, problem_str )
+                    problem_str = problem_op.name + "/" + str(problem_slot)
+                msg = msg.format(self.getRealOperator() and self.getRealOperator().__class__, self.name, problem_str)
                 raise Slot.SlotNotReadyError(msg)
 
             # If someone is asking for data from an inputslot that has
@@ -844,7 +871,9 @@ class Slot(object):
             if self._type == "input":
                 # Something is wrong.  Are we cancelled?
                 Request.raise_if_cancelled()
-                assert self._type != "input", "This inputSlot has no value and no upstream_slot.  You can't ask for its data yet!"
+                assert (
+                    self._type != "input"
+                ), "This inputSlot has no value and no upstream_slot.  You can't ask for its data yet!"
             # normal (outputslot) case
             # --> construct heavy request object..
             execWrapper = Slot.RequestExecutionWrapper(self, roi)
@@ -882,10 +911,11 @@ class Slot(object):
             if destination is None:
                 destination = self.slot.stype.allocateDestination(self.roi)
             else:
-                if self.slot.meta.dtype is not None and hasattr(destination, 'dtype'):
-                    assert self.slot.meta.dtype == destination.dtype, \
-                        "Can't provide a destination array of the wrong dtype.  "\
-                        "Slot generates {}, but you gave {}".format( self.slot.meta.dtype, destination.dtype )
+                if self.slot.meta.dtype is not None and hasattr(destination, "dtype"):
+                    assert self.slot.meta.dtype == destination.dtype, (
+                        "Can't provide a destination array of the wrong dtype.  "
+                        "Slot generates {}, but you gave {}".format(self.slot.meta.dtype, destination.dtype)
+                    )
 
             # We are executing the operator. Incremement the execution
             # count to protect against simultaneous setupOutputs()
@@ -906,35 +936,34 @@ class Slot(object):
                     # check that the returned value is compatible with the requested roi
                     self.slot.stype.check_result_valid(self.roi, result_op)
 
-                    self.slot.stype.copy_data(dst=destination, src = result_op)
+                    self.slot.stype.copy_data(dst=destination, src=result_op)
                 elif result_op is not None:
                     # FIXME: this should be moved to a isCompatible
                     # check in stypes.py
                     if hasattr(result_op, "shape"):
-                        assert result_op.shape == destination.shape, \
-                          ("ERROR: Operator {} has failed to provide a"
-                           " result of correct shape. result shape is"
-                           " {} vs {}.  roi was {}".format(
-                               self.operator, result_op.shape,
-                               destination.shape, str(self.roi)))
+                        assert result_op.shape == destination.shape, (
+                            "ERROR: Operator {} has failed to provide a"
+                            " result of correct shape. result shape is"
+                            " {} vs {}.  roi was {}".format(
+                                self.operator, result_op.shape, destination.shape, str(self.roi)
+                            )
+                        )
                     destination = result_op
 
                     # check that the returned value is compatible with the requested roi
                     self.slot.stype.check_result_valid(self.roi, destination)
 
-
                 # Decrement the execution count
                 self._decrementOperatorExecutionCount()
                 return destination
-            except: # except Request.CancellationException
+            except:  # except Request.CancellationException
                 # Decrement the execution count
                 self._decrementOperatorExecutionCount()
                 raise
 
         def _incrementOperatorExecutionCount(self):
             self.started = True
-            assert self.operator._executionCount >= 0, \
-                          "BUG: How did the execution count get negative?"
+            assert self.operator._executionCount >= 0, "BUG: How did the execution count get negative?"
             # We can't execute while the operator is in the middle of
             # setupOutputs
             with self.operator._condition:
@@ -946,7 +975,7 @@ class Slot(object):
             # The new request api does clean up by handling an
             # exception, not in this callback. Only clean up if we are
             # using the old request api
-            using_old_api = len(args) > 0 and not hasattr(args[0], 'notify_cancelled')
+            using_old_api = len(args) > 0 and not hasattr(args[0], "notify_cancelled")
             if using_old_api:
                 self._decrementOperatorExecutionCount()
 
@@ -958,14 +987,13 @@ class Slot(object):
                 # Only do this once per execution. If we were cancelled
                 # after we finished working, don't do anything
                 if self.started and not self.finished:
-                    assert self.operator._executionCount > 0, \
-                          "BUG: Can't decrement the execution count below zero!"
+                    assert self.operator._executionCount > 0, "BUG: Can't decrement the execution count below zero!"
                     self.finished = True
                     with self.operator._condition:
                         self.operator._executionCount -= 1
                         self.operator._condition.notifyAll()
 
-    @is_setup_fn    
+    @is_setup_fn
     def setDirty(self, *args, **kwargs):
         """This method is called by a partnering OutputSlot when its
         content changes.
@@ -974,9 +1002,9 @@ class Slot(object):
         of an numpy.ndarray
 
         """
-        assert self.operator is not None, ("Slot '{}' cannot be set dirty,"
-                                           " slot not belonging to any"
-                                           " actual operator instance".format(self.name))
+        assert self.operator is not None, (
+            "Slot '{}' cannot be set dirty," " slot not belonging to any" " actual operator instance".format(self.name)
+        )
 
         if self.stype.isConfigured():
             if len(args) == 0 or not isinstance(args[0], rtype.Roi):
@@ -1019,50 +1047,46 @@ class Slot(object):
                 # Something is wrong.  Are we cancelled?
                 Request.raise_if_cancelled()
                 if not self.ready():
-                    #msg = "This slot ({}.{}) isn't ready yet, which means " \
+                    # msg = "This slot ({}.{}) isn't ready yet, which means " \
                     #      "you can't ask for its data.  Is it connected?".format(self.getRealOperator() and self.getRealOperator().name, self.name)
-                    #self.logger.error(msg)
+                    # self.logger.error(msg)
                     problem_slot = Slot._findUpstreamProblemSlot(self)
-                    problem_str = str( problem_slot )
-                    if isinstance( problem_slot, Slot ):
+                    problem_str = str(problem_slot)
+                    if isinstance(problem_slot, Slot):
                         problem_op = problem_slot.getRealOperator()
                         if problem_op is not None:
-                            problem_str = problem_op.name + '/' + str( problem_slot )
+                            problem_str = problem_op.name + "/" + str(problem_slot)
                         else:
-                            problem_str = '<NO OPERATOR> /' + str( problem_slot )                            
-                    slotInfoMsg = "Can't get data from slot {}.{} yet."\
-                                  " It isn't ready."\
-                                  "First upstream problem slot is: {}"\
-                                  "".format( self.getRealOperator() and self.getRealOperator().__class__, self.name, problem_str )
-                    #self.logger.error(slotInfoMsg)
+                            problem_str = "<NO OPERATOR> /" + str(problem_slot)
+                    slotInfoMsg = (
+                        "Can't get data from slot {}.{} yet."
+                        " It isn't ready."
+                        "First upstream problem slot is: {}"
+                        "".format(self.getRealOperator() and self.getRealOperator().__class__, self.name, problem_str)
+                    )
+                    # self.logger.error(slotInfoMsg)
                     raise Slot.SlotNotReadyError(slotInfoMsg)
-                assert self.meta.shape is not None, \
-                    ("Can't ask for slices of this slot yet:"
-                     " self.meta.shape is None!"
-                     " (operator {} [self={}] slot: {}, key={}".format(
-                         self.operator.name, self.operator, self.name, key))
+                assert self.meta.shape is not None, (
+                    "Can't ask for slices of this slot yet:"
+                    " self.meta.shape is None!"
+                    " (operator {} [self={}] slot: {}, key={}".format(self.operator.name, self.operator, self.name, key)
+                )
             return self(pslice=key)
-
 
     def __setitem__(self, key, value):
         """This method provides access to the subslots of a
         MultiSlot.
 
         """
-        assert not isinstance(value, Slot), \
-            "Can't use setitem to connect slots.  Use connect()"
-        assert self.level == 0, \
-            ("setitem can only be used with slots of level 0."
-             " Did you forget to append a key?")
-        assert self.operator is not None, \
-            "cannot do __setitem__ on Slot '{}' -> no operator !!"
-        assert slicingtools.is_bounded(key), \
-            "Can't use Slot.__setitem__ with keys that include : or ..."
+        assert not isinstance(value, Slot), "Can't use setitem to connect slots.  Use connect()"
+        assert self.level == 0, "setitem can only be used with slots of level 0." " Did you forget to append a key?"
+        assert self.operator is not None, "cannot do __setitem__ on Slot '{}' -> no operator !!"
+        assert slicingtools.is_bounded(key), "Can't use Slot.__setitem__ with keys that include : or ..."
         # If we do not support masked arrays, ensure that we are not being passed one.
-        assert self.allow_mask or not (self.meta.has_mask or isinstance(value, numpy.ma.masked_array)), \
-            "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
-            " This is currently not supported." \
-            % (self.operator.name, self.name)
+        assert self.allow_mask or not (self.meta.has_mask or isinstance(value, numpy.ma.masked_array)), (
+            'The operator, "%s", is being setup to receive a masked array as input to slot, "%s".'
+            " This is currently not supported." % (self.operator.name, self.name)
+        )
         roi = self.rtype(self, pslice=key)
         if self._value is not None:
             self._value[key] = value
@@ -1080,7 +1104,7 @@ class Slot(object):
     def index(self, slot):
         return self._subSlots.index(slot)
 
-    @is_setup_fn    
+    @is_setup_fn
     def setInSlot(self, slot, subindex, roi, value):
         """For now, Slots of level > 0 pretend to be operators (as far
         as their subslots are concerned). That's why they have to have
@@ -1088,10 +1112,10 @@ class Slot(object):
 
         """
         # If we do not support masked arrays, ensure that we are not being passed one.
-        assert self.allow_mask or not (self.meta.has_mask or isinstance(value, numpy.ma.masked_array)), \
-            "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
-            " This is currently not supported." \
-            % (self.operator.name, self.name)
+        assert self.allow_mask or not (self.meta.has_mask or isinstance(value, numpy.ma.masked_array)), (
+            'The operator, "%s", is being setup to receive a masked array as input to slot, "%s".'
+            " This is currently not supported." % (self.operator.name, self.name)
+        )
         # Determine which subslot this is and prepend it to the totalIndex
         totalIndex = (self._subSlots.index(slot),) + subindex
         # Forward the call to our operator
@@ -1103,7 +1127,6 @@ class Slot(object):
 
         """
         return len(self._subSlots)
-
 
     @property
     def value(self):
@@ -1119,7 +1142,7 @@ class Slot(object):
             temp = self[:].wait()
         elif self._value is None:
             # outputslot case
-            temp =  self[:].wait()
+            temp = self[:].wait()
         else:
             # _value case
             return self._value
@@ -1130,12 +1153,12 @@ class Slot(object):
         elif isinstance(temp, list):
             return temp[0]
         else:
-            warnings.warn("FIXME: Slot.value for slot {} is {},"
-                          " which should be wrapped in an ndarray."
-                          .format(self.name, temp))
+            warnings.warn(
+                "FIXME: Slot.value for slot {} is {}," " which should be wrapped in an ndarray.".format(self.name, temp)
+            )
             return temp
 
-    @is_setup_fn    
+    @is_setup_fn
     def setValue(self, value, notify=True, check_changed=True, extra_meta={}):
         """This method can be used to directly assign a value to an
         InputSlot.
@@ -1146,10 +1169,10 @@ class Slot(object):
         value.
 
         If check_changed is True, the new value is compared to the
-        current one and updates are only triggered if the new value differs 
+        current one and updates are only triggered if the new value differs
         from the old one according to the __eq__ operator.
         The check can be turned off with the check_changed flag.
-        
+
         If the value is a VigraArray, then shape/axistags/dtype will be automatically
         assigned in self.meta.  Additional metadata fields can be added via the
         extra_meta parameter.
@@ -1157,31 +1180,31 @@ class Slot(object):
         try:
             assert isinstance(notify, bool)
             assert isinstance(check_changed, bool)
-    
+
             # This assertion is here to prevent accidental use of setValue
             # when connect should be used. If your use case requires
             # passing slots as values, then this assertion can be refined.
-            assert not isinstance(value, Slot), \
-                "When using setValue, value cannot be a slot.  Use connect instead."
+            assert not isinstance(value, Slot), "When using setValue, value cannot be a slot.  Use connect instead."
 
             # If we do not support masked arrays, ensure that we are not being passed one.
-            assert self.allow_mask or not (self.meta.has_mask or isinstance(value, numpy.ma.masked_array)), \
-                "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
-                " This is currently not supported." \
-                % (self.operator.name, self.name)
-    
+            assert self.allow_mask or not (self.meta.has_mask or isinstance(value, numpy.ma.masked_array)), (
+                'The operator, "%s", is being setup to receive a masked array as input to slot, "%s".'
+                " This is currently not supported." % (self.operator.name, self.name)
+            )
+
             if not self.backpropagate_values:
-                assert self.upstream_slot is None, \
-                    ("Cannot call setValue on this slot."
-                     " It is already connected to a upstream_slot."
-                     " Call disconnect first if that's what you really wanted.")
+                assert self.upstream_slot is None, (
+                    "Cannot call setValue on this slot."
+                    " It is already connected to a upstream_slot."
+                    " Call disconnect first if that's what you really wanted."
+                )
             elif self.upstream_slot is not None:
                 self.upstream_slot.setValue(value, notify, check_changed)
                 return
-    
+
             changed = True
-           
-            # We use == here instead of 'is' to avoid subtle bugs that 
+
+            # We use == here instead of 'is' to avoid subtle bugs that
             #  can occur if you supplied an equivalent value that 'is not' the original.
             # For example: x=numpy.uint8(3); y=numpy.int64(3); assert x == y;  assert x is not y
             if check_changed:
@@ -1193,8 +1216,9 @@ class Slot(object):
                 if isinstance(value, numpy.ma.masked_array) and isinstance(self._value, numpy.ma.masked_array):
                     # Type comparison already checked as all masked arrays are subclasses of ndarrays.
                     # NAN does not compare equal so we need a way to check that separately.
-                    if (value.fill_value != self._value.fill_value) and \
-                        not (numpy.isnan(value.fill_value) and numpy.isnan(self._value.fill_value)):
+                    if (value.fill_value != self._value.fill_value) and not (
+                        numpy.isnan(value.fill_value) and numpy.isnan(self._value.fill_value)
+                    ):
                         changed = True
                 if isinstance(value, vigra.VigraArray) or isinstance(self._value, vigra.VigraArray):
                     if type(value) != type(self._value) or value.axistags != self._value.axistags:
@@ -1202,10 +1226,10 @@ class Slot(object):
 
                 if not changed:
                     # Slow path checks
-                    same = (value is self._value)
+                    same = value is self._value
                     if not same:
                         try:
-                            same = ( value == self._value )
+                            same = value == self._value
                         except ValueError:
                             # Some values can't be compared with __eq__,
                             # in which case we assume the values are different
@@ -1213,21 +1237,21 @@ class Slot(object):
                         if isinstance(same, (numpy.ndarray, TinyVector)):
                             same = same.all()
                     changed = not same
-            
+
             if changed:
                 # call disconnect callbacks
                 self._sig_disconnect(self)
                 self._value = value
                 self.stype.setupMetaForValue(value)
 
-                for k,v in list(extra_meta.items()):
+                for k, v in list(extra_meta.items()):
                     setattr(self.meta, k, v)
-                
+
                 self.meta._dirty = True
-    
+
                 for s in self._subSlots:
                     s.setValue(self._value)
-    
+
                 # a slot with a value is ready unless the value is None.
                 if self._value is not None:
                     if self.meta._ready != True:
@@ -1237,11 +1261,11 @@ class Slot(object):
                     if self.meta._ready != False:
                         self.meta._ready = False
                         self._sig_unready(self)
-    
+
                 # call connect callbacks
                 self._sig_connect(self)
                 self._changed()
-    
+
                 # Propagate dirtyness
                 if self.rtype == rtype.List:
                     self.setDirty(())
@@ -1267,12 +1291,13 @@ class Slot(object):
                     # Well, this is bad.  We caused an exception while handling an exception.
                     # We're more interested in the FIRST excpetion, so print this one out and
                     #  continue unwinding the stack with the first one.
-                    self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
+                    self.logger.error("Error: Caught a secondary exception while handling a different exception.")
                     import traceback
+
                     traceback.print_exc()
                     pass
 
-    @is_setup_fn    
+    @is_setup_fn
     def setValues(self, values):
         """Set values of subslots with arraylike object. Resizes the
         multinputslot with the length of the values array
@@ -1295,8 +1320,9 @@ class Slot(object):
                 # Well, this is bad.  We caused an exception while handling an exception.
                 # We're more interested in the FIRST excpetion, so print this one out and
                 #  continue unwinding the stack with the first one.
-                self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
+                self.logger.error("Error: Caught a secondary exception while handling a different exception.")
                 import traceback
+
                 traceback.print_exc()
                 exc_type, exc_value, exc_tb = exc_info
                 raise_with_traceback(exc_type(exc_value), exc_tb)
@@ -1381,7 +1407,7 @@ class Slot(object):
         if self._real_operator is not None:
             # use memoized
             return self._real_operator
-        
+
         if isinstance(self.operator, Slot):
             self._real_operator = self.operator.getRealOperator()
         else:
@@ -1400,17 +1426,17 @@ class Slot(object):
         All slot parameters (e.g. level, optional, etc.) are copied, but can be overridden with the init_kwarg_overrides parameter.
         """
         init_kwargs = {}
-        init_kwargs['stype'] = self._stypeType
-        init_kwargs['rtype'] = self.rtype
-        init_kwargs['value'] = self._defaultValue
-        init_kwargs['level'] = self.level
-        init_kwargs['nonlane'] = self.nonlane
-        init_kwargs['allow_mask'] = self.allow_mask
+        init_kwargs["stype"] = self._stypeType
+        init_kwargs["rtype"] = self.rtype
+        init_kwargs["value"] = self._defaultValue
+        init_kwargs["level"] = self.level
+        init_kwargs["nonlane"] = self.nonlane
+        init_kwargs["allow_mask"] = self.allow_mask
         if self._type == "input":
-            init_kwargs['optional'] = self._optional
-        
-        init_kwargs.update( init_kwarg_overrides )
-        
+            init_kwargs["optional"] = self._optional
+
+        init_kwargs.update(init_kwarg_overrides)
+
         if self._type == "input":
             s = InputSlot(self.name, operator, **init_kwargs)
         elif self._type == "output":
@@ -1436,10 +1462,10 @@ class Slot(object):
 
         wasdirty = self.meta._dirty
         if self.meta._dirty:
-            assert self.allow_mask or (not self.meta.has_mask), \
-                "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
-                " This is currently not supported." \
-                % (self.operator.name, self.name)
+            assert self.allow_mask or (not self.meta.has_mask), (
+                'The operator, "%s", is being setup to receive a masked array as input to slot, "%s".'
+                " This is currently not supported." % (self.operator.name, self.name)
+            )
             for c in self.downstream_slots:
                 c._changed()
             self.meta._dirty = False
@@ -1488,7 +1514,6 @@ class Slot(object):
         if self._value is not None:
             slot.setValue(self._value, notify=notify)
 
-
     def _insertNew(self, position):
         """Construct a new subSlot of correct type and level and
         insert it to the list of subslots
@@ -1516,7 +1541,6 @@ class Slot(object):
         totalIndex = (self._subSlots.index(slot),) + subindex
         self.operator.propagateDirty(self, totalIndex, roi)
 
-
     ######################################
     # methods aimed to enhance usability #
     ######################################
@@ -1532,27 +1556,28 @@ class Slot(object):
             mslot_info += "["
             if isinstance(self.operator, Slot):
                 if self in self.operator._subSlots:
-                    mslot_info += " index={}".format( self.operator.index(self) )
+                    mslot_info += " index={}".format(self.operator.index(self))
                 else:
                     mslot_info += " index=NOTFOUND"
             if self.level > 0:
-                mslot_info += " len={}".format( len(self) )
+                mslot_info += " len={}".format(len(self))
                 if self.level > 1:
-                    mslot_info += " level={}".format( self.level )
+                    mslot_info += " level={}".format(self.level)
             mslot_info += " ] "
 
         # For debugging:
         # Should actually never happen if the operator is constructed correctly,
         # however, if it is not, the resulting error message was too cryptic
         if self.getRealOperator() is None:
-            realOpName = 'Unassigned'
+            realOpName = "Unassigned"
         else:
             realOpName = self.getRealOperator().name
 
-        return '{}.{} {}: \t{}\n'.format(realOpName, self.name, mslot_info, self.meta)
+        return "{}.{} {}: \t{}\n".format(realOpName, self.name, mslot_info, self.meta)
 
     def __repr__(self):
         return self.__str__()
+
 
 class InputSlot(Slot):
     """The base class for input slots, it provides methods to connect
@@ -1584,11 +1609,10 @@ class OutputSlot(Slot):
 
     """
 
-
     def __init__(self, *args, **kwargs):
         super(OutputSlot, self).__init__(*args, **kwargs)
         self._type = "output"
-        assert 'optional' not in kwargs, '"optional" init arg cannot be used with OutputSlot'
+        assert "optional" not in kwargs, '"optional" init arg cannot be used with OutputSlot'
 
     def execute(self, slot, subindex, roi, result):
         """For now, OutputSlots with level > 0 must pretend to be

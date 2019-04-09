@@ -17,7 +17,7 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
@@ -27,24 +27,26 @@ from lazyflow.utility import vigra_bincount
 
 logger = logging.getLogger(__name__)
 
+
 class OpFilterLabels(Operator):
     """
     Given a labeled volume, discard labels that have too few pixels.
     Zero is used as the background label
     """
+
     name = "OpFilterLabels"
     category = "generic"
 
-    Input = InputSlot() 
-    MinLabelSize = InputSlot(stype='int')
-    MaxLabelSize = InputSlot(optional=True, stype='int')
-    BinaryOut = InputSlot(optional=True, value = False, stype='bool')
-        
+    Input = InputSlot()
+    MinLabelSize = InputSlot(stype="int")
+    MaxLabelSize = InputSlot(optional=True, stype="int")
+    BinaryOut = InputSlot(optional=True, value=False, stype="bool")
+
     Output = OutputSlot()
-    
+
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
-        
+
     def execute(self, slot, subindex, roi, result):
         minSize = self.MinLabelSize.value
         maxSize = None
@@ -53,36 +55,38 @@ class OpFilterLabels(Operator):
         req = self.Input.get(roi)
         req.writeInto(result)
         req.wait()
-        
-        remove_wrongly_sized_connected_components(result, min_size=minSize, max_size=maxSize, in_place=True, bin_out=self.BinaryOut.value)
+
+        remove_wrongly_sized_connected_components(
+            result, min_size=minSize, max_size=maxSize, in_place=True, bin_out=self.BinaryOut.value
+        )
         return result
-        
+
     def propagateDirty(self, inputSlot, subindex, roi):
         # Both input slots can affect the entire output
         assert inputSlot == self.Input or inputSlot == self.MinLabelSize or inputSlot == self.MaxLabelSize
-        self.Output.setDirty( slice(None) )
+        self.Output.setDirty(slice(None))
+
 
 def remove_wrongly_sized_connected_components(a, min_size, max_size=None, in_place=False, bin_out=False):
     original_dtype = a.dtype
 
     if not in_place:
         a = a.copy()
-    if min_size == 0 and (max_size is None or max_size > numpy.prod(a.shape)): # shortcut for efficiency
-        if (bin_out):
-            numpy.place(a,a,1)
+    if min_size == 0 and (max_size is None or max_size > numpy.prod(a.shape)):  # shortcut for efficiency
+        if bin_out:
+            numpy.place(a, a, 1)
         return a
 
     component_sizes = vigra_bincount(a)
     bad_sizes = component_sizes < min_size
     if max_size is not None:
-        numpy.logical_or( bad_sizes, component_sizes > max_size, out=bad_sizes )
+        numpy.logical_or(bad_sizes, component_sizes > max_size, out=bad_sizes)
     del component_sizes
 
     bad_locations = bad_sizes[a]
     a[bad_locations] = 0
     del bad_locations
-    if (bin_out):
+    if bin_out:
         # Replace non-zero values with 1
-        numpy.place(a,a,1)
+        numpy.place(a, a, 1)
     return numpy.asarray(a, dtype=original_dtype)
-

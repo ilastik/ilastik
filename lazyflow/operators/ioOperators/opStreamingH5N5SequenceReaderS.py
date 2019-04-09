@@ -29,6 +29,7 @@ from lazyflow.utility.pathHelpers import PathComponents, globH5N5
 import h5py
 import z5py
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,6 +55,7 @@ class OpStreamingH5N5SequenceReaderS(Operator):
             ['/a/b/c.txt', '/d/e/f.txt', '../g/i/h.txt']
 
     """
+
     GlobString = InputSlot()
     # The project hdf5 File object (already opened)
     SequenceAxis = InputSlot(optional=True)  # The axis to stack across.
@@ -68,15 +70,19 @@ class OpStreamingH5N5SequenceReaderS(Operator):
     class InconsistentShape(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
-            self.msg = f"Cannot stack dataset: {fileName}/{datasetName} because its shape differs from the shape of " \
-                       f"the previous datasets"
+            self.msg = (
+                f"Cannot stack dataset: {fileName}/{datasetName} because its shape differs from the shape of "
+                f"the previous datasets"
+            )
             super().__init__(self.msg)
 
     class InconsistentDType(Exception):
         def __init__(self, fileName, datasetName):
             self.fileName = fileName
-            self.msg = f"Cannot stack dataset: {fileName}/{datasetName} because its data type differs from the " \
-                       f"type of the previous datasets"
+            self.msg = (
+                f"Cannot stack dataset: {fileName}/{datasetName} because its data type differs from the "
+                f"type of the previous datasets"
+            )
             super().__init__(self.msg)
 
     class NotTheSameFileError(Exception):
@@ -109,15 +115,14 @@ class OpStreamingH5N5SequenceReaderS(Operator):
         for opReader in self._readers:
             opReader.cleanUp()
         if self._h5N5File is not None:
-            assert isinstance(self._h5N5File, (h5py.File, z5py.N5File)), (
-                "_h5N5File should not be of any other type")
+            assert isinstance(self._h5N5File, (h5py.File, z5py.N5File)), "_h5N5File should not be of any other type"
             self._h5N5File.close()
 
         super().cleanUp()
 
     def setupOutputs(self):
         pcs = PathComponents(self.GlobString.value.split(os.path.pathsep)[0])
-        self._h5N5File = OpStreamingH5N5Reader.get_h5_n5_file(pcs.externalPath, mode='r')
+        self._h5N5File = OpStreamingH5N5Reader.get_h5_n5_file(pcs.externalPath, mode="r")
         self.checkGlobString(self.GlobString.value)
         file_paths = self.expandGlobStrings(self._h5N5File, self.GlobString.value)
 
@@ -143,14 +148,14 @@ class OpStreamingH5N5SequenceReaderS(Operator):
         if self.SequenceAxis.ready():
             new_axis = self.SequenceAxis.value
             assert len(new_axis) == 1
-            assert new_axis in 'tzyxc'
+            assert new_axis in "tzyxc"
         else:
             # Try to pick an axis that doesn't already exist in each volume
-            for new_axis in 'tzc0':
+            for new_axis in "tzc0":
                 if new_axis not in slice_axes:
                     break
 
-            if new_axis == '0':
+            if new_axis == "0":
                 # All axes used already.
                 # Stack across first existing axis
                 new_axis = slice_axes[0]
@@ -206,7 +211,7 @@ class OpStreamingH5N5SequenceReaderS(Operator):
             the provided h5py.File object
         """
         if not isinstance(h5N5File, (h5py.File, z5py.N5File)):
-            with OpStreamingH5N5Reader.get_h5_n5_file(h5N5File, mode='r') as f:
+            with OpStreamingH5N5Reader.get_h5_n5_file(h5N5File, mode="r") as f:
                 ret = OpStreamingH5N5SequenceReaderS.expandGlobStrings(f, globStrings)
             return ret
 
@@ -215,9 +220,7 @@ class OpStreamingH5N5SequenceReaderS(Operator):
         for globString in globStrings.split(os.path.pathsep):
             s = globString.strip()
             components = PathComponents(s)
-            ret += sorted(
-                globH5N5(
-                    h5N5File, components.internalPath.lstrip('/')))
+            ret += sorted(globH5N5(h5N5File, components.internalPath.lstrip("/")))
         return ret
 
     @staticmethod
@@ -251,21 +254,19 @@ class OpStreamingH5N5SequenceReaderS(Operator):
         pathComponents = [PathComponents(p.strip()) for p in pathStrings]
         assert len(pathComponents) > 0
 
-        if not all(p.extension in OpStreamingH5N5Reader.H5EXTS + OpStreamingH5N5Reader.N5EXTS
-                   for p in pathComponents):
+        if not all(p.extension in OpStreamingH5N5Reader.H5EXTS + OpStreamingH5N5Reader.N5EXTS for p in pathComponents):
             raise OpStreamingH5N5SequenceReaderS.WrongFileTypeError(globString)
 
         if len(pathComponents) == 1:
             if pathComponents[0].internalPath is None:
                 raise OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError(globString)
-            if '*' not in pathComponents[0].internalPath:
+            if "*" not in pathComponents[0].internalPath:
                 raise OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError(globString)
-            if '*' in pathComponents[0].externalPath:
+            if "*" in pathComponents[0].externalPath:
                 raise OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError(globString)
         else:
-            sameExternal = all(pathComponents[0].externalPath == x.externalPath
-                               for x in pathComponents[1::])
+            sameExternal = all(pathComponents[0].externalPath == x.externalPath for x in pathComponents[1::])
             if sameExternal is not True:
                 raise OpStreamingH5N5SequenceReaderS.NotTheSameFileError(globString)
-            if '*' in pathComponents[0].externalPath:
+            if "*" in pathComponents[0].externalPath:
                 raise OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError(globString)

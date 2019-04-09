@@ -17,7 +17,7 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import os
 import vigra
@@ -26,15 +26,18 @@ from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
 from lazyflow.operators import OpDummyData
 
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 class OpBlockwiseFilesetReader(Operator):
     """
     Adapter that provides an operator interface to the BlockwiseFileset class for reading ONLY.
     """
+
     name = "OpBlockwiseFilesetReader"
 
-    DescriptionFilePath = InputSlot(stype='filestring')
+    DescriptionFilePath = InputSlot(stype="filestring")
     Output = OutputSlot()
 
     class MissingDatasetError(Exception):
@@ -43,19 +46,23 @@ class OpBlockwiseFilesetReader(Operator):
     def __init__(self, *args, **kwargs):
         super(OpBlockwiseFilesetReader, self).__init__(*args, **kwargs)
         self._blockwiseFileset = None
-        self._opDummyData = OpDummyData( parent=self )
-        
+        self._opDummyData = OpDummyData(parent=self)
+
     def setupOutputs(self):
         if not os.path.exists(self.DescriptionFilePath.value):
-            raise OpBlockwiseFilesetReader.MissingDatasetError("Dataset description not found: {}".format( self.DescriptionFilePath.value ) )
+            raise OpBlockwiseFilesetReader.MissingDatasetError(
+                "Dataset description not found: {}".format(self.DescriptionFilePath.value)
+            )
 
         # Load up the class that does the real work
-        self._blockwiseFileset = BlockwiseFileset( self.DescriptionFilePath.value )
+        self._blockwiseFileset = BlockwiseFileset(self.DescriptionFilePath.value)
 
         # Check for errors in the description file
         descriptionFields = self._blockwiseFileset.description
         axes = descriptionFields.axes
-        assert False not in [a in 'txyzc' for a in axes], "Unknown axis type.  Known axes: txyzc  Your axes:".format(axes)
+        assert False not in [a in "txyzc" for a in axes], "Unknown axis type.  Known axes: txyzc  Your axes:".format(
+            axes
+        )
 
         self.Output.meta.shape = tuple(descriptionFields.view_shape)
         self.Output.meta.dtype = descriptionFields.dtype
@@ -67,17 +74,16 @@ class OpBlockwiseFilesetReader(Operator):
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown output slot"
         try:
-            self._blockwiseFileset.readData( (roi.start, roi.stop), result )
+            self._blockwiseFileset.readData((roi.start, roi.stop), result)
         except BlockwiseFileset.BlockNotReadyError:
-            result[:] = self._opDummyData.execute( slot, subindex, roi, result )
+            result[:] = self._opDummyData.execute(slot, subindex, roi, result)
         return result
 
     def propagateDirty(self, slot, subindex, roi):
         assert slot == self.DescriptionFilePath, "Unknown input slot."
-        self.Output.setDirty( slice(None) )
-        
+        self.Output.setDirty(slice(None))
+
     def cleanUp(self):
         if self._blockwiseFileset is not None:
             self._blockwiseFileset.close()
         super(OpBlockwiseFilesetReader, self).cleanUp()
-

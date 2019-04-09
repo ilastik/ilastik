@@ -1,4 +1,3 @@
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,9 +17,9 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
-#Python
+# Python
 import logging
 import time
 import numpy
@@ -37,24 +36,26 @@ from lazyflow.utility.helpers import get_default_axisordering
 
 logger = logging.getLogger(__name__)
 
+
 class OpStreamingH5N5Reader(Operator):
     """
     The top-level operator for the data selection applet.
     """
+
     name = "OpStreamingH5N5Reader"
     category = "Reader"
 
     # The project hdf5 File object (already opened)
-    H5N5File = InputSlot(stype='h5N5File')
+    H5N5File = InputSlot(stype="h5N5File")
 
     # The internal path for project-local datasets
-    InternalPath = InputSlot(stype='string')
+    InternalPath = InputSlot(stype="string")
 
     # Output data
     OutputImage = OutputSlot()
 
-    H5EXTS = ['.h5', '.hdf5', '.ilp']
-    N5EXTS = ['.n5']
+    H5EXTS = [".h5", ".hdf5", ".ilp"]
+    N5EXTS = [".n5"]
 
     class DatasetReadError(Exception):
         def __init__(self, internalPath):
@@ -79,18 +80,17 @@ class OpStreamingH5N5Reader(Operator):
         try:
             # Read the axistags property without actually importing the data
             # Throws KeyError if 'axistags' can't be found
-            axistagsJson = self._h5N5File[internalPath].attrs['axistags']
+            axistagsJson = self._h5N5File[internalPath].attrs["axistags"]
             axistags = vigra.AxisTags.fromJSON(axistagsJson)
-            axisorder = ''.join(tag.key for tag in axistags)
-            if '?' in axisorder:
-                raise KeyError('?')
+            axisorder = "".join(tag.key for tag in axistags)
+            if "?" in axisorder:
+                raise KeyError("?")
         except KeyError:
             # No axistags found.
             axisorder = get_default_axisordering(dataset.shape)
             axistags = vigra.defaultAxistags(str(axisorder))
 
-        assert len(axistags) == len( dataset.shape ),\
-            f"Mismatch between shape {dataset.shape} and axisorder {axisorder}"
+        assert len(axistags) == len(dataset.shape), f"Mismatch between shape {dataset.shape} and axisorder {axisorder}"
 
         # Configure our slot meta-info
         self.OutputImage.meta.dtype = dataset.dtype.type
@@ -98,19 +98,21 @@ class OpStreamingH5N5Reader(Operator):
         self.OutputImage.meta.axistags = axistags
 
         # If the dataset specifies a datarange, add it to the slot metadata
-        if 'drange' in self._h5N5File[internalPath].attrs:
-            self.OutputImage.meta.drange = tuple(self._h5N5File[internalPath].attrs['drange'])
-        
+        if "drange" in self._h5N5File[internalPath].attrs:
+            self.OutputImage.meta.drange = tuple(self._h5N5File[internalPath].attrs["drange"])
+
         # Same for display_mode
-        if 'display_mode' in self._h5N5File[internalPath].attrs:
-            self.OutputImage.meta.display_mode = str(self._h5N5File[internalPath].attrs['display_mode'])
-        
+        if "display_mode" in self._h5N5File[internalPath].attrs:
+            self.OutputImage.meta.display_mode = str(self._h5N5File[internalPath].attrs["display_mode"])
+
         total_volume = numpy.prod(numpy.array(self._h5N5File[internalPath].shape))
         chunks = self._h5N5File[internalPath].chunks
         if not chunks and total_volume > 1e8:
             self.OutputImage.meta.inefficient_format = True
-            logger.warning(f"This dataset ({self._h5N5File.filename}{internalPath}) is NOT chunked. "
-                           f"Performance for 3D access patterns will be bad!")
+            logger.warning(
+                f"This dataset ({self._h5N5File.filename}{internalPath}) is NOT chunked. "
+                f"Performance for 3D access patterns will be bad!"
+            )
         if chunks:
             self.OutputImage.meta.ideal_blockshape = chunks
 
@@ -133,7 +135,7 @@ class OpStreamingH5N5Reader(Operator):
         else:
             result[...] = h5N5File[internalPath][key]
         if logger.getEffectiveLevel() >= logging.DEBUG:
-            t = 1000.0*(time.time()-t)
+            t = 1000.0 * (time.time() - t)
             logger.debug("took %f msec." % t)
 
         if timer:
@@ -145,7 +147,7 @@ class OpStreamingH5N5Reader(Operator):
             self.OutputImage.setDirty(slice(None))
 
     @staticmethod
-    def get_h5_n5_file(filepath, mode='a'):
+    def get_h5_n5_file(filepath, mode="a"):
         """
         returns, depending on the file-extension of filepath, either a hdf5 or a N5 file defined by filepath
         If the file is created when it does not exist depends on mode and on the function z5py.N5File/h5py.File.

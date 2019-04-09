@@ -43,9 +43,9 @@ class TestOpBigTiffReader(unittest.TestCase):
         cls.tmp_data_folder = tempfile.mkdtemp()
         cls.test_file_name = f"{cls.tmp_data_folder}/bigtiff_testfile.tif"
 
-        cls.data = numpy.random.randint(0, 255, (800, 1200)).astype('uint8')
+        cls.data = numpy.random.randint(0, 255, (800, 1200)).astype("uint8")
         try:
-            t = pytiff.Tiff(cls.test_file_name, file_mode='w', bigtiff=True)
+            t = pytiff.Tiff(cls.test_file_name, file_mode="w", bigtiff=True)
             t.write(cls.data)
         finally:
             t.close()
@@ -59,11 +59,7 @@ class TestOpBigTiffReader(unittest.TestCase):
 
         if vigra can read those tiffs, obBigTiffReader is obsolete
         """
-        self.assertRaises(
-            RuntimeError,
-            vigra.impex.readImage,
-            self.test_file_name
-        )
+        self.assertRaises(RuntimeError, vigra.impex.readImage, self.test_file_name)
 
     def test_read_bigtiff(self):
         g = Graph()
@@ -85,10 +81,11 @@ if __name__ == "__main__":
     # Run this file independently to see debug output.
     import sys
     import nose
+
     logger.setLevel(logging.DEBUG)
     logger.addHandler(logging.StreamHandler(sys.stdout))
 
-    ioOpLogger = logging.getLogger('lazyflow.operators.ioOperators')
+    ioOpLogger = logging.getLogger("lazyflow.operators.ioOperators")
     ioOpLogger.addHandler(logging.StreamHandler(sys.stdout))
     ioOpLogger.setLevel(logging.DEBUG)
 

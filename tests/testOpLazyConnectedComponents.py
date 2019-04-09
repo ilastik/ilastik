@@ -1,5 +1,6 @@
 from __future__ import print_function
 from builtins import range
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -30,8 +31,7 @@ import unittest
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 from lazyflow.utility.testing import assertEquivalentLabeling
-from lazyflow.operators.opLazyConnectedComponents\
-    import OpLazyConnectedComponents as OpLazyCC
+from lazyflow.operators.opLazyConnectedComponents import OpLazyConnectedComponents as OpLazyCC
 
 from lazyflow.graph import Graph
 from lazyflow.operator import Operator
@@ -49,12 +49,12 @@ class DirtyAssert(Operator):
         self._c = c
 
     def propagateDirty(self, slot, subindex, roi):
-        t_ind = self.Input.meta.axistags.index('t')
-        c_ind = self.Input.meta.axistags.index('c')
+        t_ind = self.Input.meta.axistags.index("t")
+        c_ind = self.Input.meta.axistags.index("c")
         assert roi.start[t_ind] == self._t
         assert roi.start[c_ind] == self._c
-        assert roi.stop[t_ind] == self._t+1
-        assert roi.stop[c_ind] == self._c+1
+        assert roi.stop[t_ind] == self._t + 1
+        assert roi.stop[c_ind] == self._c + 1
         raise self.PropagateDirtyCalled()
 
     class PropagateDirtyCalled(Exception):
@@ -62,14 +62,13 @@ class DirtyAssert(Operator):
 
 
 class TestOpLazyCC(unittest.TestCase):
-
     def setup_method(self, method):
         pass
 
     def testCorrectLabeling(self):
         vol = np.zeros((1000, 100, 10))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='zyx')
+        vol = vigra.taggedView(vol, axistags="zyx")
 
         vol[20:40, 10:30, 2:4] = 1
 
@@ -84,12 +83,12 @@ class TestOpLazyCC(unittest.TestCase):
 
     def testSingletonZ(self):
         vol = np.zeros((1, 70, 82), dtype=np.uint8)
-        vol = vigra.taggedView(vol, axistags='zyx')
+        vol = vigra.taggedView(vol, axistags="zyx")
 
         blocks = np.zeros(vol.shape, dtype=np.uint8)
         blocks[:, 30:50, 40:60] = 1
         blocks[:, 60:70, 30:40] = 3
-        blocks = vigra.taggedView(blocks, axistags='zyx')
+        blocks = vigra.taggedView(blocks, axistags="zyx")
 
         vol[blocks > 0] = 255
 
@@ -105,16 +104,20 @@ class TestOpLazyCC(unittest.TestCase):
     def testLazyness(self):
         g = Graph()
         vol = np.asarray(
-            [[0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [0, 1, 0, 0, 1, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [0, 1, 0, 0, 0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.uint8)
-        vol = vigra.taggedView(vol, axistags='yx').withAxes(*'zyx')
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 1, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            dtype=np.uint8,
+        )
+        vol = vigra.taggedView(vol, axistags="yx").withAxes(*"zyx")
         chunkShape = (1, 3, 3)
 
         opCount = OpExecuteCounter(graph=g)
@@ -130,23 +133,25 @@ class TestOpLazyCC(unittest.TestCase):
 
         out = op.Output[:, :3, :3].wait()
         n = 3
-        assert opCount.numCalls <= n,\
-            "Executed {} times (allowed: {})".format(opCount.numCalls,
-                                                     n)
+        assert opCount.numCalls <= n, "Executed {} times (allowed: {})".format(opCount.numCalls, n)
 
     def testContiguousLabels(self):
         g = Graph()
         vol = np.asarray(
-            [[0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [0, 0, 1, 1, 1, 0, 0, 0, 0],
-             [0, 1, 0, 1, 0, 0, 0, 0, 0],
-             [0, 1, 0, 1, 0, 0, 0, 0, 0],
-             [0, 1, 1, 1, 0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 1, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.uint8)
-        vol = vigra.taggedView(vol, axistags='yx').withAxes(*'zyx')
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 1, 1, 1, 0, 0, 0, 0],
+                [0, 1, 0, 1, 0, 0, 0, 0, 0],
+                [0, 1, 0, 1, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            dtype=np.uint8,
+        )
+        vol = vigra.taggedView(vol, axistags="yx").withAxes(*"zyx")
         chunkShape = (1, 3, 3)
 
         op = OpLazyCC(graph=g)
@@ -160,7 +165,7 @@ class TestOpLazyCC(unittest.TestCase):
     def testConsistency(self):
         vol = np.zeros((1000, 100, 10))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='zyx')
+        vol = vigra.taggedView(vol, axistags="zyx")
         vol[:200, ...] = 1
         vol[800:, ...] = 1
 
@@ -179,19 +184,23 @@ class TestOpLazyCC(unittest.TestCase):
         op.ChunkShape.setValue((3, 3, 1))
 
         vol = np.asarray(
-            [[0, 0, 0, 0, 0, 0, 0, 0, 0],
-             [0, 1, 1, 1, 0, 1, 1, 1, 0],
-             [0, 1, 0, 0, 0, 0, 0, 1, 0],
-             [0, 1, 0, 0, 0, 0, 0, 1, 0],
-             [0, 1, 0, 0, 0, 0, 0, 1, 0],
-             [0, 1, 0, 0, 0, 0, 0, 1, 0],
-             [0, 1, 0, 0, 0, 0, 0, 1, 0],
-             [0, 1, 1, 1, 1, 1, 1, 1, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.uint8)
-        vol1 = vigra.taggedView(vol, axistags='yx')
-        vol2 = vigra.taggedView(vol, axistags='xy')
-        vol3 = vigra.taggedView(np.flipud(vol), axistags='yx')
-        vol4 = vigra.taggedView(np.flipud(vol), axistags='xy')
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 0, 1, 1, 1, 0],
+                [0, 1, 0, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 0, 1, 0],
+                [0, 1, 0, 0, 0, 0, 0, 1, 0],
+                [0, 1, 1, 1, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            dtype=np.uint8,
+        )
+        vol1 = vigra.taggedView(vol, axistags="yx")
+        vol2 = vigra.taggedView(vol, axistags="xy")
+        vol3 = vigra.taggedView(np.flipud(vol), axistags="yx")
+        vol4 = vigra.taggedView(np.flipud(vol), axistags="xy")
 
         for v in (vol1, vol2, vol3, vol4):
             op.Input.setValue(v)
@@ -200,14 +209,14 @@ class TestOpLazyCC(unittest.TestCase):
                     if x == 3 and y == 3:
                         continue
                     op.Input.setDirty(slice(None))
-                    out = op.Output[x:x+3, y:y+3].wait()
+                    out = op.Output[x : x + 3, y : y + 3].wait()
                     print(out.squeeze())
                     assert out.max() == 1
 
     def testParallelConsistency(self):
         vol = np.zeros((1000, 100, 10))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='zyx')
+        vol = vigra.taggedView(vol, axistags="zyx")
         vol[:200, ...] = 1
         vol[800:, ...] = 1
 
@@ -229,7 +238,7 @@ class TestOpLazyCC(unittest.TestCase):
         g = Graph()
         vol = np.zeros((200, 100, 10))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='zyx')
+        vol = vigra.taggedView(vol, axistags="zyx")
         vol[:200, ...] = 1
         vol[800:, ...] = 1
 
@@ -242,20 +251,14 @@ class TestOpLazyCC(unittest.TestCase):
 
         out = op.Output[:100, :20, :5].wait()
 
-        roi = SubRegion(op.Input,
-                        start=(0, 0, 0),
-                        stop=(200, 100, 10))
+        roi = SubRegion(op.Input, start=(0, 0, 0), stop=(200, 100, 10))
         with self.assertRaises(PropagateDirtyCalled):
             op.Input.setDirty(roi)
 
     def testDirtyPropagation(self):
         g = Graph()
-        vol = np.asarray(
-            [[0, 0, 0, 0],
-             [0, 0, 1, 1],
-             [0, 1, 0, 1],
-             [0, 1, 0, 1]], dtype=np.uint8)
-        vol = vigra.taggedView(vol, axistags='yx').withAxes(*'zyx')
+        vol = np.asarray([[0, 0, 0, 0], [0, 0, 1, 1], [0, 1, 0, 1], [0, 1, 0, 1]], dtype=np.uint8)
+        vol = vigra.taggedView(vol, axistags="yx").withAxes(*"zyx")
 
         chunkShape = (1, 2, 2)
 
@@ -280,7 +283,7 @@ class TestOpLazyCC(unittest.TestCase):
         shape = (500, 500, 500)
 
         vol = np.zeros(shape, dtype=np.uint8)
-        vol = vigra.taggedView(vol, axistags='zxy')
+        vol = vigra.taggedView(vol, axistags="zxy")
 
         centers = [(45, 15), (45, 350), (360, 50)]
         extent = (10, 10)
@@ -291,11 +294,11 @@ class TestOpLazyCC(unittest.TestCase):
         for x, y in centers:
             for z in zsteps:
                 for t in zrange:
-                    sx = x+t*shift[0]
-                    sy = y+t*shift[1]
-                    vol[zsteps + t, sx-extent[0]:sx+extent[0], sy-extent[0]:sy+extent[0]] = 255
+                    sx = x + t * shift[0]
+                    sy = y + t * shift[1]
+                    vol[zsteps + t, sx - extent[0] : sx + extent[0], sy - extent[0] : sy + extent[0]] = 255
 
-        vol = vol.withAxes(*'zyx')
+        vol = vol.withAxes(*"zyx")
 
         # all at once
         op = OpLazyCC(graph=Graph())
@@ -310,7 +313,7 @@ class TestOpLazyCC(unittest.TestCase):
         shape = (500, 500, 500)
 
         vol = np.zeros(shape, dtype=np.uint8)
-        vol = vigra.taggedView(vol, axistags='zxy')
+        vol = vigra.taggedView(vol, axistags="zxy")
 
         centers = [(45, 15), (45, 350), (360, 50)]
         extent = (10, 10)
@@ -321,21 +324,20 @@ class TestOpLazyCC(unittest.TestCase):
         for x, y in centers:
             for z in zsteps:
                 for t in zrange:
-                    sx = x+t*shift[0]
-                    sy = y+t*shift[1]
-                    vol[zsteps + t, sx-extent[0]:sx+extent[0], sy-extent[0]:sy+extent[0]] = 255
+                    sx = x + t * shift[0]
+                    sy = y + t * shift[1]
+                    vol[zsteps + t, sx - extent[0] : sx + extent[0], sy - extent[0] : sy + extent[0]] = 255
 
-        vol = vol.withAxes(*'zyx')
+        vol = vol.withAxes(*"zyx")
 
         # step by step
         op = OpLazyCC(graph=Graph())
         op.Input.setValue(vol)
         op.ChunkShape.setValue((64, 64, 64))
-        out1 = np.zeros(op.Output.meta.shape,
-                        dtype=op.Output.meta.dtype)
+        out1 = np.zeros(op.Output.meta.shape, dtype=op.Output.meta.dtype)
         for z in reversed(list(range(500))):
-            out1[..., z:z+1] = op.Output[..., z:z+1].wait()
-        vigra.writeHDF5(out1, '/tmp/data.h5', 'data')
+            out1[..., z : z + 1] = op.Output[..., z : z + 1].wait()
+        vigra.writeHDF5(out1, "/tmp/data.h5", "data")
         out2 = vigra.analysis.labelVolumeWithBackground(vol)
         assertEquivalentLabeling(out1.view(np.ndarray), out2.view(np.ndarray))
 
@@ -344,38 +346,40 @@ class TestOpLazyCC(unittest.TestCase):
         shape = (100, 100, 100)
 
         vol = np.ones(shape, dtype=np.uint8)
-        vol = vigra.taggedView(vol, axistags='zyx')
+        vol = vigra.taggedView(vol, axistags="zyx")
 
         op = OpLazyCC(graph=Graph())
         op.Input.setValue(vol)
         op.ChunkShape.setValue((50, 50, 1))
 
-        reqs = [op.Output[..., 0],
-                op.Output[..., 0],
-                op.Output[..., 99],
-                op.Output[..., 99],
-                op.Output[0, ...],
-                op.Output[0, ...],
-                op.Output[99, ...],
-                op.Output[99, ...],
-                op.Output[:, 0, ...],
-                op.Output[:, 0, ...],
-                op.Output[:, 99, ...],
-                op.Output[:, 99, ...]]
+        reqs = [
+            op.Output[..., 0],
+            op.Output[..., 0],
+            op.Output[..., 99],
+            op.Output[..., 99],
+            op.Output[0, ...],
+            op.Output[0, ...],
+            op.Output[99, ...],
+            op.Output[99, ...],
+            op.Output[:, 0, ...],
+            op.Output[:, 0, ...],
+            op.Output[:, 99, ...],
+            op.Output[:, 99, ...],
+        ]
 
         [r.submit() for r in reqs]
 
         out = [r.wait() for r in reqs]
-        for i in range(len(out)-1):
+        for i in range(len(out) - 1):
             try:
-                assert_array_equal(out[i].squeeze(), out[i+1].squeeze())
+                assert_array_equal(out[i].squeeze(), out[i + 1].squeeze())
             except AssertionError:
                 raise
 
     def testMultiDimSame(self):
         vol = np.zeros((2, 10, 10, 1, 3))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='tzyxc')
+        vol = vigra.taggedView(vol, axistags="tzyxc")
 
         vol[:, 3:7, 3:7, :] = 1
 
@@ -390,7 +394,7 @@ class TestOpLazyCC(unittest.TestCase):
     def testMultiDimDiff(self):
         vol = np.zeros((2, 10, 10, 1, 3))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='tzyxc')
+        vol = vigra.taggedView(vol, axistags="tzyxc")
 
         vol[0, 3:7, 3:7, :] = 1
         vol[1, 7:, 7:, :] = 1
@@ -406,11 +410,11 @@ class TestOpLazyCC(unittest.TestCase):
     def testStrangeDim(self):
         vol = np.zeros((2, 10, 10, 1, 3))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='tzyxc')
+        vol = vigra.taggedView(vol, axistags="tzyxc")
 
         vol[:, 3:7, 3:7, :] = 1
 
-        strangeVol = vol.withAxes(*'ytxcz')
+        strangeVol = vol.withAxes(*"ytxcz")
 
         op = OpLazyCC(graph=Graph())
         op.Input.setValue(strangeVol)
@@ -418,13 +422,13 @@ class TestOpLazyCC(unittest.TestCase):
 
         out = op.Output[...].wait()
         out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
-        out = out.withAxes(*'tzyxc')
+        out = out.withAxes(*"tzyxc")
         assert np.all(out[1, 3:7, 3:7, ...] > 0)
 
     def testHDF5(self):
         vol = np.zeros((1000, 100, 10))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='xyz')
+        vol = vigra.taggedView(vol, axistags="xyz")
         vol[:200, ...] = 1
         vol[800:, ...] = 1
 
@@ -440,7 +444,7 @@ class TestOpLazyCC(unittest.TestCase):
         assert len(blocks) == 20
 
         # prepare hdf5 file
-        f = h5py.File('temp.h5', driver='core', backing_store=False)
+        f = h5py.File("temp.h5", driver="core", backing_store=False)
 
         for block in blocks:
             req = op.OutputHdf5(start=block[0], stop=block[1])
@@ -450,18 +454,16 @@ class TestOpLazyCC(unittest.TestCase):
         # fill whole cache
         op.Output[...].wait()
 
-        f.create_dataset('TEST', shape=(1, 1000, 100, 10, 1), dtype=np.uint32)
-        ds = f['TEST']
+        f.create_dataset("TEST", shape=(1, 1000, 100, 10, 1), dtype=np.uint32)
+        ds = f["TEST"]
         ds[0, ..., 0] = 23
 
         op.InputHdf5[0:1, 0:1000, 0:100, 0:10, 0:1] = ds
         blocks = op.CleanBlocks[0].wait()[0]
-        assert len(blocks) == 100,\
-            "Got {} clean blocks (expected {}".format(len(blocks), 100)
+        assert len(blocks) == 100, "Got {} clean blocks (expected {}".format(len(blocks), 100)
 
 
 class OpExecuteCounter(OpArrayPiper):
-
     def __init__(self, *args, **kwargs):
         self.numCalls = 0
         super(OpExecuteCounter, self).__init__(*args, **kwargs)
@@ -485,23 +487,25 @@ class PropagateDirtyCalled(Exception):
 
 
 if __name__ == "__main__":
-    #make the program quit on Ctrl+C
+    # make the program quit on Ctrl+C
     import signal
+
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     nose.run(defaultTest=__file__)
 
 #     vol = np.zeros((1000, 100, 10))
 #     vol[300:600, 40:70, 2:5] = 255
 #     vol = vol.astype(np.uint8)
 #     vol = vigra.taggedView(vol, axistags='zyx')
-# 
+#
 #     op = OpLazyCC(graph=Graph())
 #     op.Input.setValue(vol)
 #     op.ChunkShape.setValue((100, 10, 10))
-# 
+#
 #     out = op.Output[...].wait()

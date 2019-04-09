@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from builtins import range
 from builtins import object
 import sys
+
 if sys.version_info.major >= 3:
     unicode = str
 
@@ -45,7 +46,7 @@ class OpLabelVolume(Operator):
     # E.g.: volume.taggedShape = {'x': 10, 'y': 12, 'z': 5, 'c': 3, 't': 100}
     # ==>
     # background.taggedShape = {'c': 3, 't': 100}
-    #TODO relax requirements (single value is already working)
+    # TODO relax requirements (single value is already working)
     Background = InputSlot(optional=True)
 
     # Bypass cache (for headless mode)
@@ -58,7 +59,7 @@ class OpLabelVolume(Operator):
     # * 'blocked': use the memory saving algorithm from thorbenk/blockedarray
     #
     # A change here deletes all previously cached results.
-    Method = InputSlot(value='vigra')
+    Method = InputSlot(value="vigra")
 
     ## Labeled volume
     # Axistags and shape are the same as on the Input, dtype is an integer
@@ -91,7 +92,7 @@ class OpLabelVolume(Operator):
         # we just want to have 5d data internally
         op5 = OpReorderAxes(parent=self)
         op5.Input.connect(self.Input)
-        op5.AxisOrder.setValue('txyzc')
+        op5.AxisOrder.setValue("txyzc")
         self._op5 = op5
 
         self._opLabel = None
@@ -104,9 +105,7 @@ class OpLabelVolume(Operator):
 
         # available OpLabelingABCs:
         # TODO: OpLazyConnectedComponents and _OpLabelBlocked does not conform to OpLabelingABC
-        self._labelOps = {'vigra': _OpLabelVigra,
-                          'blocked': _OpLabelBlocked,
-                          'lazy': OpLazyConnectedComponents}
+        self._labelOps = {"vigra": _OpLabelVigra, "blocked": _OpLabelBlocked, "lazy": OpLazyConnectedComponents}
 
     def setupOutputs(self):
         method = self.Method.value
@@ -123,9 +122,9 @@ class OpLabelVolume(Operator):
         if self._opLabel is None:
             self._opLabel = self._labelOps[method](parent=self)
             self._opLabel.Input.connect(self._op5.Output)
-            if method is 'vigra':
+            if method is "vigra":
                 self._opLabel.BypassModeEnabled.connect(self.BypassModeEnabled)
-    
+
         # connect reordering operators
         self._op5_2.Input.connect(self._opLabel.Output)
         self._op5_2_cached.Input.connect(self._opLabel.CachedOutput)
@@ -134,7 +133,7 @@ class OpLabelVolume(Operator):
         origOrder = self.Input.meta.getAxisKeys()
         self._op5_2.AxisOrder.setValue(origOrder)
         self._op5_2_cached.AxisOrder.setValue(origOrder)
-    
+
         # connect cache access slots
         self.CleanBlocks.connect(self._opLabel.CleanBlocks)
 
@@ -152,7 +151,7 @@ class OpLabelVolume(Operator):
             # handled by internal operator
             pass
         elif slot == self.Background:
-            # propagate the background values, output will be set dirty in 
+            # propagate the background values, output will be set dirty in
             # internal operator
             self._setBG()
 
@@ -175,11 +174,11 @@ class OpLabelVolume(Operator):
         if bg.size == 1:
             bg = np.zeros((c, t))
             bg[:] = val
-            bg = vigra.taggedView(bg, axistags='ct')
+            bg = vigra.taggedView(bg, axistags="ct")
         else:
             bg = vigra.taggedView(val, axistags=self.Background.meta.axistags)
-            bg = bg.withAxes(*'ct')
-        bg = bg.withAxes(*'txyzc')
+            bg = bg.withAxes(*"ct")
+        bg = bg.withAxes(*"txyzc")
         self._opLabel.Background.setValue(bg)
 
 
@@ -189,7 +188,7 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
 
     ## background with axes 'txyzc', spatial axes must be singletons
     Background = InputSlot()
-    
+
     # Bypass cache (for headless mode)
     BypassModeEnabled = InputSlot(value=False)
 
@@ -222,8 +221,7 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
         if self.Input.ready():
             dtype = self.Input.meta.dtype
             if dtype not in self.supportedDtypes:
-                msg = "{}: dtype '{}' not supported "\
-                    "with method 'vigra'. Supported types: {}"
+                msg = "{}: dtype '{}' not supported " "with method 'vigra'. Supported types: {}"
                 msg = msg.format(self.name, dtype, self.supportedDtypes)
                 raise ValueError(msg)
 
@@ -268,13 +266,13 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
         # get the background values
         bg = self.Background[...].wait()
         bg = vigra.taggedView(bg, axistags=self.Background.meta.axistags)
-        bg = bg.withAxes(*'ct')
-        assert np.all(self.Background.meta.shape[0] ==
-                      self.Input.meta.shape[0]),\
-            "Shape of background values incompatible to shape of Input"
-        assert np.all(self.Background.meta.shape[4] ==
-                      self.Input.meta.shape[4]),\
-            "Shape of background values incompatible to shape of Input"
+        bg = bg.withAxes(*"ct")
+        assert np.all(
+            self.Background.meta.shape[0] == self.Input.meta.shape[0]
+        ), "Shape of background values incompatible to shape of Input"
+        assert np.all(
+            self.Background.meta.shape[4] == self.Input.meta.shape[4]
+        ), "Shape of background values incompatible to shape of Input"
 
         # do labeling in parallel over channels and time slices
         pool = RequestPool()
@@ -282,23 +280,18 @@ class OpLabelingABC(with_metaclass(ABCMeta, Operator)):
         start = np.asarray(roi.start, dtype=np.int)
         stop = np.asarray(roi.stop, dtype=np.int)
         for ti, t in enumerate(range(roi.start[0], roi.stop[0])):
-            start[0], stop[0] = t, t+1
+            start[0], stop[0] = t, t + 1
             for ci, c in enumerate(range(roi.start[4], roi.stop[4])):
-                start[4], stop[4] = c, c+1
-                newRoi = SubRegion(self.Output,
-                                   start=tuple(start), stop=tuple(stop))
-                resView = result[ti, ..., ci].withAxes(*'xyz')
-                req = Request(partial(self._label3d, newRoi,
-                                      bg[c, t], resView))
+                start[4], stop[4] = c, c + 1
+                newRoi = SubRegion(self.Output, start=tuple(start), stop=tuple(stop))
+                resView = result[ti, ..., ci].withAxes(*"xyz")
+                req = Request(partial(self._label3d, newRoi, bg[c, t], resView))
                 pool.add(req)
 
-        logger.debug(
-            "{}: Computing connected components for ROI {} ...".format(
-                self.name, roi))
+        logger.debug("{}: Computing connected components for ROI {} ...".format(self.name, roi))
         pool.wait()
         pool.clean()
-        logger.debug("{}: Connected components computed.".format(
-            self.name))
+        logger.debug("{}: Connected components computed.".format(self.name))
 
     ## compute the requested roi and put the results into result
     #
@@ -314,28 +307,30 @@ class _OpLabelVigra(OpLabelingABC):
     supportedDtypes = [np.uint8, np.uint32, np.float32]
 
     def _label3d(self, roi, bg, result):
-        source = vigra.taggedView(self.Input.get(roi).wait(),
-                                  axistags='txyzc').withAxes(*'xyz')
+        source = vigra.taggedView(self.Input.get(roi).wait(), axistags="txyzc").withAxes(*"xyz")
         if source.shape[2] > 1:
-            result[:] = vigra.analysis.labelVolumeWithBackground(
-                source, background_value=int(bg))
+            result[:] = vigra.analysis.labelVolumeWithBackground(source, background_value=int(bg))
         else:
-            result[..., 0] = vigra.analysis.labelImageWithBackground(
-                source[..., 0], background_value=int(bg))
+            result[..., 0] = vigra.analysis.labelImageWithBackground(source[..., 0], background_value=int(bg))
 
 
 # try to import the blockedarray module, fail only if neccessary
 try:
     from blockedarray import OpBlockedConnectedComponents
+
     raise ImportError("blockedarray not supported")
 except ImportError as e:
     _blockedarray_module_available = False
     _importMsg = str(e)
+
     class OpBlockedConnectedComponents(object):
         pass
+
+
 else:
     _blockedarray_module_available = True
     _importMsg = "No error, importing blockedarray worked."
+
 
 def haveBlocked():
     return _blockedarray_module_available
@@ -349,8 +344,7 @@ class _OpLabelBlocked(OpBlockedConnectedComponents):
     name = "OpLabelBlocked"
 
     def _updateSlice(self, c, t, bg):
-        assert _blockedarray_module_available,\
-            "Failed to import blockedarray. Message was: {}".format(_importMsg)
+        assert _blockedarray_module_available, "Failed to import blockedarray. Message was: {}".format(_importMsg)
 
         blockShape = _findBlockShape(self.Input.meta.shape[:3]) + (1, 1)
         logger.debug("{}: Using blockshape {}".format(self.name, blockShape))
@@ -388,33 +382,123 @@ def _findBlockShape(inshape, blockMax=500):
 
 
 _primes = [
-    2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
-    73, 79, 83, 89, 97, 101,    103, 107, 109, 113, 127, 131, 137, 139, 149,
-    151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229,
-    233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313,
-    317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409,
-    419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499]
+    2,
+    3,
+    5,
+    7,
+    11,
+    13,
+    17,
+    19,
+    23,
+    29,
+    31,
+    37,
+    41,
+    43,
+    47,
+    53,
+    59,
+    61,
+    67,
+    71,
+    73,
+    79,
+    83,
+    89,
+    97,
+    101,
+    103,
+    107,
+    109,
+    113,
+    127,
+    131,
+    137,
+    139,
+    149,
+    151,
+    157,
+    163,
+    167,
+    173,
+    179,
+    181,
+    191,
+    193,
+    197,
+    199,
+    211,
+    223,
+    227,
+    229,
+    233,
+    239,
+    241,
+    251,
+    257,
+    263,
+    269,
+    271,
+    277,
+    281,
+    283,
+    293,
+    307,
+    311,
+    313,
+    317,
+    331,
+    337,
+    347,
+    349,
+    353,
+    359,
+    367,
+    373,
+    379,
+    383,
+    389,
+    397,
+    401,
+    409,
+    419,
+    421,
+    431,
+    433,
+    439,
+    443,
+    449,
+    457,
+    461,
+    463,
+    467,
+    479,
+    487,
+    491,
+    499,
+]
 
 
 def _factorize(n):
-    '''
+    """
     factorize an integer, return list of prime factors (up to 499)
-    '''
+    """
     maxP = int(np.sqrt(n))
     for p in _primes:
         if p > maxP:
             return [n]
         if n % p == 0:
-            ret = _factorize(n//p)
+            ret = _factorize(n // p)
             ret.append(p)
             return ret
     assert False, "How did you get here???"
 
 
 def _combine(f):
-    '''
+    """
     possible combinations of factors of f
-    '''
+    """
 
     if len(f) < 2:
         return f
@@ -424,6 +508,6 @@ def _combine(f):
         sub = _combine(f)
         ret += sub
         for s in sub:
-            ret.append(s*n)
+            ret.append(s * n)
         f.append(n)
     return ret

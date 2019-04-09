@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,7 +19,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import os
 import sys
@@ -26,21 +27,22 @@ import shutil
 import tempfile
 import numpy
 import h5py
-from lazyflow.roi import sliceToRoi    
+from lazyflow.roi import sliceToRoi
 from lazyflow.utility.io_util.RESTfulVolume import RESTfulVolume
 
 import logging
+
 logger = logging.getLogger(__name__)
-logger.addHandler( logging.StreamHandler( sys.stdout ) )
+logger.addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.INFO)
 
 ## Uncomment to enable debug logging for this test.
-#logger.setLevel(logging.DEBUG)
-#logging.getLogger("lazyflow.utility.io_util.RESTfulVolume").addHandler( logging.StreamHandler( sys.stdout ) )
-#logging.getLogger("lazyflow.utility.io_util.RESTfulVolume").setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
+# logging.getLogger("lazyflow.utility.io_util.RESTfulVolume").addHandler( logging.StreamHandler( sys.stdout ) )
+# logging.getLogger("lazyflow.utility.io_util.RESTfulVolume").setLevel(logging.DEBUG)
+
 
 class TestRESTfulVolume(object):
-    
     def testBasic(self):
         """
         Requires access to the Internet...
@@ -48,13 +50,14 @@ class TestRESTfulVolume(object):
         # The openconnectome site appears to be down at the moment.
         # This test fails when that happens...
         import nose
+
         raise nose.SkipTest
-        
+
         testConfig0 = """
         {
             "_schema_name" : "RESTful-volume-description",
             "_schema_version" : 1.0,
-        
+
             "name" : "Bock11-level0",
             "format" : "hdf5",
             "axes" : "zyx",
@@ -66,12 +69,12 @@ class TestRESTfulVolume(object):
             "hdf5_dataset" : "CUTOUT"
         }
         """
-        
+
         testConfig4 = """
         {
             "_schema_name" : "RESTful-volume-description",
             "_schema_version" : 1.0,
-        
+
             "name" : "Bock11-level4",
             "format" : "hdf5",
             "axes" : "zyx",
@@ -83,34 +86,37 @@ class TestRESTfulVolume(object):
             "hdf5_dataset" : "CUTOUT"
         }
         """
-        
+
         # Create the description file.
         tempDir = tempfile.mkdtemp()
-        descriptionFilePath = os.path.join(tempDir, 'desc.json')
-        with open(descriptionFilePath, 'w') as descFile:
-            descFile.write( testConfig0 )
+        descriptionFilePath = os.path.join(tempDir, "desc.json")
+        with open(descriptionFilePath, "w") as descFile:
+            descFile.write(testConfig0)
 
         # Create the volume object
-        volume = RESTfulVolume( descriptionFilePath )
+        volume = RESTfulVolume(descriptionFilePath)
 
-        #slicing = numpy.s_[0:100, 4000:4200, 4000:4200]
+        # slicing = numpy.s_[0:100, 4000:4200, 4000:4200]
         slicing = numpy.s_[0:25, 50000:50050, 50000:50075]
-        roi = sliceToRoi( slicing, volume.description.shape )
-        outputFile = os.path.join(tempDir, 'volume.h5')
-        datasetPath = outputFile + '/cube'
-        logger.debug("Downloading subvolume to: {}".format( datasetPath ))
-        volume.downloadSubVolume(roi, datasetPath)        
+        roi = sliceToRoi(slicing, volume.description.shape)
+        outputFile = os.path.join(tempDir, "volume.h5")
+        datasetPath = outputFile + "/cube"
+        logger.debug("Downloading subvolume to: {}".format(datasetPath))
+        volume.downloadSubVolume(roi, datasetPath)
 
-        with h5py.File(outputFile, 'r') as hdf5File:
-            data = hdf5File['cube']
-            assert data.shape == ( 25, 50, 75 )
+        with h5py.File(outputFile, "r") as hdf5File:
+            data = hdf5File["cube"]
+            assert data.shape == (25, 50, 75)
 
         shutil.rmtree(tempDir)
-            
+
+
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)
