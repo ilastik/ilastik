@@ -625,20 +625,30 @@ class DataSelectionGui(QWidget):
                     continue
                 else:
                     # Not successfully repaired.  Roll back the changes
-                    opTop.DatasetGroup.resize(originalSize)
+                    self._opTopRemoveDset(originalSize, laneIndex, roleIndex)
                     return False
             except OpDataSelection.InvalidDimensionalityError as ex:
-                    opTop.DatasetGroup.resize( originalSize )
+                    self._opTopRemoveDset(originalSize, laneIndex, roleIndex)
                     QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
                     return False
             except Exception as ex:
+                self._opTopRemoveDset(originalSize, laneIndex, roleIndex)
                 msg = "Wasn't able to load your dataset into the workflow.  See error log for details."
                 log_exception( logger, msg )
                 QMessageBox.critical( self, "Dataset Load Error", msg )
-                opTop.DatasetGroup.resize( originalSize )
                 return False
 
         return True
+
+    def _opTopRemoveDset(self, laneNum, laneIndex, roleIndex):
+        """
+        Removes a dataset in topLevelOperator and sets the number of lanes to laneNum
+        :param laneNum: total number of lanes after the cleanup
+        :param laneIndex: the lane index of the dataset which is to be removed
+        :param roleIndex: role index of the dataset
+        """
+        self.topLevelOperator.DatasetGroup.resize(laneNum)
+        self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(None)
 
     def _reconfigureDatasetLocations(self, roleIndex, startingLane, endingLane):
         """
