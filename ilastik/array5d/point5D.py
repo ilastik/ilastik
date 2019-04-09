@@ -52,15 +52,15 @@ class Point5D(object):
         params = {**defaults.to_dict(), **d}
         return cls(**params)
 
-    def to_tuple(self, axis_order=None):
-        axis_order = axis_order or self.LABELS
+    def to_tuple(self, axis_order:str):
+        assert sorted(axis_order) == sorted(self.LABELS)
         return tuple((self._coords[label] for label in axis_order))
 
     def to_dict(self):
         return self._coords.copy()
 
-    def to_np(self):
-        return np.asarray(list(self._coords.values()))
+    def to_np(self, axis_order:str):
+        return np.asarray(self.to_tuple(axis_order))
 
     def __repr__(self):
         contents = ",".join((f"{label}:{val if val != self.INF else 'inf'}" for label, val in self._coords.items()))
@@ -114,7 +114,7 @@ class Point5D(object):
         return self.__class__(**params)
 
     def __np_op(self, other, op):
-        return getattr(self.to_np(), op)(other.to_np())
+        return getattr(self.to_np(self.LABELS), op)(other.to_np(self.LABELS))
 
     def _compare(self, other, op):
         return all(self.__np_op(other, op))
@@ -140,20 +140,20 @@ class Point5D(object):
         return not self.__eq__(other)
 
     def __sub__(self, other):
-        dif = self.to_np() - other.to_np()
+        dif = self.to_np(self.LABELS) - other.to_np(self.LABELS)
         params = {label:value for label, value in zip(self.LABELS, dif)}
         return self.__class__(**params)
 
     def __add__(self, other):
-        dif = self.to_np() + other.to_np()
+        dif = self.to_np(self.LABELS) + other.to_np(self.LABELS)
         params = {label:value for label, value in zip(self.LABELS, dif)}
         return self.__class__(**params)
 
     def clamped(self, minimum:'Point5D'=None, maximum:'Point5D'=None):
         minimum = minimum or self.zero()
         maximum = maximum or self.inf()
-        result = np.maximum(self.to_tuple(), minimum.to_tuple(), dtype=np.uint64)
-        result = np.minimum(result, maximum.to_tuple(), dtype=np.uint64)
+        result = np.maximum(self.to_tuple(self.LABELS), minimum.to_tuple(self.LABELS), dtype=np.uint64)
+        result = np.minimum(result, maximum.to_tuple(self.LABELS), dtype=np.uint64)
         return self.__class__(**{label:val for label, val in zip(self.LABELS, result)})
 
     def as_shape(self) -> 'Shape5D':
@@ -234,6 +234,10 @@ class Slice5D(object):
 
     def to_slices(self, axis_order=Point5D.LABELS):
         return tuple([self._slices[label] for label in axis_order])
+
+    def to_tuple(self, axis_order:str, bounding_shape:Shape5D):
+        return (self.start.to_tuple(axis_order),
+                self.stop.clamped(maximum=bounding_shape).to_tuple(axis_order))
 
     def __str__(self):
         return self.__repr__()
