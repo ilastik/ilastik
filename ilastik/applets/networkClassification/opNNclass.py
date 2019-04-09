@@ -35,9 +35,6 @@ from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_LOCAL_SER
 import logging
 logger = logging.getLogger(__name__)
 
-BLOCKSHAPE = (1, 256, 256, 1) #(1, 188, 188, 1)
-logger.warning(f'Using hardcoded blockshape {BLOCKSHAPE}')
-
 
 class OpNNClassification(Operator):
     """
@@ -66,10 +63,10 @@ class OpNNClassification(Operator):
     LabelImages = OutputSlot(level=1)
     NonzeroLabelBlocks = OutputSlot(level=1)
 
-    # Gui only (not part of the pipeline)
     Halo_Size = InputSlot(value=0)
     Batch_Size = InputSlot(value=1)
 
+    # Gui only (not part of the pipeline)
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
@@ -229,16 +226,16 @@ class OpNNClassification(Operator):
         # now all non-server settings are up to date...
         self.TiktorchConfig.setValue(tiktorch_config)  # ...setupOutputs can initialize a tiktorchClassifierFactory
 
-    def send_hparams(self, hparams):
-        self.ClassifierFactory.meta.hparams = hparams
+    def update_config(self, partial_config: dict):
+        self.ClassifierFactory.meta.hparams = partial_config
         def _send_hparams(slot):
             classifierFactory = self.ClassifierFactory[:].wait()[0]
-            classifierFactory.send_hparams(hparams=self.ClassifierFactory.meta.hparams)
+            classifierFactory.update_config(self.ClassifierFactory.meta.hparams)
         if not self.ClassifierFactory.ready():
             self.ClassifierFactory.notifyReady(_send_hparams)
         else:
             classifierFactory = self.ClassifierFactory[:].wait()[0]
-            classifierFactory.send_hparams(hparams)
+            classifierFactory.update_config(partial_config)
 
     def setupCaches(self, imageIndex):
         numImages = len(self.InputImages)
@@ -358,31 +355,21 @@ class OpBlockShape(Operator):
         self.BlockShapeInference.setValue(self.setup_inference())
 
     def setup_train(self):
-        return self.setup_inference()
-        # tagged_shape = self.RawImage.meta.getTaggedShape()
-        # # labels are created for one channel (i.e. the label) and only in the
-        # # current time slice, so we can set both c and t to 1
-        # tagged_shape['c'] = 1
-        # if 't' in tagged_shape:
-        #     tagged_shape['t'] = 1
-        #
-        # # Aim for blocks that are roughly 20px
-        # #block_shape = self.ClassifierFactory.value.determineBlockShape([tagged_shape['x'], tagged_shape['y']],
-        # #                                                               train=True)
-        # #return (1, *tuple(block_shape), 1)
-        #
-        # return BLOCKSHAPE
+        blockDims = {a: s for a, s in zip("tczyx", self.ClassifierFactory.value.training_shape)}
+        axisOrder = self.RawImage.meta.getAxisKeys()
+        ret = tuple(blockDims[a] for a in axisOrder)
+        logger.debug("Set BlockShapeTrain to %s", ret)
+        return ret
 
     def setup_inference(self):
+        valid_tczyx_shapes = self.ClassifierFactory.value.valid_shapes
+        last_just_for_now = valid_tczyx_shapes[-1]
+
+        blockDims = {a: s for a, s in zip("tczyx", last_just_for_now)}
         axisOrder = self.RawImage.meta.getAxisKeys()
-
-        blockDims = { 't' : (1,1),
-                      'z' : (1,1),
-                      'y' : (BLOCKSHAPE[0], BLOCKSHAPE[1]),
-                      'x' : (BLOCKSHAPE[0], BLOCKSHAPE[1]),
-                      'c' : (100,100) }
-
-        return tuple(blockDims[k][1] for k in axisOrder)
+        ret = tuple(blockDims[a] for a in axisOrder)
+        logger.debug("Set BlockShapeInference to %s", ret)
+        return ret
 
     def execute(self, slot, subindex, roi, result):
         pass

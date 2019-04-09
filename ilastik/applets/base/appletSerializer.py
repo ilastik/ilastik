@@ -766,8 +766,9 @@ class SerialDictSlot(SerialSlot):
         self.transform = transform
 
     def _encode_utf8(self, v):
-        assert v is not None, "Cannot serialize 'None' to hdf5"
-        if isinstance(v, str):
+        if v is None:
+            return b'None'
+        elif isinstance(v, str):
             # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
             return v.encode('utf-8')
         elif isinstance(v, list) or isinstance(v, tuple):
@@ -776,11 +777,17 @@ class SerialDictSlot(SerialSlot):
             return v
 
     def _decode_utf8(self, v):
-        if isinstance(v, bytes):
+        if isinstance(v, list) or isinstance(v, numpy.ndarray):
+            return [self._decode_utf8(vv) for vv in v]
+        elif v == b'None':
+            return None
+        elif isinstance(v, bytes):
             # h5py can't store unicode, so we store all strings as encoded utf-8 bytes
             return v.decode('utf-8')
-        elif isinstance(v, list) or isinstance(v, numpy.ndarray):
-            return [self._decode_utf8(vv) for vv in v]
+        elif isinstance(v, numpy.integer):
+            return int(v)
+        elif isinstance(v, float):
+            return float(v)
         else:
             print('not decoded v', v, type(v))
             return v

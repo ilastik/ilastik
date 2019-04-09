@@ -260,7 +260,7 @@ class NNClassGui(LabelingGui):
             dlg = ParameterDlg(parent=self)
             dlg.exec_()
 
-            self.topLevelOperatorView.send_hparams(dlg.hparams)
+            self.topLevelOperatorView.update_config(dlg.hparams)
 
         set_parameter = advanced_menu.addAction("Set hyperparameters")
         set_parameter.triggered.connect(settingParameter)
@@ -613,7 +613,6 @@ class NNClassGui(LabelingGui):
                     tiktorchFactory.shutdown()
 
             # user did not cancel selection
-            self.labelingDrawerUi.addModel.setEnabled(False)
             self.add_NN_classifiers(folder)
             PreferencesManager().set('DataSelection', 'recent model', folder)
             # disable adding another model TODO: handle new model in add_NN_Classifier
