@@ -6,7 +6,6 @@ from typing import Iterable
 from typing import Iterable
 
 
-
 def _has_attribute(cls, attr):
     return any(attr in B.__dict__ for B in cls.__mro__)
 
@@ -297,13 +296,7 @@ class LazyflowOnlineClassifier:
     def create_and_train_pixelwise(self, *args, **kwargs):
         raise NotImplementedError("This is a 'LazyflowOnlineClassifier'. Use update instead!")
 
-    def update(
-        self,
-        feature_images: Iterable,
-        label_images: Iterable,
-        axistags,
-        image_ids: Iterable,
-    ):
+    def update(self, feature_images: Iterable, label_images: Iterable, axistags, image_ids: Iterable):
         """
         Update this classifier with the given lists of feature images and label images. The corresponding list of keys
         """

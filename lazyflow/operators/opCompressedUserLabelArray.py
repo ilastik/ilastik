@@ -130,7 +130,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         # Overwrite the blockshape
         if self._blockshape is None:
             self._blockshape = numpy.minimum(self.BlockShape.value, self.Output.meta.shape)
-        elif self.BlockShape.ready() and self.BlockShape.value != self._blockshape:
+        elif self.blockShape.value != self._blockshape:
             nonzero_blocks_destination = [None]
             self._execute_nonzeroBlocks(nonzero_blocks_destination)
             nonzero_blocks = nonzero_blocks_destination[0]

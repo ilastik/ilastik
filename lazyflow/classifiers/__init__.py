@@ -4,6 +4,7 @@ from .lazyflowClassifier import (
     LazyflowVectorwiseClassifierFactoryABC,
     LazyflowPixelwiseClassifierABC,
     LazyflowPixelwiseClassifierFactoryABC,
+    LazyflowOnlineClassifier,
 )
 from .vigraRfLazyflowClassifier import VigraRfLazyflowClassifier, VigraRfLazyflowClassifierFactory
 from .parallelVigraRfLazyflowClassifier import (
