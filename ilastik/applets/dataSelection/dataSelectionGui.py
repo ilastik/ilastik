@@ -20,13 +20,14 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
-from future import standard_library
-standard_library.install_aliases()
 from builtins import range
 import os
+import pathlib
+import typing
 import sys
 import threading
 import h5py
+import z5py
 import numpy
 from functools import partial
 import logging
@@ -55,7 +56,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from .opDataSelection import OpDataSelection, DatasetInfo
 from .dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from .datasetInfoEditorWidget import DatasetInfoEditorWidget
-from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, H5VolumeSelectionDlg
+from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, H5N5VolumeSelectionDlg
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDetailedInfoTableModel
 from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 from .precomputedVolumeBrowser import PrecomputedVolumeBrowser
@@ -156,7 +157,7 @@ class DataSelectionGui(QWidget):
         self._cleaning_up = False
         self.parentApplet = parentApplet
         self._max_lanes = max_lanes
-        self._default_h5_volumes = {}
+        self._default_h5n5_volumes = {}
         self.show_axis_details = show_axis_details
 
         self._viewerControls = QWidget()
@@ -416,23 +417,32 @@ class DataSelectionGui(QWidget):
 
         fileNames = []
         
+        file_dialog = QFileDialog(
+            parent_window, caption="Select Images", directory=defaultDirectory, filter=filt_all_str)
         if ilastik_config.getboolean("ilastik", "debug"):
             # use Qt dialog in debug mode (more portable?)
-            file_dialog = QFileDialog(parent_window, "Select Images")
             file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-            # do not display file types associated with a filter
-            # the line for "Image files" is too long otherwise
-            file_dialog.setNameFilters([filt_all_str] + filters)
             #file_dialog.setNameFilterDetailsVisible(False)
             # select multiple files
             file_dialog.setFileMode(QFileDialog.ExistingFiles)
-            file_dialog.setDirectory( defaultDirectory )
 
-            if file_dialog.exec_():
-                fileNames = file_dialog.selectedFiles()
-        else:
-            # otherwise, use native dialog of the present platform
-            fileNames, _filter = QFileDialog.getOpenFileNames(parent_window, "Select Images", defaultDirectory, filt_all_str)
+        if not file_dialog.exec_():
+            return []
+        return cls.cleanFileList(file_dialog.selectedFiles())
+
+
+    @staticmethod
+    def cleanFileList(fileList: typing.List[str]) -> typing.List[str]:
+        fileNames = [pathlib.Path(selected_file) for selected_file in fileList]
+        # For the n5 extension the attributes.json file has to be selected in the file dialog.
+        # However we need just the *.n5 directory-file.
+        for i, fileName in enumerate(fileNames):
+            # On some OS's the open file dialog allows to return file names that do not exist
+            assert fileName.exists(), \
+                f"The file '{fileName}' does not exist."
+            if fileName.name.lower() == 'attributes.json' and fileName.parent.suffix == ".n5":
+                fileNames[i] = fileName.parent
+        fileNames = [fileName.as_posix() for fileName in fileNames]
         return fileNames
 
     def _findFirstEmptyLane(self, roleIndex):
@@ -555,28 +565,32 @@ class DataSelectionGui(QWidget):
             datasetInfo.filePath = relPath
             
         h5Exts = ['.ilp', '.h5', '.hdf5']
-        if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
-            datasetNames = self.getPossibleInternalPaths( absPath )
+        n5Exts = ['.n5']
+        if os.path.splitext(datasetInfo.filePath)[1] in h5Exts + n5Exts:
+            if os.path.splitext(datasetInfo.filePath)[1] in n5Exts:
+                datasetNames = self.getPossibleN5InternalPaths( absPath )
+            else:
+                datasetNames = self.getPossibleH5InternalPaths( absPath )
             if len(datasetNames) == 0:
                 raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
             elif len(datasetNames) == 1:
                 datasetInfo.filePath += str(datasetNames[0])
             else:
                 # If exactly one of the file's datasets matches a user's previous choice, use it.
-                if roleIndex not in self._default_h5_volumes:
-                    self._default_h5_volumes[roleIndex] = set()
-                previous_selections = self._default_h5_volumes[roleIndex]
+                if roleIndex not in self._default_h5n5_volumes:
+                    self._default_h5n5_volumes[roleIndex] = set()
+                previous_selections = self._default_h5n5_volumes[roleIndex]
                 possible_auto_selections = previous_selections.intersection(datasetNames)
                 if len(possible_auto_selections) == 1:
                     datasetInfo.filePath += str(list(possible_auto_selections)[0])
                 else:
                     # Ask the user which dataset to choose
-                    dlg = H5VolumeSelectionDlg(datasetNames, self)
+                    dlg = H5N5VolumeSelectionDlg(datasetNames, self)
                     if dlg.exec_() == QDialog.Accepted:
                         selected_index = dlg.combo.currentIndex()
                         selected_dataset = str(datasetNames[selected_index])
                         datasetInfo.filePath += selected_dataset
-                        self._default_h5_volumes[roleIndex].add( selected_dataset )
+                        self._default_h5n5_volumes[roleIndex].add(selected_dataset)
                     else:
                         raise DataSelectionGui.UserCancelledError()
 
@@ -611,20 +625,30 @@ class DataSelectionGui(QWidget):
                     continue
                 else:
                     # Not successfully repaired.  Roll back the changes
-                    opTop.DatasetGroup.resize(originalSize)
+                    self._opTopRemoveDset(originalSize, laneIndex, roleIndex)
                     return False
             except OpDataSelection.InvalidDimensionalityError as ex:
-                    opTop.DatasetGroup.resize( originalSize )
+                    self._opTopRemoveDset(originalSize, laneIndex, roleIndex)
                     QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
                     return False
             except Exception as ex:
+                self._opTopRemoveDset(originalSize, laneIndex, roleIndex)
                 msg = "Wasn't able to load your dataset into the workflow.  See error log for details."
                 log_exception( logger, msg )
                 QMessageBox.critical( self, "Dataset Load Error", msg )
-                opTop.DatasetGroup.resize( originalSize )
                 return False
 
         return True
+
+    def _opTopRemoveDset(self, laneNum, laneIndex, roleIndex):
+        """
+        Removes a dataset in topLevelOperator and sets the number of lanes to laneNum
+        :param laneNum: total number of lanes after the cleanup
+        :param laneIndex: the lane index of the dataset which is to be removed
+        :param roleIndex: role index of the dataset
+        """
+        self.topLevelOperator.DatasetGroup.resize(laneNum)
+        self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(None)
 
     def _reconfigureDatasetLocations(self, roleIndex, startingLane, endingLane):
         """
@@ -707,7 +731,7 @@ class DataSelectionGui(QWidget):
         return (dlg_state == QDialog.Accepted), ex
 
     @classmethod
-    def getPossibleInternalPaths(cls, absPath, min_ndim=2, max_ndim=5):
+    def getPossibleH5InternalPaths(cls, absPath, min_ndim=2, max_ndim=5):
         datasetNames = []
         # Open the file as a read-only so we can get a list of the internal paths
         with h5py.File(absPath, 'r') as f:
@@ -717,6 +741,22 @@ class DataSelectionGui(QWidget):
                     datasetNames.append( '/' + name )
             # Visit every group/dataset in the file
             f.visititems(accumulateDatasetPaths)
+        return datasetNames
+
+    @classmethod
+    def getPossibleN5InternalPaths(cls, absPath, min_ndim=2, max_ndim=5):
+        """
+        Returns the name of all datasets in the file with at least 2 axes.
+        """
+        datasetNames = []
+        # Open the file as a read-only so we can get a list of the internal paths
+        with z5py.N5File(absPath, mode='r+') as f:
+            def accumulate_names(path, val):
+                if isinstance(val, z5py.dataset.Dataset) and min_ndim <= len(val.shape) <= max_ndim:
+                    name = path.replace(absPath, '')  # Need only the internal path here
+                    datasetNames.append(name)
+
+        f.visititems(accumulate_names)
         return datasetNames
 
     def addStack(self, roleIndex, laneIndex):

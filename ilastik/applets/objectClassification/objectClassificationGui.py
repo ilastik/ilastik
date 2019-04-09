@@ -568,6 +568,7 @@ class ObjectClassificationGui(LabelingGui):
         layers = super(ObjectClassificationGui, self).setupLayers()
 
         binarySlot = self.op.BinaryImages
+        atlas_slot = self.op.Atlas
         segmentedSlot = self.op.SegmentationImages
         #This is just for colors
         labels = self.labelListData
@@ -691,6 +692,9 @@ class ObjectClassificationGui(LabelingGui):
             binLayer.opacity = 1.0
             binLayer.setToolTip("Segmentation results as a binary mask")
             layers.append(binLayer)
+
+        if atlas_slot.ready():
+            layers.append(self.createStandardLayerFromSlot(atlas_slot, name="Atlas", opacity=0.5))
 
         # since we start with existing labels, it makes sense to start
         # with the first one selected. This would make more sense in

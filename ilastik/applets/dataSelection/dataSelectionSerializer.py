@@ -22,14 +22,14 @@ from __future__ import absolute_import
 ###############################################################################
 from builtins import range
 from .opDataSelection import OpDataSelection, DatasetInfo
-from lazyflow.operators.ioOperators import OpStackLoader, OpH5WriterBigDataset
+from lazyflow.operators.ioOperators import OpStackLoader, OpH5N5WriterBigDataset
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
 from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
-from lazyflow.operators.ioOperators.opStreamingHdf5SequenceReaderM import (
-    OpStreamingHdf5SequenceReaderM
+from lazyflow.operators.ioOperators.opStreamingH5N5SequenceReaderM import (
+    OpStreamingH5N5SequenceReaderM
 )
-from lazyflow.operators.ioOperators.opStreamingHdf5SequenceReaderS import (
-    OpStreamingHdf5SequenceReaderS
+from lazyflow.operators.ioOperators.opStreamingH5N5SequenceReaderS import (
+    OpStreamingH5N5SequenceReaderS
 )
 
 import os
@@ -104,10 +104,12 @@ class DataSelectionSerializer( AppletSerializer ):
                     dataSlot = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex]
 
                     try:    
-                        opWriter = OpH5WriterBigDataset(parent=self.topLevelOperator.parent, graph=self.topLevelOperator.graph)
-                        opWriter.CompressionEnabled.setValue(False) # Compression slows down browsing a lot, and raw data tends to be noisy and doesn't compress very well, anyway.
-                        opWriter.hdf5File.setValue( localDataGroup )
-                        opWriter.hdf5Path.setValue( info.datasetId )
+                        opWriter = OpH5N5WriterBigDataset(parent=self.topLevelOperator.parent, graph=self.topLevelOperator.graph)
+                        # Compression slows down browsing a lot, and raw data tends
+                        # to be noisy and doesn't compress very well, anyway.
+                        opWriter.CompressionEnabled.setValue(False)
+                        opWriter.h5N5File.setValue( localDataGroup )
+                        opWriter.h5N5Path.setValue( info.datasetId )
                         opWriter.Image.connect(dataSlot)
         
                         # Trigger the copy
@@ -226,22 +228,23 @@ class DataSelectionSerializer( AppletSerializer ):
             opLoader.SequenceAxis.setValue(sequence_axis)
             opLoader.GlobString.setValue(globstring)
             data_slot = opLoader.Output
-        elif firstPathParts.extension.lower() in OpStreamingHdf5SequenceReaderM.H5EXTS:
+        elif firstPathParts.extension.lower() in (OpStreamingH5N5SequenceReaderM.H5EXTS
+                                                  + OpStreamingH5N5SequenceReaderM.N5EXTS):
             # Now use the .checkGlobString method of the stack readers
             isSingleFile = True
             try:
-                OpStreamingHdf5SequenceReaderS.checkGlobString(globstring)
-            except (OpStreamingHdf5SequenceReaderS.NoInternalPlaceholderError,
-                    OpStreamingHdf5SequenceReaderS.NotTheSameFileError,
-                    OpStreamingHdf5SequenceReaderS.ExternalPlaceholderError):
+                OpStreamingH5N5SequenceReaderS.checkGlobString(globstring)
+            except (OpStreamingH5N5SequenceReaderS.NoInternalPlaceholderError,
+                    OpStreamingH5N5SequenceReaderS.NotTheSameFileError,
+                    OpStreamingH5N5SequenceReaderS.ExternalPlaceholderError):
                 isSingleFile = False
 
             isMultiFile = True
             try:
-                OpStreamingHdf5SequenceReaderM.checkGlobString(globstring)
-            except (OpStreamingHdf5SequenceReaderM.NoExternalPlaceholderError,
-                    OpStreamingHdf5SequenceReaderM.SameFileError,
-                    OpStreamingHdf5SequenceReaderM.InternalPlaceholderError):
+                OpStreamingH5N5SequenceReaderM.checkGlobString(globstring)
+            except (OpStreamingH5N5SequenceReaderM.NoExternalPlaceholderError,
+                    OpStreamingH5N5SequenceReaderM.SameFileError,
+                    OpStreamingH5N5SequenceReaderM.InternalPlaceholderError):
                 isMultiFile = False
 
             assert (not(isMultiFile and isSingleFile)), (
@@ -250,9 +253,9 @@ class DataSelectionSerializer( AppletSerializer ):
                 "Glob string doesn't conform to h5 stack glob string rules")
 
             if isSingleFile:
-                opLoader = OpStreamingHdf5SequenceReaderS(parent=self.topLevelOperator.parent)
+                opLoader = OpStreamingH5N5SequenceReaderS(parent=self.topLevelOperator.parent)
             elif isMultiFile:
-                opLoader = OpStreamingHdf5SequenceReaderM(parent=self.topLevelOperator.parent)
+                opLoader = OpStreamingH5N5SequenceReaderM(parent=self.topLevelOperator.parent)
 
             opLoader.SequenceAxis.setValue(sequence_axis)
             opLoader.GlobString.setValue(globstring)
@@ -265,9 +268,9 @@ class DataSelectionSerializer( AppletSerializer ):
             data_slot = opLoader.stack
 
         try:
-            opWriter = OpH5WriterBigDataset(parent=self.topLevelOperator.parent)
-            opWriter.hdf5File.setValue(projectFileHdf5)
-            opWriter.hdf5Path.setValue(self.topGroupName + '/local_data/' + info.datasetId)
+            opWriter = OpH5N5WriterBigDataset(parent=self.topLevelOperator.parent)
+            opWriter.h5N5File.setValue(projectFileHdf5)
+            opWriter.h5N5Path.setValue(self.topGroupName + '/local_data/' + info.datasetId)
             opWriter.CompressionEnabled.setValue(False)
             # We assume that the main bottleneck is the hard disk, 
             #  so adding lots of threads to access it at once seems like a bad idea.

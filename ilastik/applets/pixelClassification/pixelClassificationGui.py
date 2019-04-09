@@ -55,7 +55,7 @@ from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
-from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5VolumeSelectionDlg
+from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5N5VolumeSelectionDlg
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
 
 # import IPython
@@ -336,7 +336,7 @@ class PixelClassificationGui(LabelingGui):
             if len(internal_paths) == 1:
                 internal_path = internal_paths[0]
             else:
-                dlg = H5VolumeSelectionDlg(internal_paths, self)
+                dlg = H5N5VolumeSelectionDlg(internal_paths, self)
                 if dlg.exec_() == QDialog.Rejected:
                     return
                 selected_index = dlg.combo.currentIndex()
