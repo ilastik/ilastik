@@ -440,7 +440,7 @@ class DataSelectionGui(QWidget):
             # On some OS's the open file dialog allows to return file names that do not exist
             assert fileName.exists(), \
                 f"The file '{fileName}' does not exist."
-            if fileName.name.lower() == 'attributes.json' and fileName.parent.suffix == ".n5":
+            if fileName.name.lower() == 'attributes.json' and any(p.suffix == ".n5" for p in fileName.parents):
                 fileNames[i] = fileName.parent
         fileNames = [fileName.as_posix() for fileName in fileNames]
         return fileNames
