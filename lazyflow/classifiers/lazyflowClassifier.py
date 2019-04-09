@@ -3,6 +3,8 @@ import abc
 from future.utils import with_metaclass
 from typing import Iterable
 
+from typing import Iterable
+
 
 def _has_attribute(cls, attr):
     return any(attr in B.__dict__ for B in cls.__mro__)
@@ -296,11 +298,10 @@ class LazyflowOnlineClassifier:
 
     def update(
         self,
-        feature_images: Iterable = [],
-        label_images: Iterable = [],
-        axistags=None,
-        feature_names: Iterable = [],
-        keys: Iterable = [],
+        feature_images: Iterable,
+        label_images: Iterable,
+        axistags,
+        image_ids: Iterable,
     ):
         """
         Update this classifier with the given lists of feature images and label images. The corresponding list of keys
@@ -353,7 +354,13 @@ class LazyflowOnlineClassifier:
         """
         raise NotImplementedError
 
-    def get_halo_shape(self, data_axes="zyxc"):
+    def get_halo_shape(self, data_axes="zyx"):
+        """
+        deprecated, use get_halo instead
+        """
+        return self.get_halo(data_axes)
+
+    def get_halo(self, data_axes="zyx"):
         raise NotImplementedError
 
     def serialize_hdf5(self, h5py_group):

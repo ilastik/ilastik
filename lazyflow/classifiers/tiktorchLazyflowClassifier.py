@@ -21,8 +21,10 @@
 ###############################################################################
 import logging
 import socket
-
 import numpy
+
+from typing import Iterable, Tuple
+
 import vigra
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -31,10 +33,18 @@ from lazyflow.roi import roiToSlice
 from inferno.io.transform import Compose
 from inferno.io.transform.generic import Normalize
 
-
 from tiktorch import serializers  # noqa
 from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred
-from tiktorch.types import NDArray, NDArrayBatch
+from tiktorch.types import (
+    NDArray,
+    LabeledNDArray,
+    NDArrayBatch,
+    LabeledNDArrayBatch,
+    Point2D,
+    Point3D,
+    Point4D,
+    SetDeviceReturnType,
+)
 from tiktorch.rpc_interface import INeuralNetworkAPI
 from tiktorch.rpc import Client, TCPConnConf
 
@@ -48,23 +58,16 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
     # The version is used to determine compatibility of pickled classifier factories.
     # You must bump this if any instance members are added/removed/renamed.
     VERSION = 1
+    halo: Tuple[int, int, int, int, int]
 
     def __init__(
-        self,
-        config: dict,
-        binary_model: bytes,
-        binary_state: bytes,
-        binary_optimizer_state: bytes,
-        server_config: dict,
-        start_server: bool = True,
+        self, config: dict, binary_model: bytes, binary_state: bytes, binary_optimizer_state: bytes, server_config: dict
     ) -> None:
         # default values for config:
-        self._config = {
-            # Similar to a halo, the shrinkage describes the loss of image size on one side for each dimension
-            "shrinkage": (0, 0, 0, 0),
-            "name": "tiktorch model",
-        }
+        self._config = {"name": "tiktorch model"}
         self._config.update(config)
+        self.set_halo(config["halo"])
+
         # assert all(key not in self._config for key in self.__dict__.keys())
         # self.__dict__.update(self._config)
         # print('shrinkage:', self.shrinkage)
@@ -72,13 +75,18 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         # Privates
         self._tikTorchClassifier = None
         self._train_model = None
-        self._opReorderAxesIn = OpReorderAxes(graph=Graph())
-        self._opReorderAxesIn.AxisOrder.setValue("czyx")
+        self._opReorderAxesInImg = OpReorderAxes(graph=Graph())
+        self._opReorderAxesInLabel = OpReorderAxes(graph=Graph())
+        self._opReorderAxesInImg.AxisOrder.setValue("czyx")
+        self._opReorderAxesInLabel.AxisOrder.setValue("czyx")
         self._opReorderAxesOut = OpReorderAxes(graph=Graph())
-        self._valid_shapes = []
 
-        addr, port = socket.gethostbyname(server_config["address"]), server_config["port"]
-        conn_conf = TCPConnConf(addr, port)
+        addr, port1, port2 = (
+            socket.gethostbyname(server_config["address"]),
+            server_config["port1"],
+            server_config["port2"],
+        )
+        conn_conf = TCPConnConf(addr, port1, port2)
 
         if addr == "127.0.0.1":
             self.launcher = LocalServerLauncher(conn_conf)
@@ -91,7 +99,21 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         self._shutdown_sent = False
 
         self._tikTorchClient = Client(INeuralNetworkAPI(), conn_conf)
-        self._tikTorchClient.load_model(config, binary_model, binary_state, binary_optimizer_state)
+        selected_devices = [d[0] for d in server_config["devices"] if d[2]]
+        logger.debug("loading tiktorch model with config: %s", config)
+        fut = self._tikTorchClient.load_model(
+            config, binary_model, binary_state, binary_optimizer_state, selected_devices
+        )
+        try:
+            ret: SetDeviceReturnType = fut.result(timeout=60)
+        except Exception as e:
+            logger.warning(e)
+            logger.warning("Could not load tiktorch model within 60 seconds. Trying again for another 360s ...")
+            ret: SetDeviceReturnType = fut.result(timeout=360)  # todo: except timeout
+
+        self.training_shape = ret.training_shape
+        self.valid_shapes = ret.valid_shapes
+        self.shrinkage = ret.shrinkage
 
     def __getattr__(self, item):
         if item != "_config":
@@ -119,7 +141,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         if isinstance(value, bool):
             self._train_model = value
         else:
-            ValueError
+            raise ValueError(f"expected boolean, got {value}")
 
     def pause_training_process(self):
         if self.tikTorchClient.training_process_is_running():
@@ -150,31 +172,24 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
 
         return self
 
-    def update(self, feature_images, label_images, axistags=None, image_ids=None):
-        reordered_feature_images = []
-        reordered_labels = []
-        for i in range(len(feature_images)):
-            self._opReorderAxesIn.Input.setValue(vigra.VigraArray(feature_images[i], axistags=axistags))
-            reordered_feature_images.append(self._opReorderAxesIn.Output([]).wait())
-
-            self._opReorderAxesIn.Input.setValue(vigra.VigraArray(label_images[i], axistags=axistags))
-            reordered_labels.append(self._opReorderAxesIn.Output([]).wait())
-
+    def update(self, feature_images: Iterable, label_images: Iterable, axistags, image_ids: Iterable):
         # TODO: check whether loaded network has the same number of classes as specified in ilastik!
         data = []
+        reordered_labels = []
+        for img, label, id in zip(feature_images, label_images, image_ids):
+            self._opReorderAxesInImg.Input.setValue(vigra.VigraArray(img, axistags=axistags))
+            self._opReorderAxesInLabel.Input.setValue(vigra.VigraArray(label, axistags=axistags))
+            data.append(
+                LabeledNDArray(
+                    array=self._opReorderAxesInImg.Output([]).wait(),
+                    label=self._opReorderAxesInLabel.Output([]).wait(),
+                    id_=id,
+                )
+            )
 
-        for idx, arr in enumerate(reordered_feature_images):
-            data.append(NDArray(arr, idx))
+        data = LabeledNDArrayBatch(data)
 
-        data = NDArrayBatch(data)
-
-        labels = []
-
-        for idx, arr in enumerate(reordered_labels):
-            labels.append(NDArray(arr, idx))
-
-        labels = NDArrayBatch(labels)
-        self.tikTorchClient.train(data, labels)
+        self.tikTorchClient.train(data)
 
     def get_model_state(self):
         return self.tikTorchClient.get_model_state()
@@ -204,12 +219,6 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         # determine blockshape with e.g. binary dry run
         pass
 
-    def get_halo_shape(self, data_axes="zyxc"):
-        # halo = self.tikTorchClient.get('halo')
-        logger.warning("Using hardcoded halo")
-        halo = {"t": 0, "c": 0, "z": 0, "y": 32, "x": 32}
-        return tuple(halo[axis] for axis in data_axes)
-
     @property
     def description(self):
         if self.tikTorchClient:
@@ -226,36 +235,6 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
 
     def __ne__(self, other):
         return not self.__eq__(other)
-
-    @property
-    def valid_shapes(self):
-        # All input data shapes the network can handle in ascending order.
-        if not self._valid_shapes:
-            self.compute_valid_shapes()
-        return self._valid_shapes
-
-    def compute_valid_shapes(self):
-        """Computes all valid shapes in ascending order"""
-        assert not self._valid_shapes, "trying to recompute valid shapes"
-        self._valid_shapes = []
-        candidates = []
-        candidates.append(self._config.get("min_input_shape"))  # todo: add more valid shapes
-
-        for shape in candidates:
-            if len(shape) == 2:  # assume yx
-                new_shape = (1, 1, *shape)
-            elif len(shape) == 3:  # assume cyx
-                logger.warning(f"Ambiguous interpretation of shape {shape} as cyx")
-                new_shape = (shape[0], 1, shape[1], shape[2])
-            elif len(shape) == 4:  # assume czyx
-                new_shape = tuple(shape)
-            else:
-                raise ValueError(f"Could not interpret shape: {shape}")
-
-            self._valid_shapes.append(new_shape)
-            if new_shape[0] == 1:
-                # A single channel gives rise to two channels: (p, 1-p)
-                self._valid_shapes.append((2, *new_shape[1:]))
 
     def predict_probabilities_pixelwise(self, feature_image, roi, axistags=None):
         """
@@ -278,8 +257,8 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
 
         result = self.tikTorchClient.forward(NDArrayBatch([NDArray(reordered_feature_image)])).as_numpy()[0]
         logger.info(f"Obtained a predicted block of shape {result.shape}")
-        halo = numpy.array(self.get_halo_shape("czyx"))
-        shrink = numpy.array(self.get_shrinkage("czyx"))
+        halo = numpy.array(self.get_halo("zyx"))
+        shrink = numpy.array(self.get_shrinkage("zyx"))
         # remove halo from result todo: do not send tensor with halo back, but remove halo in tiktorch instead
         assert len(result.shape) == len(halo), (result.shape, halo)
         result = result[[slice(h, -h) if h else slice(None) for h in halo]]
@@ -315,31 +294,41 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
 
     @property
     def feature_count(self):
-        return self.tikTorchClient.expected_input_shape[0]
+        return self.input_channels
 
-    def get_halo_shape(self, data_axes="zyxc"):
+    def set_halo(self, halo: Tuple[int, ...]) -> None:
+        in_order = self.input_axis_order.replace("b", "").replace("c", "")
+        if len(in_order) != len(halo):
+            raise ValueError(
+                "Input order (optionally including batch dimension 'b' and channel dimension 'c') incompatible with halo (always excluding 'b' and 'c'"
+            )
+        halo_dims = {a: h for a, h in zip(in_order, halo)}
+        self.halo = tuple([halo_dims.get(a, 0) for a in "tczyx"])
+
+    def get_halo(self, data_axes="zyx") -> Tuple[int, ...]:
         """
         :return: required halo for data axes
         """
+        assert "b" not in data_axes, "batch dimension cannot be halo dimension"
+        assert all([a in "tczyx" for a in data_axes])
+        halo = [self.halo["tczyx".index(a)] for a in data_axes]
         # todo: remove data_axes for all classifiers and set it implicitly to tczyx
-        halo = self.halo
 
-        if len(halo) == 2:
-            tczyx_halo = (0, 0, 0, *halo)
-        elif len(halo) == 3:
-            tczyx_halo = (0, 0, *halo)
-        else:
-            raise NotImplementedError("Unknown halo length: {len(halo)}. How to interpret this halo: {halo}?")
+        return tuple(halo)
 
-        return tuple(tczyx_halo["tczyx".index(axis)] for axis in data_axes)
+    def get_shrinkage(self, data_axes="zyx"):
+        assert all([a in "tczyx" for a in data_axes])
+        shrink = [self.shrinkage.get(a, 0) for a in "zyx"]
+        assert all([s % 2 == 0 for s in shrink])
+        return tuple(s // 2 for s in shrink)
 
-    def get_shrinkage(self, data_axes="zyxc"):
+    @property
+    def output_channels(self):
+        return self.input_channels - self.shrinkage[1]
+
+    def get_valid_shapes(self, data_axes="zyx"):
         assert all([a in data_axes for a in "czyx"])
-        return tuple(self.shrinkage["czyx".index(a)] for a in data_axes)
-
-    def get_valid_shapes(self, data_axes="zyxc"):
-        assert all([a in data_axes for a in "czyx"])
-        return [tuple(vs["czyx".index(a)] for a in data_axes) for vs in self.valid_shapes]
+        return [tuple(vs[a] for a in data_axes) for vs in self.valid_shapes]
 
     def serialize_hdf5(self, h5py_group):
         pass  # nothing to serialize here
