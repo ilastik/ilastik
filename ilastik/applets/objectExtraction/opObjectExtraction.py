@@ -114,6 +114,7 @@ def make_bboxes(binary_bbox, margin):
 class OpCachedRegionFeatures(Operator):
     """Caches the region features computed by OpRegionFeatures."""
     RawImage = InputSlot()
+    Atlas = InputSlot(optional=True)
     LabelImage = InputSlot()
     CacheInput = InputSlot(optional=True)
     Features = InputSlot(rtype=List, stype=Opaque)
@@ -135,6 +136,7 @@ class OpCachedRegionFeatures(Operator):
         # Hook up the actual region features operator
         self._opRegionFeatures = OpRegionFeatures(parent=self)
         self._opRegionFeatures.RawVolume.connect(self.RawImage)
+        self._opRegionFeatures.Atlas.connect(self.Atlas)
         self._opRegionFeatures.LabelVolume.connect(self.LabelImage)
         self._opRegionFeatures.Features.connect(self.Features)
 
@@ -304,6 +306,7 @@ class OpObjectExtraction(Operator):
 
     RawImage = InputSlot()
     BinaryImage = InputSlot()
+    Atlas = InputSlot(optional=True)
     BackgroundLabels = InputSlot(optional=True)
 
     # Bypass cache (for headless mode)
@@ -363,6 +366,7 @@ class OpObjectExtraction(Operator):
         self._opRegFeats.RawImage.connect(self.RawImage)
         self._opRegFeats.LabelImage.connect(self._opLabelVolume.CachedOutput)
         self._opRegFeats.Features.connect(self.Features)
+        self._opRegFeats.Atlas.connect(self.Atlas) #move into constructor?
         self.RegionFeaturesCleanBlocks.connect(self._opRegFeats.CleanBlocks)
 
         self._opRegFeats.CacheInput.connect(self.RegionFeaturesCacheInput)
@@ -451,6 +455,7 @@ class OpRegionFeatures(Operator):
 
     """
     RawVolume = InputSlot()
+    Atlas = InputSlot(optional=True)
     LabelVolume = InputSlot()
     Features = InputSlot(rtype=List, stype=Opaque)
 
@@ -483,17 +488,26 @@ class OpRegionFeatures(Operator):
         assert t_ind < len(self.RawVolume.meta.shape)
 
         def compute_features_for_time_slice(res_t_ind, t):
+            axes4d = [k for k in self.RawVolume.meta.getTaggedShape().keys() if k in 'xyzc']
+
             # Process entire spatial volume
-            s = [slice(None) for i in range(len(self.RawVolume.meta.shape))]
+            s = [slice(None)] * len(self.RawVolume.meta.shape)
             s[t_ind] = slice(t, t+1)
             s = tuple(s)
 
             # Request in parallel
             raw_req = self.RawVolume[s]
-            label_req = self.LabelVolume[s]
-
             raw_req.submit()
+
+            label_req = self.LabelVolume[s]
             label_req.submit()
+
+            if self.Atlas.ready():
+                atlasVolume = self.Atlas[s].wait()
+                atlasVolume = vigra.taggedView(atlasVolume, axistags=self.Atlas.meta.axistags)
+                atlasVolume = atlasVolume.withAxes(*axes4d)
+            else:
+                atlasVolume = None
 
             # Get results
             rawVolume = raw_req.wait()
@@ -501,16 +515,14 @@ class OpRegionFeatures(Operator):
 
             rawVolume = vigra.taggedView(rawVolume, axistags=self.RawVolume.meta.axistags)
             labelVolume = vigra.taggedView(labelVolume, axistags=self.LabelVolume.meta.axistags)
-    
+
             # Convert to 4D (preserve axis order)
-            axes4d = list(self.RawVolume.meta.getTaggedShape().keys())
-            axes4d = [k for k in axes4d if k in 'xyzc']
             rawVolume = rawVolume.withAxes(*axes4d)
             labelVolume = labelVolume.withAxes(*axes4d)
-            acc = self._extract(rawVolume, labelVolume)
-            
+            acc = self._extract(rawVolume, labelVolume, atlasVolume)
+
             # Copy into the result
-            result[res_t_ind] = acc            
+            result[res_t_ind] = acc
 
         # loop over requested time slices
         pool = RequestPool()
@@ -576,7 +588,27 @@ class OpRegionFeatures(Operator):
 
         return feature_names_with_default
 
-    def _extract(self, image, labels):
+    def _createAtlasMapping(self, region_centers:numpy.ndarray, atlasImage:numpy.ndarray):
+        axes = {tag.key:idx for idx, tag in  enumerate(atlasImage.axistags)}
+        num_center_points = len(region_centers)
+        num_channels_in_atlas = atlasImage.shape[axes['c']] if 'c' in axes else 1
+        atlas_mapping = numpy.zeros(num_center_points * num_channels_in_atlas)
+        atlas_mapping = atlas_mapping.reshape(num_center_points, num_channels_in_atlas)
+        for obj_idx, center_coords in enumerate(region_centers):
+            rounded_coords = center_coords.round().astype(numpy.uint64)
+            slicing = [0] * len(axes)
+            slicing[axes['c']] = slice(None)
+
+            slicing[axes['x']] = rounded_coords[0]
+            slicing[axes['y']] = rounded_coords[1]
+            if len(center_coords) == 3:
+                slicing[axes['z']] = rounded_coords[2]
+
+            atlas_value = atlasImage[slicing]
+            atlas_mapping[obj_idx] = atlas_value
+        return atlas_mapping
+
+    def _extract(self, image, labels, atlas=None):
         if not (image.ndim == labels.ndim == 4):
             raise Exception("both images must be 4D. raw image shape: {}"
                             " label image shape: {}".format(image.shape, labels.shape))
@@ -628,6 +660,9 @@ class OpRegionFeatures(Operator):
             else:
                 feature = global_features["Standard Object Features"][feat_key]
             extrafeats[feat_key] = feature
+
+        if atlas is not None:
+            extrafeats['AtlasMapping'] = self._createAtlasMapping(extrafeats['RegionCenter'], atlas)
 
         extrafeats = dict((k.replace(' ', ''), v)
                           for k, v in extrafeats.items())

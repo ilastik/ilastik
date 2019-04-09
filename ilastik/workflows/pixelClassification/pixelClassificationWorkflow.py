@@ -20,6 +20,7 @@
 ###############################################################################
 from __future__ import division
 from builtins import range
+import enum
 import sys
 import copy
 import argparse
@@ -35,20 +36,28 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationDataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
+from ilastik.utility import SlotNameEnum
 
 from lazyflow.graph import Graph
 from lazyflow.roi import TinyVector, fullSlicing
 
 class PixelClassificationWorkflow(Workflow):
-
     workflowName = "Pixel Classification"
     workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 0 # show DataSelection by default
 
-    DATA_ROLE_RAW = 0
-    DATA_ROLE_PREDICTION_MASK = 1
-    ROLE_NAMES = ['Raw Data', 'Prediction Mask']
-    EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features', 'Labels']
+    @enum.unique
+    class Roles(SlotNameEnum):
+        RAW_DATA = enum.auto()
+        PREDICTION_MASK = enum.auto()
+
+    @enum.unique
+    class ExportNames(SlotNameEnum):
+        PROBABILITIES = enum.auto()
+        SIMPLE_SEGMENTATION = enum.auto()
+        UNCERTAINTY = enum.auto()
+        FEATURES = enum.auto()
+        LABELS = enum.auto()
 
     @property
     def applets(self):
@@ -99,9 +108,6 @@ class PixelClassificationWorkflow(Workflow):
         self.dataSelectionApplet = self.createDataSelectionApplet()
         opDataSelection = self.dataSelectionApplet.topLevelOperator
 
-        # see role constants, above
-        opDataSelection.DatasetRoles.setValue( PixelClassificationWorkflow.ROLE_NAMES )
-
         self.featureSelectionApplet = self.createFeatureSelectionApplet()
 
         self.pcApplet = self.createPixelClassificationApplet()
@@ -112,7 +118,7 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.PmapColors.connect( opClassify.PmapColors )
         opDataExport.LabelNames.connect( opClassify.LabelNames )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
-        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )
+        opDataExport.SelectionNames.setValue( self.ExportNames.asDisplayNameList() )
 
         # Expose for shell
         self._applets.append(self.dataSelectionApplet)
@@ -152,12 +158,14 @@ class PixelClassificationWorkflow(Workflow):
         for perm in itertools.permutations('tzyx', 4):
             c_at_end.append(''.join(perm) + 'c')
 
-        return DataSelectionApplet(self,
-                                   "Input Data",
-                                   "Input Data",
-                                   supportIlastik05Import=True,
-                                   instructionText=data_instructions,
-                                   forceAxisOrder=c_at_end)
+        applet = DataSelectionApplet(self,
+                                     "Input Data",
+                                     "Input Data",
+                                     supportIlastik05Import=True,
+                                     instructionText=data_instructions,
+                                     forceAxisOrder=c_at_end)
+        applet.topLevelOperator.DatasetRoles.setValue(self.Roles.asDisplayNameList())
+        return applet
 
     def createFeatureSelectionApplet(self):
         """
@@ -213,23 +221,22 @@ class PixelClassificationWorkflow(Workflow):
         opTrainingFeatures.InputImage.connect( opData.Image )
         opClassify.InputImages.connect( opData.Image )
 
-        if ilastik_config.getboolean('ilastik', 'debug'):
-            opClassify.PredictionMasks.connect( opData.ImageGroup[self.DATA_ROLE_PREDICTION_MASK] )
+        opClassify.PredictionMasks.connect( opData.ImageGroup[self.Roles.PREDICTION_MASK] )
 
         # Feature Images -> Classification Op (for training, prediction)
         opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
         opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
 
         # Data Export connections
-        opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
-        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW] )
-        opDataExport.ConstraintDataset.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
-        opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
-        opDataExport.Inputs[0].connect( opClassify.HeadlessPredictionProbabilities )
-        opDataExport.Inputs[1].connect( opClassify.SimpleSegmentation )
-        opDataExport.Inputs[2].connect( opClassify.HeadlessUncertaintyEstimate )
-        opDataExport.Inputs[3].connect( opClassify.FeatureImages )
-        opDataExport.Inputs[4].connect( opClassify.LabelImages )
+        opDataExport.RawData.connect( opData.ImageGroup[self.Roles.RAW_DATA] )
+        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.Roles.RAW_DATA] )
+        opDataExport.ConstraintDataset.connect( opData.ImageGroup[self.Roles.RAW_DATA] )
+        opDataExport.Inputs.resize( len(self.ExportNames) )
+        opDataExport.Inputs[self.ExportNames.PROBABILITIES].connect( opClassify.HeadlessPredictionProbabilities )
+        opDataExport.Inputs[self.ExportNames.SIMPLE_SEGMENTATION].connect( opClassify.SimpleSegmentation )
+        opDataExport.Inputs[self.ExportNames.UNCERTAINTY].connect( opClassify.HeadlessUncertaintyEstimate )
+        opDataExport.Inputs[self.ExportNames.FEATURES].connect( opClassify.FeatureImages )
+        opDataExport.Inputs[self.ExportNames.LABELS].connect( opClassify.LabelImages )
         for slot in opDataExport.Inputs:
             assert slot.upstream_slot is not None
 

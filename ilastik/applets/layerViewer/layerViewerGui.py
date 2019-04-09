@@ -251,7 +251,7 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
         assert False
 
     @classmethod
-    def createStandardLayerFromSlot(cls, slot, lastChannelIsAlpha=False):
+    def createStandardLayerFromSlot(cls, slot, lastChannelIsAlpha=False, name=None, opacity=1.0, visible=True):
         """
         Convenience function.
         Generates a volumina layer using the given slot.  
@@ -288,25 +288,33 @@ class LayerViewerGui(with_metaclass(LayerViewerGuiMetaclass, QWidget)):
                 
         if display_mode == "grayscale":
             assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
-            return cls._create_grayscale_layer_from_slot( slot, numChannels )
+            layer = cls._create_grayscale_layer_from_slot( slot, numChannels )
         elif display_mode == "rgba":
             assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha), \
                 "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}"\
                 .format( numChannels, lastChannelIsAlpha, slot.meta.axistags )
-            return cls._create_rgba_layer_from_slot(slot, numChannels, lastChannelIsAlpha)
+            layer =  cls._create_rgba_layer_from_slot(slot, numChannels, lastChannelIsAlpha)
         elif display_mode == "random-colortable":
-            return cls._create_random_colortable_layer_from_slot(slot)
+            layer =  cls._create_random_colortable_layer_from_slot(slot)
         elif display_mode == "alpha-modulated":
-            return cls._create_alpha_modulated_layer_from_slot(slot)
+            layer = cls._create_alpha_modulated_layer_from_slot(slot)
         elif display_mode == "binary-mask":
-            return cls._create_binary_mask_layer_from_slot(slot)
+            layer =  cls._create_binary_mask_layer_from_slot(slot)
         else:
             raise RuntimeError("unknown channel display mode: " + display_mode )
 
+        layer.name = name or slot.name
+        layer.visible = visible
+        layer.opacity = opacity
+
+        return layer
+
     @classmethod
     def _create_grayscale_layer_from_slot(cls, slot, n_channels):
+        #FIXME: move all of this stuff into the class constructor. Same for all
+        # _create_*layer_from_slot methods.
         source = LazyflowSource(slot)
-        layer = GrayscaleLayer(source)
+        layer = GrayscaleLayer(source, window_leveling=True)
         layer.numberOfChannels = n_channels
         layer.set_range(0, slot.meta.drange)
         normalize = cls._should_normalize_display(slot)

@@ -70,6 +70,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
     ###############
     BinaryImages = InputSlot(level=1) # for visualization
     RawImages = InputSlot(level=1) # for visualization
+    Atlas = InputSlot(level=1, optional=True) # for visualization
     SegmentationImages = InputSlot(level=1) #connected components
 
     # the actual feature arrays
