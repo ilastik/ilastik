@@ -21,14 +21,13 @@ from lazyflow.operators.opLabelVolume import haveBlocked
 
 
 class TestVigra(unittest.TestCase):
-
     def setup_method(self, method):
-        self.method = np.asarray(['vigra'], dtype=np.object)
+        self.method = np.asarray(["vigra"], dtype=np.object)
 
     def testSimpleUsage(self):
         vol = np.random.randint(255, size=(100, 30, 4))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='xyz')
+        vol = vigra.taggedView(vol, axistags="xyz")
 
         op = OpLabelVolume(graph=Graph())
         op.Method.setValue(self.method)
@@ -41,7 +40,7 @@ class TestVigra(unittest.TestCase):
     def testCorrectLabeling(self):
         vol = np.zeros((1000, 100, 10))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='xyz')
+        vol = vigra.taggedView(vol, axistags="xyz")
 
         vol[20:40, 10:30, 2:4] = 1
 
@@ -57,7 +56,7 @@ class TestVigra(unittest.TestCase):
 
     def testMultiDim(self):
         vol = np.zeros((82, 70, 75, 5, 5), dtype=np.uint8)
-        vol = vigra.taggedView(vol, axistags='xyzct')
+        vol = vigra.taggedView(vol, axistags="xyzct")
 
         blocks = np.zeros(vol.shape, dtype=np.uint8)
         blocks[30:50, 40:60, 50:70, 2:4, 3:5] = 1
@@ -84,7 +83,7 @@ class TestVigra(unittest.TestCase):
 
     def testSingletonZ(self):
         vol = np.zeros((82, 70, 1, 5, 5), dtype=np.uint8)
-        vol = vigra.taggedView(vol, axistags='xyzct')
+        vol = vigra.taggedView(vol, axistags="xyzct")
 
         blocks = np.zeros(vol.shape, dtype=np.uint8)
         blocks[30:50, 40:60, :, 2:4, 3:5] = 1
@@ -112,7 +111,7 @@ class TestVigra(unittest.TestCase):
     def testConsistency(self):
         vol = np.zeros((1000, 100, 10))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='xyz')
+        vol = vigra.taggedView(vol, axistags="xyz")
         vol[:200, ...] = 1
         vol[800:, ...] = 1
 
@@ -129,7 +128,7 @@ class TestVigra(unittest.TestCase):
 
         vol = np.zeros((1000, 100, 10))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='xyz')
+        vol = vigra.taggedView(vol, axistags="xyz")
         vol[:200, ...] = 1
         vol[800:, ...] = 1
 
@@ -150,7 +149,7 @@ class TestVigra(unittest.TestCase):
         c, t = 2, 3
         vol = np.zeros((1000, 100, 10, 2, 3))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='xyzct')
+        vol = vigra.taggedView(vol, axistags="xyzct")
         vol[:200, ...] = 1
         vol[800:, ...] = 1
 
@@ -164,14 +163,14 @@ class TestVigra(unittest.TestCase):
         out1 = op.CachedOutput[:500, ...].wait()
         out2 = op.CachedOutput[500:, ...].wait()
 
-        assert opCount.numExecutes == c*t
+        assert opCount.numExecutes == c * t
 
     def testThreadSafety(self):
         g = Graph()
 
         vol = np.zeros((1000, 100, 10))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='xyz')
+        vol = vigra.taggedView(vol, axistags="xyz")
         vol[:200, ...] = 1
         vol[800:, ...] = 1
 
@@ -185,25 +184,25 @@ class TestVigra(unittest.TestCase):
         reqs = [op.CachedOutput[...] for i in range(4)]
         [r.submit() for r in reqs]
         [r.block() for r in reqs]
-        assert opCount.numExecutes == 1,\
-            "Parallel requests to CachedOutput resulted in recomputation "\
-            "({}/4)".format(opCount.numExecutes)
+        assert opCount.numExecutes == 1, "Parallel requests to CachedOutput resulted in recomputation " "({}/4)".format(
+            opCount.numExecutes
+        )
 
         # reset numCounts
         opCount.numExecutes = 0
 
-        reqs = [op.Output[250*i:250*(i+1), ...] for i in range(4)]
+        reqs = [op.Output[250 * i : 250 * (i + 1), ...] for i in range(4)]
         [r.submit() for r in reqs]
         [r.block() for r in reqs]
-        assert opCount.numExecutes == 4,\
-            "Not all requests to Output were computed on demand "\
-            "({}/4)".format(opCount.numExecutes)
+        assert opCount.numExecutes == 4, "Not all requests to Output were computed on demand " "({}/4)".format(
+            opCount.numExecutes
+        )
 
     def testSetDirty(self):
         g = Graph()
         vol = np.zeros((5, 2, 200, 100, 10))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='tcxyz')
+        vol = vigra.taggedView(vol, axistags="tcxyz")
         vol[:200, ...] = 1
         vol[800:, ...] = 1
 
@@ -215,9 +214,7 @@ class TestVigra(unittest.TestCase):
         opCheck.Input.connect(op.Output)
         opCheck.willBeDirty(1, 1)
 
-        roi = SubRegion(op.Input,
-                        start=(1, 1, 0, 0, 0),
-                        stop=(2, 2, 200, 100, 10))
+        roi = SubRegion(op.Input, start=(1, 1, 0, 0, 0), stop=(2, 2, 200, 100, 10))
         with self.assertRaises(PropagateDirtyCalled):
             op.Input.setDirty(roi)
 
@@ -227,9 +224,7 @@ class TestVigra(unittest.TestCase):
 
         out = op.Output[...].wait()
 
-        roi = SubRegion(op.Input,
-                        start=(1, 1, 0, 0, 0),
-                        stop=(2, 2, 200, 100, 10))
+        roi = SubRegion(op.Input, start=(1, 1, 0, 0, 0), stop=(2, 2, 200, 100, 10))
         with self.assertRaises(PropagateDirtyCalled):
             op.Input.setDirty(roi)
 
@@ -237,7 +232,7 @@ class TestVigra(unittest.TestCase):
         g = Graph()
         vol = np.zeros((50, 50))
         vol = vol.astype(np.int16)
-        vol = vigra.taggedView(vol, axistags='xy')
+        vol = vigra.taggedView(vol, axistags="xy")
         vol[:200, ...] = 1
         vol[800:, ...] = 1
 
@@ -249,7 +244,7 @@ class TestVigra(unittest.TestCase):
     def testBackground(self):
         vol = np.zeros((1000, 100, 10))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='xyz')
+        vol = vigra.taggedView(vol, axistags="xyz")
 
         vol[20:40, 10:30, 2:4] = 1
 
@@ -263,21 +258,19 @@ class TestVigra(unittest.TestCase):
         out = vigra.taggedView(out, axistags="".join([s for s in tags]))
 
         assert np.all(out[20:40, 10:30, 2:4] == 0)
-        assertEquivalentLabeling(1-vol, out)
+        assertEquivalentLabeling(1 - vol, out)
 
-        vol = vol.withAxes(*'xyzct')
-        vol = np.concatenate(3*(vol,), axis=3)
-        vol = np.concatenate(4*(vol,), axis=4)
-        vol = vigra.taggedView(vol, axistags='xyzct')
+        vol = vol.withAxes(*"xyzct")
+        vol = np.concatenate(3 * (vol,), axis=3)
+        vol = np.concatenate(4 * (vol,), axis=4)
+        vol = vigra.taggedView(vol, axistags="xyzct")
         assert len(vol.shape) == 5
         assert vol.shape[3] == 3
         assert vol.shape[4] == 4
-        #op = OpLabelVolume(graph=Graph())
+        # op = OpLabelVolume(graph=Graph())
         op.Method.setValue(self.method)
-        bg = np.asarray([[1, 0, 1, 0],
-                         [0, 1, 0, 1],
-                         [1, 0, 0, 1]], dtype=np.uint8)
-        bg = vigra.taggedView(bg, axistags='ct')
+        bg = np.asarray([[1, 0, 1, 0], [0, 1, 0, 1], [1, 0, 0, 1]], dtype=np.uint8)
+        bg = vigra.taggedView(bg, axistags="ct")
         assert len(bg.shape) == 2
         assert bg.shape[0] == 3
         assert bg.shape[1] == 4
@@ -289,7 +282,7 @@ class TestVigra(unittest.TestCase):
                 out = op.Output[..., c, t].wait()
                 out = vigra.taggedView(out, axistags=op.Output.meta.axistags)
                 if bg[c, t]:
-                    assertEquivalentLabeling(1-vol[..., c, t], out.squeeze())
+                    assertEquivalentLabeling(1 - vol[..., c, t], out.squeeze())
                 else:
                     assertEquivalentLabeling(vol[..., c, t], out.squeeze())
 
@@ -299,7 +292,7 @@ class TestVigra(unittest.TestCase):
 
             sampleData = np.random.randint(0, 256, size=(50, 30, 10))
             sampleData = sampleData.astype(np.uint8)
-            sampleData = vigra.taggedView(sampleData, axistags='xyz')
+            sampleData = vigra.taggedView(sampleData, axistags="xyz")
 
             graph = Graph()
             opData = OpArrayPiper(graph=graph)
@@ -324,16 +317,15 @@ class TestVigra(unittest.TestCase):
             CacheMemoryManager().enable()
 
 
-
 if haveBlocked():
+
     class TestBlocked(TestVigra):
-
         def setup_method(self, method):
-            self.method = np.asarray(['blocked'], dtype=np.object)
+            self.method = np.asarray(["blocked"], dtype=np.object)
 
-        #@unittest.skip("Not implemented yet")
-        #def testUnsupported(self):
-            #pass
+        # @unittest.skip("Not implemented yet")
+        # def testUnsupported(self):
+        # pass
 
         # background value is unsupported for blocked labeling
         @unittest.expectedFailure
@@ -342,9 +334,8 @@ if haveBlocked():
 
 
 class TestLazy(TestVigra):
-
     def setup_method(self, method):
-        self.method = np.asarray(['lazy'], dtype=np.object)
+        self.method = np.asarray(["lazy"], dtype=np.object)
 
     @unittest.skip("This test does not make sense with lazy connected components")
     def testCorrectBlocking(self):
@@ -365,7 +356,7 @@ class TestLazy(TestVigra):
 
         vol = np.zeros((1000, 100, 10))
         vol = vol.astype(np.uint8)
-        vol = vigra.taggedView(vol, axistags='xyz')
+        vol = vigra.taggedView(vol, axistags="xyz")
         vol[:200, ...] = 1
         vol[800:, ...] = 1
 
@@ -380,9 +371,9 @@ class TestLazy(TestVigra):
         reqs = [op.CachedOutput[...] for i in range(4)]
         [r.submit() for r in reqs]
         [r.block() for r in reqs]
-        assert opCount.numExecutes == 1,\
-            "Parallel requests to CachedOutput resulted in recomputation "\
-            "({}/4)".format(opCount.numExecutes)
+        assert opCount.numExecutes == 1, "Parallel requests to CachedOutput resulted in recomputation " "({}/4)".format(
+            opCount.numExecutes
+        )
 
 
 class DirtyAssert(Operator):
@@ -393,12 +384,12 @@ class DirtyAssert(Operator):
         self._c = c
 
     def propagateDirty(self, slot, subindex, roi):
-        t_ind = self.Input.meta.axistags.index('t')
-        c_ind = self.Input.meta.axistags.index('c')
+        t_ind = self.Input.meta.axistags.index("t")
+        c_ind = self.Input.meta.axistags.index("c")
         assert roi.start[t_ind] == self._t
         assert roi.start[c_ind] == self._c
-        assert roi.stop[t_ind] == self._t+1
-        assert roi.stop[c_ind] == self._c+1
+        assert roi.stop[t_ind] == self._t + 1
+        assert roi.stop[c_ind] == self._c + 1
         raise PropagateDirtyCalled()
 
 
@@ -426,10 +417,10 @@ class PropagateDirtyCalled(Exception):
 
 
 if __name__ == "__main__":
-    method = np.asarray(['lazy'], dtype=np.object)
+    method = np.asarray(["lazy"], dtype=np.object)
     vol = np.random.randint(255, size=(10, 10, 10))
     vol = vol.astype(np.uint8)
-    vol = vigra.taggedView(vol, axistags='xyz')
+    vol = vigra.taggedView(vol, axistags="xyz")
 
     op = OpLabelVolume(graph=Graph())
     op.Method.setValue(method)
@@ -438,6 +429,7 @@ if __name__ == "__main__":
     out = op.Output[...].wait()
 
     assert_array_equal(vol.shape, out.shape)
-    
+
     import nose
+
     ret = nose.run(defaultTest=__file__)

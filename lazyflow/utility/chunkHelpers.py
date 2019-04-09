@@ -1,4 +1,5 @@
 from __future__ import division
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,25 +19,25 @@ from __future__ import division
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 
 import numpy as np
 
 
 def chooseChunkShape(outerShape, desiredChunkSize):
-    '''
+    """
     Choose a chunk shape that
       * is less than or equal the desired chunk size
       * respects the aspect ratio of the outer shape
     Note that you will most likely have to handle channel and time dimension
     differently (i.e. set them to 1 or max).
     Each dimension will be at least 1 and at most the outer shape.
-    
+
     @param outerShape the shape of the volume as tuple of ints
     @param desiredChunkSize the chunk size in pixels (not bytes!)
     @return the 'optimal' chunk shape as tuple of ints
-    '''
+    """
 
     x = np.array(outerShape, dtype=np.int)
     assert np.all(x > 0)
@@ -46,14 +47,14 @@ def chooseChunkShape(outerShape, desiredChunkSize):
     if desiredChunkSize >= size:
         return tuple(x)
     if desiredChunkSize <= 0:
-        return (1,)*n
+        return (1,) * n
 
     # determine the factor (f*y_1 * ... f*y_n = x_1 * ... * x_n)
     # y_1 * ... * y_n = desiredChunkSize
     # x_1 * ... * x_n = size
     # f^n = size/desiredChunkSize
     f = np.power((size / float(desiredChunkSize)), (1.0 / float(n)))
-    
-    y = np.floor(x/f)
+
+    y = np.floor(x / f)
     y = np.maximum(y, 1).astype(np.int)
     return tuple(y)

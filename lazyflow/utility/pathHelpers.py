@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -36,9 +37,9 @@ class PathComponents(object):
     """
 
     # Only files with these extensions are allowed to have an 'internal' path
-    HDF5_EXTS = ['.ilp', '.h5', '.hdf5']
-    N5_EXTS = ['.n5']
-    NPZ_EXTS = ['.npz']
+    HDF5_EXTS = [".ilp", ".h5", ".hdf5"]
+    N5_EXTS = [".n5"]
+    NPZ_EXTS = [".npz"]
 
     def __init__(self, totalPath, cwd=None):
         """
@@ -71,10 +72,10 @@ class PathComponents(object):
             totalPath = absPath
 
         # convention for Windows: use "/"
-        totalPath = totalPath.replace("\\","/")
+        totalPath = totalPath.replace("\\", "/")
 
         # For hdf5/n5 paths, split into external, extension, and internal paths
-        for x in (self.HDF5_EXTS + self.NPZ_EXTS + self.N5_EXTS):
+        for x in self.HDF5_EXTS + self.NPZ_EXTS + self.N5_EXTS:
             if totalPath.find(x) > extIndex:
                 extIndex = totalPath.find(x)
                 ext = x
@@ -82,23 +83,23 @@ class PathComponents(object):
         # Comments below refer to this example path:
         # /some/path/to/file.h5/with/internal/dataset
         if ext is not None:
-            self._extension = ext                              # .h5
+            self._extension = ext  # .h5
             parts = totalPath.split(ext)
 
             # Must deal with pathological filenames such as /path/to/file.h5_with_duplicate_ext.h5
             while len(parts) > 2:
                 parts[0] = parts[0] + ext + parts[1]
                 del parts[1]
-            self._externalPath = parts[0] + ext # /some/path/to/file.h5
-            self._internalPath = parts[1].replace('\\', '/') # /with/internal/dataset
+            self._externalPath = parts[0] + ext  # /some/path/to/file.h5
+            self._internalPath = parts[1].replace("\\", "/")  # /with/internal/dataset
 
-            if self._internalPath == '':
+            if self._internalPath == "":
                 self._internalPath = None
                 self._internalDirectory = None
                 self._internalDatasetName = None
             else:
-                self._internalDirectory = os.path.split(self.internalPath)[0]   # /with/internal
-                self._internalDatasetName = os.path.split(self.internalPath)[1] # dataset
+                self._internalDirectory = os.path.split(self.internalPath)[0]  # /with/internal
+                self._internalDatasetName = os.path.split(self.internalPath)[1]  # dataset
         else:
             # For non-hdf5 files, use normal path/extension (no internal path)
             (self._externalPath, self._extension) = os.path.splitext(totalPath)
@@ -107,16 +108,16 @@ class PathComponents(object):
             self._internalDatasetName = None
             self._internalDirectory = None
 
-        self._externalDirectory = os.path.split(self._externalPath)[0] # /some/path/to
-        self._filename = os.path.split(self._externalPath)[1]          # file.h5
-        self._filenameBase = os.path.splitext(self._filename)[0]         # file
+        self._externalDirectory = os.path.split(self._externalPath)[0]  # /some/path/to
+        self._filename = os.path.split(self._externalPath)[1]  # file.h5
+        self._filenameBase = os.path.splitext(self._filename)[0]  # file
 
     def __setattr__(self, attr, value):
         """
         This prevents us from accidentally writing to a non-existant attribute.
         e.g. if the user tries to say components.fIlEnAmE = 'newfile.h5', raise an error.
         """
-        if hasattr(self, '_initialized'):
+        if hasattr(self, "_initialized"):
             # Attempt to get the old attribute first
             oldval = getattr(self, attr)
         object.__setattr__(self, attr, value)
@@ -196,7 +197,7 @@ class PathComponents(object):
 
     @externalPath.setter
     def externalPath(self, new):
-        assert new[-1] != '/'
+        assert new[-1] != "/"
         if self._internalPath:
             self._init(new + self._internalPath, self._cwd)
         else:
@@ -219,17 +220,18 @@ class PathComponents(object):
 
     @extension.setter
     def extension(self, new):
-        assert (not self._internalPath) or (new in self.HDF5_EXTS), \
-            "This PathComponents has an internal path ({}), but you are "\
-            "attempting to assign a non-hdf5 extension to it ({})"\
-            .format(self._internalPath, new)
+        assert (not self._internalPath) or (new in self.HDF5_EXTS), (
+            "This PathComponents has an internal path ({}), but you are "
+            "attempting to assign a non-hdf5 extension to it ({})".format(self._internalPath, new)
+        )
         new_external = os.path.join(self._externalDirectory, self._filenameBase + new)
         self.externalPath = new_external
 
     @internalPath.setter
     def internalPath(self, new):
-        assert self._extension in self.HDF5_EXTS, \
-            "Can't set an internal path on a filename with extension {}".format(self._extension)
+        assert self._extension in self.HDF5_EXTS, "Can't set an internal path on a filename with extension {}".format(
+            self._extension
+        )
         if new:
             self._init(self._externalPath + new, self._cwd)
         else:
@@ -242,42 +244,42 @@ class PathComponents(object):
 
     @internalDirectory.setter
     def internalDirectory(self, new):
-        if new and new[0] != '/':
-            new = '/' + new
+        if new and new[0] != "/":
+            new = "/" + new
         new_internal = os.path.join(new, self._internalDatasetName)
         self.internalPath = new_internal
 
 
-def areOnSameDrive(path1,path2):
+def areOnSameDrive(path1, path2):
     # if one path is relative, assume they are on same drive
     if isUrl(path1) or isUrl(path2):
         return False
     if not os.path.isabs(path1) or not os.path.isabs(path2):
         return True
-    drive1,path1 = os.path.splitdrive(path1)
-    drive2,path2 = os.path.splitdrive(path2)
-    return drive1==drive2
+    drive1, path1 = os.path.splitdrive(path1)
+    drive2, path2 = os.path.splitdrive(path2)
+    return drive1 == drive2
 
 
-def compressPathForDisplay(pathstr,maxlength):
-    '''Add alternatingly parts of the start and the end of the path
-    until maxlength is exceeded. Result: Drive/Dir1/.../Dirn/file'''
+def compressPathForDisplay(pathstr, maxlength):
+    """Add alternatingly parts of the start and the end of the path
+    until maxlength is exceeded. Result: Drive/Dir1/.../Dirn/file"""
     if len(pathstr) <= maxlength:
         return pathstr
-    dots = '...'
+    dots = "..."
     component_list = pathstr.split("/")
     prefix = ""
     suffix = "/" + component_list.pop(-1)
     while component_list:
         restlength = maxlength - len(prefix) - len(dots)
-        suffix = '/' + component_list.pop(-1) + suffix
+        suffix = "/" + component_list.pop(-1) + suffix
         if len(suffix) > restlength:
             suffix = suffix[-restlength:]
             break
         if not component_list:
             break
         c = prefix + component_list.pop(0) + "/"
-        if len(c)+len(dots)+len(suffix) > maxlength:
+        if len(c) + len(dots) + len(suffix) > maxlength:
             break
         prefix = c
     return prefix + dots + suffix
@@ -285,10 +287,12 @@ def compressPathForDisplay(pathstr,maxlength):
 
 def isUrl(path):
     # For now, the simplest rule will work.
-    return '://' in path
+    return "://" in path
+
 
 def make_absolute(path, cwd=os.getcwd()):
     return PathComponents(path, cwd).totalPath()
+
 
 def getPathVariants(originalPath, workingDirectory):
     """
@@ -299,14 +303,14 @@ def getPathVariants(originalPath, workingDirectory):
     if isUrl(originalPath):
         return originalPath, None
 
-    if len(originalPath) > 0 and originalPath[0] == '~':
+    if len(originalPath) > 0 and originalPath[0] == "~":
         originalPath = os.path.expanduser(originalPath)
 
     relPath = originalPath
 
     if os.path.isabs(originalPath):
         absPath = originalPath
-        if areOnSameDrive(originalPath,workingDirectory):
+        if areOnSameDrive(originalPath, workingDirectory):
             relPath = os.path.relpath(absPath, workingDirectory)
         else:
             # Relative path does not always exist.  Caller must check for None.
@@ -315,7 +319,8 @@ def getPathVariants(originalPath, workingDirectory):
         relPath = originalPath
         absPath = os.path.normpath(os.path.join(workingDirectory, relPath))
 
-    return (absPath.replace("\\","/"), relPath and relPath.replace("\\","/"))
+    return (absPath.replace("\\", "/"), relPath and relPath.replace("\\", "/"))
+
 
 def mkdir_p(path):
     """
@@ -351,14 +356,12 @@ def lsH5N5(h5N5FileObject, minShape=2, maxShape=5):
             # make sure we get a path with forward slashes on windows
             objectName = pathlib.Path(objectName)
             objectName = objectName.relative_to(h5N5FileObject.path).as_posix()  # Need only the internal path here
-        listOfDatasets.append({
-            'name': objectName,
-            'object': obj
-        })
+        listOfDatasets.append({"name": objectName, "object": obj})
 
     h5N5FileObject.visititems(addObjectNames)
 
     return listOfDatasets
+
 
 def globH5N5(fileObject, globString):
     """
@@ -381,7 +384,7 @@ def globH5N5(fileObject, globString):
         - None if fileObject is not a h5 or n5 file object
     """
     if isinstance(fileObject, (h5py.File, z5py.N5File)):
-        pathlist = [x['name'] for x in lsH5N5(fileObject)]
+        pathlist = [x["name"] for x in lsH5N5(fileObject)]
     else:
         return None
     matches = globList(pathlist, globString)
@@ -389,6 +392,5 @@ def globH5N5(fileObject, globString):
 
 
 def globList(listOfPaths, globString):
-    matches = [x for x in listOfPaths
-               if fnmatch.fnmatch(x, globString)]
+    matches = [x for x in listOfPaths if fnmatch.fnmatch(x, globString)]
     return matches

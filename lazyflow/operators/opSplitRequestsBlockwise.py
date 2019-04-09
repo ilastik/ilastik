@@ -1,4 +1,5 @@
 from builtins import zip
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -29,13 +30,15 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import getIntersectingRois, roiToSlice
 from lazyflow.request import RequestPool
 
+
 class OpSplitRequestsBlockwise(Operator):
     """
-    Large requests serviced on the downstream Output will be broken up into smaller requests, 
+    Large requests serviced on the downstream Output will be broken up into smaller requests,
     and requested in parallel from the upstream Input.
     The size of the smaller requests is determined by the BlockShape slot.
     A constructor argument offers an additional feature for exactly how requests are translated into blocks.
     """
+
     Input = InputSlot(allow_mask=True)
     BlockShape = InputSlot()
     Output = OutputSlot(allow_mask=True)
@@ -43,19 +46,19 @@ class OpSplitRequestsBlockwise(Operator):
     def __init__(self, always_request_full_blocks, *args, **kwargs):
         """
         always_request_full_blocks: If True, requests for upstream data will always be the "full" block as specified
-                                    by the BlockShape.  The requests will not be truncated to match the user's 
-                                    requested ROI.  (But the user's requested ROI will be used to extract the data 
+                                    by the BlockShape.  The requests will not be truncated to match the user's
+                                    requested ROI.  (But the user's requested ROI will be used to extract the data
                                     from the block results.)
-                                    
+
                                     This feature allows us to turn an "unblocked" cache into a "blocked" cache.
-                                    (If we didn't expand requests to the full blocks they intersect, the upstream 
-                                    cache blocks would not have uniform size.)                                    
+                                    (If we didn't expand requests to the full blocks they intersect, the upstream
+                                    cache blocks would not have uniform size.)
         """
-        super( OpSplitRequestsBlockwise, self ).__init__(*args, **kwargs)
+        super(OpSplitRequestsBlockwise, self).__init__(*args, **kwargs)
         self._always_request_full_blocks = always_request_full_blocks
-    
+
     def setupOutputs(self):
-        self.Output.meta.assignFrom( self.Input.meta )
+        self.Output.meta.assignFrom(self.Input.meta)
         if len(self.BlockShape.value) != len(self.Input.meta.shape):
             self.Output.meta.NOTREADY = True
             return
@@ -67,42 +70,50 @@ class OpSplitRequestsBlockwise(Operator):
             ram_per_pixel = sys.getsizeof(None)
         elif numpy.issubdtype(self.Input.meta.dtype, numpy.dtype):
             ram_per_pixel = self.Input.meta.dtype().nbytes
-        
+
         # One 'pixel' includes all channels
         tagged_shape = self.Input.meta.getTaggedShape()
-        if 'c' in tagged_shape:
-            ram_per_pixel *= float(tagged_shape['c'])
-        
+        if "c" in tagged_shape:
+            ram_per_pixel *= float(tagged_shape["c"])
+
         if self.Input.meta.ram_usage_per_requested_pixel is not None:
-            ram_per_pixel = max( ram_per_pixel, self.Input.meta.ram_usage_per_requested_pixel )
-        
-        self.Output.meta.ram_usage_per_requested_pixel = ram_per_pixel        
+            ram_per_pixel = max(ram_per_pixel, self.Input.meta.ram_usage_per_requested_pixel)
+
+        self.Output.meta.ram_usage_per_requested_pixel = ram_per_pixel
 
     def execute(self, slot, subindex, roi, result):
-        clipped_block_rois = getIntersectingRois( self.Input.meta.shape, self.BlockShape.value, (roi.start, roi.stop), True )
+        clipped_block_rois = getIntersectingRois(
+            self.Input.meta.shape, self.BlockShape.value, (roi.start, roi.stop), True
+        )
         if self._always_request_full_blocks:
-            full_block_rois = getIntersectingRois( self.Input.meta.shape, self.BlockShape.value, (roi.start, roi.stop), False )
+            full_block_rois = getIntersectingRois(
+                self.Input.meta.shape, self.BlockShape.value, (roi.start, roi.stop), False
+            )
         else:
             full_block_rois = clipped_block_rois
-            
+
         pool = RequestPool()
-        for full_block_roi, clipped_block_roi in zip( full_block_rois, clipped_block_rois ):
+        for full_block_roi, clipped_block_roi in zip(full_block_rois, clipped_block_rois):
             full_block_roi = numpy.asarray(full_block_roi)
             clipped_block_roi = numpy.asarray(clipped_block_roi)
 
             req = self.Input(*full_block_roi)
             output_roi = numpy.asarray(clipped_block_roi) - roi.start
             if (full_block_roi == clipped_block_roi).all():
-                req.writeInto( result[roiToSlice(*output_roi)] )
+                req.writeInto(result[roiToSlice(*output_roi)])
             else:
                 roi_within_block = clipped_block_roi - full_block_roi[0]
-                def copy_request_result( output_roi, roi_within_block, request_result ):
-                    self.Output.stype.copy_data( result[roiToSlice(*output_roi)], request_result[roiToSlice(*roi_within_block)] )
-                req.notify_finished( partial(copy_request_result, output_roi, roi_within_block) )
+
+                def copy_request_result(output_roi, roi_within_block, request_result):
+                    self.Output.stype.copy_data(
+                        result[roiToSlice(*output_roi)], request_result[roiToSlice(*roi_within_block)]
+                    )
+
+                req.notify_finished(partial(copy_request_result, output_roi, roi_within_block))
             pool.add(req)
             del req
         pool.wait()
-    
+
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.Input:
-            self.Output.setDirty( roi.start, roi.stop )
+            self.Output.setDirty(roi.start, roi.stop)

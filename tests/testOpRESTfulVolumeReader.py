@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,7 +19,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import nose
 import os
@@ -29,25 +30,26 @@ from lazyflow.operators.ioOperators.opRESTfulVolumeReader import OpRESTfulVolume
 from lazyflow.graph import Graph
 
 import logging
+
 logger = logging.getLogger(__name__)
-logger.addHandler( logging.StreamHandler( sys.stdout ) )
+logger.addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.INFO)
-#logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
+
 
 class TestRESTfulVolume(object):
-
     def testBasic(self):
         # The openconnectome site appears to be down at the moment.
         # This test fails when that happens...
         raise nose.SkipTest
 
-        if 'TRAVIS' in os.environ:
+        if "TRAVIS" in os.environ:
             raise nose.SkipTest
         testConfig0 = """
         {
             "_schema_name" : "RESTful-volume-description",
             "_schema_version" : 1.0,
-        
+
             "name" : "Bock11-level0",
             "format" : "hdf5",
             "axes" : "zyx",
@@ -59,12 +61,12 @@ class TestRESTfulVolume(object):
             "hdf5_dataset" : "CUTOUT"
         }
         """
-    
+
         testConfig4 = """
         {
             "_schema_name" : "RESTful-volume-description",
             "_schema_version" : 1.0,
-        
+
             "name" : "Bock11-level4",
             "format" : "hdf5",
             "axes" : "zyx",
@@ -76,31 +78,33 @@ class TestRESTfulVolume(object):
             "hdf5_dataset" : "CUTOUT"
         }
         """
-        descriptionFilePath = os.path.join(tempfile.mkdtemp(), 'desc.json')
-        with open(descriptionFilePath, 'w') as descFile:
-            descFile.write( testConfig4 )
-        
+        descriptionFilePath = os.path.join(tempfile.mkdtemp(), "desc.json")
+        with open(descriptionFilePath, "w") as descFile:
+            descFile.write(testConfig4)
+
         graph = Graph()
         op = OpRESTfulVolumeReader(graph=graph)
-        op.DescriptionFilePath.setValue( descriptionFilePath )
-        
-        #data = op.Output[0:100, 50000:50200, 50000:50200].wait()
-        data = op.Output[0:10, 4000:4100, 4000:4100, 0:1].wait()
-        
-        # We expect a channel dimension to be added automatically...
-        assert data.shape == ( 10, 100, 100, 1 )
-    
-        outputDataFilePath = os.path.join(tempfile.mkdtemp(), 'testOutput.h5')
-        with h5py.File( outputDataFilePath, 'w' ) as outputDataFile:
-            outputDataFile.create_dataset('volume', data=data)
-    
-        logger.debug( "Wrote data to {}".format(outputDataFilePath) )
+        op.DescriptionFilePath.setValue(descriptionFilePath)
 
-            
+        # data = op.Output[0:100, 50000:50200, 50000:50200].wait()
+        data = op.Output[0:10, 4000:4100, 4000:4100, 0:1].wait()
+
+        # We expect a channel dimension to be added automatically...
+        assert data.shape == (10, 100, 100, 1)
+
+        outputDataFilePath = os.path.join(tempfile.mkdtemp(), "testOutput.h5")
+        with h5py.File(outputDataFilePath, "w") as outputDataFile:
+            outputDataFile.create_dataset("volume", data=data)
+
+        logger.debug("Wrote data to {}".format(outputDataFilePath))
+
+
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

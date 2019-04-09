@@ -1,5 +1,5 @@
-
 from builtins import range
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -19,7 +19,7 @@ from builtins import range
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import sys
 import unittest
@@ -34,47 +34,50 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 # Use logging instead of print statements ...
 import logging
+
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
 
+
 class OpArrayProvider(Operator):
-    
+
     Input = InputSlot()
     Output = OutputSlot()
-    
+
     def setupOutputs(self):
-        self.Output.meta.assignFrom( self.Input.meta )
-    
+        self.Output.meta.assignFrom(self.Input.meta)
+
     def execute(self, slot, subindex, out_roi, result):
-        assert not isinstance( result, vigra.VigraArray ),\
-            "The 'write into' view passed to upstream operators must not be a VigraArray."
+        assert not isinstance(
+            result, vigra.VigraArray
+        ), "The 'write into' view passed to upstream operators must not be a VigraArray."
         self.Input(out_roi.start, out_roi.stop).writeInto(result).wait()
         return result
 
     def propagateDirty(self, inputSlot, subindex, in_roi):
         pass
 
-class TestOpReorderAxes(unittest.TestCase):
 
+class TestOpReorderAxes(unittest.TestCase):
     def setup_method(self, method):
         self.array = None
-        self.axis = list('tzyxc')
+        self.axis = list("tzyxc")
         self.tests = 20
         self.graph = Graph()
         self.operator = OpReorderAxes(graph=self.graph)
 
-    def prepareVolnOp(self, possible_axes='tzyxc', num=5, AxisOrder=None, config_via_init=False):
-        tagStr = ''.join(random.sample(possible_axes,random.randint(2,num)))
+    def prepareVolnOp(self, possible_axes="tzyxc", num=5, AxisOrder=None, config_via_init=False):
+        tagStr = "".join(random.sample(possible_axes, random.randint(2, num)))
         axisTags = vigra.defaultAxistags(tagStr)
 
-        self.shape = [random.randint(20,30) for tag in axisTags]
+        self.shape = [random.randint(20, 30) for tag in axisTags]
 
-        self.array = (numpy.random.rand(*self.shape)*255)
-        self.array =  (float(250)/255*self.array + 5).astype(int)
-        self.inArray = vigra.VigraArray(self.array,axistags = axisTags)
+        self.array = numpy.random.rand(*self.shape) * 255
+        self.array = (float(250) / 255 * self.array + 5).astype(int)
+        self.inArray = vigra.VigraArray(self.array, axistags=axisTags)
 
-        opProvider = OpArrayProvider( graph=self.graph )
-        opProvider.Input.setValue( self.inArray )
+        opProvider = OpArrayProvider(graph=self.graph)
+        opProvider.Input.setValue(self.inArray)
 
         if config_via_init:
             self.operator = OpReorderAxes(graph=self.graph, Input=opProvider.Output, AxisOrder=AxisOrder)
@@ -87,26 +90,27 @@ class TestOpReorderAxes(unittest.TestCase):
         for i in range(self.tests):
             self.prepareVolnOp()
             result = self.operator.Output().wait()
-            logger.debug('------------------------------------------------------')
-            logger.debug( "self.array.shape = " + str(self.array.shape) )
-            logger.debug( "type(input) == " + str(type(self.operator.Input.value)) )
-            logger.debug( "input.shape == " + str(self.operator.Input.meta.shape) )
-            logger.debug( "Input Tags:")
-            logger.debug( str( self.operator.Input.meta.axistags ) )
-            logger.debug( "Output Tags:" )
-            logger.debug( str(self.operator.Output.meta.axistags) )
-            logger.debug( "type(result) == " + str(type(result)) )
-            logger.debug( "result.shape == " + str(result.shape) )
-            logger.debug( '------------------------------------------------------' )
+            logger.debug("------------------------------------------------------")
+            logger.debug("self.array.shape = " + str(self.array.shape))
+            logger.debug("type(input) == " + str(type(self.operator.Input.value)))
+            logger.debug("input.shape == " + str(self.operator.Input.meta.shape))
+            logger.debug("Input Tags:")
+            logger.debug(str(self.operator.Input.meta.axistags))
+            logger.debug("Output Tags:")
+            logger.debug(str(self.operator.Output.meta.axistags))
+            logger.debug("type(result) == " + str(type(result)))
+            logger.debug("result.shape == " + str(result.shape))
+            logger.debug("------------------------------------------------------")
 
             # Check the shape
             assert len(result.shape) == 5
 
-            assert not isinstance(result, vigra.VigraArray), \
-                "For compatibility with generic code, output should be provided as a plain numpy array."
+            assert not isinstance(
+                result, vigra.VigraArray
+            ), "For compatibility with generic code, output should be provided as a plain numpy array."
 
             # Ensure the result came out in default order
-            assert self.operator.Output.meta.axistags == vigra.defaultAxistags('tzyxc')
+            assert self.operator.Output.meta.axistags == vigra.defaultAxistags("tzyxc")
 
             # Check the data
             vresult = result.view(vigra.VigraArray)
@@ -118,32 +122,33 @@ class TestOpReorderAxes(unittest.TestCase):
         for i in range(self.tests):
             self.prepareVolnOp()
             shape = self.operator.Output.meta.shape
-            roi = [None,None]
-            roi[1]=[numpy.random.randint(2,s) if s != 1 else 1 for s in shape]
-            roi[0]=[numpy.random.randint(0,roi[1][i]) if s != 1 else 0 for i,s in enumerate(shape)]
-            roi[0]=TinyVector(roi[0])
-            roi[1]=TinyVector(roi[1])
-            result = self.operator.Output(roi[0],roi[1]).wait()
-            logger.debug('------------------------------------------------------')
-            logger.debug( "self.array.shape = " + str(self.array.shape) )
-            logger.debug( "type(input) == " + str(type(self.operator.Input.value)) )
-            logger.debug( "input.shape == " + str(self.operator.Input.meta.shape) )
-            logger.debug( "Input Tags:")
-            logger.debug( str( self.operator.Input.meta.axistags ) )
-            logger.debug( "Output Tags:" )
-            logger.debug( str(self.operator.Output.meta.axistags) )
-            logger.debug( "roi= " + str(roi) )
-            logger.debug( "type(result) == " + str(type(result)) )
-            logger.debug( "result.shape == " + str(result.shape) )
-            logger.debug( '------------------------------------------------------' )
+            roi = [None, None]
+            roi[1] = [numpy.random.randint(2, s) if s != 1 else 1 for s in shape]
+            roi[0] = [numpy.random.randint(0, roi[1][i]) if s != 1 else 0 for i, s in enumerate(shape)]
+            roi[0] = TinyVector(roi[0])
+            roi[1] = TinyVector(roi[1])
+            result = self.operator.Output(roi[0], roi[1]).wait()
+            logger.debug("------------------------------------------------------")
+            logger.debug("self.array.shape = " + str(self.array.shape))
+            logger.debug("type(input) == " + str(type(self.operator.Input.value)))
+            logger.debug("input.shape == " + str(self.operator.Input.meta.shape))
+            logger.debug("Input Tags:")
+            logger.debug(str(self.operator.Input.meta.axistags))
+            logger.debug("Output Tags:")
+            logger.debug(str(self.operator.Output.meta.axistags))
+            logger.debug("roi= " + str(roi))
+            logger.debug("type(result) == " + str(type(result)))
+            logger.debug("result.shape == " + str(result.shape))
+            logger.debug("------------------------------------------------------")
 
             # Check the shape
             assert len(result.shape) == 5
-            assert not isinstance(result, vigra.VigraArray), \
-                "For compatibility with generic code, output should be provided as a plain numpy array."
+            assert not isinstance(
+                result, vigra.VigraArray
+            ), "For compatibility with generic code, output should be provided as a plain numpy array."
 
             # Ensure the result came out in volumina order
-            assert self.operator.Output.meta.axistags == vigra.defaultAxistags('tzyxc')
+            assert self.operator.Output.meta.axistags == vigra.defaultAxistags("tzyxc")
 
             # Check the data
             vresult = result.view(vigra.VigraArray)
@@ -152,41 +157,42 @@ class TestOpReorderAxes(unittest.TestCase):
             assert numpy.all(vresult == reorderedInput[roiToSlice(roi[0], roi[1])])
 
     def test_Roi_custom_order(self):
-        self._impl_roi_custom_order( 'cztxy' )
-        self._impl_roi_custom_order( 'xyz' )
-        
+        self._impl_roi_custom_order("cztxy")
+        self._impl_roi_custom_order("xyz")
+
     def _impl_roi_custom_order(self, axisorder):
         for i in range(self.tests):
-            config_via_init = bool(i%2)
+            config_via_init = bool(i % 2)
             # Specify a strange order for the output axis tags
-            self.prepareVolnOp(axisorder, len(axisorder)-1, AxisOrder=axisorder, config_via_init=config_via_init)
+            self.prepareVolnOp(axisorder, len(axisorder) - 1, AxisOrder=axisorder, config_via_init=config_via_init)
 
             shape = self.operator.Output.meta.shape
 
-            roi = [None,None]
-            roi[1]=[numpy.random.randint(2,s) if s != 1 else 1 for s in shape]
-            roi[0]=[numpy.random.randint(0,roi[1][i]) if s != 1 else 0 for i,s in enumerate(shape)]
-            roi[0]=TinyVector(roi[0])
-            roi[1]=TinyVector(roi[1])
-            result = self.operator.Output(roi[0],roi[1]).wait()
-            logger.debug('------------------------------------------------------')
-            logger.debug( "self.array.shape = " + str(self.array.shape) )
-            logger.debug( "type(input) == " + str(type(self.operator.Input.value)) )
-            logger.debug( "input.shape == " + str(self.operator.Input.meta.shape) )
-            logger.debug( "Input Tags:")
-            logger.debug( str( self.operator.Input.meta.axistags ) )
-            logger.debug( "Output Tags:" )
-            logger.debug( str(self.operator.Output.meta.axistags) )
-            logger.debug( "roi= " + str(roi) )
-            logger.debug( "type(result) == " + str(type(result)) )
-            logger.debug( "result.shape == " + str(result.shape) )
-            logger.debug( '------------------------------------------------------' )
+            roi = [None, None]
+            roi[1] = [numpy.random.randint(2, s) if s != 1 else 1 for s in shape]
+            roi[0] = [numpy.random.randint(0, roi[1][i]) if s != 1 else 0 for i, s in enumerate(shape)]
+            roi[0] = TinyVector(roi[0])
+            roi[1] = TinyVector(roi[1])
+            result = self.operator.Output(roi[0], roi[1]).wait()
+            logger.debug("------------------------------------------------------")
+            logger.debug("self.array.shape = " + str(self.array.shape))
+            logger.debug("type(input) == " + str(type(self.operator.Input.value)))
+            logger.debug("input.shape == " + str(self.operator.Input.meta.shape))
+            logger.debug("Input Tags:")
+            logger.debug(str(self.operator.Input.meta.axistags))
+            logger.debug("Output Tags:")
+            logger.debug(str(self.operator.Output.meta.axistags))
+            logger.debug("roi= " + str(roi))
+            logger.debug("type(result) == " + str(type(result)))
+            logger.debug("result.shape == " + str(result.shape))
+            logger.debug("------------------------------------------------------")
 
             # Check the shape
-            assert len(result.shape) == len( axisorder )
+            assert len(result.shape) == len(axisorder)
 
-            assert not isinstance(result, vigra.VigraArray), \
-                "For compatibility with generic code, output should be provided as a plain numpy array."
+            assert not isinstance(
+                result, vigra.VigraArray
+            ), "For compatibility with generic code, output should be provided as a plain numpy array."
 
             # Ensure the result came out in the same strange order we asked for.
             assert self.operator.Output.meta.axistags == vigra.defaultAxistags(axisorder)
@@ -199,39 +205,40 @@ class TestOpReorderAxes(unittest.TestCase):
 
     def test_insert_singleton_axis(self):
         for i in range(self.tests):
-            self.prepareVolnOp('xyzc', 4)
-            
+            self.prepareVolnOp("xyzc", 4)
+
             # Specify a strange order for the output axis tags
-            self.operator.AxisOrder.setValue('yxtzc')
+            self.operator.AxisOrder.setValue("yxtzc")
             shape = self.operator.Output.meta.shape
-            
-            roi = [None,None]
-            roi[1]=[numpy.random.randint(2,s) if s != 1 else 1 for s in shape]
-            roi[0]=[numpy.random.randint(0,roi[1][i]) if s != 1 else 0 for i,s in enumerate(shape)]
-            roi[0]=TinyVector(roi[0])
-            roi[1]=TinyVector(roi[1])
-            result = self.operator.Output(roi[0],roi[1]).wait()
-            logger.debug('------------------------------------------------------')
-            logger.debug( "self.array.shape = " + str(self.array.shape) )
-            logger.debug( "type(input) == " + str(type(self.operator.Input.value)) )
-            logger.debug( "input.shape == " + str(self.operator.Input.meta.shape) )
-            logger.debug( "Input Tags:")
-            logger.debug( str( self.operator.Input.meta.axistags ) )
-            logger.debug( "Output Tags:" )
-            logger.debug( str(self.operator.Output.meta.axistags) )
-            logger.debug( "roi= " + str(roi) )
-            logger.debug( "type(result) == " + str(type(result)) )
-            logger.debug( "result.shape == " + str(result.shape) )
-            logger.debug( '------------------------------------------------------' )
+
+            roi = [None, None]
+            roi[1] = [numpy.random.randint(2, s) if s != 1 else 1 for s in shape]
+            roi[0] = [numpy.random.randint(0, roi[1][i]) if s != 1 else 0 for i, s in enumerate(shape)]
+            roi[0] = TinyVector(roi[0])
+            roi[1] = TinyVector(roi[1])
+            result = self.operator.Output(roi[0], roi[1]).wait()
+            logger.debug("------------------------------------------------------")
+            logger.debug("self.array.shape = " + str(self.array.shape))
+            logger.debug("type(input) == " + str(type(self.operator.Input.value)))
+            logger.debug("input.shape == " + str(self.operator.Input.meta.shape))
+            logger.debug("Input Tags:")
+            logger.debug(str(self.operator.Input.meta.axistags))
+            logger.debug("Output Tags:")
+            logger.debug(str(self.operator.Output.meta.axistags))
+            logger.debug("roi= " + str(roi))
+            logger.debug("type(result) == " + str(type(result)))
+            logger.debug("result.shape == " + str(result.shape))
+            logger.debug("------------------------------------------------------")
 
             # Check the shape
             assert len(result.shape) == 5
 
-            assert not isinstance(result, vigra.VigraArray), \
-                "For compatibility with generic code, output should be provided as a plain numpy array."
+            assert not isinstance(
+                result, vigra.VigraArray
+            ), "For compatibility with generic code, output should be provided as a plain numpy array."
 
             # Ensure the result came out in the same strange order we asked for.
-            assert self.operator.Output.meta.axistags == vigra.defaultAxistags('yxtzc')
+            assert self.operator.Output.meta.axistags == vigra.defaultAxistags("yxtzc")
 
             # Check the data
             vresult = result.view(vigra.VigraArray)
@@ -244,17 +251,20 @@ class TestOpReorderAxes(unittest.TestCase):
         Attempt to configure the operator with invalid settings by trying to drop a non-singleton axis.
         The execute method should assert in that case.
         """
-        data = numpy.zeros( (100,100,100), dtype=numpy.uint8 )
-        data = vigra.taggedView( data, vigra.defaultAxistags('xyz') )
+        data = numpy.zeros((100, 100, 100), dtype=numpy.uint8)
+        data = vigra.taggedView(data, vigra.defaultAxistags("xyz"))
 
         # Attempt to drop some axes that can't be dropped.
-        op = OpReorderAxes(graph=Graph(), Input=data, AxisOrder='txc')
+        op = OpReorderAxes(graph=Graph(), Input=data, AxisOrder="txc")
 
         # Make sure this results in an error.
         req = op.Output[:]
-        req.notify_failed( lambda *args: None ) # We expect an exception here, so disable the default fail handler to hide the traceback
-        self.assertRaises( AssertionError, req.wait )
+        req.notify_failed(
+            lambda *args: None
+        )  # We expect an exception here, so disable the default fail handler to hide the traceback
+        self.assertRaises(AssertionError, req.wait)
+
 
 if __name__ == "__main__":
-    #logger.setLevel(logging.DEBUG)
+    # logger.setLevel(logging.DEBUG)
     unittest.main()

@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,7 +19,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import nose
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
@@ -26,16 +27,17 @@ from lazyflow import stype
 from lazyflow import operators
 import numpy
 
+
 class OpS(Operator):
     name = "OpA"
 
     Output1 = OutputSlot()
     Output2 = OutputSlot()
     Output3 = OutputSlot()
-    Output4 = OutputSlot(level = 1)
+    Output4 = OutputSlot(level=1)
 
     def __init__(self, parent=None, graph=None):
-        Operator.__init__(self,parent,graph)
+        Operator.__init__(self, parent, graph)
 
     def setupOutputs(self):
         self._configured = True
@@ -49,22 +51,22 @@ class OpS(Operator):
     def execute(self, slot, subindex, roi, result):
         pass
 
+
 class OpA(Operator):
     name = "OpA"
 
-    Input1 = InputSlot()                # required slot
-    Input2 = InputSlot(optional = True) # optional slot
-    Input3 = InputSlot(value = 3)       # required slot with default value, i.e. already connected
-    Input4 = InputSlot(level = 1)
+    Input1 = InputSlot()  # required slot
+    Input2 = InputSlot(optional=True)  # optional slot
+    Input3 = InputSlot(value=3)  # required slot with default value, i.e. already connected
+    Input4 = InputSlot(level=1)
 
     Output1 = OutputSlot()
     Output2 = OutputSlot()
     Output3 = OutputSlot()
-    Output4 = OutputSlot(level =1)
-
+    Output4 = OutputSlot(level=1)
 
     def __init__(self, parent=None, graph=None):
-        Operator.__init__(self,parent=parent, graph=graph)
+        Operator.__init__(self, parent=parent, graph=graph)
         self._configured = False
 
     def setupOutputs(self):
@@ -84,8 +86,8 @@ class OpA(Operator):
     def propagateDirty(self, inputSlot, subindex, roi):
         pass
 
-class TestSlot_notifyConnect(object):
 
+class TestSlot_notifyConnect(object):
     def setup_method(self, method):
         self.g = Graph()
 
@@ -106,20 +108,17 @@ class TestSlot_notifyConnect(object):
         opa.Input1.connect(ops.Output1)
         assert upval[0] == True
 
-
         # check the connect callback is called for a slot with default value
         upval[0] = False
         opa.Input3._notifyConnect(callBack)
         opa.Input3.connect(ops.Output3)
         assert upval[0] == True
 
-
         # check the connect callback is called for a multi inputslot
         upval[0] = False
         opa.Input4._notifyConnect(callBack)
         opa.Input4.connect(ops.Output4)
         assert upval[0] == True
-
 
     def test_no_connect(self):
         ops = OpS(graph=self.g)
@@ -163,7 +162,6 @@ class TestSlot_notifyConnect(object):
 
 
 class TestSlot_notifyDisconnect(object):
-
     def setup_method(self, method):
         self.g = Graph()
 
@@ -241,11 +239,7 @@ class TestSlot_notifyDisconnect(object):
         assert upval[0] == False
 
 
-
-
-
 class TestSlot_notifyMetaChanged(object):
-
     def setup_method(self, method):
         self.g = Graph()
 
@@ -269,7 +263,6 @@ class TestSlot_notifyMetaChanged(object):
         opa.Input1.connect(ops.Output2)
         assert upval[0] == True
 
-
         # test InputSlot with default value
         upval[0] = False
         opa.Input3.notifyMetaChanged(callBack)
@@ -278,10 +271,13 @@ class TestSlot_notifyMetaChanged(object):
 
         upval[0] = False
 
+
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

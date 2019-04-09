@@ -1,4 +1,5 @@
 from __future__ import print_function
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -49,8 +50,7 @@ from lazyflow.operator import Operator, InputSlot, OutputSlot
 def assertEquivalentLabeling(labelImage, referenceImage):
     x = labelImage
     y = referenceImage
-    assert np.all(x.shape == y.shape),\
-        "Shapes do not agree ({} vs {})".format(x.shape, y.shape)
+    assert np.all(x.shape == y.shape), "Shapes do not agree ({} vs {})".format(x.shape, y.shape)
 
     # identify labels used in x
     labels = set(x.flat)
@@ -63,12 +63,15 @@ def assertEquivalentLabeling(labelImage, referenceImage):
         corner = [a[0] for a in idx]
         print("Inspecting region of size {} at {}".format(refblock.size, corner))
 
-        assert np.all(refblock == refblock[0]),\
-            "Uniformly labeled region at coordinates {} has more than one label in the reference image".format(corner)
+        assert np.all(
+            refblock == refblock[0]
+        ), "Uniformly labeled region at coordinates {} has more than one label in the reference image".format(corner)
         # check that nothing else is labeled with this label
         m = refblock.size
         n = (y == refblock[0]).sum()
-        assert m == n, "There are more pixels with (reference-)label {} than pixels with label {}.".format(refblock[0], label)
+        assert m == n, "There are more pixels with (reference-)label {} than pixels with label {}.".format(
+            refblock[0], label
+        )
 
     assert len(labels) == len(set(y.flat)), "The number of labels does not agree, perhaps some region was missed"
 
@@ -77,6 +80,7 @@ class OpArrayPiperWithAccessCount(Operator):
     """
     array piper that counts how many times its execute function has been called
     """
+
     Input = InputSlot(allow_mask=True)
     Output = OutputSlot(allow_mask=True)
 

@@ -24,18 +24,20 @@ import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape, roiToSlice
 
+
 class OpCacheFixer(Operator):
     """
-    Can be inserted in front of a cache operator to implement the "fixAtCurrent" 
+    Can be inserted in front of a cache operator to implement the "fixAtCurrent"
     behavior currently implemented by multiple lazyflow caches.
-    
+
     While fixAtCurrent=False, this operator is merely a pass-through.
-    
-    While fixAtCurrent=True, this operator does not forward dirty notifications 
-    to downstream operators. Instead, it remembers the total ROI of the dirty area 
+
+    While fixAtCurrent=True, this operator does not forward dirty notifications
+    to downstream operators. Instead, it remembers the total ROI of the dirty area
     (as a bounding box), and emits the entire dirty ROI at once as soon as it becomes "unfixed".
     Also, this operator returns only zeros while fixAtCurrent=True.
     """
+
     fixAtCurrent = InputSlot(value=False)
     Input = InputSlot(allow_mask=True)
     Output = OutputSlot(allow_mask=True)
@@ -46,7 +48,7 @@ class OpCacheFixer(Operator):
         self._fixed_dirty_roi = None
 
     def setupOutputs(self):
-        self.Output.meta.assignFrom( self.Input.meta )
+        self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dontcache = self.fixAtCurrent.value
 
         # During initialization, if fixAtCurrent is configured before Input, then propagateDirty was never called.
@@ -57,26 +59,30 @@ class OpCacheFixer(Operator):
         if self._fixed:
             # The downstream user doesn't know he's getting fake data.
             # When we become "unfixed", we need to tell him.
-            self._expand_fixed_dirty_roi( (roi.start, roi.stop) )
+            self._expand_fixed_dirty_roi((roi.start, roi.stop))
             result[:] = 0
         else:
             self.Input(roi.start, roi.stop).writeInto(result).wait()
-        
+
     def setInSlot(self, slot, subindex, roi, value):
         # Forward to the output
         self.Output[roiToSlice(roi.start, roi.stop)] = value
-        
+
         entire_roi = roiFromShape(self.Input.meta.shape)
         if (numpy.array((roi.start, roi.stop)) == entire_roi).all():
             # Nothing is dirty any more.
             self._init_fixed_dirty_roi()
-    
+
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.fixAtCurrent:
             # If we're becoming UN-fixed, send out a big dirty notification
-            if ( self._fixed and not self.fixAtCurrent.value and
-                 self._fixed_dirty_roi and (self._fixed_dirty_roi[1] - self._fixed_dirty_roi[0] > 0).all() ):
-                self.Output.setDirty( *self._fixed_dirty_roi )
+            if (
+                self._fixed
+                and not self.fixAtCurrent.value
+                and self._fixed_dirty_roi
+                and (self._fixed_dirty_roi[1] - self._fixed_dirty_roi[0] > 0).all()
+            ):
+                self.Output.setDirty(*self._fixed_dirty_roi)
                 self._fixed_dirty_roi = None
             self._fixed = self.fixAtCurrent.value
         elif slot is self.Input:
@@ -84,7 +90,7 @@ class OpCacheFixer(Operator):
                 # We can't propagate this downstream,
                 #  but we need to remember that it was marked dirty.
                 # Expand our dirty bounding box.
-                self._expand_fixed_dirty_roi( (roi.start, roi.stop) )
+                self._expand_fixed_dirty_roi((roi.start, roi.stop))
             else:
                 self.Output.setDirty(roi.start, roi.stop)
 
@@ -100,4 +106,3 @@ class OpCacheFixer(Operator):
         start = numpy.minimum(start, roi[0])
         stop = numpy.maximum(stop, roi[1])
         self._fixed_dirty_roi = (start, stop)
-        

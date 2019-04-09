@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,7 +19,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import time
 import random
@@ -32,44 +33,43 @@ from lazyflow.operator import Operator
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.operatorWrapper import OperatorWrapper
 
+
 class OpA(Operator):
     input = InputSlot()
     output = OutputSlot()
-    
-    
-    def __init__(self, parent = None):
+
+    def __init__(self, parent=None):
         Operator.__init__(self, parent)
         self.countSetupOutputs = 0
-    
+
     def setupOutputs(self):
         self.countSetupOutputs += 1
         self.output.meta.shape = self.input.meta.shape
         self.output.meta.dtype = self.input.meta.dtype
-        
-    
+
     def execute(self, slot, subindex, roi, result):
         pass
 
     def propagateDirty(self, slot, subindex, roi):
         pass
 
+
 class TestOperatorWrapperSetupOutputs(object):
-    
     def test(self):
         # test wether setupOutputs is only called once
         # for each inner operator, even when resizing the slot
         # more then one time
         graph = lazyflow.graph.Graph()
-        opaw = OperatorWrapper(OpBlockedArrayCache, graph = graph)
-        opbw = OperatorWrapper(OpA, graph = graph)
-        
+        opaw = OperatorWrapper(OpBlockedArrayCache, graph=graph)
+        opbw = OperatorWrapper(OpA, graph=graph)
+
         opbw.input.connect(opaw.Output)
-        
-        array = numpy.ndarray((10,20), dtype = numpy.float32)
-        array = vigra.taggedView( array, 'xy' )
+
+        array = numpy.ndarray((10, 20), dtype=numpy.float32)
+        array = vigra.taggedView(array, "xy")
         opaw.Input.resize(1)
         opaw.Input[0].setValue(array)
-        
+
         assert opbw.innerOperators[0].countSetupOutputs == 1
 
         opaw.Input.resize(2)
@@ -77,11 +77,13 @@ class TestOperatorWrapperSetupOutputs(object):
 
         assert opbw.innerOperators[0].countSetupOutputs == 1
 
-        
+
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

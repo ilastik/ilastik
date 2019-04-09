@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,17 +19,17 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import nose
-from lazyflow.graph import Graph, Operator, Slot, InputSlot, OutputSlot, \
-    OperatorWrapper
+from lazyflow.graph import Graph, Operator, Slot, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow import stype
 from lazyflow import operators
 
 import logging
+
 logger = logging.getLogger()
-logger.addHandler( logging.NullHandler() )
+logger.addHandler(logging.NullHandler())
 
 
 class OpB(Operator):
@@ -39,7 +40,7 @@ class OpB(Operator):
     def setupOutputs(self):
         self.Output.meta.shape = self.Input.meta.shape
         self.Output.meta.dtype = self.Input.meta.dtype
-        #print "OpInternal shape=%r, dtype=%r" % (self.Input.meta.shape, self.Input.meta.dtype)
+        # print "OpInternal shape=%r, dtype=%r" % (self.Input.meta.shape, self.Input.meta.dtype)
 
     def execute(self, slot, subindex, roi, result):
         result[0] = self.Input[:].wait()[0]
@@ -61,10 +62,10 @@ class OpA(Operator):
         self.inputBackup = self.Input
 
     def setupOutputs(self):
-        self.Output.meta.assignFrom( self.Input.meta )
+        self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.shape = self.Input.meta.shape
         self.Output.meta.dtype = self.Input.meta.dtype
-        #print "OpA shape=%r, dtype=%r" % (self.Input.meta.shape, self.Input.meta.dtype)
+        # print "OpA shape=%r, dtype=%r" % (self.Input.meta.shape, self.Input.meta.dtype)
 
     def execute(self, slot, subindex, roi, result):
         result[0] = self.internalOp.Output[:].wait()[0]
@@ -80,6 +81,7 @@ class OpDummyOutputResize(Operator):
     acts as an internal operator for OperatorWrapper, primarily used to check
     whether slots in OperatorWrapper follow the resizing of the inner ones
     """
+
     OutputSize = InputSlot(value=0)
     Output = OutputSlot(level=1)
 
@@ -96,7 +98,6 @@ class OpDummyOutputResize(Operator):
 
 
 class TestInputInputConnection(object):
-
     def setup_method(self, method):
         self.g = Graph()
         self.op = OpA(graph=self.g)
@@ -179,12 +180,13 @@ class TestInputInputConnection(object):
         assert len(op.Input) == 0
         assert len(op.Output) == 0
 
+
 class OpC(Operator):
 
-    Input = InputSlot(level = 1)
-    Output = OutputSlot( level = 1)
+    Input = InputSlot(level=1)
+    Output = OutputSlot(level=1)
 
-    def __init__(self,parent=None, graph=None):
+    def __init__(self, parent=None, graph=None):
         Operator.__init__(self, parent, graph)
         self.internalOp = OperatorWrapper(OpB, graph=self.graph)
         self.internalOp.Input.connect(self.Input)
@@ -203,7 +205,6 @@ class OpC(Operator):
 
 
 class TestMultiInputInputConnection(object):
-
     def setup_method(self, method):
         self.g = Graph()
         self.op = OpC(graph=self.g)
@@ -222,7 +223,9 @@ class TestMultiInputInputConnection(object):
 if __name__ == "__main__":
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+
+    sys.argv.append("--nocapture")  # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture")  # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-    if not ret: sys.exit(1)
+    if not ret:
+        sys.exit(1)

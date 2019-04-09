@@ -17,15 +17,16 @@
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 import numpy
+
 
 def fastWhere(cond, A, B, dtype):
     nonz = numpy.nonzero(cond)
     res = numpy.ndarray(cond.shape, dtype)
     res[:] = B
-    if isinstance(A,numpy.ndarray):
+    if isinstance(A, numpy.ndarray):
         res[nonz] = A[nonz]
     else:
         res[nonz] = A

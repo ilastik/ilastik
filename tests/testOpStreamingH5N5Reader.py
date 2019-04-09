@@ -1,4 +1,5 @@
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,7 +19,7 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStreamingH5N5Reader
@@ -28,19 +29,18 @@ import tempfile
 
 
 class TestOpStreamingH5N5Reader(object):
-
     def setup_method(self, method):
         self.graph = Graph()
         self.testFileDir = tempfile.TemporaryDirectory()
-        self.testDataH5FileName = self.testFileDir.name + 'test.h5'
-        self.testDataN5FileName = self.testFileDir.name + 'test.n5'
+        self.testDataH5FileName = self.testFileDir.name + "test.h5"
+        self.testDataN5FileName = self.testFileDir.name + "test.n5"
         self.h5_op = OpStreamingH5N5Reader(graph=self.graph)
         self.n5_op = OpStreamingH5N5Reader(graph=self.graph)
 
         self.h5File = OpStreamingH5N5Reader.get_h5_n5_file(self.testDataH5FileName)
         self.n5File = OpStreamingH5N5Reader.get_h5_n5_file(self.testDataN5FileName)
-        self.h5File.create_group('volume')
-        self.n5File.create_group('volume')
+        self.h5File.create_group("volume")
+        self.n5File.create_group("volume")
 
         # Create a test dataset
         datashape = (1, 2, 3, 4, 5)
@@ -53,14 +53,14 @@ class TestOpStreamingH5N5Reader(object):
 
     def test_plain(self):
         # Write the dataset to an hdf5 file
-        self.h5File['volume'].create_dataset('data', data=self.data)
-        self.n5File['volume'].create_dataset('data', data=self.data)
+        self.h5File["volume"].create_dataset("data", data=self.data)
+        self.n5File["volume"].create_dataset("data", data=self.data)
 
         # Read the data with an operator
         self.h5_op.H5N5File.setValue(self.h5File)
         self.n5_op.H5N5File.setValue(self.n5File)
-        self.h5_op.InternalPath.setValue('volume/data')
-        self.n5_op.InternalPath.setValue('volume/data')
+        self.h5_op.InternalPath.setValue("volume/data")
+        self.n5_op.InternalPath.setValue("volume/data")
 
         assert self.h5_op.OutputImage.meta.shape == self.data.shape
         assert self.n5_op.OutputImage.meta.shape == self.data.shape
@@ -70,28 +70,28 @@ class TestOpStreamingH5N5Reader(object):
     def test_withAxisTags(self):
         # Write it again, this time with weird axistags
         axistags = vigra.AxisTags(
-            vigra.AxisInfo('x', vigra.AxisType.Space),
-            vigra.AxisInfo('y', vigra.AxisType.Space),
-            vigra.AxisInfo('z', vigra.AxisType.Space),
-            vigra.AxisInfo('c', vigra.AxisType.Channels),
-            vigra.AxisInfo('t', vigra.AxisType.Time))
+            vigra.AxisInfo("x", vigra.AxisType.Space),
+            vigra.AxisInfo("y", vigra.AxisType.Space),
+            vigra.AxisInfo("z", vigra.AxisType.Space),
+            vigra.AxisInfo("c", vigra.AxisType.Channels),
+            vigra.AxisInfo("t", vigra.AxisType.Time),
+        )
 
         # Write the dataset to an hdf5 file
         # (Note: Don't use vigra to do this, which may reorder the axes)
-        self.h5File['volume'].create_dataset('tagged_data', data=self.data)
-        self.n5File['volume'].create_dataset('tagged_data', data=self.data)
+        self.h5File["volume"].create_dataset("tagged_data", data=self.data)
+        self.n5File["volume"].create_dataset("tagged_data", data=self.data)
         # Write the axistags attribute
-        self.h5File['volume/tagged_data'].attrs['axistags'] = axistags.toJSON()
-        self.n5File['volume/tagged_data'].attrs['axistags'] = axistags.toJSON()
+        self.h5File["volume/tagged_data"].attrs["axistags"] = axistags.toJSON()
+        self.n5File["volume/tagged_data"].attrs["axistags"] = axistags.toJSON()
 
         # Read the data with an operator
         self.h5_op.H5N5File.setValue(self.h5File)
         self.n5_op.H5N5File.setValue(self.n5File)
-        self.h5_op.InternalPath.setValue('volume/tagged_data')
-        self.n5_op.InternalPath.setValue('volume/tagged_data')
+        self.h5_op.InternalPath.setValue("volume/tagged_data")
+        self.n5_op.InternalPath.setValue("volume/tagged_data")
 
         assert self.h5_op.OutputImage.meta.shape == self.data.shape
         assert self.n5_op.OutputImage.meta.shape == self.data.shape
         numpy.testing.assert_array_equal(self.h5_op.OutputImage.value, self.data)
         numpy.testing.assert_array_equal(self.n5_op.OutputImage.value, self.data)
-

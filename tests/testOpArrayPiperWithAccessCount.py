@@ -1,5 +1,5 @@
-
 from builtins import object
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -19,12 +19,11 @@ from builtins import object
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
 
 __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
 __date__ = "$Mar 06, 2015 12:14:39 EST$"
-
 
 
 import nose
@@ -36,7 +35,6 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 from lazyflow.roi import roiFromShape, roiToSlice
-
 
 
 class AllowMaskException(Exception):
@@ -59,8 +57,8 @@ class TestOpArrayPiperWithAccessCount(object):
         self.operator_identity.Input.setValue(data)
         output = self.operator_identity.Output[None].wait()
 
-        assert (self.operator_identity.accessCount == 1)
-        assert((data == output).all())
+        assert self.operator_identity.accessCount == 1
+        assert (data == output).all()
 
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
@@ -75,8 +73,8 @@ class TestOpArrayPiperWithAccessCount(object):
         output[:2] = self.operator_identity.Output[:2].wait()
         output[2:] = self.operator_identity.Output[2:].wait()
 
-        assert (self.operator_identity.accessCount == 2)
-        assert((data == output).all())
+        assert self.operator_identity.accessCount == 2
+        assert (data == output).all()
 
     def test3(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
@@ -86,8 +84,8 @@ class TestOpArrayPiperWithAccessCount(object):
         self.operator_identity.Input.setValue(numpy.zeros_like(data))
         output = self.operator_identity.Output[None].wait()
 
-        assert (self.operator_identity.accessCount == 1)
-        assert((output == 0).all())
+        assert self.operator_identity.accessCount == 1
+        assert (output == 0).all()
 
     def teardown_method(self, method):
         # Take down operators
@@ -108,29 +106,21 @@ class TestOpArrayPiperWithAccessCount2(object):
     def test1(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input read all output.
         self.operator_identity.Input.setValue(data)
         output = self.operator_identity.Output[None].wait()
 
-        assert (self.operator_identity.accessCount == 1)
-        assert((data == output).all())
-        assert(data.mask.shape == output.mask.shape)
-        assert((data.mask == output.mask).all())
+        assert self.operator_identity.accessCount == 1
+        assert (data == output).all()
+        assert data.mask.shape == output.mask.shape
+        assert (data.mask == output.mask).all()
 
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Create array to store results. Don't keep original data.
         output = data.copy()
@@ -142,28 +132,24 @@ class TestOpArrayPiperWithAccessCount2(object):
         output[:2] = self.operator_identity.Output[:2].wait()
         output[2:] = self.operator_identity.Output[2:].wait()
 
-        assert (self.operator_identity.accessCount == 2)
-        assert((data == output).all())
-        assert(data.mask.shape == output.mask.shape)
-        assert((data.mask == output.mask).all())
+        assert self.operator_identity.accessCount == 2
+        assert (data == output).all()
+        assert data.mask.shape == output.mask.shape
+        assert (data.mask == output.mask).all()
 
     def test3(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input read all output.
         self.operator_identity.Input.setValue(numpy.zeros_like(data))
         output = self.operator_identity.Output[None].wait()
 
-        assert (self.operator_identity.accessCount == 1)
-        assert((output == 0).all())
-        assert(data.mask.shape == output.mask.shape)
-        assert((output.mask == False).all())
+        assert self.operator_identity.accessCount == 1
+        assert (output == 0).all()
+        assert data.mask.shape == output.mask.shape
+        assert (output.mask == False).all()
 
     def teardown_method(self, method):
         # Take down operators
@@ -183,31 +169,23 @@ class TestOpArrayPiperWithAccessCount3(object):
     def test1(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input read all output.
         self.operator_identity.Input.setValue(data)
-        assert(self.operator_identity.Input.meta.has_mask)
-        assert(self.operator_identity.Output.meta.has_mask)
+        assert self.operator_identity.Input.meta.has_mask
+        assert self.operator_identity.Output.meta.has_mask
         output = self.operator_identity.Output[None].wait()
 
-        assert (self.operator_identity.accessCount == 1)
-        assert((data == output).all())
-        assert(data.mask.shape == output.mask.shape)
-        assert((data.mask == output.mask).all())
+        assert self.operator_identity.accessCount == 1
+        assert (data == output).all()
+        assert data.mask.shape == output.mask.shape
+        assert (data.mask == output.mask).all()
 
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Create array to store results. Don't keep original data.
         output = data.copy()
@@ -216,35 +194,31 @@ class TestOpArrayPiperWithAccessCount3(object):
 
         # Provide input and grab chunks.
         self.operator_identity.Input.setValue(data)
-        assert(self.operator_identity.Input.meta.has_mask)
-        assert(self.operator_identity.Output.meta.has_mask)
+        assert self.operator_identity.Input.meta.has_mask
+        assert self.operator_identity.Output.meta.has_mask
         output[:2] = self.operator_identity.Output[:2].wait()
         output[2:] = self.operator_identity.Output[2:].wait()
 
-        assert (self.operator_identity.accessCount == 2)
-        assert((data == output).all())
-        assert(data.mask.shape == output.mask.shape)
-        assert((data.mask == output.mask).all())
+        assert self.operator_identity.accessCount == 2
+        assert (data == output).all()
+        assert data.mask.shape == output.mask.shape
+        assert (data.mask == output.mask).all()
 
     def test3(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input read all output.
         self.operator_identity.Input.setValue(numpy.zeros_like(data))
-        assert(self.operator_identity.Input.meta.has_mask)
-        assert(self.operator_identity.Output.meta.has_mask)
+        assert self.operator_identity.Input.meta.has_mask
+        assert self.operator_identity.Output.meta.has_mask
         output = self.operator_identity.Output[None].wait()
 
-        assert (self.operator_identity.accessCount == 1)
-        assert((output == 0).all())
-        assert(data.mask.shape == output.mask.shape)
-        assert((output.mask == False).all())
+        assert self.operator_identity.accessCount == 1
+        assert (output == 0).all()
+        assert data.mask.shape == output.mask.shape
+        assert (output.mask == False).all()
 
     def teardown_method(self, method):
         # Take down operators
@@ -269,11 +243,7 @@ class TestOpArrayPiperWithAccessCount4(object):
     def test1(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input read all output.
         try:
@@ -285,11 +255,7 @@ class TestOpArrayPiperWithAccessCount4(object):
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Create array to store results. Don't keep original data.
         output = data.copy()
@@ -306,11 +272,7 @@ class TestOpArrayPiperWithAccessCount4(object):
     def test3(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input read all output.
         try:
@@ -339,11 +301,7 @@ class TestOpArrayPiperWithAccessCount5(object):
     def test1(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input read all output.
         try:
@@ -355,11 +313,7 @@ class TestOpArrayPiperWithAccessCount5(object):
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input and grab chunks.
         try:
@@ -371,11 +325,7 @@ class TestOpArrayPiperWithAccessCount5(object):
     def test3(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Provide input read all output.
         try:
@@ -418,11 +368,7 @@ class TestOpArrayPiperWithAccessCount6(object):
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Implicitly set has_mask for the input by setting the value.
         self.operator_identity_1.Input.setValue(data)
@@ -460,43 +406,34 @@ class TestOpArrayPiperWithAccessCount7(object):
 
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Try to connect the compatible operators.
         self.operator_identity_2.Input.connect(self.operator_identity_1.Output)
         self.operator_identity_1.Input.setValue(data)
         output = self.operator_identity_2.Output[None].wait()
 
-        assert (self.operator_identity_1.accessCount == 1)
-        assert (self.operator_identity_2.accessCount == 1)
-        assert((data == output).all())
-        assert(data.mask.shape == output.mask.shape)
-        assert((data.mask == output.mask).all())
-
+        assert self.operator_identity_1.accessCount == 1
+        assert self.operator_identity_2.accessCount == 1
+        assert (data == output).all()
+        assert data.mask.shape == output.mask.shape
+        assert (data.mask == output.mask).all()
 
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        data = numpy.ma.masked_array(
-            data,
-            mask=numpy.zeros(data.shape, dtype=bool),
-            shrink=False
-        )
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
 
         # Try to connect the compatible operators.
         self.operator_identity_1.Input.setValue(data)
         self.operator_identity_2.Input.connect(self.operator_identity_1.Output)
         output = self.operator_identity_2.Output[None].wait()
 
-        assert (self.operator_identity_1.accessCount == 1)
-        assert (self.operator_identity_2.accessCount == 1)
-        assert((data == output).all())
-        assert(data.mask.shape == output.mask.shape)
-        assert((data.mask == output.mask).all())
+        assert self.operator_identity_1.accessCount == 1
+        assert self.operator_identity_2.accessCount == 1
+        assert (data == output).all()
+        assert data.mask.shape == output.mask.shape
+        assert (data.mask == output.mask).all()
 
     def teardown_method(self, method):
         # Take down operators

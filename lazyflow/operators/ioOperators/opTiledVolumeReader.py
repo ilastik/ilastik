@@ -23,7 +23,9 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility.io_util.tiledVolume import TiledVolume
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 class OpTiledVolumeReader(Operator):
     """
@@ -31,7 +33,8 @@ class OpTiledVolumeReader(Operator):
     The operator requires a LOCAL json config file that describes the remote dataset and interface.
     (See tiledVolume.py)
     """
-    DescriptionFilePath = InputSlot(stype='filestring')
+
+    DescriptionFilePath = InputSlot(stype="filestring")
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -43,7 +46,7 @@ class OpTiledVolumeReader(Operator):
             self.tiled_volume.close()
 
         # Create a TiledVolume object to read the description file and do the downloads.
-        self.tiled_volume = TiledVolume( self.DescriptionFilePath.value )
+        self.tiled_volume = TiledVolume(self.DescriptionFilePath.value)
 
         self.Output.meta.shape = tuple(self.tiled_volume.output_shape)
         self.Output.meta.dtype = self.tiled_volume.description.dtype
@@ -52,14 +55,14 @@ class OpTiledVolumeReader(Operator):
         self.Output.meta.nickname = self.tiled_volume.description.name
 
     def execute(self, slot, subindex, roi, result):
-        self.tiled_volume.read( (roi.start, roi.stop), result )
+        self.tiled_volume.read((roi.start, roi.stop), result)
         return result
 
     def propagateDirty(self, slot, subindex, roi):
         assert slot == self.DescriptionFilePath, "Unknown input slot."
-        self.Output.setDirty( slice(None) )
+        self.Output.setDirty(slice(None))
 
     def cleanUp(self):
         if self.tiled_volume:
             self.tiled_volume.close()
-        super( OpTiledVolumeReader, self ).cleanUp()
+        super(OpTiledVolumeReader, self).cleanUp()

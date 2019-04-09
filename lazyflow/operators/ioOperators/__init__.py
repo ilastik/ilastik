@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -18,10 +19,9 @@ from __future__ import absolute_import
 # See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
 # GNU Lesser General Public License version 2.1 and 3 respectively.
 # This information is also available on the ilastik web site at:
-#		   http://ilastik.org/license/
+# 		   http://ilastik.org/license/
 ###############################################################################
-from .ioOperators import (OpImageReader, OpStackLoader, OpStackWriter,
-                          OpStackToH5Writer, OpH5N5WriterBigDataset)
+from .ioOperators import OpImageReader, OpStackLoader, OpStackWriter, OpStackToH5Writer, OpH5N5WriterBigDataset
 
 # All "Read" operators must come before OpInputDataReader, which uses them.
 from .opStreamingMmfReader import OpStreamingMmfReader
@@ -48,7 +48,7 @@ try:
     from .opExportDvidVolume import OpExportDvidVolume
 except ImportError as ex:
     # If the exception was not related to libdvid, then re-raise it.
-    if 'libdvid' not in ex.args[0]:
+    if "libdvid" not in ex.args[0]:
         raise
 
 from .opInputDataReader import *
@@ -63,4 +63,3 @@ from .opFormattedDataExport import OpFormattedDataExport
 
 from .hdf5SerializerKnime import *
 from .opExportToKnime import OpExportToKnime
-
