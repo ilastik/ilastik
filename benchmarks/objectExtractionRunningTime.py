@@ -20,7 +20,6 @@ from __future__ import print_function
 #           http://ilastik.org/license.html
 ###############################################################################
 from builtins import range
-import os
 import numpy as np
 import vigra
 
@@ -30,26 +29,11 @@ from lazyflow.utility import Timer
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache 
 from lazyflow.request import Request, RequestPool
-from lazyflow.request.threadPool import ThreadPool
 
 from functools import partial
 
-from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures, OpObjectExtraction
-
-
-from ilastik.plugins import pluginManager
-from ilastik.applets.dataSelection.opDataSelection import OpDataSelection, DatasetInfo
-
-from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpStreamingUfmfReader
-import lazyflow
-
-from lazyflow.utility import RoiRequestBatch
-from lazyflow.roi import roiFromShape
+from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-
-from lazyflow.utility import Memory
-
-import h5py
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning) 

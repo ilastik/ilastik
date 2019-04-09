@@ -28,13 +28,13 @@ from PyQt5.QtCore import Qt
 from lazyflow.utility import globList
 
 
-class H5VolumeSelectionDlg(QDialog):
+class H5N5VolumeSelectionDlg(QDialog):
     """
     A window to ask the user to choose between multiple HDF5 datasets in a single file.
     """
     def __init__(self, datasetNames, parent):
-        super(H5VolumeSelectionDlg, self).__init__(parent)
-        label = QLabel("Your HDF5 File contains multiple image volumes.\n"
+        super(H5N5VolumeSelectionDlg, self).__init__(parent)
+        label = QLabel("Your HDF5/N5 File contains multiple image volumes.\n"
                        "Please select the one you would like to open.")
 
         self.combo = QComboBox()
@@ -102,11 +102,10 @@ class Hdf5StackSelectionWidget(QWidget):
             'Selected {} images'.format(len(self.selected_paths)))
 
 
-class Hdf5StackingDlg(QDialog):
-    """Dialogue for subvolume stack selection within single HDF5 files
-    """
+class H5N5StackingDlg(QDialog):
+    """Dialogue for subvolume stack selection within single HDF5/N5 files"""
     def __init__(self, parent=None, list_of_paths=None):
-        super(Hdf5StackingDlg, self).__init__(parent)
+        super(H5N5StackingDlg, self).__init__(parent)
         self.setWindowTitle('Select images for stacking')
         if list_of_paths is None:
             list_of_paths = []
@@ -114,7 +113,7 @@ class Hdf5StackingDlg(QDialog):
         self.list_of_paths = list_of_paths
 
         self.radio_group = QButtonGroup(parent=self)
-        label = QLabel("Your HDF5 File contains multiple images.\n"
+        label = QLabel("Your HDF5/N5 File contains multiple images.\n"
                        "Please specify a pattern in order to stack multiple images.")
 
         self.stack_widget = Hdf5StackSelectionWidget(
@@ -147,6 +146,6 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
 
     app = QApplication([])
-    w = Hdf5StackingDlg(list_of_paths=['a/1', 'a/2', 'a/3', 'b/1', 'b/2'])
+    w = H5N5StackingDlg(list_of_paths=['a/1', 'a/2', 'a/3', 'b/1', 'b/2'])
     w.show()
     app.exec_()
