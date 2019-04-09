@@ -245,3 +245,12 @@ class Slice5D(object):
     def __repr__(self):
         return str([self.start, self.stop])
 
+class Slice2D(Slice5D):
+    def __init__(self, *, x=slice(None), y=slice(None)):
+        super().__init__(x=x, y=y)
+
+    def to_tuple(self, axis_order:str, bounding_shape:Shape5D):
+        assert sorted(axis_order) == sorted('xy')
+        start = [self.start[label] for label in axis_order]
+        stop = [self.stop.clamped(maximum=bounding_shape)[label] for label in axis_order]
+        return (start, stop)
