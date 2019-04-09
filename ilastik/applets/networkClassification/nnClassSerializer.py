@@ -20,10 +20,16 @@
 ###############################################################################
 import pickle
 
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialListSlot, SerialDictSlot, SerialBlockSlot, \
-    BinarySlot
+from ilastik.applets.base.appletSerializer import (
+    AppletSerializer,
+    SerialListSlot,
+    SerialDictSlot,
+    SerialBlockSlot,
+    BinarySlot,
+)
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,20 +37,23 @@ class NNClassificationSerializer(AppletSerializer):
     def __init__(self, topLevelOperator, projectFileGroupName):
         self.VERSION = 1
 
-        slots = [SerialListSlot(topLevelOperator.LabelNames),
-                 SerialListSlot(topLevelOperator.LabelColors, transform=lambda x: tuple(x.flat)),
-                 SerialListSlot(topLevelOperator.PmapColors, transform=lambda x: tuple(x.flat)),
-            	 SerialBlockSlot(topLevelOperator.LabelImages,
-                                 topLevelOperator.LabelInputs,
-                                 topLevelOperator.NonzeroLabelBlocks,
-                                 name='LabelSets',
-                                 subname='labels{:03d}',
-                                 selfdepends=False,
-                                 shrink_to_bb=True),
-                 SerialDictSlot(topLevelOperator.TiktorchConfig),
-                 BinarySlot(topLevelOperator.BinaryModel),
-                 BinarySlot(topLevelOperator.BinaryModelState),
-                 BinarySlot(topLevelOperator.BinaryOptimizerState),
-                ]
+        slots = [
+            SerialListSlot(topLevelOperator.LabelNames),
+            SerialListSlot(topLevelOperator.LabelColors, transform=lambda x: tuple(x.flat)),
+            SerialListSlot(topLevelOperator.PmapColors, transform=lambda x: tuple(x.flat)),
+            SerialBlockSlot(
+                topLevelOperator.LabelImages,
+                topLevelOperator.LabelInputs,
+                topLevelOperator.NonzeroLabelBlocks,
+                name="LabelSets",
+                subname="labels{:03d}",
+                selfdepends=False,
+                shrink_to_bb=True,
+            ),
+            SerialDictSlot(topLevelOperator.TiktorchConfig),
+            BinarySlot(topLevelOperator.BinaryModel),
+            BinarySlot(topLevelOperator.BinaryModelState),
+            BinarySlot(topLevelOperator.BinaryOptimizerState),
+        ]
 
         super().__init__(projectFileGroupName, slots)

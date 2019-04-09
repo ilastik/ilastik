@@ -29,9 +29,20 @@ import yaml
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, pyqtSlot, QTimer
 from PyQt5.QtGui import QColor, QIcon
-from PyQt5.QtWidgets import QStackedWidget, QFileDialog, QMenu, QLineEdit, \
-                            QVBoxLayout, QDialog, QGridLayout, QLabel, \
-                            QPushButton, QHBoxLayout, QDesktopWidget, QComboBox
+from PyQt5.QtWidgets import (
+    QStackedWidget,
+    QFileDialog,
+    QMenu,
+    QLineEdit,
+    QVBoxLayout,
+    QDialog,
+    QGridLayout,
+    QLabel,
+    QPushButton,
+    QHBoxLayout,
+    QDesktopWidget,
+    QComboBox,
+)
 
 from ilastik.applets.networkClassification.tiktorchWizard import MagicWizard
 from ilastik.applets.labeling.labelingGui import LabelingGui
@@ -46,9 +57,10 @@ from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 
 logger = logging.getLogger(__name__)
 
+
 def _listReplace(old, new):
     if len(old) > len(new):
-        return new + old[len(new):]
+        return new + old[len(new) :]
     else:
         return new
 
@@ -66,32 +78,34 @@ class ParameterDlg(QDialog):
         self.optimizer_combo = QComboBox(self)
         self.optimizer_combo.addItem("Adam")
         self.optimizer_kwargs_textbox = QLineEdit()
-        self.optimizer_kwargs_textbox.setPlaceholderText("e.g. for Adam: {'lr': 0.0003, 'weight_decay':0.0001, amsgrad: True}")
-        
+        self.optimizer_kwargs_textbox.setPlaceholderText(
+            "e.g. for Adam: {'lr': 0.0003, 'weight_decay':0.0001, amsgrad: True}"
+        )
+
         self.criterion_combo = QComboBox(self)
         self.criterion_combo.addItem("BCEWithLogitsLoss")
         self.criterion_kwargs_textbox = QLineEdit()
         self.criterion_kwargs_textbox.setPlaceholderText("e.g.: {'reduce': False}")
-        
+
         self.batch_size_textbox = QLineEdit()
         self.batch_size_textbox.setPlaceholderText("default: 1")
 
         grid = QGridLayout()
         grid.setSpacing(10)
 
-        grid.addWidget(QLabel('Optimizer'), 1, 0)
+        grid.addWidget(QLabel("Optimizer"), 1, 0)
         grid.addWidget(self.optimizer_combo, 1, 1)
 
-        grid.addWidget(QLabel('Optimizer keywork arguments'), 2, 0)
+        grid.addWidget(QLabel("Optimizer keywork arguments"), 2, 0)
         grid.addWidget(self.optimizer_kwargs_textbox, 2, 1)
 
-        grid.addWidget(QLabel('Criterion'), 3, 0)
+        grid.addWidget(QLabel("Criterion"), 3, 0)
         grid.addWidget(self.criterion_combo, 3, 1)
 
-        grid.addWidget(QLabel('Criterion keyword arguments'), 4, 0)
+        grid.addWidget(QLabel("Criterion keyword arguments"), 4, 0)
         grid.addWidget(self.criterion_kwargs_textbox, 4, 1)
 
-        grid.addWidget(QLabel('Batch size'), 5, 0)
+        grid.addWidget(QLabel("Batch size"), 5, 0)
         grid.addWidget(self.batch_size_textbox, 5, 1)
 
         okButton = QPushButton("OK")
@@ -114,9 +128,8 @@ class ParameterDlg(QDialog):
         self.setFixedSize(600, 200)
         self.center()
 
-        self.setWindowTitle('Hyperparameter Settings')
+        self.setWindowTitle("Hyperparameter Settings")
         self.show()
-
 
     def center(self):
         qr = self.frameGeometry()
@@ -130,19 +143,21 @@ class ParameterDlg(QDialog):
         optimizer_kwargs = yaml.load(self.optimizer_kwargs_textbox.text())
         if optimizer_kwargs is None:
             optimizer_kwargs = dict(lr=0.0003, weight_decay=0.0001, amsgrad=True)
-            optimizer = 'Adam'
+            optimizer = "Adam"
         criterion = self.criterion_combo.currentText()
         criterion_kwargs = yaml.load(self.criterion_kwargs_textbox.text())
         if criterion_kwargs is None:
             criterion_kwargs = dict(reduce=False)
-            criterion = 'BCEWithLogitsLoss'
+            criterion = "BCEWithLogitsLoss"
         batch_size = int(self.batch_size_textbox.text()) if len(self.batch_size_textbox.text()) > 0 else 1
 
-        self.hparams = dict(optimizer_kwargs=optimizer_kwargs,
-                            optimizer_name=optimizer,
-                            criterion_kwargs=criterion_kwargs,
-                            criterion_name=criterion,
-                            batch_size=batch_size)
+        self.hparams = dict(
+            optimizer_kwargs=optimizer_kwargs,
+            optimizer_name=optimizer,
+            criterion_kwargs=criterion_kwargs,
+            criterion_name=criterion,
+            batch_size=batch_size,
+        )
 
         self.close()
 
@@ -151,35 +166,36 @@ class ValidationDlg(QDialog):
     """
     Settings for choosing the validation set 
     """
+
     def __init__(self, parent):
         self.valid_params = None
 
         super(QDialog, self).__init__(parent=parent)
 
         self.validation_size = QComboBox(self)
-        self.validation_size.addItem('10%')
-        self.validation_size.addItem('20%')
-        self.validation_size.addItem('30%')
-        self.validation_size.addItem('40%')
+        self.validation_size.addItem("10%")
+        self.validation_size.addItem("20%")
+        self.validation_size.addItem("30%")
+        self.validation_size.addItem("40%")
 
         self.orientation = QComboBox(self)
-        self.orientation.addItem('Top - Left')
-        self.orientation.addItem('Top - Right')
-        self.orientation.addItem('Top - Mid')
-        self.orientation.addItem('Mid - Left')
-        self.orientation.addItem('Mid - Right')
-        self.orientation.addItem('Mid - Mid')
-        self.orientation.addItem('Bottom - Left')
-        self.orientation.addItem('Bottom - Right')
-        self.orientation.addItem('Bottom - Mid')
+        self.orientation.addItem("Top - Left")
+        self.orientation.addItem("Top - Right")
+        self.orientation.addItem("Top - Mid")
+        self.orientation.addItem("Mid - Left")
+        self.orientation.addItem("Mid - Right")
+        self.orientation.addItem("Mid - Mid")
+        self.orientation.addItem("Bottom - Left")
+        self.orientation.addItem("Bottom - Right")
+        self.orientation.addItem("Bottom - Mid")
 
         grid = QGridLayout()
         grid.setSpacing(10)
 
-        grid.addWidget(QLabel('Validation Set Size'), 1, 0)
+        grid.addWidget(QLabel("Validation Set Size"), 1, 0)
         grid.addWidget(self.validation_size, 1, 1)
 
-        grid.addWidget(QLabel('Orientation'), 2, 0)
+        grid.addWidget(QLabel("Orientation"), 2, 0)
         grid.addWidget(self.orientation, 2, 1)
 
         okButton = QPushButton("OK")
@@ -213,8 +229,7 @@ class ValidationDlg(QDialog):
     def readParameters(self):
         percentage = self.validation_size.currentText()[:-1]
         orientation = self.orientation.currentText()
-        self.valid_params = dict(percentage=percentage,
-                                 orientation=orientation)
+        self.valid_params = dict(percentage=percentage, orientation=orientation)
 
         self.close()
 
@@ -361,11 +376,11 @@ class NNClassGui(LabelingGui):
     def set_live_training_icon(self, active: bool):
         if active:
             self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.Pause))
-            self.labelingDrawerUi.liveTraining.setText('Pause and Download')
-            self.labelingDrawerUi.liveTraining.setToolTip('Pause training and download model state')
+            self.labelingDrawerUi.liveTraining.setText("Pause and Download")
+            self.labelingDrawerUi.liveTraining.setToolTip("Pause training and download model state")
         else:
-            self.labelingDrawerUi.liveTraining.setText('Live Training')
-            self.labelingDrawerUi.liveTraining.setToolTip('')
+            self.labelingDrawerUi.liveTraining.setText("Live Training")
+            self.labelingDrawerUi.liveTraining.setToolTip("")
             self.labelingDrawerUi.liveTraining.setIcon(QIcon(ilastikIcons.Play))
 
     def set_live_predict_icon(self, active: bool):
@@ -497,7 +512,7 @@ class NNClassGui(LabelingGui):
         if not self.topLevelOperatorView.ClassifierFactory.ready():
             checked = False
 
-        logger.debug(f'toggling live prediction mode to {checked}')
+        logger.debug(f"toggling live prediction mode to {checked}")
         self.labelingDrawerUi.livePrediction.setEnabled(False)
 
         # If we're changing modes, enable/disable our controls and other applets accordingly
@@ -510,9 +525,8 @@ class NNClassGui(LabelingGui):
                 self.labelingDrawerUi.AddLabelButton.setEnabled(False)
             else:
                 num_label_classes = self._labelControlUi.labelListModel.rowCount()
-                self.labelingDrawerUi.labelListView.allowDelete = (num_label_classes > self.minLabelNumber)
+                self.labelingDrawerUi.labelListView.allowDelete = num_label_classes > self.minLabelNumber
                 self.labelingDrawerUi.AddLabelButton.setEnabled((num_label_classes < self.maxLabelNumber))
-
 
         self.topLevelOperatorView.FreezePredictions.setValue(not checked)
 
@@ -549,13 +563,13 @@ class NNClassGui(LabelingGui):
                     model_state = factory.get_model_state()
                     self.topLevelOperatorView.BinaryModelState.setValue(model_state)
                 except Exception as e:
-                    logger.warning(f'Could not retrieve updated model state due to {e}')
+                    logger.warning(f"Could not retrieve updated model state due to {e}")
 
                 try:
                     optimizer_state = factory.get_optimizer_state()
                     self.topLevelOperatorView.BinaryOptimizerState.setValue(optimizer_state)
                 except Exception as e:
-                    logger.warning(f'Could not retrieve optimizer state due to {e}')
+                    logger.warning(f"Could not retrieve optimizer state due to {e}")
 
             self.labelingDrawerUi.liveTraining.setEnabled(True)
 
@@ -594,9 +608,9 @@ class NNClassGui(LabelingGui):
         When AddModel button is clicked.
         """
         # open dialog in recent model folder if possible
-        folder = PreferencesManager().get('DataSelection', 'recent model')
+        folder = PreferencesManager().get("DataSelection", "recent model")
         if folder is None:
-            folder = os.path.expanduser('~')
+            folder = os.path.expanduser("~")
 
         # get folder from user
         folder = self.getFolderToOpen(self, folder)
@@ -614,9 +628,9 @@ class NNClassGui(LabelingGui):
 
             # user did not cancel selection
             self.add_NN_classifiers(folder)
-            PreferencesManager().set('DataSelection', 'recent model', folder)
+            PreferencesManager().set("DataSelection", "recent model", folder)
             # disable adding another model TODO: handle new model in add_NN_Classifier
-            self.labelingDrawerUi.addModel.setToolTip('Switching network model currently not supported.')
+            self.labelingDrawerUi.addModel.setToolTip("Switching network model currently not supported.")
             self.parentApplet.appletStateUpdateRequested()
             self.labelingDrawerUi.addModel.setEnabled(True)
 
@@ -632,49 +646,47 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.livePrediction.setEnabled(True)
 
         # Read tiktorch config
-        config_file_name = os.path.join(folder_path, 'tiktorch_config.yml')
+        config_file_name = os.path.join(folder_path, "tiktorch_config.yml")
         if not os.path.exists(config_file_name):
             raise FileNotFoundError(f"Config file not found at: {config_file_name}.")
 
-        with open(config_file_name, 'r') as f:
+        with open(config_file_name, "r") as f:
             tiktorch_config = yaml.load(f)
 
-        if 'name' not in tiktorch_config:
-            tiktorch_config['name'] = os.path.basename(os.path.normpath(folder_path))
+        if "name" not in tiktorch_config:
+            tiktorch_config["name"] = os.path.basename(os.path.normpath(folder_path))
 
-        self.set_NN_classifier_name(tiktorch_config['name'])
+        self.set_NN_classifier_name(tiktorch_config["name"])
 
         # Read model.py
-        file_name = os.path.join(folder_path, 'model.py')
+        file_name = os.path.join(folder_path, "model.py")
         if not os.path.exists(file_name):
             raise FileNotFoundError(f"Model file not found at: {file_name}.")
 
-        with open(file_name, 'rb') as f:
+        with open(file_name, "rb") as f:
             binary_model_file = f.read()
 
         # Read model and optimizer states if they exist
         binary_states = []
-        for fn in ['state.nn', 'optimizer.nn']:
+        for fn in ["state.nn", "optimizer.nn"]:
             fn = os.path.join(folder_path, fn)
             if os.path.exists(fn):
-                with open(fn, 'rb') as f:
+                with open(fn, "rb") as f:
                     binary_states.append(f.read())
             else:
-                binary_states.append(b'')
+                binary_states.append(b"")
 
         self.topLevelOperatorView.set_classifier(tiktorch_config, binary_model_file, *binary_states)
 
     def set_NN_classifier_name(self, name: str):
-        self.labelingDrawerUi.addModel.setText(f'{name} loaded')
+        self.labelingDrawerUi.addModel.setText(f"{name} loaded")
 
     def getFolderToOpen(cls, parent_window, defaultDirectory):
         """
         opens a QFileDialog for importing files
         """
         options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
-        return QFileDialog.getExistingDirectory(
-            parent_window, "Select Model", defaultDirectory, options=options
-        )
+        return QFileDialog.getExistingDirectory(parent_window, "Select Model", defaultDirectory, options=options)
 
     @pyqtSlot()
     @threadRouted

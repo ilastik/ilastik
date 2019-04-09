@@ -22,10 +22,14 @@ from functools import partial
 import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
-from lazyflow.operators import OpMultiArraySlicer2, OpValueCache,  OpBlockedArrayCache, \
-                               OpClassifierPredict, OpTrainClassifierBlocked
-from lazyflow.operators.tiktorchClassifierOperators import OpTikTorchTrainClassifierBlocked, \
-                                                           OpTikTorchClassifierPredict
+from lazyflow.operators import (
+    OpMultiArraySlicer2,
+    OpValueCache,
+    OpBlockedArrayCache,
+    OpClassifierPredict,
+    OpTrainClassifierBlocked,
+)
+from lazyflow.operators.tiktorchClassifierOperators import OpTikTorchTrainClassifierBlocked, OpTikTorchClassifierPredict
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
@@ -33,6 +37,7 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPip
 from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_LOCAL_SERVER_CONFIG
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,7 +45,7 @@ class OpNNClassification(Operator):
     """
     Top-level operator for pixel classification
     """
-    
+
     name = "OpNNClassification"
     category = "Top-level"
 
@@ -48,16 +53,18 @@ class OpNNClassification(Operator):
     InputImages = InputSlot(level=1)
     NumClasses = InputSlot(optional=True)
     LabelInputs = InputSlot(optional=True, level=1)
-    FreezePredictions = InputSlot(stype='bool', value=False, nonlane=True)
+    FreezePredictions = InputSlot(stype="bool", value=False, nonlane=True)
     ClassifierFactory = InputSlot(optional=True)
     ServerConfig = InputSlot(value=DEFAULT_LOCAL_SERVER_CONFIG)
     TiktorchConfig = InputSlot(optional=True)
     BinaryModel = InputSlot(optional=True)
-    BinaryModelState = InputSlot(value=b'')
-    BinaryOptimizerState = InputSlot(value=b'')
+    BinaryModelState = InputSlot(value=b"")
+    BinaryOptimizerState = InputSlot(value=b"")
 
     Classifier = OutputSlot()
-    PredictionProbabilities = OutputSlot(level=1)  # Classification predictions (via feature cache for interactive speed)
+    PredictionProbabilities = OutputSlot(
+        level=1
+    )  # Classification predictions (via feature cache for interactive speed)
     PredictionProbabilityChannels = OutputSlot(level=2)  # Classification predictions, enumerated by channel
     CachedPredictionProbabilities = OutputSlot(level=1)
     LabelImages = OutputSlot(level=1)
@@ -78,8 +85,12 @@ class OpNNClassification(Operator):
         self.LabelColors.meta.shape = (1,)
         self.PmapColors.meta.dtype = object
         self.PmapColors.meta.shape = (1,)
-        if not self.ClassifierFactory.ready() and \
-                self.ServerConfig.ready() and self.TiktorchConfig.ready() and self.BinaryModel.ready():
+        if (
+            not self.ClassifierFactory.ready()
+            and self.ServerConfig.ready()
+            and self.TiktorchConfig.ready()
+            and self.BinaryModel.ready()
+        ):
             # todo: Deserialize sequences as tuple of ints, not as numpy.ndarray
             # (which is a weird, implicit default in SerialDictSlot)
             # also note: converting form numpy.int32, etc to python's int
@@ -97,29 +108,33 @@ class OpNNClassification(Operator):
 
             tiktorch_config = make_good(self.TiktorchConfig.value)
 
-            self.ClassifierFactory.setValue(TikTorchLazyflowClassifierFactory(tiktorch_config,
-                                                                              self.BinaryModel.value,
-                                                                              self.BinaryModelState.value,
-                                                                              self.BinaryOptimizerState.value,
-                                                                              server_config=self.ServerConfig.value))
+            self.ClassifierFactory.setValue(
+                TikTorchLazyflowClassifierFactory(
+                    tiktorch_config,
+                    self.BinaryModel.value,
+                    self.BinaryModelState.value,
+                    self.BinaryOptimizerState.value,
+                    server_config=self.ServerConfig.value,
+                )
+            )
             try:
                 projectManager = self._parent._shell.projectManager
                 applet = self._parent._applets[2]
-                assert applet.name == 'NN Training'
+                assert applet.name == "NN Training"
                 # restore labels  # todo: clean up this workaround for resetting the user label block shape
                 top_group_name = applet.dataSerializers[0].topGroupName
-                group_name = 'LabelSets'
+                group_name = "LabelSets"
                 label_serial_block_slot = [s for s in applet.dataSerializers[0].serialSlots if s.name == group_name][0]
                 label_serial_block_slot.deserialize(projectManager.currentProjectFile[top_group_name])
             except:
-                logger.debug('Could not restore labels after setting TikTorchLazyflowClassifierFactory.')
+                logger.debug("Could not restore labels after setting TikTorchLazyflowClassifierFactory.")
 
     def __init__(self, *args, **kwargs):
         """
         Instantiate all internal operators and connect them together.
         """
         super(OpNNClassification, self).__init__(*args, **kwargs)
-        
+
         # Default values for some input slots
         self.FreezePredictions.setValue(True)
         self.LabelNames.setValue([])
@@ -129,13 +144,13 @@ class OpNNClassification(Operator):
         # SPECIAL connection: the LabelInputs slot doesn't get it's data
         # from the InputImages slot, but it's shape must match.
         self.LabelInputs.connect(self.InputImages)
-       
+
         self.opBlockShape = OpMultiLaneWrapper(OpBlockShape, parent=self)
         self.opBlockShape.RawImage.connect(self.InputImages)
         self.opBlockShape.ClassifierFactory.connect(self.ClassifierFactory)
 
         # Hook up Labeling Pipeline
-        self.opLabelPipeline = OpMultiLaneWrapper(OpLabelPipeline, parent=self, broadcastingSlotNames=['DeleteLabel'])
+        self.opLabelPipeline = OpMultiLaneWrapper(OpLabelPipeline, parent=self, broadcastingSlotNames=["DeleteLabel"])
         self.opLabelPipeline.RawImage.connect(self.InputImages)
         self.opLabelPipeline.LabelInput.connect(self.LabelInputs)
         self.opLabelPipeline.DeleteLabel.setValue(-1)
@@ -154,7 +169,7 @@ class OpNNClassification(Operator):
         # This cache stores exactly one object: the classifier itself.
         self.classifier_cache = OpValueCache(parent=self)
         self.classifier_cache.name = "OpNetworkClassification.classifier_cache"
-        self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
+        self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs["Classifier"])
         self.classifier_cache.inputs["fixAtCurrent"].connect(self.FreezePredictions)
         self.Classifier.connect(self.classifier_cache.Output)
 
@@ -183,12 +198,12 @@ class OpNNClassification(Operator):
         self.LabelNames.notifyDirty(_updateNumClasses)
 
         def inputResizeHandler(slot, oldsize, newsize):
-            if (newsize == 0):
+            if newsize == 0:
                 self.LabelImages.resize(0)
                 self.NonzeroLabelBlocks.resize(0)
                 self.PredictionProbabilities.resize(0)
                 self.CachedPredictionProbabilities.resize(0)
-                
+
         self.InputImages.notifyResized(inputResizeHandler)
 
         # Debug assertions: Check to make sure the non-wrapped operators stayed that way.
@@ -198,6 +213,7 @@ class OpNNClassification(Operator):
             def handleInputReady(slot):
                 self._checkConstraints(index)
                 self.setupCaches(multislot.index(slot))
+
             multislot[index].notifyReady(handleInputReady)
 
         self.InputImages.notifyInserted(handleNewInputImage)
@@ -208,12 +224,15 @@ class OpNNClassification(Operator):
         for s1 in multiInputs:
             for s2 in multiInputs:
                 if s1 != s2:
+
                     def insertSlot(a, b, position, finalsize):
                         a.insertSlot(position, finalsize)
+
                     s1.notifyInserted(partial(insertSlot, s2))
-                    
+
                     def removeSlot(a, b, position, finalsize):
                         a.removeSlot(position, finalsize)
+
                     s1.notifyRemoved(partial(removeSlot, s2))
 
     def set_classifier(self, tiktorch_config: dict, model_file: bytes, model_state: bytes, optimizer_state: bytes):
@@ -228,9 +247,11 @@ class OpNNClassification(Operator):
 
     def update_config(self, partial_config: dict):
         self.ClassifierFactory.meta.hparams = partial_config
+
         def _send_hparams(slot):
             classifierFactory = self.ClassifierFactory[:].wait()[0]
             classifierFactory.update_config(self.ClassifierFactory.meta.hparams)
+
         if not self.ClassifierFactory.ready():
             self.ClassifierFactory.notifyReady(_send_hparams)
         else:
@@ -246,7 +267,7 @@ class OpNNClassification(Operator):
         # Special case: We have to set up the shape of our label *input* according to our image input shape
         shapeList = list(self.InputImages[imageIndex].meta.shape)
         try:
-            channelIndex = self.InputImages[imageIndex].meta.axistags.index('c')
+            channelIndex = self.InputImages[imageIndex].meta.axistags.index("c")
             shapeList[channelIndex] = 1
         except:
             pass
@@ -269,24 +290,28 @@ class OpNNClassification(Operator):
                 validShape = slot.meta.getTaggedShape()
                 break
 
-        if 't' in thisLaneTaggedShape:
-            del thisLaneTaggedShape['t']
-        if 't' in validShape:
-            del validShape['t']
+        if "t" in thisLaneTaggedShape:
+            del thisLaneTaggedShape["t"]
+        if "t" in validShape:
+            del validShape["t"]
 
-        if validShape['c'] != thisLaneTaggedShape['c']:
+        if validShape["c"] != thisLaneTaggedShape["c"]:
             raise DatasetConstraintError(
-                 "Pixel Classification with CNNs",
-                 "All input images must have the same number of channels.  "\
-                 "Your new image has {} channel(s), but your other images have {} channel(s)."\
-                 .format(thisLaneTaggedShape['c'], validShape['c']))
-            
+                "Pixel Classification with CNNs",
+                "All input images must have the same number of channels.  "
+                "Your new image has {} channel(s), but your other images have {} channel(s).".format(
+                    thisLaneTaggedShape["c"], validShape["c"]
+                ),
+            )
+
         if len(validShape) != len(thisLaneTaggedShape):
             raise DatasetConstraintError(
-                 "Pixel Classification with CNNs",
-                 "All input images must have the same dimensionality.  "\
-                 "Your new image has {} dimensions (including channel), but your other images have {} dimensions."\
-                .format(len(thisLaneTaggedShape), len(validShape)))
+                "Pixel Classification with CNNs",
+                "All input images must have the same dimensionality.  "
+                "Your new image has {} dimensions (including channel), but your other images have {} dimensions.".format(
+                    len(thisLaneTaggedShape), len(validShape)
+                ),
+            )
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
@@ -300,7 +325,7 @@ class OpNNClassification(Operator):
 
     def addLane(self, laneIndex):
         numLanes = len(self.InputImages)
-        assert numLanes == laneIndex, f'Image lanes must be appended. {numLanes}, {laneIndex})'
+        assert numLanes == laneIndex, f"Image lanes must be appended. {numLanes}, {laneIndex})"
         self.InputImages.resize(numLanes + 1)
 
     def removeLane(self, laneIndex, finalLength):
@@ -317,17 +342,18 @@ class OpNNClassification(Operator):
         old_names = self.LabelNames.value
         old_max = len(old_names)
         if new_max > old_max:
-            new_names = old_names + ["Label {}".format(x) for x in range(old_max+1, new_max+1)]
+            new_names = old_names + ["Label {}".format(x) for x in range(old_max + 1, new_max + 1)]
             self.LabelNames.setValue(new_names)
 
             # Make some default colors, too
             # FIXME: take the colors from default16_new
             from volumina import colortables
+
             default_colors = colortables.default16_new
-            
+
             label_colors = self.LabelColors.value
             pmap_colors = self.PmapColors.value
-            
+
             self.LabelColors.setValue(label_colors + default_colors[old_max:new_max])
             self.PmapColors.setValue(pmap_colors + default_colors[old_max:new_max])
 
@@ -338,7 +364,7 @@ class OpNNClassification(Operator):
     def clearLabel(self, label_value):
         for laneIndex in range(len(self.InputImages)):
             self.getLane(laneIndex).opLabelPipeline.opLabelArray.clearLabel(label_value)
-            
+
 
 class OpBlockShape(Operator):
     RawImage = InputSlot()
@@ -396,7 +422,7 @@ class OpPredictionPipeline(Operator):
         self.cacheless_predict = OpTikTorchClassifierPredict(parent=self)
         self.cacheless_predict.name = "OpClassifierPredict (Cacheless Path)"
         self.cacheless_predict.Classifier.connect(self.Classifier)
-        self.cacheless_predict.Image.connect(self.RawImage) # <--- Not from cache
+        self.cacheless_predict.Image.connect(self.RawImage)  # <--- Not from cache
         self.cacheless_predict.LabelsCount.connect(self.NumClasses)
 
         self.predict = OpTikTorchClassifierPredict(parent=self)
@@ -416,7 +442,7 @@ class OpPredictionPipeline(Operator):
         self.opPredictionSlicer = OpMultiArraySlicer2(parent=self)
         self.opPredictionSlicer.name = "opPredictionSlicer"
         self.opPredictionSlicer.Input.connect(self.prediction_cache.Output)
-        self.opPredictionSlicer.AxisFlag.setValue('c')
+        self.opPredictionSlicer.AxisFlag.setValue("c")
         self.PredictionProbabilityChannels.connect(self.opPredictionSlicer.Slices)
 
     def setupOutputs(self):

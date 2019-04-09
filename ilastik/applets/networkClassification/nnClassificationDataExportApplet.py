@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import absolute_import
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
@@ -32,8 +32,11 @@ class NNClassificationDataExportApplet(DataExportApplet):
     """
 
     def __init__(self, workflow, title, isBatch=False):
-        self._topLevelOperator = OpMultiLaneWrapper(OpNNClassificationDataExport, parent=workflow,
-            promotedSlotNames=set(['RawData', 'Inputs', 'RawDatasetInfo']))
+        self._topLevelOperator = OpMultiLaneWrapper(
+            OpNNClassificationDataExport,
+            parent=workflow,
+            promotedSlotNames=set(["RawData", "Inputs", "RawDatasetInfo"]),
+        )
 
         self._title = title
         self._serializers = [DataExportSerializer(self._topLevelOperator, title)]

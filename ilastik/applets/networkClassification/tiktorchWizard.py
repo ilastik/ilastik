@@ -1,6 +1,6 @@
 import os
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import (Qt, pyqtSignal)
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QLineEdit, QFileDialog
 
 from tiktorch.build_spec import TikTorchSpec, BuildSpec
@@ -21,6 +21,7 @@ class MagicWizard(QtWidgets.QWizard):
         self.setOption(self.NoBackButtonOnStartPage)
         # self.setOption(self.HaveHelpButton)
         # self.button(QWizard.HelpButton).clicked.connect(self.showhelp())
+
 
 class Page1(QtWidgets.QWizardPage):
     def __init__(self, parent=None):
@@ -43,7 +44,9 @@ class Page1(QtWidgets.QWizardPage):
         self.input_shape_textbox.setPlaceholderText("Input shape of the model as (C, H, W)/(C, D, H, W)")
 
         self.minimal_increment_textbox = QLineEdit(self)
-        self.minimal_increment_textbox.setPlaceholderText("Minimal values by which to increment/decrement the input shape to be still valid as (H, W)/(D, H, W)")
+        self.minimal_increment_textbox.setPlaceholderText(
+            "Minimal values by which to increment/decrement the input shape to be still valid as (H, W)/(D, H, W)"
+        )
 
         self.model_init_kwargs_textbox = QLineEdit(self)
         self.model_init_kwargs_textbox.setPlaceholderText("Kwargs to the model constructor (Optional)")
@@ -78,9 +81,11 @@ class Page1(QtWidgets.QWizardPage):
         self.code_path = str(self.code_path_textbox.text())
         self.model_class_name = str(self.model_class_name_textbox.text())
         self.state_path = str(self.state_path_textbox.text())
-        self.input_shape = [int(x) for x in self.input_shape_textbox.text()[1:-1].replace(', ', ',').split(',')]
-        self.minimal_increment = [int(x) for x in self.minimal_increment_textbox.text()[1:-1].replace(', ',',').split(',')]
-        self.model_init_kwargs = yaml.load(str(self.model_init_kwargs_textbox.text())[1:-1].replace(', ', '\n'))
+        self.input_shape = [int(x) for x in self.input_shape_textbox.text()[1:-1].replace(", ", ",").split(",")]
+        self.minimal_increment = [
+            int(x) for x in self.minimal_increment_textbox.text()[1:-1].replace(", ", ",").split(",")
+        ]
+        self.model_init_kwargs = yaml.load(str(self.model_init_kwargs_textbox.text())[1:-1].replace(", ", "\n"))
         self.model_path = str(self.model_path_textbox.text())
 
         spec = TikTorchSpec(
@@ -96,30 +101,29 @@ class Page1(QtWidgets.QWizardPage):
         buildface.build(spec)
 
     def addModel(self):
-        defaultDirectory = os.path.expanduser('~')
+        defaultDirectory = os.path.expanduser("~")
 
         path = self.getFileToOpen(self, defaultDirectory)
         self.code_path_textbox.setText(path)
 
     def addStatePath(self):
-        defaultDirectory = os.path.expanduser('~')
+        defaultDirectory = os.path.expanduser("~")
 
         path = self.getFileToOpen(self, defaultDirectory)
         self.state_path_textbox.setText(path)
-        
+
     def addSavePath(self):
-        defaultDirectory = os.path.expanduser('~')
+        defaultDirectory = os.path.expanduser("~")
 
         path = self.getFolderToOpen(self, defaultDirectory)
-        self.model_path_textbox.setText(path)     
+        self.model_path_textbox.setText(path)
 
     def getFolderToOpen(cls, parent_window, defaultDirectory):
         """
         opens a QFileDialog for importing files
         """
         options = QFileDialog.Options(QFileDialog.ShowDirsOnly)
-        folder_name = QFileDialog.getExistingDirectory(
-            parent_window, "Select Model", defaultDirectory, options=options)
+        folder_name = QFileDialog.getExistingDirectory(parent_window, "Select Model", defaultDirectory, options=options)
 
         return folder_name
 
@@ -128,20 +132,22 @@ class Page1(QtWidgets.QWizardPage):
         opens a QFileDialog for importing files
         """
         options = QFileDialog.Options()
-        file_name, _ = QFileDialog.getOpenFileName(
-            parent_window, "Select Model", defaultDirectory)
+        file_name, _ = QFileDialog.getOpenFileName(parent_window, "Select Model", defaultDirectory)
 
         return file_name
+
 
 class ClickableLineEdit(QLineEdit):
     clicked = pyqtSignal()
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton: self.clicked.emit()
-        else: super().mousePressEvent(event)
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+        else:
+            super().mousePressEvent(event)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
