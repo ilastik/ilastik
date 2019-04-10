@@ -1,8 +1,8 @@
 from collections import defaultdict
 
 from ilastik.array5d import Image
-from ilastik.feature_extractor import FeatureCollection
-from ilastik.vigra_features import GaussianSmoothing, HessianOfGaussian
+from ilastik.features.feature_extractor import FeatureCollection
+from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
 
 
 import vigra
