@@ -166,7 +166,8 @@ CONDA_ROOT=`conda info --root`
 DEV_PREFIX=${CONDA_ROOT}/envs/idev
 
 # first remote ilastik-meta from the conda environment
-conda remove --name idev ilastik-meta
+# make sure to "force" remove with --force so that other dependencies are not affected.
+conda remove --force --name idev ilastik-meta
 
 # now link against your own ilastik-meta repository
 # navigate to the idev environment root in your conda-folder
