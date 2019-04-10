@@ -1,3 +1,5 @@
+from typing import Iterator
+
 import numpy as np
 from PIL import Image as PilImage
 import vigra
@@ -20,7 +22,7 @@ class Array5D:
     def allocate(cls, shape:Shape5D, dtype, axistags:str=Point5D.LABELS):
         #FIXME: maybe create a AxisTags5D class?
         assert len(axistags) == len(Point5D.LABELS)
-        arr = np.empty(shape.to_tuple(axistags), dtype=dtype)
+        arr = np.random.rand(*shape.to_tuple(axistags)).astype(dtype)
         tagged = vigra.taggedView(arr, axistags=axistags)
         return cls(tagged)
 
@@ -31,6 +33,10 @@ class Array5D:
     @property
     def axistags(self):
         return self._data.axistags
+
+    @property
+    def axiskeys(self):
+        return [tag.key for tag in self.axistags]
 
     @property
     def squeezed_axistags(self):
@@ -57,10 +63,6 @@ class Array5D:
         return 'c' not in self.squeezed_axistags
 
     @property
-    def axiskeys(self):
-        return [tag.key for tag in self.axistags]
-
-    @property
     def _shape(self):
         return self._data.shape
 
@@ -68,22 +70,27 @@ class Array5D:
     def shape(self) -> Shape5D:
         return Shape5D(**{key:value for key, value in zip(self.axiskeys, self._shape)})
 
-    def timeIter(self):
-        for timepoint in self._data.timeIter():
-            yield Array5D(timepoint)
+    def iter_over(self, axis:str, step:int=1) -> Iterator['Array5D']:
+        assert self.shape[axis] % step == 0
+        for axis_value in range(0, self.shape[axis], step):
+            yield self.cut_with(**{axis:slice(axis_value, axis_value + step)})
 
-    def sliceIter(self, key='z'):
-        for slc in self._data.sliceIter(key):
-            yield Array5D(slc)
+    def frames(self) -> Iterator['Array5D']:
+        return self.iter_over('t')
 
-    def channelIter(self):
-        for channel in self._data.channelIter():
-            yield self.__class__(channel)
+    def slices(self, key='z') -> Iterator['Array5D']:
+        return self.iter_over(key)
 
-    def imageIter(self, through_axis='z'):
-        for volume in self.timeIter():
-            for z_slice in volume.sliceIter(through_axis):
-                yield Image(z_slice._data)
+    def channels(self) -> Iterator['Array5D']:
+        return self.iter_over('c')
+
+    def channel_stacks(self, step):
+        return self.iter_over('c', step=step)
+
+    def images(self, through_axis='z') -> Iterator['Image']:
+        for frame in self.frames():
+            for slc in frame.slices(through_axis):
+                yield Image(slc._data)
 
     def raw(self):
         return self._data
@@ -98,15 +105,21 @@ class Array5D:
     def as_pil_images(self):
         return [img.as_pil_image() for img in self.imageIter()]
 
+    def __eq__(self, other):
+        if not isinstance(other, Array5D) or self.shape != other.shape:
+            raise Exception(f"Comparing Array5D {self} with {other}")
+
+        return np.all(self._data == other._data)
+
 class Video3D(Array5D):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         assert self.is_video
         assert self.is_volume
 
-    def timeIter(self):
-        for tp in self._data.timeIter():
-            yield Volume(self._data)
+    def frames(self):
+        for frame in super().frames():
+            yield Volume(frame._data)
 
 class Volume(Array5D):
     def __init__(self, *args, **kwargs):
@@ -114,12 +127,12 @@ class Volume(Array5D):
         assert not self.is_video
         assert self.is_volume
 
-    def sliceIter(self, key='z'):
-        for slc in super().sliceIter(key):
+    def slices(self, key='z') -> Iterator['Image']:
+        for slc in super().slices(key):
             yield Image(slc._data)
 
-    def channelIter(self):
-        for channel in super().channelIter():
+    def channels(self) -> Iterator['ScalarVolume']:
+        for channel in super().channels():
             yield ScalarVolume(channel._data)
 
 class ScalarVolume(Volume):
@@ -127,8 +140,8 @@ class ScalarVolume(Volume):
         super().__init__(*args, **kwargs)
         assert self.is_scalar
 
-    def sliceIter(self, key='z'):
-        for slc in super().sliceIter(key):
+    def slices(self, key='z') -> Iterator['ScalarImage']:
+        for slc in super().slices(key):
             yield ScalarImage(slc._data)
 
 class Video2D(Array5D):
@@ -137,8 +150,8 @@ class Video2D(Array5D):
         assert self.is_video
         assert self.is_flat
 
-    def timeIter(self):
-        for frame in super().timeIter():
+    def frames(self) -> Iterator['Image']:
+        for frame in super().frames():
             yield Image(frame._data)
 
 class Image(Array5D):
@@ -152,9 +165,9 @@ class Image(Array5D):
         image_data = np.asarray(PilImage.open(path))
         return cls(vigra.Image(image_data), force_dtype=np.float32)
 
-    def channelIter(self):
-        for channel in self._data.channelIter():
-            yield ScalarImage(channel)
+    def channels(self) -> Iterator['ScalarImage']:
+        for channel in super().channels():
+            yield ScalarImage(channel._data)
 
     def as_pil_image(self):
         return PilImage.fromarray(self._data.astype(np.uint8).squeeze())

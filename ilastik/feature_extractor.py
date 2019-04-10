@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Iterator
 
 import vigra.filters
 import numpy
@@ -12,6 +12,9 @@ class FeatureExtractor(ABC):
         self.sigma = sigma
         self.window_size = window_size
 
+    def __repr__(self):
+        return f"<{self.__class__.__qualname__} sigma={self.sigma} window_size={self.window_size}>"
+
     def allocate_for(self, source:Array5D) -> Array5D:
         return Array5D.allocate(self.get_expected_shape(source), dtype=numpy.float32)
 
@@ -20,7 +23,7 @@ class FeatureExtractor(ABC):
         pass
 
     @abstractmethod
-    def compute(self, source:Array5D, roi:Slice5D=None, out:Array5D=None) -> Array5D:
+    def compute(self, source:Array5D, out:Array5D=None) -> Array5D:
         pass
 
 class FlatChannelwiseFilter(FeatureExtractor):
@@ -29,24 +32,20 @@ class FlatChannelwiseFilter(FeatureExtractor):
 
     @property
     @abstractmethod
-    def out_channels_per_input_channel(self) -> int:
+    def dimension(self) -> int:
+        "Number of channels emmited by this feature extractor for each input channel"
         pass
 
     def get_expected_shape(self, source:Array5D) -> Shape5D:
-        shape = source.shape
-        return shape.with_coord(c=shape.c * self.out_channels_per_input_channel)
+        num_output_channels = source.shape.c * self.dimension
+        return source.shape.with_coord(c=num_output_channels)
 
-    def image_at(self, source:Image, *, c:int) -> Array5D:
-        channel_slice = slice(c, c+self.out_channels_per_input_channel)
-        return source.cut_with(c=channel_slice)
-
-    def compute(self, source:Array5D, roi:Slice5D=None, out:Array5D=None) -> Array5D:
+    def compute(self, source:Array5D, out:Array5D=None) -> Array5D:
         target = out or self.allocate_for(source)
         assert target.shape == self.get_expected_shape(source)
-        for source_image, target_image in zip(source.imageIter(), target.imageIter()):
-            for c, source_channel in enumerate(source_image.channelIter()):
-                out = self.image_at(target_image, c=c)
-                self._do_compute(source_channel, out=out)
+        for source_image, target_image in zip(source.images(), target.images()):
+            for source_channel, out_features in zip(source_image.channels(), target_image.channel_stacks(step=self.dimension)):
+                self._do_compute(source_channel, out=out_features)
         return target
 
     @abstractmethod
@@ -59,12 +58,13 @@ class FeatureCollection(FlatChannelwiseFilter):
         self.features = features
 
     @property
-    def out_channels_per_input_channel(self):
-        return sum(f.out_channels_per_input_channel for f in self.features)
+    def dimension(self):
+        return sum(f.dimension for f in self.features)
 
     def _do_compute(self, source:ScalarImage, out:Image):
         channel_count = 0
         for f in self.features:
-            feature_out = f.image_at(out, c=channel_count)
+            channel_stop = channel_count + f.dimension
+            feature_out = out.cut_with(c=slice(channel_count, channel_stop))
             f._do_compute(source, out=feature_out)
-            channel_count += f.out_channels_per_input_channel
+            channel_count = channel_stop

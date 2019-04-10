@@ -19,7 +19,7 @@ class VigraChannelwiseFilter(FlatChannelwiseFilter):
 
 class GaussianSmoothing(VigraChannelwiseFilter):
     @property
-    def out_channels_per_input_channel(self) -> int:
+    def dimension(self) -> int:
         return 1
 
     @property
@@ -28,7 +28,7 @@ class GaussianSmoothing(VigraChannelwiseFilter):
 
 class HessianOfGaussian(VigraChannelwiseFilter):
     @property
-    def out_channels_per_input_channel(self) -> int:
+    def dimension(self) -> int:
         return 3
 
     @property
