@@ -161,7 +161,7 @@ def pytest_runtestloop(session):
         for tstcls, gui_test_bag in itertools.groupby(_sorted_guitests(guitests), get_guitest_cls):
             run_gui_tests(tstcls, gui_test_bag)
 
-    else:
+    elif guitests:
         warnings.warn(
             "Skipping legacy GUI test to enable please use --run-legacy-gui option\n"
         )
