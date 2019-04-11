@@ -41,9 +41,32 @@ class Array5D:
     def axistags(self):
         return self._data.axistags
 
+    def index_of_axis(self, axis:str):
+        return self.axiskeys.index(axis)
+
     @property
     def axiskeys(self):
         return [tag.key for tag in self.axistags]
+
+    @property
+    def t_index(self):
+        return self.axiskeys.index('t')
+
+    @property
+    def c_index(self):
+        return self.axiskeys.index('c')
+
+    @property
+    def x_index(self):
+        return self.axiskeys.index('x')
+
+    @property
+    def y_index(self):
+        return self.axiskeys.index('y')
+
+    @property
+    def z_index(self):
+        return self.axiskeys.index('z')
 
     @property
     def squeezed_axistags(self):
@@ -68,6 +91,9 @@ class Array5D:
     @property
     def is_scalar(self):
         return 'c' not in self.squeezed_axistags
+
+    def is_line(self):
+        return len(self.spatial_tags) == 1
 
     @property
     def _shape(self):
@@ -194,14 +220,19 @@ class ScalarImage(Image):
         super().__init__(*args, **kwargs)
         assert self.is_scalar
 
-    def sample(self, data:Array5D):
-        assert self.shape.with_coord(c=data.shape.c) == data.shape
-        indices = tuple(zip(*np.nonzero(self._data)))
-        samples_shape = Shape5D(x=len(indices), c=data.shape.c)
-        samples = Array5D.allocate(samples_shape, data.dtype)
+class Line(Image):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        assert self.is_line
 
-        for i, index in enumerate(indices):
-            slc = Slice5D(**{k:v for k,v in zip(data.axiskeys, index)})
-            slc  = slc.with_coord(c=slice(None))
-            samples.set(data.cut(slc), x=i)
-        return samples
+    def raw(self):
+        spatial_key = self.spatial_tags[0].key
+        spatial_index = self.index_of_axis(spatial_key)
+        axes_to_keep = (spatial_index, self.c_index)
+        out = np.squeeze(self._data, axis=axes_to_keep)
+        if self.c_index < spatial_index:
+            out = out.swapaxes(spatial_key, 'c')
+        return out
+
+class ScalarLine(Line, ScalarImage):
+    pass
