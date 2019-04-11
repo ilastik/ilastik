@@ -19,12 +19,19 @@ class Array5D:
         return f"<{self.__class__.__name__} {self.shape}>"
 
     @classmethod
-    def allocate(cls, shape:Shape5D, dtype, axistags:str=Point5D.LABELS):
+    def allocate(cls, shape:Shape5D, dtype, axistags:str=Point5D.LABELS, value:int=None):
         #FIXME: maybe create a AxisTags5D class?
-        assert len(axistags) == len(Point5D.LABELS)
+        assert sorted(axistags) == sorted(Point5D.LABELS)
         arr = np.random.rand(*shape.to_tuple(axistags)).astype(dtype)
         tagged = vigra.taggedView(arr, axistags=axistags)
-        return cls(tagged)
+        arr = cls(tagged)
+        if value is not None:
+            arr._data[...] = value
+        return arr
+
+    @classmethod
+    def from_int(cls, value) -> 'Array5D':
+        return cls.allocate(Shape5D(), dtype=np.uint8, value=value)
 
     @property
     def dtype(self):
@@ -78,7 +85,7 @@ class Array5D:
     def frames(self) -> Iterator['Array5D']:
         return self.iter_over('t')
 
-    def slices(self, key='z') -> Iterator['Array5D']:
+    def planes(self, key='z') -> Iterator['Array5D']:
         return self.iter_over(key)
 
     def channels(self) -> Iterator['Array5D']:
@@ -89,7 +96,7 @@ class Array5D:
 
     def images(self, through_axis='z') -> Iterator['Image']:
         for frame in self.frames():
-            for slc in frame.slices(through_axis):
+            for slc in frame.planes(through_axis):
                 yield Image(slc._data)
 
     def raw(self):
@@ -101,6 +108,16 @@ class Array5D:
     def cut(self, roi:Slice5D):
         slices = roi.to_slices(self.axiskeys)
         return self.__class__(self._data[slices])
+
+    def set(self, value, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
+        #import pydevd; pydevd.settrace()
+        slc = Slice5D(t=t, c=c, x=x, y=y, z=z)
+        self.set_slice(value, slc=slc)
+
+    def set_slice(self, value, *, slc:Slice5D):
+        if isinstance(value, int):
+            value = self.from_int(value)
+        self.cut(slc)._data[...] = value._data
 
     def as_pil_images(self):
         return [img.as_pil_image() for img in self.imageIter()]
@@ -128,7 +145,7 @@ class Volume(Array5D):
         assert self.is_volume
 
     def slices(self, key='z') -> Iterator['Image']:
-        for slc in super().slices(key):
+        for slc in super().planes(key):
             yield Image(slc._data)
 
     def channels(self) -> Iterator['ScalarVolume']:
@@ -140,9 +157,9 @@ class ScalarVolume(Volume):
         super().__init__(*args, **kwargs)
         assert self.is_scalar
 
-    def slices(self, key='z') -> Iterator['ScalarImage']:
-        for slc in super().slices(key):
-            yield ScalarImage(slc._data)
+    def planes(self, key='z') -> Iterator['ScalarImage']:
+        for plane in super().planes(key):
+            yield ScalarImage(plane._data)
 
 class Video2D(Array5D):
     def __init__(self, *args, **kwargs):
@@ -176,3 +193,15 @@ class ScalarImage(Image):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         assert self.is_scalar
+
+    def sample(self, data:Array5D):
+        assert self.shape.with_coord(c=data.shape.c) == data.shape
+        indices = tuple(zip(*np.nonzero(self._data)))
+        samples_shape = Shape5D(x=len(indices), c=data.shape.c)
+        samples = Array5D.allocate(samples_shape, data.dtype)
+
+        for i, index in enumerate(indices):
+            slc = Slice5D(**{k:v for k,v in zip(data.axiskeys, index)})
+            slc  = slc.with_coord(c=slice(None))
+            samples.set(data.cut(slc), x=i)
+        return samples

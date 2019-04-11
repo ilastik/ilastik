@@ -6,10 +6,8 @@ from typing import Dict, Tuple, Iterator
 def ensure_slice(slc):
     if isinstance(slc, slice):
         return slc
-    if isinstance(slc, int):
-        i = slc
-        return slice(i, i+1)
-    assert False
+    i = int(slc)
+    return slice(i, i+1)
 
 class Point5D(object):
     LABELS = 'txyzc'
@@ -164,8 +162,8 @@ class Shape5D(Point5D):
         assert t > 0 and x > 0 and y > 0 and z > 0 and c > 0
         super().__init__(t=t, x=x, y=y, z=z, c=c)
 
-    def to_slice_5d(self, start:Point5D=None) -> 'Roi5D':
-        return Roi5D.from_start_stop(start or Point5D.zero(), self)
+    def to_slice_5d(self, start:Point5D=None) -> 'Slice5D':
+        return Slice5D.from_start_stop(start or Point5D.zero(), self)
 
     @classmethod
     def from_point(cls, point:Point5D):
@@ -184,7 +182,7 @@ class Shape5D(Point5D):
         for begin_tuple in product(*self._ranges(block_shape)):
             start = Point5D.from_tuple(begin_tuple)
             stop = (start + block_shape).clamped(maximum=elf.stop)
-            yield Roi5Di.from_start_stop(start, stop)
+            yield Slice5D.from_start_stop(start, stop)
 
 class Slice5D(object):
     def __init__(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
@@ -204,6 +202,35 @@ class Slice5D(object):
             slices[label] = slice(start[label], slice_stop)
         return cls(**slices)
 
+    @property
+    def t(self):
+        return self._slices['t']
+
+    @property
+    def c(self):
+        return self._slices['c']
+
+    @property
+    def x(self):
+        return self._slices['x']
+
+    @property
+    def y(self):
+        return self._slices['y']
+
+    @property
+    def z(self):
+        return self._slices['z']
+
+    def with_coord(self, *, t=None, c=None, x=None, y=None, z=None):
+        params = {}
+        params['t'] = t or self.t
+        params['c'] = c or self.c
+        params['x'] = x or self.x
+        params['y'] = y or self.y
+        params['z'] = z or self.z
+        return self.__class__(**params)
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
@@ -216,21 +243,22 @@ class Slice5D(object):
         return self.stop[label] - self.start[label]
 
     @classmethod
-    def cutout(cls, begin_tuple:Tuple[int, int, int, int, int], end_tuple:Tuple[int,int,int,int,int],
-               image_shape:Shape5D):
-        stop = (v or image_shape[k] for k,v in zip(Point5D.LABELS, begin_tuple))
-        return cls(Point5D.startpoint_from_tuple(begin_tuple), Point5D.from_tuple(stop))
-
-    @classmethod
     def all(cls):
         return cls.from_start_stop(Point5D.zero(), Point5D.inf())
+
+    @property
+    def shape(self) -> Shape5D:
+        return Shape5D(**(self.stop - self.start).to_dict())
 
     def clamped(self, *, minimum:Point5D=None, maximum:Point5D=None) -> 'Roi5D':
         return self.__class__(self.start.clamped(minimum, maximum),
                               self.stop.clamped(minimum, maximum))
 
-    def clamped_with_roi(cls, roi):
-        return cls.clamped(minimum=roi.start, maximum=roi.stop)
+    def clamped_with_roi(self, roi):
+        return self.clamped(minimum=roi.start, maximum=roi.stop)
+
+    def offset(self, offset:Point5D):
+        return self.__class__.from_start_stop(self.start + offset, self.stop + offset)
 
     def to_slices(self, axis_order=Point5D.LABELS):
         return tuple([self._slices[label] for label in axis_order])
