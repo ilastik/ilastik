@@ -7,6 +7,44 @@ from vigra import VigraArray, AxisInfo, AxisTags
 
 from .point5D import Point5D, Slice5D, Shape5D
 
+class RawAxes:
+    def __init__(self, axiskeys:str, shape:Shape5D):
+        assert set(axiskeys).issubset(set('tcxyz'))
+        self.rawaxes = {key:index for index, key in enumerate(axiskeys)}
+        self.shape = shape
+
+    @property
+    def spatials(self):
+        return {k:v for k,v in self.rawaxes.items() if k in 'xyz'}
+
+    def drop(self, axis:str):
+        for key in axis:
+            leftover_keys = [k for k in self.rawaxes.keys() if k not in axis]
+            return RawAxes(''.join(leftover_keys), self.shape)
+
+    def drop_one_spatial(self):
+        for axis in 'zyx':
+            if axis in self.rawaxes and self.shape[axis] == 1:
+                return self.drop(axis)
+
+    def to_n_spacials(self, n:int):
+        out = self
+        while len(out.spatials) > n:
+            out = out.drop_one_spatial()
+        return out
+
+    def to_planar(self):
+        return self.to_n_spacials(2)
+
+    def to_linear(self):
+        return self.to_n_spacials(1)
+
+    def to_scalar(self):
+        return self.drop('c')
+
+    def to_index_tuple(self):
+        return tuple(self.rawaxes.values())
+
 class Array5D:
     def __init__(self, arr:vigra.VigraArray, force_dtype=None):
         missing_infos = [getattr(AxisInfo, tag) for tag in Point5D.LABELS if tag not in  arr.axistags]
@@ -41,59 +79,17 @@ class Array5D:
     def axistags(self):
         return self._data.axistags
 
-    def index_of_axis(self, axis:str):
-        return self.axiskeys.index(axis)
-
     @property
     def axiskeys(self):
         return [tag.key for tag in self.axistags]
 
     @property
-    def t_index(self):
-        return self.axiskeys.index('t')
+    def rawaxes(self):
+        return RawAxes(self.axiskeys, self.shape)
 
     @property
-    def c_index(self):
-        return self.axiskeys.index('c')
-
-    @property
-    def x_index(self):
-        return self.axiskeys.index('x')
-
-    @property
-    def y_index(self):
-        return self.axiskeys.index('y')
-
-    @property
-    def z_index(self):
-        return self.axiskeys.index('z')
-
-    @property
-    def squeezed_axistags(self):
-        return self._data.squeeze().axistags
-
-    @property
-    def spatial_tags(self):
-        return [tag for tag in self.squeezed_axistags if tag.isSpatial()]
-
-    @property
-    def is_video(self):
-        return 't' in self.squeezed_axistags
-
-    @property
-    def is_volume(self):
-        return len(self.spatial_tags) >= 3
-
-    @property
-    def is_flat(self):
-        return len(self.spatial_tags) <= 2
-
-    @property
-    def is_scalar(self):
-        return 'c' not in self.squeezed_axistags
-
-    def is_line(self):
-        return len(self.spatial_tags) == 1
+    def squeezed_axes(self) -> RawAxes:
+        return self.rawaxes
 
     @property
     def _shape(self):
@@ -126,7 +122,7 @@ class Array5D:
                 yield Image(slc._data)
 
     def raw(self):
-        return self._data
+        return np.squeeze(self._data, axis=self.squeezed_axes.to_index_tuple())
 
     def cut_with(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
         return self.cut(Slice5D(t=t, c=c, x=x, y=y, z=z))
@@ -136,7 +132,6 @@ class Array5D:
         return self.__class__(self._data[slices])
 
     def set(self, value, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
-        #import pydevd; pydevd.settrace()
         slc = Slice5D(t=t, c=c, x=x, y=y, z=z)
         self.set_slice(value, slc=slc)
 
@@ -154,55 +149,43 @@ class Array5D:
 
         return np.all(self._data == other._data)
 
-class Video3D(Array5D):
+class StaticData(Array5D):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        assert self.is_video
-        assert self.is_volume
+        assert self.shape.is_static
 
-    def frames(self):
-        for frame in super().frames():
-            yield Volume(frame._data)
+    @property
+    def squeezed_axes(self) -> RawAxes:
+        return super().rawaxes.drop('t')
 
-class Volume(Array5D):
+class ScalarData(Array5D):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        assert not self.is_video
-        assert self.is_volume
+        assert self.shape.is_scalar
 
-    def slices(self, key='z') -> Iterator['Image']:
-        for slc in super().planes(key):
-            yield Image(slc._data)
+    @property
+    def squeezed_axes(self) -> RawAxes:
+        return super().rawaxes.drop('c')
 
-    def channels(self) -> Iterator['ScalarVolume']:
-        for channel in super().channels():
-            yield ScalarVolume(channel._data)
-
-class ScalarVolume(Volume):
+class FlatData(Array5D):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        assert self.is_scalar
+        assert self.shape.is_flat
 
-    def planes(self, key='z') -> Iterator['ScalarImage']:
-        for plane in super().planes(key):
-            yield ScalarImage(plane._data)
+    @property
+    def squeezed_axes(self) -> RawAxes:
+        return super().rawaxes.to_planar()
 
-class Video2D(Array5D):
+class LinearData(Array5D):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        assert self.is_video
-        assert self.is_flat
+        assert self.shape.is_line
 
-    def frames(self) -> Iterator['Image']:
-        for frame in super().frames():
-            yield Image(frame._data)
+    @property
+    def squeezed_axes(self) -> RawAxes:
+        return super().rawaxes.to_linear()
 
-class Image(Array5D):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        assert self.is_flat
-        assert not self.is_video
-
+class Image(StaticData, FlatData):
     @classmethod
     def open_image(cls, path:str):
         image_data = np.asarray(PilImage.open(path))
@@ -215,24 +198,8 @@ class Image(Array5D):
     def as_pil_image(self):
         return PilImage.fromarray(self._data.astype(np.uint8).squeeze())
 
-class ScalarImage(Image):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        assert self.is_scalar
+class ScalarImage(Image, ScalarData):
+    pass
 
-class Line(Image):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        assert self.is_line
-
-    def raw(self):
-        spatial_key = self.spatial_tags[0].key
-        spatial_index = self.index_of_axis(spatial_key)
-        axes_to_keep = (spatial_index, self.c_index)
-        out = np.squeeze(self._data, axis=axes_to_keep)
-        if self.c_index < spatial_index:
-            out = out.swapaxes(spatial_key, 'c')
-        return out
-
-class ScalarLine(Line, ScalarImage):
+class ScalarLine(LinearData, ScalarData):
     pass

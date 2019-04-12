@@ -1,13 +1,13 @@
 import numpy as np
 
-from ilastik.array5d import Array5D, Slice5D, Shape5D, ScalarImage, Line, ScalarLine
+from ilastik.array5d.array5D import Array5D, Slice5D, Shape5D, ScalarImage, LinearData, ScalarLine
 
 
 class Sampler(ScalarImage):
     class ClassList(ScalarLine):
         pass
 
-    class Samples(Line):
+    class Samples(LinearData):
         pass
 
     def sample(self, data:Array5D):
@@ -20,7 +20,7 @@ class Sampler(ScalarImage):
         samples = self.Samples.allocate(samples_shape, data.dtype)
 
         for i, index in enumerate(indices):
-            slc = Slice5D(**{k:v for k,v in zip(data.axiskeys, index)})
+            slc = Slice5D(**{k:v for k,v in zip(self.axiskeys, index)})
             slc  = slc.with_coord(c=slice(None))
             classes.set(self.cut(slc), x=i)
             samples.set(data.cut(slc), x=i)

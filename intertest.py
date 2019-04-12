@@ -1,10 +1,12 @@
 from collections import defaultdict
 
-from ilastik.array5d import Image, ScalarImage
+from PIL import Image as PilImage
 from ilastik.labels.sampler import Sampler
-from ilastik.array5d import Point5D, Slice5D, Shape5D
+from ilastik.array5d.array5D import Array5D, Image, ScalarImage
+from ilastik.array5d.point5D import Point5D, Slice5D, Shape5D
 from ilastik.features.feature_extractor import FeatureCollection
 from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
+from ilastik.labels.annotation import Annotation
 
 
 import vigra
@@ -12,7 +14,6 @@ import numpy as np
 
 a = Image.open_image("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1.png")
 
-#import pydevd; pydevd.settrace()
 
 
 #image_lists = {}
@@ -64,3 +65,18 @@ classes = list(classes.raw())
 assert all(samps.cut_with(x=classes.index(123))._data.squeeze() == np.asarray((5,6,7)))
 assert all(samps.cut_with(x=classes.index(100))._data.squeeze() == np.asarray((15,16,17)))
 assert all(samps.cut_with(x=classes.index(23))._data.squeeze() == np.asarray((105,106,107)))
+
+
+########################
+raw_data = np.asarray(PilImage.open("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1.png"))
+raw_data = Array5D(vigra.Image(raw_data))
+
+scribblings = np.asarray(PilImage.open("/home/tomaz/source/ilastik-meta/ilastik/tests/api/scribblings.png"))
+scribblings = Sampler(vigra.Image(scribblings))
+
+annotation = Annotation(scribblings=scribblings, image=raw_data)
+samples, sample_classes = annotation.get_samples(fc)
+
+
+
+

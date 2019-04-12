@@ -162,6 +162,37 @@ class Shape5D(Point5D):
         assert t > 0 and x > 0 and y > 0 and z > 0 and c > 0
         super().__init__(t=t, x=x, y=y, z=z, c=c)
 
+    @property
+    def spatial_axes(self):
+        return {k:v for k,v in self._coords.items() if k in 'xyz'}
+
+    @property
+    def missing_spatial_axes(self):
+        return {k:v for k,v in self.spatial_axes.items() if v == 1}
+
+    @property
+    def present_spatial_axes(self) -> int:
+        return {k:v for k,v in self.spatial_axes.items() if k not in self.missing_spatial_axes}
+
+    @property
+    def is_static(self):
+        return self.t == 1
+
+    @property
+    def is_volume(self):
+        return len(self.present_spatial_axes) <= 3
+
+    @property
+    def is_flat(self):
+        return len(self.present_spatial_axes) <= 2
+
+    def is_line(self):
+        return len(self.present_spatialaxes) <= 1
+
+    @property
+    def is_scalar(self):
+        return self.c == 1
+
     def to_slice_5d(self, start:Point5D=None) -> 'Slice5D':
         return Slice5D.from_start_stop(start or Point5D.zero(), self)
 
