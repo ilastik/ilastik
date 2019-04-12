@@ -45,6 +45,19 @@ class RawAxes:
     def to_index_tuple(self):
         return tuple(self.rawaxes.values())
 
+    def swapped(self, a:str, b:str) -> str:
+        d = dict(self.rawaxes)
+        temp = d[a]
+        d[a] = d[b]
+        d[b] = temp
+        new_keys = ''.join(d.keys())
+
+        temp = self.shape[a]
+        new_shape = self.shape.with_coord(**{a:self.shape[b]})
+        new_shape = new_shape.with_coord(**{b:temp})
+
+        return RawAxes(new_keys, new_shape)
+
 class Array5D:
     def __init__(self, arr:vigra.VigraArray, force_dtype=None):
         missing_infos = [getattr(AxisInfo, tag) for tag in Point5D.LABELS if tag not in  arr.axistags]

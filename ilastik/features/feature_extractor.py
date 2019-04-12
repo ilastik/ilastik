@@ -1,11 +1,28 @@
 from abc import ABC, abstractmethod
+from functools import reduce
+from operator import mul
 from typing import List, Iterator
 
 import vigra.filters
 import numpy
 
 from ilastik.array5d import Slice5D, Point5D, Shape5D
-from ilastik.array5d import Array5D, Image, ScalarImage
+from ilastik.array5d import Array5D, Image, ScalarImage, LinearData
+
+class FeatureData(Array5D):
+    def linear_raw(self):
+        """Returns a raw view with one spatial dimension and one channel dimension"""
+        if self.axiskeys[-1] != 'c':
+            swapped_axes = self.rawaxes.swapped(self.axiskeys[0], 'c')
+            out = self._data.swapaxes(self.axiskeys[0], 'c')
+            return out.reshape(swapped_axes.to_index_tuple())
+
+        #import pydevd; pydevd.settrace()
+        shape_dict = {**self.shape.to_dict(), 'c':1}
+        first_dimension = reduce(mul, shape_dict.values(), 1)
+
+        #FIXME: this nukes axistags and i don't know how to put them back =/
+        return numpy.asarray(self._data.reshape((int(first_dimension), self.shape.c)))
 
 class FeatureExtractor(ABC):
     def __init__(self, sigma:float, window_size:float):
@@ -16,7 +33,7 @@ class FeatureExtractor(ABC):
         return f"<{self.__class__.__qualname__} sigma={self.sigma} window_size={self.window_size}>"
 
     def allocate_for(self, source:Array5D) -> Array5D:
-        return Array5D.allocate(self.get_expected_shape(source), dtype=numpy.float32)
+        return FeatureData.allocate(self.get_expected_shape(source), dtype=numpy.float32)
 
     @abstractmethod
     def get_expected_shape(self, source:Array5D) -> Shape5D:

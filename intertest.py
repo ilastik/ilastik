@@ -7,6 +7,7 @@ from ilastik.array5d.point5D import Point5D, Slice5D, Shape5D
 from ilastik.features.feature_extractor import FeatureCollection
 from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
 from ilastik.labels.annotation import Annotation
+from ilastik.classifiers.pixel_classifier import PixelClassifier
 
 
 import vigra
@@ -77,6 +78,8 @@ scribblings = Sampler(vigra.Image(scribblings))
 annotation = Annotation(scribblings=scribblings, image=raw_data)
 samples, sample_classes = annotation.get_samples(fc)
 
+computed_feats.linear_raw()
 
+#####################3333
 
-
+classifier = PixelClassifier(feature_collection=fc, annotations=[annotation])
