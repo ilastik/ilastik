@@ -17,7 +17,7 @@ goto :init
     echo.  -e, --verbose            show detailed output
     echo.  -s, --solvers            install ilastik with solvers
     echo.  -a, additional package   install additional package
-    echo.  -c, conda channel        use additional conda channel (default: only conda-forge)
+    echo.  -c, conda channel        use conda channel (e.g. -c ilastik-forge -c conda-forge)
     goto :eof
 
 :version
@@ -48,7 +48,7 @@ goto :init
     set "IlastikMetaPath="
     set "BasePackage=ilastik-dependencies-no-solvers"
     set "Packages="
-    set "Channels=-c conda-forge"
+    set "Channels="
 
 :parse
     if "%~1"=="" goto :validate
@@ -113,7 +113,7 @@ goto :init
     if defined OptVerbose (echo creating conda environment done)
 
     if defined OptVerbose (if defined IlastikMetaPath echo removing ilastik-meta...)
-    if defined IlastikMetaPath call conda remove -y -n %EnvName% ilastik-meta
+    if defined IlastikMetaPath call conda remove -y --force -n %EnvName% ilastik-meta
     if %errorlevel% neq 0 goto :end
     if defined OptVerbose (if defined IlastikMetaPath echo removing ilastik-meta done)
 

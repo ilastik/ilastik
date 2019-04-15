@@ -3,14 +3,14 @@
 # mainly following the guide on https://github.com/ilastik/ilastik-build-conda
 # for this script to work, conda has to be in your path
 # tested with conda v4.5.4
-
+set -e
 usage ()
 {
   echo "Usage : $0 [options] <ENVIRONMENT_NAME> [<ILASTIK-META_LOCAL_SOURCE_PATH>]"
   echo
   echo "valid options (each can be invoked multiple times:"
   echo "  -a <additional_package>"
-  echo "  -c <additional_channel>  use additional conda channel (default: only conda-forge)"
+  echo "  -c <channel>             specify channel to source packages from, e.g. -c ilastik-forge -c conda-forge"
   echo "  -s                       install with solvers (on Linux both solvers, CPLEX and Gurobi, have to be available)"
   echo
   echo "If ILASTIK-META_LOCAL_SOURCE_PATH is not given, package"
@@ -42,7 +42,6 @@ then
     CHANNELS+="-c ${ch} "
   done
 fi
-CHANNELS+="-c conda-forge"
 
 if [ ${#ADDITIONAL_PACKAGES[@]} -gt 0 ]
 then
@@ -77,7 +76,7 @@ then
     ILASTIK_META_SOURCE=$(readlink -m "${ILASTIK_META_SOURCE}")
     echo "linking to existing sources in ${ILASTIK_META_SOURCE}"
     DEV_PREFIX=${CONDA_ROOT}/envs/${ENV_NAME}
-    eval "conda remove -y -n ${ENV_NAME} ilastik-meta"
+    eval "conda remove -y --force -n ${ENV_NAME} ilastik-meta"
     # Re-install ilastik-meta.pth
     cat > "${DEV_PREFIX}"/lib/python3.7/site-packages/ilastik-meta.pth << EOF
 ../../../ilastik-meta/lazyflow
