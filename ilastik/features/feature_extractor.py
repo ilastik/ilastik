@@ -12,17 +12,13 @@ from ilastik.array5d import Array5D, Image, ScalarImage, LinearData
 class FeatureData(Array5D):
     def linear_raw(self):
         """Returns a raw view with one spatial dimension and one channel dimension"""
-        if self.axiskeys[-1] != 'c':
-            swapped_axes = self.rawaxes.swapped(self.axiskeys[0], 'c')
-            out = self._data.swapaxes(self.axiskeys[0], 'c')
-            return out.reshape(swapped_axes.to_index_tuple())
-
-        #import pydevd; pydevd.settrace()
         shape_dict = {**self.shape.to_dict(), 'c':1}
         first_dimension = reduce(mul, shape_dict.values(), 1)
+        first_dimension = int(first_dimension)
+        new_shape = (first_dimension, self.shape.c)
 
         #FIXME: this nukes axistags and i don't know how to put them back =/
-        return numpy.asarray(self._data.reshape((int(first_dimension), self.shape.c)))
+        return numpy.asarray(self.with_c_as_last_axis()._data.reshape(new_shape))
 
 class FeatureExtractor(ABC):
     def __init__(self, sigma:float, window_size:float):

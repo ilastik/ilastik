@@ -1,4 +1,5 @@
 from typing import Iterator
+from collections import OrderedDict
 
 import numpy as np
 from PIL import Image as PilImage
@@ -7,24 +8,27 @@ from vigra import VigraArray, AxisInfo, AxisTags
 
 from .point5D import Point5D, Slice5D, Shape5D
 
-class RawAxes:
+class RawShape:
     def __init__(self, axiskeys:str, shape:Shape5D):
         assert set(axiskeys).issubset(set('tcxyz'))
-        self.rawaxes = {key:index for index, key in enumerate(axiskeys)}
+        self.index_map = OrderedDict((axis, idx) for idx, axis in enumerate(axiskeys))
         self.shape = shape
 
     @property
-    def spatials(self):
-        return {k:v for k,v in self.rawaxes.items() if k in 'xyz'}
+    def axiskeys(self):
+        return ''.join(self.index_map.keys())
 
-    def drop(self, axis:str):
-        for key in axis:
-            leftover_keys = [k for k in self.rawaxes.keys() if k not in axis]
-            return RawAxes(''.join(leftover_keys), self.shape)
+    @property
+    def spatials(self):
+        return {k:v for k,v in self.index_map.items() if k in 'xyz'}
+
+    def drop(self, axis:str) -> 'RawShape':
+        leftover_keys = [k for k in self.index_map.keys() if k not in axis]
+        return RawShape(''.join(leftover_keys), self.shape)
 
     def drop_one_spatial(self):
         for axis in 'zyx':
-            if axis in self.rawaxes and self.shape[axis] == 1:
+            if axis in self.index_map and self.shape[axis] == 1:
                 return self.drop(axis)
 
     def to_n_spacials(self, n:int):
@@ -42,11 +46,25 @@ class RawAxes:
     def to_scalar(self):
         return self.drop('c')
 
+    def to_static(self):
+        return self.drop('t')
+
+    def to_shape_dict(self):
+        return {axis:self.shape[axis] for axis in self.axiskeys}
+
     def to_index_tuple(self):
-        return tuple(self.rawaxes.values())
+        return tuple(self.index_map.values())
+
+    def to_shape_tuple(self, *, with_t=None, with_c=None, with_x=None, with_y=None, with_z=None):
+        overrides = {'t': with_t, 'c': with_c, 'x': with_x, 'y': with_y, 'z': with_z}
+        out = {k:v for k,v in overrides.items() if v is not None}
+        assert all(k in self.axiskeys for k in overrides.keys())
+
+        out = {**self.to_shape_dict(), **out}
+        return tuple(out[axis] for axis in self.axiskeys)
 
     def swapped(self, a:str, b:str) -> str:
-        d = dict(self.rawaxes)
+        d = dict(self.index_map)
         temp = d[a]
         d[a] = d[b]
         d[b] = temp
@@ -56,7 +74,7 @@ class RawAxes:
         new_shape = self.shape.with_coord(**{a:self.shape[b]})
         new_shape = new_shape.with_coord(**{b:temp})
 
-        return RawAxes(new_keys, new_shape)
+        return RawShape(new_keys, new_shape)
 
 class Array5D:
     def __init__(self, arr:vigra.VigraArray, force_dtype=None):
@@ -97,12 +115,12 @@ class Array5D:
         return [tag.key for tag in self.axistags]
 
     @property
-    def rawaxes(self):
-        return RawAxes(self.axiskeys, self.shape)
+    def rawshape(self):
+        return RawShape(self.axiskeys, self.shape)
 
     @property
-    def squeezed_axes(self) -> RawAxes:
-        return self.rawaxes
+    def squeezed_shape(self) -> RawShape:
+        return self.rawshape
 
     @property
     def _shape(self):
@@ -135,7 +153,13 @@ class Array5D:
                 yield Image(slc._data)
 
     def raw(self):
-        return np.squeeze(self._data, axis=self.squeezed_axes.to_index_tuple())
+        return np.squeeze(self._data, axis=self.squeezed_shape.to_index_tuple())
+
+    def with_c_as_last_axis(self) -> 'Array5D':
+        last_axis = self.axiskeys[-1]
+        if last_axis == 'c':
+            return self
+        return self.__class__(self._data.swapaxes(last_axis, 'c'))
 
     def cut_with(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
         return self.cut(Slice5D(t=t, c=c, x=x, y=y, z=z))
@@ -168,8 +192,8 @@ class StaticData(Array5D):
         assert self.shape.is_static
 
     @property
-    def squeezed_axes(self) -> RawAxes:
-        return super().rawaxes.drop('t')
+    def squeezed_shape(self) -> RawShape:
+        return super().rawshape.to_static()
 
 class ScalarData(Array5D):
     def __init__(self, *args, **kwargs):
@@ -177,8 +201,8 @@ class ScalarData(Array5D):
         assert self.shape.is_scalar
 
     @property
-    def squeezed_axes(self) -> RawAxes:
-        return super().rawaxes.drop('c')
+    def squeezed_shape(self) -> RawShape:
+        return super().rawshape.to_scalar()
 
 class FlatData(Array5D):
     def __init__(self, *args, **kwargs):
@@ -186,8 +210,8 @@ class FlatData(Array5D):
         assert self.shape.is_flat
 
     @property
-    def squeezed_axes(self) -> RawAxes:
-        return super().rawaxes.to_planar()
+    def squeezed_shape(self) -> RawShape:
+        return super().rawshape.to_planar()
 
 class LinearData(Array5D):
     def __init__(self, *args, **kwargs):
@@ -195,8 +219,8 @@ class LinearData(Array5D):
         assert self.shape.is_line
 
     @property
-    def squeezed_axes(self) -> RawAxes:
-        return super().rawaxes.to_linear()
+    def squeezed_shape(self) -> RawShape:
+        return super().rawshape.to_linear()
 
 class Image(StaticData, FlatData):
     @classmethod
