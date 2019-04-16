@@ -76,7 +76,7 @@ class TestHeadlessWorkflowStartupProjectCreation(object):
         sys.argv.extend(args)
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
-        parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
+        parsed_args, workflow_cmdline_args = ilastik_main.parse_known_args()
 
         shell = ilastik_main.main(
             parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False)
@@ -117,7 +117,7 @@ class TestHeadlessWorkflowStartupProjectCreation(object):
         sys.argv.extend(args)
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
-        parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
+        parsed_args, workflow_cmdline_args = ilastik_main.parse_known_args()
         shell = ilastik_main.main(
             parsed_args=parsed_args, workflow_cmdline_args=workflow_cmdline_args, init_logging=False)
 
