@@ -509,9 +509,7 @@ class NNClassGui(LabelingGui):
         return layers
 
     def toggleLivePrediction(self, checked):
-        if not self.topLevelOperatorView.ClassifierFactory.ready():
-            checked = False
-
+        logger.debug("toggle live prediction, checked: %r", checked)
         logger.debug(f"toggling live prediction mode to {checked}")
         self.labelingDrawerUi.livePrediction.setEnabled(False)
 
@@ -542,6 +540,7 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.livePrediction.setEnabled(True)
 
     def toggleLiveTraining(self, checked):
+        logger.debug("toggle live training, checked: %r", checked)
         if not self.topLevelOperatorView.ClassifierFactory.ready():
             checked = False
 
@@ -553,10 +552,10 @@ class NNClassGui(LabelingGui):
             self.set_live_training_icon(checked)
             if checked:
                 self.toggleLivePrediction(True)
-                factory.resume_training_process()
+                factory.resume_training()
                 self.invalidatePredictionsTimer.start(20000)  # start updating regularly
             else:
-                factory.pause_training_process()
+                factory.pause_training()
                 self.invalidatePredictionsTimer.stop()
                 self.updatePredictions()  # update one last time
                 try:

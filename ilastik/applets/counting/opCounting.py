@@ -524,8 +524,8 @@ class OpLabelPipeline(Operator):
         # Aim for blocks with roughly the same size as in pixel classification,
         # taking into account that counting will be 2d: 40 ** 3 = 256 ** 2
         block_shape = determineBlockShape(list(tagged_shape.values()), 256 ** 2)
-        self.opLabelArray.BlockShape.setValue(block_shape)
-        self.opBoxArray.BlockShape.setValue(block_shape)
+        self.opLabelArray.blockShape.setValue(block_shape)
+        self.opBoxArray.blockShape.setValue(block_shape)
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__

@@ -182,7 +182,7 @@ class OpCroppingSingleLane( Operator ):
         
         ## Crop Array blocks
         blockShape = tuple( blockDims[k] for k in axisOrder )
-        self.opCropArray.BlockShape.setValue(blockShape)
+        self.opCropArray.blockShape.setValue(blockShape)
 
     def cleanUp(self):
         self.CropInput.disconnect()

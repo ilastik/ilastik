@@ -206,7 +206,7 @@ class NNClassificationWorkflow(Workflow):
         batch_processing_busy = self.batchProcessingApplet.busy
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
-        self._shell.setAppletEnabled(self.serverConfigApplet, not serverConfig_finished)
+        self._shell.setAppletEnabled(self.serverConfigApplet, input_ready and not batch_processing_busy and not live_update_active)
         self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and not batch_processing_busy)
         self._shell.setAppletEnabled(
             self.dataExportApplet, predictions_ready and not batch_processing_busy and not live_update_active

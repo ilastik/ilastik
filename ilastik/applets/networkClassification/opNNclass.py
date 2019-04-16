@@ -51,11 +51,11 @@ class OpNNClassification(Operator):
 
     # Graph inputs
     InputImages = InputSlot(level=1)
+    ServerConfig = InputSlot()
     NumClasses = InputSlot(optional=True)
     LabelInputs = InputSlot(optional=True, level=1)
     FreezePredictions = InputSlot(stype="bool", value=False, nonlane=True)
     ClassifierFactory = InputSlot(optional=True)
-    ServerConfig = InputSlot(value=DEFAULT_LOCAL_SERVER_CONFIG)
     TiktorchConfig = InputSlot(optional=True)
     BinaryModel = InputSlot(optional=True)
     BinaryModelState = InputSlot(value=b"")
