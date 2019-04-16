@@ -101,8 +101,8 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         self._purge_label(from_label, True, into_label)
 
     def setupOutputs(self):
-        print('here blockShape', self.blockShape)
-        print('here input', self.Input)
+        logger.debug('blockShape %s', self.blockShape)
+        logger.debug('input %s', self.Input)
         super(OpCompressedUserLabelArray, self).setupOutputs()
         if self.Output.meta.NOTREADY:
             self.nonzeroBlocks.meta.NOTREADY = True
