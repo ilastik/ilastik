@@ -129,6 +129,12 @@ class OpNNClassification(Operator):
             except:
                 logger.debug("Could not restore labels after setting TikTorchLazyflowClassifierFactory.")
 
+    def cleanUp(self):
+        try:
+            self.ClassifierFactory.value.launcher.shutdown()
+        except Exception as e:
+            logger.warning(e)
+
     def __init__(self, *args, **kwargs):
         """
         Instantiate all internal operators and connect them together.
