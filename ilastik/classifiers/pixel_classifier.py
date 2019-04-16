@@ -10,6 +10,13 @@ from ilastik.array5d.array5D import Array5D
 from ilastik.features.feature_extractor import FeatureCollection, FeatureData
 from ilastik.labels.annotation import Annotation 
 
+class Predictions(Array5D):
+    """An array of floats from 0.0 to 1.0. Teh value in each channel represents
+    how likely that pixel is to belong to the classification class associated with
+    that channel"""
+    def as_uint8(self):
+        return Array5D(self._data * 255, force_dtype=np.uint8)
+
 class PixelClassifier:
     def __init__(self, feature_collection:FeatureCollection, annotations:List[Annotation],
                  num_trees=100, num_forests=None, variable_importance_path=None,
@@ -29,7 +36,7 @@ class PixelClassifier:
         self.forests = [RandomForest(tc) for tc in tree_counts]
         self.oobs = [forest.learnRF(X.linear_raw(), y.raw()) for forest in self.forests]
 
-    def predict(self, raw_data:Array5D):
+    def predict(self, raw_data:Array5D) -> Predictions:
         feature_data = self.feature_collection.compute(raw_data)
 
         total_predictions = None
@@ -44,10 +51,9 @@ class PixelClassifier:
         total_predictions /= self.num_trees
 
         num_classes = total_predictions.shape[-1]
-        raw_out_shape = raw_data.with_c_as_last_axis().rawshape.to_shape_tuple(with_c=num_classes)
-        out_axiskeys =  raw_data.with_c_as_last_axis().axiskeys
+        out_shape = feature_data.with_c_as_last_axis().rawshape.to_shape_tuple(with_c=num_classes)
+        out_axiskeys =  feature_data.with_c_as_last_axis().axiskeys
 
-        import pydevd; pydevd.settrace()
-        reshaped_predictions = total_predictions.reshape(raw_out_shape)
+        reshaped_predictions = total_predictions.reshape(out_shape)
         tagged_view = vigra.taggedView(reshaped_predictions, axistags=out_axiskeys)
-        return Array5D(tagged_view)
+        return Predictions(tagged_view)

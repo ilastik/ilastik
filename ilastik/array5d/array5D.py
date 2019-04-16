@@ -178,7 +178,7 @@ class Array5D:
         self.cut(slc)._data[...] = value._data
 
     def as_pil_images(self):
-        return [img.as_pil_image() for img in self.imageIter()]
+        return [img.as_pil_image() for img in self.images()]
 
     def __eq__(self, other):
         if not isinstance(other, Array5D) or self.shape != other.shape:
@@ -226,7 +226,7 @@ class Image(StaticData, FlatData):
     @classmethod
     def open_image(cls, path:str):
         image_data = np.asarray(PilImage.open(path))
-        return cls(vigra.Image(image_data), force_dtype=np.float32)
+        return cls(vigra.Image(image_data))
 
     def channels(self) -> Iterator['ScalarImage']:
         for channel in super().channels():

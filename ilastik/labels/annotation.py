@@ -10,21 +10,21 @@ from ilastik.labels.sampler import Sampler
 from ilastik.features.feature_extractor import FeatureExtractor
 
 class ScribblingsOutOfBounds(Exception):
-    def __init__(self, scribblings:Array5D, image:Array5D, offset:Array5D):
-        super().__init__(f"Class map {scribblings} offset by {offset} exceeds bounds of image {image}")
+    def __init__(self, scribblings:Array5D, raw_data:Array5D, offset:Array5D):
+        super().__init__(f"Class map {scribblings} offset by {offset} exceeds bounds of raw_data {raw_data}")
 
 class Annotation:
     "Represents a list of pixels belonging to a classification class"
-    def __init__(self, scribblings:Sampler, image:Array5D, offset:Point5D=Point5D.zero()):
+    def __init__(self, scribblings:Sampler, raw_data:Array5D, offset:Point5D=Point5D.zero()):
         """
         scribblings: bounding box of some scribblings. 0-valued pixels are considered not annotated
-        image: The image onto which these annotations were made
-        offset: position of the top-left corner of class-map inside the image shape
+        raw_data: The image onto which these annotations were made
+        offset: position of the top-left corner of class-map inside the raw_data shape
         """
-        if scribblings.shape + offset > image.shape:
-            raise ScribblingsOutOfBounds(scribblings=scribblings, image=image, offset=offset)
+        if scribblings.shape + offset > raw_data.shape:
+            raise ScribblingsOutOfBounds(scribblings=scribblings, raw_data=raw_data, offset=offset)
         self.scribblings = scribblings
-        self.image = image
+        self.raw_data = raw_data
         self.offset = offset
         self._samples = None
 
@@ -32,9 +32,9 @@ class Annotation:
         if self._samples is not None:
             return self._samples
         roi = self.scribblings.shape.to_slice_5d().offset(self.offset)
-        roi = roi.with_coord(c=slice(0, self.image.shape.c))
-        features = feature_extractor.compute(self.image.cut(roi))
+        roi = roi.with_coord(c=slice(0, self.raw_data.shape.c))
+        features = feature_extractor.compute(self.raw_data.cut(roi))
         return self.scribblings.sample(features)
 
     def __repr__(self):
-        return f"<labels for image: {self.image}>"
+        return f"<labels for raw_data: {self.raw_data}>"
