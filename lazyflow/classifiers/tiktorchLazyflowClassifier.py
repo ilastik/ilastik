@@ -143,17 +143,11 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         else:
             raise ValueError(f"expected boolean, got {value}")
 
-    def pause_training_process(self):
-        if self.tikTorchClient.training_process_is_running():
-            self.tikTorchClient.pause()
-        else:
-            logger.debug("tikTorchClient cannot be paused. (training process not running)")
+    def pause_training(self):
+        self.tikTorchClient.pause_training()
 
-    def resume_training_process(self):
-        if self.tikTorchClient.training_process_is_running():
-            self.tikTorchClient.resume()
-        else:
-            logger.debug("tikTorchClient cannot be resumed. (training process not running)")
+    def resume_training(self):
+        self.tikTorchClient.resume_training()
 
     def send_hparams(self, hparams):
         self.tikTorchClient.set_hparams(hparams)

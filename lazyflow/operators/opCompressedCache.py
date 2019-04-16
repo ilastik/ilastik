@@ -81,7 +81,7 @@ class OpUnmanagedCompressedCache(Operator):
     Input = InputSlot(allow_mask=True)
 
     # shape of internal in-memory hdf5 files (defaults to the whole volume)
-    BlockShape = InputSlot(optional=True)
+    blockShape = InputSlot(optional=True)
 
     # Output as numpy arrays
     Output = OutputSlot(allow_mask=True)
@@ -121,8 +121,8 @@ class OpUnmanagedCompressedCache(Operator):
 
         # no block shape given -> use the whole volume as one block
         new_blockshape = self.Input.meta.shape
-        if self.BlockShape.ready():
-            new_blockshape = self.BlockShape.value
+        if self.blockShape.ready():
+            new_blockshape = self.blockShape.value
 
         if len(new_blockshape) != len(self.Input.meta.shape):
             self.Output.meta.NOTREADY = True
@@ -256,7 +256,7 @@ class OpUnmanagedCompressedCache(Operator):
                         self._dirtyBlocks.add(block_start)
             # Forward to downstream connections
             self.Output.setDirty(roi)
-        elif slot == self.BlockShape:
+        elif slot == self.blockShape:
             # Everything is dirty
             self.Output.setDirty(slice(None))
         else:

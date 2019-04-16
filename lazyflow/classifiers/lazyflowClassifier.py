@@ -307,6 +307,12 @@ class LazyflowOnlineClassifier:
     #     """
     #     raise NotImplementedError
 
+    def resume_training(self):
+        raise NotImplementedError
+
+    def pause_training(self):
+        raise NotImplementedError
+
     def description(self):
         """
         Return a human-readable description of this classifier.

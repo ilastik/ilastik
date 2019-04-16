@@ -97,6 +97,7 @@ class OpFeatureMatrixCache(Operator):
     def setupOutputs(self):
         # We assume that channel the last axis
         assert self.FeatureImage.meta.getAxisKeys()[-1] == "c"
+        print('here', self.LabelImage)
         assert self.LabelImage.meta.getAxisKeys()[-1] == "c"
         assert self.LabelImage.meta.shape[-1] == 1
 

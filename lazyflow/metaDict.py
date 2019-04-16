@@ -151,7 +151,7 @@ class MetaDict(defaultdict):
         return OrderedDict(list(zip(keys, self.shape)))
 
     def getAxisKeys(self):
-        assert self.axistags is not None
+        assert self.axistags is not None, self
         return [tag.key for tag in self.axistags]
 
     def getOriginalAxisKeys(self):

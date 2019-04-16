@@ -149,8 +149,8 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
         self.Labels.notifyRemove(handle_remove_lane)
 
     def setupOutputs(self):
-        for slot in list(self.Images) + list(self.Labels):
-            assert slot.meta.getAxisKeys()[-1] == "c", "This opearator assumes channel is the last axis."
+        for slot in [self.Images, self.Labels]:
+            assert slot.meta.getAxisKeys()[-1] == "c", f"This opearator assumes channel is the last axis. problem: {slot}"
 
         self.Classifier.meta.dtype = object
         self.Classifier.meta.shape = (1,)

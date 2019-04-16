@@ -68,7 +68,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([1, 100, 75, 50, 2])
+        op.blockShape.setValue([1, 100, 75, 50, 2])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -98,7 +98,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([1, 100, 75, 50, 2])
+        op.blockShape.setValue([1, 100, 75, 50, 2])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -132,7 +132,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([100, 75, 50])
+        op.blockShape.setValue([100, 75, 50])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -161,7 +161,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([100, 75, 50])
+        op.blockShape.setValue([100, 75, 50])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -194,7 +194,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([1, 75, 50, 2])
+        op.blockShape.setValue([1, 75, 50, 2])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -223,7 +223,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([1, 75, 50, 2])
+        op.blockShape.setValue([1, 75, 50, 2])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -256,7 +256,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([75, 50])
+        op.blockShape.setValue([75, 50])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -285,7 +285,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([75, 50])
+        op.blockShape.setValue([75, 50])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -380,7 +380,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([1, 100, 75, 50, 2])
+        op.blockShape.setValue([1, 100, 75, 50, 2])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -424,7 +424,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([1, 100, 75, 50, 2])
+        op.blockShape.setValue([1, 100, 75, 50, 2])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -472,7 +472,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([100, 75, 50])
+        op.blockShape.setValue([100, 75, 50])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -505,7 +505,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([100, 75, 50])
+        op.blockShape.setValue([100, 75, 50])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -543,12 +543,12 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(graph=graph)
         op.Input.connect(opData1.Output)
-        op.BlockShape.setValue((200, 100, 10))
+        op.blockShape.setValue((200, 100, 10))
         out = op.Output[...].wait().view(numpy.ndarray)
 
         assert (out == vol).all(), "Incorrect output!"
 
-        op.BlockShape.setValue((50, 100, 10))
+        op.blockShape.setValue((50, 100, 10))
 
         # Older versions of OpCompressedCache threw an exception here because
         #  we tried to access the cache after changing the blockshape.
@@ -572,7 +572,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(graph=graph)
         op.Input.connect(opData1.Output)
-        op.BlockShape.setValue((200, 100, 10))
+        op.blockShape.setValue((200, 100, 10))
         out = op.Output[...].wait()
 
         assert (
@@ -581,7 +581,7 @@ class TestOpCompressedCache(object):
             and ((out.fill_value == vol.fill_value) | (numpy.isnan(out.fill_value) & numpy.isnan(vol.fill_value))).all()
         ), "Incorrect output!"
 
-        op.BlockShape.setValue((50, 100, 10))
+        op.blockShape.setValue((50, 100, 10))
 
         # Older versions of OpCompressedCache threw an exception here because
         #  we tried to access the cache after changing the blockshape.
@@ -606,7 +606,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([100, 75, 50])
+        op.blockShape.setValue([100, 75, 50])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -623,7 +623,7 @@ class TestOpCompressedCache(object):
         # Now change the blockshape and the input and try again...
         sampleDataWithChannel = sampleData.withAxes(*"xyzc")
         opData.Input.setValue(sampleDataWithChannel)
-        op.BlockShape.setValue([45, 33, 40, 1])
+        op.blockShape.setValue([45, 33, 40, 1])
 
         assert op.Output.ready()
 
@@ -646,7 +646,7 @@ class TestOpCompressedCache(object):
         opData.Input.setValue(sampleData)
 
         op = OpCompressedCache(parent=None, graph=graph)
-        op.BlockShape.setValue((25, 25, 25))
+        op.blockShape.setValue((25, 25, 25))
         op.Input.connect(opData.Output)
 
         before = time.time()
@@ -708,7 +708,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([100, 75, 50])
+        op.blockShape.setValue([100, 75, 50])
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
@@ -733,7 +733,7 @@ class TestOpCompressedCache(object):
         sampleDataWithChannel = sampleData[..., None]
         opData.Input.meta.axistags = vigra.defaultAxistags("xyzc")
         opData.Input.setValue(sampleDataWithChannel)
-        op.BlockShape.setValue([45, 33, 40, 1])
+        op.blockShape.setValue([45, 33, 40, 1])
 
         assert op.Output.ready()
 
@@ -765,7 +765,7 @@ class TestOpCompressedCache(object):
 
             op = OpCompressedCache(graph=graph)
             # logger.debug("Setting block shape...")
-            op.BlockShape.setValue([100, 75, 50])
+            op.blockShape.setValue([100, 75, 50])
             op.Input.connect(opData.Output)
             x = op.Output[...].wait()
             op.Input.disconnect()
@@ -786,7 +786,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([100, 75, 50])
+        op.blockShape.setValue([100, 75, 50])
         op.Input.connect(opData.Output)
 
         op.Output[...].wait()
@@ -808,7 +808,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([75, 125, 150])
+        op.blockShape.setValue([75, 125, 150])
         op.Input.connect(opData.Output)
 
         assert op.OutputHdf5.ready()
@@ -840,7 +840,7 @@ class TestOpCompressedCache(object):
                 op.InputHdf5.meta.axistags = vigra.AxisTags("xyz")
                 op.InputHdf5.meta.shape = (75, 125, 150)
                 # logger.debug("Setting block shape...")
-                op.BlockShape.setValue([75, 125, 150])
+                op.blockShape.setValue([75, 125, 150])
                 op.Input.connect(opData.Output)
 
                 op.InputHdf5[slicing_2] = h5_file[slicing_str]
@@ -866,7 +866,7 @@ class TestOpCompressedCache(object):
 
         op = OpCompressedCache(parent=None, graph=graph)
         # logger.debug("Setting block shape...")
-        op.BlockShape.setValue([75, 125, 150])
+        op.blockShape.setValue([75, 125, 150])
         op.Input.connect(opData.Output)
 
         assert op.OutputHdf5.ready()
@@ -909,7 +909,7 @@ class TestOpCompressedCache(object):
                 op.InputHdf5.meta.has_mask = True
                 op.InputHdf5.meta.shape = (75, 125, 150)
                 # logger.debug("Setting block shape...")
-                op.BlockShape.setValue([75, 125, 150])
+                op.blockShape.setValue([75, 125, 150])
                 op.Input.connect(opData.Output)
 
                 op.InputHdf5[slicing_2] = h5_file[slicing_str]
@@ -965,7 +965,7 @@ class TestOpCompressedCache(object):
         opData.Input.setValue(sampleData)
         op = OpCompressedCache(graph=graph)
         op.Input.connect(opData.Output)
-        op.BlockShape.setValue(blockShape)
+        op.blockShape.setValue(blockShape)
 
         assert op.Output.ready()
         assert_array_equal(op.Output.meta.ideal_blockshape, blockShape)

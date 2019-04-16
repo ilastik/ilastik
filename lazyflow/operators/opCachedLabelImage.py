@@ -82,14 +82,14 @@ class _OpCachedLabelImage(Operator):
 
     def setupOutputs(self):
         if self.BlockShape.ready():
-            self._opCache.BlockShape.setValue(self.BlockShape.value)
+            self._opCache.blockShape.setValue(self.BlockShape.value)
         else:
             # By default, block shape is the same as the entire image shape,
             #  but only 1 time slice and 1 channel slice
             taggedBlockShape = self.Input.meta.getTaggedShape()
             taggedBlockShape["t"] = 1
             taggedBlockShape["c"] = 1
-            self._opCache.BlockShape.setValue(tuple(taggedBlockShape.values()))
+            self._opCache.blockShape.setValue(tuple(taggedBlockShape.values()))
 
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."

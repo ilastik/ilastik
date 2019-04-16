@@ -125,7 +125,7 @@ class TestOpLazyCC(unittest.TestCase):
 
         opCache = OpCompressedCache(graph=g)
         opCache.Input.connect(opCount.Output)
-        opCache.BlockShape.setValue(chunkShape)
+        opCache.blockShape.setValue(chunkShape)
 
         op = OpLazyCC(graph=g)
         op.Input.connect(opCache.Output)
@@ -264,7 +264,7 @@ class TestOpLazyCC(unittest.TestCase):
 
         opCache = OpCompressedCache(graph=g)
         opCache.Input.setValue(vol)
-        opCache.BlockShape.setValue(chunkShape)
+        opCache.blockShape.setValue(chunkShape)
 
         op = OpLazyCC(graph=g)
         op.Input.connect(opCache.Output)

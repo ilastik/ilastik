@@ -59,6 +59,10 @@ class OpTikTorchTrainClassifierBlocked(OpTrainClassifierBlocked):
     def __init__(self, *args, **kwargs):
         super(OpTikTorchTrainClassifierBlocked, self).__init__(*args, **kwargs)
 
+        # Disconnect pixelwise and vectorwise classifier paths
+        self._opPixelwiseTrain.Images.disconnect()
+        self._opVectorwiseTrain.Images.disconnect()
+
         # Fully connect the pixelwise training operator
         self._opPixelwiseTrain = OpTikTorchTrainPixelwiseClassifierBlocked(parent=self)
         self._opPixelwiseTrain.Images.connect(self.Images)
