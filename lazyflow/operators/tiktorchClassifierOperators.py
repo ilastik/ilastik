@@ -273,23 +273,5 @@ class OpTikTorchPixelwiseClassifierPredict(OpPixelwiseClassifierPredict):
         # Pad the data
         input_data = numpy.pad(input_data, padding, mode="reflect")
 
-        probabilities = classifier.predict_probabilities_pixelwise(input_data, predictions_roi, axistags)
-
-        # We're expecting a channel for each label class.
-        # If we didn't provide at least one sample for each label,
-        #  we may get back fewer channels.
-        if probabilities.shape[-1] != self.PMaps.meta.shape[-1]:
-            # Copy to an array of the correct shape
-            # This is slow, but it's an unusual case
-            assert probabilities.shape[-1] == len(classifier.known_classes)
-            full_probabilities = numpy.zeros(
-                probabilities.shape[:-1] + (self.PMaps.meta.shape[-1],), dtype=numpy.float32
-            )
-            for i, label in enumerate(classifier.known_classes):
-                full_probabilities[..., label - 1] = probabilities[..., i]
-
-            probabilities = full_probabilities
-
-        # Copy only the prediction channels the client requested.
-        result[...] = probabilities[..., roi.start[-1] : roi.stop[-1]]
+        result[...] = classifier.predict_probabilities_pixelwise(input_data, predictions_roi, axistags)
         return result
