@@ -23,7 +23,8 @@ import os
 import socket
 
 from PyQt5 import uic, QtCore
-from PyQt5.QtWidgets import QWidget, QStackedWidget, QListWidgetItem
+from PyQt5.QtWidgets import QWidget, QStackedWidget, QListWidgetItem, QListWidget
+from PyQt5.QtCore import QStateMachine, QState, QSignalTransition, pyqtSignal
 
 from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_LOCAL_SERVER_CONFIG, DEFAULT_REMOTE_SERVER_CONFIG
 
@@ -35,7 +36,31 @@ from tiktorch.rpc import Client, TCPConnConf
 logger = logging.getLogger(__name__)
 
 
+def _items_checked_state(lst: QListWidget):
+    for idx in range(lst.count()):
+        yield lst.item(idx).checkState() == QtCore.Qt.Checked
+
+
+class CheckedTranstion(QSignalTransition):
+    def __init__(self, signal, *, reverse=False):
+        super().__init__(signal)
+        self.reverse = reverse
+
+    def eventTest(self, event) -> bool:
+        if not super().eventTest(event):
+            return False
+
+        has_checked = any(_items_checked_state(event.sender()))
+
+        if self.reverse:
+            return not has_checked
+        else:
+            return has_checked
+
+
 class ServerConfigGui(QWidget):
+    gotDevices = pyqtSignal()
+
     def centralWidget(self):
         return self
 
@@ -48,6 +73,57 @@ class ServerConfigGui(QWidget):
     def viewerControlWidget(self):
         return self._viewerControlWidgetStack
 
+    def _make_initial_state(self) -> QState:
+        s = QState()
+        s.assignProperty(self.editButton, "enabled", False)
+        s.assignProperty(self.saveButton, "enabled", False)
+        s.assignProperty(self.devices, "enabled", False)
+
+        # Inputs
+        s.assignProperty(self.port1, "enabled", True)
+        s.assignProperty(self.port2, "enabled", True)
+        return s
+
+    def _make_dev_fetched_state(self) -> QState:
+        s = QState()
+        s.assignProperty(self.editButton, "enabled", True)
+        s.assignProperty(self.devices, "enabled", True)
+        s.assignProperty(self.saveButton, "enabled", False)
+        s.assignProperty(self.port1, "enabled", False)
+        s.assignProperty(self.port2, "enabled", False)
+        return s
+
+    def _make_save_state(self):
+        s = QState()
+        s.assignProperty(self.saveButton, "enabled", True)
+        return s
+
+    def _create_state_machine(self) -> QStateMachine:
+        machine = QStateMachine()
+
+        init = self._make_initial_state()
+        dev_fetched = self._make_dev_fetched_state()
+        save = self._make_save_state()
+
+        machine.addState(init)
+        machine.addState(dev_fetched)
+        machine.addState(save)
+        machine.setInitialState(init)
+
+        selected_tr = CheckedTranstion(self.devices.itemChanged)
+        selected_tr.setTargetState(save)
+
+        unselected_tr = CheckedTranstion(self.devices.itemChanged, reverse=True)
+        unselected_tr.setTargetState(dev_fetched)
+
+        init.addTransition(self.gotDevices, dev_fetched)
+
+        save.addTransition(unselected_tr)
+        dev_fetched.addTransition(selected_tr)
+        dev_fetched.addTransition(self.editButton.clicked, init)
+
+        return machine
+
     def __init__(self, parentApplet, topLevelOperatorView):
         super().__init__()
         self.parentApplet = parentApplet
@@ -57,6 +133,9 @@ class ServerConfigGui(QWidget):
         self._init_central_uic()
         # Disable box that contains username, password ect. while
         # local server (radio button) is activated
+
+        self._state_machine = self._create_state_machine()
+        self._state_machine.start()
 
         def edit_button():
             for el in DEFAULT_REMOTE_SERVER_CONFIG.keys():
@@ -91,7 +170,6 @@ class ServerConfigGui(QWidget):
             for key, value in config.items():
                 if key == 'devices':
                     for d in value:
-                        print('loaded device', d)
                         entry = QListWidgetItem(f"{d[0]} ({d[1]})", self.devices)
                         entry.setFlags(entry.flags() | QtCore.Qt.ItemIsUserCheckable)
                         if d[2]:
@@ -120,9 +198,6 @@ class ServerConfigGui(QWidget):
                         for i in range(self.devices.count()):
                             d = self.devices.item(i)
                             available_devices.append((d.text().split(' (')[0], d.text().split(' (')[1][:-1], d.checkState()))
-                        print('here')
-                        print(available_devices)
-                        print([type(el) for el in available_devices])
                         config['devices'] = available_devices
                         self.devices.setEnabled(False)
                 else:
@@ -165,6 +240,7 @@ class ServerConfigGui(QWidget):
                         entry = QListWidgetItem(f"{d[0]} ({d[1]})", self.devices)
                         entry.setFlags(entry.flags() | QtCore.Qt.ItemIsUserCheckable)
                         entry.setCheckState(QtCore.Qt.Unchecked)
+                    self.gotDevices.emit()
                 finally:
                     launcher.stop()
             except Exception as e:
@@ -181,8 +257,6 @@ class ServerConfigGui(QWidget):
             else:
                 assert self.remoteServerButton.isChecked()
                 self.topLevelOperator.setRemoteServerConfig(get_config(DEFAULT_REMOTE_SERVER_CONFIG.keys()))
-
-            print(self.topLevelOperator)
 
         self.saveButton.clicked.connect(save_button)
 
