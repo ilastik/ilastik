@@ -33,7 +33,7 @@ from lazyflow.operators.tiktorchClassifierOperators import OpTikTorchTrainClassi
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
-from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
+from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline, DatasetConstraintError
 from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_LOCAL_SERVER_CONFIG
 
 import logging
@@ -389,9 +389,11 @@ class OpBlockShape(Operator):
 
     def setup_inference(self):
         valid_tczyx_shapes = self.ClassifierFactory.value.valid_shapes
-        last_just_for_now = valid_tczyx_shapes[-1]
+        shrinkage = self.ClassifierFactory.value.shrinkage
+        shrunk_valid_tczyx_shapes = [numpy.array(shape) - numpy.array(shrinkage) for shape in valid_tczyx_shapes]
+        largest_valid_shape = shrunk_valid_tczyx_shapes[-1]
 
-        blockDims = {a: s for a, s in zip("tczyx", last_just_for_now)}
+        blockDims = {a: s for a, s in zip("tczyx", largest_valid_shape)}
         axisOrder = self.RawImage.meta.getAxisKeys()
         ret = tuple(blockDims[a] for a in axisOrder)
         logger.debug("Set BlockShapeInference to %s", ret)

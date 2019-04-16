@@ -52,6 +52,7 @@
         "ilastik.applets.featureSelection":                         { "level":"INFO" },
         "ilastik.applets.pixelClassification":                      { "level":"INFO" },
         "ilastik.applets.nnClassApplet":                            { "level":"DEBUG" },
+        "ilastik.applets.networkClassification":                    { "level":"DEBUG" },
         "ilastik.applets.thresholdTwoLevels":                       { "level":"INFO" },
         "ilastik.applets.thresholdTwoLevels.ipht":                  { "level":"INFO" },
         "ilastik.applets.objectExtraction":                         { "level":"INFO" },
