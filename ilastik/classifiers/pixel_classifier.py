@@ -15,7 +15,7 @@ class Predictions(Array5D):
     how likely that pixel is to belong to the classification class associated with
     that channel"""
     def as_uint8(self):
-        return Array5D(self._data * 255, force_dtype=np.uint8)
+        return Array5D(self._data * 255, axiskeys=self.axiskeys, force_dtype=np.uint8)
 
 class PixelClassifier:
     def __init__(self, feature_collection:FeatureCollection, annotations:List[Annotation],
@@ -31,10 +31,14 @@ class PixelClassifier:
         tree_counts = list(map(int, tree_counts))
 
         #FIXME: concatenate annotation samples!
+        #import pydevd; pydevd.settrace()
         X, y = annotations[0].get_samples(feature_collection)
 
+        raw_X = np.asarray(X.linear_raw())
+        raw_y = np.asarray(y.raw())
+
         self.forests = [RandomForest(tc) for tc in tree_counts]
-        self.oobs = [forest.learnRF(X.linear_raw(), y.raw()) for forest in self.forests]
+        self.oobs = [forest.learnRF(raw_X, raw_y) for forest in self.forests]
 
     def predict(self, raw_data:Array5D) -> Predictions:
         feature_data = self.feature_collection.compute(raw_data)
@@ -55,5 +59,4 @@ class PixelClassifier:
         out_axiskeys =  feature_data.with_c_as_last_axis().axiskeys
 
         reshaped_predictions = total_predictions.reshape(out_shape)
-        tagged_view = vigra.taggedView(reshaped_predictions, axistags=out_axiskeys)
-        return Predictions(tagged_view)
+        return Predictions(reshaped_predictions, out_axiskeys)

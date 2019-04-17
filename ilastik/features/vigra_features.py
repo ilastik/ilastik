@@ -13,9 +13,10 @@ class VigraChannelwiseFilter(FlatChannelwiseFilter):
         pass
 
     def _do_compute(self, source:ScalarImage, out:Image):
-        return self.filter_fn(source.raw().squeeze().astype(numpy.float32),
+        out_axes = source.squeezed_shape.axiskeys
+        return self.filter_fn(source.raw(out_axes).astype(numpy.float32),
                               sigma=self.sigma, window_size=self.window_size,
-                              out=out.raw().squeeze())
+                              out=out.raw(out_axes + 'c'))
 
 class GaussianSmoothing(VigraChannelwiseFilter):
     @property

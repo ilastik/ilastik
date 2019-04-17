@@ -9,22 +9,25 @@ from vigra import VigraArray, AxisInfo, AxisTags
 from .point5D import Point5D, Slice5D, Shape5D
 
 class RawShape:
-    def __init__(self, axiskeys:str, shape:Shape5D):
-        assert set(axiskeys).issubset(set('tcxyz'))
-        self.index_map = OrderedDict((axis, idx) for idx, axis in enumerate(axiskeys))
+    def __init__(self, shape:Shape5D, *, t:int=None, c:int=None, x:int=None, y:int=None, z:int=None):
+        self.index_map = {axis:idx for axis, idx in zip('tcxyz', (t,c,x,y,z)) if idx is not None}
         self.shape = shape
 
     @property
     def axiskeys(self):
-        return ''.join(self.index_map.keys())
+        pairs = sorted(self.index_map.keys(), key=lambda axis:self.index_map[axis])
+        return ''.join(pairs)
+
+    def index(self, axis:str):
+        return self.index_map[axis]
 
     @property
     def spatials(self):
         return {k:v for k,v in self.index_map.items() if k in 'xyz'}
 
     def drop(self, axis:str) -> 'RawShape':
-        leftover_keys = [k for k in self.index_map.keys() if k not in axis]
-        return RawShape(''.join(leftover_keys), self.shape)
+        leftover_keys = {k:v for k,v in self.index_map.items() if k not in axis}
+        return RawShape(self.shape, **leftover_keys)
 
     def drop_one_spatial(self):
         for axis in 'zyx':
@@ -55,6 +58,9 @@ class RawShape:
     def to_index_tuple(self):
         return tuple(self.index_map.values())
 
+    def to_index_discard_tuple(self):
+        return tuple(i for i in range(5) if i not in self.to_index_tuple())
+
     def to_shape_tuple(self, *, with_t=None, with_c=None, with_x=None, with_y=None, with_z=None):
         overrides = {'t': with_t, 'c': with_c, 'x': with_x, 'y': with_y, 'z': with_z}
         out = {k:v for k,v in overrides.items() if v is not None}
@@ -63,37 +69,33 @@ class RawShape:
         out = {**self.to_shape_dict(), **out}
         return tuple(out[axis] for axis in self.axiskeys)
 
-    def swapped(self, a:str, b:str) -> str:
+    def swapped(self, source:str, destination:str):
         d = dict(self.index_map)
-        temp = d[a]
-        d[a] = d[b]
-        d[b] = temp
-        new_keys = ''.join(d.keys())
-
-        temp = self.shape[a]
-        new_shape = self.shape.with_coord(**{a:self.shape[b]})
-        new_shape = new_shape.with_coord(**{b:temp})
-
-        return RawShape(new_keys, new_shape)
+        for source_key, destination_key in zip(source, destination):
+            d[source_key], d[destination_key] = self.index_map[destination_key], self.index_map[source_key]
+        return RawShape(self.shape, **d)
 
 class Array5D:
-    def __init__(self, arr:vigra.VigraArray, force_dtype=None):
+    def __init__(self, arr:np.ndarray, axiskeys:str, force_dtype=None):
+        arr = vigra.taggedView(arr, axistags=axiskeys)
         missing_infos = [getattr(AxisInfo, tag) for tag in Point5D.LABELS if tag not in  arr.axistags]
         slices = tuple([vigra.newaxis(info) for info in missing_infos] + [...])
         self._data = arr[slices]
         if force_dtype is not None and force_dtype != self._data.dtype:
             self._data = self._data.astype(force_dtype)
 
+    @classmethod
+    def fromArray5D(cls, array):
+        return cls(array._data, array.axiskeys)
+
     def __repr__(self):
         return f"<{self.__class__.__name__} {self.shape}>"
 
     @classmethod
-    def allocate(cls, shape:Shape5D, dtype, axistags:str=Point5D.LABELS, value:int=None):
-        #FIXME: maybe create a AxisTags5D class?
-        assert sorted(axistags) == sorted(Point5D.LABELS)
-        arr = np.random.rand(*shape.to_tuple(axistags)).astype(dtype)
-        tagged = vigra.taggedView(arr, axistags=axistags)
-        arr = cls(tagged)
+    def allocate(cls, shape:Shape5D, dtype, axiskeys:str=Point5D.LABELS, value:int=None):
+        assert sorted(axiskeys) == sorted(Point5D.LABELS)
+        arr = np.empty(shape.to_tuple(axiskeys)).astype(dtype)
+        arr = cls(arr, axiskeys)
         if value is not None:
             arr._data[...] = value
         return arr
@@ -112,11 +114,11 @@ class Array5D:
 
     @property
     def axiskeys(self):
-        return [tag.key for tag in self.axistags]
+        return ''.join(tag.key for tag in self.axistags)
 
     @property
     def rawshape(self):
-        return RawShape(self.axiskeys, self.shape)
+        return RawShape(self.shape, **{axis:idx for idx, axis in enumerate(self.axiskeys)})
 
     @property
     def squeezed_shape(self) -> RawShape:
@@ -150,23 +152,30 @@ class Array5D:
     def images(self, through_axis='z') -> Iterator['Image']:
         for frame in self.frames():
             for slc in frame.planes(through_axis):
-                yield Image(slc._data)
+                yield Image(slc._data, self.axiskeys)
 
-    def raw(self):
-        return np.squeeze(self._data, axis=self.squeezed_shape.to_index_tuple())
+    def moveaxis(self, source:str, destination:str):
+        source_indices = tuple(self.axiskeys.index(k) for k in source)
+        dest_indices = tuple(self.axiskeys.index(k) for k in destination)
+        moved_arr = np.moveaxis(self._data, source=source_indices, destination=dest_indices)
+        return self.__class__(moved_arr, axiskeys=self.rawshape.swapped(source, destination).axiskeys)
+
+    def raw(self, axiskeys:str):
+        #import pydevd; pydevd.settrace()
+        swapped = self.moveaxis(self.squeezed_shape.axiskeys, axiskeys)
+        raw_shape = swapped.squeezed_shape
+        squeezed = np.asarray(swapped._data).squeeze(axis=raw_shape.to_index_discard_tuple())
+        return vigra.taggedView(squeezed, axistags=raw_shape.axiskeys)
 
     def with_c_as_last_axis(self) -> 'Array5D':
-        last_axis = self.axiskeys[-1]
-        if last_axis == 'c':
-            return self
-        return self.__class__(self._data.swapaxes(last_axis, 'c'))
+        return self.moveaxis('c', self.axiskeys[-1])
 
     def cut_with(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
         return self.cut(Slice5D(t=t, c=c, x=x, y=y, z=z))
 
     def cut(self, roi:Slice5D):
         slices = roi.to_slices(self.axiskeys)
-        return self.__class__(self._data[slices])
+        return self.__class__(self._data[slices], self.axiskeys)
 
     def set(self, value, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
         slc = Slice5D(t=t, c=c, x=x, y=y, z=z)
@@ -193,7 +202,7 @@ class StaticData(Array5D):
 
     @property
     def squeezed_shape(self) -> RawShape:
-        return super().rawshape.to_static()
+        return super().squeezed_shape.to_static()
 
 class ScalarData(Array5D):
     def __init__(self, *args, **kwargs):
@@ -202,7 +211,7 @@ class ScalarData(Array5D):
 
     @property
     def squeezed_shape(self) -> RawShape:
-        return super().rawshape.to_scalar()
+        return super().squeezed_shape.to_scalar()
 
 class FlatData(Array5D):
     def __init__(self, *args, **kwargs):
@@ -211,7 +220,7 @@ class FlatData(Array5D):
 
     @property
     def squeezed_shape(self) -> RawShape:
-        return super().rawshape.to_planar()
+        return super().squeezed_shape.to_planar()
 
 class LinearData(Array5D):
     def __init__(self, *args, **kwargs):
@@ -220,20 +229,17 @@ class LinearData(Array5D):
 
     @property
     def squeezed_shape(self) -> RawShape:
-        return super().rawshape.to_linear()
+        return super().squeezed_shape.to_linear()
 
 class Image(StaticData, FlatData):
-    @classmethod
-    def open_image(cls, path:str):
-        image_data = np.asarray(PilImage.open(path))
-        return cls(vigra.Image(image_data))
-
     def channels(self) -> Iterator['ScalarImage']:
         for channel in super().channels():
-            yield ScalarImage(channel._data)
+            yield ScalarImage(channel._data, self.axiskeys)
 
     def as_pil_image(self):
-        return PilImage.fromarray(self._data.astype(np.uint8).squeeze())
+        assert self.dtype == np.uint8
+        raw_axis = 'yx' if self.shape.is_scalar else 'yxc'
+        return PilImage.fromarray(self.raw(raw_axis))
 
 class ScalarImage(Image, ScalarData):
     pass

@@ -6,7 +6,7 @@ import numpy
 
 from ilastik.array5d import Slice5D, Point5D, Shape5D
 from ilastik.array5d import Array5D, Image, ScalarImage
-from ilastik.labels.sampler import Sampler
+from ilastik.labels import Labels
 from ilastik.features.feature_extractor import FeatureExtractor
 
 class ScribblingsOutOfBounds(Exception):
@@ -15,7 +15,7 @@ class ScribblingsOutOfBounds(Exception):
 
 class Annotation:
     "Represents a list of pixels belonging to a classification class"
-    def __init__(self, scribblings:Sampler, raw_data:Array5D, offset:Point5D=Point5D.zero()):
+    def __init__(self, scribblings:Labels, raw_data:Array5D, offset:Point5D=Point5D.zero()):
         """
         scribblings: bounding box of some scribblings. 0-valued pixels are considered not annotated
         raw_data: The image onto which these annotations were made
