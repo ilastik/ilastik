@@ -4,12 +4,16 @@ from operator import mul
 from typing import List, Iterator
 
 import vigra.filters
-import numpy
+import numpy as np
 
 from ilastik.array5d import Slice5D, Point5D, Shape5D
 from ilastik.array5d import Array5D, Image, ScalarImage, LinearData
 
 class FeatureData(Array5D):
+    def __init__(self, arr:np.ndarray, axiskeys:str):
+        assert arr.dtype == np.float32
+        super().__init__(arr, axiskeys)
+
     def linear_raw(self):
         """Returns a raw view with one spatial dimension and one channel dimension"""
         shape_dict = {**self.shape.to_dict(), 'c':1}
@@ -18,7 +22,7 @@ class FeatureData(Array5D):
         new_shape = (first_dimension, self.shape.c)
 
         #FIXME: this nukes axistags and i don't know how to put them back =/
-        return numpy.asarray(self.with_c_as_last_axis()._data.reshape(new_shape))
+        return np.asarray(self.with_c_as_last_axis()._data.reshape(new_shape))
 
 class FeatureExtractor(ABC):
     def __init__(self, sigma:float, window_size:float):
@@ -29,7 +33,7 @@ class FeatureExtractor(ABC):
         return f"<{self.__class__.__qualname__} sigma={self.sigma} window_size={self.window_size}>"
 
     def allocate_for(self, source:Array5D) -> Array5D:
-        return FeatureData.allocate(self.get_expected_shape(source), dtype=numpy.float32)
+        return FeatureData.allocate(self.get_expected_shape(source), dtype=np.float32)
 
     @abstractmethod
     def get_expected_shape(self, source:Array5D) -> Shape5D:

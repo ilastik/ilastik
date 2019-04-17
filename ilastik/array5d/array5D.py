@@ -76,13 +76,11 @@ class RawShape:
         return RawShape(self.shape, **d)
 
 class Array5D:
-    def __init__(self, arr:np.ndarray, axiskeys:str, force_dtype=None):
+    def __init__(self, arr:np.ndarray, axiskeys:str):
         arr = vigra.taggedView(arr, axistags=axiskeys)
         missing_infos = [getattr(AxisInfo, tag) for tag in Point5D.LABELS if tag not in  arr.axistags]
         slices = tuple([vigra.newaxis(info) for info in missing_infos] + [...])
         self._data = arr[slices]
-        if force_dtype is not None and force_dtype != self._data.dtype:
-            self._data = self._data.astype(force_dtype)
 
     @classmethod
     def fromArray5D(cls, array):
@@ -94,7 +92,7 @@ class Array5D:
     @classmethod
     def allocate(cls, shape:Shape5D, dtype, axiskeys:str=Point5D.LABELS, value:int=None):
         assert sorted(axiskeys) == sorted(Point5D.LABELS)
-        arr = np.empty(shape.to_tuple(axiskeys)).astype(dtype)
+        arr = np.empty(shape.to_tuple(axiskeys), dtype=dtype)
         arr = cls(arr, axiskeys)
         if value is not None:
             arr._data[...] = value
@@ -102,7 +100,7 @@ class Array5D:
 
     @classmethod
     def from_int(cls, value) -> 'Array5D':
-        return cls.allocate(Shape5D(), dtype=np.uint8, value=value)
+        return cls.allocate(Shape5D(), dtype=self.dtype, value=value)
 
     @property
     def dtype(self):
@@ -244,5 +242,9 @@ class Image(StaticData, FlatData):
 class ScalarImage(Image, ScalarData):
     pass
 
+
 class ScalarLine(LinearData, ScalarData):
+    pass
+
+class StaticLine(StaticData, LinearData):
     pass
