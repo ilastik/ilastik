@@ -509,8 +509,7 @@ class NNClassGui(LabelingGui):
         return layers
 
     def toggleLivePrediction(self, checked):
-        logger.debug("toggle live prediction, checked: %r", checked)
-        logger.debug(f"toggling live prediction mode to {checked}")
+        logger.debug("toggle live prediction mode to %r", checked)
         self.labelingDrawerUi.livePrediction.setEnabled(False)
 
         # If we're changing modes, enable/disable our controls and other applets accordingly

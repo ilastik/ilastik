@@ -387,10 +387,13 @@ class OpBlockShape(Operator):
         self.BlockShapeInference.setValue(self.setup_inference())
 
     def setup_train(self):
-        blockDims = {a: s for a, s in zip("tczyx", self.ClassifierFactory.value.training_shape)}
+        training_shape = self.ClassifierFactory.value.training_shape
+        blockDims = {a: s for a, s in zip("tczyx", training_shape)}
         axisOrder = self.RawImage.meta.getAxisKeys()
         ret = tuple(blockDims[a] for a in axisOrder)
-        logger.debug("Set BlockShapeTrain to %s", ret)
+        logger.debug(
+            "got training shape %s and axisorder %s => Set BlockShapeTrain to %s", training_shape, axisOrder, ret
+        )
         return ret
 
     def setup_inference(self):
@@ -402,7 +405,12 @@ class OpBlockShape(Operator):
         blockDims = {a: s for a, s in zip("tczyx", largest_valid_shape)}
         axisOrder = self.RawImage.meta.getAxisKeys()
         ret = tuple(blockDims[a] for a in axisOrder)
-        logger.debug("Set BlockShapeInference to %s", ret)
+        logger.debug(
+            "got lagest valid shape %s and axis order %s => Set BlockShapeInference to %s",
+            largest_valid_shape,
+            axisOrder,
+            ret,
+        )
         return ret
 
     def execute(self, slot, subindex, roi, result):
