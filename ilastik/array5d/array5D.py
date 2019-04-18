@@ -226,6 +226,10 @@ class LinearData(Array5D):
         assert self.shape.is_line
 
     @property
+    def length(self):
+        return self.shape.volume
+
+    @property
     def squeezed_shape(self) -> RawShape:
         return super().squeezed_shape.to_linear()
 

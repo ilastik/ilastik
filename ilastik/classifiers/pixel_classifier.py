@@ -30,14 +30,14 @@ class PixelClassifier:
         tree_counts[:num_trees % num_forests] += 1
         tree_counts = list(map(int, tree_counts))
 
-        X, y = annotations[0].get_samples(feature_collection)
-        raw_X = np.asarray(X.linear_raw())
-        raw_y = np.asarray(y.raw())
+        samples = annotations[0].get_samples(feature_collection)
+        raw_X = np.asarray(samples.features.linear_raw())
+        raw_y = np.asarray(samples.classes.raw())
         #TODO: maybe concatenate eveything at once?
         for annotation in annotations[1:]:
-            extra_X, extra_y = annotation.get_samples(feature_collection)
-            raw_X = np.concatenate((raw_X, extra_X.linear_raw()), axis=0)
-            raw_y = np.concatenate((raw_y, extra_y.raw()), axis=0)
+            extra_samples = annotation.get_samples(feature_collection)
+            raw_X = np.concatenate((raw_X, extra_samples.features.linear_raw()), axis=0)
+            raw_y = np.concatenate((raw_y, extra_samples.classes.raw()), axis=0)
 
 
         self.forests = [RandomForest(tc) for tc in tree_counts]

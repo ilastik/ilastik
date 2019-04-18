@@ -186,12 +186,17 @@ class Shape5D(Point5D):
     def is_flat(self):
         return len(self.present_spatial_axes) <= 2
 
+    @property
     def is_line(self):
-        return len(self.present_spatialaxes) <= 1
+        return len(self.present_spatial_axes) <= 1
 
     @property
     def is_scalar(self):
         return self.c == 1
+
+    @property
+    def volume(self) -> int:
+        return self.x * self.y * self.z
 
     def to_slice_5d(self, start:Point5D=None) -> 'Slice5D':
         return Slice5D.from_start_stop(start or Point5D.zero(), self)
