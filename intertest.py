@@ -27,3 +27,10 @@ classifier = PixelClassifier(feature_collection=fc, annotations=annotations)
 predictions = classifier.predict(raw_data1)
 
 pil_images = [c.as_pil_image() for img in predictions.as_uint8().images() for c in img.channels()]
+
+
+
+raw_data2 = np.asarray(PilImage.open("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped2.png"))
+raw_data2 = Array5D(raw_data2, axiskeys='yxc')
+predictions2 = classifier.predict(raw_data2)
+pil_images2 = [c.as_pil_image() for img in predictions2.as_uint8().images() for c in img.channels()]
