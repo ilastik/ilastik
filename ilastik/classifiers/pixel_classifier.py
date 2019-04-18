@@ -1,5 +1,6 @@
 from typing import List
 import multiprocessing
+from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 
 import numpy as np
@@ -40,8 +41,13 @@ class PixelClassifier:
             raw_y = np.concatenate((raw_y, extra_samples.classes.raw()), axis=0)
 
 
-        self.forests = [RandomForest(tc) for tc in tree_counts]
-        self.oobs = [forest.learnRF(raw_X, raw_y) for forest in self.forests]
+        self.forests = [None] * num_forests
+        with ThreadPoolExecutor(max_workers=num_forests) as executor:
+            def train_forest(forest_index):
+                self.forests[forest_index] = RandomForest(tree_counts[forest_index])
+                self.oobs[forest_index] = self.forests[forest_index].learnRF(raw_X, raw_y)
+            for i in range(num_forests):
+                executor.submit(train_forest, i)
 
     def predict(self, raw_data:Array5D) -> Predictions:
         feature_data = self.feature_collection.compute(raw_data)
