@@ -30,12 +30,15 @@ class PixelClassifier:
         tree_counts[:num_trees % num_forests] += 1
         tree_counts = list(map(int, tree_counts))
 
-        #FIXME: concatenate annotation samples!
-        #import pydevd; pydevd.settrace()
         X, y = annotations[0].get_samples(feature_collection)
-
         raw_X = np.asarray(X.linear_raw())
         raw_y = np.asarray(y.raw())
+        #TODO: maybe concatenate eveything at once?
+        for annotation in annotations[1:]:
+            extra_X, extra_y = annotation.get_samples(feature_collection)
+            raw_X = np.concatenate((raw_X, extra_X.linear_raw()), axis=0)
+            raw_y = np.concatenate((raw_y, extra_y.raw()), axis=0)
+
 
         self.forests = [RandomForest(tc) for tc in tree_counts]
         self.oobs = [forest.learnRF(raw_X, raw_y) for forest in self.forests]

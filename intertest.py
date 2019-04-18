@@ -14,12 +14,16 @@ import numpy as np
 
 raw_data1 = np.asarray(PilImage.open("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1.png"))
 scribblings = np.asarray(PilImage.open("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1_fake_annotations.png"))
+scribblings2 = np.asarray(PilImage.open("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1_fake_annotations_bottom_left.png"))
 
 raw_data1 = Array5D(raw_data1, axiskeys='yxc')
-annotation = Annotation(scribblings.astype(np.uint32), axiskeys='yx', raw_data=raw_data1)
+annotations = [
+    Annotation(scribblings.astype(np.uint32), axiskeys='yx', raw_data=raw_data1),
+    Annotation(scribblings2.astype(np.uint32), axiskeys='yx', raw_data=raw_data1)
+]
 
 fc = FeatureCollection(GaussianSmoothing(sigma=0.3), HessianOfGaussian(sigma=1.2), GaussianSmoothing(sigma=1.7))
-classifier = PixelClassifier(feature_collection=fc, annotations=[annotation])
+classifier = PixelClassifier(feature_collection=fc, annotations=annotations)
 predictions = classifier.predict(raw_data1)
 
 pil_images = [c.as_pil_image() for img in predictions.as_uint8().images() for c in img.channels()]
