@@ -33,12 +33,12 @@ class PixelClassifier:
 
         samples = annotations[0].get_samples(feature_collection)
         raw_X = np.asarray(samples.features.linear_raw())
-        raw_y = np.asarray(samples.classes.raw())
-        #TODO: maybe concatenate eveything at once?
+        raw_y = np.asarray(samples.labels.raw())
+        #TODO: maybe concatenate eveything at once? Or prealloc and index?
         for annotation in annotations[1:]:
             extra_samples = annotation.get_samples(feature_collection)
             raw_X = np.concatenate((raw_X, extra_samples.features.linear_raw()), axis=0)
-            raw_y = np.concatenate((raw_y, extra_samples.classes.raw()), axis=0)
+            raw_y = np.concatenate((raw_y, extra_samples.labels.raw()), axis=0)
 
 
         self.forests = [None] * num_forests

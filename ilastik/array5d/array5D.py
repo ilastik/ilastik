@@ -77,6 +77,7 @@ class RawShape:
 
 class Array5D:
     def __init__(self, arr:np.ndarray, axiskeys:str):
+        arr = np.asarray(arr)
         arr = vigra.taggedView(arr, axistags=axiskeys)
         missing_infos = [getattr(AxisInfo, tag) for tag in Point5D.LABELS if tag not in  arr.axistags]
         slices = tuple([vigra.newaxis(info) for info in missing_infos] + [...])
@@ -152,28 +153,47 @@ class Array5D:
             for slc in frame.planes(through_axis):
                 yield Image(slc._data, self.axiskeys)
 
+    def rebuild(self, arr:np.array, axiskeys:str) -> 'Array5D':
+        return self.__class__(arr, axiskeys)
+
     def moveaxis(self, source:str, destination:str):
         source_indices = tuple(self.axiskeys.index(k) for k in source)
         dest_indices = tuple(self.axiskeys.index(k) for k in destination)
         moved_arr = np.moveaxis(self._data, source=source_indices, destination=dest_indices)
-        return self.__class__(moved_arr, axiskeys=self.rawshape.swapped(source, destination).axiskeys)
+        return self.rebuild(moved_arr, axiskeys=self.rawshape.swapped(source, destination).axiskeys)
 
-    def raw(self, axiskeys:str):
-        #import pydevd; pydevd.settrace()
-        swapped = self.moveaxis(self.squeezed_shape.axiskeys, axiskeys)
-        raw_shape = swapped.squeezed_shape
-        squeezed = np.asarray(swapped._data).squeeze(axis=raw_shape.to_index_discard_tuple())
-        return vigra.taggedView(squeezed, axistags=raw_shape.axiskeys)
+    def raw(self, axiskeys:str) -> np.ndarray:
+        assert all(self.shape[axis] == 1 for axis in Point5D.LABELS if axis not in axiskeys)
+        swapped = self.reordered(axiskeys)
+
+        slices = tuple((slice(None) if k in axiskeys else 0) for k in swapped.axiskeys)
+        return np.asarray(swapped._data[slices])
 
     def with_c_as_last_axis(self) -> 'Array5D':
         return self.moveaxis('c', self.axiskeys[-1])
 
+    def reordered(self, axiskeys:str):
+        source_indices = [self.axiskeys.index(x) for x in axiskeys]
+        dest_indices = sorted(source_indices)
+
+        new_axes = ''
+        requested_axis = list(axiskeys)
+        for axis in self.axiskeys:
+            if axis in axiskeys:
+                new_axes += requested_axis.pop(0)
+            else:
+                new_axes += axis
+
+        moved_arr = np.moveaxis(self._data, source=source_indices, destination=dest_indices)
+
+        return self.rebuild(moved_arr, axiskeys=new_axes)
+
     def cut_with(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
         return self.cut(Slice5D(t=t, c=c, x=x, y=y, z=z))
 
-    def cut(self, roi:Slice5D):
+    def cut(self, roi:Slice5D) -> 'Array5D':
         slices = roi.to_slices(self.axiskeys)
-        return self.__class__(self._data[slices], self.axiskeys)
+        return self.rebuild(self._data[slices], self.axiskeys)
 
     def set(self, value, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
         slc = Slice5D(t=t, c=c, x=x, y=y, z=z)
