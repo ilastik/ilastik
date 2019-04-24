@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from itertools import product
 import numpy as np
-from typing import Dict, Tuple, Iterator
+from typing import Dict, Tuple, Iterator, List
 
 def ensure_slice(slc):
     if isinstance(slc, slice):
@@ -12,17 +12,11 @@ def ensure_slice(slc):
 class Point5D(object):
     LABELS = 'txyzc'
     LABEL_MAP = {label:index for index, label in enumerate(LABELS)}
-    INT_TYPE = np.uint64
-    INF = np.iinfo(INT_TYPE).max #maybe this should be float's inf
+    COORD_TYPE = np.uint64
+    INF = np.iinfo(COORD_TYPE).max #maybe this should be float's inf
 
     def __init__(self, *, t:int, x:int, y:int, z:int, c:int):
-        locs = locals()
-        ordered_pairs = ((label, self.INT_TYPE(locs[label])) for label in self.LABELS)
-        self._coords = OrderedDict(ordered_pairs)
-
-    @classmethod
-    def startpoint(cls, *, t:int=0, x:int=0, y:int=0, z:int=0, c:int=0):
-        return cls(t=t or 0, x=x or 0, y=y or 0, z=z or 0, c=c or 0)
+        self._coords = {'t':int(t), 'x':int(x), 'y':int(y), 'z':int(z), 'c':int(c)}
 
     @classmethod
     def endpoint(cls, *, t:int=None, x:int=None, y:int=None, z:int=None, c:int=None):
@@ -30,18 +24,12 @@ class Point5D(object):
         return cls(t=t or inf, x=x or inf, y=y or inf, z=z or inf, c=c or inf)
 
     @classmethod
-    def from_tuple(cls, tup:Tuple[int,int,int,int,int]):
-        return cls(**{label:value for label, value in zip(cls.LABELS, tup)})
+    def from_tuple(cls, tup:Tuple[int,int,int,int,int], labels:str):
+        return cls(**{label:value for label, value in zip(labels, tup)})
 
     @classmethod
-    def startpoint_from_tuple(cls, tup: Tuple[int, int, int, int, int]):
-        d = {k:v for k,v in zip(cls.LABELS, tup) if v is not None}
-        return cls.startpoint(**d)
-
-    @classmethod
-    def endpoint_from_tuple(cls, tup: Tuple[int, int, int, int, int]):
-        d = {k:v for k,v in zip(self.LABELS, tup) if v is not None}
-        return cls.endpoint(**d)
+    def from_np(cls, arr:np.ndarray, labels:str):
+        return cls.from_tuple(tuple(arr), labels)
 
     @classmethod
     def from_dict_with_defaults(cls, d:Dict, defaults:'Point5D'):
@@ -58,7 +46,7 @@ class Point5D(object):
         return self._coords.copy()
 
     def to_np(self, axis_order:str):
-        return np.asarray(self.to_tuple(axis_order))
+        return np.asarray(self.to_tuple(axis_order)).astype(self.COORD_TYPE)
 
     def __repr__(self):
         contents = ",".join((f"{label}:{val if val != self.INF else 'inf'}" for label, val in self._coords.items()))
@@ -68,12 +56,12 @@ class Point5D(object):
         return self.__repr__()
 
     @classmethod
-    def zero(cls):
-        return cls(**{label: 0 for label in cls.LABELS})
+    def zero(cls, *, t:int=0, x:int=0, y:int=0, z:int=0, c:int=0):
+        return cls(t=t or 0, x=x or 0, y=y or 0, z=z or 0, c=c or 0)
 
     @classmethod
-    def one(cls):
-        return cls(**{label: 1 for label in cls.LABELS})
+    def one(cls, *, t:int=1, x:int=1, y:int=1, z:int=1, c:int=1):
+        return cls(t=t, x=x, y=y, z=z, c=c)
 
     @classmethod
     def inf(cls):
@@ -112,10 +100,11 @@ class Point5D(object):
         return self.__class__(**params)
 
     def __np_op(self, other, op):
-        return getattr(self.to_np(self.LABELS), op)(other.to_np(self.LABELS))
+        raw =  getattr(self.to_np(self.LABELS), op)(other.to_np(self.LABELS))
+        return Point5D.from_np(raw, self.LABELS)
 
     def _compare(self, other, op):
-        return all(self.__np_op(other, op))
+        return all(self.__np_op(other, op).to_tuple(self.LABELS))
 
     def __gt__(self, other):
         return self._compare(other, '__gt__')
@@ -138,24 +127,34 @@ class Point5D(object):
         return not self.__eq__(other)
 
     def __sub__(self, other):
-        dif = self.to_np(self.LABELS) - other.to_np(self.LABELS)
-        params = {label:value for label, value in zip(self.LABELS, dif)}
-        return self.__class__(**params)
+        return self.__np_op(other, '__sub__')
 
     def __add__(self, other):
-        dif = self.to_np(self.LABELS) + other.to_np(self.LABELS)
-        params = {label:value for label, value in zip(self.LABELS, dif)}
-        return self.__class__(**params)
+        return self.__np_op(other, '__add__')
+
+    def __floordiv__(self, other):
+        return self.__np_op(other, '__floordiv__')
+
+    def __truediv__(self, other):
+        return self.__np_op(other, '__truediv__')
+
+    def __mul__(self, other):
+        return self.__np_op(other, '__mul__')
 
     def clamped(self, minimum:'Point5D'=None, maximum:'Point5D'=None):
         minimum = minimum or self.zero()
         maximum = maximum or self.inf()
-        result = np.maximum(self.to_tuple(self.LABELS), minimum.to_tuple(self.LABELS), dtype=np.uint64)
-        result = np.minimum(result, maximum.to_tuple(self.LABELS), dtype=np.uint64)
+        result = np.maximum(self.to_np(self.LABELS), minimum.to_np(self.LABELS))
+        result = np.minimum(result, maximum.to_np(self.LABELS))
         return self.__class__(**{label:val for label, val in zip(self.LABELS, result)})
 
     def as_shape(self) -> 'Shape5D':
         return Shape5D(**self.to_dict)
+
+    @classmethod
+    def as_ceil(cls, arr:np.ndarray):
+        raw = np.ceil(arr).astype(cls.COORD_TYPE)
+        return cls.from_np(raw, cls.LABELS)
 
 class Shape5D(Point5D):
     def __init__(cls, *, t:int=1, x:int=1, y:int=1, z:int=1, c:int=1):
@@ -198,36 +197,23 @@ class Shape5D(Point5D):
     def volume(self) -> int:
         return self.x * self.y * self.z
 
-    def to_slice_5d(self, start:Point5D=None) -> 'Slice5D':
-        return Slice5D.from_start_stop(start or Point5D.zero(), self)
+    def to_slice_5d(self, offset:Point5D=Point5D.zero()) -> 'Slice5D':
+        return Slice5D.from_start_stop(offset, self + offset)
 
     @classmethod
     def from_point(cls, point:Point5D):
-        d = {k:v or 1 for k, v in point.to_dict().items()}
-        return cls(**d)
-
-    def _ranges(self, *, block_shape:'Shape5D', start_point:Point5D=None) -> Iterator[Iterator[int]]:
-        start_point = start_point or Point5D.zero()
-
-        starts = start_point.to_tuple()
-        ends = self.to_tuple()
-        steps = block_shape.to_tuple()
-        return (range(s, e, stp) for s, e, stp in zip(starts, ends, steps))
-
-    def split(self, block_shape:'Shape5D') -> Iterator['Roi5D']:
-        for begin_tuple in product(*self._ranges(block_shape)):
-            start = Point5D.from_tuple(begin_tuple)
-            stop = (start + block_shape).clamped(maximum=elf.stop)
-            yield Slice5D.from_start_stop(start, stop)
+        return cls(**{k:v or 1 for k, v in point.to_dict().items()})
 
 class Slice5D(object):
     def __init__(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
-        self._slices = {'t':ensure_slice(t),
-                        'x':ensure_slice(x), 'y':ensure_slice(y), 'z':ensure_slice(z),
-                        'c':ensure_slice(c)}
+        self._slices = {'t':ensure_slice(t), 'c':ensure_slice(c),
+                        'x':ensure_slice(x), 'y':ensure_slice(y), 'z':ensure_slice(z)}
 
-        self.start = Point5D.startpoint(**{label:slc.start for label, slc in self._slices.items()})
+        self.start = Point5D.zero(**{label:slc.start for label, slc in self._slices.items()})
         self.stop = Point5D.endpoint(**{label:slc.stop for label, slc in self._slices.items()})
+
+    def is_defined(self) -> bool:
+        return all(s != Point5D.INF for s in self.stop.to_tuple(Point5D.LABELS))
 
     @classmethod
     def from_start_stop(cls, start:Point5D, stop:Point5D):
@@ -237,6 +223,25 @@ class Slice5D(object):
             slice_stop = None if slice_stop == Point5D.INF else slice_stop
             slices[label] = slice(start[label], slice_stop)
         return cls(**slices)
+
+    def _ranges(self, block_shape:Shape5D) -> Iterator[Iterator[int]]:
+        starts = self.start.to_tuple(Point5D.LABELS)
+        ends = self.stop.to_tuple(Point5D.LABELS)
+        steps = block_shape.to_tuple(Point5D.LABELS)
+        return (range(s, e, stp) for s, e, stp in zip(starts, ends, steps))
+
+    def split(self, block_shape:Shape5D) -> Iterator['Slice5D']:
+        for begin_tuple in product(*self._ranges(block_shape)):
+            start = Point5D.from_tuple(begin_tuple, Point5D.LABELS)
+            stop = (start + block_shape).clamped(maximum=self.stop)
+            yield Slice5D.from_start_stop(start, stop)
+
+    def get_tiles(self, tile_shape:Shape5D) -> List['Slice5D']:
+        assert self.is_defined()
+        start = (self.start // tile_shape) * tile_shape
+        stop = Point5D.as_ceil(self.stop.to_np(Point5D.LABELS) / tile_shape.to_np(Point5D.LABELS))
+        stop *= tile_shape
+        return Slice5D.from_start_stop(start, stop).split(tile_shape)
 
     @property
     def t(self):
@@ -308,13 +313,3 @@ class Slice5D(object):
 
     def __repr__(self):
         return str([self.start, self.stop])
-
-class Slice2D(Slice5D):
-    def __init__(self, *, x=slice(None), y=slice(None)):
-        super().__init__(x=x, y=y)
-
-    def to_tuple(self, axis_order:str, bounding_shape:Shape5D):
-        assert sorted(axis_order) == sorted('xy')
-        start = [self.start[label] for label in axis_order]
-        stop = [self.stop.clamped(maximum=bounding_shape)[label] for label in axis_order]
-        return (start, stop)
