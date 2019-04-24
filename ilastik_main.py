@@ -167,7 +167,6 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
 
     _init_configfile(parsed_args)
 
-    _init_sklearn_monkeypatch()
     _init_threading_logging_monkeypatch()
 
     # Extra initialization functions.
@@ -311,26 +310,6 @@ def _init_threading_logging_monkeypatch():
             thread_start_logger.debug(
                 f'Started thread: id={self.ident:x}, name={self.name}')
         threading.Thread.start = logged_start
-
-
-def _init_sklearn_monkeypatch():
-    # this is related to sklearn not being threadsafe
-    # should be solved in sklearn 0.20
-    # https://github.com/ilastik/ilastik/issues/1149
-
-    # from: https://github.com/scikit-learn/scikit-learn/pull/9569
-    def get_params(self, deep=True):
-        out = dict()
-        for key in self._get_param_names():
-            value = getattr(self, key, None)
-            if deep and hasattr(value, 'get_params'):
-                deep_items = value.get_params().items()
-                out.update((key + '__' + k, val) for k, val in deep_items)
-            out[key] = value
-        return out
-
-    import sklearn
-    sklearn.base.BaseEstimator.get_params = get_params
 
 
 def _import_opengm():
