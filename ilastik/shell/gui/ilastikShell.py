@@ -1058,7 +1058,6 @@ class IlastikShell(QMainWindow):
         """
         The user wants to view a different applet bar item.
         """
-        print("Switch to", modelIndex)
         self.setSelectedAppletDrawer(modelIndex)
 
     def setSelectedAppletDrawer(self, applet_index):
