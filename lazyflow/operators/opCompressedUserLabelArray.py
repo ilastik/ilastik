@@ -126,7 +126,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         self.Projection2D.meta.drange = (0.0, 1.0)
 
         # Overwrite the blockshape
-        if self.blockShape.ready() and self._blockshape is not None and self.blockShape.value != self._blockshape:
+        if self.blockShape.ready() and self._blockshape is not None and not all(numpy.equal(self.blockShape.value, self._blockshape)):
             nonzero_blocks_destination = [None]
             self._execute_nonzeroBlocks(nonzero_blocks_destination)
             nonzero_blocks = nonzero_blocks_destination[0]
@@ -150,7 +150,6 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
                 if self._label_to_purge > 0:
                     self._purge_label(self._label_to_purge, True)
 
-        print('here', self.Output)
 
     def _purge_label(self, label_to_purge, decrement_remaining, replacement_value=0):
         """

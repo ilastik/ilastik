@@ -134,7 +134,7 @@ class OpUnmanagedCompressedCache(Operator):
         # Clip blockshape to image bounds
         new_blockshape = tuple(numpy.minimum(new_blockshape, self.Input.meta.shape))
 
-        if new_blockshape != self._blockshape:
+        if not all(numpy.equal(new_blockshape, self._blockshape)):
             # If the blockshape changes, we have to reset the entire cache.
             self._init_cache(new_blockshape)
 
