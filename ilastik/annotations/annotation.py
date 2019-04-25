@@ -7,10 +7,11 @@ import numpy as np
 from ilastik.array5d import Slice5D, Point5D, Shape5D
 from ilastik.array5d import Array5D, Image, ScalarImage, StaticLine
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
+from ilastik.data_source import DataSource
 
 class AnnotationOutOfBounds(Exception):
-    def __init__(self, annotation:'Annotation', raw_data:Array5D, offset:Point5D):
-        super().__init__(f"Annotation {annotation} offset by {offset} exceeds bounds of raw_data {raw_data}")
+    def __init__(self, annotation:'Annotation', data_source:DataSource, offset:Point5D):
+        super().__init__(f"Annotation {annotation} offset by {offset} exceeds bounds of data_source {data_source}")
 
 class Labels(StaticLine):
     def __init__(self, *args, **kwargs):
@@ -28,53 +29,42 @@ class Samples:
         self.labels = labels
 
 class Annotation(ScalarImage):
-    def __init__(self, arr:np.ndarray, axiskeys:str, raw_data:Array5D, offset:Point5D=Point5D.zero()):
+    def __init__(self, arr:np.ndarray, axiskeys:str, data_source:DataSource, offset:Point5D=Point5D.zero()):
         super().__init__(arr, axiskeys)
         assert self.dtype == np.uint32
 
-        if self.shape + offset > raw_data.shape:
-            raise AnnotationOutOfBounds(annotation=self, raw_data=raw_data, offset=offset)
+        if self.shape + offset > data_source.shape:
+            raise AnnotationOutOfBounds(annotation=self, data_source=data_source, offset=offset)
 
-        self.raw_data = raw_data
+        self.data_source = data_source
         self.offset = offset
-        self.sampling_axes = self.raw_data.with_c_as_last_axis().axiskeys
         self.out_axes = 'xc'
 
         self._mask = None
         self._labels = None
 
     def rebuild(self, arr:np.array, axiskeys:str, offset:Point5D=None) -> 'Array5D':
-        return self.__class__(arr, axiskeys, raw_data=self.raw_data,
+        return self.__class__(arr, axiskeys, data_source=self.data_source,
                               offset=self.offset if offset is None else offset)
 
     def cut(self, roi:Slice5D) -> 'Annotation':
         slices = roi.to_slices(self.axiskeys)
         return self.rebuild(self._data[slices], self.axiskeys, offset=roi.start + self.offset)
 
-    @property
-    def mask(self):
-        if self._mask is not None:
-            return self._mask
-        mask_axes = self.sampling_axes.replace('c', '')
-        self._mask = self.raw(mask_axes) > 0
-        return self._mask
-
-    @property
-    def labels(self):
-        if self._labels is not None:
-            return self._labels
-        self._labels = Labels(self.raw(self.sampling_axes)[self.mask], self.out_axes)
-        return self._labels
-
     def get_samples(self, feature_extractor:FeatureExtractor) -> Samples:
         roi = self.shape.to_slice_5d().offset(self.offset)
-        roi = roi.with_coord(c=slice(0, self.raw_data.shape.c))
-        features = feature_extractor.compute(self.raw_data.cut(roi)) #TODO:roi + halo
+        roi = roi.with_coord(c=slice(0, self.data_source.shape.c))
+        features = feature_extractor.compute(self.data_source, roi) #TODO:roi + halo
 
-        feature_data = features.raw(self.sampling_axes)[self.mask]
+        sampling_axes = features.with_c_as_last_axis().axiskeys
+
+        mask = self.raw(sampling_axes.replace('c', '')) > 0
+
+        labels_data = self.raw(sampling_axes)[mask]
+        feature_data = features.raw(sampling_axes)[mask]
 
         return Samples(features=FeatureData(feature_data, self.out_axes),
-                       labels=self.labels)
+                       labels=Labels(labels_data, self.out_axes))
 
     def __repr__(self):
-        return f"<Annotation {self.shape}  for raw_data: {self.raw_data}>"
+        return f"<Annotation {self.shape}  for data_source: {self.data_source}>"

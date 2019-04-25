@@ -32,15 +32,15 @@ class FeatureExtractor(ABC):
     def __repr__(self):
         return f"<{self.__class__.__qualname__} sigma={self.sigma} window_size={self.window_size}>"
 
-    def allocate_for(self, source:Array5D) -> Array5D:
-        return FeatureData.allocate(self.get_expected_shape(source), dtype=np.float32)
+    def allocate_for(self, roi:Slice5D) -> Array5D:
+        return FeatureData.allocate(self.get_expected_shape(roi), dtype=np.float32)
 
     @abstractmethod
-    def get_expected_shape(self, source:Array5D) -> Shape5D:
+    def get_expected_shape(self, roi:Slice5D) -> Shape5D:
         pass
 
     @abstractmethod
-    def compute(self, source:Array5D, out:Array5D=None) -> Array5D:
+    def compute(self, raw_data:Array5D, out:Array5D=None) -> Array5D:
         pass
 
 class FlatChannelwiseFilter(FeatureExtractor):
@@ -53,20 +53,25 @@ class FlatChannelwiseFilter(FeatureExtractor):
         "Number of channels emmited by this feature extractor for each input channel"
         pass
 
-    def get_expected_shape(self, source:Array5D) -> Shape5D:
-        num_output_channels = source.shape.c * self.dimension
-        return source.shape.with_coord(c=num_output_channels)
+    def get_expected_shape(self, roi:Slice5D) -> Shape5D:
+        assert roi.is_defined()
+        num_output_channels = roi.shape.c * self.dimension
+        return roi.shape.with_coord(c=num_output_channels)
 
-    def compute(self, source:Array5D, out:Array5D=None) -> Array5D:
-        target = out or self.allocate_for(source)
-        assert target.shape == self.get_expected_shape(source)
-        for source_image, target_image in zip(source.images(), target.images()):
+    def compute(self, data_source:DataSource, roi:Shape5D, out:Array5D=None) -> Array5D:
+        roi = roi.defined_with(data_source.shape)
+        roi_with_halo = roi #TODO: roi.enlarged(self.radius ??).clamped(data_source.shape)
+
+        data = data_source.retrieve(roi_with_halo)
+        target = out or self.allocate_for(roi) #NB: target has no halo!
+        assert target.shape == self.get_expected_shape(roi)
+        for source_image, target_image in zip(data.images(), target.images()):
             for source_channel, out_features in zip(source_image.channels(), target_image.channel_stacks(step=self.dimension)):
                 self._do_compute(source_channel, out=out_features)
-        return target
+        return target.cut()
 
     @abstractmethod
-    def _do_compute(self, source:ScalarImage, out:Image):
+    def _do_compute(self, raw_data:ScalarImage, out:Image):
         pass
 
 class FeatureCollection(FlatChannelwiseFilter):
@@ -78,10 +83,10 @@ class FeatureCollection(FlatChannelwiseFilter):
     def dimension(self):
         return sum(f.dimension for f in self.features)
 
-    def _do_compute(self, source:ScalarImage, out:Image):
+    def _do_compute(self, raw_data:ScalarImage, out:Image):
         channel_count = 0
         for f in self.features:
             channel_stop = channel_count + f.dimension
             feature_out = out.cut_with(c=slice(channel_count, channel_stop))
-            f._do_compute(source, out=feature_out)
+            f._do_compute(raw_data, out=feature_out)
             channel_count = channel_stop

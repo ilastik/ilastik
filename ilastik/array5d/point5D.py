@@ -212,8 +212,22 @@ class Slice5D(object):
         self.start = Point5D.zero(**{label:slc.start for label, slc in self._slices.items()})
         self.stop = Point5D.endpoint(**{label:slc.stop for label, slc in self._slices.items()})
 
+    def __hash__(self):
+        return hash(self._slices)
+
+    def __eq__(self, other):
+        if not isinstance(other, Slice5D):
+            return False
+        return self._slices == other._slices
+
     def is_defined(self) -> bool:
         return all(s != Point5D.INF for s in self.stop.to_tuple(Point5D.LABELS))
+
+    def defined_with(self, shape:Shape5D):
+        """Slice5D can have slices which are open to interpretation, like slice(None). This method
+        forces those slices expand into their interpretation within an array of shape 'shape'"""
+        params = {k:v if v != slice(None) else slice(0,shape[k]) for k,v in self._slices}
+        return self.__class__(**params)
 
     @classmethod
     def from_start_stop(cls, start:Point5D, stop:Point5D):
@@ -294,6 +308,10 @@ class Slice5D(object):
     def clamped(self, *, minimum:Point5D=None, maximum:Point5D=None) -> 'Roi5D':
         return self.__class__(self.start.clamped(minimum, maximum),
                               self.stop.clamped(minimum, maximum))
+
+    def translated(self, offset:Point5D):
+        assert is_defined()
+        return self.__class__.from_start_stop(self.start + offset, self.stop + offset)
 
     def clamped_with_roi(self, roi):
         return self.clamped(minimum=roi.start, maximum=roi.stop)
