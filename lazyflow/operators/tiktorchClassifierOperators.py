@@ -220,8 +220,16 @@ class OpTikTorchPixelwiseClassifierPredict(OpPixelwiseClassifierPredict):
             "".format(type(classifier))
         )
 
-        upstream_roi = (roi.start, roi.stop)
         axiskeys = self.Image.meta.getAxisKeys()
+        roistart = roi.start
+        prediction_channel_start = roistart[-1]
+        roistart[-1] = 0
+        raw_channels = self.Image.meta.shape[-1]
+        roistop = roi.stop
+        prediction_channel_stop = roistop[-1]
+        roistop[-1] = raw_channels
+        upstream_roi = (roistart, roistop)
+
         halo = numpy.array(classifier.get_halo_shape(axiskeys))
         shrinkage = numpy.array(classifier.get_shrinkage(axiskeys))
 
@@ -254,6 +262,8 @@ class OpTikTorchPixelwiseClassifierPredict(OpPixelwiseClassifierPredict):
         # Determine how to extract the data from the result (without halo, shrinkage, and padding)
         downstream_roi = numpy.array((roi.start, roi.stop))
         predictions_roi = downstream_roi - upstream_roi[0]
+        predictions_roi[0, -1] = prediction_channel_start
+        predictions_roi[1, -1] = prediction_channel_stop
 
         # Limit upstream roi to self.Image.meta.shape and determine padding
         # todo: manage padding with tiktorch

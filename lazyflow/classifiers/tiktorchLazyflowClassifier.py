@@ -35,16 +35,7 @@ from inferno.io.transform.generic import Normalize
 
 from tiktorch import serializers  # noqa
 from tiktorch.launcher import LocalServerLauncher, RemoteSSHServerLauncher, SSHCred
-from tiktorch.types import (
-    NDArray,
-    LabeledNDArray,
-    NDArrayBatch,
-    LabeledNDArrayBatch,
-    Point2D,
-    Point3D,
-    Point4D,
-    SetDeviceReturnType,
-)
+from tiktorch.types import NDArray, LabeledNDArray, NDArrayBatch, LabeledNDArrayBatch, SetDeviceReturnType
 from tiktorch.rpc_interface import INeuralNetworkAPI
 from tiktorch.rpc import Client, TCPConnConf
 
@@ -77,8 +68,8 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         self._train_model = None
         self._opReorderAxesInImg = OpReorderAxes(graph=Graph())
         self._opReorderAxesInLabel = OpReorderAxes(graph=Graph())
-        self._opReorderAxesInImg.AxisOrder.setValue("tczyx")
-        self._opReorderAxesInLabel.AxisOrder.setValue("tczyx")
+        self._opReorderAxesInImg.AxisOrder.setValue(self.input_axis_order)
+        self._opReorderAxesInLabel.AxisOrder.setValue(self.input_axis_order)
         self._opReorderAxesOut = OpReorderAxes(graph=Graph())
 
         addr, port1, port2 = (
@@ -111,9 +102,24 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
             logger.warning("Could not load tiktorch model within 60 seconds. Trying again for another 360s ...")
             ret: SetDeviceReturnType = fut.result(timeout=360)  # todo: except timeout
 
-        self.training_shape = ret.training_shape
-        self.valid_shapes = ret.valid_shapes
-        self.shrinkage = ret.shrinkage
+        if len(self.input_axis_order) != len(ret.training_shape):
+            raise ValueError(
+                f"input axis order {self.input_axis_order} incompatible with determined training shape {ret.training_shape}"
+            )
+        if any([len(self.input_axis_order) != len(vs) for vs in ret.valid_shapes]):
+            raise ValueError(
+                f"input axis order {self.input_axis_order} incompatible with determined valid shapes {ret.valid_shapes}"
+            )
+        if len(self.input_axis_order) != len(ret.shrinkage):
+            raise ValueError(
+                f"input axis order {self.input_axis_order} incompatible with determined shrinkage {ret.shrinkage}"
+            )
+
+        self.training_shape = tuple([dict(zip(self.input_axis_order, ret.training_shape)).get(a, 1) for a in "tczyx"])
+        self.valid_shapes = [
+            tuple([dict(zip(self.input_axis_order, vs)).get(a, 1) for a in "tczyx"]) for vs in ret.valid_shapes
+        ]
+        self.shrinkage = tuple([dict(zip(self.input_axis_order, ret.shrinkage)).get(a, 0) for a in "tczyx"])
 
     def __getattr__(self, item):
         if item != "_config":
@@ -238,32 +244,43 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         :return: probabilities
         """
         assert isinstance(roi, numpy.ndarray)
-        logger.info(f"tiktorchLazyflowClassifier.predict tile shape: {feature_image.shape}")
+        logger.info("predict tile shape: %s (axistags: %r)", feature_image.shape, axistags)
 
         # translate roi axes todo: remove with tczyx standard
-        roi = roi[:, [axistags.index(a) for a in "czyx"]]
+        output_axis_order = self.output_axis_order
+        if "c" not in output_axis_order:
+            output_axis_order = "c" + output_axis_order
+            c_was_not_in_output_axis_order = True
+        else:
+            c_was_not_in_output_axis_order = False
+
+        roi = roi[:, [axistags.index(a) for a in output_axis_order]]
 
         self._opReorderAxesInImg.Input.setValue(vigra.VigraArray(feature_image, axistags=axistags))
         reordered_feature_image = self._opReorderAxesInImg.Output([]).wait()
-        assert reordered_feature_image.shape in self.valid_shapes, (reordered_feature_image.shape, self.valid_shapes)
         # todo: do transforms in tiktorch
         transform = Compose(Normalize())
         reordered_feature_image = transform(reordered_feature_image)
 
         result = self.tikTorchClient.forward(NDArray(reordered_feature_image)).result().as_numpy()[0]
         logger.info(f"Obtained a predicted block of shape {result.shape}")
-        halo = numpy.array(self.get_halo("czyx"))
-        shrink = numpy.array(self.get_shrinkage("czyx"))
+        if c_was_not_in_output_axis_order:
+            result = result[None, ...]
+
+        halo = numpy.array(self.get_halo(output_axis_order))
+        shrink = numpy.array(self.get_shrinkage(output_axis_order))
         # remove halo from result todo: do not send tensor with halo back, but remove halo in tiktorch instead
         assert len(result.shape) == len(halo), (result.shape, halo)
         result = result[[slice(h, -h) if h else slice(None) for h in halo]]
 
         # make two channels out of single channel predictions
-        if result.shape[0] == 1:
-            result = numpy.concatenate((result, 1 - result), axis=0)
+        channel_axis = output_axis_order.find("c")
+        if result.shape[channel_axis] == 1:
+            result = numpy.concatenate((result, 1 - result), axis=channel_axis)
             logger.info(f"Changed shape of predicted block to {result.shape} by adding '1-p' channel")
 
         # remove shrinkage and halo from roi
+        logger.debug('roi %s\nhalo %s\nshrink %s', roi, halo, shrink)
         roi -= halo + shrink
         assert all(a >= 0 for a in roi[0]), roi[0]
         assert all(a <= s for a, s in zip(roi[1], result.shape)), (roi[1], result.shape)
@@ -272,12 +289,12 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         shape_wo_halo = result.shape
         result = result[roiToSlice(*roi)]
         logger.info(
-            f"Selected roi (start: {roi[0]}, stop: {roi[1]}) from result without halo ({shape_wo_halo}). Now"
+            f"Selected roi (start: {roi[0]}, stop: {roi[1]}) from result without halo {shape_wo_halo}. Now"
             f" result has shape: ({result.shape})."
         )
 
         self._opReorderAxesOut.AxisOrder.setValue("".join(axistags.keys()))
-        self._opReorderAxesOut.Input.setValue(vigra.VigraArray(result, axistags=vigra.defaultAxistags("czyx")))
+        self._opReorderAxesOut.Input.setValue(vigra.VigraArray(result, axistags=vigra.defaultAxistags(output_axis_order)))
         return self._opReorderAxesOut.Output[:].wait()
 
     @property
@@ -292,12 +309,21 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         return self.input_channels
 
     def set_halo(self, halo: Tuple[int, ...]) -> None:
-        in_order = self.input_axis_order.replace("b", "").replace("c", "")
+        in_order = self.input_axis_order.replace("b", "")
+        if len(in_order) == len(halo) + 1:
+            # assume channel axis to be left out in halo
+            in_order = in_order.replace("c", "")
+
         if len(in_order) != len(halo):
+            raise ValueError(f"Input axis order {self.input_axis_order} incompatible with halo {halo}")
+
+        halo_dims = dict(zip(in_order, halo))
+        if "c" in halo_dims and halo_dims["c"] != 0:
             raise ValueError(
-                "Input order (optionally including batch dimension 'b' and channel dimension 'c') incompatible with halo (always excluding 'b' and 'c'"
+                f"Expected halo for channel axis to be zero, but found halo {halo} with input axis order "
+                f"{self.input_axis_order} => {halo_dims}"
             )
-        halo_dims = {a: h for a, h in zip(in_order, halo)}
+
         self.halo = tuple([halo_dims.get(a, 0) for a in "tczyx"])
 
     def get_halo(self, data_axes: str = "zyx") -> Tuple[int, ...]:
