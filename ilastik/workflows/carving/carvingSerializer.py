@@ -47,6 +47,9 @@ class CarvingSerializer(AppletSerializer):
         for imageIndex, opCarving in enumerate( self._o.innerOperators ):
             mst = opCarving._mst
 
+            if mst is None:
+                # Nothing to save
+                return
             # Populate a list of objects to save:
             objects_to_save = set(list(mst.object_names.keys()))
             objects_already_saved = set(list(topGroup["objects"]))
@@ -67,17 +70,18 @@ class CarvingSerializer(AppletSerializer):
                 else:
                     logger.info( "  -> added" )
 
+
+                if name not in mst.object_seeds_fg_voxels:
+                    # this object was deleted
+                    deleteIfPresent(obj, name)
+                    continue
+
                 g = getOrCreateGroup(obj, name)
                 deleteIfPresent(g, "fg_voxels")
                 deleteIfPresent(g, "bg_voxels")
                 deleteIfPresent(g, "sv")
                 deleteIfPresent(g, "bg_prio")
                 deleteIfPresent(g, "no_bias_below")
-
-                if not name in mst.object_seeds_fg_voxels:
-                    #this object was deleted
-                    deleteIfPresent(obj, name)
-                    continue
 
                 v = mst.object_seeds_fg_voxels[name]
                 v = [v[i][:,numpy.newaxis] for i in range(3)]
