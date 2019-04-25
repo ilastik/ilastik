@@ -388,7 +388,8 @@ class OpBlockShape(Operator):
 
     def setup_train(self):
         training_shape = self.ClassifierFactory.value.training_shape
-        blockDims = {a: s for a, s in zip("tczyx", training_shape)}
+        blockDims = dict(zip("tczyx", training_shape))
+        blockDims["c"] = 9999  # always request all channels
         axisOrder = self.RawImage.meta.getAxisKeys()
         ret = tuple(blockDims[a] for a in axisOrder)
         logger.debug(
@@ -402,11 +403,12 @@ class OpBlockShape(Operator):
         shrunk_valid_tczyx_shapes = [numpy.array(shape) - numpy.array(shrinkage) for shape in valid_tczyx_shapes]
         largest_valid_shape = shrunk_valid_tczyx_shapes[-1]
 
-        blockDims = {a: s for a, s in zip("tczyx", largest_valid_shape)}
+        blockDims = dict(zip("tczyx", largest_valid_shape))
+        blockDims["c"] = 9999  # always request all channels
         axisOrder = self.RawImage.meta.getAxisKeys()
         ret = tuple(blockDims[a] for a in axisOrder)
         logger.debug(
-            "got lagest valid shape %s and axis order %s => Set BlockShapeInference to %s",
+            "got largest valid shape %s and axis order %s => Set BlockShapeInference to %s",
             largest_valid_shape,
             axisOrder,
             ret,
