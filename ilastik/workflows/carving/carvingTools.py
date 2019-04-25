@@ -187,7 +187,8 @@ def agglomerate_labels(data, labels, block_shape=None, max_workers=None,
     """
 
     logger.info("computing region adjacency graph")
-    rag = nifty.graph.rag.gridRag(labels, numberOfThreads=max_workers)
+    max_label = labels.max() + 1
+    rag = nifty.graph.rag.gridRag(labels, max_label, numberOfThreads=max_workers)
     n_nodes = rag.numberOfNodes
 
     shape = data.shape
