@@ -195,7 +195,7 @@ def run_gui_tests(tstcls, gui_test_bag):
     # Note on the class test execution lifecycle
     # pytest infers that finalizer teardown_class should be called when
     # nextitem is None
-    for item, nextitem in pairwise(gui_test_bag):
+    for item, nextitem in pairwise(gui_test_bag, tail=None):
         tst_queue.put((item, nextitem))
 
     # Spawn a suite runner as a interval task
