@@ -11,7 +11,7 @@ install:
   - cmd: where conda
   - cmd: conda config --set always_yes yes --set changeps1 no
   - cmd: conda update -q conda
-  - cmd: conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers
+  - cmd: conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers pytest-qt
   # Remove the conda ilastik-meta
   # --force in order not to remove/update anything else
   - cmd: conda remove -n %ENV_NAME% --force ilastik-meta
