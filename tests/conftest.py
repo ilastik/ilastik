@@ -62,7 +62,7 @@ def pytest_pyfunc_call(pyfuncitem):
             # Call actual test function
             return pyfuncitem.obj()
         except Exception:
-            bucket[0] = sys.exc_info
+            bucket[0] = sys.exc_info()
 
     with futures.ThreadPoolExecutor(max_workers=1) as executor:
         fut = executor.submit(testfunc)
