@@ -116,9 +116,11 @@ class OpFilter(Operator):
             else:
                 channel = None
 
+            # handle the special case of the Request threadpool not having any workers
+            max_workers = max(1, Request.global_thread_pool.num_workers)
             # compute the filter response block-wise
             response = parallel_filter(filter_name, fvol, sigma,
-                                       Request.global_thread_pool.num_workers,
+                                       max_workers=max_workers,
                                        return_channel=channel)
 
             # need to invert response for hessian bright
@@ -179,6 +181,8 @@ class OpSimpleBlockwiseWatershed(Operator):
         input_image = self.Input(roi.start, roi.stop).wait()
         volume_feat = input_image[0,...,0]
         result_view = result[0,...,0]
+        # handle the special case of the Request threadpool not having any workers
+        max_workers = max(1, Request.global_thread_pool.num_workers)
         with Timer() as watershedTimer:
             # 3d watersheds
             if self.Input.meta.getTaggedShape()['z'] > 1:
@@ -186,7 +190,7 @@ class OpSimpleBlockwiseWatershed(Operator):
                 if self.DoAgglo.value:
                     result_view[...], max_id = watershed_and_agglomerate(
                         volume_feat,
-                        max_workers=Request.global_thread_pool.num_workers,
+                        max_workers=max_workers,
                         size_regularizer=self.SizeRegularizer.value,
                         reduce_to=self.ReduceTo.value)
                 else:
@@ -197,7 +201,7 @@ class OpSimpleBlockwiseWatershed(Operator):
                 if self.DoAgglo.value:
                     result_view[...], max_id = watershed_and_agglomerate(
                         volume_feat[:, :, 0],
-                        max_workers=Request.global_thread_pool.num_workers,
+                        max_workers=max_workers,
                         size_regularizer=self.SizeRegularizer.value,
                         reduce_to=self.ReduceTo.value)
                 else:
