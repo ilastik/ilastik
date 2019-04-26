@@ -38,14 +38,6 @@ from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 
 from ilastik.widgets.labelListModel import LabelListModel
-#try:
-#    from volumina.view3d.volumeRendering import RenderingManager
-#    from volumina.view3d.view3d import convertVTPtoOBJ
-#    from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
-#    from vtk import vtkXMLPolyDataWriter, vtkPolyDataWriter
-#    _have_vtk = True
-#except ImportError:
-_have_vtk = False
 
 from volumina.view3d.meshgenerator import MeshGeneratorDialog, mesh_to_obj
 from volumina.view3d.volumeRendering import RenderingManager
