@@ -19,16 +19,14 @@ class VigraChannelwiseFilter(FlatChannelwiseFilter):
     def _do_compute(self, source:ScalarImage, out:Image):
         out_axes = source.squeezed_shape.axiskeys
 
-        slice_offset = Point5D.zero(**{k:self.radius for k in out_axes})
-        out.to_slice_5d().translated(slice_offset)
+        slice_offset = (source.shape - out.shape) / 2
+        out_slice = out.shape.to_slice_5d().translated(slice_offset)
+        vigra_roi = out_slice.to_tuple(out_axes)
 
-        out_feature_axes = out_axes + 'c'
-        vigra_roi_end = out.raw(out_axes).shape
-        vigra_roi_begin = (0)out.raw(out_axes).shape
-        feature_data = self.filter_fn(source.raw(out_axes).astype(numpy.float32),
-                              sigma=self.sigma, window_size=self.window_size)
-                              #out=out.raw(out_feature_axes))
-        out
+        return self.filter_fn(source.raw(out_axes).astype(numpy.float32),
+                              sigma=self.sigma, window_size=self.window_size,
+                              out=out.raw(out_axes + 'c'),
+                              roi=vigra_roi)
 
 class GaussianSmoothing(VigraChannelwiseFilter):
     @property

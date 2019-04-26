@@ -8,6 +8,7 @@ import numpy as np
 
 from ilastik.array5d import Slice5D, Point5D, Shape5D
 from ilastik.array5d import Array5D, Image, ScalarImage, LinearData
+from ilastik.data_source import DataSource
 
 class FeatureData(Array5D):
     def __init__(self, arr:np.ndarray, axiskeys:str):
@@ -68,7 +69,7 @@ class FlatChannelwiseFilter(FeatureExtractor):
         for source_image, target_image in zip(data.images(), target.images()):
             for source_channel, out_features in zip(source_image.channels(), target_image.channel_stacks(step=self.dimension)):
                 self._do_compute(source_channel, out=out_features)
-        return target.cut()
+        return target
 
     @abstractmethod
     def _do_compute(self, raw_data:ScalarImage, out:Image):

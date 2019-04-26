@@ -7,7 +7,7 @@ import numpy as np
 import vigra
 from vigra.learning import RandomForest
 
-from ilastik.array5d.array5D import Array5D
+from ilastik.array5d.array5D import Array5D, Slice5D
 from ilastik.features.feature_extractor import FeatureCollection, FeatureData
 from ilastik.annotations import Annotation
 
@@ -49,8 +49,8 @@ class PixelClassifier:
             for i in range(num_forests):
                 executor.submit(train_forest, i)
 
-    def predict(self, raw_data:Array5D) -> Predictions:
-        feature_data = self.feature_collection.compute(raw_data)
+    def predict(self, raw_data:Array5D, roi:Slice5D=Slice5D.all()) -> Predictions:
+        feature_data = self.feature_collection.compute(raw_data, roi)
 
         total_predictions = None
         for forest in self.forests:

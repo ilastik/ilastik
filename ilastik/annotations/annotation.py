@@ -8,10 +8,15 @@ from ilastik.array5d import Slice5D, Point5D, Shape5D
 from ilastik.array5d import Array5D, Image, ScalarImage, StaticLine
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
 from ilastik.data_source import DataSource
+from PIL import Image as PilImage
 
 class AnnotationOutOfBounds(Exception):
     def __init__(self, annotation:'Annotation', data_source:DataSource, offset:Point5D):
         super().__init__(f"Annotation {annotation} offset by {offset} exceeds bounds of data_source {data_source}")
+
+class WrongShapeException(Exception):
+    def __init__(self, path:str, data:np.ndarray):
+        super().__init__(f"Annotations from {path} have bad shape: {data.shape}")
 
 class Labels(StaticLine):
     def __init__(self, *args, **kwargs):
@@ -42,6 +47,13 @@ class Annotation(ScalarImage):
 
         self._mask = None
         self._labels = None
+
+    @classmethod
+    def from_png(cls, path:str, data_source:DataSource):
+        data = np.asarray(PilImage.open(path)).astype(np.uint32)
+        if len(data.shape) != 2:
+            raise WrongShapeException(path, data)
+        return cls(data, 'yx', data_source)
 
     def rebuild(self, arr:np.array, axiskeys:str, offset:Point5D=None) -> 'Array5D':
         return self.__class__(arr, axiskeys, data_source=self.data_source,

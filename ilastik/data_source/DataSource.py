@@ -2,17 +2,18 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from PIL import Image as PilImage
+import numpy as np
 
-from ilastik.array5d import Array5D, Point5D, Shape5D
+from ilastik.array5d import Array5D, Point5D, Shape5D, Slice5D
 
 class DataSource(ABC):
     @property
     @abstractmethod
-    def shape(self) -> Shape5D
+    def shape(self) -> Shape5D:
         pass
 
     @abstractmethod
-    def get_data(self, roi:Shape5D) -> Array5D:
+    def retrieve(self, roi:Shape5D) -> Array5D:
         pass
 
 class TiledDataSouce(DataSource):
@@ -32,6 +33,10 @@ class FlatDataSource(DataSource):
         self._data = Array5D(raw_data, axiskeys=axiskeys)
         self.block_shape = Shape5D(**{k:v for k,v in zip(axiskeys, raw_data.shape)})
 
-    def get_data(self, roi:Shape5D):
+    @property
+    def shape(self):
+        return self._data.shape
+
+    def retrieve(self, roi:Shape5D):
         return self._data.cut(roi) #TODO: make slice read-only
 
