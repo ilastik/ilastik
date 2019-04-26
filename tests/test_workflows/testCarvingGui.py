@@ -174,8 +174,6 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
 
             # check that the write-protection did it's job:
             assert not gui.currentGui().drawer.sigmaSpin.isEnabled()
-            assert not gui.currentGui().drawer.watershedSourceCombo.isEnabled()
-            assert not gui.currentGui().drawer.invertWatershedSourceCheckbox.isEnabled()
             assert not gui.currentGui().drawer.runButton.isEnabled()
             assert not gui.currentGui().drawer.sizeRegularizerSpin.isEnabled()
             assert not gui.currentGui().drawer.reduceToSpin.isEnabled()

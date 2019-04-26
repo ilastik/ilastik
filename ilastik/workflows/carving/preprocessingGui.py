@@ -55,12 +55,7 @@ class PreprocessingGui(QMainWindow):
         localDir = os.path.split(__file__)[0]+'/'
         # (We don't pass self here because we keep the drawer ui in a separate object.)
         self.drawer = uic.loadUi(localDir+"/preprocessingDrawer.ui")
-        
-        # FIXME: for 0.6, we do not want to allow these options below
-        self.drawer.watershedSourceCombo.hide()
-        self.drawer.invertWatershedSourceCheckbox.hide()
-        self.drawer.watershedSourceInputLabel.hide()
-        
+
         # Set up radiobox layout
         self.filterbuttons = [self.drawer.filter1,
                                 self.drawer.filter2,
@@ -74,20 +69,11 @@ class PreprocessingGui(QMainWindow):
         for f in self.filterbuttons:
             f.clicked.connect(self.handleFilterChanged)
 
-        # Init widget appearance
-        self.drawer.runButton.setIcon( QIcon(ilastikIcons.Play) )
-        self.drawer.watershedSourceCombo.addItem("Input Data", userData="input")
-        self.drawer.watershedSourceCombo.addItem("Filter Output", userData="filtered")
-        self.drawer.watershedSourceCombo.addItem("Raw Data (if available)", userData="raw")
-
         # Initialize widget values
         self.updateDrawerFromOperator()
 
         # Event handlers: everything is handled once the run button is clicked, not live
         self.drawer.runButton.clicked.connect(self.handleRunButtonClicked)
-
-        self.drawer.watershedSourceCombo.currentIndexChanged.connect( self.handleWatershedSourceChange )
-        self.drawer.invertWatershedSourceCheckbox.toggled.connect( self.handleInvertWatershedSourceChange )
         self.drawer.writeprotectBox.stateChanged.connect(self.handleWriterprotectStateChanged)
 
         self.parentApplet.appletStateUpdateRequested.subscribe(self.processingFinished)
@@ -98,8 +84,6 @@ class PreprocessingGui(QMainWindow):
         # Slot change handlers (in case the operator is somehow changed *outside* the gui, such as by the workflow.
         self.topLevelOperatorView.Filter.notifyDirty(self.updateFilterFromOperator)
         self.topLevelOperatorView.Sigma.notifyDirty(self.updateSigmaFromOperator)
-        self.topLevelOperatorView.WatershedSource.notifyDirty(self.updateWatershedSettingsFromOperator)
-        self.topLevelOperatorView.InvertWatershedSource.notifyDirty(self.updateWatershedSettingsFromOperator)
 
     def updateFilterFromOperator(self, *args):
         self.filterbuttons[self.topLevelOperatorView.Filter.value].setChecked(True)
@@ -108,30 +92,15 @@ class PreprocessingGui(QMainWindow):
     def updateSigmaFromOperator(self, *args):
         self.drawer.sigmaSpin.setValue(self.topLevelOperatorView.Sigma.value)
 
-    def updateWatershedSettingsFromOperator(self, *args):
-        sourceSetting = self.topLevelOperatorView.WatershedSource.value
-        comboIndex = self.drawer.watershedSourceCombo.findData( sourceSetting )
-        self.drawer.watershedSourceCombo.setCurrentIndex( comboIndex )
-        self.drawer.invertWatershedSourceCheckbox.setChecked( self.topLevelOperatorView.InvertWatershedSource.value )
-
     def updateDrawerFromOperator(self, *args):
         self.updateFilterFromOperator()
         self.updateSigmaFromOperator()
-        self.updateWatershedSettingsFromOperator()
 
     def handleFilterChanged(self):
         choice =  [f.isChecked() for f in self.filterbuttons].index(True)
         self.filterChoice = choice
         #update lower bound for sigma
         self.drawer.sigmaSpin.setMinimum(self.correspondingSigmaMins[choice])
-
-
-    def handleWatershedSourceChange(self, index):
-        data = self.drawer.watershedSourceCombo.itemData(index)
-        self.topLevelOperatorView.WatershedSource.setValue( str(data) )
-
-    def handleInvertWatershedSourceChange(self, checked):
-        self.topLevelOperatorView.InvertWatershedSource.setValue( checked )
 
     def processingFinished(self):
         """Method makes sure finished processing is communicated visually
@@ -176,8 +145,6 @@ class PreprocessingGui(QMainWindow):
         for f in self.filterbuttons:
             f.setEnabled(not iswriteprotect)
         self.drawer.sigmaSpin.setEnabled(not iswriteprotect)
-        self.drawer.watershedSourceCombo.setEnabled(not iswriteprotect)
-        self.drawer.invertWatershedSourceCheckbox.setEnabled( not iswriteprotect )
         self.drawer.runButton.setEnabled(not iswriteprotect)
 
         self.drawer.sizeRegularizerSpin.setEnabled(not iswriteprotect)

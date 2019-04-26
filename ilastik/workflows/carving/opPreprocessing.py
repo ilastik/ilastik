@@ -268,6 +268,7 @@ class OpMstSegmentorProvider(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.MST.setDirty(slice(None))
 
+
 class OpPreprocessing(Operator):
     """
     The top-level operator for the pre-procession applet
@@ -279,8 +280,6 @@ class OpPreprocessing(Operator):
     InputData = InputSlot()
     Sigma = InputSlot(value = 1.6)
     Filter = InputSlot(value = 0)
-    WatershedSource = InputSlot(value="filtered") # Choices: "raw", "input", "filtered"
-    InvertWatershedSource = InputSlot(value=False)
 
     DoAgglo           = InputSlot(value = 1)
     SizeRegularizer   = InputSlot(value = 0.5)
@@ -294,13 +293,14 @@ class OpPreprocessing(Operator):
     WatershedImage = OutputSlot()
     WatershedSourceImage = OutputSlot()
 
-    # OverlayData ---- opOverlayFilter* -----> opOverlayNormalize ------                                                                  --> WatershedImage
-    #                                                                   \                                                                /
-    # InputData --> -- opInputFilter*--------> opInputNormalize -------> (SELECT by WatershedSource) --> opWatershed --> opWatershedCache --> opMstProvider --> [via execute()] --> PreprocessedData
-    #              \                                                    /                                                                    /
-    # Sigma ------> opFilter --> opFilterNormalize --> opFilterCache --> --------------------------------------------------------------------
-    #              /                                                \
-    # Filter ------                                                  --> FilteredImage
+    #                                                                                                      +-> WatershedImage
+    #                                                                                                     /
+    # InputData +->                                                  +-> opWatershed--->-opWatershedCache +-> opMstProvider +-> [via execute()] +-> PreprocessedData
+    #              \                                                 |                                       /
+    # Sigma +-----> opFilter +-> opFilterNormalize +-> opFilterCache +--------------------------------------+
+    #              /                                                 \
+    # Filter +----+                                                   +-> FilteredImage
+
 
     # *note: Raw/Input filters used for inversion and smoothing only.
 
@@ -333,22 +333,9 @@ class OpPreprocessing(Operator):
         self._opWatershed.DoAgglo.connect( self.SizeRegularizer )
         self._opWatershed.ReduceTo.connect( self.ReduceTo )
         self._opWatershed.SizeRegularizer.connect( self.SizeRegularizer )
+        self._opWatershed.Input.connect(self._opFilterCache.Output)
 
         self._opWatershedCache = OpBlockedArrayCache( parent=self )
-
-        self._opOverlayFilter = OpFilter( parent=self )
-        self._opOverlayFilter.Input.connect( self.OverlayData )
-        self._opOverlayFilter.Sigma.connect( self.Sigma )
-
-        self._opOverlayNormalize = OpNormalize255( parent=self )
-        self._opOverlayNormalize.Input.connect( self._opOverlayFilter.Output )
-
-        self._opInputFilter = OpFilter( parent=self )
-        self._opInputFilter.Input.connect( self.InputData )
-        self._opInputFilter.Sigma.connect( self.Sigma )
-
-        self._opInputNormalize = OpNormalize255( parent=self )
-        self._opInputNormalize.Input.connect( self._opInputFilter.Output )
 
         self._opMstProvider = OpMstSegmentorProvider( self.applet, parent=self )
         self._opMstProvider.Image.connect( self._opFilterCache.Output )
@@ -396,27 +383,6 @@ class OpPreprocessing(Operator):
 
         self._opFilterCache.BlockShape.setValue( self.InputData.meta.shape )
         self._opFilterCache.Input.connect( self._opFilterNormalize.Output )
-
-        # If the user's boundaries are dark, then invert the special watershed sources
-        if self.InvertWatershedSource.value:
-            self._opOverlayFilter.Filter.setValue( OpFilter.RAW_INVERTED )
-            self._opInputFilter.Filter.setValue( OpFilter.RAW_INVERTED )
-        else:
-            self._opOverlayFilter.Filter.setValue( OpFilter.RAW )
-            self._opInputFilter.Filter.setValue( OpFilter.RAW )
-
-        ws_source = self.WatershedSource.value
-        if ws_source == 'raw':
-            if self.OverlayData.ready():
-                self._opWatershed.Input.connect( self._opOverlayNormalize.Output )
-            else:
-                self._opWatershed.Input.connect( self._opInputNormalize.Output )
-        elif ws_source == 'input':
-            self._opWatershed.Input.connect( self._opInputNormalize.Output )
-        elif ws_source == 'filtered':
-            self._opWatershed.Input.connect( self._opFilterCache.Output )
-        else:
-            assert False, "Unknown Watershed source option: {}".format( ws_source )
 
         self._opWatershedSourceCache.BlockShape.setValue( self.InputData.meta.shape )
         self._opWatershedSourceCache.Input.connect( self._opWatershed.Input )
@@ -498,26 +464,6 @@ class OpPreprocessing(Operator):
             self.initialSizeRegularizer = None
             self.initialReduceTo = None
             self._prepData = [None]
-
-        ws_source_changed = False
-        if slot == self.WatershedSource or \
-          (slot == self.Filter and self.WatershedSource.value == 'filtered') or \
-           slot == self.InvertWatershedSource:
-            self._opWatershed.Input.setDirty(slice(None))
-            ws_source_changed = True
-
-        if not ws_source_changed and self.AreSettingsInitial():
-            #if settings are the same as with last preprocess
-            #enable carving, as the graph is still stored
-            self._dirty = False
-            self.enableReset(False)
-            self.enableDownstream(True)
-        else:
-            self._dirty = True
-            self.enableDownstream(False)
-            # is there a stored preprocessed graph?
-            if self._prepData[0] is not None:
-                self.enableReset(True)
 
     def enableReset(self,er):
         '''set enabled of resetButton to er'''
