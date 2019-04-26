@@ -28,7 +28,6 @@ class Task:
         self.fn()
 
 
-
 @pytest.fixture
 def pool():
     return ThreadPool(NUM_WORKERS)
@@ -43,7 +42,7 @@ def test_thread_pool_starts_workers(pool: ThreadPool):
 
 
 def test_initial_state_of_workers(pool: ThreadPool):
-    assert pool.get_states() == ['waiting'] * NUM_WORKERS
+    assert pool.get_states() == ["waiting"] * NUM_WORKERS
 
 
 def test_stop_stops_all_workers(pool: ThreadPool):
@@ -63,7 +62,7 @@ def test_wake_task_executes_task_on_idle_worker(pool: ThreadPool):
 
     pool.wake_up(task)
     assert start.wait(timeout=1)
-    assert pool.get_states().count('running task') == 1
+    assert pool.get_states().count("running task") == 1
     assert stop.wait(timeout=1)
 
 
@@ -104,6 +103,7 @@ def test_exception_does_not_kill_worker(caplog):
 
 def test_exception_in_task_logged(caplog, pool):
     stop = threading.Event()
+
     class MyExc(Exception):
         pass
 

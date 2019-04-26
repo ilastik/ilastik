@@ -13,6 +13,7 @@ class TExc(Exception):
     Test exception to allow check if correct
     exception has propagated to top level
     """
+
     pass
 
 
@@ -45,8 +46,10 @@ def test_subscribed_functions_called_on_signal(signal):
 def test_subscribed_functions_called_in_sequence(signal):
     order = []
     for c in range(100):
+
         def fun(val=c):
             order.append(val)
+
         signal.subscribe(fun)
 
     signal()
@@ -63,11 +66,7 @@ def test_cleaned_signal_raises_exception(signal):
 
 
 def test_signal_with_broken_subscriber(signal):
-    subs = [
-        mock.Mock(),
-        mock.Mock(),
-        mock.Mock(),
-    ]
+    subs = [mock.Mock(), mock.Mock(), mock.Mock()]
 
     subs[1].side_effect = TExc()
 
