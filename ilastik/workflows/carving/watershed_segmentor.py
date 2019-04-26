@@ -97,8 +97,13 @@ class WatershedSegmentor(object):
             roiEnd  = roi.stop[1:3]
             return self.gridSegmentor.getSegmentation(roiBegin=roiBegin,roiEnd=roiEnd)[:,:,None]
 
+    def clearSeed(self, label_id: int) -> None:
+        self.gridSegmentor.clearSeed(label_id)
 
-    def setSeeds(self,fgSeeds, bgSeeds):
+    def clearSeeds(self) -> None:
+        self.gridSegmentor.clearSeeds()
+
+    def setSeeds(self, fgSeeds, bgSeeds):
         self.gridSegmentor.setSeeds(fgSeeds, bgSeeds)
 
     def getSuperVoxelSeg(self):
