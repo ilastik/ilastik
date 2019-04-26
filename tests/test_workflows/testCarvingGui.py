@@ -3,7 +3,11 @@ import logging
 import os
 import sys
 import tempfile
+import threading
+import time
 import zipfile
+
+from PyQt5.QtWidgets import QApplication
 
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.workflows.carving import CarvingWorkflow
@@ -107,8 +111,79 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             opDataSelection.DatasetGroup[0][0].setValue(info_raw)
 
             # Save
-            # TODO: enable this once issue https://github.com/ilastik/ilastik/issues/1952 is fixed
-            # shell.projectManager.saveProject()
+            shell.projectManager.saveProject()
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    def test_02_do_preprocessing(self):
+        """
+        Go to the second applet and adjust some preprocessing settings.
+        Apply and check the outcome.
+        """
+
+        def impl():
+            shell = self.shell
+            workflow = shell.projectManager.workflow
+            preprocessingApplet = workflow.preprocessingApplet
+            gui = preprocessingApplet.getMultiLaneGui()
+            op_preprocessing = preprocessingApplet.topLevelOperator.getLane(0)
+            print(op_preprocessing)
+
+            # activate the preprocessing applet
+            shell.setSelectedAppletDrawer(1)
+            # let the gui catch up
+            QApplication.processEvents()
+
+            # set the required values
+            sigma = 2.0
+            gui.currentGui().setSigma(sigma)
+
+            assert gui.currentGui().drawer.sigmaSpin.value() == sigma
+            gui.currentGui().drawer.filter2.click()
+
+            # get the final layer and check that it is not visible yet
+            layermatch = [x.name.startswith("Watershed") for x in gui.currentGui().centralGui.editor.layerStack]
+            assert sum(layermatch) == 1, "Watershed Layer expected."
+            final_layer = gui.currentGui().centralGui.editor.layerStack[layermatch.index(True)]
+            assert not final_layer.visible, "Expected the final layer not to be visible before apply is triggered."
+
+            # in order to wait until the preprocessing is finished
+            finished = threading.Event()
+
+            def processing_finished():
+                nonlocal finished
+                print("Setting event")
+                finished.set()
+
+            preprocessingApplet.appletStateUpdateRequested.subscribe(processing_finished)
+
+            # trigger the preprocessing and wait
+            gui.currentGui().drawer.runButton.click()
+            finished.wait(timeout=10)
+            assert finished.is_set()
+
+            assert op_preprocessing.Sigma.value == sigma
+
+            assert final_layer.visible
+
+            watershed_output = op_preprocessing.WatershedImage[:].wait()
+
+            # Hard-coded for this data and settings
+            assert watershed_output.max() == 245
+
+            # check that the write-protection did it's job:
+            assert not gui.currentGui().drawer.sigmaSpin.isEnabled()
+            assert not gui.currentGui().drawer.watershedSourceCombo.isEnabled()
+            assert not gui.currentGui().drawer.invertWatershedSourceCheckbox.isEnabled()
+            assert not gui.currentGui().drawer.runButton.isEnabled()
+            assert not gui.currentGui().drawer.sizeRegularizerSpin.isEnabled()
+            assert not gui.currentGui().drawer.reduceToSpin.isEnabled()
+            assert not gui.currentGui().drawer.doAggloCheckBox.isEnabled()
+
+            # Save the project
+            saveThread = self.shell.onSaveProjectActionTriggered()
+            saveThread.join()
 
         # Run this test from within the shell event loop
         self.exec_in_shell(impl)
