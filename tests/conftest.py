@@ -55,20 +55,19 @@ def pytest_pyfunc_call(pyfuncitem):
     if not is_gui_test(pyfuncitem):
         return
 
-    bucket = [None]
+    exc_info = None
 
     def testfunc():
         try:
             # Call actual test function
             return pyfuncitem.obj()
         except Exception:
-            bucket[0] = sys.exc_info()
+            nonlocal exc_info
+            exc_info = sys.exc_info()
 
     with futures.ThreadPoolExecutor(max_workers=1) as executor:
         fut = executor.submit(testfunc)
         fut.result(timeout=GUI_TEST_TIMEOUT)
-
-    exc_info = bucket[0]
 
     if exc_info:
         raise exc_info[1].with_traceback(exc_info[2])
