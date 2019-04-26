@@ -221,11 +221,11 @@ class OpTikTorchPixelwiseClassifierPredict(OpPixelwiseClassifierPredict):
         )
 
         axiskeys = self.Image.meta.getAxisKeys()
-        roistart = roi.start
+        roistart = list(roi.start)
         prediction_channel_start = roistart[-1]
         roistart[-1] = 0
         raw_channels = self.Image.meta.shape[-1]
-        roistop = roi.stop
+        roistop = list(roi.stop)
         prediction_channel_stop = roistop[-1]
         roistop[-1] = raw_channels
         upstream_roi = (roistart, roistop)
