@@ -1,4 +1,3 @@
-from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -644,7 +643,7 @@ class CarvingGui(LabelingGui):
 
         for name, label in self._shownObjects3D.items():
             color = QColor(ctable[op.MST.value.object_names[name]])
-            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+            color = (color.red() / 255, color.green() / 255, color.blue() / 255)
             self._renderMgr.setColor(label, color)
 
         if self._showSegmentationIn3D and self._segmentation_3d_label is not None:
@@ -655,7 +654,7 @@ class CarvingGui(LabelingGui):
             color = fg_label.pmapColor()  # 2 is the foreground index
             self._renderMgr.setColor(
                 self._segmentation_3d_label,
-                (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+                (color.red() / 255, color.green() / 255, color.blue() / 255)
             )
 
     def _getNext(self, slot, parentFun, transform=None):
