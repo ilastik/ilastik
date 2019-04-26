@@ -96,19 +96,28 @@ class PreprocessingGui(QMainWindow):
         #self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
 
         # Slot change handlers (in case the operator is somehow changed *outside* the gui, such as by the workflow.
-        self.topLevelOperatorView.Filter.notifyDirty(self.updateDrawerFromOperator)
-        self.topLevelOperatorView.Sigma.notifyDirty(self.updateDrawerFromOperator)
-        self.topLevelOperatorView.WatershedSource.notifyDirty(self.updateDrawerFromOperator)
-        self.topLevelOperatorView.InvertWatershedSource.notifyDirty(self.updateDrawerFromOperator)
+        self.topLevelOperatorView.Filter.notifyDirty(self.updateFilterFromOperator)
+        self.topLevelOperatorView.Sigma.notifyDirty(self.updateSigmaFromOperator)
+        self.topLevelOperatorView.WatershedSource.notifyDirty(self.updateWatershedSettingsFromOperator)
+        self.topLevelOperatorView.InvertWatershedSource.notifyDirty(self.updateWatershedSettingsFromOperator)
 
-    def updateDrawerFromOperator(self, *args):
+    def updateFilterFromOperator(self, *args):
         self.filterbuttons[self.topLevelOperatorView.Filter.value].setChecked(True)
         self.filterChoice = [f.isChecked() for f in self.filterbuttons].index(True)
+
+    def updateSigmaFromOperator(self, *args):
         self.drawer.sigmaSpin.setValue(self.topLevelOperatorView.Sigma.value)
+
+    def updateWatershedSettingsFromOperator(self, *args):
         sourceSetting = self.topLevelOperatorView.WatershedSource.value
         comboIndex = self.drawer.watershedSourceCombo.findData( sourceSetting )
         self.drawer.watershedSourceCombo.setCurrentIndex( comboIndex )
         self.drawer.invertWatershedSourceCheckbox.setChecked( self.topLevelOperatorView.InvertWatershedSource.value )
+
+    def updateDrawerFromOperator(self, *args):
+        self.updateFilterFromOperator()
+        self.updateSigmaFromOperator()
+        self.updateWatershedSettingsFromOperator()
 
     def handleFilterChanged(self):
         choice =  [f.isChecked() for f in self.filterbuttons].index(True)
