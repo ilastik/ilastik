@@ -18,7 +18,6 @@ class WatershedSegmentor(object):
         self.hasSeg = False
 
         if h5file is None:
-            ndim  = 3
             self.supervoxelUint32 = labels
             self.volumeFeat = volume_feat.squeeze()
             if self.volumeFeat.ndim == 3:
@@ -26,7 +25,6 @@ class WatershedSegmentor(object):
                 self.gridSegmentor.preprocessing(self.supervoxelUint32,self.volumeFeat)
 
             elif self.volumeFeat.ndim == 2:
-                ndim = 2
                 self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
                 self.gridSegmentor.preprocessing(self.supervoxelUint32.squeeze(),self.volumeFeat)
 
@@ -68,7 +66,6 @@ class WatershedSegmentor(object):
     def run(self, unaries, prios = None, uncertainty="exchangeCount",
             moving_average = False, noBiasBelow = 0, **kwargs):
         self.gridSegmentor.run(float(prios[1]),float(noBiasBelow))
-        seg = self.gridSegmentor.getSuperVoxelSeg()
         self.hasSeg = True
 
     def clearSegmentation(self):
