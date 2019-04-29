@@ -301,9 +301,6 @@ class Slice5D(object):
     def __ne__(self, other):
         return not self == other
 
-    def axis_span(self, label):
-        return self.stop[label] - self.start[label]
-
     @classmethod
     def all(cls):
         return cls.from_start_stop(Point5D.zero(), Point5D.inf())
@@ -312,16 +309,22 @@ class Slice5D(object):
     def shape(self) -> Shape5D:
         return Shape5D(**(self.stop - self.start).to_dict())
 
-    def clamped(self, *, minimum:Point5D=None, maximum:Point5D=None) -> 'Roi5D':
-        return self.__class__(self.start.clamped(minimum, maximum),
-                              self.stop.clamped(minimum, maximum))
+    def clamped(self, *, minimum:Point5D=None, maximum:Point5D=None) -> 'Slice5D':
+        return self.from_start_stop(self.start.clamped(minimum, maximum),
+                                    self.stop.clamped(minimum, maximum))
+
+    def clamped_with_slice(self, slc:'Slice5D'):
+        return self.clamped(minimum=slc.start, maximum=slc.stop)
+
+    def enlarged(self, radius:Point5D, clamp:'Slice5D'=None):
+        clamp = clamp or self.all()
+        start = self.start - radius
+        stop = self.stop + radius
+        return self.from_start_stop(start, stop).clamped_with_slice(clamp)
 
     def translated(self, offset:Point5D):
         assert self.is_defined()
         return self.__class__.from_start_stop(self.start + offset, self.stop + offset)
-
-    def clamped_with_roi(self, roi):
-        return self.clamped(minimum=roi.start, maximum=roi.stop)
 
     def offset(self, offset:Point5D):
         return self.__class__.from_start_stop(self.start + offset, self.stop + offset)
