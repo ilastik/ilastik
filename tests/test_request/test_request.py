@@ -17,82 +17,64 @@ class TExc(Exception):
     pass
 
 
-@pytest.fixture
-def signal():
-    return SimpleSignal()
+class TestSignal:
 
+    @pytest.fixture
+    def signal(self):
+        return SimpleSignal()
 
-def test_signal_callable(signal):
-    signal()
-
-
-def test_allows_function_registration(signal):
-    def foo(*args, **kwargs):
-        pass
-
-    signal.subscribe(foo)
-
-
-def test_subscribed_functions_called_on_signal(signal):
-    f = mock.Mock()
-
-    signal.subscribe(f)
-
-    signal(1, 2, 3, val=2)
-
-    f.assert_called_with(1, 2, 3, val=2)
-
-
-def test_subscribed_functions_called_in_sequence(signal):
-    order = []
-    for c in range(100):
-
-        def fun(val=c):
-            order.append(val)
-
-        signal.subscribe(fun)
-
-    signal()
-    assert len(order) == 100
-
-    for idx in range(len(order) - 1):
-        assert order[idx] < order[idx + 1]
-
-
-def test_cleaned_signal_raises_exception(signal):
-    signal.clean()
-    with pytest.raises(Exception):
+    def test_is_callable(self, signal: SimpleSignal):
         signal()
 
+    def test_allows_function_registration(self, signal: SimpleSignal):
+        def foo(*args, **kwargs):
+            pass
 
-def test_signal_with_broken_subscriber(signal):
-    subs = [mock.Mock(), mock.Mock(), mock.Mock()]
+        signal.subscribe(foo)
 
-    subs[1].side_effect = TExc()
+    def test_subscribed_functions_invoked_on_call(self, signal: SimpleSignal):
+        f = mock.Mock()
 
-    for s in subs:
-        signal.subscribe(s)
+        signal.subscribe(f)
 
-    with pytest.raises(TExc):
-        signal(1, 2)
+        signal(1, 2, 3, val=2)
 
-    subs[0].assert_called_once_with(1, 2)
-    subs[1].assert_called_once_with(1, 2)
-    subs[2].assert_not_called()
+        f.assert_called_with(1, 2, 3, val=2)
 
+    def test_subscribed_functions_called_in_sequence(self, signal: SimpleSignal):
+        order = []
+        for c in range(100):
 
-def test_submitting_request():
-    stop = threading.Event()
+            def fun(val=c):
+                order.append(val)
 
-    def work():
-        time.sleep(0.3)
-        stop.set()
-        return 42
+            signal.subscribe(fun)
 
-    req = Request(work)
-    req.submit()
-    assert req.wait() == 42
-    assert req.assigned_worker in Request.global_thread_pool.workers
+        signal()
+        assert len(order) == 100
+
+        for idx in range(len(order) - 1):
+            assert order[idx] < order[idx + 1]
+
+    def test_calling_cleaned_signal_raises_exception(self, signal: SimpleSignal):
+        signal.clean()
+        with pytest.raises(Exception):
+            signal()
+
+    def test_broken_subscriber(self, signal: SimpleSignal):
+        subs = [mock.Mock(), mock.Mock(), mock.Mock()]
+
+        subs[1].side_effect = TExc()
+
+        for s in subs:
+            signal.subscribe(s)
+
+        with pytest.raises(TExc):
+            signal(1, 2)
+
+        subs[0].assert_called_once_with(1, 2)
+        subs[1].assert_called_once_with(1, 2)
+        subs[2].assert_not_called()
 
 
 class Work:
@@ -117,60 +99,112 @@ class Work:
             self.done.set()
 
 
-def test_submitting_requests_depending_on_each_other():
-    stop = threading.Event()
+class TestRequest:
+    def test_submit_should_assign_worker_and_execute(self):
+        stop = threading.Event()
 
-    more_work = Request(Work(lambda: 42))
+        def work():
+            time.sleep(0.3)
+            stop.set()
+            return 42
 
-    req = Request(Work(lambda: more_work.wait()))
-    req.submit()
-
-    assert req.wait() == 42
-    assert req.assigned_worker in Request.global_thread_pool.workers
-    assert req.assigned_worker == more_work.assigned_worker
-
-
-def test_signal_finished():
-    recv = mock.Mock()
-    work = Work(lambda: 42)
-    req = Request(work)
-    req.notify_finished(recv)
-    req.submit()
-    assert work.done.wait(timeout=1)
-    recv.assert_called_once_with(42)
-
-
-def test_signal_finished_on_exception():
-    def broken():
-        raise TExc()
-
-    recv = mock.Mock()
-    work = Work(broken)
-    req = Request(work)
-    req.notify_finished(recv)
-    req.submit()
-
-    with pytest.raises(TExc):
+        req = Request(work)
+        req.submit()
         assert req.wait() == 42
+        assert req.assigned_worker in Request.global_thread_pool.workers
 
-    recv.assert_not_called()
+    def test_submit_dependent_requests_should_execute_on_same_worker(self):
+        stop = threading.Event()
 
+        more_work = Request(Work(lambda: 42))
 
-def test_signal_failed_on_exception():
-    def broken():
-        raise TExc()
+        req = Request(Work(lambda: more_work.wait()))
+        req.submit()
 
-    recv = mock.Mock()
-    work = Work(broken)
-    req = Request(work)
-    req.notify_failed(recv)
-    req.submit()
-
-    with pytest.raises(TExc):
         assert req.wait() == 42
+        assert req.assigned_worker in Request.global_thread_pool.workers
+        assert req.assigned_worker == more_work.assigned_worker
 
-    recv.assert_called_once()
-    assert isinstance(recv.call_args[0][0], TExc)
+    @pytest.fixture
+    def broken_fn(self, request):
+        def broken():
+            raise TExc()
+
+        return broken
+
+    @pytest.fixture
+    def work_fn(self, request):
+        def work_fn():
+            return 42
+        return work_fn
+
+    @staticmethod
+    def work_req(fn):
+        work = Work(fn)
+        req = Request(work)
+        return work, req
+
+    def test_signal_finished_called_on_completion(self, work_fn):
+        work, req = self.work_req(work_fn)
+
+        recv = mock.Mock()
+
+        req.notify_finished(recv)
+        req.submit()
+        assert work.done.wait(timeout=1)
+
+        recv.assert_called_once_with(42)
+
+    def test_signal_finished_called_when_subscription_happened_after_completion(self, work_fn):
+        work, req = self.work_req(work_fn)
+
+        recv = mock.Mock()
+        req.submit()
+        assert work.done.wait(timeout=1)
+
+        req.notify_finished(recv)
+
+        recv.assert_called_once_with(42)
+
+    def test_signal_finished_should_not_be_called_on_exception(self, broken_fn):
+        work, req = self.work_req(broken_fn)
+        recv = mock.Mock()
+
+        req.notify_finished(recv)
+        req.submit()
+
+        with pytest.raises(TExc):
+            assert req.wait() == 42
+        recv.assert_not_called()
+
+    def test_signal_failed_should_be_called_on_exception(self, broken_fn):
+        work, req = self.work_req(broken_fn)
+
+        recv = mock.Mock()
+
+        req = Request(work)
+        req.notify_failed(recv)
+        req.submit()
+
+        with pytest.raises(TExc):
+            assert req.wait() == 42
+        recv.assert_called_once()
+        assert isinstance(recv.call_args[0][0], TExc)
+
+    def test_signal_failed_called_even_when_subscription_happened_after_completion(self, broken_fn):
+        work, req = self.work_req(broken_fn)
+
+        recv = mock.Mock()
+
+        req = Request(work)
+        req.submit()
+
+        with pytest.raises(TExc):
+            assert req.wait() == 42
+
+        req.notify_failed(recv)
+        recv.assert_called_once()
+        assert isinstance(recv.call_args[0][0], TExc)
 
 
 @pytest.fixture
