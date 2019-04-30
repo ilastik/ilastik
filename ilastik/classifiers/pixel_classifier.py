@@ -51,15 +51,22 @@ class PixelClassifier:
 
     def predict(self, raw_data:Array5D, roi:Slice5D=Slice5D.all()) -> Predictions:
         feature_data = self.feature_collection.compute(raw_data, roi)
-
         total_predictions = None
-        for forest in self.forests:
+        lock = Lock()
+
+        def do_predict(forest):
+            nonlocal total_predictions
             forest_predictions = forest.predictProbabilities(feature_data.linear_raw())
             forest_predictions *= forest.treeCount()
-            if total_predictions is None:
-                total_predictions = forest_predictions
-            else:
-                total_predictions += forest_predictions
+            with lock:
+                if total_predictions is None:
+                    total_predictions = forest_predictions
+                else:
+                    total_predictions += forest_predictions
+
+        with ThreadPoolExecutor(max_workers=len(self.forests)) as executor:
+            for forest in self.forests:
+                executor.submit(do_predict, forest)
 
         total_predictions /= self.num_trees
 
