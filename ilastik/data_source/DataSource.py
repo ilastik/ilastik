@@ -4,26 +4,45 @@ from typing import List
 from PIL import Image as PilImage
 import numpy as np
 
+import enum
+from enum import Enum
+
 from ilastik.array5d import Array5D, Point5D, Shape5D, Slice5D
 
+@enum.unique
+class DataSourceAddressMode(Enum):
+    BLACK = 0
+
 class DataSource(ABC):
+    def __init__(self, mode=DataSourceAddressMode.BLACK):
+        self.mode = mode
+
     @property
     @abstractmethod
     def shape(self) -> Shape5D:
         pass
 
+    @property
     @abstractmethod
-    def retrieve(self, roi:Shape5D) -> Array5D:
+    def dtype(self):
         pass
 
-class TiledDataSouce(DataSource):
-    def fetch_tile(self, roi:Slice5D):
+    def retrieve(self, roi:Slice5D, halo:Point5D=Point5D.zero()) -> Array5D:
+        roi = roi.defined_with(self.shape)
+        assert self.shape.to_slice_5d().contains(roi)
+        haloed_roi = roi.enlarged(halo)
+        out = Array5D.allocate(haloed_roi.shape, dtype=self.dtype, value=0)
+
+        data_roi = haloed_roi.clamped_with_slice(self.shape.to_slice_5d())
+        data = self.do_retrieve(data_roi)
+
+        offset = data_roi.start - haloed_roi.start
+        out.set_slice(data, slc=data.shape.to_slice_5d().offset(offset))
+        return out #TODO: make slice read-only
+
+    @abstractmethod
+    def do_retrieve(self, roi:Slice5D) -> Array5D:
         pass
-
-    def get_data(self, roi:Shape5D):
-        for tile_slice in roi.get_tiles(self.block_shape):
-            pass
-
 
 class FlatDataSource(DataSource):
     def __init__(self, path:str):
@@ -37,6 +56,9 @@ class FlatDataSource(DataSource):
     def shape(self):
         return self._data.shape
 
-    def retrieve(self, roi:Shape5D):
-        return self._data.cut(roi) #TODO: make slice read-only
+    @property
+    def dtype(self):
+        return self._data.dtype
 
+    def do_retrieve(self, roi:Slice5D):
+        return self._data.cut(roi)

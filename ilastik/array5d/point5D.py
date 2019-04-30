@@ -7,6 +7,7 @@ class Point5D(object):
     LABELS = 'txyzc'
     LABEL_MAP = {label:index for index, label in enumerate(LABELS)}
     INF = float('inf')
+    NINF = -INF
 
     def __init__(self, *, t:float, x:float, y:float, z:float, c:float):
         self._coords = {'t':t, 'x':x, 'y':y, 'z':z, 'c':c}
@@ -44,9 +45,12 @@ class Point5D(object):
         return self.__repr__()
 
     @classmethod
-    def inf(cls, *, t:float=None, x:float=None, y:float=None, z:float=None, c:float=None):
-        params = {k:v if v is not None else cls.INF for k,v in {'t':t, 'x':x, 'y':y, 'z':z, 'c':c}.items()}
-        return cls(**params)
+    def inf(cls, *, t:float=INF, x:float=INF, y:float=INF, z:float=INF, c:float=INF):
+        return cls(t=t, x=x, y=y, z=z, c=c)
+
+    @classmethod
+    def ninf(cls, *, t:float=NINF, x:float=NINF, y:float=NINF, z:float=NINF, c:float=NINF):
+        return cls(t=t, x=x, y=y, z=z, c=c)
 
     @classmethod
     def zero(cls, *, t:float=0, x:float=0, y:float=0, z:float=0, c:float=0):
@@ -209,7 +213,8 @@ class Slice5D(object):
                         'x':self.ensure_slice(x), 'y':self.ensure_slice(y), 'z':self.ensure_slice(z)}
 
         self.start = Point5D.zero(**{label:slc.start for label, slc in self._slices.items()})
-        self.stop = Point5D.inf(**{label:slc.stop for label, slc in self._slices.items()})
+        self.stop = Point5D.inf(**{label:Point5D.INF if slc.stop is None else slc.stop
+                                   for label, slc in self._slices.items()})
 
     def __hash__(self):
         return hash(self._slices)
@@ -218,6 +223,9 @@ class Slice5D(object):
         if not isinstance(other, Slice5D):
             return False
         return self._slices == other._slices
+
+    def contains(self, other:'Slice5D'):
+        return self.start <= other.start and self.stop >= other.stop
 
     def is_defined(self) -> bool:
         return all(slc.stop is not None for slc in self._slices.values())
@@ -234,6 +242,7 @@ class Slice5D(object):
 
     @classmethod
     def all(cls):
+        #FIXME: halo stuff might need negative indices and "all" starts at 0, messing up the meaning of "clamp"
         return cls()
 
     @classmethod
@@ -301,10 +310,6 @@ class Slice5D(object):
     def __ne__(self, other):
         return not self == other
 
-    @classmethod
-    def all(cls):
-        return cls.from_start_stop(Point5D.zero(), Point5D.inf())
-
     @property
     def shape(self) -> Shape5D:
         return Shape5D(**(self.stop - self.start).to_dict())
@@ -316,11 +321,10 @@ class Slice5D(object):
     def clamped_with_slice(self, slc:'Slice5D'):
         return self.clamped(minimum=slc.start, maximum=slc.stop)
 
-    def enlarged(self, radius:Point5D, clamp:'Slice5D'=None):
-        clamp = clamp or self.all()
+    def enlarged(self, radius:Point5D):
         start = self.start - radius
         stop = self.stop + radius
-        return self.from_start_stop(start, stop).clamped_with_slice(clamp)
+        return self.from_start_stop(start, stop)
 
     def translated(self, offset:Point5D):
         assert self.is_defined()

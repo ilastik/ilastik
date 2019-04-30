@@ -77,6 +77,7 @@ class RawShape:
 
 class Array5D:
     def __init__(self, arr:np.ndarray, axiskeys:str):
+        assert len(arr.shape) == len(axiskeys)
         arr = np.asarray(arr)
         arr = vigra.taggedView(arr, axistags=axiskeys)
         missing_infos = [getattr(AxisInfo, tag) for tag in Point5D.LABELS if tag not in  arr.axistags]
@@ -202,7 +203,7 @@ class Array5D:
     def set_slice(self, value, *, slc:Slice5D):
         if isinstance(value, int):
             value = self.from_int(value)
-        self.cut(slc)._data[...] = value._data
+        self.cut(slc).raw(Point5D.LABELS)[...] = value.raw(Point5D.LABELS)
 
     def as_pil_images(self):
         return [img.as_pil_image() for img in self.images()]

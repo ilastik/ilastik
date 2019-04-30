@@ -54,27 +54,20 @@ class FlatChannelwiseFilter(FeatureExtractor):
         "Number of channels emmited by this feature extractor for each input channel"
         pass
 
-    @property
-    def halo_radius(self) -> int:
-        "Specifies how much the the extremities of a roi should be pushed outward"
-        return 2
-
-    def get_roi_with_halo(self, roi:Shape5D, data_source:DataSource) -> Slice5D:
-        enlarging_axis = data_source.shape.present_spatial_axes.keys()
-        halo_vector = Point5D.zero(**{k:self.halo_radius for k in enlarging_axis})
-        return roi.enlarged(halo_vector, clamp=data_source.shape.to_slice_5d())
-
     def get_expected_shape(self, roi:Slice5D) -> Shape5D:
         assert roi.is_defined()
         num_output_channels = roi.shape.c * self.dimension
         return roi.shape.with_coord(c=num_output_channels)
 
+    @property
+    def halo(self) -> Point5D:
+        return Point5D.zero(x=5, y=5)
+
     def compute(self, data_source:DataSource, roi:Shape5D, out:Array5D=None) -> Array5D:
-        roi = roi.defined_with(data_source.shape)
-        roi_with_halo = self.get_roi_with_halo(roi, data_source)
-        data = data_source.retrieve(roi_with_halo)
-        target = out or self.allocate_for(roi) #N.B.: target has no halo
-        assert target.shape == self.get_expected_shape(roi)
+        data = data_source.retrieve(roi, self.halo)
+        defined_roi = roi.defined_with(data_source.shape)
+        target = out or self.allocate_for(defined_roi) #N.B.: target has no halo
+        assert target.shape == self.get_expected_shape(defined_roi)
         for source_image, target_image in zip(data.images(), target.images()):
             for source_channel, out_features in zip(source_image.channels(), target_image.channel_stacks(step=self.dimension)):
                 self._do_compute(source_channel, out=out_features)

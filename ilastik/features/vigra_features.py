@@ -12,22 +12,15 @@ class VigraChannelwiseFilter(FlatChannelwiseFilter):
     def filter_fn(self):
         pass
 
-    @property
-    def radius(self):
-        return 0
-
     def _do_compute(self, source:ScalarImage, out:Image):
-        out_axes = source.squeezed_shape.axiskeys
-
-        slice_offset = (source.shape - out.shape) / 2
-        out_slice = out.shape.to_slice_5d().translated(slice_offset)
-        vigra_roi = out_slice.to_tuple(out_axes)
-
-        return self.filter_fn(source.raw(out_axes).astype(numpy.float32),
+        source_axes = source.squeezed_shape.axiskeys
+        vigra_roi = out.shape.to_slice_5d().offset(self.halo).to_tuple(source_axes)
+        return self.filter_fn(source.raw(source_axes).astype(numpy.float32),
                               sigma=self.sigma, window_size=self.window_size,
-                              out=out.raw(out_axes + 'c'),
+                              out=out.raw(source_axes + 'c'),
                               roi=vigra_roi)
 
+#FIXME: Add appropriate "halo" property to filters
 class GaussianSmoothing(VigraChannelwiseFilter):
     @property
     def dimension(self) -> int:
