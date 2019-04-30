@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 from functools import reduce
 from operator import mul
 from typing import List, Iterator
@@ -88,8 +89,10 @@ class FeatureCollection(FlatChannelwiseFilter):
 
     def _do_compute(self, raw_data:ScalarImage, out:Image):
         channel_count = 0
-        for f in self.features:
-            channel_stop = channel_count + f.dimension
-            feature_out = out.cut_with(c=slice(channel_count, channel_stop))
-            f._do_compute(raw_data, out=feature_out)
-            channel_count = channel_stop
+
+        with ThreadPoolExecutor(max_workers=len(self.features)) as executor:
+            for f in self.features:
+                channel_stop = channel_count + f.dimension
+                feature_out = out.cut_with(c=slice(channel_count, channel_stop))
+                executor.submit(f._do_compute, raw_data, out=feature_out)
+                channel_count = channel_stop
