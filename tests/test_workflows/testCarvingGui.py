@@ -1,4 +1,6 @@
 from tests.helpers import ShellGuiTestCaseBase
+import h5py
+import filecmp
 import logging
 import os
 import sys
@@ -13,6 +15,11 @@ from ilastik.applets.dataSelection.opDataSelection import DatasetInfo
 from ilastik.workflows.carving import CarvingWorkflow
 from lazyflow.utility.timer import Timer
 
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow import roi
+
+from ilastik.utility import bind
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler(sys.stdout))
@@ -60,6 +67,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             "output_file": os.path.join(
                 cls.reference_path, "testCarvingGuiReference/3d_carving_completed_segments_1_object.h5"
             ),
+            "carving_label_file": os.path.join(cls.reference_path, "testCarvingGuiReference/3d_carving_labels.h5"),
         }
         os.makedirs(cls.reference_path)
         with zipfile.ZipFile(cls.reference_zip_file, mode="r") as zip_file:
@@ -128,7 +136,6 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             preprocessingApplet = workflow.preprocessingApplet
             gui = preprocessingApplet.getMultiLaneGui()
             op_preprocessing = preprocessingApplet.topLevelOperator.getLane(0)
-            print(op_preprocessing)
 
             # activate the preprocessing applet
             shell.setSelectedAppletDrawer(1)
@@ -147,13 +154,11 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             assert sum(layermatch) == 1, "Watershed Layer expected."
             final_layer = gui.currentGui().centralGui.editor.layerStack[layermatch.index(True)]
             assert not final_layer.visible, "Expected the final layer not to be visible before apply is triggered."
-
             # in order to wait until the preprocessing is finished
             finished = threading.Event()
 
             def processing_finished():
                 nonlocal finished
-                print("Setting event")
                 finished.set()
 
             preprocessingApplet.appletStateUpdateRequested.subscribe(processing_finished)
@@ -178,6 +183,65 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             assert not gui.currentGui().drawer.sizeRegularizerSpin.isEnabled()
             assert not gui.currentGui().drawer.reduceToSpin.isEnabled()
             assert not gui.currentGui().drawer.doAggloCheckBox.isEnabled()
+
+            # Save the project
+            saveThread = self.shell.onSaveProjectActionTriggered()
+            saveThread.join()
+
+        # Run this test from within the shell event loop
+        self.exec_in_shell(impl)
+
+    def test_03_do_carving(self):
+        """
+        go to the "carving" applet and load some annotations via import.
+        do the segmentation and compare to saved reference.
+
+        """
+
+        def impl():
+            shell = self.shell
+            workflow = shell.projectManager.workflow
+            carvingApplet = workflow.carvingApplet
+            gui = carvingApplet.getMultiLaneGui()
+            op_carving = carvingApplet.topLevelOperator.getLane(0)
+
+            # activate the carving applet
+            shell.setSelectedAppletDrawer(2)
+            # let the gui catch up
+            QApplication.processEvents()
+            self.waitForViews(gui.currentGui().editor.imageViews)
+            # inject the labels
+            op5 = OpReorderAxes(parent=op_carving.parent)
+            opReader = OpInputDataReader(parent=op_carving.parent)
+            try:
+                opReader.FilePath.setValue(f"{self.reference_files['carving_label_file']}/exported_data")
+                op5.AxisOrder.setValue(op_carving.WriteSeeds.meta.getAxisKeys())
+                op5.Input.connect(opReader.Output)
+                label_data = op5.Output[:].wait()
+            finally:
+                op5.cleanUp()
+                opReader.cleanUp()
+            slicing = roi.fullSlicing(label_data.shape)
+            op_carving.WriteSeeds[slicing] = label_data
+
+            gui.currentGui().labelingDrawerUi.segment.click()
+            QApplication.processEvents()
+
+            op_carving.saveObjectAs("Object 1")
+            op_carving.deleteObject("<not saved yet>")
+
+            # export the mesh:
+            req = gui.currentGui()._exportMeshes(["Object 1"], [self.output_obj_file])
+            req.wait()
+
+            with open(self.output_obj_file, 'r') as f:
+                left = f.read()
+
+            with open(self.reference_files['output_obj_file'], 'r') as f:
+                right = f.read()
+
+            # TODO: might result in errors due to rounding on different systems
+            assert left == right
 
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()
