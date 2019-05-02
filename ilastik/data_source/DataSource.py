@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Iterator
 
 from PIL import Image as PilImage
 import numpy as np
@@ -16,6 +16,16 @@ class DataSourceAddressMode(Enum):
 class DataSource(ABC):
     def __init__(self, mode=DataSourceAddressMode.BLACK):
         self.mode = mode
+
+    def spec(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)) -> 'DataSpec':
+        return DataSpec(self, t=t, c=c, x=x, y=y, z=z)
+
+    def all(self):
+        return DataSpec.from_slice(self, self.shape.to_slice_5d())
+
+    def get_tiles(self, tile_shape:Shape5D) -> Iterator['DataSpec']:
+        for tile in self.shape.to_slice_5d().get_tiles(tile_shape):
+            yield DataSpec.from_slice(self, tile)
 
     @property
     @abstractmethod
@@ -43,6 +53,22 @@ class DataSource(ABC):
     @abstractmethod
     def do_retrieve(self, roi:Slice5D) -> Array5D:
         pass
+
+class DataSpec(Slice5D):
+    def __init__(self, data_source:DataSource, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
+        slc = Slice5D(t=t, c=c, x=x, y=y, z=z)
+        super().__init__(**slc.defined_with(data_source.shape).to_dict())
+        self.data_source = data_source
+
+    @classmethod
+    def from_slice(cls, data_source:DataSource, slc:Slice5D):
+        return cls(data_source, **slc.to_dict())
+
+    def rebuild(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
+        return self.__class__(self.data_source, t=t, c=c, x=x, y=y, z=z)
+
+    def retrieve(self, halo:Point5D=Point5D.zero()):
+        return self.data_source.retrieve(self, halo)
 
 class FlatDataSource(DataSource):
     def __init__(self, path:str):

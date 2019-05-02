@@ -192,7 +192,7 @@ class Shape5D(Point5D):
         return self.x * self.y * self.z
 
     def to_slice_5d(self, offset:Point5D=Point5D.zero()) -> 'Slice5D':
-        return Slice5D.from_start_stop(offset, self + offset)
+        return Slice5D.create_from_start_stop(offset, self + offset)
 
     @classmethod
     def from_point(cls, point:Point5D):
@@ -216,6 +216,9 @@ class Slice5D(object):
         self.stop = Point5D.inf(**{label:Point5D.INF if slc.stop is None else slc.stop
                                    for label, slc in self._slices.items()})
 
+    def rebuild(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
+        return self.__class__(t=t, c=c, x=x, y=y, z=z)
+
     def __hash__(self):
         return hash(self._slices)
 
@@ -230,7 +233,7 @@ class Slice5D(object):
     def is_defined(self) -> bool:
         return all(slc.stop is not None for slc in self._slices.values())
 
-    def defined_with(self, shape:Shape5D):
+    def defined_with(self, shape:Shape5D) -> 'Slice5D':
         """Slice5D can have slices which are open to interpretation, like slice(None). This method
         forces those slices expand into their interpretation within an array of shape 'shape'"""
         params = {}
@@ -238,7 +241,10 @@ class Slice5D(object):
             start = slc.start or 0
             stop = shape[key] if slc.stop is None else slc.stop
             params[key] = slice(start, stop)
-        return self.__class__(**params)
+        return self.rebuild(**params)
+
+    def to_dict(self):
+        return self._slices.copy()
 
     @classmethod
     def all(cls):
@@ -246,13 +252,21 @@ class Slice5D(object):
         return cls()
 
     @classmethod
-    def from_start_stop(cls, start:Point5D, stop:Point5D):
+    def make_slices(cls, start:Point5D, stop:Point5D):
         slices = {}
         for label in Point5D.LABELS:
             slice_stop = stop[label]
             slice_stop = None if slice_stop == Point5D.INF else slice_stop
             slices[label] = slice(start[label], slice_stop)
-        return cls(**slices)
+        return slices
+
+    @classmethod
+    def create_from_start_stop(cls, start:Point5D, stop:Point5D):
+        return cls(**cls.make_slices(start, stop))
+
+    def from_start_stop(self, start:Point5D, stop:Point5D):
+        slices = self.make_slices(start, stop)
+        return self.rebuild(**slices)
 
     def _ranges(self, block_shape:Shape5D) -> Iterator[Iterator[int]]:
         starts = self.start.to_tuple(Point5D.LABELS)
@@ -264,14 +278,14 @@ class Slice5D(object):
         for begin_tuple in product(*self._ranges(block_shape)):
             start = Point5D.from_tuple(begin_tuple, Point5D.LABELS)
             stop = (start + block_shape).clamped(maximum=self.stop)
-            yield Slice5D.from_start_stop(start, stop)
+            yield self.from_start_stop(start, stop)
 
-    def get_tiles(self, tile_shape:Shape5D) -> List['Slice5D']:
+    def get_tiles(self, tile_shape:Shape5D) -> Iterator['Slice5D']:
         assert self.is_defined()
         start = (self.start // tile_shape) * tile_shape
         stop = Point5D.as_ceil(self.stop.to_np(Point5D.LABELS) / tile_shape.to_np(Point5D.LABELS))
         stop *= tile_shape
-        return Slice5D.from_start_stop(start, stop).split(tile_shape)
+        return self.from_start_stop(start, stop).split(tile_shape)
 
     @property
     def t(self):
@@ -328,10 +342,10 @@ class Slice5D(object):
 
     def translated(self, offset:Point5D):
         assert self.is_defined()
-        return self.__class__.from_start_stop(self.start + offset, self.stop + offset)
+        return self.from_start_stop(self.start + offset, self.stop + offset)
 
     def offset(self, offset:Point5D):
-        return self.__class__.from_start_stop(self.start + offset, self.stop + offset)
+        return self.from_start_stop(self.start + offset, self.stop + offset)
 
     def to_slices(self, axis_order=Point5D.LABELS, dtype=SLICE_DTYPE):
         slices = []

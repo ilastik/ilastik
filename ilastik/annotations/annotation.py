@@ -7,7 +7,7 @@ import numpy as np
 from ilastik.array5d import Slice5D, Point5D, Shape5D
 from ilastik.array5d import Array5D, Image, ScalarImage, StaticLine
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
-from ilastik.data_source import DataSource
+from ilastik.data_source import DataSource, DataSpec
 from PIL import Image as PilImage
 
 class AnnotationOutOfBounds(Exception):
@@ -66,7 +66,8 @@ class Annotation(ScalarImage):
     def get_samples(self, feature_extractor:FeatureExtractor) -> Samples:
         roi = self.shape.to_slice_5d().offset(self.offset)
         roi = roi.with_coord(c=slice(0, self.data_source.shape.c))
-        features = feature_extractor.compute(self.data_source, roi) #TODO:roi + halo
+        spec = DataSpec.from_slice(self.data_source, roi)
+        features = feature_extractor.compute(spec)
 
         sampling_axes = features.with_c_as_last_axis().axiskeys
 
