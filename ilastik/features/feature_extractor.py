@@ -25,7 +25,7 @@ class FeatureExtractor(ABC):
         return f"<{self.__class__.__qualname__} sigma={self.sigma} window_size={self.window_size}>"
 
     def allocate_for(self, roi:DataSpec) -> Array5D:
-        return FeatureData.allocate(self.get_expected_shape(roi), dtype=np.float32)
+        return FeatureData.allocate(self.get_expected_shape(roi), dtype=np.float32, axiskeys='ctzxy')
 
     @abstractmethod
     def get_expected_shape(self, roi:DataSpec) -> Shape5D:
