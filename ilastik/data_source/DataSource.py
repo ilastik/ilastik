@@ -23,9 +23,15 @@ class DataSource(ABC):
     def all(self):
         return DataSpec.from_slice(self, self.shape.to_slice_5d())
 
-    def get_tiles(self, tile_shape:Shape5D) -> Iterator['DataSpec']:
+    def get_tiles(self, tile_shape:Shape5D=None) -> Iterator['DataSpec']:
+        tile_shape = tile_shape or self.tile_shape
         for tile in self.shape.to_slice_5d().split(tile_shape):
             yield DataSpec.from_slice(self, tile)
+
+    @property
+    def tile_shape(self):
+        """A sensible tile shape. Override this with your data chunck size"""
+        return Shape5D(x=2048, y=2048, c=self.shape.c)
 
     @property
     @abstractmethod
