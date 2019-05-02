@@ -715,6 +715,7 @@ class OpCarving(Operator):
             logger.info( " ... carving took %f sec." % (time.time()-t1) )
 
             self.Segmentation.setDirty(slice(None))
+            self.DoneSegmentation.setDirty(slice(None))
             hasSeg = numpy.any(self._mst.hasSeg)
             #hasSeg = numpy.any(self._mst.segmentation.lut > 0 )
             self.HasSegmentation.setValue(hasSeg)
