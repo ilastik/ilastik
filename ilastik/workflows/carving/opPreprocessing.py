@@ -465,6 +465,12 @@ class OpPreprocessing(Operator):
             self.initialReduceTo = None
             self._prepData = [None]
 
+        self._dirty = True
+        self.enableDownstream(False)
+        if self._prepData[0] is not None:
+            self.enableReset(True)
+
+
     def enableReset(self,er):
         '''set enabled of resetButton to er'''
         self.applet.enableReset(er)
