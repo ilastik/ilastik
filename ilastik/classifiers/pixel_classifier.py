@@ -53,14 +53,14 @@ class PixelClassifier:
 
     def get_expected_shape(self, data_spec:DataSpec):
         input_channels = data_spec.shape.c
-        return data_spec.shape.with_coord(c=input_channels * self.num_classes)
+        return data_spec.shape.with_coord(c=self.num_classes)
 
     def allocate_predictions(self, data_spec:DataSpec):
-        return Predictions.allocate(self.get_expected_shape(data_spec))
+        return Predictions.allocate(self.get_expected_shape(data_spec), dtype=np.float32, value=0)
 
-    def predict(self, data_spec:DataSpec, out:Predictions=None) -> Predictions:
+    def predict(self, data_spec:DataSpec) -> Predictions:
         feature_data = self.feature_collection.compute(data_spec)
-        total_predictions = None#out or Predictions.allocate(self.get_expected_shape(data_spec))
+        total_predictions = None
         lock = Lock()
 
         def do_predict(forest):
@@ -73,7 +73,7 @@ class PixelClassifier:
                 else:
                     total_predictions += forest_predictions
 
-        with ThreadPoolExecutor(max_workers=len(self.forests)) as executor:
+        with ThreadPoolExecutor(max_workers=len(self.forests), thread_name_prefix="predictor") as executor:
             for forest in self.forests:
                 executor.submit(do_predict, forest)
 

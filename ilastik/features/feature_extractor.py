@@ -76,7 +76,7 @@ class FeatureCollection(FlatChannelwiseFilter):
         return sum(f.dimension for f in self.features)
 
     def _do_compute(self, raw_data:ScalarImage, out:Image):
-        with ThreadPoolExecutor(max_workers=len(self.features)) as executor:
+        with ThreadPoolExecutor(max_workers=len(self.features), thread_name_prefix="features") as executor:
             channel_count = 0
             for f in self.features:
                 channel_stop = channel_count + f.dimension

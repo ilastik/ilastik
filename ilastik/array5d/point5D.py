@@ -314,7 +314,7 @@ class Slice5D(object):
         params['x'] = x or self.x
         params['y'] = y or self.y
         params['z'] = z or self.z
-        return self.__class__(**params)
+        return self.rebuild(**params)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
