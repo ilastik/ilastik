@@ -293,9 +293,9 @@ class OpPreprocessing(Operator):
     WatershedImage = OutputSlot()
     WatershedSourceImage = OutputSlot()
 
-    #                                                                                                      +-> WatershedImage
-    #                                                                                                     /
-    # InputData +->                                                  +-> opWatershed--->-opWatershedCache +-> opMstProvider +-> [via execute()] +-> PreprocessedData
+    #                                                                                                                         +-> WatershedImage
+    #                                                                                                                        /
+    # InputData +->                                                  +-> OpSimpleBlockwiseWatershed --->-opWatershedCache +-> opMstProvider +-> [via execute()] +-> PreprocessedData
     #              \                                                 |                                       /
     # Sigma +-----> opFilter +-> opFilterNormalize +-> opFilterCache +--------------------------------------+
     #              /                                                 \
@@ -330,7 +330,7 @@ class OpPreprocessing(Operator):
         self._opFilterCache = OpBlockedArrayCache( parent=self )
 
         self._opWatershed = OpSimpleBlockwiseWatershed( parent=self )
-        self._opWatershed.DoAgglo.connect( self.SizeRegularizer )
+        self._opWatershed.DoAgglo.connect( self.DoAgglo )
         self._opWatershed.ReduceTo.connect( self.ReduceTo )
         self._opWatershed.SizeRegularizer.connect( self.SizeRegularizer )
         self._opWatershed.Input.connect(self._opFilterCache.Output)
