@@ -23,10 +23,6 @@ class Labels(StaticLine):
         super().__init__(*args, **kwargs)
         assert self.dtype == np.uint32
 
-    def raw(self, axiskeys:str=None):
-        axiskeys = axiskeys or self.with_c_as_last_axis().squeezed_shape.axiskeys
-        return super().raw(axiskeys)
-
 class Samples:
     def __init__(self, features:FeatureData, labels:Labels):
         assert features.shape.is_line and features.shape.volume == labels.length

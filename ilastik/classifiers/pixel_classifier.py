@@ -33,14 +33,15 @@ class PixelClassifier:
         tree_counts = list(map(int, tree_counts))
 
         samples = annotations[0].get_samples(feature_collection)
-        raw_X = np.asarray(samples.features.linear_raw())
-        raw_y = np.asarray(samples.labels.raw())
+        raw_X = samples.features.linear_raw()
+        raw_y = samples.labels.linear_raw()
         #TODO: maybe concatenate eveything at once? Or prealloc and index?
         for annotation in annotations[1:]:
             extra_samples = annotation.get_samples(feature_collection)
             raw_X = np.concatenate((raw_X, extra_samples.features.linear_raw()), axis=0)
-            raw_y = np.concatenate((raw_y, extra_samples.labels.raw()), axis=0)
-
+            raw_y = np.concatenate((raw_y, extra_samples.labels.linear_raw()), axis=0)
+        self.classes = list(np.unique(raw_y))
+        self.num_classes = len(self.classes)
 
         self.forests = [None] * num_forests
         with ThreadPoolExecutor(max_workers=num_forests) as executor:
@@ -50,9 +51,16 @@ class PixelClassifier:
             for i in range(num_forests):
                 executor.submit(train_forest, i)
 
-    def predict(self, data_spec:DataSpec) -> Predictions:
+    def get_expected_shape(self, data_spec:DataSpec):
+        input_channels = data_spec.shape.c
+        return data_spec.shape.with_coord(c=input_channels * self.num_classes)
+
+    def allocate_predictions(self, data_spec:DataSpec):
+        return Predictions.allocate(self.get_expected_shape(data_spec))
+
+    def predict(self, data_spec:DataSpec, out:Predictions=None) -> Predictions:
         feature_data = self.feature_collection.compute(data_spec)
-        total_predictions = None
+        total_predictions = None#out or Predictions.allocate(self.get_expected_shape(data_spec))
         lock = Lock()
 
         def do_predict(forest):
@@ -71,8 +79,7 @@ class PixelClassifier:
 
         total_predictions /= self.num_trees
 
-        num_classes = total_predictions.shape[-1]
-        out_shape = feature_data.with_c_as_last_axis().rawshape.to_shape_tuple(with_c=num_classes)
+        out_shape = feature_data.with_c_as_last_axis().rawshape.to_shape_tuple(with_c=self.num_classes)
         out_axiskeys =  feature_data.with_c_as_last_axis().axiskeys
 
         reshaped_predictions = total_predictions.reshape(out_shape)

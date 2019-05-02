@@ -16,16 +16,6 @@ class FeatureData(Array5D):
         assert arr.dtype == np.float32
         super().__init__(arr, axiskeys)
 
-    def linear_raw(self):
-        """Returns a raw view with one spatial dimension and one channel dimension"""
-        shape_dict = {**self.shape.to_dict(), 'c':1}
-        first_dimension = reduce(mul, shape_dict.values(), 1)
-        first_dimension = int(first_dimension)
-        new_shape = (first_dimension, self.shape.c)
-
-        #FIXME: this nukes axistags and i don't know how to put them back =/
-        return np.asarray(self.with_c_as_last_axis()._data.reshape(new_shape))
-
 class FeatureExtractor(ABC):
     def __init__(self, sigma:float, window_size:float):
         self.sigma = sigma

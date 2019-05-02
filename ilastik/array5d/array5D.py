@@ -170,6 +170,10 @@ class Array5D:
         slices = tuple((slice(None) if k in axiskeys else 0) for k in swapped.axiskeys)
         return np.asarray(swapped._data[slices])
 
+    def linear_raw(self):
+        """Returns a raw view with one spatial dimension and one channel dimension"""
+        return self.raw('txyzc').reshape(self.shape.t * self.shape.volume, self.shape.c)
+
     def with_c_as_last_axis(self) -> 'Array5D':
         return self.moveaxis('c', self.axiskeys[-1])
 

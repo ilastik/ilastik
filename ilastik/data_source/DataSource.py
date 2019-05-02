@@ -24,7 +24,7 @@ class DataSource(ABC):
         return DataSpec.from_slice(self, self.shape.to_slice_5d())
 
     def get_tiles(self, tile_shape:Shape5D) -> Iterator['DataSpec']:
-        for tile in self.shape.to_slice_5d().get_tiles(tile_shape):
+        for tile in self.shape.to_slice_5d().split(tile_shape):
             yield DataSpec.from_slice(self, tile)
 
     @property

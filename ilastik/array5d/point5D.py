@@ -147,7 +147,7 @@ class Point5D(object):
 
     @classmethod
     def as_ceil(cls, arr:np.ndarray):
-        raw = np.ceil(arr).astype(cls.COORD_TYPE)
+        raw = np.ceil(arr).astype(np.float32)
         return cls.from_np(raw, cls.LABELS)
 
 class Shape5D(Point5D):
