@@ -3,7 +3,9 @@ from itertools import product
 import numpy as np
 from typing import Dict, Tuple, Iterator, List
 
-class Point5D(object):
+from ilastik.utility import JsonSerializable
+
+class Point5D(JsonSerializable):
     LABELS = 'txyzc'
     LABEL_MAP = {label:index for index, label in enumerate(LABELS)}
     INF = float('inf')
@@ -198,7 +200,7 @@ class Shape5D(Point5D):
     def from_point(cls, point:Point5D):
         return cls(**{k:v or 1 for k, v in point.to_dict().items()})
 
-class Slice5D(object):
+class Slice5D(JsonSerializable):
     SLICE_DTYPE = np.uint64
 
     @classmethod
@@ -215,6 +217,11 @@ class Slice5D(object):
         self.start = Point5D.zero(**{label:slc.start for label, slc in self._slices.items()})
         self.stop = Point5D.inf(**{label:Point5D.INF if slc.stop is None else slc.stop
                                    for label, slc in self._slices.items()})
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self._slices == other._slices
 
     def rebuild(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
         return self.__class__(t=t, c=c, x=x, y=y, z=z)
@@ -263,6 +270,15 @@ class Slice5D(object):
     @classmethod
     def create_from_start_stop(cls, start:Point5D, stop:Point5D):
         return cls(**cls.make_slices(start, stop))
+
+    @classmethod
+    def from_json(cls, data:dict):
+        start = Point5D.from_json(data['start'])
+        stop = Point5D.from_json(data['stop'])
+        return cls.create_from_start_stop(start, stop)
+
+    def json_serialize(self):
+        return {'start': self.start, 'stop': self.stop}
 
     def from_start_stop(self, start:Point5D, stop:Point5D):
         slices = self.make_slices(start, stop)

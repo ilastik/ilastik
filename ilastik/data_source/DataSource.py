@@ -8,14 +8,20 @@ import enum
 from enum import Enum
 
 from ilastik.array5d import Array5D, Point5D, Shape5D, Slice5D
+from ilastik.utility import JsonSerializable
 
 @enum.unique
 class DataSourceAddressMode(Enum):
     BLACK = 0
 
-class DataSource(ABC):
-    def __init__(self, mode=DataSourceAddressMode.BLACK):
-        self.mode = mode
+class DataSource(JsonSerializable):
+    def __init__(self, url:str):
+        self.url = url
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.url == other.url and self.tile_shape == other.tile_shape
 
     def spec(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)) -> 'DataSpec':
         return DataSpec(self, t=t, c=c, x=x, y=y, z=z)
@@ -60,6 +66,10 @@ class DataSource(ABC):
     def do_retrieve(self, roi:Slice5D) -> Array5D:
         pass
 
+    def json_serialize(self):
+        return {'url': self.url,
+                'shape': self.shape}
+
 class DataSpec(Slice5D):
     def __init__(self, data_source:DataSource, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
         slc = Slice5D(t=t, c=c, x=x, y=y, z=z)
@@ -77,12 +87,11 @@ class DataSpec(Slice5D):
         return self.data_source.retrieve(self, halo)
 
 class FlatDataSource(DataSource):
-    def __init__(self, path:str):
-        self.path = path
-        raw_data = np.asarray(PilImage.open(path))
+    def __init__(self, url:str):
+        super().__init__(url)
+        raw_data = np.asarray(PilImage.open(url))
         axiskeys = 'yxc'[:len(raw_data.shape)]
         self._data = Array5D(raw_data, axiskeys=axiskeys)
-        self.block_shape = Shape5D(**{k:v for k,v in zip(axiskeys, raw_data.shape)})
 
     @property
     def shape(self):
