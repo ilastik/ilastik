@@ -36,7 +36,7 @@ class DataSource(JsonSerializable):
 
     @property
     def tile_shape(self):
-        """A sensible tile shape. Override this with your data chunck size"""
+        """A sensible tile shape. Override this with your data chunk size"""
         return Shape5D(x=2048, y=2048, c=self.shape.c)
 
     @property
