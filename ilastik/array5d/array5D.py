@@ -3,8 +3,6 @@ from collections import OrderedDict
 
 import numpy as np
 from PIL import Image as PilImage
-import vigra
-from vigra import VigraArray, AxisInfo, AxisTags
 
 from .point5D import Point5D, Slice5D, Shape5D
 
@@ -78,10 +76,10 @@ class RawShape:
 class Array5D:
     def __init__(self, arr:np.ndarray, axiskeys:str):
         assert len(arr.shape) == len(axiskeys)
-        arr = np.asarray(arr)
-        arr = vigra.taggedView(arr, axistags=axiskeys)
-        missing_infos = [getattr(AxisInfo, tag) for tag in Point5D.LABELS if tag not in  arr.axistags]
-        slices = tuple([vigra.newaxis(info) for info in missing_infos] + [...])
+        missing_keys = [key for key in Point5D.LABELS if key not in axiskeys]
+        self._axiskeys = ''.join(missing_keys) + axiskeys
+        assert sorted(self._axiskeys) == sorted(Point5D.LABELS)
+        slices = tuple([np.newaxis for key  in missing_keys] + [...])
         self._data = arr[slices]
 
     @classmethod
@@ -109,12 +107,8 @@ class Array5D:
         return self._data.dtype
 
     @property
-    def axistags(self):
-        return self._data.axistags
-
-    @property
     def axiskeys(self):
-        return ''.join(tag.key for tag in self.axistags)
+        return self._axiskeys
 
     @property
     def rawshape(self):
