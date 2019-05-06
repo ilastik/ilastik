@@ -29,12 +29,12 @@ annotations = [
 
 fc = FeatureCollection(GaussianSmoothing(sigma=0.3), HessianOfGaussian(sigma=1.2), GaussianSmoothing(sigma=1.7))
 classifier = PixelClassifier(feature_collection=fc, annotations=annotations)
-predictions = classifier.predict(raw_data1.all())
+predictions, features = classifier.predict(raw_data1.all())
 
 pil_images = [c.as_pil_image() for img in predictions.as_uint8().images() for c in img.channels()]
 
 
 
 raw_data2 = FlatDataSource("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped2.png")
-predictions2 = classifier.predict(raw_data2.spec(x=slice(100,200), y=slice(100,200)))
+predictions2, features2 = classifier.predict(raw_data2.spec(x=slice(100,200), y=slice(100,200)))
 pil_images2 = [c.as_pil_image() for img in predictions2.as_uint8().images() for c in img.channels()]

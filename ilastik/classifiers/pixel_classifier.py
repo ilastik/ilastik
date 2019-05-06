@@ -7,7 +7,7 @@ import numpy as np
 import vigra
 from vigra.learning import RandomForest
 
-from ilastik.array5d.array5D import Array5D, Slice5D
+from ilastik.array5d.array5D import Array5D, Slice5D, Point5D, Shape5D
 from ilastik.features.feature_extractor import FeatureCollection, FeatureData
 from ilastik.annotations import Annotation
 from ilastik.data_source import DataSource, DataSpec
@@ -18,6 +18,10 @@ class Predictions(Array5D):
     that channel"""
     def as_uint8(self):
         return Array5D((self._data * 255).astype(np.uint8), axiskeys=self.axiskeys)
+
+    @classmethod
+    def allocate(cls, shape:Shape5D, dtype=np.float32, axiskeys:str=Point5D.LABELS, value:int=0):
+        return super().allocate(shape=shape, dtype=dtype, axiskeys=axiskeys, value=value)
 
 class PixelClassifier:
     def __init__(self, feature_collection:FeatureCollection, annotations:List[Annotation],
@@ -52,35 +56,27 @@ class PixelClassifier:
                 executor.submit(train_forest, i)
 
     def get_expected_shape(self, data_spec:DataSpec):
-        input_channels = data_spec.shape.c
         return data_spec.shape.with_coord(c=self.num_classes)
 
     def allocate_predictions(self, data_spec:DataSpec):
-        return Predictions.allocate(self.get_expected_shape(data_spec), dtype=np.float32, value=0)
+        return Predictions.allocate(self.get_expected_shape(data_spec))
 
-    def predict(self, data_spec:DataSpec) -> Predictions:
+    def predict(self, data_spec:DataSpec, out:Predictions=None) -> Predictions:
         feature_data = self.feature_collection.compute(data_spec)
-        total_predictions = None
+        predictions = out or self.allocate_predictions(data_spec)
+        assert predictions.shape == self.get_expected_shape(data_spec)
+        raw_linear_predictions = predictions.linear_raw()
         lock = Lock()
 
         def do_predict(forest):
-            nonlocal total_predictions
+            nonlocal raw_linear_predictions
             forest_predictions = forest.predictProbabilities(feature_data.linear_raw())
             forest_predictions *= forest.treeCount()
             with lock:
-                if total_predictions is None:
-                    total_predictions = forest_predictions
-                else:
-                    total_predictions += forest_predictions
+                raw_linear_predictions += forest_predictions
 
         with ThreadPoolExecutor(max_workers=len(self.forests), thread_name_prefix="predictor") as executor:
             for forest in self.forests:
                 executor.submit(do_predict, forest)
 
-        total_predictions /= self.num_trees
-
-        out_shape = feature_data.with_c_as_last_axis().rawshape.to_shape_tuple(with_c=self.num_classes)
-        out_axiskeys =  feature_data.with_c_as_last_axis().axiskeys
-
-        reshaped_predictions = total_predictions.reshape(out_shape)
-        return Predictions(reshaped_predictions, out_axiskeys)
+        return predictions, feature_data

@@ -13,8 +13,12 @@ from ilastik.data_source import DataSource, DataSpec
 
 class FeatureData(Array5D):
     def __init__(self, arr:np.ndarray, axiskeys:str):
-        assert arr.dtype == np.float32
+        #FIXME:
+        #assert arr.dtype == np.float32
         super().__init__(arr, axiskeys)
+
+    def as_uint8(self):
+        return Array5D((self._data * 255).astype(np.uint8), axiskeys=self.axiskeys)
 
 class FeatureExtractor(ABC):
     def __init__(self, sigma:float, window_size:float):
@@ -25,7 +29,8 @@ class FeatureExtractor(ABC):
         return f"<{self.__class__.__qualname__} sigma={self.sigma} window_size={self.window_size}>"
 
     def allocate_for(self, roi:DataSpec) -> Array5D:
-        return FeatureData.allocate(self.get_expected_shape(roi), dtype=np.float32, axiskeys='ctzxy')
+        #FIXME: vigra needs C to be the last REAL axis rather than the last axis of the view -.-
+        return FeatureData.allocate(self.get_expected_shape(roi), dtype=np.float32, axiskeys='tzxyc')
 
     @abstractmethod
     def get_expected_shape(self, roi:DataSpec) -> Shape5D:
