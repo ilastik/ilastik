@@ -2,8 +2,10 @@ from tests.helpers import ShellGuiTestCaseBase
 import h5py
 import filecmp
 import logging
+import numpy
 import os
 import sys
+import shutil
 import tempfile
 import threading
 import time
@@ -19,6 +21,8 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow import roi
 
+from volumina.widgets.exportHelper import get_export_operator
+
 from ilastik.utility import bind
 
 logger = logging.getLogger(__name__)
@@ -26,7 +30,7 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.DEBUG)
 
 
-class TestObjectClassificationGui(ShellGuiTestCaseBase):
+class TestCarvingnGui(ShellGuiTestCaseBase):
     """Run a set of GUI-based tests on the carving workflow.
 
     Note: These tests are named (prefixed with `test_%02d`) in order to impose
@@ -90,7 +94,7 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         super().teardown_class()
 
         # Clean up: Delete any test files we generated
-        # shutil.rmtree(cls.temp_dir)  # TODO: cleanup when dev is done
+        shutil.rmtree(cls.temp_dir, onerror=lambda *x: logger.error(f"Could not delete file {x}"))
 
     def test_00_check_preconditions(self):
         """Make sure the needed files exist"""
@@ -196,6 +200,8 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
         go to the "carving" applet and load some annotations via import.
         do the segmentation and compare to saved reference.
 
+        this, of course, is not testing the real gui functionality of painting,
+        but for now this is close enough.
         """
 
         def impl():
@@ -234,14 +240,39 @@ class TestObjectClassificationGui(ShellGuiTestCaseBase):
             req = gui.currentGui()._exportMeshes(["Object 1"], [self.output_obj_file])
             req.wait()
 
-            with open(self.output_obj_file, 'r') as f:
+            # compare meshes
+            with open(self.output_obj_file, "r") as f:
                 left = f.read()
 
-            with open(self.reference_files['output_obj_file'], 'r') as f:
+            with open(self.reference_files["output_obj_file"], "r") as f:
                 right = f.read()
 
             # TODO: might result in errors due to rounding on different systems
             assert left == right
+
+            # export the completed segments layer
+            layermatch = [
+                x.name.startswith("Completed segments (unicolor)") for x in gui.currentGui().editor.layerStack
+            ]
+            assert sum(layermatch) == 1, "Completed segments (unicolor) Layer expected."
+            completed_segments_layer = gui.currentGui().editor.layerStack[layermatch.index(True)]
+            opExport = get_export_operator(completed_segments_layer)
+            try:
+                opExport.OutputFilenameFormat.setValue(self.output_file)
+                opExport.run_export()
+            finally:
+                opExport.cleanUp()
+
+            assert os.path.exists(self.output_file)
+
+            # compare completed segments
+            with h5py.File(self.reference_files["output_file"], "r") as f_left:
+                data_left = f_left["exported_data"][:]
+
+            with h5py.File(self.output_file, "r") as f_right:
+                data_right = f_right["exported_data"][:]
+
+            numpy.testing.assert_array_almost_equal(data_left, data_right)
 
             # Save the project
             saveThread = self.shell.onSaveProjectActionTriggered()
