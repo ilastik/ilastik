@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#             http://ilastik.org/license.html
 ###############################################################################
 # Built-in
 import os
@@ -25,20 +25,21 @@ import os
 from PyQt5 import uic
 from PyQt5.QtWidgets import QWidget
 
-from volumina.widgets.exportHelper import get_settings_and_export_layer
+from volumina.widgets.exportHelper import prompt_export_settings_and_export_layer
+
 
 class ViewerControls(QWidget):
-    def __init__(self, parent = None, model=None):
+    def __init__(self, parent=None, model=None):
         QWidget.__init__(self, parent)
         localDir = os.path.split(__file__)[0]
-        uic.loadUi( os.path.join( localDir, "viewerControls.ui" ), self )
-    
-    def setupConnections(self,model):
+        uic.loadUi(os.path.join(localDir, "viewerControls.ui"), self)
+
+    def setupConnections(self, model):
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model.canMoveSelectedUp.connect(self.UpButton.setEnabled)
         model.canMoveSelectedDown.connect(self.DownButton.setEnabled)
         model.canDeleteSelected.connect(self.SaveButton.setEnabled)
-        
+
         # Connect our layer movement buttons to the appropriate layerstack actions
         self.layerWidget.init(model)
         self.UpButton.clicked.connect(model.moveSelectedUp)
@@ -50,11 +51,14 @@ class ViewerControls(QWidget):
         model = self.layerWidget.model()
         layer = model[modelindex.row()]
         dataSource = layer.datasources[0]
-        
+
         if not hasattr(dataSource, "dataSlot"):
-            raise RuntimeError("can not export from a non-lazyflow data source (layer=%r, datasource=%r)" % (type(layer), type(dataSource)) )
+            raise RuntimeError(
+                f"can not export from a non-lazyflow data source (layer={type(layer)!r}, "
+                f"datasource={type(dataSource)!r}")
         import lazyflow
-        assert isinstance(dataSource.dataSlot, lazyflow.graph.Slot), "slot is of type %r" % (type(dataSource.dataSlot))
-        assert isinstance(dataSource.dataSlot.getRealOperator(), lazyflow.graph.Operator), "slot's operator is of type %r" % (type(dataSource.dataSlot.getRealOperator()))
-        get_settings_and_export_layer( layer, self )
-        
+        assert isinstance(dataSource.dataSlot, lazyflow.graph.Slot), (
+            f"slot is of type {type(dataSource.dataSlot)!r}")
+        assert isinstance(dataSource.dataSlot.getRealOperator(), lazyflow.graph.Operator), (
+            f"slot's operator is of type {type(dataSource.dataSlot.getRealOperator())!r}")
+        prompt_export_settings_and_export_layer(layer, self)
