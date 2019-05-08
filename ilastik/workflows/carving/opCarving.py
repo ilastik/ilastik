@@ -180,11 +180,19 @@ class OpCarving(Operator):
                 # This is for developers.  Don't need a user-friendly error.
                 raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
 
+    def clearLabel(self, label_value):
+        self.opLabelArray.DeleteLabel.setValue(label_value)
+        if self._mst is not None:
+            self._mst.clearSeed(label_value)
+        self.opLabelArray.DeleteLabel.setValue(-1)
+
     def _clearLabels(self):
         #clear the labels 
         self.opLabelArray.DeleteLabel.setValue(2)
         self.opLabelArray.DeleteLabel.setValue(1)
         self.opLabelArray.DeleteLabel.setValue(-1)
+        if self._mst is not None:
+            self._mst.clearSeeds()
         self.has_seeds = False
 
     def _setCurrObjectName(self, n):
@@ -707,6 +715,7 @@ class OpCarving(Operator):
             logger.info( " ... carving took %f sec." % (time.time()-t1) )
 
             self.Segmentation.setDirty(slice(None))
+            self.DoneSegmentation.setDirty(slice(None))
             hasSeg = numpy.any(self._mst.hasSeg)
             #hasSeg = numpy.any(self._mst.segmentation.lut > 0 )
             self.HasSegmentation.setValue(hasSeg)

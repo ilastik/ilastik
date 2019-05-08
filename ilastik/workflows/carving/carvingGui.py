@@ -1,4 +1,3 @@
-from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -33,22 +32,17 @@ from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMenu, QMessageBox, QFileDialog
 
+# lazyflow
+from lazyflow.request import Request
+
 #volumina
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 
 from ilastik.widgets.labelListModel import LabelListModel
-#try:
-#    from volumina.view3d.volumeRendering import RenderingManager
-#    from volumina.view3d.view3d import convertVTPtoOBJ
-#    from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
-#    from vtk import vtkXMLPolyDataWriter, vtkPolyDataWriter
-#    _have_vtk = True
-#except ImportError:
-_have_vtk = False
 
-from volumina.view3d.meshgenerator import MeshGeneratorDialog, mesh_to_obj
+from volumina.view3d.meshgenerator import MeshGeneratorDialog, mesh_to_obj, labeling_to_mesh
 from volumina.view3d.volumeRendering import RenderingManager
 
 #ilastik
@@ -95,6 +89,7 @@ class CarvingGui(LabelingGui):
         super(CarvingGui, self).__init__(parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath,
                                          is_3d_widget_visible=is_3d)
 
+        self.parentApplet = parentApplet
         self.labelingDrawerUi.currentObjectLabel.setText("<not saved yet>")
 
         # Init special base class members
@@ -500,85 +495,64 @@ class CarvingGui(LabelingGui):
             obj_filepaths.append( os.path.join( export_dir, "{}.obj".format( object_name ) ) )
         
         if object_names:
-            self._exportMeshes( object_names, obj_filepaths )
+            self._exportMeshes(object_names, obj_filepaths)
 
-    def _exportMeshes(self, object_names, obj_filepaths):
-        """
-        Export a mesh .obj file for each object in the object_names list to the corresponding file name from the obj_filepaths list.
-        This function is pseudo-recursive. It works like this:
-        1) Pop the first name/file from the args
-        2) Kick off the export by launching the export mesh dlg
-        3) return from this function to allow the eventloop to resume while the export is running
-        4) When the export dlg is finished, create the mesh file
-        5) If there are still more items in the object_names list to process, repeat this function.
-        """
-        # Pop the first object off the list
-        object_name = object_names.pop(0)
-        obj_filepath = obj_filepaths.pop(0)
+    def _exportMeshes(self, object_names: List[str], obj_filepaths: List[str]) -> Request:
+        """Save objects in the mst to .obj files
         
-        # Construct a volume with only this object.
-        # We might be tempted to get the object directly from opCarving.DoneObjects, 
-        #  but that won't be correct for overlapping objects.
+        Args:
+            object_names: Names of the objects in the mst
+            obj_filepaths: One path for each object in object_names
+        
+        Returns:
+            Returns the request object, used in testing
+        """
+
+        def get_label_volume_from_mst(mst, object_name):
+            object_supervoxels = mst.object_lut[object_name]
+            object_lut = numpy.zeros(mst.nodeNum+1, dtype=numpy.int32)
+            object_lut[object_supervoxels] = 1
+            supervoxel_volume = mst.supervoxelUint32
+            object_volume = object_lut[supervoxel_volume]
+            return object_volume
+
         mst = self.topLevelOperatorView.MST.value
-        object_supervoxels = mst.object_lut[object_name]
-        object_lut = numpy.zeros(mst.nodeNum+1, dtype=numpy.int32)
-        object_lut[object_supervoxels] = 1
-        supervoxel_volume = mst.supervoxelUint32
-        object_volume = object_lut[supervoxel_volume]
 
-        if len(numpy.unique(object_volume)) <= 1:
-            if object_names:
-                self._exportMeshes(object_names, obj_filepaths)
-            return
+        def exportMeshes(object_names, obj_filepaths):
+            n_objects = len(object_names)
+            progress_update = 100 / n_objects
+            try:
+                for obj, obj_path, obj_n in zip(object_names, obj_filepaths, range(n_objects)):
+                    object_volume = get_label_volume_from_mst(mst, obj)
+                    unique_ids = len(numpy.unique(object_volume))
 
-        # Run the mesh extractor
-        window = MeshGeneratorDialog(self)
-        
-        def onMeshesComplete(mesh):
-            """
-            Called when mesh extraction is complete.
-            Writes the extracted mesh to an .obj file
-            """
-            logger.info( "Mesh generation complete." )
+                    if unique_ids <= 1:
+                        logger.info(f"No voxels found for {obj}, skipping")
+                        continue
+                    elif unique_ids > 2:
+                        logger.info(f"Supervoxel segmentation not unique for {obj}, skipping, got {unique_ids}")
+                        continue
 
-            # FIXME: the old comment: Mesh count can sometimes be 0 for the '<not saved yet>' object...
-            # FIXME: is this still relevant???
-            '''
-            mesh_count = len( window.extractor.meshes )
-            if mesh_count > 0:
-                assert mesh_count == 1, \
-                    "Found {} meshes processing object '{}',"\
-                    "(only expected 1)".format( mesh_count, object_name )
-                mesh = list(window.extractor.meshes.values())[0]
-                logger.info( "Saving meshes to {}".format( obj_filepath ) )
-    
-                # Use VTK to write to a temporary .vtk file
-                tmpdir = tempfile.mkdtemp()
-                vtkpoly_path = os.path.join(tmpdir, 'meshes.vtk')
-                w = vtkPolyDataWriter()
-                w.SetFileTypeToASCII()
-                w.SetInput(mesh)
-                w.SetFileName(vtkpoly_path)
-                w.Write()
-                
-                # Now convert the file to .obj format.
-                convertVTPtoOBJ(vtkpoly_path, obj_filepath)
-            '''
-            logger.info("Saving meshes to {}".format(obj_filepath))
-            mesh_to_obj(mesh, obj_filepath, object_name)
-            # Cleanup: We don't need the window anymore.
-            window.setParent(None)
+                    logger.info(f"Generating mesh for {obj}")
+                    _, mesh_data = list(labeling_to_mesh(object_volume, [1]))[0]
+                    self.parentApplet.progressSignal((obj_n + .5) * progress_update)
+                    logger.info(f"Mesh generation for {obj} complete.")
 
-            # If there are still objects left to process,
-            #   start again with the remainder of the list.
-            if object_names:
-                self._exportMeshes(object_names, obj_filepaths)
-            
-        window.finished.connect( onMeshesComplete )
+                    logger.info(f"Saving mesh for {obj} to {obj_path}")
+                    mesh_to_obj(mesh_data, obj_path, obj)
+                    self.parentApplet.progressSignal((obj_n + 1) * progress_update)
+            finally:
+                self.parentApplet.busy = False
+                self.parentApplet.progressSignal(100)
+                self.parentApplet.appletStateUpdateRequested()
 
-        # Kick off the save process and exit to the event loop
-        window.show()
-        QTimer.singleShot(0, partial(window.run, object_volume))
+        self.parentApplet.busy = True
+        self.parentApplet.progressSignal(-1)
+        self.parentApplet.appletStateUpdateRequested()
+
+        req = Request(partial(exportMeshes, object_names, obj_filepaths))
+        req.submit()
+        return req
 
 
     def handleEditorRightClick(self, position5d, globalWindowCoordinate):
@@ -644,7 +618,7 @@ class CarvingGui(LabelingGui):
 
         for name, label in self._shownObjects3D.items():
             color = QColor(ctable[op.MST.value.object_names[name]])
-            color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+            color = (color.red() / 255, color.green() / 255, color.blue() / 255)
             self._renderMgr.setColor(label, color)
 
         if self._showSegmentationIn3D and self._segmentation_3d_label is not None:
@@ -655,7 +629,7 @@ class CarvingGui(LabelingGui):
             color = fg_label.pmapColor()  # 2 is the foreground index
             self._renderMgr.setColor(
                 self._segmentation_3d_label,
-                (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
+                (color.red() / 255, color.green() / 255, color.blue() / 255)
             )
 
     def _getNext(self, slot, parentFun, transform=None):
