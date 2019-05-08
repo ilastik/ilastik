@@ -170,17 +170,17 @@ class DatasetInfoEditorWidget(QDialog):
             widget.removeEventFilter(self)
 
     def eventFilter(self, watched, event):
-        if watched in self._autoAppliedWidgets:
-            if ( event.type() == QEvent.KeyPress \
-                and ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return) ):
-                if self._autoAppliedWidgets[watched]():
-                    self.accept()
-                return True
-            if ( event.type() == QEvent.FocusOut ):
-                self._autoAppliedWidgets[watched]()
-                return False
+        if watched not in self._autoAppliedWidgets:
+            return False
+        if event.type() == QEvent.KeyPress and event.key() in (Qt.Key_Enter, Qt.Key_Return):
+            if self._autoAppliedWidgets[watched]():
+                self.accept()
+            return True
+        if event.type() == QEvent.FocusOut:
+            self._autoAppliedWidgets[watched]()
+            return False
         return False
-    
+
     def accept(self):
         # Un-focus the currently focused widget to ensure that it's data validators were checked.
         focusWidget = QApplication.focusWidget()
