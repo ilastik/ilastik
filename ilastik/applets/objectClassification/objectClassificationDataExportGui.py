@@ -23,7 +23,7 @@ from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtGui import QColor
 
 
-from volumina.api import LazyflowSource, ColortableLayer, AlphaModulatedLayer
+from volumina.api import createDataSource, ColortableLayer, AlphaModulatedLayer
 from volumina import colortables
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 from lazyflow.operators import OpMultiArraySlicer2
@@ -88,14 +88,14 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
         if selection in ("Object Predictions", "Blockwise Object Predictions"):
             fromDiskSlot = self.topLevelOperatorView.ImageOnDisk
             if fromDiskSlot.ready():
-                exportLayer = ColortableLayer( LazyflowSource(fromDiskSlot), colorTable=self._colorTable16 )
+                exportLayer = ColortableLayer( createDataSource(fromDiskSlot), colorTable=self._colorTable16 )
                 exportLayer.name = "Prediction - Exported"
                 exportLayer.visible = True
                 layers.append(exportLayer)
     
             previewSlot = self.topLevelOperatorView.ImageToExport
             if previewSlot.ready():
-                previewLayer = ColortableLayer( LazyflowSource(previewSlot), colorTable=self._colorTable16 )
+                previewLayer = ColortableLayer( createDataSource(previewSlot), colorTable=self._colorTable16 )
                 previewLayer.name = "Prediction - Preview"
                 previewLayer.visible = False
                 layers.append(previewLayer)
@@ -149,7 +149,7 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
         for channel, channelSlot in enumerate(opSlicer.Slices):
             if channelSlot.ready():
                 drange = channelSlot.meta.drange or (0.0, 1.0)
-                predictsrc = LazyflowSource(channelSlot)
+                predictsrc = createDataSource(channelSlot)
                 predictLayer = AlphaModulatedLayer( predictsrc,
                                                     tintColor=QColor.fromRgba(self._colorTable16[channel+1]),
                                                     # FIXME: This is weird.  Why are range and normalize both set to the same thing?

@@ -34,7 +34,7 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMenu, QMessageBox, QFileDialog
 
 #volumina
-from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
+from volumina.api import createDataSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 
@@ -708,7 +708,7 @@ class CarvingGui(LabelingGui):
         #        for i in range(256-len(colortable)):
         #            r,g,b,a = i,0,0,i
         #            colortable.append(QColor(r,g,b,a).rgba())
-        #        layer = ColortableLayer(LazyflowSource(uncert), colortable, direct=True)
+        #        layer = ColortableLayer(createDataSource(uncert), colortable, direct=True)
         #        layer.name = "Uncertainty"
         #        layer.visible = True
         #        layer.opacity = 0.3
@@ -729,7 +729,7 @@ class CarvingGui(LabelingGui):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
 
-            layer = ColortableLayer(LazyflowSource(seg), colortable, direct=True)
+            layer = ColortableLayer(createDataSource(seg), colortable, direct=True)
             layer.name = "Segmentation"
             layer.setToolTip("This layer displays the <i>current</i> segmentation. Simply add foreground and background " \
                              "labels, then press <i>Segment</i>.")
@@ -746,7 +746,7 @@ class CarvingGui(LabelingGui):
             colortable.insert(0, QColor(0, 0, 0, 0).rgba())
 
             #have to use lazyflow because it provides dirty signals
-            layer = ColortableLayer(LazyflowSource(doneSeg), colortable, direct=True)
+            layer = ColortableLayer(createDataSource(doneSeg), colortable, direct=True)
             layer.name = "Completed segments (unicolor)"
             layer.setToolTip("In order to keep track of which objects you have already completed, this layer " \
                              "shows <b>all completed object</b> in one color (<b>blue</b>). " \
@@ -757,7 +757,7 @@ class CarvingGui(LabelingGui):
             layer.opacity = 0.5
             layers.append(layer)
 
-            layer = ColortableLayer(LazyflowSource(doneSeg), self._doneSegmentationColortable, direct=True)
+            layer = ColortableLayer(createDataSource(doneSeg), self._doneSegmentationColortable, direct=True)
             layer.name = "Completed segments (one color per object)"
             layer.setToolTip("<html>In order to keep track of which objects you have already completed, this layer " \
                              "shows <b>all completed object</b>, each with a random color.</html>")
@@ -774,7 +774,7 @@ class CarvingGui(LabelingGui):
             for i in range(256):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)
                 colortable.append(QColor(r,g,b).rgba())
-            layer = ColortableLayer(LazyflowSource(sv), colortable, direct=True)
+            layer = ColortableLayer(createDataSource(sv), colortable, direct=True)
             layer.name = "Supervoxels"
             layer.setToolTip("<html>This layer shows the partitioning of the input image into <b>supervoxels</b>. The carving " \
                              "algorithm uses these tiny puzzle-piceces to piece together the segmentation of an " \
@@ -803,7 +803,7 @@ class CarvingGui(LabelingGui):
 
         inputSlot = self.topLevelOperatorView.InputData
         if inputSlot.ready():
-            layer = GrayscaleLayer( LazyflowSource(inputSlot), direct=True )
+            layer = GrayscaleLayer( createDataSource(inputSlot), direct=True )
             layer.name = "Input Data"
             layer.setToolTip("<html>The data originally loaded into ilastik (unprocessed).</html>")
             #layer.visible = not rawSlot.ready()
@@ -823,7 +823,7 @@ class CarvingGui(LabelingGui):
 
         filteredSlot = self.topLevelOperatorView.FilteredInputData
         if filteredSlot.ready():
-            layer = GrayscaleLayer( LazyflowSource(filteredSlot) )
+            layer = GrayscaleLayer( createDataSource(filteredSlot) )
             layer.name = "Filtered Input"
             layer.visible = False
             layer.opacity = 1.0

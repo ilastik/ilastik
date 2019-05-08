@@ -59,7 +59,7 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 
 import volumina.colortables as colortables
 from volumina.api import \
-    LazyflowSource, GrayscaleLayer, ColortableLayer, AlphaModulatedLayer, \
+    createDataSource, GrayscaleLayer, ColortableLayer, AlphaModulatedLayer, \
     ClickableColortableLayer, LazyflowSinkSource
 
 from volumina.interpreter import ClickInterpreter
@@ -576,7 +576,7 @@ class ObjectClassificationGui(LabelingGui):
         for channel, probSlot in enumerate(self.op.PredictionProbabilityChannels):
             if probSlot.ready() and channel < len(labels):
                 ref_label = labels[channel]
-                probsrc = LazyflowSource(probSlot)
+                probsrc = createDataSource(probSlot)
                 probLayer = AlphaModulatedLayer( probsrc,
                                                  tintColor=ref_label.pmapColor(),
                                                  range=(0.0, 1.0),
@@ -609,7 +609,7 @@ class ObjectClassificationGui(LabelingGui):
 
         predictionSlot = self.op.PredictionImages
         if predictionSlot.ready():
-            predictsrc = LazyflowSource(predictionSlot)
+            predictsrc = createDataSource(predictionSlot)
             self._colorTable16_forpmaps[0] = 0
             predictLayer = ColortableLayer(predictsrc,
                                            colorTable=self._colorTable16_forpmaps)
@@ -641,7 +641,7 @@ class ObjectClassificationGui(LabelingGui):
         badObjectsSlot = self.op.BadObjectImages
         if badObjectsSlot.ready():
             ct_black = [0, QColor(Qt.black).rgba()]
-            badSrc = LazyflowSource(badObjectsSlot)
+            badSrc = createDataSource(badObjectsSlot)
             badLayer = ColortableLayer(badSrc, colorTable = ct_black)
             badLayer.name = "Ambiguous objects"
             badLayer.setToolTip("Objects with infinite or invalid values in features")
@@ -650,7 +650,7 @@ class ObjectClassificationGui(LabelingGui):
 
         if segmentedSlot.ready():
             ct = colortables.create_default_16bit()
-            objectssrc = LazyflowSource(segmentedSlot)
+            objectssrc = createDataSource(segmentedSlot)
             ct[0] = QColor(0, 0, 0, 0).rgba() # make 0 transparent
             objLayer = ColortableLayer(objectssrc, ct)
             objLayer.name = "Objects"
@@ -661,7 +661,7 @@ class ObjectClassificationGui(LabelingGui):
 
         uncertaintySlot = self.op.UncertaintyEstimateImage
         if uncertaintySlot.ready():
-            uncertaintySrc = LazyflowSource(uncertaintySlot)
+            uncertaintySrc = createDataSource(uncertaintySlot)
             uncertaintyLayer = AlphaModulatedLayer( uncertaintySrc,
                                                     tintColor=QColor( Qt.cyan ),
                                                     range=(0.0, 1.0),
@@ -685,7 +685,7 @@ class ObjectClassificationGui(LabelingGui):
             # white foreground on transparent background, even for labeled images
             binct = [QColor(255, 255, 255, 255).rgba()]*65536
             binct[0] = 0
-            binaryimagesrc = LazyflowSource(binarySlot)
+            binaryimagesrc = createDataSource(binarySlot)
             binLayer = ColortableLayer(binaryimagesrc, binct)
             binLayer.name = "Binary image"
             binLayer.visible = True
