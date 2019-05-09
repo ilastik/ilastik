@@ -430,7 +430,7 @@ class ObjectClassificationWorkflow(Workflow):
                     continue
                 if not input_lane_slot[role].ready():
                     return False
-        return True and len(image_group_slot)
+        return True and len(image_group_slot) > 0
 
     def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
         """
