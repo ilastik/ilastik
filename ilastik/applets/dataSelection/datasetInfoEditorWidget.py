@@ -253,13 +253,13 @@ class DatasetInfoEditorWidget(QDialog):
 
         try:
             try:
-                for laneIndex, op in list(self.tempOps.items()):
+                for laneIndex, op in self.tempOps.items():
                     info = copy.copy(op.Dataset.value)
                     realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
                     realSlot.setValue(info)
             except DatasetConstraintError as ex:
                 if not hasattr(ex, 'fixing_dialogs') or not ex.fixing_dialogs:
-                    raise ex
+                    raise
                 msg = (
                     f"Can't use given properties for current dataset, because it violates a constraint of "
                     f"the {ex.appletName} component.\n\n{ex.message}\n\nIf possible, fix this problem by adjusting "
@@ -268,13 +268,13 @@ class DatasetInfoEditorWidget(QDialog):
                 for dlg in ex.fixing_dialogs:
                     dlg()
 
-                for laneIndex, op in list(self.tempOps.items()):
+                for laneIndex, op in self.tempOps.items():
                     info = copy.copy(op.Dataset.value)
                     realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
                     realSlot.setValue(info)
         except Exception as ex:
             # Try to revert everything back to the previous state
-            for laneIndex, info in list(originalInfos.items()):
+            for laneIndex, info in originalInfos.items():
                 realSlot = self._op.DatasetGroup[laneIndex][self._roleIndex]
                 if realSlot is not None:
                     realSlot.setValue(info)
@@ -282,6 +282,7 @@ class DatasetInfoEditorWidget(QDialog):
             msg = f"Failed to apply dialog settings due to an exception:\n{ex}"
             log_exception(logger, msg)
             QMessageBox.critical(self, "Error", msg)
+            return ex
 
     def _cleanUpTempOperators(self):
         for laneIndex, op in list(self.tempOps.items()):
