@@ -37,54 +37,77 @@ class FeatureExtractor(ABC):
         pass
 
     @abstractmethod
-    def compute(self, raw_data:Array5D, out:Array5D=None) -> Array5D:
+    def compute(self, roi:DataSpec, out:Array5D=None) -> Array5D:
         pass
 
+    def is_applicable_to(self, raw_data:Array5D) -> bool:
+        return raw_data.shape >= self.kernel_shape
+
+    @property
+    @abstractmethod
+    def kernel_shape(self) -> Shape5D:
+        pass
+
+    @property
+    def halo(self) -> Point5D:
+        return self.kernel_shape // 2
+
 class FlatChannelwiseFilter(FeatureExtractor):
-    def __init__(self, sigma:float, window_size:float=0.0):
+    def __init__(self, sigma:float, window_size:float=0.0, stack_axis:str='z'):
         super().__init__(sigma=sigma, window_size=window_size)
+        self.stack_axis = stack_axis
 
     @property
     @abstractmethod
     def dimension(self) -> int:
-        "Number of channels emmited by this feature extractor for each input channel"
+        "Number of channels emited by this feature extractor for each input channel"
         pass
 
     def get_expected_shape(self, roi:DataSpec) -> Shape5D:
         num_output_channels = roi.shape.c * self.dimension
         return roi.shape.with_coord(c=num_output_channels)
 
-    @property
-    def halo(self) -> Point5D:
-        return Point5D.zero(x=5, y=5)
-
     def compute(self, roi:DataSpec, out:Array5D=None) -> Array5D:
         data = roi.retrieve(self.halo)
         target = out or self.allocate_for(roi) #N.B.: target has no halo
         assert target.shape == self.get_expected_shape(roi)
-        for source_image, target_image in zip(data.images(), target.images()):
+        for source_image, target_image in zip(data.images(self.stack_axis), target.images(self.stack_axis)):
             for source_channel, out_features in zip(source_image.channels(), target_image.channel_stacks(step=self.dimension)):
-                self._do_compute(source_channel, out=out_features)
+                self._compute_slice(source_channel, out=out_features)
         return target
 
     @abstractmethod
-    def _do_compute(self, raw_data:ScalarImage, out:Image):
+    def _compute_slice(self, raw_data:ScalarImage, out:Image):
         pass
 
-class FeatureCollection(FlatChannelwiseFilter):
+class FeatureCollection(FeatureExtractor):
     def __init__(self, *features:List[FeatureExtractor]):
         assert len(features) > 0
         self.features = features
 
-    @property
-    def dimension(self):
-        return sum(f.dimension for f in self.features)
+        shape_params = {}
+        for label in Point5D.LABELS:
+            shape_params[label] = max(f.kernel_shape[label] for f in features)
+        self._kernel_shape = Shape5D(**shape_params)
 
-    def _do_compute(self, raw_data:ScalarImage, out:Image):
+    @property
+    def kernel_shape(self):
+        return self._kernel_shape
+
+    def get_expected_shape(self, roi:DataSpec) -> Shape5D:
+        channel_size = sum(f.get_expected_shape(roi).c for f in self.features)
+        return roi.shape.with_coord(c=channel_size)
+
+    def compute(self, roi:DataSpec, out:Array5D=None) -> Array5D:
+        data = roi.retrieve(self.halo)
+        target = out or self.allocate_for(roi)
+        assert target.shape == self.get_expected_shape(roi)
+
         with ThreadPoolExecutor(max_workers=len(self.features), thread_name_prefix="features") as executor:
             channel_count = 0
             for f in self.features:
-                channel_stop = channel_count + f.dimension
-                feature_out = out.cut_with(c=slice(channel_count, channel_stop))
-                executor.submit(f._do_compute, raw_data, out=feature_out)
+                channel_stop = channel_count + f.get_expected_shape(roi).c
+                feature_out = target.cut_with(c=slice(channel_count, channel_stop))
+                executor.submit(f.compute, roi, out=feature_out)
                 channel_count = channel_stop
+        return target

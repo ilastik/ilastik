@@ -25,12 +25,10 @@ class Predictions(Array5D):
 
 class PixelClassifier:
     def __init__(self, feature_collection:FeatureCollection, annotations:List[Annotation],
-                 num_trees=100, num_forests=None, variable_importance_path=None,
-                 variable_importance_enabled=False):
+                 num_trees=100, num_forests=multiprocessing.cpu_count()):
         assert len(annotations) > 0
         self.feature_collection = feature_collection
         self.num_trees = num_trees
-        num_forests = num_forests or multiprocessing.cpu_count()
 
         tree_counts = np.array( [num_trees // num_forests] * num_forests )
         tree_counts[:num_trees % num_forests] += 1

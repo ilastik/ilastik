@@ -7,6 +7,7 @@ from ilastik.utility import JsonSerializable
 
 class Point5D(JsonSerializable):
     LABELS = 'txyzc'
+    SPATIAL_LABELS = 'xyz'
     LABEL_MAP = {label:index for index, label in enumerate(LABELS)}
     INF = float('inf')
     NINF = -INF
@@ -159,7 +160,7 @@ class Shape5D(Point5D):
 
     @property
     def spatial_axes(self):
-        return {k:v for k,v in self._coords.items() if k in 'xyz'}
+        return {k:self._coords[k] for k in self.SPATIAL_LABELS}
 
     @property
     def missing_spatial_axes(self):

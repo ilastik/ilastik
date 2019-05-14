@@ -5,6 +5,7 @@ import numpy
 
 from .feature_extractor import FlatChannelwiseFilter
 from ilastik.array5d import Array5D, Image, ScalarImage
+from ilastik.array5d.point5D import Point5D, Slice5D, Shape5D
 
 class VigraChannelwiseFilter(FlatChannelwiseFilter):
     @property
@@ -12,7 +13,14 @@ class VigraChannelwiseFilter(FlatChannelwiseFilter):
     def filter_fn(self):
         pass
 
-    def _do_compute(self, source:ScalarImage, out:Image):
+    @property
+    def kernel_shape(self) -> Shape5D:
+        #FIXME: Add appropriate "kernel_shape" property to filters
+        args = {k:5 for k in Point5D.SPATIAL_LABELS}
+        args[self.stack_axis] = 1
+        return Shape5D(**args)
+
+    def _compute_slice(self, source:ScalarImage, out:Image):
         source_axes = source.squeezed_shape.axiskeys
         vigra_roi = out.shape.to_slice_5d().offset(self.halo).to_tuple(source_axes)
         return self.filter_fn(source.raw(source_axes).astype(numpy.float32),
@@ -20,7 +28,7 @@ class VigraChannelwiseFilter(FlatChannelwiseFilter):
                               out=out.raw(source_axes + 'c'),
                               roi=vigra_roi)
 
-#FIXME: Add appropriate "halo" property to filters
+#FIXME: Add appropriate "kernel_shape" property to filters
 class GaussianSmoothing(VigraChannelwiseFilter):
     @property
     def dimension(self) -> int:
