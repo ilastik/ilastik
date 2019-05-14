@@ -8,7 +8,7 @@ import vigra
 from vigra.learning import RandomForest
 
 from ilastik.array5d.array5D import Array5D, Slice5D, Point5D, Shape5D
-from ilastik.features.feature_extractor import FeatureCollection, FeatureData
+from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
 from ilastik.annotations import Annotation
 from ilastik.data_source import DataSource, DataSpec
 
@@ -24,22 +24,22 @@ class Predictions(Array5D):
         return super().allocate(shape=shape, dtype=dtype, axiskeys=axiskeys, value=value)
 
 class PixelClassifier:
-    def __init__(self, feature_collection:FeatureCollection, annotations:List[Annotation],
-                 num_trees=100, num_forests=multiprocessing.cpu_count()):
+    def __init__(self, feature_extractor:FeatureExtractor, annotations:List[Annotation],
+                 num_trees:int=100, num_forests:int=multiprocessing.cpu_count()):
         assert len(annotations) > 0
-        self.feature_collection = feature_collection
+        self.feature_extractor = feature_extractor
         self.num_trees = num_trees
 
         tree_counts = np.array( [num_trees // num_forests] * num_forests )
         tree_counts[:num_trees % num_forests] += 1
         tree_counts = list(map(int, tree_counts))
 
-        samples = annotations[0].get_samples(feature_collection)
+        samples = annotations[0].get_samples(feature_extractor)
         raw_X = samples.features.linear_raw()
         raw_y = samples.labels.linear_raw()
         #TODO: maybe concatenate eveything at once? Or prealloc and index?
         for annotation in annotations[1:]:
-            extra_samples = annotation.get_samples(feature_collection)
+            extra_samples = annotation.get_samples(feature_extractor)
             raw_X = np.concatenate((raw_X, extra_samples.features.linear_raw()), axis=0)
             raw_y = np.concatenate((raw_y, extra_samples.labels.linear_raw()), axis=0)
         self.classes = list(np.unique(raw_y))
@@ -60,7 +60,7 @@ class PixelClassifier:
         return Predictions.allocate(self.get_expected_shape(data_spec))
 
     def predict(self, data_spec:DataSpec, out:Predictions=None) -> Predictions:
-        feature_data = self.feature_collection.compute(data_spec)
+        feature_data = self.feature_extractor.compute(data_spec)
         predictions = out or self.allocate_predictions(data_spec)
         assert predictions.shape == self.get_expected_shape(data_spec)
         raw_linear_predictions = predictions.linear_raw()
@@ -78,3 +78,13 @@ class PixelClassifier:
                 executor.submit(do_predict, forest)
 
         return predictions, feature_data
+
+class StrictPixelClassifier(PixelClassifier):
+    def __init__(self, feature_extractor:FeatureExtractor, annotations:List[Annotation], *args, **kwargs):
+        for annot in annotations:
+            feature_extractor.ensure_applicable(annot.data_source)
+        super().__init__(feature_extractor, annotations, *args, **kwargs)
+
+    def predict(self, data_spec:DataSpec, out:Predictions=None) -> Predictions:
+        self.feature_extractor.ensure_applicable(data_spec.data_source)
+        return super().predict(data_spec, out)

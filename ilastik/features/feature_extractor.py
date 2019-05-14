@@ -20,13 +20,17 @@ class FeatureData(Array5D):
     def as_uint8(self):
         return Array5D((self._data * 255).astype(np.uint8), axiskeys=self.axiskeys)
 
+class FeatureDataMismatchException(Exception):
+    def __init__(self, feature_extractor:'FeatureExtractor', data_source:DataSource):
+        super().__init__(f"Feature {feature_extractor} can't be cleanly applied to {data_source}")
+
 class FeatureExtractor(ABC):
     def __init__(self, sigma:float, window_size:float):
         self.sigma = sigma
         self.window_size = window_size
 
     def __repr__(self):
-        return f"<{self.__class__.__qualname__} sigma={self.sigma} window_size={self.window_size}>"
+        return f"<{self.__class__.__name__} sigma={self.sigma} window_size={self.window_size} kernel={self.kernel_shape}>"
 
     def allocate_for(self, roi:DataSpec) -> Array5D:
         #FIXME: vigra needs C to be the last REAL axis rather than the last axis of the view -.-
@@ -40,8 +44,12 @@ class FeatureExtractor(ABC):
     def compute(self, roi:DataSpec, out:Array5D=None) -> Array5D:
         pass
 
-    def is_applicable_to(self, raw_data:Array5D) -> bool:
-        return raw_data.shape >= self.kernel_shape
+    def is_applicable_to(self, data:DataSource) -> bool:
+        return data.shape >= self.kernel_shape
+
+    def ensure_applicable(self, data_source:DataSource):
+        if not self.is_applicable_to(data_source):
+            raise FeatureDataMismatchException(self, data_source)
 
     @property
     @abstractmethod
@@ -91,6 +99,9 @@ class FeatureCollection(FeatureExtractor):
         for label in Point5D.LABELS:
             shape_params[label] = max(f.kernel_shape[label] for f in features)
         self._kernel_shape = Shape5D(**shape_params)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {[repr(f) for f in self.features]}>"
 
     @property
     def kernel_shape(self):

@@ -8,7 +8,7 @@ from ilastik.array5d.point5D import Point5D, Slice5D, Shape5D
 from ilastik.features.feature_extractor import FeatureCollection
 from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
 from ilastik.annotations import Annotation
-from ilastik.classifiers.pixel_classifier import PixelClassifier
+from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier
 from ilastik.data_source import FlatDataSource
 
 p = Point5D(x=1, y=2, z=3, t=4, c=5)
@@ -28,7 +28,7 @@ annotations = [
 ]
 
 fc = FeatureCollection(GaussianSmoothing(sigma=0.3), HessianOfGaussian(sigma=1.2), GaussianSmoothing(sigma=1.7))
-classifier = PixelClassifier(feature_collection=fc, annotations=annotations)
+classifier = StrictPixelClassifier(feature_extractor=fc, annotations=annotations)
 predictions, features = classifier.predict(raw_data1.all())
 
 pil_images = [c.as_pil_image() for img in predictions.as_uint8().images() for c in img.channels()]
