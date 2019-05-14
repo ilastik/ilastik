@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor as Executor
 from functools import reduce
 from operator import mul
 from typing import List, Iterator
@@ -71,9 +71,11 @@ class FlatChannelwiseFilter(FeatureExtractor):
         data = roi.retrieve(self.halo)
         target = out or self.allocate_for(roi) #N.B.: target has no halo
         assert target.shape == self.get_expected_shape(roi)
-        for source_image, target_image in zip(data.images(self.stack_axis), target.images(self.stack_axis)):
-            for source_channel, out_features in zip(source_image.channels(), target_image.channel_stacks(step=self.dimension)):
-                self._compute_slice(source_channel, out=out_features)
+
+        with Executor(thread_name_prefix="feature_slice") as executor:
+            for source_image, target_image in zip(data.images(self.stack_axis), target.images(self.stack_axis)):
+                for source_channel, out_features in zip(source_image.channels(), target_image.channel_stacks(step=self.dimension)):
+                    executor.submit(self._compute_slice, source_channel, out=out_features)
         return target
 
     @abstractmethod
@@ -103,7 +105,7 @@ class FeatureCollection(FeatureExtractor):
         target = out or self.allocate_for(roi)
         assert target.shape == self.get_expected_shape(roi)
 
-        with ThreadPoolExecutor(max_workers=len(self.features), thread_name_prefix="features") as executor:
+        with Executor(max_workers=len(self.features), thread_name_prefix="features") as executor:
             channel_count = 0
             for f in self.features:
                 channel_stop = channel_count + f.get_expected_shape(roi).c
