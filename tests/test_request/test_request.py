@@ -18,7 +18,6 @@ class TExc(Exception):
 
 
 class TestSignal:
-
     @pytest.fixture
     def signal(self):
         return SimpleSignal()
@@ -136,6 +135,7 @@ class TestRequest:
     def work_fn(self, request):
         def work_fn():
             return 42
+
         return work_fn
 
     @staticmethod

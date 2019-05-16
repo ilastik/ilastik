@@ -68,20 +68,21 @@ def test_wake_task_executes_task_on_idle_worker(pool: ThreadPool):
 
 def test_wake_task_executes_task_on_assigned_worker(pool: ThreadPool):
     stop = threading.Event()
-    box = [None]
+    worker = None
 
     def task():
-        box[0] = threading.current_thread()
+        nonlocal worker
+        worker = threading.current_thread()
         time.sleep(0.2)
         stop.set()
 
     task.assigned_worker = random.choice(list(pool.workers))
     pool.wake_up(task)
     assert stop.wait(timeout=1)
-    assert box[0] == task.assigned_worker
+    assert worker == task.assigned_worker
 
 
-def test_exception_does_not_kill_worker(caplog):
+def test_exception_does_not_kill_worker():
     pool = ThreadPool(1)
     stop = threading.Event()
     order = []
