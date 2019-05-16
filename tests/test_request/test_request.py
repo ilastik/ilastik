@@ -209,18 +209,18 @@ class TestRequest:
 
 @pytest.fixture
 def work():
-    cont = threading.Event()
+    unpause = threading.Event()
     children = []
 
     def work_fn():
         more_work = Request(lambda: 42)
         some_more_work = Request(lambda: 42)
         children.extend([more_work, some_more_work])
-        cont.wait()
+        unpause.wait()
         return more_work.wait()
 
     work = Work(work_fn)
-    work.cont = cont
+    work.unpause = unpause
 
     work.request = Request(work)
     work.request.submit()
@@ -230,8 +230,8 @@ def work():
 
     yield work
 
-    if not work.cont.is_set():
-        work.cont.set()
+    if not work.unpause.is_set():
+        work.unpause.set()
 
     assert work.done.wait()
 
@@ -247,7 +247,7 @@ def cancelled_work(work):
     work.request.cancel()
     assert work.request.cancelled
 
-    work.cont.set()
+    work.unpause.set()
     assert work.done.wait()
 
     return work
