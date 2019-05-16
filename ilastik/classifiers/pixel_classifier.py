@@ -9,8 +9,8 @@ from vigra.learning import RandomForest
 
 from ilastik.array5d.array5D import Array5D, Slice5D, Point5D, Shape5D
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
-from ilastik.annotations import Annotation
-from ilastik.data_source import DataSource, DataSpec
+from ilastik.annotations import Annotation, FeatureSamples, LabelSamples
+from ilastik.data_source import DataSource, DataSourceSlice
 
 class Predictions(Array5D):
     """An array of floats from 0.0 to 1.0. Teh value in each channel represents
@@ -34,35 +34,32 @@ class PixelClassifier:
         tree_counts[:num_trees % num_forests] += 1
         tree_counts = list(map(int, tree_counts))
 
-        samples = annotations[0].get_samples(feature_extractor)
-        raw_X = samples.features.linear_raw()
-        raw_y = samples.labels.linear_raw()
-        #TODO: maybe concatenate eveything at once? Or prealloc and index?
-        for annotation in annotations[1:]:
-            extra_samples = annotation.get_samples(feature_extractor)
-            raw_X = np.concatenate((raw_X, extra_samples.features.linear_raw()), axis=0)
-            raw_y = np.concatenate((raw_y, extra_samples.labels.linear_raw()), axis=0)
-        self.classes = list(np.unique(raw_y))
+        samples = [a.get_samples(feature_extractor) for a in annotations]
+        gathered_samples = samples[0].concatenate(*samples[1:])
+
+        self.classes = gathered_samples.label.classes
         self.num_classes = len(self.classes)
 
+        X = gathered_samples.feature.linear_raw()
+        y = gathered_samples.label.linear_raw()
         self.forests = [None] * num_forests
         with ThreadPoolExecutor(max_workers=num_forests) as executor:
             def train_forest(forest_index):
                 self.forests[forest_index] = RandomForest(tree_counts[forest_index])
-                self.oobs[forest_index] = self.forests[forest_index].learnRF(raw_X, raw_y)
+                self.oobs[forest_index] = self.forests[forest_index].learnRF(X, y)
             for i in range(num_forests):
                 executor.submit(train_forest, i)
 
-    def get_expected_shape(self, data_spec:DataSpec):
-        return data_spec.shape.with_coord(c=self.num_classes)
+    def get_expected_shape(self, data_slice:DataSourceSlice):
+        return data_slice.shape.with_coord(c=self.num_classes)
 
-    def allocate_predictions(self, data_spec:DataSpec):
-        return Predictions.allocate(self.get_expected_shape(data_spec))
+    def allocate_predictions(self, data_slice:DataSourceSlice):
+        return Predictions.allocate(self.get_expected_shape(data_slice))
 
-    def predict(self, data_spec:DataSpec, out:Predictions=None) -> Predictions:
-        feature_data = self.feature_extractor.compute(data_spec)
-        predictions = out or self.allocate_predictions(data_spec)
-        assert predictions.shape == self.get_expected_shape(data_spec)
+    def predict(self, data_slice:DataSourceSlice, out:Predictions=None) -> Predictions:
+        feature_data = self.feature_extractor.compute(data_slice)
+        predictions = out or self.allocate_predictions(data_slice)
+        assert predictions.shape == self.get_expected_shape(data_slice)
         raw_linear_predictions = predictions.linear_raw()
         lock = Lock()
 
@@ -85,6 +82,6 @@ class StrictPixelClassifier(PixelClassifier):
             feature_extractor.ensure_applicable(annot.data_source)
         super().__init__(feature_extractor, annotations, *args, **kwargs)
 
-    def predict(self, data_spec:DataSpec, out:Predictions=None) -> Predictions:
-        self.feature_extractor.ensure_applicable(data_spec.data_source)
-        return super().predict(data_spec, out)
+    def predict(self, data_slice:DataSourceSlice, out:Predictions=None) -> Predictions:
+        self.feature_extractor.ensure_applicable(data_slice.data_source)
+        return super().predict(data_slice, out)

@@ -1,1 +1,1 @@
-from .DataSource import DataSource, FlatDataSource, DataSpec
+from .DataSource import DataSource, FlatDataSource, DataSourceSlice

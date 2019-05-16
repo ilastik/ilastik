@@ -15,6 +15,9 @@ class Point5D(JsonSerializable):
     def __init__(self, *, t:float, x:float, y:float, z:float, c:float):
         self._coords = {'t':t, 'x':x, 'y':y, 'z':z, 'c':c}
 
+    def __hash__(self):
+        return hash(self.to_tuple(self.LABELS))
+
     @classmethod
     def from_tuple(cls, tup:Tuple[float,float,float,float,float], labels:str):
         return cls(**{label:value for label, value in zip(labels, tup)})
@@ -126,6 +129,13 @@ class Point5D(JsonSerializable):
     def __sub__(self, other):
         return self.__np_op(other, '__sub__')
 
+    def __neg__(self):
+        raw = self.to_np(self.LABELS)
+        return Point5D.from_np(-raw, self.LABELS)
+
+    def __mod__(self, other):
+        return self.__np_op(other, '__mod__')
+
     def __add__(self, other):
         return self.__np_op(other, '__add__')
 
@@ -153,9 +163,12 @@ class Point5D(JsonSerializable):
         raw = np.ceil(arr).astype(np.float32)
         return cls.from_np(raw, cls.LABELS)
 
+    def ceiling(self):
+        raw = np.ceil(self.to_np(self.LABELS)).astype(np.float32)
+        return self.from_np(raw, self.LABELS)
+
 class Shape5D(Point5D):
     def __init__(cls, *, t:int=1, x:int=1, y:int=1, z:int=1, c:int=1):
-        assert t > 0 and x > 0 and y > 0 and z > 0 and c > 0
         super().__init__(t=t, x=x, y=y, z=z, c=c)
 
     @property
@@ -228,7 +241,7 @@ class Slice5D(JsonSerializable):
         return self.__class__(t=t, c=c, x=x, y=y, z=z)
 
     def __hash__(self):
-        return hash(self._slices)
+        return hash((self.start, self.stop))
 
     def __eq__(self, other):
         if not isinstance(other, Slice5D):
@@ -300,9 +313,8 @@ class Slice5D(JsonSerializable):
     def get_tiles(self, tile_shape:Shape5D) -> Iterator['Slice5D']:
         assert self.is_defined()
         start = (self.start // tile_shape) * tile_shape
-        stop = Point5D.as_ceil(self.stop.to_np(Point5D.LABELS) / tile_shape.to_np(Point5D.LABELS))
-        stop *= tile_shape
-        return self.from_start_stop(start, stop).split(tile_shape)
+        stop = (self.stop / tile_shape).ceiling() * tile_shape
+        return self.from_start_stop(start, stop).clamped_with_slice(self).split(tile_shape)
 
     @property
     def t(self):
@@ -333,6 +345,9 @@ class Slice5D(JsonSerializable):
         params['z'] = z or self.z
         return self.rebuild(**params)
 
+    def with_full_c(self) -> 'Shape5D':
+        return self.with_coord(c=slice(None))
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
@@ -351,6 +366,12 @@ class Slice5D(JsonSerializable):
 
     def clamped_with_slice(self, slc:'Slice5D'):
         return self.clamped(minimum=slc.start, maximum=slc.stop)
+
+    def mod_tile(self, tile_shape:Shape5D):
+        assert self.is_defined()
+        assert self.shape <= tile_shape
+        offset = self.start - (self.start % tile_shape)
+        return self.from_start_stop(self.start - offset, self.stop - offset)
 
     def enlarged(self, radius:Point5D):
         start = self.start - radius

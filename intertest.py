@@ -5,7 +5,7 @@ import numpy as np
 
 from ilastik.array5d.array5D import Array5D, Image, ScalarImage
 from ilastik.array5d.point5D import Point5D, Slice5D, Shape5D
-from ilastik.features.feature_extractor import FeatureCollection
+from ilastik.features.feature_extractor import FeatureCollection, FeatureCache
 from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
 from ilastik.annotations import Annotation
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier
@@ -28,6 +28,7 @@ annotations = [
 ]
 
 fc = FeatureCollection(GaussianSmoothing(sigma=0.3), HessianOfGaussian(sigma=1.2), GaussianSmoothing(sigma=1.7))
+fc = FeatureCache(fc)
 classifier = StrictPixelClassifier(feature_extractor=fc, annotations=annotations)
 predictions, features = classifier.predict(raw_data1.all())
 

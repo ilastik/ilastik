@@ -9,7 +9,7 @@ import numpy as np
 
 from ilastik.array5d import Slice5D, Point5D, Shape5D
 from ilastik.array5d import Array5D, Image, ScalarImage, LinearData
-from ilastik.data_source import DataSource, DataSpec
+from ilastik.data_source import DataSource, DataSourceSlice
 
 class FeatureData(Array5D):
     def __init__(self, arr:np.ndarray, axiskeys:str):
@@ -32,16 +32,16 @@ class FeatureExtractor(ABC):
     def __repr__(self):
         return f"<{self.__class__.__name__} sigma={self.sigma} window_size={self.window_size} kernel={self.kernel_shape}>"
 
-    def allocate_for(self, roi:DataSpec) -> Array5D:
+    def allocate_for(self, roi:DataSourceSlice) -> Array5D:
         #FIXME: vigra needs C to be the last REAL axis rather than the last axis of the view -.-
         return FeatureData.allocate(self.get_expected_shape(roi), dtype=np.float32, axiskeys='tzxyc')
 
     @abstractmethod
-    def get_expected_shape(self, roi:DataSpec) -> Shape5D:
+    def get_expected_shape(self, roi:DataSourceSlice) -> Shape5D:
         pass
 
     @abstractmethod
-    def compute(self, roi:DataSpec, out:Array5D=None) -> Array5D:
+    def compute(self, roi:DataSourceSlice, out:Array5D=None) -> Array5D:
         pass
 
     def is_applicable_to(self, data:DataSource) -> bool:
@@ -60,8 +60,31 @@ class FeatureExtractor(ABC):
     def halo(self) -> Point5D:
         return self.kernel_shape // 2
 
+class FeatureCache:#(FeatureExtractor):
+    def __init__(self, extractor:FeatureExtractor):
+        self.extractor = extractor
+        self.cache : Dict[DataSourceSlice, Array5D] = {}
+
+    def __repr__(self):
+        return f"<Caching {repr(self.extractor)}>"
+
+    def compute(self, roi:DataSourceSlice, out:Array5D=None) -> Array5D:
+        if roi in self.cache:
+            print(f"Cache HIT for roi {roi}")
+        else:
+            print(f"Cache MISS for roi {roi}")
+            self.cache[roi] = self.extractor.compute(roi, out)
+        return self.cache[roi]
+
+    def flush(self):
+        self.cache = {}
+
+    def __getattr__(self, name):
+        return getattr(self.extractor, name)
+
 class FlatChannelwiseFilter(FeatureExtractor):
     def __init__(self, sigma:float, window_size:float=0.0, stack_axis:str='z'):
+        #FIXME: combine sigma, window_size and kernel_shape into the same thing
         super().__init__(sigma=sigma, window_size=window_size)
         self.stack_axis = stack_axis
 
@@ -71,11 +94,11 @@ class FlatChannelwiseFilter(FeatureExtractor):
         "Number of channels emited by this feature extractor for each input channel"
         pass
 
-    def get_expected_shape(self, roi:DataSpec) -> Shape5D:
+    def get_expected_shape(self, roi:DataSourceSlice) -> Shape5D:
         num_output_channels = roi.shape.c * self.dimension
         return roi.shape.with_coord(c=num_output_channels)
 
-    def compute(self, roi:DataSpec, out:Array5D=None) -> Array5D:
+    def compute(self, roi:DataSourceSlice, out:Array5D=None) -> Array5D:
         data = roi.retrieve(self.halo)
         target = out or self.allocate_for(roi) #N.B.: target has no halo
         assert target.shape == self.get_expected_shape(roi)
@@ -107,11 +130,11 @@ class FeatureCollection(FeatureExtractor):
     def kernel_shape(self):
         return self._kernel_shape
 
-    def get_expected_shape(self, roi:DataSpec) -> Shape5D:
+    def get_expected_shape(self, roi:DataSourceSlice) -> Shape5D:
         channel_size = sum(f.get_expected_shape(roi).c for f in self.features)
         return roi.shape.with_coord(c=channel_size)
 
-    def compute(self, roi:DataSpec, out:Array5D=None) -> Array5D:
+    def compute(self, roi:DataSourceSlice, out:Array5D=None) -> Array5D:
         data = roi.retrieve(self.halo)
         target = out or self.allocate_for(roi)
         assert target.shape == self.get_expected_shape(roi)

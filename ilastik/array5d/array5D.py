@@ -1,4 +1,4 @@
-from typing import Iterator
+from typing import Iterator, List
 from collections import OrderedDict
 
 import numpy as np
@@ -148,6 +148,15 @@ class Array5D:
             for slc in frame.planes(through_axis):
                 yield Image(slc._data, self.axiskeys)
 
+    def as_mask(self) -> 'Array5D':
+        return Array5D(self._data > 0, axiskeys=self.axiskeys)
+
+    def sample_channels(self, mask:'ScalarData') -> 'LinearData':
+        assert self.shape.with_coord(c=1) == mask.shape
+        sampling_axes = self.with_c_as_last_axis().axiskeys
+        raw_mask = mask.raw(sampling_axes.replace('c', ''))
+        return StaticLine(self.raw(sampling_axes)[raw_mask], StaticLine.DEFAULT_AXES)
+
     def rebuild(self, arr:np.array, axiskeys:str) -> 'Array5D':
         return self.__class__(arr, axiskeys)
 
@@ -265,9 +274,14 @@ class Image(StaticData, FlatData):
 class ScalarImage(Image, ScalarData):
     pass
 
-
 class ScalarLine(LinearData, ScalarData):
     pass
 
 class StaticLine(StaticData, LinearData):
-    pass
+    DEFAULT_AXES = 'xc'
+    def concatenate(self, *others: List['LinearData']) -> 'LinearData':
+        axes = self.squeezed_shape.axiskeys
+        concat_axis = self.squeezed_shape.to_scalar().axiskeys
+        raw_all = [self.raw(axes)] + [o.raw(axes) for o in others]
+        data = np.concatenate(raw_all, axis=axes.index(concat_axis))
+        return self.rebuild(data, axes)
