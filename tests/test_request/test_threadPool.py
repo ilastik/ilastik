@@ -34,8 +34,7 @@ def pool():
 
 
 def test_thread_pool_starts_workers(pool: ThreadPool):
-    assert pool.num_workers == NUM_WORKERS
-    assert len(pool.workers) == NUM_WORKERS
+    assert pool.num_workers == len(pool.workers) == NUM_WORKERS
 
     for w in pool.workers:
         assert isinstance(w, threading.Thread)

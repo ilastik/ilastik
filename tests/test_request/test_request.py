@@ -2,6 +2,7 @@ import time
 import threading
 
 from unittest import mock
+from functools import partial
 
 import pytest
 
@@ -43,17 +44,11 @@ class TestSignal:
     def test_subscribed_functions_called_in_sequence(self, signal: SimpleSignal):
         order = []
         for c in range(100):
-
-            def fun(val=c):
-                order.append(val)
-
-            signal.subscribe(fun)
+            signal.subscribe(partial(order.append, c))
 
         signal()
         assert len(order) == 100
-
-        for idx in range(len(order) - 1):
-            assert order[idx] < order[idx + 1]
+        assert order == sorted(order)
 
     def test_calling_cleaned_signal_raises_exception(self, signal: SimpleSignal):
         signal.clean()
@@ -100,11 +95,7 @@ class Work:
 
 class TestRequest:
     def test_submit_should_assign_worker_and_execute(self):
-        stop = threading.Event()
-
         def work():
-            time.sleep(0.3)
-            stop.set()
             return 42
 
         req = Request(work)
@@ -113,8 +104,6 @@ class TestRequest:
         assert req.assigned_worker in Request.global_thread_pool.workers
 
     def test_submit_dependent_requests_should_execute_on_same_worker(self):
-        stop = threading.Event()
-
         more_work = Request(Work(lambda: 42))
 
         req = Request(Work(lambda: more_work.wait()))
