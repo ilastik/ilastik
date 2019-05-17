@@ -45,6 +45,18 @@ from .lazyflowClassifier import LazyflowOnlineClassifier
 logger = logging.getLogger(__name__)
 
 
+class ReorderAxes:
+    def __init__(self, axes_order: str) -> None:
+        self.axes_order = axes_order
+        self._op = OpReorderAxes(graph=Graph())
+        self._op.AxisOrder.setValue(axes_order)
+
+    def reorder(self, input_arr: numpy.ndarray, axes_tags: str):
+        tagged_arr = vigra.VigraArray(input_arr, axistags=axes_tags)
+        self._op.Input.setValue(tagged_arr)
+        return self._op.Output([]).wait()
+
+
 class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
     # The version is used to determine compatibility of pickled classifier factories.
     # You must bump this if any instance members are added/removed/renamed.
@@ -66,6 +78,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         # Privates
         self._tikTorchClassifier = None
         self._train_model = None
+        self._our_reorderer = ReorderAxes(self.input_axis_order)
         self._opReorderAxesInImg = OpReorderAxes(graph=Graph())
         self._opReorderAxesInLabel = OpReorderAxes(graph=Graph())
         self._opReorderAxesInImg.AxisOrder.setValue(self.input_axis_order)
@@ -121,6 +134,9 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         ]
         self.shrinkage = tuple([dict(zip(self.input_axis_order, ret.shrinkage)).get(a, 0) for a in "tczyx"])
 
+    def _reorder_out(self, arr, axes_tags):
+        return self._our_reorderer.reorder(arr, axes_tags)
+
     def __getattr__(self, item):
         if item != "_config":
             try:
@@ -166,7 +182,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
 
         if self.train_model:
             self.update(feature_images, label_images, axistags, image_ids)
-            self.tikTorchClient.resume()
+            self.resume_training()
 
         logger.info(self.description)
 
@@ -174,19 +190,16 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
 
     def update(self, feature_images: Iterable, label_images: Iterable, axistags, image_ids: Iterable):
         # TODO: check whether loaded network has the same number of classes as specified in ilastik!
-        data = []
-        for img, label, id in zip(feature_images, label_images, image_ids):
-            self._opReorderAxesInImg.Input.setValue(vigra.VigraArray(img, axistags=axistags))
-            self._opReorderAxesInLabel.Input.setValue(vigra.VigraArray(label, axistags=axistags))
-            data.append(
-                LabeledNDArray(
-                    array=self._opReorderAxesInImg.Output([]).wait(),
-                    label=self._opReorderAxesInLabel.Output([]).wait(),
-                    id_=id,
-                )
-            )
+        images = []
+        labels = []
 
-        self.tikTorchClient.update_training_data(LabeledNDArrayBatch(data))
+        for img, label, id_ in zip(feature_images, label_images, image_ids):
+            out_img = self._reorder_out(img, axistags)
+            out_label = self._reorder_out(label, axistags)
+            images.append(NDArray(out_img, id_))
+            labels.append(NDArray(out_label, id_))
+
+        self.tikTorchClient.update_training_data(NDArrayBatch(images), NDArrayBatch(labels))
 
     def get_model_state(self):
         return self.tikTorchClient.get_model_state()
