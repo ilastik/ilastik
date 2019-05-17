@@ -166,7 +166,10 @@ class Array5D:
             source_slice = self.cut(slc).raw(self.axiskeys)
             dest_slice = normalized.cut(slc).raw(self.axiskeys)
             data_range = np.amax(source_slice) - np.amin(source_slice)
-            dest_slice[...] = (source_slice / data_range * np.iinfo(self.dtype).max).astype(self.dtype)
+            if data_range != 0:
+                dest_slice[...] = (source_slice / data_range * np.iinfo(self.dtype).max).astype(self.dtype)
+            else:
+                dest_slice[...] = source_slice
         return normalized
 
     def rebuild(self, arr:np.array, axiskeys:str) -> 'Array5D':
