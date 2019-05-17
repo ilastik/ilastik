@@ -30,10 +30,10 @@ class DataSource(JsonSerializable):
         return f"<{self.__class__.__name__} {self.shape} from {self.url}>"
 
     def cut_with(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)) -> 'DataSourceSlice':
-        return DataSourceSlice(self, t=t, c=c, x=x, y=y, z=z)
+        return self.cut(Slice5D(t=t, c=c, x=x, y=y, z=z))
 
-    def cut(self, slc:Slice5D):
-        return DataSourceSlice.from_slice(self, slc)
+    def cut(self, slc:Slice5D) -> 'DataSourceSlice':
+        return DataSourceSlice.from_slice(self, slc.defined_with(self.shape))
 
     def all(self) -> 'DataSourceSlice':
         return self.cut(self.shape.to_slice_5d())
@@ -52,6 +52,9 @@ class DataSource(JsonSerializable):
     @abstractmethod
     def dtype(self):
         pass
+
+    def contains(self, slc:Slice5D) -> bool:
+        return self.shape.to_slice_5d().contains(slc.defined_with(self.shape))
 
     def retrieve(self, roi:Slice5D, halo:Point5D=Point5D.zero()) -> Array5D:
         roi = roi.defined_with(self.shape)
@@ -78,16 +81,11 @@ class DataSourceSlice(Slice5D):
     """A Slice5D tied to a DataSource"""
 
     def __init__(self, data_source:DataSource, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
-        slc = Slice5D(t=t, c=c, x=x, y=y, z=z)
-        super().__init__(**slc.defined_with(data_source.shape).to_dict())
+        super().__init__(t=t, c=c, x=x, y=y, z=z)
         self.data_source = data_source
 
-    def roi(self) -> Shape5D:
-        return Slice5D(**self.to_dict())
-
-    @property
-    def url(self) -> str:
-        return self.data_source.url
+    def rebuild(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
+        return self.__class__(self.data_source, t=t, c=c, x=x, y=y, z=z)
 
     def __hash__(self):
         return hash((super().__hash__(), self.data_source))
@@ -101,15 +99,15 @@ class DataSourceSlice(Slice5D):
     def from_slice(cls, data_source:DataSource, slc:Slice5D):
         return cls(data_source, **slc.to_dict())
 
-    def rebuild(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
-        return self.__class__(self.data_source, t=t, c=c, x=x, y=y, z=z)
-
     def retrieve(self, halo:Point5D=Point5D.zero()):
         return self.data_source.retrieve(self, halo)
 
     def get_tiles(self, tile_shape:Shape5D = None):
         for tile in super().get_tiles(tile_shape or self.data_source.tile_shape):
             yield tile.clamped_with_slice(self.data_source.shape.to_slice_5d())
+
+    def mod_tile(self, tile_shape:Shape5D=None) -> 'DataSourceSlice':
+        return super().mod_tile(tile_shape or self.data_source.tile_shape)
 
 class FlatDataSource(DataSource):
     def __init__(self, url:str):
