@@ -24,8 +24,9 @@ class Predictions(Array5D):
         return super().allocate(shape=shape, dtype=dtype, axiskeys=axiskeys, value=value)
 
 class PixelClassifier:
-    def __init__(self, feature_extractor:FeatureExtractor, annotations:List[Annotation],
-                 num_trees:int=100, num_forests:int=multiprocessing.cpu_count()):
+    def __init__(self, feature_extractor:FeatureExtractor, annotations:List[Annotation],*,
+                 num_trees:int=100, num_forests:int=multiprocessing.cpu_count(),
+                 random_seed=0):
         assert len(annotations) > 0
         self.feature_extractor = feature_extractor
         self.num_trees = num_trees
@@ -43,10 +44,11 @@ class PixelClassifier:
         X = gathered_samples.feature.linear_raw()
         y = gathered_samples.label.linear_raw()
         self.forests = [None] * num_forests
+        self.oobs = [None] * num_forests
         with ThreadPoolExecutor(max_workers=num_forests) as executor:
             def train_forest(forest_index):
                 self.forests[forest_index] = RandomForest(tree_counts[forest_index])
-                self.oobs[forest_index] = self.forests[forest_index].learnRF(X, y)
+                self.oobs[forest_index] = self.forests[forest_index].learnRF(X, y, random_seed)
             for i in range(num_forests):
                 executor.submit(train_forest, i)
 
@@ -73,6 +75,8 @@ class PixelClassifier:
         with ThreadPoolExecutor(max_workers=len(self.forests), thread_name_prefix="predictor") as executor:
             for forest in self.forests:
                 executor.submit(do_predict, forest)
+
+        raw_linear_predictions /= self.num_trees
 
         return predictions, feature_data
 

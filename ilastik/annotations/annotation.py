@@ -10,9 +10,9 @@ from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
 from ilastik.data_source import DataSource, DataSourceSlice
 from PIL import Image as PilImage
 
-class AnnotationOutOfBounds(Exception):
-    def __init__(self, annotation:'Annotation', data_source:DataSource, offset:Point5D):
-        super().__init__(f"Annotation {annotation} offset by {offset} exceeds bounds of data_source {data_source}")
+class ScribblingsOutOfBounds(Exception):
+    def __init__(self, scribblings:ScalarImage, data_source:DataSource, offset:Point5D):
+        super().__init__(f"Scribblings {scribblings} offset by {offset} exceeds bounds of data_source {data_source}")
 
 class WrongShapeException(Exception):
     def __init__(self, path:str, data:np.ndarray):
@@ -30,8 +30,8 @@ class LabelSamples(StaticLine):
 
 class FeatureSamples(FeatureData, StaticLine):
     @classmethod
-    def create(cls, annotation: 'Annotation', data: FeatureData):
-        samples = data.sample_channels(annotation.as_mask())
+    def create(cls, scribblings: ScalarImage, data: FeatureData):
+        samples = data.sample_channels(scribblings.as_mask())
         return cls.fromArray5D(samples)
 
 class Samples:
@@ -40,64 +40,52 @@ class Samples:
         self.feature = feature_samples
         self.label = label_samples
 
+    def count(self) -> int:
+        return self.label.shape.x
+
     def concatenate(self, *others:List['Samples']):
         all_features = self.feature.concatenate(*[sample.feature for sample in others])
         all_labels = self.label.concatenate(*[sample.label for sample in others])
         return Samples(feature_samples=all_features, label_samples=all_labels)
 
-class Annotation(ScalarImage):
-    def __init__(self, arr:np.ndarray, axiskeys:str, data_source:DataSource, offset:Point5D=Point5D.zero()):
-        super().__init__(arr, axiskeys)
-        assert self.dtype == np.uint32
+class Annotation:
+    def __init__(self, scribblings:ScalarImage, data_source:DataSource, offset:Point5D=Point5D.zero()):
+        assert scribblings.dtype == np.uint32
+        assert offset.c == 0
 
-        if self.shape + offset > data_source.shape:
-            raise AnnotationOutOfBounds(annotation=self, data_source=data_source, offset=offset)
+        scribblings_bbox = scribblings.shape.with_coord(c=data_source.shape.c).to_slice_5d()
+        self.global_bbox = scribblings_bbox.offset(offset)
+        if not data_source.shape.to_slice_5d().contains(self.global_bbox):
+            raise ScribblingsOutOfBounds(scribblings=scribblings, data_source=data_source, offset=offset)
 
+        self.scribblings = scribblings
         self.data_source = data_source
-        self.bounding_box = self.shape.to_slice_5d()
-        self.global_bounding_box = self.bounding_box.offset(offset).with_full_c()
-        self.data_slice = DataSourceSlice.from_slice(data_source, self.global_bounding_box)
         self.offset = offset
-
-        self._mask = None
-
-    def as_mask(self):
-        if self._mask is None:
-            self._mask = super().as_mask()
-        return self._mask
+        self.data_source_slice = data_source.cut(self.global_bbox)
 
     @classmethod
-    def from_png(cls, path:str, data_source:DataSource):
+    def from_png(cls, path:str, data_source:DataSource, offset:Point5D=Point5D.zero()):
         data = np.asarray(PilImage.open(path)).astype(np.uint32)
-        if len(data.shape) != 2:
-            raise WrongShapeException(path, data)
-        return cls(data, 'yx', data_source)
-
-    def rebuild(self, arr:np.array, axiskeys:str, offset:Point5D=None) -> 'Array5D':
-        return self.__class__(arr, axiskeys, data_source=self.data_source,
-                              offset=self.offset if offset is None else offset)
-
-    def cut(self, roi:Slice5D) -> 'Annotation':
-        slices = roi.to_slices(self.axiskeys)
-        return self.rebuild(self._data[slices], self.axiskeys, offset=roi.start + self.offset)
+        return cls(ScalarImage(data, 'yx'), data_source, offset=offset)
 
     def get_samples(self, feature_extractor:FeatureExtractor) -> Samples:
         all_label_samples = []
         all_feature_samples = []
-        for global_tile in self.data_slice.get_tiles(): #tiling allows for caching of the features
-            global_roi = global_tile.roi().clamped_with_slice(self.global_bounding_box)
-            local_roi = global_roi.offset(- self.offset).with_full_c()
-            feature_roi = global_roi.mod_tile(self.data_source.tile_shape)
+        for data_slice in self.data_source_slice.get_tiles(): #tiling allows for caching of the features
+            data_roi = data_slice.roi().clamped_with_slice(self.global_bbox)
+            scribblings_roi = data_roi.offset(- self.offset).with_full_c()
+            feature_roi = data_roi.mod_tile(self.data_source.tile_shape).with_full_c()
 
-            annotation_tile = self.cut(local_roi)
-            feature_tile = feature_extractor.compute(global_tile).cut(feature_roi)
+            scribblings_tile = self.scribblings.cut(scribblings_roi)
+            feature_tile = feature_extractor.compute(data_slice).cut(feature_roi)
 
-            label_samples = LabelSamples.create(annotation_tile)
-            feature_samples = FeatureSamples.create(annotation_tile, feature_tile)
+            label_samples = LabelSamples.create(scribblings_tile)
+            feature_samples = FeatureSamples.create(scribblings_tile, feature_tile)
+            assert feature_samples.shape.c == feature_extractor.get_expected_shape(data_slice).c
             all_label_samples.append(label_samples)
             all_feature_samples.append(feature_samples)
         return Samples(label_samples=all_label_samples[0].concatenate(*all_label_samples[1:]),
                        feature_samples=all_feature_samples[0].concatenate(*all_feature_samples[1:]))
 
     def __repr__(self):
-        return f"<Annotation {self.shape}  for data_source: {self.data_source}>"
+        return f"<Annotation {self.scribblings.shape} for data_source: {self.data_source}>"
