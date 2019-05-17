@@ -175,7 +175,6 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
     def update(self, feature_images: Iterable, label_images: Iterable, axistags, image_ids: Iterable):
         # TODO: check whether loaded network has the same number of classes as specified in ilastik!
         data = []
-        reordered_labels = []
         for img, label, id in zip(feature_images, label_images, image_ids):
             self._opReorderAxesInImg.Input.setValue(vigra.VigraArray(img, axistags=axistags))
             self._opReorderAxesInLabel.Input.setValue(vigra.VigraArray(label, axistags=axistags))
@@ -187,9 +186,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
                 )
             )
 
-        data = LabeledNDArrayBatch(data)
-
-        self.tikTorchClient.train(data)
+        self.tikTorchClient.update_training_data(LabeledNDArrayBatch(data))
 
     def get_model_state(self):
         return self.tikTorchClient.get_model_state()
