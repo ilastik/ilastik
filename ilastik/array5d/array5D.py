@@ -1,3 +1,4 @@
+import itertools
 from typing import Iterator, List
 from collections import OrderedDict
 
@@ -156,6 +157,17 @@ class Array5D:
         sampling_axes = self.with_c_as_last_axis().axiskeys
         raw_mask = mask.raw(sampling_axes.replace('c', ''))
         return StaticLine(self.raw(sampling_axes)[raw_mask], StaticLine.DEFAULT_AXES)
+
+    def normalized(self, iteration_axes:str='tzc') -> 'Array5D':
+        normalized = self.allocate(self.shape, self.dtype, self.axiskeys)
+        axis_ranges = tuple(range(self.shape[key]) for key in iteration_axes)
+        for indices in itertools.product(*axis_ranges):
+            slc = Slice5D(**{k:v for k,v in zip(iteration_axes, indices)})
+            source_slice = self.cut(slc).raw(self.axiskeys)
+            dest_slice = normalized.cut(slc).raw(self.axiskeys)
+            data_range = np.amax(source_slice) - np.amin(source_slice)
+            dest_slice[...] = (source_slice / data_range * np.iinfo(self.dtype).max).astype(self.dtype)
+        return normalized
 
     def rebuild(self, arr:np.array, axiskeys:str) -> 'Array5D':
         return self.__class__(arr, axiskeys)
