@@ -249,6 +249,7 @@ class Slice5D(JsonSerializable):
         return self._slices == other._slices
 
     def contains(self, other:'Slice5D'):
+        assert other.is_defined()
         return self.start <= other.start and self.stop >= other.stop
 
     def is_defined(self) -> bool:
@@ -314,7 +315,7 @@ class Slice5D(JsonSerializable):
         assert self.is_defined()
         start = (self.start // tile_shape) * tile_shape
         stop = (self.stop / tile_shape).ceiling() * tile_shape
-        return self.from_start_stop(start, stop).clamped_with_slice(self).split(tile_shape)
+        return self.from_start_stop(start, stop).split(tile_shape)
 
     @property
     def t(self):

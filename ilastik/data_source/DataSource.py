@@ -26,16 +26,17 @@ class DataSource(JsonSerializable):
             return False
         return self.url == other.url and self.tile_shape == other.tile_shape
 
-    def spec(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)) -> 'DataSourceSlice':
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.shape} from {self.url}>"
+
+    def cut_with(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)) -> 'DataSourceSlice':
         return DataSourceSlice(self, t=t, c=c, x=x, y=y, z=z)
 
-    def all(self) -> 'DataSourceSlice':
-        return DataSourceSlice.from_slice(self, self.shape.to_slice_5d())
+    def cut(self, slc:Slice5D):
+        return DataSourceSlice.from_slice(self, slc)
 
-    def get_tiles(self, tile_shape:Shape5D=None) -> Iterator['DataSourceSlice']:
-        tile_shape = tile_shape or self.tile_shape
-        for tile in self.shape.to_slice_5d().split(tile_shape):
-            yield DataSourceSlice.from_slice(self, tile)
+    def all(self) -> 'DataSourceSlice':
+        return self.cut(self.shape.to_slice_5d())
 
     @property
     def tile_shape(self):
@@ -107,7 +108,8 @@ class DataSourceSlice(Slice5D):
         return self.data_source.retrieve(self, halo)
 
     def get_tiles(self, tile_shape:Shape5D = None):
-        return super().get_tiles(tile_shape or self.data_source.tile_shape)
+        for tile in super().get_tiles(tile_shape or self.data_source.tile_shape):
+            yield tile.clamped_with_slice(self.data_source.shape.to_slice_5d())
 
 class FlatDataSource(DataSource):
     def __init__(self, url:str):
