@@ -71,7 +71,7 @@ from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.shell.gui.aboutDialog import AboutDialog
 from ilastik.shell.gui.licenseDialog import LicenseDialog
 
-from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
+from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox, AppletBarManager
 from ilastik.widgets.filePathButton import FilePathButton
 
 from ilastik.shell.gui.ipcManager import IPCFacade, TCPServer, TCPClient, ZMQPublisher, ZMQSubscriber, ZMQBase
@@ -338,6 +338,7 @@ class IlastikShell(QMainWindow):
         self._loaduifile()
 
         assert isinstance(self.appletBar, AppletDrawerToolBox)
+        self._appletBarMgr = AppletBarManager(self.appletBar)
 
         # show a nice window icon
         self.setWindowIcon(QIcon(ilastikIcons.Ilastik))
@@ -376,7 +377,8 @@ class IlastikShell(QMainWindow):
         if self._settingsMenu is not None:
             assert self._settingsMenu.thread() == self.thread()
 
-        self.appletBar.currentChanged.connect(self.handleAppletBarItemExpanded)
+        self._appletBarMgr.appletActivated.connect(self.handleAppletBarItemExpanded)
+        #self.appletBar.currentChanged.connect(self.handleAppletBarItemExpanded)
         #self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
 
         self.currentAppletIndex = 0
@@ -1046,7 +1048,7 @@ class IlastikShell(QMainWindow):
                 # Update all other applet drawer titles
                 for applet_index, app in enumerate(self._applets):
                     updatedDrawerTitle = app.name
-                    self.appletBar.setItemText(applet_index, updatedDrawerTitle)
+                    self._appletBarMgr.updateAppletTitle(applet_index, updatedDrawerTitle)
 
     @property
     def currentImageIndex(self):
@@ -1056,9 +1058,7 @@ class IlastikShell(QMainWindow):
         """
         The user wants to view a different applet bar item.
         """
-        drawerIndex = modelIndex
-        if drawerIndex != -1:
-            self.setSelectedAppletDrawer(drawerIndex)
+        self.setSelectedAppletDrawer(modelIndex)
 
     def setSelectedAppletDrawer(self, applet_index):
         """
@@ -1074,9 +1074,7 @@ class IlastikShell(QMainWindow):
             
             # Collapse all drawers in the applet bar...
             # ...except for the newly selected item.
-            drawerModelIndex = self.getModelIndexFromDrawerIndex(applet_index)
-            #self.appletBar.expand( drawerModelIndex )
-            self.appletBar.setCurrentIndex(drawerModelIndex)
+            self._appletBarMgr.focusApplet(applet_index)
 
             # Select the appropriate central widget, menu widget, and viewer control widget for this applet
             self.showCentralWidget(applet_index)
@@ -1119,18 +1117,12 @@ class IlastikShell(QMainWindow):
                     "viewerControls_applet_{}_lane_{}".format(applet_index, self.currentImageIndex))
 
     def refreshAppletDrawer(self, applet_index):
-        if applet_index < len(self._applets) and applet_index < self.appletBar.count():
+        if applet_index < len(self._applets):
             updatedDrawerTitle = self._applets[applet_index].name
             updatedDrawerWidget = self._applets[applet_index].getMultiLaneGui().appletDrawer()
-            self.appletBar.setItemText(applet_index, updatedDrawerTitle)
-            appletDrawerStackedWidget = self.appletBar.widget(applet_index)
-            if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
-                appletDrawerStackedWidget.addWidget(updatedDrawerWidget)
-                # For test recording purposes, every gui we add MUST have a unique name
-                appletDrawerStackedWidget.setObjectName(
-                    "appletDrawer_applet_{}_lane_{}".format(applet_index, self.currentImageIndex))
-
-            appletDrawerStackedWidget.setCurrentWidget(updatedDrawerWidget)
+            self._appletBarMgr.updateAppletTitle(applet_index, updatedDrawerTitle)
+            self._appletBarMgr.updateAppletWidget(applet_index, updatedDrawerWidget)
+            #appletDrawerStackedWidget.setObjectName("appletDrawer_applet_{}_lane_{}".format(applet_index, self.currentImageIndex))
 
     def onCloseActionTriggered(self):
         if not self.ensureNoCurrentProject():
@@ -1166,38 +1158,21 @@ class IlastikShell(QMainWindow):
             self.menuBar().addMenu(self._debugMenu)
         self.menuBar().addMenu(self._helpMenu)
 
-    def getModelIndexFromDrawerIndex(self, drawerIndex):
-        drawerTitleItem = self.appletBar.widget(drawerIndex)
-        return self.appletBar.indexOf(drawerTitleItem)
-
-    def addApplet(self, applet_index, app):
+    def addApplet(self, applet_index, app: Applet):
         assert isinstance(app, Applet), "Applets must inherit from Applet base class."
         assert app.base_initialized, "Applets must call Applet.__init__ upon construction."
 
-        assert isinstance(app.getMultiLaneGui(), AppletGuiInterface), \
-            "Applet GUIs must conform to the Applet GUI interface."
+        if app.interactive:
+            assert isinstance(app.getMultiLaneGui(), AppletGuiInterface),\
+                "Applet GUIs must conform to the Applet GUI interface."
 
-        # Add placeholder widget, since the applet's central widget may not exist yet.
-        self.appletStack.addWidget(QWidget(parent=self))
+            # Add placeholder widget, since the applet's central widget may not exist yet.
+            self.appletStack.addWidget(QWidget(parent=self))
 
-        # Add a placeholder widget
-        self.viewerControlStack.addWidget(QWidget(parent=self))
+            # Add a placeholder widget
+            self.viewerControlStack.addWidget(QWidget(parent=self))
 
-        # Add rows to the applet bar model
-
-        # Add all of the applet bar's items to the toolbox widget
-        controlName = app.name
-        controlGuiWidget = app.getMultiLaneGui().appletDrawer()
-        assert isinstance(controlGuiWidget, QWidget), "Not a widget: {}".format( controlGuiWidget )
-
-        stackedWidget = QStackedWidget()
-        stackedWidget.addWidget(controlGuiWidget)
-
-        self.appletBar.addItem(stackedWidget, controlName)
-        if not app.interactive:
-            # Some applets don't really need a GUI, but they still have a top-level operator and serializer.
-            # In that case, we don't show it in the applet drawer
-            self.appletBar.hideIndexItem(applet_index)
+            self._appletBarMgr.addApplet(applet_index, app)
 
         # Set up handling of GUI commands from this applet
         self._disableCounts.append(0)
@@ -1217,11 +1192,7 @@ class IlastikShell(QMainWindow):
         self._clearStackedWidget(self.viewerControlStack)
 
         # Remove all drawers
-        for i in reversed(list(range(self.appletBar.count()))):
-            widget = self.appletBar.widget(i)
-            widget.hide()
-            widget.setParent(None)
-            self.appletBar.removeItem(i)
+        self._appletBarMgr.removeAll()
 
     def _clearStackedWidget(self, stackedWidget):
         for i in reversed(list(range(stackedWidget.count()))):
@@ -1237,7 +1208,7 @@ class IlastikShell(QMainWindow):
             self.projectManager.saveProject()
 
     def __len__(self):
-        return self.appletBar.count()
+        return len(self._applets)
 
     def __getitem__(self, index):
         return self._applets[index]
@@ -1824,16 +1795,7 @@ class IlastikShell(QMainWindow):
             pass
         else:
             applet.getMultiLaneGui().setEnabled(enabled)
-
-            # Apply to the applet bar drawer heading, too.
-            if applet_index < self.appletBar.count():
-                # Unfortunately, Qt will auto-select a different drawer if
-                #  we try to disable the currently selected drawer.
-                # That can cause lots of problems for us (e.g. it trigger's the
-                #  creation of applet guis that haven't been created yet.)
-                # Therefore, only disable the title button of a drawer if it isn't already selected.
-                if self.appletBar.currentIndex() != applet_index:
-                    self.appletBar.setItemEnabled(applet_index, enabled)
+            self._appletBarMgr.setEnabled(applet_index, enabled)
 
 
 assert issubclass(IlastikShell, ShellABC), "IlastikShell does not satisfy the generic shell interface!"

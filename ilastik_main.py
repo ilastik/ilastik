@@ -1,60 +1,141 @@
-from __future__ import print_function
-import sys
+import argparse
+import faulthandler
+import logging
 import os
+import sys
+from typing import (
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+)
 
 import ilastik.config
 from ilastik.config import cfg as ilastik_config
 
-import argparse
-import faulthandler
-import logging
-
 logger = logging.getLogger(__name__)
 
-parser = argparse.ArgumentParser(description="start an ilastik workflow")
 
-# Common options
-parser.add_argument('--headless', help="Don't start the ilastik gui.",
-                    action='store_true', default=False)
-parser.add_argument(
-    '--project', help='A project file to open on startup.', required=False)
-parser.add_argument(
-    '--readonly', help="Open all projects in read-only mode, to ensure you "
-    "don't accidentally make changes.", default=False)
+def _argparser() -> argparse.ArgumentParser:
+    """Create ArgumentParser for the main entry point."""
+    ap = argparse.ArgumentParser(description='start an ilastik workflow')
+    ap.add_argument(
+        '--headless',
+        help="Don't start the ilastik gui.",
+        action='store_true',
+    )
+    ap.add_argument(
+        '--project',
+        help='A project file to open on startup.',
+    )
+    ap.add_argument(
+        '--readonly',
+        help="Open all projects in read-only mode, to ensure you don't "
+             "accidentally make changes.",
+        action='store_true',
+    )
+    ap.add_argument(
+        '--new_project',
+        help='Create a new project with the specified name. Must also specify '
+             '--workflow.',
+    )
+    ap.add_argument(
+        '--workflow',
+        help='When used with --new_project, specifies the workflow to use.',
+    )
+    ap.add_argument(
+        '--clean_paths',
+        help='Remove ilastik-unrelated directories from PATH and PYTHONPATH.',
+        action='store_true',
+    )
+    ap.add_argument(
+        '--redirect_output',
+        help='A filepath to redirect stdout to',
+    )
+    ap.add_argument(
+        '--debug',
+        help='Start ilastik in debug mode.',
+        action='store_true',
+    )
+    ap.add_argument(
+        '--logfile',
+        help='A filepath to dump all log messages to.',
+    )
+    ap.add_argument(
+        '--process_name',
+        help='A process name (used for logging purposes).',
+    )
+    ap.add_argument(
+        '--configfile',
+        help='A custom path to a user config file for expert ilastik settings.',
+    )
+    ap.add_argument(
+        '--fullscreen',
+        help='Show Window in fullscreen mode.',
+        action='store_true',
+    )
+    ap.add_argument(
+        '--exit_on_failure',
+        help='Immediately call exit(1) if an unhandled exception occurs.',
+        action='store_true',
+    )
+    ap.add_argument(
+        '--hbp',
+        help='Enable HBP-specific functionality.',
+        action='store_true',
+    )
+    return ap
 
-parser.add_argument(
-    '--new_project', help='Create a new project with the specified name. '
-    'Must also specify --workflow.', required=False)
-parser.add_argument(
-    '--workflow', help='When used with --new_project, specifies the workflow '
-    'to use.', required=False)
 
-parser.add_argument(
-    '--clean_paths', help='Remove ilastik-unrelated directories from PATH and '
-    'PYTHONPATH.', action='store_true', default=False)
-parser.add_argument('--redirect_output',
-                    help='A filepath to redirect stdout to', required=False)
+def _ensure_compatible_args(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """If args are invalid, print an error message to stderr and exit."""
 
-parser.add_argument('--debug', help='Start ilastik in debug mode.',
-                    action='store_true', default=False)
-parser.add_argument(
-    '--logfile', help='A filepath to dump all log messages to.',
-    required=False)
-parser.add_argument(
-    '--process_name', help='A process name (used for logging purposes).',
-    required=False)
-parser.add_argument(
-    '--configfile', help='A custom path to a user config file for expert '
-    'ilastik settings.', required=False)
-parser.add_argument('--fullscreen', help='Show Window in fullscreen mode.',
-                    action='store_true', default=False)
-parser.add_argument(
-    '--exit_on_failure',
-    help='Immediately call exit(1) if an unhandled exception occurs.',
-    action='store_true', default=False)
-parser.add_argument(
-    '--hbp', help='Enable HBP-specific functionality.',
-    action='store_true', default=False)
+    if args.workflow is not None and args.new_project is None:
+        parser.error('The --workflow argument may only be used with the '
+                     '--new_project argument.')
+
+    if args.workflow is None and args.new_project is not None:
+        parser.error('No workflow specified. The --new_project argument must '
+                     'be used in conjunction with the --workflow argument.')
+
+    if args.project is not None and args.new_project is not None:
+        parser.error('The --project and --new_project settings cannot be used '
+                     'together. Choose one (or neither).')
+
+    if args.headless and (args.fullscreen or args.exit_on_failure):
+        parser.error('Some of the command-line options you provided are not '
+                     'supported in headless mode.')
+
+    if (args.headless and not args.project and
+            not (args.new_project and args.workflow)):
+        parser.error('You have to supply at least --project, or --new_project '
+                     'and workflow when invoking ilastik in headless mode.')
+
+
+def parse_args(args: Optional[Sequence[str]] = None,
+               namespace: Optional[argparse.Namespace] = None) -> argparse.Namespace:
+    """Parse and validate command-line arguments for :func:`main`.
+
+    See Also:
+        :meth:`argparse.ArgumentParser.parse_args`.
+    """
+    parser = _argparser()
+    known = parser.parse_args(args, namespace)
+    _ensure_compatible_args(parser, known)
+    return known
+
+
+def parse_known_args(args: Optional[Sequence[str]] = None,
+                     namespace: Optional[argparse.Namespace] = None) -> Tuple[argparse.Namespace, List[str]]:
+    """Parse and validate command-line arguments for :func:`main`.
+
+    See Also:
+        :meth:`argparse.ArgumentParser.parse_known_args`.
+    """
+    parser = _argparser()
+    known, unknown = parser.parse_known_args(args, namespace)
+    _ensure_compatible_args(parser, known)
+    return known, unknown
 
 
 def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
@@ -86,9 +167,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
 
     _init_configfile(parsed_args)
 
-    _init_sklearn_monkeypatch()
     _init_threading_logging_monkeypatch()
-    _validate_arg_compatibility(parsed_args)
 
     # Extra initialization functions.
     # These are called during app startup, but before the shell is created.
@@ -231,63 +310,6 @@ def _init_threading_logging_monkeypatch():
             thread_start_logger.debug(
                 f'Started thread: id={self.ident:x}, name={self.name}')
         threading.Thread.start = logged_start
-
-
-def _init_sklearn_monkeypatch():
-    # this is related to sklearn not being threadsafe
-    # should be solved in sklearn 0.20
-    # https://github.com/ilastik/ilastik/issues/1149
-
-    # from: https://github.com/scikit-learn/scikit-learn/pull/9569
-    def get_params(self, deep=True):
-        out = dict()
-        for key in self._get_param_names():
-            value = getattr(self, key, None)
-            if deep and hasattr(value, 'get_params'):
-                deep_items = value.get_params().items()
-                out.update((key + '__' + k, val) for k, val in deep_items)
-            out[key] = value
-        return out
-
-    import sklearn
-    sklearn.base.BaseEstimator.get_params = get_params
-
-
-def _validate_arg_compatibility(parsed_args):
-    # Check for bad input options
-    if parsed_args.workflow is not None and parsed_args.new_project is None:
-        sys.stderr.write(
-            "The --workflow argument may only be used with the --new_project "
-            "argument. "
-            "Please invoke ilastik with --help for more information. Exiting.\n")
-        sys.exit(1)
-    if parsed_args.workflow is None and parsed_args.new_project is not None:
-        sys.stderr.write(
-            "No workflow specified.  The --new_project argument must be used "
-            "in conjunction with the --workflow argument. "
-            "Please invoke ilastik with --help for more information. Exiting.\n")
-        sys.exit(1)
-    if parsed_args.project is not None and parsed_args.new_project is not None:
-        sys.stderr.write(
-            "The --project and --new_project settings cannot be used together."
-            " Choose one (or neither). Please invoke ilastik with --help for more information. Exiting.\n")
-        sys.exit(1)
-
-    if parsed_args.headless and \
-           (parsed_args.fullscreen or
-            parsed_args.exit_on_failure):
-        sys.stderr.write(
-            "Some of the command-line options you provided are not supported "
-            "in headless mode. Please invoke ilastik with --help for more information. Exiting.\n")
-        sys.exit(1)
-
-    if parsed_args.headless and not parsed_args.project:
-        if not (parsed_args.new_project and parsed_args.workflow):
-            sys.stderr.write(
-                "You have to supply at least --project, or --new_project and workflow when invoking "
-                "ilastik in headless mode. "
-                "Please invoke ilastik with --help for more information. Exiting.\n")
-            sys.exit(1)
 
 
 def _import_opengm():

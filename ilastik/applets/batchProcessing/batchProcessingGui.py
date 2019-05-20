@@ -25,7 +25,7 @@ from collections import OrderedDict
 from functools import partial
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtWidgets import QApplication, QWidget, QTabWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
                         QLabel, QSpacerItem, QSizePolicy, QListWidget, QMessageBox
 
@@ -112,13 +112,15 @@ class BatchProcessingGui( QTabWidget ):
             self.addTab(layout_widget, role_name)
 
     def initAppletDrawerUi(self):
-        instructions_label = QLabel("Select the input files for batch processing\n"
-                                    "using the controls on the right.\n"
-                                    "\n"
-                                    "The results will be exported according\n"
-                                    "to the same settings you chose in the\n"
-                                    "interactive export page above.")
-
+        instructions_label = QLabel(
+            "Select the input files for batch processing "
+            "using the controls on the right.\n"
+            "The results will be exported according "
+            "to the same settings you chose in the "
+            "interactive export page above."
+        )
+        instructions_label.setWordWrap(True)
+        instructions_label.setAlignment(Qt.AlignCenter)
         self.run_button = QPushButton("Process all files", clicked=self.run_export)
         self.cancel_button = QPushButton("Cancel processing", clicked=self.cancel_batch_processing)
         self.cancel_button.setVisible(False)

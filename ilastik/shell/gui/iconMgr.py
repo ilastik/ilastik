@@ -96,6 +96,8 @@ class ilastikIcons(object):
     Cut = iconPath + 'actions/edit-cut.png'
     Find = iconPath + 'actions/edit-find.png'
     Refresh = iconPath + 'actions/view-refresh.png'
+    ChevronRight = iconPath + 'chevron-right.png'
+    ChevronDown = iconPath + 'chevron-down.png'
     
     Ilastik = iconPath + 'ilastik-icon.png'
     
@@ -114,6 +116,6 @@ class ilastikIcons(object):
     ArrowUpx10   = iconPath + "actions/arrow_up.png"
     ArrowDownx10 = iconPath + "actions/arrow_down.png"
     Maximizex10  = iconPath + "actions/maximize.png"
-    
+
     
     

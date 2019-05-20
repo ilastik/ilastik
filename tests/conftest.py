@@ -32,6 +32,13 @@ from ilastik.shell.gui.startShellGui import launchShell
 GUI_TEST_TIMEOUT = 20  # Seconds
 
 
+@pytest.fixture(scope='session', autouse=True)
+def config_app_settings(qapp):
+    # Allows to map application to a specific workspace
+    # useful when running tests
+    qapp.setApplicationName('TestIlastik')
+
+
 def pytest_addoption(parser):
     """Add command-line flags for pytest."""
     parser.addoption("--run-legacy-gui", action="store_true",
@@ -48,20 +55,19 @@ def pytest_pyfunc_call(pyfuncitem):
     if not is_gui_test(pyfuncitem):
         return
 
-    bucket = [None]
+    exc_info = None
 
     def testfunc():
         try:
             # Call actual test function
             return pyfuncitem.obj()
         except Exception:
-            bucket[0] = sys.exc_info
+            nonlocal exc_info
+            exc_info = sys.exc_info()
 
     with futures.ThreadPoolExecutor(max_workers=1) as executor:
         fut = executor.submit(testfunc)
         fut.result(timeout=GUI_TEST_TIMEOUT)
-
-    exc_info = bucket[0]
 
     if exc_info:
         raise exc_info[1].with_traceback(exc_info[2])
@@ -161,7 +167,7 @@ def pytest_runtestloop(session):
         for tstcls, gui_test_bag in itertools.groupby(_sorted_guitests(guitests), get_guitest_cls):
             run_gui_tests(tstcls, gui_test_bag)
 
-    else:
+    elif guitests:
         warnings.warn(
             "Skipping legacy GUI test to enable please use --run-legacy-gui option\n"
         )
@@ -188,7 +194,7 @@ def run_gui_tests(tstcls, gui_test_bag):
     # Note on the class test execution lifecycle
     # pytest infers that finalizer teardown_class should be called when
     # nextitem is None
-    for item, nextitem in pairwise(gui_test_bag):
+    for item, nextitem in pairwise(gui_test_bag, tail=None):
         tst_queue.put((item, nextitem))
 
     # Spawn a suite runner as a interval task

@@ -20,7 +20,7 @@ os.environ["LAZYFLOW_TOTAL_RAM_MB"] = "2000"
 
 # Programmatically set the command-line arguments directly into the argparse.Namespace object
 # Provide your project file, and don't forget to specify headless.
-args = ilastik_main.parser.parse_args([])
+args = ilastik_main.parse_args([])
 args.headless = True
 args.project = '/Users/bergs/MyProject.ilp' # REPLACE WITH YOUR PROJECT FILE
 

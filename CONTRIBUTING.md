@@ -150,8 +150,8 @@ source ~/.bash_profile  # MAC
 ```
 
 **Note:** the following steps guide you through the manual process of creating a development environment.
-For convenience, there is a script that achieves the same effect located in `ilastik-meta/ilastik/scripts`.
-You can create a development environment (given miniconda is installed) by invoking `./create-devenv.sh idev ../../` from within `ilastik-meta/ilastik/scripts`.
+For convenience, there is a `ilastik-meta/ilastik/scripts/devenv.py` script that automates this process.
+Ensure that your current working directory is `ilastik-meta` and run `python ilastik/scripts/devenv.py -n idev create`.
 
 Create the ilastik development environment (we assume that the dev-environment will have the name _idev_, but you can, of course choose a name to your liking):
 ```bash
@@ -166,7 +166,8 @@ CONDA_ROOT=`conda info --root`
 DEV_PREFIX=${CONDA_ROOT}/envs/idev
 
 # first remote ilastik-meta from the conda environment
-conda remove --name idev ilastik-meta
+# make sure to "force" remove with --force so that other dependencies are not affected.
+conda remove --force --name idev ilastik-meta
 
 # now link against your own ilastik-meta repository
 # navigate to the idev environment root in your conda-folder

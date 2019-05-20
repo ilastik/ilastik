@@ -18,107 +18,122 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#          http://ilastik.org/license.html
 ###############################################################################
 
-import sys
 import os
+import pathlib
+import shlex
+import sys
+from typing import (
+    Iterable,
+    Mapping,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 
-def _clean_paths( ilastik_dir ):
-    # remove undesired paths from PYTHONPATH and add ilastik's submodules
-    pythonpath = [k for k in sys.path if k.startswith(ilastik_dir)]
-    for k in ['/ilastik/lazyflow', '/ilastik/volumina', '/ilastik/ilastik']:
-        new_path = ilastik_dir + k.replace('/', os.path.sep)
-        if os.path.isdir(new_path):
-            pythonpath.append(new_path)
-    sys.path = pythonpath
+def _env_list(name: str, sep: str = os.pathsep) -> Iterable[str]:
+    """Items from the environment variable, delimited by separator.
+
+    Empty sequence if the variable is not set.
+    """
+    value = os.environ.get(name, '')
+    if not value:
+        return []
+    return value.split(sep)
+
+
+def _clean_paths(root: pathlib.Path) -> None:
+    def issubdir(path):
+        """Whether path is equal to or is a subdirectory of root."""
+        path = pathlib.PurePath(path)
+        return path == root or any(parent == root for parent in path.parents)
+
+    def subdirs(*suffixes):
+        """Valid subdirectories of root."""
+        paths = map(root.joinpath, suffixes)
+        return [str(p) for p in paths if p.is_dir()]
+
+    def isvalidpath_win(path):
+        """Whether an element of PATH is "clean" on Windows."""
+        patterns = '*/cplex/*', '*/guirobi/*', '/windows/system32/*'
+        return any(map(pathlib.PurePath(path).match, patterns))
+
+    # Remove undesired paths from PYTHONPATH and add ilastik's submodules.
+    sys_path = list(filter(issubdir, sys.path))
+    sys_path += subdirs('ilastik/lazyflow', 'ilastik/volumina', 'ilastik/ilastik')
+    sys.path = sys_path
 
     if sys.platform.startswith('win'):
-        # empty PATH except for gurobi and CPLEX and add ilastik's installation paths
-        path_var = os.environ.get('PATH')
-        if path_var is None:
-            path_array = []
-        else:
-            path_array = path_var.split(os.pathsep)
-        path = [k for k in path_array \
-                   if k.count('CPLEX') > 0 or k.count('gurobi') > 0 or \
-                      k.count('windows\\system32') > 0]
-        for k in ['/Qt4/bin', '/Library/bin', '/python', '/bin']:
-            new_path = ilastik_dir + k.replace('/', os.path.sep)
-            if os.path.isdir(new_path):
-                path.append(new_path)
+        # Empty PATH except for gurobi and CPLEX and add ilastik's installation paths.
+        path = list(filter(isvalidpath_win, _env_list('PATH')))
+        path += subdirs('Qt4/bin', 'Library/bin', 'python', 'bin')
         os.environ['PATH'] = os.pathsep.join(reversed(path))
     else:
-        # clean LD_LIBRARY_PATH and add ilastik's installation paths
-        # (gurobi and CPLEX are supposed to be located there as well)
-        path = [k for k in os.environ['LD_LIBRARY_PATH'] if k.startswith(ilastik_dir)]
-        
-        for k in ['/lib']:
-            path.append(ilastik_dir + k.replace('/', os.path.sep))
-        os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(path))
+        # Clean LD_LIBRARY_PATH and add ilastik's installation paths
+        # (gurobi and CPLEX are supposed to be located there as well).
+        ld_lib_path = list(filter(issubdir, _env_list('LD_LIBRARY_PATH')))
+        ld_lib_path += subdirs('lib')
+        os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(ld_lib_path))
+
+
+def _parse_internal_config(path: Union[str, os.PathLike]) -> Tuple[Sequence[str], Mapping[str, str]]:
+    """Parse options from the internal config file.
+
+    Args:
+        path: Path to the config file.
+
+    Returns:
+        Additional command-line options and environment variable assignments.
+        Both are empty if the config file does not exist.
+
+    Raises:
+        ValueError: Config file is malformed.
+    """
+    path = pathlib.Path(path)
+    if not path.exists():
+        return [], {}
+
+    opts = shlex.split(path.read_text(), comments=True)
+
+    sep_idx = tuple(i for i, opt in enumerate(opts) if opt.startswith(";"))
+    if len(sep_idx) != 1:
+        raise ValueError(f"{path} should have one and only one semicolon separator")
+    sep_idx = sep_idx[0]
+
+    env_vars = {}
+    for opt in opts[:sep_idx]:
+        name, sep, value = opt.partition("=")
+        if not name or not sep:
+            raise ValueError(f"invalid environment variable assignment {opt!r}")
+        env_vars[name] = value
+
+    return opts[sep_idx+1:], env_vars
+
 
 def main():
-    if "--clean_paths" in sys.argv:
-        this_path = os.path.dirname(__file__)
-        ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
-        _clean_paths( ilastik_dir )
+    if '--clean_paths' in sys.argv:
+        script_dir = pathlib.Path(__file__).parent
+        ilastik_root = script_dir.parent.parent
+        _clean_paths(ilastik_root)
+
+    # Allow to start-up by double-clicking a project file.
+    if len(sys.argv) == 2 and sys.argv[1].endswith('.ilp'):
+        sys.argv.insert(1, '--project')
+
+    arg_opts, env_vars = _parse_internal_config("internal-startup-options.cfg")
+    sys.argv[1:1] = arg_opts
+    os.environ.update(env_vars)
 
     import ilastik_main
-    parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
-    
-    # allow to start-up by double-clicking an '.ilp' file
-    if len(workflow_cmdline_args) == 1 and \
-       workflow_cmdline_args[0].endswith('.ilp') and \
-       parsed_args.project is None:
-            parsed_args.project = workflow_cmdline_args[0]
-            workflow_cmdline_args = []
-
-    # DEVELOPERS:
-    # Provide your command-line args here. See examples below.
-    
-    ## Auto-open an existing project
-    #parsed_args.project='/Users/bergs/MyProject.ilp'
-    #parsed_args.project='/magnetic/data/multicut-testdata/2d/MyMulticut2D.ilp'
-    #parsed_args.project = '/Users/bergs/MyMulticutProject.ilp'
-    #parsed_args.project = '/magnetic/data/multicut-testdata/chris-256/MyMulticutProject-chris256.ilp'
-    #parsed_args.project = '/magnetic/data/flyem/fib25-neuroproof-validation/fib25-multicut/mc-training/mc-training-with-corrected-gt.ilp'
-
-    ## Headless-mode options
-    #parsed_args.headless = True
-    #parsed_args.debug = True
-
-    ## Override lazyflow environment settings
-    #os.environ["LAZYFLOW_THREADS"] = "0"
-    #os.environ["LAZYFLOW_TOTAL_RAM_MB"] = "8192"
-
-    ## Provide workflow-specific args
-    #workflow_cmdline_args += ["--retrain"]
-
-    ## Provide batch inputs (for headless mode)
-    #workflow_cmdline_args += ["/magnetic/data/cells/001cell.png",
-    #                          "/magnetic/data/cells/002cell.png",
-    #                          "/magnetic/data/cells/003cell.png" ]
-
-    # Create a new project from scratch (instead of opening existing project)
-    #parsed_args.new_project='/Users/bergs/MyProject.ilp'
-    #parsed_args.workflow = 'Pixel Classification'
-    #parsed_args.workflow = 'Object Classification (from pixel classification)'
-    #parsed_args.workflow = 'Carving'
+    parsed_args, workflow_cmdline_args = ilastik_main.parse_known_args()
 
     hShell = ilastik_main.main(parsed_args, workflow_cmdline_args)
     # in headless mode the headless shell is returned and its project manager still has an open project file
     hShell.closeCurrentProject()
 
-if __name__ == "__main__":
-    # Examples:
-    # python ilastik.py --headless --project=MyProject.ilp --output_format=hdf5 raw_input.h5/volumes/data
 
-    ## Multicut headless test
-    #sys.argv += "--headless".split()
-    #sys.argv += "--project=/magnetic/data/multicut-testdata/chris-256/MyMulticutProject-chris256.ilp".split()
-    #sys.argv += "--raw_data /magnetic/data/multicut-testdata/chris-256/grayscale-256.h5/grayscale".split()
-    #sys.argv += "--probabilities /magnetic/data/multicut-testdata/chris-256/final-membranes-256.h5/membranes".split()
-    #sys.argv += "--superpixels /magnetic/data/multicut-testdata/chris-256/watershed-256.h5/watershed".split()
-
+if __name__ == '__main__':
     main()
