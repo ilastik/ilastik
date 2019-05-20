@@ -180,7 +180,7 @@ class Shape5D(Point5D):
         return {k:v for k,v in self.spatial_axes.items() if v == 1}
 
     @property
-    def present_spatial_axes(self) -> Dict[String, float]:
+    def present_spatial_axes(self) -> Dict[str, float]:
         return {k:v for k,v in self.spatial_axes.items() if k not in self.missing_spatial_axes}
 
     @property
