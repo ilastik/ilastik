@@ -466,7 +466,7 @@ class OpBaseClassifierPredict(Operator):
             multichannel_mask = self.PredictionMask(start, stop).wait()
 
             # create a single-channel merged mask, which has 0 iff all PredictionMask channels are 0
-            mask = multichannel_mask[..., 0:1]
+            mask = multichannel_mask[..., 0:1] > 0
             for c in range(1, num_channels_in_mask):
                 mask = numpy.logical_or(mask, multichannel_mask[..., c : c + 1])
 
