@@ -77,7 +77,7 @@ def _applyStyleSheet(app):
 
 
 def getSplashScreen():
-    splash_path = os.path.join(os.path.split(ilastik.__file__)[0], 'ilastik-splash.png')
+    splash_path = os.path.join(os.path.dirname(ilastik.__file__), 'ilastik-splash.png')
     splashImage = QPixmap(splash_path)
     splashScreen = QSplashScreen(splashImage)
     return splashScreen
