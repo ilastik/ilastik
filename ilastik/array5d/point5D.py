@@ -180,7 +180,7 @@ class Shape5D(Point5D):
         return {k:v for k,v in self.spatial_axes.items() if v == 1}
 
     @property
-    def present_spatial_axes(self) -> int:
+    def present_spatial_axes(self) -> Dict[String, float]:
         return {k:v for k,v in self.spatial_axes.items() if k not in self.missing_spatial_axes}
 
     @property
@@ -348,6 +348,30 @@ class Slice5D(JsonSerializable):
 
     def with_full_c(self) -> 'Shape5D':
         return self.with_coord(c=slice(None))
+
+    def iter_over(self, axis:str, step:int=1) -> Iterator['Slice5D']:
+        assert self.stop[axis] != Point5D.INF
+        assert self.shape[axis] % step == 0
+        for axis_value in range(int(self.start[axis]), int(self.stop[axis]), step):
+            params = self.with_coord(**{axis:slice(axis_value, axis_value + step)}).to_dict()
+            yield self.rebuild(**params)
+
+    def frames(self) -> Iterator['Slice5D']:
+        return self.iter_over('t')
+
+    def planes(self, key='z') -> Iterator['Slice5D']:
+        return self.iter_over(key)
+
+    def channels(self) -> Iterator['Slice5D']:
+        return self.iter_over('c')
+
+    def channel_stacks(self, step) -> Iterator['Slice5D']:
+        return self.iter_over('c', step=step)
+
+    def images(self, through_axis='z') -> Iterator['Slice5D']:
+        for frame in self.frames():
+            for plane in frame.planes(through_axis):
+                yield plane
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):

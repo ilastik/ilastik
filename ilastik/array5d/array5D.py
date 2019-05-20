@@ -128,9 +128,8 @@ class Array5D:
         return Shape5D(**{key:value for key, value in zip(self.axiskeys, self._shape)})
 
     def iter_over(self, axis:str, step:int=1) -> Iterator['Array5D']:
-        assert self.shape[axis] % step == 0
-        for axis_value in range(0, self.shape[axis], step):
-            yield self.cut_with(**{axis:slice(axis_value, axis_value + step)})
+        for slc in self.shape.to_slice_5d().iter_over(axis, step):
+            yield self.cut(slc)
 
     def frames(self) -> Iterator['Array5D']:
         return self.iter_over('t')
@@ -145,9 +144,8 @@ class Array5D:
         return self.iter_over('c', step=step)
 
     def images(self, through_axis='z') -> Iterator['Image']:
-        for frame in self.frames():
-            for slc in frame.planes(through_axis):
-                yield Image(slc._data, self.axiskeys)
+        for image_slice in self.shape.to_slice_5d().images(through_axis):
+                yield Image.fromArray5D(self.cut(image_slice))
 
     def as_mask(self) -> 'Array5D':
         return Array5D(self._data > 0, axiskeys=self.axiskeys)
