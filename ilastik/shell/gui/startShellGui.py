@@ -27,12 +27,14 @@ import platform
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QSplashScreen
 from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QPixmap
 
-from . import splashScreen
+import ilastik
 import ilastik.config
 shell = None
+
 
 def startShellGui(workflow_cmdline_args, preinit_funcs, postinit_funcs):
     """
@@ -56,10 +58,11 @@ def startShellGui(workflow_cmdline_args, preinit_funcs, postinit_funcs):
     app = QApplication([])
     _applyStyleSheet(app)
 
-    splashScreen.showSplashScreen()
+    splash = getSplashScreen()
+    splash.show()
     app.processEvents()
     QTimer.singleShot( 0, functools.partial(launchShell, workflow_cmdline_args, preinit_funcs, postinit_funcs ) )
-    QTimer.singleShot( 0, splashScreen.hideSplashScreen)
+    QTimer.singleShot(0, functools.partial(splash.finish, shell))
 
     return app.exec_()
 
@@ -71,6 +74,13 @@ def _applyStyleSheet(app):
     with open( styleSheetPath, 'r' ) as f:
         styleSheetText = f.read()
         app.setStyleSheet(styleSheetText)
+
+
+def getSplashScreen():
+    splash_path = os.path.join(os.path.dirname(ilastik.__file__), 'ilastik-splash.png')
+    splashImage = QPixmap(splash_path)
+    splashScreen = QSplashScreen(splashImage)
+    return splashScreen
 
 
 def launchShell(workflow_cmdline_args, preinit_funcs, postinit_funcs):
