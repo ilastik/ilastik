@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>365</height>
+    <height>731</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -31,70 +31,133 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout_9">
    <item>
-    <widget class="QComboBox" name="comboBox">
-     <property name="currentText">
-      <string/>
-     </property>
-    </widget>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QToolButton" name="addModel">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Load Model</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="toolButtonStyle">
+        <enum>Qt::ToolButtonTextBesideIcon</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="LabelListView" name="labelListView">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="comboBox">
+       <property name="currentText">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="AddLabelButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
+       <property name="text">
+        <string>Add Label</string>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>../../shell/gui/icons/16x16/actions/list-add.png</normaloff>../../shell/gui/icons/16x16/actions/list-add.png</iconset>
+       </property>
+       <property name="toolButtonStyle">
+        <enum>Qt::ToolButtonTextBesideIcon</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
-    <widget class="QToolButton" name="addModel">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
+    <widget class="QGroupBox" name="checkpoints">
+     <property name="title">
+      <string>Checkpoints</string>
      </property>
-     <property name="text">
-      <string>Load Model</string>
-     </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextBesideIcon</enum>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="LabelListView" name="labelListView">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>0</height>
-      </size>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QToolButton" name="AddLabelButton">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="styleSheet">
-      <string notr="true"/>
-     </property>
-     <property name="text">
-      <string>Add Label</string>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>../../shell/gui/icons/16x16/actions/list-add.png</normaloff>../../shell/gui/icons/16x16/actions/list-add.png</iconset>
-     </property>
-     <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextBesideIcon</enum>
-     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_5">
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <widget class="QListView" name="checkpointList"/>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_3">
+          <item>
+           <widget class="QToolButton" name="addCheckpointBtn">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Add</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="loadCheckpointBnt">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Load</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="removeCheckpointBtn">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string>Delete</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+     </layout>
     </widget>
    </item>
    <item>

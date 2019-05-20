@@ -96,7 +96,7 @@ class ParameterDlg(QDialog):
         grid.addWidget(QLabel("Optimizer"), 1, 0)
         grid.addWidget(self.optimizer_combo, 1, 1)
 
-        grid.addWidget(QLabel("Optimizer keywork arguments"), 2, 0)
+        grid.addWidget(QLabel("Optimizer keyword arguments"), 2, 0)
         grid.addWidget(self.optimizer_kwargs_textbox, 2, 1)
 
         grid.addWidget(QLabel("Criterion"), 3, 0)
@@ -164,7 +164,7 @@ class ParameterDlg(QDialog):
 
 class ValidationDlg(QDialog):
     """
-    Settings for choosing the validation set 
+    Settings for choosing the validation set
     """
 
     def __init__(self, parent):
@@ -270,7 +270,7 @@ class NNClassGui(LabelingGui):
 
         def settingParameter():
             """
-            changing BatchSize 
+            changing BatchSize
             """
             dlg = ParameterDlg(parent=self)
             dlg.exec_()
