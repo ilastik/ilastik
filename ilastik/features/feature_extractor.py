@@ -76,15 +76,14 @@ class FlatChannelwiseFilter(FeatureExtractor):
         num_output_channels = roi.shape.c * self.dimension
         return roi.shape.with_coord(c=num_output_channels)
 
-    def compute(self, roi:DataSourceSlice, out:Array5D=None) -> Array5D:
-        data = roi.retrieve(self.halo)
+    def compute(self, roi:DataSourceSlice, out:Array5D=None) -> FeatureData:
         target = out or self.allocate_for(roi) #N.B.: target has no halo
         assert target.shape == self.get_expected_shape(roi)
 
         with Executor(thread_name_prefix="feature_slice") as executor:
-            for source_image, target_image in zip(data.images(self.stack_axis), target.images(self.stack_axis)):
-                for source_channel, out_features in zip(source_image.channels(), target_image.channel_stacks(step=self.dimension)):
-                    executor.submit(self._compute_slice, source_channel, out=out_features)
+            for source_image_roi, target_image in zip(roi.images(self.stack_axis), target.images(self.stack_axis)):
+                for source_channel_roi, out_features in zip(source_image_roi.channels(), target_image.channel_stacks(step=self.dimension)):
+                    executor.submit(self._compute_slice, source_channel_roi, out=out_features)
         return target
 
     @abstractmethod
