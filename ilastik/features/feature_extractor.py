@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor as Executor
-from functools import reduce
+import functools
 from operator import mul
 from typing import List, Iterator
 
@@ -60,28 +60,6 @@ class FeatureExtractor(ABC):
     def halo(self) -> Point5D:
         return self.kernel_shape // 2
 
-class FeatureCache:#(FeatureExtractor):
-    def __init__(self, extractor:FeatureExtractor):
-        self.extractor = extractor
-        self.cache : Dict[DataSourceSlice, Array5D] = {}
-
-    def __repr__(self):
-        return f"<Caching {repr(self.extractor)}>"
-
-    def compute(self, roi:DataSourceSlice, out:Array5D=None) -> Array5D:
-        if roi in self.cache:
-            print(f"Cache HIT for roi {roi}")
-        else:
-            print(f"Cache MISS for roi {roi}")
-            self.cache[roi] = self.extractor.compute(roi, out)
-        return self.cache[roi]
-
-    def flush(self):
-        self.cache = {}
-
-    def __getattr__(self, name):
-        return getattr(self.extractor, name)
-
 class FlatChannelwiseFilter(FeatureExtractor):
     def __init__(self, sigma:float, window_size:float=0.0, stack_axis:str='z'):
         #FIXME: combine sigma, window_size and kernel_shape into the same thing
@@ -134,6 +112,7 @@ class FeatureCollection(FeatureExtractor):
         channel_size = sum(f.get_expected_shape(roi).c for f in self.features)
         return roi.shape.with_coord(c=channel_size)
 
+    @functools.lru_cache()
     def compute(self, roi:DataSourceSlice, out:Array5D=None) -> Array5D:
         data = roi.retrieve(self.halo)
         target = out or self.allocate_for(roi)
