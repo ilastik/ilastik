@@ -83,7 +83,7 @@ class PixelClassifier:
 class StrictPixelClassifier(PixelClassifier):
     def __init__(self, feature_extractor:FeatureExtractor, annotations:List[Annotation], *args, **kwargs):
         for annot in annotations:
-            feature_extractor.ensure_applicable(annot.data_source)
+            feature_extractor.ensure_applicable(annot.raw_data)
         super().__init__(feature_extractor, annotations, *args, **kwargs)
 
     def predict(self, data_slice:DataSourceSlice, out:Predictions=None) -> Predictions:

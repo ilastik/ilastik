@@ -29,9 +29,9 @@ assert pickle.loads(pickle.dumps(all_data_slice)) == all_data_slice
 
 annotations = [
     Annotation.from_png("/home/tomaz/SampleData/c_cells/cropped/cropped1_10_annotations_offset_by_188_124.png",
-                        data_source=raw_data1, offset=Point5D.zero(x=188, y=124)),
+                        raw_data=raw_data1, offset=Point5D.zero(x=188, y=124)),
     Annotation.from_png("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1_15_annotations_offset_by_624_363.png",
-                        data_source=raw_data1, offset=Point5D.zero(x=624, y=363))
+                        raw_data=raw_data1, offset=Point5D.zero(x=624, y=363))
 ]
 
 fc = FeatureCollection(*([GaussianSmoothing(sigma=s/10) for s in range(30)] +
