@@ -70,13 +70,6 @@
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="comboBox">
-       <property name="currentText">
-        <string/>
-       </property>
-      </widget>
-     </item>
-     <item>
       <widget class="QToolButton" name="AddLabelButton">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -115,7 +108,7 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_3">
           <item>
-           <widget class="QToolButton" name="addCheckpointBtn">
+           <widget class="QToolButton" name="addCheckpoint">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -128,7 +121,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QToolButton" name="loadCheckpointBnt">
+           <widget class="QToolButton" name="loadCheckpoint">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -141,7 +134,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QToolButton" name="removeCheckpointBtn">
+           <widget class="QToolButton" name="removeCheckpoint">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
               <horstretch>0</horstretch>
