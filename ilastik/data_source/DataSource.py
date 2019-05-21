@@ -73,9 +73,16 @@ class DataSource(JsonSerializable):
     def do_retrieve(self, roi:Slice5D) -> Array5D:
         pass
 
-    def json_serialize(self):
+    def __getstate__(self):
         return {'url': self.url,
                 'shape': self.shape}
+
+    def __setstate__(self, data):
+        self.__init__(data['url'])
+
+    @property
+    def json_data(self):
+        return self.__getstate__()
 
 class DataSourceSlice(Slice5D):
     """A Slice5D tied to a DataSource"""

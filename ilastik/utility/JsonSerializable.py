@@ -4,21 +4,22 @@ import inspect
 from inspect import signature
 
 class JsonSerializable(ABC):
-    def json_serialize(self):
+    @property
+    def json_data(self):
         out_dict = {}
         for name, parameter in signature(self.__class__).parameters.items():
             value = getattr(self, name)
             if isinstance(value, JsonSerializable):
-                value = value.json_serialize()
+                value = value.json_data
             out_dict[name] = value
         return out_dict
 
     def to_json(self):
-        d = self.json_serialize()
+        d = self.json_data
         out_data = d.copy()
         for k, v in d.items():
             if isinstance(v, JsonSerializable):
-                out_data[k] = v.json_serialize()
+                out_data[k] = v.json_data
         return json.dumps(out_data)
 
     @classmethod

@@ -292,7 +292,8 @@ class Slice5D(JsonSerializable):
         stop = Point5D.from_json(data['stop'])
         return cls.create_from_start_stop(start, stop)
 
-    def json_serialize(self):
+    @property
+    def json_data(self):
         return {'start': self.start, 'stop': self.stop}
 
     def from_start_stop(self, start:Point5D, stop:Point5D):
