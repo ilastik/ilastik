@@ -121,6 +121,7 @@ class OpNNClassification(Operator):
     # Graph inputs
     InputImages = InputSlot(level=1)
     ServerConfig = InputSlot()
+    Checkpoints = InputSlot()
 
     NumClasses = InputSlot(optional=True)
     LabelInputs = InputSlot(optional=True, level=1)

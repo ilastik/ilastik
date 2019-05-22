@@ -243,10 +243,13 @@ class ValidationDlg(QDialog):
 
 
 class CheckpointManager:
-    def __init__(self, widget, get_state, load_state):
+    def __init__(self, widget, get_state, load_state, added):
         self._checkpoint_by_idx = {}
+
         self._get_state = get_state
         self._load_state = load_state
+        self._added = added
+
         self._widget = widget
         self._widget.add_clicked.connect(self._add)
         self._widget.remove_clicked.connect(self._remove)
@@ -264,6 +267,7 @@ class CheckpointManager:
             'name': name,
             'state': state,
         }
+        self._added(self._checkpoint_by_idx.values())
 
     def _remove(self, removed_idx):
         del self._checkpoint_by_idx[removed_idx]
@@ -272,7 +276,6 @@ class CheckpointManager:
     def _load(self, load_idx):
         if load_idx.isValid():
             val = self._checkpoint_by_idx[load_idx]
-            print("LOADING...", val)
             self._load_state(val['state'])
 
 
@@ -388,6 +391,9 @@ class NNClassGui(LabelingGui):
         factory = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
         return factory.get_model_state()
 
+    def _added(self, snapshot):
+        self.topLevelOperatorView.Checkpoints.setValue(list(snapshot))
+
     def _initCheckpointActions(self):
         self.checkpoint_widget = CheckpointWidget(
             parent=self,
@@ -399,7 +405,8 @@ class NNClassGui(LabelingGui):
         self.checkpoint_mng = CheckpointManager(
             self.checkpoint_widget,
             self._get_model_state,
-            self._load_checkpoint
+            self._load_checkpoint,
+            self._added,
         )
 
     def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None):
