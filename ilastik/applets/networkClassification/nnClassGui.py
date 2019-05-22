@@ -389,24 +389,18 @@ class NNClassGui(LabelingGui):
         return factory.get_model_state()
 
     def _initCheckpointActions(self):
-        w = self.checkpoint_widget = CheckpointWidget(
+        self.checkpoint_widget = CheckpointWidget(
             parent=self,
             add=self.labelingDrawerUi.addCheckpoint,
             remove=self.labelingDrawerUi.removeCheckpoint,
             load=self.labelingDrawerUi.loadCheckpoint,
             view=self.labelingDrawerUi.checkpointList,
         )
-        mng = self.checkpoint_mng = CheckpointManager(
-            w,
+        self.checkpoint_mng = CheckpointManager(
+            self.checkpoint_widget,
             self._get_model_state,
             self._load_checkpoint
         )
-        #w.add_clicked.connect(self._add_clicked)
-
-        # self.labelingDrawerUi.checkpointList.setModel(mng.model)
-        # self.labelingDrawerUi.addCheckpoint.clicked.connect(mng.add)
-        # self.labelingDrawerUi.removeCheckpoint.clicked.connect(mng.remove)
-        # self.labelingDrawerUi.loadCheckpoint.clicked.connect(mng.load)
 
     def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None):
         labelSlots = LabelingGui.LabelingSlots()
@@ -659,6 +653,7 @@ class NNClassGui(LabelingGui):
                 self.updatePredictions()  # update one last time
                 try:
                     model_state = factory.get_model_state()
+                    print("SET MODEL STATE")
                     self.topLevelOperatorView.BinaryModelState.setValue(model_state)
                 except Exception as e:
                     logger.warning(f"Could not retrieve updated model state due to {e}")
@@ -719,10 +714,11 @@ class NNClassGui(LabelingGui):
             if not projectManager.currentProjectIsReadOnly:
                 projectManager.saveProject()
 
-            if self.topLevelOperatorView.ClassifierFactory.ready():
-                tiktorchFactory = self.topLevelOperatorView.ClassifierFactory.value
-                if tiktorchFactory is not None:
-                    tiktorchFactory.shutdown()
+            # TODO: shutdown removed
+            # if self.topLevelOperatorView.ClassifierFactory.ready():
+            #     tiktorchFactory = self.topLevelOperatorView.ClassifierFactory.value
+            #     if tiktorchFactory is not None:
+            #         tiktorchFactory.shutdown()
 
             # user did not cancel selection
             self.add_NN_classifiers(folder)

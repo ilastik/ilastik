@@ -19,6 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from functools import partial
+import traceback as tb
 import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
@@ -57,8 +58,8 @@ class OpNNClassification(Operator):
     FreezePredictions = InputSlot(stype="bool", value=False, nonlane=True)
     ClassifierFactory = InputSlot(optional=True)
     Model = InputSlot(optional=True)
-    TiktorchConfig = InputSlot(optional=True)
-    BinaryModel = InputSlot(optional=True)
+    TiktorchConfig = InputSlot()
+    BinaryModel = InputSlot()
     BinaryModelState = InputSlot(value=b"")
     BinaryOptimizerState = InputSlot(value=b"")
 
@@ -95,8 +96,13 @@ class OpNNClassification(Operator):
             return
 
         tiktorch = None
-        if not self.ClassifierFactory.ready() and self.ServerConfig.ready():
+        create_new_tiktorch = not self.ClassifierFactory.ready()
+        has_srv_config = self.ServerConfig.ready()
+
+        if create_new_tiktorch and has_srv_config:
             tiktorch = TikTorchLazyflowClassifierFactory(self.ServerConfig.value)
+        elif not create_new_tiktorch:
+            tiktorch = self.ClassifierFactory.value
 
         if (
             tiktorch
@@ -120,10 +126,16 @@ class OpNNClassification(Operator):
 
             tiktorch_config = make_good(self.TiktorchConfig.value)
 
+            model_state = self.BinaryModelState.value
+
+            # TODO: why does it appear as ndarray
+            if isinstance(model_state, numpy.ndarray):
+                model_state = bytes(model_state[0])
+
             tiktorch.load_model(
                 tiktorch_config,
                 self.BinaryModel.value,
-                self.BinaryModelState.value,
+                model_state,
                 self.BinaryOptimizerState.value,
             )
             try:
@@ -138,7 +150,7 @@ class OpNNClassification(Operator):
             except:
                 logger.debug("Could not restore labels after setting TikTorchLazyflowClassifierFactory.")
 
-        if tiktorch:
+        if create_new_tiktorch and tiktorch:
             self.ClassifierFactory.setValue(tiktorch)
 
     def cleanUp(self):
