@@ -34,9 +34,9 @@ class OpServerConfig(Operator):
     name = "OpServerConfig"
     category = "top-level"
 
-    LocalServerConfig = InputSlot()  # value=dict(DEFAULT_LOCAL_SERVER_CONFIG))
-    RemoteServerConfig = InputSlot()  # value=dict(DEFAULT_REMOTE_SERVER_CONFIG))
-    UseLocalServer = InputSlot(value=True)
+    LocalServerConfig = InputSlot(value=dict(DEFAULT_LOCAL_SERVER_CONFIG))
+    RemoteServerConfig = InputSlot(value=dict(DEFAULT_REMOTE_SERVER_CONFIG))
+    UseLocalServer = InputSlot()
 
     ServerConfig = OutputSlot()
 
@@ -54,7 +54,9 @@ class OpServerConfig(Operator):
         self.RemoteServerConfig.setValue(config)
 
     def toggleServerConfig(self, use_local=True):
-        if use_local != self.UseLocalServer.value:
+        if not self.UseLocalServer.ready():
+            self.UseLocalServer.setValue(use_local)
+        elif use_local != self.UseLocalServer.value:
             self.ServerConfig.disconnect()
             self.UseLocalServer.setValue(use_local)
             self.setupOutputs()

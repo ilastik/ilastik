@@ -168,7 +168,7 @@ class ServerConfigGui(QWidget):
 
             self.devices.clear()
             for key, value in config.items():
-                if key == 'devices':
+                if key == "devices":
                     for d in value:
                         entry = QListWidgetItem(f"{d[0]} ({d[1]})", self.devices)
                         entry.setFlags(entry.flags() | QtCore.Qt.ItemIsUserCheckable)
@@ -184,7 +184,9 @@ class ServerConfigGui(QWidget):
 
         self.localServerButton.toggled.connect(server_button)
 
-        use_local = self.topLevelOperator.UseLocalServer.value
+        use_local = (
+            True if not self.topLevelOperator.UseLocalServer.ready() else self.topLevelOperator.UseLocalServer.value
+        )
         self.localServerButton.setChecked(use_local)
         self.remoteServerButton.setChecked(not use_local)
         server_button()
@@ -192,13 +194,15 @@ class ServerConfigGui(QWidget):
         def get_config(configurables, with_devices=True):
             config = {}
             for el in configurables:
-                if el == 'devices':
+                if el == "devices":
                     if with_devices:
                         available_devices = []
                         for i in range(self.devices.count()):
                             d = self.devices.item(i)
-                            available_devices.append((d.text().split(' (')[0], d.text().split(' (')[1][:-1], d.checkState()))
-                        config['devices'] = available_devices
+                            available_devices.append(
+                                (d.text().split(" (")[0], d.text().split(" (")[1][:-1], d.checkState())
+                            )
+                        config["devices"] = available_devices
                         self.devices.setEnabled(False)
                 else:
                     attr = getattr(self, el)
@@ -218,8 +222,11 @@ class ServerConfigGui(QWidget):
                 server_config = get_config(DEFAULT_REMOTE_SERVER_CONFIG.keys(), with_devices=False)
 
             try:
-                addr, port1, port2 = socket.gethostbyname(server_config["address"]), server_config["port1"], server_config[
-                    "port2"]
+                addr, port1, port2 = (
+                    socket.gethostbyname(server_config["address"]),
+                    server_config["port1"],
+                    server_config["port2"],
+                )
                 conn_conf = TCPConnConf(addr, port1, port2)
 
                 if addr == "127.0.0.1":
