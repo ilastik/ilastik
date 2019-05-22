@@ -40,6 +40,7 @@ from tiktorch.rpc_interface import INeuralNetworkAPI
 from tiktorch.rpc import Client, TCPConnConf
 
 from .lazyflowClassifier import LazyflowOnlineClassifier
+from types import SimpleNamespace
 
 
 logger = logging.getLogger(__name__)
@@ -63,13 +64,50 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
     VERSION = 1
     halo: Tuple[int, int, int, int, int]
 
-    def __init__(
-        self, config: dict, binary_model: bytes, binary_state: bytes, binary_optimizer_state: bytes, server_config: dict
-    ) -> None:
+    def load_model(self, config: dict, binary_model: bytes, binary_state: bytes, binary_optimizer_state: bytes) -> None:
+        conf = self._model_conf = SimpleNamespace(**{"name": "tiktorch model", **config})
+        self._out_reorderer = ReorderAxes(conf.input_axis_order)
+        self._opReorderAxesInImg.AxisOrder.setValue(conf.input_axis_order)
+        self._opReorderAxesInLabel.AxisOrder.setValue(conf.input_axis_order)
+        self.set_halo(conf.halo)
+
+        logger.debug("loading tiktorch model with config: %s", config)
+        fut = self._tikTorchClient.load_model(config, binary_model, binary_state, binary_optimizer_state, self._devices)
+
+        try:
+            ret: SetDeviceReturnType = fut.result(timeout=60)
+        except Exception as e:
+            logger.warning(e)
+            logger.warning("Could not load tiktorch model within 60 seconds. Trying again for another 360s ...")
+            ret: SetDeviceReturnType = fut.result(timeout=360)  # todo: except timeout
+
+        if len(conf.input_axis_order) != len(ret.training_shape):
+            raise ValueError(
+                f"input axis order {conf.input_axis_order} incompatible with determined training shape {ret.training_shape}"
+            )
+        if any([len(conf.input_axis_order) != len(vs) for vs in ret.valid_shapes]):
+            raise ValueError(
+                f"input axis order {conf.input_axis_order} incompatible with determined valid shapes {ret.valid_shapes}"
+            )
+
+        if len(conf.input_axis_order) != len(ret.shrinkage):
+            raise ValueError(
+                f"input axis order {conf.input_axis_order} incompatible with determined shrinkage {ret.shrinkage}"
+            )
+
+        self.training_shape = tuple([dict(zip(conf.input_axis_order, ret.training_shape)).get(a, 1) for a in "tczyx"])
+        self.valid_shapes = [
+            tuple([dict(zip(conf.input_axis_order, vs)).get(a, 1) for a in "tczyx"]) for vs in ret.valid_shapes
+        ]
+        self.shrinkage = tuple([dict(zip(conf.input_axis_order, ret.shrinkage)).get(a, 0) for a in "tczyx"])
+
+    @property
+    def model(self):
+        return self._model_conf
+
+    def __init__(self, server_config: dict) -> None:
         # default values for config:
-        self._config = {"name": "tiktorch model"}
-        self._config.update(config)
-        self.set_halo(config["halo"])
+        # config: dict, binary_model: bytes, binary_state: bytes, binary_optimizer_state: bytes,
 
         # assert all(key not in self._config for key in self.__dict__.keys())
         # self.__dict__.update(self._config)
@@ -78,11 +116,8 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         # Privates
         self._tikTorchClassifier = None
         self._train_model = None
-        self._our_reorderer = ReorderAxes(self.input_axis_order)
         self._opReorderAxesInImg = OpReorderAxes(graph=Graph())
         self._opReorderAxesInLabel = OpReorderAxes(graph=Graph())
-        self._opReorderAxesInImg.AxisOrder.setValue(self.input_axis_order)
-        self._opReorderAxesInLabel.AxisOrder.setValue(self.input_axis_order)
         self._opReorderAxesOut = OpReorderAxes(graph=Graph())
 
         addr, port1, port2 = (
@@ -103,48 +138,10 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         self._shutdown_sent = False
 
         self._tikTorchClient = Client(INeuralNetworkAPI(), conn_conf)
-        selected_devices = [d[0] for d in server_config["devices"] if d[2]]
-        logger.debug("loading tiktorch model with config: %s", config)
-        fut = self._tikTorchClient.load_model(
-            config, binary_model, binary_state, binary_optimizer_state, selected_devices
-        )
-        try:
-            ret: SetDeviceReturnType = fut.result(timeout=60)
-        except Exception as e:
-            logger.warning(e)
-            logger.warning("Could not load tiktorch model within 60 seconds. Trying again for another 360s ...")
-            ret: SetDeviceReturnType = fut.result(timeout=360)  # todo: except timeout
-
-        if len(self.input_axis_order) != len(ret.training_shape):
-            raise ValueError(
-                f"input axis order {self.input_axis_order} incompatible with determined training shape {ret.training_shape}"
-            )
-        if any([len(self.input_axis_order) != len(vs) for vs in ret.valid_shapes]):
-            raise ValueError(
-                f"input axis order {self.input_axis_order} incompatible with determined valid shapes {ret.valid_shapes}"
-            )
-        if len(self.input_axis_order) != len(ret.shrinkage):
-            raise ValueError(
-                f"input axis order {self.input_axis_order} incompatible with determined shrinkage {ret.shrinkage}"
-            )
-
-        self.training_shape = tuple([dict(zip(self.input_axis_order, ret.training_shape)).get(a, 1) for a in "tczyx"])
-        self.valid_shapes = [
-            tuple([dict(zip(self.input_axis_order, vs)).get(a, 1) for a in "tczyx"]) for vs in ret.valid_shapes
-        ]
-        self.shrinkage = tuple([dict(zip(self.input_axis_order, ret.shrinkage)).get(a, 0) for a in "tczyx"])
+        self._devices = [d[0] for d in server_config["devices"] if d[2]]
 
     def _reorder_out(self, arr, axes_tags):
-        return self._our_reorderer.reorder(arr, axes_tags)
-
-    def __getattr__(self, item):
-        if item != "_config":
-            try:
-                return self._config[item]
-            except (AttributeError, KeyError):
-                pass
-
-        raise AttributeError(item)
+        return self._out_reorderer.reorder(arr, axes_tags)
 
     def shutdown(self):
         self._shutdown_sent = True
@@ -257,7 +254,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         logger.info("predict tile shape: %s (axistags: %r)", feature_image.shape, axistags)
 
         # translate roi axes todo: remove with tczyx standard
-        output_axis_order = self.output_axis_order
+        output_axis_order = self._model_conf.output_axis_order
         if "c" not in output_axis_order:
             output_axis_order = "c" + output_axis_order
             c_was_not_in_output_axis_order = True
@@ -290,7 +287,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
             logger.info(f"Changed shape of predicted block to {result.shape} by adding '1-p' channel")
 
         # remove shrinkage and halo from roi
-        logger.debug('roi %s\nhalo %s\nshrink %s', roi, halo, shrink)
+        logger.debug("roi %s\nhalo %s\nshrink %s", roi, halo, shrink)
         roi -= halo + shrink
         assert all(a >= 0 for a in roi[0]), roi[0]
         assert all(a <= s for a, s in zip(roi[1], result.shape)), (roi[1], result.shape)
@@ -304,7 +301,9 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         )
 
         self._opReorderAxesOut.AxisOrder.setValue("".join(axistags.keys()))
-        self._opReorderAxesOut.Input.setValue(vigra.VigraArray(result, axistags=vigra.defaultAxistags(output_axis_order)))
+        self._opReorderAxesOut.Input.setValue(
+            vigra.VigraArray(result, axistags=vigra.defaultAxistags(output_axis_order))
+        )
         return self._opReorderAxesOut.Output[:].wait()
 
     @property
@@ -319,7 +318,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         return self.input_channels
 
     def set_halo(self, halo: Tuple[int, ...]) -> None:
-        in_order = self.input_axis_order.replace("b", "")
+        in_order = self._model_conf.input_axis_order.replace("b", "")
         if len(in_order) == len(halo) + 1:
             # assume channel axis to be left out in halo
             in_order = in_order.replace("c", "")
