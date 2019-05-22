@@ -41,6 +41,76 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class OpTiktorchFactory(Operator):
+    ServerConfig = InputSlot()
+    Tiktorch = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__conf = None
+
+    def setupOutputs(self):
+        if self.__conf is not None:
+            if self.ServerConfig.value == self.__conf:
+                return
+
+        print(self.__conf, self.ServerConfig.value)
+        tiktorch = TikTorchLazyflowClassifierFactory(self.ServerConfig.value)
+        self.__conf = self.ServerConfig.value
+        self.Tiktorch.setValue(tiktorch)
+
+    def propagateDirty(self, slot, subindex, roi):
+        #self.Tiktorch.setDirty(slice(None))
+        pass
+
+
+class OpModel(Operator):
+    TiktorchFactory = InputSlot() #  OpTiktorchFactory.TikTorch
+    TiktorchConfig = InputSlot()
+    BinaryModel = InputSlot()
+    BinaryModelState = InputSlot()
+    BinaryOptimizerState = InputSlot()
+
+    TiktorchModel = OutputSlot() #  OpTiktorchFactory.TikTorch
+
+    def setupOutputs(self):
+        tiktorch = self.TiktorchFactory.value
+
+        # todo: Deserialize sequences as tuple of ints, not as numpy.ndarray
+        # (which is a weird, implicit default in SerialDictSlot)
+        # also note: converting form numpy.int32, etc to python's int
+        def make_good(bad):
+            good = bad
+            if isinstance(bad, dict):
+                good = {}
+                for key, bad_value in bad.items():
+                    good[key] = make_good(bad_value)
+            elif isinstance(bad, numpy.integer):
+                good = int(bad)
+            elif isinstance(bad, numpy.ndarray):
+                good = tuple(make_good(v) for v in bad)
+            return good
+
+        tiktorch_config = make_good(self.TiktorchConfig.value)
+        model_state = self.BinaryModelState.value
+
+        # TODO: why does it appear as ndarray
+        if isinstance(model_state, numpy.ndarray):
+            model_state = bytes(model_state[0])
+
+        tiktorch.load_model(
+            tiktorch_config,
+            self.BinaryModel.value,
+            model_state,
+            self.BinaryOptimizerState.value,
+        )
+
+        self.TiktorchModel.setValue(tiktorch)
+
+    def propagateDirty(self, slot, subindex, roi):
+        #self.Tiktorch.setDirty(slice(None))
+        pass
+
 
 class OpNNClassification(Operator):
     """
@@ -53,15 +123,15 @@ class OpNNClassification(Operator):
     # Graph inputs
     InputImages = InputSlot(level=1)
     ServerConfig = InputSlot()
+
     NumClasses = InputSlot(optional=True)
     LabelInputs = InputSlot(optional=True, level=1)
     FreezePredictions = InputSlot(stype="bool", value=False, nonlane=True)
-    ClassifierFactory = InputSlot(optional=True)
-    Model = InputSlot(optional=True)
+    ClassifierFactory = InputSlot()
     TiktorchConfig = InputSlot()
     BinaryModel = InputSlot()
-    BinaryModelState = InputSlot(value=b"")
-    BinaryOptimizerState = InputSlot(value=b"")
+    BinaryModelState = InputSlot()
+    BinaryOptimizerState = InputSlot()
 
     Classifier = OutputSlot()
     PredictionProbabilities = OutputSlot(
@@ -88,73 +158,20 @@ class OpNNClassification(Operator):
         self.PmapColors.meta.dtype = object
         self.PmapColors.meta.shape = (1,)
 
-        if not (
-            self.ServerConfig.ready()
-            and self.TiktorchConfig.ready()
-            and self.BinaryModel.ready()
-        ):
-            return
-
-        tiktorch = None
-        create_new_tiktorch = not self.ClassifierFactory.ready()
-        has_srv_config = self.ServerConfig.ready()
-
-        if create_new_tiktorch and has_srv_config:
-            tiktorch = TikTorchLazyflowClassifierFactory(self.ServerConfig.value)
-        elif not create_new_tiktorch:
-            tiktorch = self.ClassifierFactory.value
-
-        if (
-            tiktorch
-            and self.TiktorchConfig.ready()
-            and self.BinaryModel.ready()
-        ):
-            # todo: Deserialize sequences as tuple of ints, not as numpy.ndarray
-            # (which is a weird, implicit default in SerialDictSlot)
-            # also note: converting form numpy.int32, etc to python's int
-            def make_good(bad):
-                good = bad
-                if isinstance(bad, dict):
-                    good = {}
-                    for key, bad_value in bad.items():
-                        good[key] = make_good(bad_value)
-                elif isinstance(bad, numpy.integer):
-                    good = int(bad)
-                elif isinstance(bad, numpy.ndarray):
-                    good = tuple(make_good(v) for v in bad)
-                return good
-
-            tiktorch_config = make_good(self.TiktorchConfig.value)
-
-            model_state = self.BinaryModelState.value
-
-            # TODO: why does it appear as ndarray
-            if isinstance(model_state, numpy.ndarray):
-                model_state = bytes(model_state[0])
-
-            tiktorch.load_model(
-                tiktorch_config,
-                self.BinaryModel.value,
-                model_state,
-                self.BinaryOptimizerState.value,
-            )
-            try:
-                projectManager = self._parent._shell.projectManager
-                applet = self._parent._applets[2]
-                assert applet.name == "NN Training"
-                # restore labels  # todo: clean up this workaround for resetting the user label block shape
-                top_group_name = applet.dataSerializers[0].topGroupName
-                group_name = "LabelSets"
-                label_serial_block_slot = [s for s in applet.dataSerializers[0].serialSlots if s.name == group_name][0]
-                label_serial_block_slot.deserialize(projectManager.currentProjectFile[top_group_name])
-            except:
-                logger.debug("Could not restore labels after setting TikTorchLazyflowClassifierFactory.")
+        try:
+            projectManager = self._parent._shell.projectManager
+            applet = self._parent._applets[2]
+            assert applet.name == "NN Training"
+            # restore labels  # todo: clean up this workaround for resetting the user label block shape
+            top_group_name = applet.dataSerializers[0].topGroupName
+            group_name = "LabelSets"
+            label_serial_block_slot = [s for s in applet.dataSerializers[0].serialSlots if s.name == group_name][0]
+            label_serial_block_slot.deserialize(projectManager.currentProjectFile[top_group_name])
+        except:
+            logger.debug("Could not restore labels after setting TikTorchLazyflowClassifierFactory.")
 
         if self.opBlockShape.BlockShapeInference.ready():
             self.opPredictionPipeline.BlockShape.connect(self.opBlockShape.BlockShapeInference)
-
-        if create_new_tiktorch and tiktorch:
-            self.ClassifierFactory.setValue(tiktorch)
 
     def cleanUp(self):
         try:
@@ -181,6 +198,17 @@ class OpNNClassification(Operator):
         self.opBlockShape = OpMultiLaneWrapper(OpBlockShape, parent=self)
         self.opBlockShape.RawImage.connect(self.InputImages)
         self.opBlockShape.ClassifierFactory.connect(self.ClassifierFactory)
+
+        self.opTiktorchFactory = OpTiktorchFactory(parent=self.parent)
+        self.opTiktorchFactory.ServerConfig.connect(self.ServerConfig)
+
+        self.opModel = OpModel(parent=self.parent)
+        self.opModel.TiktorchFactory.connect(self.opTiktorchFactory.Tiktorch)
+        self.opModel.TiktorchConfig.connect(self.TiktorchConfig)
+        self.opModel.BinaryModel.connect(self.BinaryModel)
+        self.opModel.BinaryModelState.connect(self.BinaryModelState)
+
+        self.ClassifierFactory.connect(self.opModel.TiktorchModel)
 
         # Hook up Labeling Pipeline
         self.opLabelPipeline = OpMultiLaneWrapper(OpLabelPipeline, parent=self, broadcastingSlotNames=["DeleteLabel"])
@@ -276,11 +304,13 @@ class OpNNClassification(Operator):
     def set_classifier(self, tiktorch_config: dict, model_file: bytes, model_state: bytes, optimizer_state: bytes):
         self.TiktorchConfig.disconnect()  # do not create TiktorchClassifierFactory with invalid intermediate settings
         #self.ClassifierFactory.disconnect()
+        print("SET CLASSIFIER")
         self.FreezePredictions.setValue(False)
         self.BinaryModel.setValue(model_file)
         self.BinaryModelState.setValue(model_state)
         self.BinaryOptimizerState.setValue(optimizer_state)
         # now all non-server settings are up to date...
+        print("SET CLASSIFIER DONE")
         self.TiktorchConfig.setValue(tiktorch_config)  # ...setupOutputs can initialize a tiktorchClassifierFactory
 
     def update_config(self, partial_config: dict):
