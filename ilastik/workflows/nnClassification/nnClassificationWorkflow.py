@@ -166,16 +166,12 @@ class NNClassificationWorkflow(Workflow):
         opNNclassify.InputImages.connect(opData.Image)
         opNNclassify.ServerConfig.connect(opServerConfig.ServerConfig)
 
-        # ReorderAxes is needed for specifying the original_shape meta tag , hack!
-        op5Pred = OpReorderAxes(parent=self)
-        op5Pred.AxisOrder.setValue("txyzc")
-        op5Pred.Input.connect(opNNclassify.CachedPredictionProbabilities)
-
         # Data Export connections
         opDataExport.RawData.connect(opData.ImageGroup[self.DATA_ROLE_RAW])
         opDataExport.RawDatasetInfo.connect(opData.DatasetGroup[self.DATA_ROLE_RAW])
         opDataExport.Inputs.resize(len(self.EXPORT_NAMES))
-        opDataExport.Inputs[0].connect(op5Pred.Output)
+        # opDataExport.Inputs[0].connect(op5Pred.Output)
+        opDataExport.Inputs[0].connect(opNNclassify.PredictionProbabilities)
         opDataExport.Inputs[1].connect(opNNclassify.LabelImages)
         # for slot in opDataExport.Inputs:
         #     assert slot.upstream_slot is not None
@@ -286,6 +282,33 @@ class NNClassificationWorkflow(Workflow):
         input_shape[1:3] -= 2 * self.halo_size
 
         return input_shape
+    # def getBlockShape(self, model, halo_size):
+    #     """
+    #     calculates the input Block shape
+    #     """
+    #     expected_input_shape = model._tiktorch_net.expected_input_shape
+    #     input_shape = numpy.array(expected_input_shape)
+    #
+    #     if not halo_size:
+    #         if 'output_size' in model._tiktorch_net._configuration:
+    #             # if the ouputsize of the model is smaller as the expected input shape
+    #             # the halo needs to be changed
+    #             output_shape = model._tiktorch_net.get('output_size')
+    #             if output_shape != input_shape:
+    #                 self.halo_size = int((input_shape[1] - output_shape[1]) / 2)
+    #                 model.HALO_SIZE = self.halo_size
+    #                 print(self.halo_size)
+    #
+    #     if len(model._tiktorch_net.get('window_size')) == 2:
+    #         input_shape = numpy.append(input_shape, None)
+    #     else:
+    #
+    #         input_shape = input_shape[1:]
+    #         input_shape = numpy.append(input_shape, None)
+    #
+    #     input_shape[1:3] -= 2 * self.halo_size
+    #
+    #     return input_shape
 
     def cleanUp(self):
         tiktorchFactory = self.nnClassificationApplet.topLevelOperator.ClassifierFactory
