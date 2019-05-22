@@ -1,6 +1,7 @@
-from typing import List
+from typing import List, Tuple
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 from threading import Lock
 
 import numpy as np
@@ -24,9 +25,8 @@ class Predictions(Array5D):
         return super().allocate(shape=shape, dtype=dtype, axiskeys=axiskeys, value=value)
 
 class PixelClassifier:
-    def __init__(self, feature_extractor:FeatureExtractor, annotations:List[Annotation],*,
-                 num_trees:int=100, num_forests:int=multiprocessing.cpu_count(),
-                 random_seed=0):
+    def __init__(self, feature_extractor:FeatureExtractor, annotations:Tuple[Annotation],*,
+                 num_trees:int=100, num_forests:int=multiprocessing.cpu_count(), random_seed=0):
         assert len(annotations) > 0
         self.feature_extractor = feature_extractor
         self.num_trees = num_trees
@@ -51,6 +51,11 @@ class PixelClassifier:
                 self.oobs[forest_index] = self.forests[forest_index].learnRF(X, y, random_seed)
             for i in range(num_forests):
                 executor.submit(train_forest, i)
+
+    @classmethod
+    @lru_cache()
+    def get(cls, *classifier_args, **classifier_kwargs):
+        return cls(*classifier_args, **classifier_kwargs)
 
     def get_expected_shape(self, data_slice:DataSourceSlice):
         return data_slice.shape.with_coord(c=self.num_classes)

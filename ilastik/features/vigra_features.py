@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from dataclasses import dataclass
 
 import vigra
 import numpy
@@ -9,6 +10,14 @@ from ilastik.array5d.point5D import Point5D, Slice5D, Shape5D
 from ilastik.data_source import DataSourceSlice
 
 class VigraChannelwiseFilter(FlatChannelwiseFilter):
+    def __init__(self, sigma:float, window_size:float=0, stack_axis:str='z'):
+        super().__init__(stack_axis=stack_axis)
+        self.sigma = sigma
+        self.window_size = window_size
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} sigma:{self.sigma} window_size:{self.window_size} stack_axis:{self.stack_axis}>"
+
     @property
     @abstractmethod
     def filter_fn(self):

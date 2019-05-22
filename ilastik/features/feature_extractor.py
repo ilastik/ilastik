@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor as Executor
+from dataclasses import dataclass
 import functools
 from operator import mul
-from typing import List, Iterator
+from typing import List, Iterator, Tuple
 
 import vigra.filters
 import numpy as np
@@ -25,12 +26,11 @@ class FeatureDataMismatchException(Exception):
         super().__init__(f"Feature {feature_extractor} can't be cleanly applied to {data_source}")
 
 class FeatureExtractor(ABC):
-    def __init__(self, sigma:float, window_size:float):
-        self.sigma = sigma
-        self.window_size = window_size
+    def __hash__(self):
+        return hash((self.__class__, tuple(self.__dict__.values())))
 
-    def __repr__(self):
-        return f"<{self.__class__.__name__} sigma={self.sigma} window_size={self.window_size} kernel={self.kernel_shape}>"
+    def __eq__(self, other):
+        return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
 
     def allocate_for(self, roi:DataSourceSlice) -> Array5D:
         #FIXME: vigra needs C to be the last REAL axis rather than the last axis of the view -.-
@@ -61,9 +61,8 @@ class FeatureExtractor(ABC):
         return self.kernel_shape // 2
 
 class FlatChannelwiseFilter(FeatureExtractor):
-    def __init__(self, sigma:float, window_size:float=0.0, stack_axis:str='z'):
-        #FIXME: combine sigma, window_size and kernel_shape into the same thing
-        super().__init__(sigma=sigma, window_size=window_size)
+    def __init__(self, stack_axis:str='z'):
+        super().__init__()
         self.stack_axis = stack_axis
 
     @property
@@ -91,7 +90,7 @@ class FlatChannelwiseFilter(FeatureExtractor):
         pass
 
 class FeatureCollection(FeatureExtractor):
-    def __init__(self, *features:List[FeatureExtractor]):
+    def __init__(self, features:Tuple[FeatureExtractor]):
         assert len(features) > 0
         self.features = features
 

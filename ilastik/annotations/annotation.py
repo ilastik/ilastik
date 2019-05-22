@@ -10,13 +10,14 @@ from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
 from ilastik.data_source import DataSource, DataSourceSlice
 from PIL import Image as PilImage
 
-class ScribblingsOutOfBounds(Exception):
-    def __init__(self, scribblings:ScalarImage, raw_data:DataSource, offset:Point5D):
-        super().__init__(f"Scribblings {scribblings} offset by {offset} exceeds bounds of raw_data {raw_data}")
+class Scribblings(ScalarImage):
+    def __hash__(self):
+        return hash(self._data.tobytes())
 
-class WrongShapeException(Exception):
-    def __init__(self, path:str, data:np.ndarray):
-        super().__init__(f"Annotations from {path} have bad shape: {data.shape}")
+    def __eq__(self, other):
+        if isinstance(other, Scribblings):
+            return False
+        return np.all(self._data == other._data)
 
 class LabelSamples(StaticLine):
     @classmethod
@@ -30,7 +31,7 @@ class LabelSamples(StaticLine):
 
 class FeatureSamples(FeatureData, StaticLine):
     @classmethod
-    def create(cls, scribblings: ScalarImage, data: FeatureData):
+    def create(cls, scribblings: Scribblings, data: FeatureData):
         samples = data.sample_channels(scribblings.as_mask())
         return cls.fromArray5D(samples)
 
@@ -48,8 +49,16 @@ class Samples:
         all_labels = self.label.concatenate(*[sample.label for sample in others])
         return Samples(feature_samples=all_features, label_samples=all_labels)
 
+class ScribblingsOutOfBounds(Exception):
+    def __init__(self, scribblings:Scribblings, raw_data:DataSource, offset:Point5D):
+        super().__init__(f"Scribblings {scribblings} offset by {offset} exceeds bounds of raw_data {raw_data}")
+
+class WrongShapeException(Exception):
+    def __init__(self, path:str, data:np.ndarray):
+        super().__init__(f"Annotations from {path} have bad shape: {data.shape}")
+
 class Annotation:
-    def __init__(self, scribblings:ScalarImage, raw_data:DataSource, offset:Point5D=Point5D.zero()):
+    def __init__(self, scribblings:Scribblings, raw_data:DataSource, offset:Point5D=Point5D.zero()):
         assert scribblings.dtype == np.uint32
         assert offset.c == 0
 
@@ -65,7 +74,7 @@ class Annotation:
     @classmethod
     def from_png(cls, path:str, raw_data:DataSource, offset:Point5D=Point5D.zero()):
         data = np.asarray(PilImage.open(path)).astype(np.uint32)
-        return cls(ScalarImage(data, 'yx'), raw_data, offset=offset)
+        return cls(Scribblings(data, 'yx'), raw_data, offset=offset)
 
     def get_samples(self, feature_extractor:FeatureExtractor) -> Samples:
         all_label_samples = []

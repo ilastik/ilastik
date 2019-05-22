@@ -27,21 +27,17 @@ assert pickle.loads(pickle.dumps(raw_data1)) == raw_data1
 all_data_slice = raw_data1.all()
 assert pickle.loads(pickle.dumps(all_data_slice)) == all_data_slice
 
-annotations = [
+annotations = (
     Annotation.from_png("/home/tomaz/SampleData/c_cells/cropped/cropped1_10_annotations_offset_by_188_124.png",
                         raw_data=raw_data1, offset=Point5D.zero(x=188, y=124)),
     Annotation.from_png("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1_15_annotations_offset_by_624_363.png",
                         raw_data=raw_data1, offset=Point5D.zero(x=624, y=363))
-]
+)
 
-fc = FeatureCollection(*([GaussianSmoothing(sigma=s/10) for s in range(30)] +
-                         [HessianOfGaussian(sigma=s/10) for s in range(30)]))
-classifier = StrictPixelClassifier(feature_extractor=fc, annotations=annotations, random_seed=123)
+fc = FeatureCollection(tuple(GaussianSmoothing(sigma=s/10) for s in range(30)) +
+                       tuple(HessianOfGaussian(sigma=s/10) for s in range(30)))
+classifier = StrictPixelClassifier.get(feature_extractor=fc, annotations=annotations, random_seed=123)
 predictions, features = classifier.predict(raw_data1.all())
-
-print(f"Features cache info: {fc.compute.cache_info()}")
-#print(f"raw_data1 cache info: {raw_data1.do_retrieve.cache_info()}")
-
 pil_images = [c.as_pil_image() for img in predictions.as_uint8().images() for c in img.channels()]
 for idx, pi in enumerate(pil_images):
     pi.save(f"/tmp/intertest_full_{idx}.png")
@@ -49,5 +45,11 @@ for idx, pi in enumerate(pil_images):
 
 
 raw_data2 = FlatDataSource("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped2.png")
+classifier2 = StrictPixelClassifier.get(feature_extractor=fc, annotations=annotations, random_seed=123)
 predictions2, features2 = classifier.predict(raw_data2.cut_with(x=slice(100,200), y=slice(100,200)))
 pil_images2 = [c.as_pil_image() for img in predictions2.as_uint8().images() for c in img.channels()]
+for idx, pi in enumerate(pil_images2):
+    pi.save(f"/tmp/intertest_slice_{idx}.png")
+
+print(f"Features cache info: {fc.compute.cache_info()}")
+print(f"Classifier cache info: {StrictPixelClassifier.get.cache_info()}")
