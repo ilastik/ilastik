@@ -19,6 +19,7 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from functools import partial
+import traceback as tb
 import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
@@ -56,8 +57,9 @@ class OpNNClassification(Operator):
     LabelInputs = InputSlot(optional=True, level=1)
     FreezePredictions = InputSlot(stype="bool", value=False, nonlane=True)
     ClassifierFactory = InputSlot(optional=True)
-    TiktorchConfig = InputSlot(optional=True)
-    BinaryModel = InputSlot(optional=True)
+    Model = InputSlot(optional=True)
+    TiktorchConfig = InputSlot()
+    BinaryModel = InputSlot()
     BinaryModelState = InputSlot(value=b"")
     BinaryOptimizerState = InputSlot(value=b"")
 
@@ -86,9 +88,24 @@ class OpNNClassification(Operator):
         self.PmapColors.meta.dtype = object
         self.PmapColors.meta.shape = (1,)
 
+        if not (
+            self.ServerConfig.ready()
+            and self.TiktorchConfig.ready()
+            and self.BinaryModel.ready()
+        ):
+            return
+
+        tiktorch = None
+        create_new_tiktorch = not self.ClassifierFactory.ready()
+        has_srv_config = self.ServerConfig.ready()
+
+        if create_new_tiktorch and has_srv_config:
+            tiktorch = TikTorchLazyflowClassifierFactory(self.ServerConfig.value)
+        elif not create_new_tiktorch:
+            tiktorch = self.ClassifierFactory.value
+
         if (
-            not self.ClassifierFactory.ready()
-            and self.ServerConfig.ready()
+            tiktorch
             and self.TiktorchConfig.ready()
             and self.BinaryModel.ready()
         ):
@@ -109,14 +126,17 @@ class OpNNClassification(Operator):
 
             tiktorch_config = make_good(self.TiktorchConfig.value)
 
-            self.ClassifierFactory.setValue(
-                TikTorchLazyflowClassifierFactory(
-                    tiktorch_config,
-                    self.BinaryModel.value,
-                    self.BinaryModelState.value,
-                    self.BinaryOptimizerState.value,
-                    server_config=self.ServerConfig.value,
-                )
+            model_state = self.BinaryModelState.value
+
+            # TODO: why does it appear as ndarray
+            if isinstance(model_state, numpy.ndarray):
+                model_state = bytes(model_state[0])
+
+            tiktorch.load_model(
+                tiktorch_config,
+                self.BinaryModel.value,
+                model_state,
+                self.BinaryOptimizerState.value,
             )
             try:
                 projectManager = self._parent._shell.projectManager
@@ -133,6 +153,8 @@ class OpNNClassification(Operator):
         if self.opBlockShape.BlockShapeInference.ready():
             self.opPredictionPipeline.BlockShape.connect(self.opBlockShape.BlockShapeInference)
 
+        if create_new_tiktorch and tiktorch:
+            self.ClassifierFactory.setValue(tiktorch)
 
     def cleanUp(self):
         try:
@@ -246,9 +268,14 @@ class OpNNClassification(Operator):
 
                     s1.notifyRemoved(partial(removeSlot, s2))
 
+    def set_model_state(self, model_state: bytes, optimizer_state: bytes = b""):
+        config = self.TiktorchConfig.value
+        model = self.BinaryModel.value
+        self.set_classifier(config, model, model_state, optimizer_state)
+
     def set_classifier(self, tiktorch_config: dict, model_file: bytes, model_state: bytes, optimizer_state: bytes):
         self.TiktorchConfig.disconnect()  # do not create TiktorchClassifierFactory with invalid intermediate settings
-        self.ClassifierFactory.disconnect()
+        #self.ClassifierFactory.disconnect()
         self.FreezePredictions.setValue(False)
         self.BinaryModel.setValue(model_file)
         self.BinaryModelState.setValue(model_state)

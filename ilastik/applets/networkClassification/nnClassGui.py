@@ -27,9 +27,10 @@ import numpy
 import yaml
 
 from PyQt5 import uic
-from PyQt5.QtCore import Qt, pyqtSlot, QTimer
+from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QTimer, QStringListModel, QObject, QModelIndex, QPersistentModelIndex
 from PyQt5.QtGui import QColor, QIcon
 from PyQt5.QtWidgets import (
+    QWidget,
     QStackedWidget,
     QFileDialog,
     QMenu,
@@ -96,7 +97,7 @@ class ParameterDlg(QDialog):
         grid.addWidget(QLabel("Optimizer"), 1, 0)
         grid.addWidget(self.optimizer_combo, 1, 1)
 
-        grid.addWidget(QLabel("Optimizer keywork arguments"), 2, 0)
+        grid.addWidget(QLabel("Optimizer keyword arguments"), 2, 0)
         grid.addWidget(self.optimizer_kwargs_textbox, 2, 1)
 
         grid.addWidget(QLabel("Criterion"), 3, 0)
@@ -164,7 +165,7 @@ class ParameterDlg(QDialog):
 
 class ValidationDlg(QDialog):
     """
-    Settings for choosing the validation set 
+    Settings for choosing the validation set
     """
 
     def __init__(self, parent):
@@ -233,6 +234,89 @@ class ValidationDlg(QDialog):
 
         self.close()
 
+# User clicks on button add_checkpont
+# add_checkpoint signal from widget triggers
+# manager queries checkpoint source for state
+# after retriaval
+# adds entry to checkpoint widget
+# and entry to its table
+
+
+class CheckpointManager:
+    def __init__(self, widget, get_state, load_state):
+        self._checkpoint_by_idx = {}
+        self._get_state = get_state
+        self._load_state = load_state
+        self._widget = widget
+        self._widget.add_clicked.connect(self._add)
+        self._widget.remove_clicked.connect(self._remove)
+        self._widget.load_clicked.connect(self._load)
+
+        self._count = 0
+
+    def _add(self):
+        state = self._get_state()
+        self._count += 1
+        name = f"name {self._count}"
+
+        idx = self._widget.add_item(name)
+        self._checkpoint_by_idx[idx] = {
+            'name': name,
+            'state': state,
+        }
+
+    def _remove(self, removed_idx):
+        del self._checkpoint_by_idx[removed_idx]
+        self._widget.remove_item(removed_idx)
+
+    def _load(self, load_idx):
+        if load_idx.isValid():
+            val = self._checkpoint_by_idx[load_idx]
+            print("LOADING...", val)
+            self._load_state(val['state'])
+
+
+class CheckpointWidget(QWidget):
+    add_clicked = pyqtSignal()
+    remove_clicked = pyqtSignal(QPersistentModelIndex)
+    load_clicked = pyqtSignal(QPersistentModelIndex)
+
+    def __init__(self, *, parent, add, remove, load, view, data=None):
+        super().__init__(parent=parent)
+        self._data = data or {}
+
+        self._add_btn = add
+        self._remove_btn = remove
+        self._load_btn = load
+        self._view = view
+
+        self._model = QStringListModel()
+        self._view.setModel(self._model)
+
+        self._add_btn.clicked.connect(self.add_clicked)
+        self._remove_btn.clicked.connect(self._remove_click)
+        self._load_btn.clicked.connect(self._load_click)
+
+    def add_item(self, name: str) -> QPersistentModelIndex:
+        self._model.insertRow(0)
+        m_idx = self._model.index(0)
+        self._model.setData(m_idx, name)
+        return QPersistentModelIndex(m_idx)
+
+    def remove_item(self, idx: QModelIndex):
+        if idx.isValid():
+            self._model.removeRow(idx.row())
+
+    def _remove_click(self):
+        idx = self._view.selectionModel().currentIndex()
+        if idx.isValid():
+            self.remove_clicked.emit(QPersistentModelIndex(idx))
+
+    def _load_click(self):
+        idx = self._view.selectionModel().currentIndex()
+        if idx.isValid():
+            self.load_clicked.emit(QPersistentModelIndex(idx))
+
 
 class NNClassGui(LabelingGui):
     """
@@ -270,7 +354,7 @@ class NNClassGui(LabelingGui):
 
         def settingParameter():
             """
-            changing BatchSize 
+            changing BatchSize
             """
             dlg = ParameterDlg(parent=self)
             dlg.exec_()
@@ -300,6 +384,24 @@ class NNClassGui(LabelingGui):
 
         return menus
 
+    def _get_model_state(self):
+        factory = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
+        return factory.get_model_state()
+
+    def _initCheckpointActions(self):
+        self.checkpoint_widget = CheckpointWidget(
+            parent=self,
+            add=self.labelingDrawerUi.addCheckpoint,
+            remove=self.labelingDrawerUi.removeCheckpoint,
+            load=self.labelingDrawerUi.loadCheckpoint,
+            view=self.labelingDrawerUi.checkpointList,
+        )
+        self.checkpoint_mng = CheckpointManager(
+            self.checkpoint_widget,
+            self._get_model_state,
+            self._load_checkpoint
+        )
+
     def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None):
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
@@ -313,6 +415,7 @@ class NNClassGui(LabelingGui):
             labelingDrawerUiPath = os.path.join(localDir, "nnClassAppletUiTest.ui")
 
         super(NNClassGui, self).__init__(parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath)
+        self._initCheckpointActions()
 
         self.parentApplet = parentApplet
         self.classifiers = OrderedDict()
@@ -333,16 +436,7 @@ class NNClassGui(LabelingGui):
         self.set_live_predict_icon(self.livePrediction)
         self.labelingDrawerUi.livePrediction.toggled.connect(self.toggleLivePrediction)
 
-        self.labelingDrawerUi.comboBox.clear()
-        self.labelingDrawerUi.comboBox.hide()  # atm only a single model at a time is supported
         self.labelingDrawerUi.addModel.clicked.connect(self.addModel)
-
-        # if self.topLevelOperatorView.ModelPath.ready():
-        #     modelPathList = list(self.topLevelOperatorView.ModelPath.value.values())
-        #     #TODO: save more networks
-        #     # for modelPath in modelPathList:
-        #     #     self.add_NN_classifiers(modelPath)
-        #     self.add_NN_classifiers(modelPathList[0])
 
         self.initViewerControls()
         self.initViewerControlUi()
@@ -391,7 +485,7 @@ class NNClassGui(LabelingGui):
 
     def loadModel(self, factory_slot):
         if factory_slot.ready():
-            self.set_NN_classifier_name(factory_slot.value.name)
+            self.set_NN_classifier_name(factory_slot.value.model.name)
 
     def updatePredictions(self):
         self.topLevelOperatorView.FreezePredictions.setValue(False)
@@ -559,6 +653,7 @@ class NNClassGui(LabelingGui):
                 self.updatePredictions()  # update one last time
                 try:
                     model_state = factory.get_model_state()
+                    print("SET MODEL STATE")
                     self.topLevelOperatorView.BinaryModelState.setValue(model_state)
                 except Exception as e:
                     logger.warning(f"Could not retrieve updated model state due to {e}")
@@ -619,10 +714,11 @@ class NNClassGui(LabelingGui):
             if not projectManager.currentProjectIsReadOnly:
                 projectManager.saveProject()
 
-            if self.topLevelOperatorView.ClassifierFactory.ready():
-                tiktorchFactory = self.topLevelOperatorView.ClassifierFactory.value
-                if tiktorchFactory is not None:
-                    tiktorchFactory.shutdown()
+            # TODO: shutdown removed
+            # if self.topLevelOperatorView.ClassifierFactory.ready():
+            #     tiktorchFactory = self.topLevelOperatorView.ClassifierFactory.value
+            #     if tiktorchFactory is not None:
+            #         tiktorchFactory.shutdown()
 
             # user did not cancel selection
             self.add_NN_classifiers(folder)
@@ -632,10 +728,14 @@ class NNClassGui(LabelingGui):
             self.parentApplet.appletStateUpdateRequested()
             self.labelingDrawerUi.addModel.setEnabled(True)
 
+    def _load_checkpoint(self, model_state: bytes):
+        self.topLevelOperatorView.set_model_state(model_state)
+
     def add_NN_classifiers(self, folder_path):
         """
         Adds the chosen FilePath to the classifierDictionary and to the ComboBox
         """
+        print("ADD NN CLASSIFIER", folder_path)
 
         # clear first the comboBox or addItems will duplicate names
         # self.labelingDrawerUi.comboBox.clear()
