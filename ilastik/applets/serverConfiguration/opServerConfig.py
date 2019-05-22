@@ -34,8 +34,8 @@ class OpServerConfig(Operator):
     name = "OpServerConfig"
     category = "top-level"
 
-    LocalServerConfig = InputSlot(value=dict(DEFAULT_LOCAL_SERVER_CONFIG))
-    RemoteServerConfig = InputSlot(value=dict(DEFAULT_REMOTE_SERVER_CONFIG))
+    LocalServerConfig = InputSlot()  # value=dict(DEFAULT_LOCAL_SERVER_CONFIG))
+    RemoteServerConfig = InputSlot()  # value=dict(DEFAULT_REMOTE_SERVER_CONFIG))
     UseLocalServer = InputSlot(value=True)
 
     ServerConfig = OutputSlot()
