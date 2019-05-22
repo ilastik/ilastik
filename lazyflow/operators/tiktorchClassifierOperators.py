@@ -151,6 +151,8 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
 
 
 class OpTikTorchClassifierPredict(OpClassifierPredict):
+    BlockShape = InputSlot()
+
     def __init__(self, *args, **kwargs):
         super(OpTikTorchClassifierPredict, self).__init__(*args, **kwargs)
 
@@ -169,7 +171,7 @@ class OpTikTorchClassifierPredict(OpClassifierPredict):
         elif issubclass(classifier_factory.__class__, LazyflowPixelwiseClassifierFactoryABC):
             new_mode = "pixelwise"
         elif isinstance(classifier_factory, LazyflowOnlineClassifier):
-            new_mode = "pixelwise"
+            new_mode = "online"
         else:
             raise Exception("Unknown classifier factory type: {}".format(type(classifier_factory)))
 
@@ -184,7 +186,10 @@ class OpTikTorchClassifierPredict(OpClassifierPredict):
         if self._mode == "vectorwise":
             self._prediction_op = OpVectorwiseClassifierPredict(parent=self)
         elif self._mode == "pixelwise":
+            self._prediction_op = OpPixelwiseClassifierPredict(parent=self)
+        elif self._mode == "online":
             self._prediction_op = OpTikTorchPixelwiseClassifierPredict(parent=self)
+            self._prediction_op.BlockShape.connect(self.BlockShape)
 
         self._prediction_op.PredictionMask.connect(self.PredictionMask)
         self._prediction_op.Image.connect(self.Image)
@@ -194,8 +199,15 @@ class OpTikTorchClassifierPredict(OpClassifierPredict):
 
 
 class OpTikTorchPixelwiseClassifierPredict(OpPixelwiseClassifierPredict):
+    BlockShape = InputSlot()
+
     def __init__(self, *args, **kwargs):
         super(OpTikTorchPixelwiseClassifierPredict, self).__init__(*args, **kwargs)
+
+    def setupOutputs(self):
+        super().setupOutputs()
+        self.PMaps.meta.ideal_blockshape = self.BlockShape.value
+        self.PMaps.meta.max_blockshape = self.BlockShape.value
 
     def execute(self, slot, subindex, roi, result):
         classifier = self.Classifier.value
