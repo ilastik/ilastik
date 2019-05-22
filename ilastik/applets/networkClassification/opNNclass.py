@@ -85,6 +85,7 @@ class OpNNClassification(Operator):
         self.LabelColors.meta.shape = (1,)
         self.PmapColors.meta.dtype = object
         self.PmapColors.meta.shape = (1,)
+
         if (
             not self.ClassifierFactory.ready()
             and self.ServerConfig.ready()
@@ -129,6 +130,10 @@ class OpNNClassification(Operator):
             except:
                 logger.debug("Could not restore labels after setting TikTorchLazyflowClassifierFactory.")
 
+        if self.opBlockShape.BlockShapeInference.ready():
+            self.opPredictionPipeline.BlockShape.connect(self.opBlockShape.BlockShapeInference)
+
+
     def cleanUp(self):
         try:
             self.ClassifierFactory.value.launcher.shutdown()
@@ -160,9 +165,9 @@ class OpNNClassification(Operator):
         self.opLabelPipeline.RawImage.connect(self.InputImages)
         self.opLabelPipeline.LabelInput.connect(self.LabelInputs)
         self.opLabelPipeline.DeleteLabel.setValue(-1)
+        self.opLabelPipeline.BlockShape.connect(self.opBlockShape.BlockShapeTrain)
         self.LabelImages.connect(self.opLabelPipeline.Output)
         self.NonzeroLabelBlocks.connect(self.opLabelPipeline.nonzeroBlocks)
-        self.opLabelPipeline.BlockShape.connect(self.opBlockShape.BlockShapeTrain)
 
         # TRAINING OPERATOR
         self.opTrain = OpTikTorchTrainClassifierBlocked(parent=self)
@@ -185,7 +190,7 @@ class OpNNClassification(Operator):
         self.opPredictionPipeline.Classifier.connect(self.classifier_cache.Output)
         self.opPredictionPipeline.NumClasses.connect(self.NumClasses)
         self.opPredictionPipeline.FreezePredictions.connect(self.FreezePredictions)
-        self.opPredictionPipeline.BlockShape.connect(self.opBlockShape.BlockShapeInference)
+
 
         self.PredictionProbabilities.connect(self.opPredictionPipeline.PredictionProbabilities)
         self.CachedPredictionProbabilities.connect(self.opPredictionPipeline.CachedPredictionProbabilities)
@@ -448,6 +453,7 @@ class OpPredictionPipeline(Operator):
         self.predict.Classifier.connect(self.Classifier)
         self.predict.Image.connect(self.RawImage)
         self.predict.LabelsCount.connect(self.NumClasses)
+        self.predict.BlockShape.connect(self.BlockShape)
         self.PredictionProbabilities.connect(self.predict.PMaps)
 
         self.prediction_cache = OpBlockedArrayCache(parent=self)
@@ -463,8 +469,6 @@ class OpPredictionPipeline(Operator):
         self.opPredictionSlicer.AxisFlag.setValue("c")
         self.PredictionProbabilityChannels.connect(self.opPredictionSlicer.Slices)
 
-    def setupOutputs(self):
-        pass
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"

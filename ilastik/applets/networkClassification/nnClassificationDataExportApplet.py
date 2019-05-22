@@ -18,7 +18,6 @@
 # on the ilastik web site at:
 # 		   http://ilastik.org/license.html
 ###############################################################################
-from __future__ import absolute_import
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from .opNNClassificationDataExport import OpNNClassificationDataExport
 from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
