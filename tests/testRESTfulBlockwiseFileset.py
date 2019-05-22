@@ -35,9 +35,6 @@ from lazyflow.roi import sliceToRoi
 import logging
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler(sys.stdout))
-logger.setLevel(logging.INFO)
-logger.setLevel(logging.DEBUG)
 
 from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
 from lazyflow.utility.io_util.RESTfulBlockwiseFileset import RESTfulBlockwiseFileset

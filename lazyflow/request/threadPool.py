@@ -1,6 +1,3 @@
-from builtins import range
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -24,20 +21,18 @@ from builtins import object
 ###############################################################################
 # Built-in
 import atexit
-import collections
-import heapq
 import threading
-import platform
 import time
-import os
 import ctypes
+import logging
 
-import psutil
+logger = logging.getLogger(__name__)
+
 
 from lazyflow.utility.priorityQueue import PriorityQueue
 
 
-class ThreadPool(object):
+class ThreadPool:
     """
     Manages a set of worker threads and dispatches tasks to them.
     """
@@ -162,7 +157,10 @@ class _Worker(threading.Thread):
         while not self.stopped:
             # Start (or resume) the work by switching to its greenlet
             self.state = "running task"
-            next_task()
+            try:
+                next_task()
+            except Exception:
+                logger.exception("Exception during processing %s", next_task)
 
             # We're done with this request.
             # Free it immediately for garbage collection.

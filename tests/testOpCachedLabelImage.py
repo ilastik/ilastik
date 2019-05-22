@@ -31,11 +31,8 @@ from lazyflow.graph import Graph
 from lazyflow.operators import OpDummyData
 from lazyflow.operators.opCachedLabelImage import _OpCachedLabelImage as OpCachedLabelImage
 
-logHandler = logging.StreamHandler(sys.stdout)
 logger = logging.getLogger("tests.testOpCachedLabelImage")
-logger.addHandler(logHandler)
 labelerLogger = logging.getLogger("lazyflow.operators.opCachedLabelImage")
-labelerLogger.addHandler(logHandler)
 
 
 class TestOpCachedLabelImage(object):
