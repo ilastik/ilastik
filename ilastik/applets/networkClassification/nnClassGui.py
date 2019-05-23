@@ -749,7 +749,7 @@ class NNClassGui(LabelingGui):
             raise FileNotFoundError(f"Config file not found at: {config_file_name}.")
 
         with open(config_file_name, "r") as f:
-            tiktorch_config = yaml.load(f)
+            tiktorch_config = yaml.load(f, Loader=yaml.SafeLoader)
 
         if "name" not in tiktorch_config:
             tiktorch_config["name"] = os.path.basename(os.path.normpath(folder_path))
