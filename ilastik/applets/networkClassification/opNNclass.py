@@ -437,8 +437,14 @@ class OpBlockShape(Operator):
         self.BlockShapeInference.setValue(self.setup_inference())
 
     def setup_train(self):
-        training_shape = self.ClassifierFactory.value.training_shape
-        blockDims = dict(zip("tczyx", training_shape))
+        tikmodel = self.ClassifierFactory.value
+        training_shape = tikmodel.training_shape
+        halo = tikmodel.halo
+        # total halo = 2 * halo per axis
+        total_halo = 2 * numpy.array(halo)
+        shrinkage = tikmodel.shrinkage
+        shrunk_training_shape_wo_halo = numpy.array(training_shape) - numpy.array(shrinkage) - total_halo
+        blockDims = dict(zip("tczyx", shrunk_training_shape_wo_halo))
         blockDims["c"] = 9999  # always request all channels
         axisOrder = self.RawImage.meta.getAxisKeys()
         ret = tuple(blockDims[a] for a in axisOrder)
@@ -448,10 +454,13 @@ class OpBlockShape(Operator):
         return ret
 
     def setup_inference(self):
-        valid_tczyx_shapes = self.ClassifierFactory.value.valid_shapes
-        shrinkage = self.ClassifierFactory.value.shrinkage
-        shrunk_valid_tczyx_shapes = [numpy.array(shape) - numpy.array(shrinkage) for shape in valid_tczyx_shapes]
-        largest_valid_shape = shrunk_valid_tczyx_shapes[-1]
+        tikmodel = self.ClassifierFactory.value
+        valid_tczyx_shapes = tikmodel.valid_shapes
+        halo = tikmodel.halo  # total halo = 2 * halo per axis
+        total_halo = 2 * numpy.array(halo)
+        shrinkage = tikmodel.shrinkage
+        shrunk_valid_tczyx_shapes_wo_halo = [numpy.array(shape) - numpy.array(shrinkage) - total_halo for shape in valid_tczyx_shapes]
+        largest_valid_shape = shrunk_valid_tczyx_shapes_wo_halo[-1]
 
         blockDims = dict(zip("tczyx", largest_valid_shape))
         blockDims["c"] = 9999  # always request all channels
