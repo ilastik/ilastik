@@ -234,16 +234,9 @@ class ValidationDlg(QDialog):
 
         self.close()
 
-# User clicks on button add_checkpont
-# add_checkpoint signal from widget triggers
-# manager queries checkpoint source for state
-# after retriaval
-# adds entry to checkpoint widget
-# and entry to its table
-
 
 class CheckpointManager:
-    def __init__(self, widget, get_state, load_state, added):
+    def __init__(self, widget, get_state, load_state, added, data):
         self._checkpoint_by_idx = {}
 
         self._get_state = get_state
@@ -255,7 +248,13 @@ class CheckpointManager:
         self._widget.remove_clicked.connect(self._remove)
         self._widget.load_clicked.connect(self._load)
 
+        self._load_initial(data)
         self._count = 0
+
+    def _load_initial(self, data):
+        for entry in data:
+            idx = self._widget.add_item(entry['name'])
+            self._checkpoint_by_idx[idx] = entry
 
     def _add(self):
         state = self._get_state()
@@ -284,9 +283,8 @@ class CheckpointWidget(QWidget):
     remove_clicked = pyqtSignal(QPersistentModelIndex)
     load_clicked = pyqtSignal(QPersistentModelIndex)
 
-    def __init__(self, *, parent, add, remove, load, view, data=None):
+    def __init__(self, *, parent, add, remove, load, view):
         super().__init__(parent=parent)
-        self._data = data or {}
 
         self._add_btn = add
         self._remove_btn = remove
@@ -407,6 +405,7 @@ class NNClassGui(LabelingGui):
             self._get_model_state,
             self._load_checkpoint,
             self._added,
+            data=self.topLevelOperatorView.Checkpoints.value,
         )
 
     def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None):
