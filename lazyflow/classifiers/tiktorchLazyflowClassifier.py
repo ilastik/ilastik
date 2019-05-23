@@ -193,6 +193,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         for img, label, id_ in zip(feature_images, label_images, image_ids):
             out_img = self._reorder_out(img, axistags)
             out_label = self._reorder_out(label, axistags)
+            out_label = out_label.astype(numpy.uint8)
             images.append(NDArray(out_img, id_))
             labels.append(NDArray(out_label, id_))
 
