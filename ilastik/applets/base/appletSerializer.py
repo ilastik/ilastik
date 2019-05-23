@@ -788,8 +788,10 @@ class SerialDictSlot(SerialSlot):
             return int(v)
         elif isinstance(v, float):
             return float(v)
+        elif isinstance(v, numpy.bool_):
+            return bool(v)
         else:
-            print('not decoded v', v, type(v))
+            logger.warning('not decoded v', v, type(v))
             return v
 
     def _saveValue(self, group, name, value):
