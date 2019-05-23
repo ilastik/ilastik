@@ -443,9 +443,9 @@ class NNClassGui(LabelingGui):
 
         self.labelingDrawerUi.labelListView.support_merges = True
         self.batch_size = self.topLevelOperatorView.Batch_Size.value
-        num_label_classes = self._labelControlUi.labelListModel.rowCount()
-        self.labelingDrawerUi.labelListView.allowDelete = num_label_classes > self.minLabelNumber
-        self.labelingDrawerUi.AddLabelButton.setEnabled((num_label_classes < self.maxLabelNumber))
+        self.labelingDrawerUi.labelListView.allowDelete = False
+        self.labelingDrawerUi.AddLabelButton.setEnabled(False)
+        self.labelingDrawerUi.AddLabelButton.hide()
 
         def FreezePredDirty():
             self.toggleLivePrediction(not self.topLevelOperatorView.FreezePredictions.value)
@@ -523,7 +523,7 @@ class NNClassGui(LabelingGui):
     def setupLayers(self):
         """
         which layers will be shown in the layerviewergui.
-        Triggers the prediciton by setting the layer on visible
+        Triggers the prediction by setting the layer on visible
         """
 
         layers = super(NNClassGui, self).setupLayers()
@@ -611,13 +611,6 @@ class NNClassGui(LabelingGui):
             self.livePrediction = checked
             self.labelingDrawerUi.livePrediction.setChecked(checked)
             self.set_live_predict_icon(checked)
-            if checked:
-                self.labelingDrawerUi.labelListView.allowDelete = False
-                self.labelingDrawerUi.AddLabelButton.setEnabled(False)
-            else:
-                num_label_classes = self._labelControlUi.labelListModel.rowCount()
-                self.labelingDrawerUi.labelListView.allowDelete = num_label_classes > self.minLabelNumber
-                self.labelingDrawerUi.AddLabelButton.setEnabled((num_label_classes < self.maxLabelNumber))
 
         self.topLevelOperatorView.FreezePredictions.setValue(not checked)
 
@@ -723,8 +716,6 @@ class NNClassGui(LabelingGui):
             # user did not cancel selection
             self.add_NN_classifiers(folder)
             PreferencesManager().set("DataSelection", "recent model", folder)
-            # disable adding another model TODO: handle new model in add_NN_Classifier
-            self.labelingDrawerUi.addModel.setToolTip("Switching network model currently not supported.")
             self.parentApplet.appletStateUpdateRequested()
             self.labelingDrawerUi.addModel.setEnabled(True)
 
@@ -754,8 +745,6 @@ class NNClassGui(LabelingGui):
         if "name" not in tiktorch_config:
             tiktorch_config["name"] = os.path.basename(os.path.normpath(folder_path))
 
-        self.set_NN_classifier_name(tiktorch_config["name"])
-
         # Read model.py
         file_name = os.path.join(folder_path, "model.py")
         if not os.path.exists(file_name):
@@ -774,7 +763,20 @@ class NNClassGui(LabelingGui):
             else:
                 binary_states.append(b"")
 
-        self.topLevelOperatorView.set_classifier(tiktorch_config, binary_model_file, *binary_states)
+        success = self.topLevelOperatorView.set_classifier(tiktorch_config, binary_model_file, *binary_states)
+        if success:
+            num_classes = len(self.topLevelOperatorView.opModel.TiktorchModel.value.known_classes)
+            self.minLabelNumber = num_classes
+            self.maxLabelNumber = num_classes
+            # for i in range(num_classes):
+            #     self.labelingDrawerUi.labelListModel.makeRowPermanent(i)
+            # self.setupLayers()
+            self.updateAllLayers()
+
+            self.set_NN_classifier_name(tiktorch_config["name"])
+        else:
+            self.set_NN_classifier_name("no model")
+
 
     def set_NN_classifier_name(self, name: str):
         self.labelingDrawerUi.addModel.setText(f"{name} loaded")
@@ -818,20 +820,6 @@ class NNClassGui(LabelingGui):
         new = list(map(mapf, self.labelListData))
         old = slot.value
         slot.setValue(_listReplace(old, new))
-
-    def _onLabelRemoved(self, parent, start, end):
-        # Call the base class to update the operator.
-        super(NNClassGui, self)._onLabelRemoved(parent, start, end)
-
-        # Keep colors in sync with names
-        # (If we deleted a name, delete its corresponding colors, too.)
-        op = self.topLevelOperatorView
-        if len(op.PmapColors.value) > len(op.LabelNames.value):
-            for slot in (op.LabelColors, op.PmapColors):
-                value = slot.value
-                value.pop(start)
-                # Force dirty propagation even though the list id is unchanged.
-                slot.setValue(value, check_changed=False)
 
     def getNextLabelName(self):
         return self._getNext(self.topLevelOperatorView.LabelNames, super(NNClassGui, self).getNextLabelName)
