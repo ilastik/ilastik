@@ -6,7 +6,7 @@ import pickle
 
 from ilastik.array5d.array5D import Array5D, Image, ScalarImage
 from ilastik.array5d.point5D import Point5D, Slice5D, Shape5D
-from ilastik.features.feature_extractor import FeatureCollection
+from ilastik.features.feature_extractor import FeatureExtractorCollection
 from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
 from ilastik.annotations import Annotation
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier
@@ -23,6 +23,7 @@ assert Slice5D.from_json(json.loads(slc.to_json())) == slc
 raw_data1 = FlatDataSource("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1.png")
 assert FlatDataSource.from_json(json.loads(raw_data1.to_json())) == raw_data1
 assert pickle.loads(pickle.dumps(raw_data1)) == raw_data1
+assert pickle.loads(pickle.dumps(raw_data1.all())) == raw_data1.all()
 
 all_data_slice = raw_data1.all()
 assert pickle.loads(pickle.dumps(all_data_slice)) == all_data_slice
@@ -34,8 +35,8 @@ annotations = (
                         raw_data=raw_data1, offset=Point5D.zero(x=624, y=363))
 )
 
-fc = FeatureCollection(tuple(GaussianSmoothing(sigma=s/10) for s in range(30)) +
-                       tuple(HessianOfGaussian(sigma=s/10) for s in range(30)))
+fc = FeatureExtractorCollection(tuple(GaussianSmoothing(sigma=s/10) for s in range(30)) +
+                                tuple(HessianOfGaussian(sigma=s/10) for s in range(30)))
 classifier = StrictPixelClassifier.get(feature_extractor=fc, annotations=annotations, random_seed=123)
 predictions, features = classifier.predict(raw_data1.all())
 pil_images = [c.as_pil_image() for img in predictions.as_uint8().images() for c in img.channels()]

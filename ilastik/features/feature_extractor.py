@@ -89,7 +89,7 @@ class FlatChannelwiseFilter(FeatureExtractor):
     def _compute_slice(self, raw_data:ScalarImage, out:Image):
         pass
 
-class FeatureCollection(FeatureExtractor):
+class FeatureExtractorCollection(FeatureExtractor):
     def __init__(self, features:Tuple[FeatureExtractor]):
         assert len(features) > 0
         self.features = features
