@@ -248,10 +248,15 @@ class CheckpointManager:
         self._widget.remove_clicked.connect(self._remove)
         self._widget.load_clicked.connect(self._load)
 
-        self._load_initial(data)
+        self._load_data(data)
         self._count = 0
 
-    def _load_initial(self, data):
+    def setData(self, data):
+        self._load_data(data)
+
+    def _load_data(self, data):
+        self._widget.clear()
+        self._checkpoint_by_idx = {}
         for entry in data:
             idx = self._widget.add_item(entry['name'])
             self._checkpoint_by_idx[idx] = entry
@@ -259,7 +264,7 @@ class CheckpointManager:
     def _add(self):
         state = self._get_state()
         self._count += 1
-        name = f"name {self._count}"
+        name = f"{self._count}: Epoch: {state.epoch}. Loss: {state.loss}"
 
         idx = self._widget.add_item(name)
         self._checkpoint_by_idx[idx] = {
@@ -275,7 +280,7 @@ class CheckpointManager:
     def _load(self, load_idx):
         if load_idx.isValid():
             val = self._checkpoint_by_idx[load_idx]
-            self._load_state(val['state'])
+            self._load_state(val['state'].model_state)
 
 
 class CheckpointWidget(QWidget):
@@ -297,6 +302,9 @@ class CheckpointWidget(QWidget):
         self._add_btn.clicked.connect(self.add_clicked)
         self._remove_btn.clicked.connect(self._remove_click)
         self._load_btn.clicked.connect(self._load_click)
+
+    def clear(self):
+        self._model.setStringList([])
 
     def add_item(self, name: str) -> QPersistentModelIndex:
         self._model.insertRow(0)
@@ -392,6 +400,9 @@ class NNClassGui(LabelingGui):
     def _added(self, snapshot):
         self.topLevelOperatorView.Checkpoints.setValue(list(snapshot))
 
+    def checkpoints_dirty(self, slot, roi):
+        self.checkpoint_mng.setData(slot.value)
+
     def _initCheckpointActions(self):
         self.checkpoint_widget = CheckpointWidget(
             parent=self,
@@ -400,6 +411,7 @@ class NNClassGui(LabelingGui):
             load=self.labelingDrawerUi.loadCheckpoint,
             view=self.labelingDrawerUi.checkpointList,
         )
+        self.topLevelOperatorView.Checkpoints.notifyDirty(self.checkpoints_dirty)
         self.checkpoint_mng = CheckpointManager(
             self.checkpoint_widget,
             self._get_model_state,
