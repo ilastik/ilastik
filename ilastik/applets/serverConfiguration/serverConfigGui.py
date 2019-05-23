@@ -224,8 +224,9 @@ class ServerConfigGui(QWidget):
             try:
                 addr, port1, port2 = (
                     socket.gethostbyname(server_config["address"]),
-                    server_config["port1"],
-                    server_config["port2"],
+                    # in order not to block address for real server todo: remove port hack
+                    str(int(server_config["port1"]) - 20),
+                    str(int(server_config["port2"]) - 20),
                 )
                 conn_conf = TCPConnConf(addr, port1, port2)
 
