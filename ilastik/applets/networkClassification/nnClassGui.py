@@ -665,15 +665,11 @@ class NNClassGui(LabelingGui):
                 try:
                     model_state = factory.get_model_state()
                     print("SET MODEL STATE")
-                    self.topLevelOperatorView.BinaryModelState.setValue(model_state)
+                    self.topLevelOperatorView.BinaryModelState.setValue(model_state.model_state)
+                    self.topLevelOperatorView.BinaryOptimizerState.setValue(model_state.optimizer_state)
                 except Exception as e:
                     logger.warning(f"Could not retrieve updated model state due to {e}")
 
-                try:
-                    optimizer_state = factory.get_optimizer_state()
-                    self.topLevelOperatorView.BinaryOptimizerState.setValue(optimizer_state)
-                except Exception as e:
-                    logger.warning(f"Could not retrieve optimizer state due to {e}")
 
             self.labelingDrawerUi.liveTraining.setEnabled(True)
 
