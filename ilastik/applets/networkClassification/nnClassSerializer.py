@@ -25,7 +25,8 @@ from ilastik.applets.base.appletSerializer import (
     SerialListSlot,
     SerialDictSlot,
     SerialBlockSlot,
-    BinarySlot,
+    SerialPickleableSlot,
+    BinarySlot
 )
 
 import logging
@@ -54,6 +55,8 @@ class NNClassificationSerializer(AppletSerializer):
             BinarySlot(topLevelOperator.BinaryModel),
             BinarySlot(topLevelOperator.BinaryModelState),
             BinarySlot(topLevelOperator.BinaryOptimizerState),
+            BinarySlot(topLevelOperator.BinaryOptimizerState),
+            SerialPickleableSlot(topLevelOperator.Checkpoints, version=4),
         ]
 
         super().__init__(projectFileGroupName, slots)

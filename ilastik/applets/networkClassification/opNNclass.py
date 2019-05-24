@@ -55,7 +55,6 @@ class OpTiktorchFactory(Operator):
             if self.ServerConfig.value == self.__conf:
                 return
 
-        print("SETUP OUTPUTS", self.__conf, self.ServerConfig.value, self.__conf == self.ServerConfig.value)
         tiktorch = TikTorchLazyflowClassifierFactory(self.ServerConfig.value)
         self.__conf = self.ServerConfig.value
         self.Tiktorch.setValue(tiktorch)
@@ -74,9 +73,12 @@ class OpModel(Operator):
 
     TiktorchModel = OutputSlot()  #  OpTiktorchFactory.TikTorch
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._model_binary = None
+
     def setupOutputs(self):
         tiktorch = self.TiktorchFactory.value
-        print("OP MODEL")
 
         # todo: Deserialize sequences as tuple of ints, not as numpy.ndarray
         # (which is a weird, implicit default in SerialDictSlot)
@@ -94,11 +96,13 @@ class OpModel(Operator):
             return good
 
         tiktorch_config = make_good(self.TiktorchConfig.value)
-        model_state = self.BinaryModelState.value
-        opt_state = self.BinaryOptimizerState.value
+
+        model_binary = bytes(self.BinaryModel.value)
+        model_state = bytes(self.BinaryModelState.value)
+        opt_state = bytes(self.BinaryOptimizerState.value)
 
         exept = tiktorch.load_model(
-            tiktorch_config, bytes(self.BinaryModel.value), bytes(model_state), bytes(opt_state)
+            tiktorch_config, model_binary, model_state, opt_state)
         )
         if exept is None:
             self.TiktorchModel.setValue(tiktorch)
@@ -132,6 +136,7 @@ class OpNNClassification(Operator):
     # Graph inputs
     InputImages = InputSlot(level=1)
     ServerConfig = InputSlot()
+    Checkpoints = InputSlot()
 
     NumClasses = InputSlot(optional=True)
     LabelInputs = InputSlot(optional=True, level=1)
@@ -191,6 +196,9 @@ class OpNNClassification(Operator):
         self.LabelNames.setValue([])
         self.LabelColors.setValue([])
         self.PmapColors.setValue([])
+
+        self.Checkpoints.setValue([])
+        self._binary_model = None
 
         # SPECIAL connection: the LabelInputs slot doesn't get it's data
         # from the InputImages slot, but it's shape must match.

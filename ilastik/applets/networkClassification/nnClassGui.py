@@ -234,36 +234,44 @@ class ValidationDlg(QDialog):
 
         self.close()
 
-# User clicks on button add_checkpont
-# add_checkpoint signal from widget triggers
-# manager queries checkpoint source for state
-# after retriaval
-# adds entry to checkpoint widget
-# and entry to its table
-
 
 class CheckpointManager:
-    def __init__(self, widget, get_state, load_state):
+    def __init__(self, widget, get_state, load_state, added, data):
         self._checkpoint_by_idx = {}
+
         self._get_state = get_state
         self._load_state = load_state
+        self._added = added
+
         self._widget = widget
         self._widget.add_clicked.connect(self._add)
         self._widget.remove_clicked.connect(self._remove)
         self._widget.load_clicked.connect(self._load)
 
+        self._load_data(data)
         self._count = 0
+
+    def setData(self, data):
+        self._load_data(data)
+
+    def _load_data(self, data):
+        self._widget.clear()
+        self._checkpoint_by_idx = {}
+        for entry in data:
+            idx = self._widget.add_item(entry['name'])
+            self._checkpoint_by_idx[idx] = entry
 
     def _add(self):
         state = self._get_state()
         self._count += 1
-        name = f"name {self._count}"
+        name = f"{self._count}: Epoch: {state.epoch}. Loss: {state.loss}"
 
         idx = self._widget.add_item(name)
         self._checkpoint_by_idx[idx] = {
             'name': name,
             'state': state,
         }
+        self._added(self._checkpoint_by_idx.values())
 
     def _remove(self, removed_idx):
         del self._checkpoint_by_idx[removed_idx]
@@ -272,8 +280,7 @@ class CheckpointManager:
     def _load(self, load_idx):
         if load_idx.isValid():
             val = self._checkpoint_by_idx[load_idx]
-            print("LOADING...", val)
-            self._load_state(val['state'])
+            self._load_state(val['state'].model_state)
 
 
 class CheckpointWidget(QWidget):
@@ -281,9 +288,8 @@ class CheckpointWidget(QWidget):
     remove_clicked = pyqtSignal(QPersistentModelIndex)
     load_clicked = pyqtSignal(QPersistentModelIndex)
 
-    def __init__(self, *, parent, add, remove, load, view, data=None):
+    def __init__(self, *, parent, add, remove, load, view):
         super().__init__(parent=parent)
-        self._data = data or {}
 
         self._add_btn = add
         self._remove_btn = remove
@@ -296,6 +302,9 @@ class CheckpointWidget(QWidget):
         self._add_btn.clicked.connect(self.add_clicked)
         self._remove_btn.clicked.connect(self._remove_click)
         self._load_btn.clicked.connect(self._load_click)
+
+    def clear(self):
+        self._model.setStringList([])
 
     def add_item(self, name: str) -> QPersistentModelIndex:
         self._model.insertRow(0)
@@ -388,6 +397,12 @@ class NNClassGui(LabelingGui):
         factory = self.topLevelOperatorView.ClassifierFactory[:].wait()[0]
         return factory.get_model_state()
 
+    def _added(self, snapshot):
+        self.topLevelOperatorView.Checkpoints.setValue(list(snapshot))
+
+    def checkpoints_dirty(self, slot, roi):
+        self.checkpoint_mng.setData(slot.value)
+
     def _initCheckpointActions(self):
         self.checkpoint_widget = CheckpointWidget(
             parent=self,
@@ -396,10 +411,13 @@ class NNClassGui(LabelingGui):
             load=self.labelingDrawerUi.loadCheckpoint,
             view=self.labelingDrawerUi.checkpointList,
         )
+        self.topLevelOperatorView.Checkpoints.notifyDirty(self.checkpoints_dirty)
         self.checkpoint_mng = CheckpointManager(
             self.checkpoint_widget,
             self._get_model_state,
-            self._load_checkpoint
+            self._load_checkpoint,
+            self._added,
+            data=self.topLevelOperatorView.Checkpoints.value,
         )
 
     def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None):
