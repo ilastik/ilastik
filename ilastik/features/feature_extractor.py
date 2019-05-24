@@ -64,7 +64,7 @@ class FeatureExtractor(ABC):
 
 class FlatChannelwiseFilter(FeatureExtractor):
     """A Feature extractor with a 2D kernel that computes independently for every
-    physical slice and for every channel in its input"""
+    spatial slice and for every channel in its input"""
 
     def __init__(self, stack_axis:str='z'):
         super().__init__()
@@ -116,7 +116,7 @@ class FeatureExtractorCollection(FeatureExtractor):
         return roi.shape.with_coord(c=channel_size)
 
     @functools.lru_cache()
-    def compute(self, roi:DataSourceSlice, out:Array5D=None) -> Array5D:
+    def compute(self, roi:DataSourceSlice, out:Array5D=None) -> FeatureData:
         data = roi.retrieve(self.halo)
         target = out or self.allocate_for(roi)
         assert target.shape == self.get_expected_shape(roi)
