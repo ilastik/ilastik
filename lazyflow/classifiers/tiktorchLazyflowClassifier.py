@@ -41,6 +41,7 @@ from tiktorch.rpc import Client, TCPConnConf
 from .lazyflowClassifier import LazyflowOnlineClassifier
 from types import SimpleNamespace
 
+from vigra import AxisTags
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ class ReorderAxes:
         self._op = OpReorderAxes(graph=Graph())
         self._op.AxisOrder.setValue(axes_order)
 
-    def reorder(self, input_arr: numpy.ndarray, axes_tags: str):
+    def reorder(self, input_arr: numpy.ndarray, axes_tags: AxisTags):
         tagged_arr = vigra.VigraArray(input_arr, axistags=axes_tags)
         self._op.Input.setValue(tagged_arr)
         return self._op.Output([]).wait()
@@ -65,9 +66,9 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
 
     def load_model(self, config: dict, binary_model: bytes, binary_state: bytes, binary_optimizer_state: bytes) -> Optional[Exception]:
         conf = self._model_conf = SimpleNamespace(**{"name": "tiktorch model", **config})
-        self._out_reorderer = ReorderAxes(conf.input_axis_order)
-        self._opReorderAxesInImg.AxisOrder.setValue(conf.input_axis_order)
-        self._opReorderAxesInLabel.AxisOrder.setValue(conf.input_axis_order)
+        # self._out_reorderer =
+        # self._opReorderAxesInImg.AxisOrder.setValue(conf.input_axis_order)
+        # self._opReorderAxesInLabel.AxisOrder.setValue(conf.input_axis_order)
         self.set_halo(conf.halo)
 
         logger.debug("loading tiktorch model with config: %s", config)
@@ -119,9 +120,9 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         # Privates
         self._tikTorchClassifier = None
         self._train_model = None
-        self._opReorderAxesInImg = OpReorderAxes(graph=Graph())
-        self._opReorderAxesInLabel = OpReorderAxes(graph=Graph())
-        self._opReorderAxesOut = OpReorderAxes(graph=Graph())
+        # self._opReorderAxesInImg = OpReorderAxes(graph=Graph())
+        # self._opReorderAxesInLabel = OpReorderAxes(graph=Graph())
+        # self._opReorderAxesOut = OpReorderAxes(graph=Graph())
 
         addr, port1, port2 = (
             socket.gethostbyname(server_config["address"]),
@@ -145,7 +146,8 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         self._devices = [d[0] for d in server_config["devices"] if d[2]]
 
     def _reorder_out(self, arr, axes_tags):
-        return self._out_reorderer.reorder(arr, axes_tags)
+        reorderer = ReorderAxes(self.model.input_axis_order)
+        return reorderer.reorder(arr, axes_tags)
 
     def shutdown(self):
         self._shutdown_sent = True
@@ -240,7 +242,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
 
     def estimated_ram_usage_per_requested_predictionchannel(self):
         # FIXME: compute from model size somehow??
-        return numpy.inf
+        return 128
 
     def __eq__(self, other):
         return isinstance(other, type(self))
@@ -268,10 +270,12 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
 
         roi = roi[:, [axistags.index(a) for a in output_axis_order]]
 
-        self._opReorderAxesInImg.Input.setValue(vigra.VigraArray(feature_image, axistags=axistags))
-        reordered_feature_image = self._opReorderAxesInImg.Output([]).wait()
+        inreorder = ReorderAxes(self.model.input_axis_order)
+        reordered_feature_image = inreorder.reorder(feature_image, axistags)
 
-        result = self.tikTorchClient.forward(NDArray(reordered_feature_image.astype(numpy.float32))).result().as_numpy()
+        # reordered_feature_image = self._opReorderAxesInImg.Output([]).wait()
+
+        result = self.tikTorchClient.forward(NDArray(reordered_feature_image)).result().as_numpy()
         logger.info(f"Obtained a predicted block of shape {result.shape}")
         if c_was_not_in_output_axis_order:
             result = result[None, ...]
@@ -303,11 +307,8 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
             f" result has shape: ({result.shape})."
         )
 
-        self._opReorderAxesOut.AxisOrder.setValue("".join(axistags.keys()))
-        self._opReorderAxesOut.Input.setValue(
-            vigra.VigraArray(result, axistags=vigra.defaultAxistags(output_axis_order))
-        )
-        return self._opReorderAxesOut.Output[:].wait()
+        outreorder = ReorderAxes("".join(axistags.keys()))
+        return outreorder.reorder(result, vigra.defaultAxistags(output_axis_order))
 
     @property
     def known_classes(self):
