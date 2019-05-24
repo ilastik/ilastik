@@ -200,7 +200,7 @@ class ServerConfigGui(QWidget):
                         for i in range(self.devices.count()):
                             d = self.devices.item(i)
                             available_devices.append(
-                                (d.text().split(" (")[0], d.text().split(" (")[1][:-1], d.checkState())
+                                (d.text().split(" (")[0], d.text().split(" (")[1][:-1], bool(d.checkState()))
                             )
                         config["devices"] = available_devices
                         self.devices.setEnabled(False)
