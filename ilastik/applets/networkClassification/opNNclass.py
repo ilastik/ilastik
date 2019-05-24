@@ -55,9 +55,14 @@ class OpTiktorchFactory(Operator):
             if self.ServerConfig.value == self.__conf:
                 return
 
-        tiktorch = TikTorchLazyflowClassifierFactory(self.ServerConfig.value)
-        self.__conf = self.ServerConfig.value
-        self.Tiktorch.setValue(tiktorch)
+        try:
+            tiktorch = TikTorchLazyflowClassifierFactory(self.ServerConfig.value)
+        except Exception as e:
+            logger.info("Could not statt Tiktorch server with %s", self.ServerConfig.value, exc_info=e)
+            self.Tiktorch.meta.NOTREADY = True
+        else:
+            self.__conf = self.ServerConfig.value
+            self.Tiktorch.setValue(tiktorch)
 
     def propagateDirty(self, slot, subindex, roi):
         # self.Tiktorch.setDirty(slice(None))
@@ -101,9 +106,7 @@ class OpModel(Operator):
         model_state = bytes(self.BinaryModelState.value)
         opt_state = bytes(self.BinaryOptimizerState.value)
 
-        exept = tiktorch.load_model(
-            tiktorch_config, model_binary, model_state, opt_state)
-        )
+        exept = tiktorch.load_model(tiktorch_config, model_binary, model_state, opt_state)
         if exept is None:
             self.TiktorchModel.setValue(tiktorch)
             try:
@@ -298,7 +301,9 @@ class OpNNClassification(Operator):
         model = self.BinaryModel.value
         self.set_classifier(config, model, model_state, optimizer_state)
 
-    def set_classifier(self, tiktorch_config: dict, model_file: bytes, model_state: bytes, optimizer_state: bytes) -> bool:
+    def set_classifier(
+        self, tiktorch_config: dict, model_file: bytes, model_state: bytes, optimizer_state: bytes
+    ) -> bool:
         # self.TiktorchConfig.disconnect()  # do not create TiktorchClassifierFactory with invalid intermediate settings
         # self.ClassifierFactory.disconnect()
         self.FreezePredictions.setValue(False)
@@ -467,7 +472,9 @@ class OpBlockShape(Operator):
         halo = tikmodel.halo  # total halo = 2 * halo per axis
         total_halo = 2 * numpy.array(halo)
         shrinkage = tikmodel.shrinkage
-        shrunk_valid_tczyx_shapes_wo_halo = [numpy.array(shape) - numpy.array(shrinkage) - total_halo for shape in valid_tczyx_shapes]
+        shrunk_valid_tczyx_shapes_wo_halo = [
+            numpy.array(shape) - numpy.array(shrinkage) - total_halo for shape in valid_tczyx_shapes
+        ]
         largest_valid_shape = shrunk_valid_tczyx_shapes_wo_halo[-1]
 
         blockDims = dict(zip("tczyx", largest_valid_shape))
