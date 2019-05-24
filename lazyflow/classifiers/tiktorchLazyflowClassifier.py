@@ -141,6 +141,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         self._shutdown_sent = False
 
         self._tikTorchClient = Client(INeuralNetworkAPI(), conn_conf)
+        assert all([isinstance(d[2], bool) for d in server_config["devices"]])
         self._devices = [d[0] for d in server_config["devices"] if d[2]]
 
     def _reorder_out(self, arr, axes_tags):
@@ -270,7 +271,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         self._opReorderAxesInImg.Input.setValue(vigra.VigraArray(feature_image, axistags=axistags))
         reordered_feature_image = self._opReorderAxesInImg.Output([]).wait()
 
-        result = self.tikTorchClient.forward(NDArray(reordered_feature_image)).result().as_numpy()
+        result = self.tikTorchClient.forward(NDArray(reordered_feature_image.astype(numpy.float32))).result().as_numpy()
         logger.info(f"Obtained a predicted block of shape {result.shape}")
         if c_was_not_in_output_axis_order:
             result = result[None, ...]
