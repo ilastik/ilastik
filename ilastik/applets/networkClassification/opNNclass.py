@@ -62,6 +62,7 @@ class OpTiktorchFactory(Operator):
             self.Tiktorch.meta.NOTREADY = True
         else:
             self.__conf = self.ServerConfig.value
+            self.Tiktorch.disconnect()
             self.Tiktorch.setValue(tiktorch)
 
     def propagateDirty(self, slot, subindex, roi):
