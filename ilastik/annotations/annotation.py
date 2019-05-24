@@ -11,6 +11,12 @@ from ilastik.data_source import DataSource, DataSourceSlice
 from PIL import Image as PilImage
 
 class Scribblings(ScalarImage):
+    """Single-channel image containing user scribblings"""
+
+    def __init__(self, arr:np.ndarray, axiskeys:str):
+        super().__init__(arr, axiskeys)
+        assert self.dtype == np.uint32
+
     def __hash__(self):
         return hash(self._data.tobytes())
 
@@ -20,6 +26,9 @@ class Scribblings(ScalarImage):
         return np.all(self._data == other._data)
 
 class LabelSamples(StaticLine):
+    """A single-channel array with a single spacial dimension containing integers
+    representing the class to which a pixel belongs"""
+
     @classmethod
     def create(cls, annotation: 'Annotation'):
         samples = annotation.sample_channels(annotation.as_mask())
@@ -30,12 +39,17 @@ class LabelSamples(StaticLine):
         return list(np.unique(self.linear_raw()))
 
 class FeatureSamples(FeatureData, StaticLine):
+    """A multi-channel array with a single spacial dimension, with eac channel
+    representing a feature calculated on top of a annotated pixel"""
+
     @classmethod
     def create(cls, scribblings: Scribblings, data: FeatureData):
         samples = data.sample_channels(scribblings.as_mask())
         return cls.fromArray5D(samples)
 
 class Samples:
+    """A mapping from pixel labels to pixel features"""
+
     def __init__(self, feature_samples:FeatureSamples, label_samples:LabelSamples):
         assert feature_samples.length == label_samples.length
         self.feature = feature_samples
@@ -58,8 +72,9 @@ class WrongShapeException(Exception):
         super().__init__(f"Annotations from {path} have bad shape: {data.shape}")
 
 class Annotation:
+    """User scribblings attached to the raw data onto which they were drawn"""
+
     def __init__(self, scribblings:Scribblings, raw_data:DataSource, offset:Point5D=Point5D.zero()):
-        assert scribblings.dtype == np.uint32
         assert offset.c == 0
 
         self.data_roi = scribblings.shape.to_slice_5d().offset(offset).with_full_c()

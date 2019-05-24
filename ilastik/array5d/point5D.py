@@ -215,7 +215,9 @@ class Shape5D(Point5D):
         return cls(**{k:v or 1 for k, v in point.to_dict().items()})
 
 class Slice5D(JsonSerializable):
-    SLICE_DTYPE = np.uint64
+    """A labeled 5D slice"""
+
+    SLICE_DTYPE = np.int64
 
     @classmethod
     def ensure_slice(cls, slc):
@@ -411,7 +413,7 @@ class Slice5D(JsonSerializable):
     def offset(self, offset:Point5D):
         return self.from_start_stop(self.start + offset, self.stop + offset)
 
-    def to_slices(self, axis_order=Point5D.LABELS, dtype=SLICE_DTYPE):
+    def to_slices(self, axis_order:str=Point5D.LABELS, dtype=SLICE_DTYPE):
         slices = []
         for axis in axis_order:
             slc = self._slices[axis]

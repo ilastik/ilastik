@@ -1,5 +1,5 @@
 import itertools
-from typing import Iterator, List
+from typing import Iterator, List, Tuple
 from collections import OrderedDict
 
 import numpy as np
@@ -75,6 +75,9 @@ class RawShape:
         return RawShape(self.shape, **d)
 
 class Array5D:
+    """A wrapper around np.ndarray with labeled axes. Enforces 5D, even if some
+    dimensions are of size 1. Sliceable with Slice5D's"""
+
     def __init__(self, arr:np.ndarray, axiskeys:str):
         assert len(arr.shape) == len(axiskeys)
         missing_keys = [key for key in Point5D.LABELS if key not in axiskeys]
@@ -99,10 +102,6 @@ class Array5D:
             arr._data[...] = value
         return arr
 
-    @classmethod
-    def from_int(cls, value) -> 'Array5D':
-        return cls.allocate(Shape5D(), dtype=self.dtype, value=value)
-
     @property
     def dtype(self):
         return self._data.dtype
@@ -120,7 +119,7 @@ class Array5D:
         return self.rawshape
 
     @property
-    def _shape(self):
+    def _shape(self) -> Tuple:
         return self._data.shape
 
     @property
@@ -180,6 +179,9 @@ class Array5D:
         return self.rebuild(moved_arr, axiskeys=self.rawshape.swapped(source, destination).axiskeys)
 
     def raw(self, axiskeys:str) -> np.ndarray:
+        """Returns a raw view of the underlying np.ndarray, containing only the axes
+        identified by and ordered like 'axiskeys'"""
+
         assert all(self.shape[axis] == 1 for axis in Point5D.LABELS if axis not in axiskeys)
         swapped = self.reordered(axiskeys)
 
@@ -235,6 +237,8 @@ class Array5D:
         return np.all(self._data == other._data)
 
 class StaticData(Array5D):
+    """An Array5D with a single time frame"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         assert self.shape.is_static
@@ -244,6 +248,8 @@ class StaticData(Array5D):
         return super().squeezed_shape.to_static()
 
 class ScalarData(Array5D):
+    """An Array5D with a single channel"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         assert self.shape.is_scalar
@@ -253,6 +259,8 @@ class ScalarData(Array5D):
         return super().squeezed_shape.to_scalar()
 
 class FlatData(Array5D):
+    """An Array5D with less than 3 spacial dimensions having a size > 1"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         assert self.shape.is_flat
@@ -262,6 +270,8 @@ class FlatData(Array5D):
         return super().squeezed_shape.to_planar()
 
 class LinearData(Array5D):
+    """An Array5D with at most 1 spacial dimension having size > 1"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         assert self.shape.is_line
@@ -275,6 +285,8 @@ class LinearData(Array5D):
         return super().squeezed_shape.to_linear()
 
 class Image(StaticData, FlatData):
+    """An Array5D representing a 2D image"""
+
     def channels(self) -> Iterator['ScalarImage']:
         for channel in super().channels():
             yield ScalarImage(channel._data, self.axiskeys)

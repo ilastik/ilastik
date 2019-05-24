@@ -14,7 +14,7 @@ from ilastik.annotations import Annotation, FeatureSamples, LabelSamples
 from ilastik.data_source import DataSource, DataSourceSlice
 
 class Predictions(Array5D):
-    """An array of floats from 0.0 to 1.0. Teh value in each channel represents
+    """An array of floats from 0.0 to 1.0. The value in each channel represents
     how likely that pixel is to belong to the classification class associated with
     that channel"""
     def as_uint8(self):
@@ -86,6 +86,8 @@ class PixelClassifier:
         return predictions, feature_data
 
 class StrictPixelClassifier(PixelClassifier):
+    """A PixelClassifier that does not admit data which does not match its FeatureExtractors"""
+
     def __init__(self, feature_extractor:FeatureExtractor, annotations:List[Annotation], *args, **kwargs):
         for annot in annotations:
             feature_extractor.ensure_applicable(annot.raw_data)

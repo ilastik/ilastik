@@ -26,6 +26,8 @@ class FeatureDataMismatchException(Exception):
         super().__init__(f"Feature {feature_extractor} can't be cleanly applied to {data_source}")
 
 class FeatureExtractor(ABC):
+    """A specification of how feature data is to be (reproducibly) computed"""
+
     def __hash__(self):
         return hash((self.__class__, tuple(self.__dict__.values())))
 
@@ -61,6 +63,9 @@ class FeatureExtractor(ABC):
         return self.kernel_shape // 2
 
 class FlatChannelwiseFilter(FeatureExtractor):
+    """A Feature extractor with a 2D kernel that computes independently for every
+    physical slice and for every channel in its input"""
+
     def __init__(self, stack_axis:str='z'):
         super().__init__()
         self.stack_axis = stack_axis
@@ -86,7 +91,7 @@ class FlatChannelwiseFilter(FeatureExtractor):
         return target
 
     @abstractmethod
-    def _compute_slice(self, raw_data:ScalarImage, out:Image):
+    def _compute_slice(self, raw_data_slice:DataSourceSlice, out:Image):
         pass
 
 class FeatureExtractorCollection(FeatureExtractor):

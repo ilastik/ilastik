@@ -5,16 +5,20 @@ from PIL import Image as PilImage
 import numpy as np
 
 import enum
-from enum import Enum
+from enum import IntEnum
 
 from ilastik.array5d import Array5D, Point5D, Shape5D, Slice5D
 from ilastik.utility import JsonSerializable
 
 @enum.unique
-class DataSourceAddressMode(Enum):
+class AddressMode(IntEnum):
     BLACK = 0
+    MIRROR = enum.auto()
+    WRAP = enum.auto()
 
 class DataSource(JsonSerializable):
+    """An entity able to retrieve raw Array5D's, usually from disk or network"""
+
     def __init__(self, url:str):
         self.url = url
 
@@ -56,7 +60,9 @@ class DataSource(JsonSerializable):
     def contains(self, slc:Slice5D) -> bool:
         return self.shape.to_slice_5d().contains(slc.defined_with(self.shape))
 
-    def retrieve(self, roi:Slice5D, halo:Point5D=Point5D.zero()) -> Array5D:
+    def retrieve(self, roi:Slice5D, halo:Point5D=Point5D.zero(), address_mode:AddressMode=AddressMode.BLACK) -> Array5D:
+        # FIXME: Remove address_mode or implement all variations and make feature extractors
+        # use te correct one
         roi = roi.defined_with(self.shape)
         assert self.shape.to_slice_5d().contains(roi)
         haloed_roi = roi.enlarged(halo)
@@ -85,8 +91,6 @@ class DataSource(JsonSerializable):
         return self.__getstate__()
 
 class DataSourceSlice(Slice5D):
-    """A Slice5D tied to a DataSource"""
-
     def __init__(self, data_source:DataSource, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
         super().__init__(t=t, c=c, x=x, y=y, z=z)
         self.data_source = data_source
@@ -117,6 +121,8 @@ class DataSourceSlice(Slice5D):
         return super().mod_tile(tile_shape or self.data_source.tile_shape)
 
 class FlatDataSource(DataSource):
+    """A naive implementation o DataSource that can read images using PIL"""
+
     def __init__(self, url:str):
         super().__init__(url)
         raw_data = np.asarray(PilImage.open(url))
