@@ -117,7 +117,7 @@ class FeatureExtractorCollection(FeatureExtractor):
 
     @functools.lru_cache()
     def compute(self, roi:DataSource, out:Array5D=None) -> FeatureData:
-        data = roi.retrieve(self.halo)
+        data = roi.enlarged(self.halo).retrieve()
         target = out or self.allocate_for(roi)
         assert target.shape == self.get_expected_shape(roi)
 

@@ -66,13 +66,12 @@ class DataSource(Slice5D):
     def retrieve(self, halo:Point5D=Point5D.zero(), address_mode:AddressMode=AddressMode.BLACK) -> Array5D:
         # FIXME: Remove address_mode or implement all variations and make feature extractors
         # use te correct one
-        haloed_roi = self.enlarged(halo)
-        out = Array5D.allocate(haloed_roi.shape, dtype=self.dtype, value=0)
+        out = Array5D.allocate(self.shape, dtype=self.dtype, value=0)
 
-        data_roi = haloed_roi.clamped(self.full_shape.to_slice_5d())
+        data_roi = self.clamped(self.full_shape.to_slice_5d())
         data = data_roi.do_retrieve()
 
-        offset = data_roi.start - haloed_roi.start
+        offset = data_roi.start - self.start
         out.set_slice(data, slc=data.shape.to_slice_5d().offset(offset))
         return out #TODO: make slice read-only
 
