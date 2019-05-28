@@ -27,7 +27,7 @@ class JsonSerializable(ABC):
         this_params = {}
         for name, parameter in signature(cls).parameters.items():
             assert parameter.annotation != inspect._empty
-            if isinstance(parameter.annotation, JsonSerializable):
+            if issubclass(parameter.annotation, JsonSerializable):
                 this_params[name] = parameter.annotation.from_json(data[name])
             else:
                 this_params[name] = data[name]
