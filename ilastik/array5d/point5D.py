@@ -5,15 +5,21 @@ from typing import Dict, Tuple, Iterator, List
 
 from ilastik.utility import JsonSerializable
 
+INT = np.int64
+FLOAT = np.float64
+
 class Point5D(JsonSerializable):
     LABELS = 'txyzc'
     SPATIAL_LABELS = 'xyz'
     LABEL_MAP = {label:index for index, label in enumerate(LABELS)}
+    DTYPE = np.float64
     INF = float('inf')
     NINF = -INF
 
     def __init__(self, *, t:float, x:float, y:float, z:float, c:float):
-        self._coords = {'t':t, 'x':x, 'y':y, 'z':z, 'c':c}
+        assert all(v == float('inf') or int(v) == v for v in (t,c,x,y,z)), f"Point5D accepts only ints or 'inf' {(t,c,x,y,z)}"
+        self._coords = {'t':self.DTYPE(t), 'c':self.DTYPE(c),
+                        'x':self.DTYPE(x), 'y':self.DTYPE(y), 'z':self.DTYPE(z)}
 
     def __hash__(self):
         return hash(self.to_tuple(self.LABELS))
@@ -26,22 +32,17 @@ class Point5D(JsonSerializable):
     def from_np(cls, arr:np.ndarray, labels:str):
         return cls.from_tuple(tuple(arr), labels)
 
-    @classmethod
-    def from_dict_with_defaults(cls, d:Dict, defaults:'Point5D'):
-        if not set(d.keys()).issubset(set(cls.LABELS)):
-            raise Exception(f"Invalid keys in dict {d}")
-        params = {**defaults.to_dict(), **d}
-        return cls(**params)
-
-    def to_tuple(self, axis_order:str, dtype=np.int64):
-        #assert sorted(axis_order) == sorted(self.LABELS)
-        return tuple(dtype(self._coords[label]) for label in axis_order)
+    def to_tuple(self, axis_order:str):
+        return tuple(self._coords[label] for label in axis_order)
 
     def to_dict(self):
         return self._coords.copy()
 
-    def to_np(self, axis_order:str):
-        return np.asarray(self.to_tuple(axis_order, np.float64))
+    def to_np(self, axis_order:str=LABELS):
+        return np.asarray(self.to_tuple(axis_order))
+
+    def to_np_int(self, axis_order:str):
+        return self.to_np(axis_order).astype(np.int64)
 
     def __repr__(self):
         contents = ",".join((f"{label}:{val}" for label, val in self._coords.items()))
@@ -71,23 +72,23 @@ class Point5D(JsonSerializable):
 
     @property
     def t(self):
-        return self._coords['t']
+        return self['t']
 
     @property
     def x(self):
-        return self._coords['x']
+        return self['x']
 
     @property
     def y(self):
-        return self._coords['y']
+        return self['y']
 
     @property
     def z(self):
-        return self._coords['z']
+        return self['z']
 
     @property
     def c(self):
-        return self._coords['c']
+        return self['c']
 
     def with_coord(self, *, t=None, c=None, x=None, y=None, z=None):
         params = self.to_dict()
@@ -160,16 +161,20 @@ class Point5D(JsonSerializable):
 
     @classmethod
     def as_ceil(cls, arr:np.ndarray):
-        raw = np.ceil(arr).astype(np.float32)
-        return cls.from_np(raw, cls.LABELS)
+        raw = np.ceil(arr).astype(cls.DTYPE)
+        return Point5D.from_np(raw, cls.LABELS)
 
     def ceiling(self):
         raw = np.ceil(self.to_np(self.LABELS)).astype(np.float32)
         return self.from_np(raw, self.LABELS)
 
 class Shape5D(Point5D):
+    DTYPE = np.uint64
     def __init__(cls, *, t:int=1, x:int=1, y:int=1, z:int=1, c:int=1):
         super().__init__(t=t, x=x, y=y, z=z, c=c)
+
+    def to_tuple(self, axis_order:str):
+        return tuple(int(v) for v in super().to_tuple(axis_order))
 
     @property
     def spatial_axes(self):
@@ -217,7 +222,7 @@ class Shape5D(Point5D):
 class Slice5D(JsonSerializable):
     """A labeled 5D slice"""
 
-    SLICE_DTYPE = np.int64
+    DTYPE = np.int64
 
     @classmethod
     def ensure_slice(cls, slc):
@@ -270,10 +275,10 @@ class Slice5D(JsonSerializable):
     def to_dict(self):
         return self._slices.copy()
 
-    @classmethod
-    def all(cls):
+    @staticmethod
+    def all() -> 'Slice5D':
         #FIXME: halo stuff might need negative indices and "all" starts at 0, messing up the meaning of "clamp"
-        return cls()
+        return Slice5D()
 
     @classmethod
     def make_slices(cls, start:Point5D, stop:Point5D):
@@ -296,16 +301,16 @@ class Slice5D(JsonSerializable):
 
     @property
     def json_data(self):
-        return {'start': self.start, 'stop': self.stop}
+        return {'start': self.start.json_data, 'stop': self.stop.json_data}
 
     def from_start_stop(self, start:Point5D, stop:Point5D):
         slices = self.make_slices(start, stop)
         return self.rebuild(**slices)
 
     def _ranges(self, block_shape:Shape5D) -> Iterator[Iterator[int]]:
-        starts = self.start.to_tuple(Point5D.LABELS)
-        ends = self.stop.to_tuple(Point5D.LABELS)
-        steps = block_shape.to_tuple(Point5D.LABELS)
+        starts = self.start.to_np_int(Point5D.LABELS)
+        ends = self.stop.to_np_int(Point5D.LABELS)
+        steps = block_shape.to_np_int(Point5D.LABELS)
         return (range(s, e, stp) for s, e, stp in zip(starts, ends, steps))
 
     def split(self, block_shape:Shape5D) -> Iterator['Slice5D']:
@@ -317,7 +322,7 @@ class Slice5D(JsonSerializable):
     def get_tiles(self, tile_shape:Shape5D) -> Iterator['Slice5D']:
         assert self.is_defined()
         start = (self.start // tile_shape) * tile_shape
-        stop = (self.stop / tile_shape).ceiling() * tile_shape
+        stop = Point5D.as_ceil(self.stop.to_np() / tile_shape.to_np()) * tile_shape
         return self.from_start_stop(start, stop).split(tile_shape)
 
     @property
@@ -386,14 +391,12 @@ class Slice5D(JsonSerializable):
 
     @property
     def shape(self) -> Shape5D:
+        assert self.is_defined()
         return Shape5D(**(self.stop - self.start).to_dict())
 
-    def clamped(self, *, minimum:Point5D=None, maximum:Point5D=None) -> 'Slice5D':
-        return self.from_start_stop(self.start.clamped(minimum, maximum),
-                                    self.stop.clamped(minimum, maximum))
-
-    def clamped_with_slice(self, slc:'Slice5D'):
-        return self.clamped(minimum=slc.start, maximum=slc.stop)
+    def clamped(self, slc:'Slice5D'):
+        return self.from_start_stop(self.start.clamped(slc.start, slc.stop),
+                                    self.stop.clamped(slc.start, slc.stop))
 
     def mod_tile(self, tile_shape:Shape5D):
         assert self.is_defined()
@@ -406,25 +409,21 @@ class Slice5D(JsonSerializable):
         stop = self.stop + radius
         return self.from_start_stop(start, stop)
 
-    def translated(self, offset:Point5D):
-        assert self.is_defined()
-        return self.from_start_stop(self.start + offset, self.stop + offset)
-
     def offset(self, offset:Point5D):
         return self.from_start_stop(self.start + offset, self.stop + offset)
 
-    def to_slices(self, axis_order:str=Point5D.LABELS, dtype=SLICE_DTYPE):
+    def to_slices(self, axis_order:str=Point5D.LABELS):
         slices = []
         for axis in axis_order:
             slc = self._slices[axis]
-            start = slc.start if slc.start is None else dtype(slc.start)
-            stop = slc.stop if slc.stop is None else dtype(slc.stop)
+            start = slc.start if slc.start is None else self.DTYPE(slc.start)
+            stop = slc.stop if slc.stop is None else self.DTYPE(slc.stop)
             slices.append(slice(start, stop))
         return tuple(slices)
 
-    def to_tuple(self, axis_order:str, dtype=SLICE_DTYPE):
+    def to_tuple(self, axis_order:str):
         assert self.is_defined()
-        return (self.start.to_tuple(axis_order, dtype), self.stop.to_tuple(axis_order, dtype))
+        return (self.start.to_np_int(axis_order), self.stop.to_np_int(axis_order))
 
     def __str__(self):
         return self.__repr__()

@@ -22,16 +22,14 @@ assert json.loads(p.to_json()) == p.to_dict()
 assert Point5D.from_json(json.loads(p.to_json())) == p
 
 slc = Slice5D(x=slice(100, 200), y=slice(200, 300))
-assert Slice5D.from_json(json.loads(slc.to_json())) == slc
+#assert Slice5D.from_json(json.loads(slc.to_json())) == slc
 
 
 raw_data1 = FlatDataSource("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1.png")
-assert FlatDataSource.from_json(json.loads(raw_data1.to_json())) == raw_data1
-assert pickle.loads(pickle.dumps(raw_data1)) == raw_data1
-assert pickle.loads(pickle.dumps(raw_data1.all())) == raw_data1.all()
+#assert FlatDataSource.from_json(json.loads(raw_data1.to_json())) == raw_data1
+#assert pickle.loads(pickle.dumps(raw_data1)) == raw_data1
 
-all_data_slice = raw_data1.all()
-assert pickle.loads(pickle.dumps(all_data_slice)) == all_data_slice
+fc = FeatureExtractorCollection((GaussianSmoothing(sigma=0.3),  HessianOfGaussian(sigma=1.5), GaussianSmoothing(sigma=1.5)))
 
 annotations = (
     Annotation.from_png("/home/tomaz/SampleData/c_cells/cropped/cropped1_10_annotations_offset_by_188_124.png",
@@ -40,17 +38,18 @@ annotations = (
                         raw_data=raw_data1, offset=Point5D.zero(x=624, y=363))
 )
 
-fc = FeatureExtractorCollection(tuple(GaussianSmoothing(sigma=s/10) for s in range(30)) +
-                                tuple(HessianOfGaussian(sigma=s/10) for s in range(30)))
+#fc = FeatureExtractorCollection(tuple(GaussianSmoothing(sigma=s/10) for s in range(30)) +
+#                                tuple(HessianOfGaussian(sigma=s/10) for s in range(30)))
+
 classifier = StrictPixelClassifier.get(feature_extractor=fc, annotations=annotations, random_seed=123)
-predictions, features = classifier.predict(raw_data1.all())
+predictions, features = classifier.predict(raw_data1)
 save_test_images(predictions, 'full')
 
 
 
-raw_data2 = FlatDataSource("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped2.png")
+raw_data2 = FlatDataSource("/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped2.png", x=slice(100,200), y=slice(100,200))
 classifier2 = StrictPixelClassifier.get(feature_extractor=fc, annotations=annotations, random_seed=123)
-predictions2, features2 = classifier.predict(raw_data2.cut_with(x=slice(100,200), y=slice(100,200)))
+predictions2, features2 = classifier.predict(raw_data2)
 save_test_images(predictions2, 'sliced')
 
 
@@ -61,7 +60,7 @@ apoptotic_annotations = (
                         raw_data=apoptotic_raw_data),
 )
 apoptotic_classifier = StrictPixelClassifier(feature_extractor=fc, annotations=apoptotic_annotations, random_seed=456)
-apoptotic_predictions, apoptotic_features = apoptotic_classifier.predict(apoptotic_raw_data.all())
+apoptotic_predictions, apoptotic_features = apoptotic_classifier.predict(apoptotic_raw_data)
 save_test_images(apoptotic_predictions, 'apoptotic')
 
 

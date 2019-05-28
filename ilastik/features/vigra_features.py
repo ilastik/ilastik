@@ -7,7 +7,7 @@ import numpy
 from .feature_extractor import FlatChannelwiseFilter, FeatureData
 from ilastik.array5d import Array5D, Image, ScalarImage
 from ilastik.array5d.point5D import Point5D, Slice5D, Shape5D
-from ilastik.data_source import DataSourceSlice
+from ilastik.data_source import DataSource
 
 class VigraChannelwiseFilter(FlatChannelwiseFilter):
     def __init__(self, sigma:float, window_size:float=0, stack_axis:str='z'):
@@ -30,7 +30,7 @@ class VigraChannelwiseFilter(FlatChannelwiseFilter):
         args[self.stack_axis] = 1
         return Shape5D(**args)
 
-    def _compute_slice(self, source_roi:DataSourceSlice, out:FeatureData):
+    def _compute_slice(self, source_roi:DataSource, out:FeatureData):
         source = ScalarImage.fromArray5D(source_roi.retrieve(self.halo))
         source_axes = source.squeezed_shape.axiskeys
         vigra_roi = out.shape.to_slice_5d().offset(self.halo).to_tuple(source_axes)

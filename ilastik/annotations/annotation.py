@@ -7,7 +7,7 @@ import numpy as np
 from ilastik.array5d import Slice5D, Point5D, Shape5D
 from ilastik.array5d import Array5D, Image, ScalarImage, StaticLine, LinearData
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
-from ilastik.data_source import DataSource, DataSourceSlice
+from ilastik.data_source import DataSource
 from PIL import Image as PilImage
 
 class Scribblings(ScalarImage):
@@ -82,9 +82,9 @@ class Annotation:
             raise ScribblingsOutOfBounds(scribblings=scribblings, raw_data=raw_data, offset=offset)
 
         self.scribblings = scribblings
-        self.raw_data = raw_data
+        self.raw_data = raw_data.full()
         self.offset = offset
-        self.raw_data_slice = raw_data.cut(self.data_roi)
+        self.raw_data_slice = self.raw_data.clamped(self.data_roi)
 
     @classmethod
     def from_png(cls, path:str, raw_data:DataSource, offset:Point5D=Point5D.zero()):
@@ -95,9 +95,9 @@ class Annotation:
         all_label_samples = []
         all_feature_samples = []
         for data_tile in self.raw_data_slice.get_tiles(): #tiling allows for caching of the features
-            scribbled_area = data_tile.clamped_with_slice(self.data_roi)
-            scribblings_roi = scribbled_area.offset(- self.offset).with_full_c()
-            feature_roi = scribbled_area.mod_tile().with_full_c()
+            scribbled_area = data_tile.clamped(self.data_roi)
+            scribblings_roi = scribbled_area.offset(- self.offset).roi.with_full_c()
+            feature_roi = scribbled_area.mod_tile().roi.with_full_c()
 
             scribblings_tile = self.scribblings.cut(scribblings_roi)
             feature_tile = feature_extractor.compute(data_tile).cut(feature_roi)

@@ -11,7 +11,7 @@ from vigra.learning import RandomForest
 from ilastik.array5d.array5D import Array5D, Slice5D, Point5D, Shape5D
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
 from ilastik.annotations import Annotation, FeatureSamples, LabelSamples
-from ilastik.data_source import DataSource, DataSourceSlice
+from ilastik.data_source import DataSource
 
 class Predictions(Array5D):
     """An array of floats from 0.0 to 1.0. The value in each channel represents
@@ -57,13 +57,13 @@ class PixelClassifier:
     def get(cls, *classifier_args, **classifier_kwargs):
         return cls(*classifier_args, **classifier_kwargs)
 
-    def get_expected_shape(self, data_slice:DataSourceSlice):
+    def get_expected_shape(self, data_slice:DataSource):
         return data_slice.shape.with_coord(c=self.num_classes)
 
-    def allocate_predictions(self, data_slice:DataSourceSlice):
+    def allocate_predictions(self, data_slice:DataSource):
         return Predictions.allocate(self.get_expected_shape(data_slice))
 
-    def predict(self, data_slice:DataSourceSlice, out:Predictions=None) -> Predictions:
+    def predict(self, data_slice:DataSource, out:Predictions=None) -> Predictions:
         feature_data = self.feature_extractor.compute(data_slice)
         predictions = out or self.allocate_predictions(data_slice)
         assert predictions.shape == self.get_expected_shape(data_slice)
@@ -93,6 +93,6 @@ class StrictPixelClassifier(PixelClassifier):
             feature_extractor.ensure_applicable(annot.raw_data)
         super().__init__(feature_extractor, annotations, *args, **kwargs)
 
-    def predict(self, data_slice:DataSourceSlice, out:Predictions=None) -> Predictions:
-        self.feature_extractor.ensure_applicable(data_slice.data_source)
+    def predict(self, data_slice:DataSource, out:Predictions=None) -> Predictions:
+        self.feature_extractor.ensure_applicable(data_slice)
         return super().predict(data_slice, out)

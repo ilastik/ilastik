@@ -10,7 +10,7 @@ import numpy as np
 
 from ilastik.array5d import Slice5D, Point5D, Shape5D
 from ilastik.array5d import Array5D, Image, ScalarImage, LinearData
-from ilastik.data_source import DataSource, DataSourceSlice
+from ilastik.data_source import DataSource
 
 class FeatureData(Array5D):
     def __init__(self, arr:np.ndarray, axiskeys:str):
@@ -34,24 +34,24 @@ class FeatureExtractor(ABC):
     def __eq__(self, other):
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
 
-    def allocate_for(self, roi:DataSourceSlice) -> Array5D:
+    def allocate_for(self, roi:DataSource) -> Array5D:
         #FIXME: vigra needs C to be the last REAL axis rather than the last axis of the view -.-
         return FeatureData.allocate(self.get_expected_shape(roi), dtype=np.float32, axiskeys='tzxyc')
 
     @abstractmethod
-    def get_expected_shape(self, roi:DataSourceSlice) -> Shape5D:
+    def get_expected_shape(self, roi:DataSource) -> Shape5D:
         pass
 
     @abstractmethod
-    def compute(self, roi:DataSourceSlice, out:Array5D=None) -> Array5D:
+    def compute(self, roi:DataSource, out:Array5D=None) -> Array5D:
         pass
 
-    def is_applicable_to(self, data:DataSource) -> bool:
-        return data.shape >= self.kernel_shape
+    def is_applicable_to(self, data_slice:DataSource) -> bool:
+        return data_slice.shape >= self.kernel_shape
 
-    def ensure_applicable(self, data_source:DataSource):
-        if not self.is_applicable_to(data_source):
-            raise FeatureDataMismatchException(self, data_source)
+    def ensure_applicable(self, data_slice:DataSource):
+        if not self.is_applicable_to(data_slice):
+            raise FeatureDataMismatchException(self, data_slice)
 
     @property
     @abstractmethod
@@ -76,11 +76,11 @@ class FlatChannelwiseFilter(FeatureExtractor):
         "Number of channels emited by this feature extractor for each input channel"
         pass
 
-    def get_expected_shape(self, roi:DataSourceSlice) -> Shape5D:
+    def get_expected_shape(self, roi:DataSource) -> Shape5D:
         num_output_channels = roi.shape.c * self.dimension
         return roi.shape.with_coord(c=num_output_channels)
 
-    def compute(self, roi:DataSourceSlice, out:Array5D=None) -> FeatureData:
+    def compute(self, roi:DataSource, out:Array5D=None) -> FeatureData:
         target = out or self.allocate_for(roi) #N.B.: target has no halo
         assert target.shape == self.get_expected_shape(roi)
 
@@ -91,7 +91,7 @@ class FlatChannelwiseFilter(FeatureExtractor):
         return target
 
     @abstractmethod
-    def _compute_slice(self, raw_data_slice:DataSourceSlice, out:Image):
+    def _compute_slice(self, raw_data:DataSource, out:Image):
         pass
 
 class FeatureExtractorCollection(FeatureExtractor):
@@ -111,12 +111,12 @@ class FeatureExtractorCollection(FeatureExtractor):
     def kernel_shape(self):
         return self._kernel_shape
 
-    def get_expected_shape(self, roi:DataSourceSlice) -> Shape5D:
+    def get_expected_shape(self, roi:DataSource) -> Shape5D:
         channel_size = sum(f.get_expected_shape(roi).c for f in self.features)
         return roi.shape.with_coord(c=channel_size)
 
     @functools.lru_cache()
-    def compute(self, roi:DataSourceSlice, out:Array5D=None) -> FeatureData:
+    def compute(self, roi:DataSource, out:Array5D=None) -> FeatureData:
         data = roi.retrieve(self.halo)
         target = out or self.allocate_for(roi)
         assert target.shape == self.get_expected_shape(roi)
