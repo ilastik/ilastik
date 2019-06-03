@@ -157,7 +157,7 @@ def main(parsed_args, workflow_cmdline_args=[], init_logging=True):
         os.path.join(this_path, "..%s.." % os.path.sep))
     _import_h5py_with_utf8_encoding()
     _update_debug_mode(parsed_args)
-    _update_hbp_mode(parsed_args)
+    ilastik_config.set('ilastik', 'hbp', 'true')
 
     # If necessary, redirect stdout BEFORE logging is initialized
     _redirect_output(parsed_args)
@@ -266,12 +266,6 @@ def _update_debug_mode(parsed_args):
         # Make sure both are set.
         ilastik_config.set('ilastik', 'debug', 'true')
         parsed_args.debug = True
-
-
-def _update_hbp_mode(parsed_args):
-    """enable HBP-specific functionality"""
-    if parsed_args.hbp:
-        ilastik_config.set('ilastik', 'hbp', 'true')
 
 
 def _init_logging(parsed_args):
