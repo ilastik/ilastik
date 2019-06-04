@@ -64,7 +64,9 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
     VERSION = 1
     halo: Tuple[int, int, int, int, int]
 
-    def load_model(self, config: dict, binary_model: bytes, binary_state: bytes, binary_optimizer_state: bytes) -> Optional[Exception]:
+    def load_model(
+        self, config: dict, binary_model: bytes, binary_state: bytes, binary_optimizer_state: bytes
+    ) -> Optional[Exception]:
         conf = self._model_conf = SimpleNamespace(**{"name": "tiktorch model", **config})
         # self._out_reorderer =
         # self._opReorderAxesInImg.AxisOrder.setValue(conf.input_axis_order)
@@ -255,7 +257,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         :return: probabilities
         """
         assert isinstance(roi, numpy.ndarray)
-        logger.info("predict tile shape: %s (axistags: %r)", feature_image.shape, axistags)
+        logger.debug("predict tile shape: %s (axistags: %r)", feature_image.shape, axistags)
 
         # translate roi axes todo: remove with tczyx standard
         output_axis_order = self._model_conf.output_axis_order
@@ -273,7 +275,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         # reordered_feature_image = self._opReorderAxesInImg.Output([]).wait()
 
         result = self.tikTorchClient.forward(NDArray(reordered_feature_image)).result().as_numpy()
-        logger.info(f"Obtained a predicted block of shape {result.shape}")
+        logger.debug(f"Obtained a predicted block of shape {result.shape}")
         if c_was_not_in_output_axis_order:
             result = result[None, ...]
 
@@ -288,7 +290,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         channel_axis = output_axis_order.find("c")
         if result.shape[channel_axis] == 1:
             result = numpy.concatenate((result, 1 - result), axis=channel_axis)
-            logger.info(f"Changed shape of predicted block to {result.shape} by adding '1-p' channel")
+            logger.debug(f"Changed shape of predicted block to {result.shape} by adding '1-p' channel")
 
         # remove shrinkage and halo from roi
         logger.debug("roi %s\nhalo %s\nshrink %s", roi, halo, shrink)
@@ -299,7 +301,7 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         # select roi from result
         shape_wo_halo = result.shape
         result = result[roiToSlice(*roi)]
-        logger.info(
+        logger.debug(
             f"Selected roi (start: {roi[0]}, stop: {roi[1]}) from result without halo {shape_wo_halo}. Now"
             f" result has shape: ({result.shape})."
         )
