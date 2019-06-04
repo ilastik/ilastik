@@ -26,7 +26,7 @@ from ilastik.applets.base.appletSerializer import (
     SerialDictSlot,
     SerialBlockSlot,
     SerialPickleableSlot,
-    BinarySlot
+    BinarySlot,
 )
 
 import logging

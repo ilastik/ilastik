@@ -657,7 +657,7 @@ class NNClassGui(LabelingGui):
             if checked:
                 self.toggleLivePrediction(True)
                 factory.resume_training()
-                self.invalidatePredictionsTimer.start(20000)  # start updating regularly
+                self.invalidatePredictionsTimer.start(60000)  # start updating regularly
             else:
                 factory.pause_training()
                 self.invalidatePredictionsTimer.stop()
