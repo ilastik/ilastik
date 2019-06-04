@@ -208,9 +208,6 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
     def get_model_state(self):
         return self.tikTorchClient.get_model_state()
 
-    def get_optimizer_state(self):
-        return self.tikTorchClient.get_optimizer_state()
-
     @staticmethod
     def get_view_with_axes(in_array: numpy.ndarray, in_axiskeys: str, out_axiskeys: str) -> vigra.VigraArray:
         """
