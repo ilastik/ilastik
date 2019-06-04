@@ -55,7 +55,6 @@ class NNClassificationSerializer(AppletSerializer):
             BinarySlot(topLevelOperator.BinaryModel),
             BinarySlot(topLevelOperator.BinaryModelState),
             BinarySlot(topLevelOperator.BinaryOptimizerState),
-            BinarySlot(topLevelOperator.BinaryOptimizerState),
             SerialPickleableSlot(topLevelOperator.Checkpoints, version=4),
         ]
 
