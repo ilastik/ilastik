@@ -20,6 +20,7 @@
 ###############################################################################
 import os
 import logging
+
 from functools import partial
 from collections import OrderedDict
 
@@ -55,6 +56,7 @@ from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import PreferencesManager
 
 from tiktorch.types import ModelState
+from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
 
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 
@@ -667,8 +669,13 @@ class NNClassGui(LabelingGui):
                 try:
                     model_state = factory.get_model_state()
                     print("SET MODEL STATE")
+                    config = self.topLevelOperatorView.TikTorchConfig.value
+                    config[TRAINING][NUM_ITERATIONS_DONE] = model_state.num_iterations_done
+                    config[TRAINING][NUM_ITERATIONS_MAX] = model_state.num_iterations_max
+                    self.topLevelOperatorView.TikTorchConfig.disconnect()
                     self.topLevelOperatorView.BinaryModelState.setValue(model_state.model_state)
                     self.topLevelOperatorView.BinaryOptimizerState.setValue(model_state.optimizer_state)
+                    self.topLevelOperatorView.TikTorchConfig.setValue(config)
                 except Exception as e:
                     logger.warning(f"Could not retrieve updated model state due to {e}")
 

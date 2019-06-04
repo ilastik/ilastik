@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+# 		   http://ilastik.org/license.html
 ###############################################################################
 from __future__ import division
 import argparse
@@ -48,8 +48,8 @@ class NNClassificationWorkflow(Workflow):
     defaultAppletIndex = 0  # show DataSelection by default
 
     DATA_ROLE_RAW = 0
-    ROLE_NAMES = ['Raw Data']
-    EXPORT_NAMES = ['Probabilities', 'Labels']
+    ROLE_NAMES = ["Raw Data"]
+    EXPORT_NAMES = ["Probabilities", "Labels"]
 
     @property
     def applets(self):
@@ -78,9 +78,9 @@ class NNClassificationWorkflow(Workflow):
 
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
-        parser.add_argument('--batch-size', help="choose the prefered batch size", type=int)
-        parser.add_argument('--halo-size', help="choose the prefered halo size", type=int)
-        parser.add_argument('--model-path', help="the neural network model for prediction")
+        parser.add_argument("--batch-size", help="choose the prefered batch size", type=int)
+        parser.add_argument("--halo-size", help="choose the prefered halo size", type=int)
+        parser.add_argument("--model-path", help="the neural network model for prediction")
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
@@ -109,14 +109,14 @@ class NNClassificationWorkflow(Workflow):
         self.nnClassificationApplet = NNClassApplet(self, "NNClassApplet")
         opClassify = self.nnClassificationApplet.topLevelOperator
 
-        self.dataExportApplet = NNClassificationDataExportApplet(self, 'Data Export')
+        self.dataExportApplet = NNClassificationDataExportApplet(self, "Data Export")
 
         # Configure global DataExport settings
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
         opDataExport.SelectionNames.setValue(self.EXPORT_NAMES)
-        opDataExport.PmapColors.connect( opClassify.PmapColors )
-        opDataExport.LabelNames.connect( opClassify.LabelNames )
+        opDataExport.PmapColors.connect(opClassify.PmapColors)
+        opDataExport.LabelNames.connect(opClassify.LabelNames)
 
         # self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
         # self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
@@ -202,14 +202,21 @@ class NNClassificationWorkflow(Workflow):
         batch_processing_busy = self.batchProcessingApplet.busy
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
-        self._shell.setAppletEnabled(self.serverConfigApplet, input_ready and not batch_processing_busy and not live_update_active)
-        self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and serverConfig_finished and not batch_processing_busy)
         self._shell.setAppletEnabled(
-            self.dataExportApplet, serverConfig_finished and predictions_ready and  not batch_processing_busy and not live_update_active
+            self.serverConfigApplet, input_ready and not batch_processing_busy and not live_update_active
+        )
+        self._shell.setAppletEnabled(
+            self.nnClassificationApplet, input_ready and serverConfig_finished and not batch_processing_busy
+        )
+        self._shell.setAppletEnabled(
+            self.dataExportApplet,
+            serverConfig_finished and predictions_ready and not batch_processing_busy and not live_update_active,
         )
 
         if self.batchProcessingApplet is not None:
-            self._shell.setAppletEnabled(self.batchProcessingApplet, serverConfig_finished and predictions_ready and not batch_processing_busy)
+            self._shell.setAppletEnabled(
+                self.batchProcessingApplet, serverConfig_finished and predictions_ready and not batch_processing_busy
+            )
 
         # Lastly, check for certain "busy" conditions, during which we
         #  should prevent the shell from closing the project.
@@ -230,7 +237,7 @@ class NNClassificationWorkflow(Workflow):
         """
         # Headless batch mode.
         if self._headless and self._batch_input_args and self._batch_export_args:
-            raise NotImplementedError('headless networkclassification not implemented yet!')
+            raise NotImplementedError("headless networkclassification not implemented yet!")
             self.dataExportApplet.configure_operator_with_parsed_args(self._batch_export_args)
 
             batch_size = self.parsed_args.batch_size
@@ -245,7 +252,7 @@ class NNClassificationWorkflow(Workflow):
 
                 self.nnClassificationApplet.topLevelOperator.BlockShape.setValue(input_shape)
                 self.nnClassificationApplet.topLevelOperator.NumClasses.setValue(
-                    model._tiktorch_net.get('num_output_channels')
+                    model._tiktorch_net.get("num_output_channels")
                 )
 
                 self.nnClassificationApplet.topLevelOperator.Classifier.setValue(model)
@@ -253,7 +260,6 @@ class NNClassificationWorkflow(Workflow):
             logger.info("Beginning Batch Processing")
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
-
 
     def getBlockShape(self, model, halo_size):
         """
@@ -263,16 +269,16 @@ class NNClassificationWorkflow(Workflow):
         input_shape = numpy.array(expected_input_shape)
 
         if not halo_size:
-            if 'output_size' in model._tiktorch_net._configuration:
+            if "output_size" in model._tiktorch_net._configuration:
                 # if the ouputsize of the model is smaller as the expected input shape
                 # the halo needs to be changed
-                output_shape = model._tiktorch_net.get('output_size')
+                output_shape = model._tiktorch_net.get("output_size")
                 if output_shape != input_shape:
                     self.halo_size = int((input_shape[1] - output_shape[1]) / 2)
                     model.HALO_SIZE = self.halo_size
                     print(self.halo_size)
 
-        if len(model._tiktorch_net.get('window_size')) == 2:
+        if len(model._tiktorch_net.get("window_size")) == 2:
             input_shape = numpy.append(input_shape, None)
         else:
 
@@ -282,6 +288,7 @@ class NNClassificationWorkflow(Workflow):
         input_shape[1:3] -= 2 * self.halo_size
 
         return input_shape
+
     # def getBlockShape(self, model, halo_size):
     #     """
     #     calculates the input Block shape

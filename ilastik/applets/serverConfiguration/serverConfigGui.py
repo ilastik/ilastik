@@ -266,6 +266,8 @@ class ServerConfigGui(QWidget):
                 assert self.remoteServerButton.isChecked()
                 self.topLevelOperator.setRemoteServerConfig(get_config(DEFAULT_REMOTE_SERVER_CONFIG.keys()))
 
+            self.parentApplet.appletStateUpdateRequested()
+
         self.saveButton.clicked.connect(save_button)
 
         self._init_applet_drawer_uic()
