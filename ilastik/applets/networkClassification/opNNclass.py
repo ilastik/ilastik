@@ -21,6 +21,7 @@
 from functools import partial
 import traceback as tb
 import numpy
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 from lazyflow.operators import (
@@ -36,6 +37,8 @@ from ilastik.utility import OpMultiLaneWrapper
 
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline, DatasetConstraintError
 from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_LOCAL_SERVER_CONFIG
+
+from tiktorch.types import ModelState
 
 import logging
 
@@ -297,17 +300,18 @@ class OpNNClassification(Operator):
 
                     s1.notifyRemoved(partial(removeSlot, s2))
 
-    def set_model_state(self, model_state: bytes, optimizer_state: bytes = b""):
+    def set_model_state(self, model_state: ModelState):
         config = self.TiktorchConfig.value
+        config["training"]["max_num_iterations"] = model_state.max_num_iterations
         model = self.BinaryModel.value
-        self.set_classifier(config, model, model_state, optimizer_state)
+        self.set_classifier(config, model, model_state.model_state, model_state.optimizer_state)
 
     def set_classifier(
         self, tiktorch_config: dict, model_file: bytes, model_state: bytes, optimizer_state: bytes
     ) -> bool:
         # self.TiktorchConfig.disconnect()  # do not create TiktorchClassifierFactory with invalid intermediate settings
         # self.ClassifierFactory.disconnect()
-        self.FreezePredictions.setValue(False)
+        # self.FreezePredictions.setValue(False)
         self.BinaryModel.setValue(model_file)
         self.BinaryModelState.setValue(model_state)
         self.BinaryOptimizerState.setValue(optimizer_state)

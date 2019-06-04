@@ -54,6 +54,8 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import PreferencesManager
 
+from tiktorch.types import ModelState
+
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 
 logger = logging.getLogger(__name__)
@@ -465,13 +467,13 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.AddLabelButton.setEnabled(False)
         self.labelingDrawerUi.AddLabelButton.hide()
 
-        def FreezePredDirty():
-            self.toggleLivePrediction(not self.topLevelOperatorView.FreezePredictions.value)
-
-        self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
-        self.__cleanup_fns.append(
-            partial(self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty))
-        )
+        # def FreezePredDirty():
+        #     self.toggleLivePrediction(not self.topLevelOperatorView.FreezePredictions.value)
+        #
+        # self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
+        # self.__cleanup_fns.append(
+        #     partial(self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty))
+        # )
 
         self.topLevelOperatorView.LabelNames.notifyDirty(bind(self.handleLabelSelectionChange))
         self.__cleanup_fns.append(
@@ -733,7 +735,7 @@ class NNClassGui(LabelingGui):
             self.parentApplet.appletStateUpdateRequested()
             self.labelingDrawerUi.addModel.setEnabled(True)
 
-    def _load_checkpoint(self, model_state: bytes):
+    def _load_checkpoint(self, model_state: ModelState):
         self.topLevelOperatorView.set_model_state(model_state)
 
     def add_NN_classifiers(self, folder_path):
