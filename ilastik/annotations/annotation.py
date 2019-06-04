@@ -13,8 +13,8 @@ from PIL import Image as PilImage
 class Scribblings(ScalarImage):
     """Single-channel image containing user scribblings"""
 
-    def __init__(self, arr:np.ndarray, axiskeys:str):
-        super().__init__(arr, axiskeys)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         assert self.dtype == np.uint32
 
     def __hash__(self):
@@ -24,6 +24,12 @@ class Scribblings(ScalarImage):
         if isinstance(other, Scribblings):
             return False
         return np.all(self._data == other._data)
+
+    def as_uint8(self):
+        return ScalarImage((self._data * 255).astype(np.uint8), axiskeys=self.axiskeys)
+
+    def show(self):
+        return self.as_uint8().show()
 
 class LabelSamples(StaticLine):
     """A single-channel array with a single spacial dimension containing integers
@@ -64,8 +70,8 @@ class Samples:
         return Samples(feature_samples=all_features, label_samples=all_labels)
 
 class ScribblingsOutOfBounds(Exception):
-    def __init__(self, scribblings:Scribblings, raw_data:DataSource, offset:Point5D):
-        super().__init__(f"Scribblings {scribblings} offset by {offset} exceeds bounds of raw_data {raw_data}")
+    def __init__(self, scribblings:Scribblings, raw_data:DataSource):
+        super().__init__(f"Scribblings {scribblings} exceeds bounds of raw_data {raw_data}")
 
 class WrongShapeException(Exception):
     def __init__(self, path:str, data:np.ndarray):
@@ -74,37 +80,28 @@ class WrongShapeException(Exception):
 class Annotation:
     """User scribblings attached to the raw data onto which they were drawn"""
 
-    def __init__(self, scribblings:Scribblings, raw_data:DataSource, offset:Point5D=Point5D.zero()):
-        assert offset.c == 0
-
-        self.data_roi = scribblings.shape.to_slice_5d().offset(offset).with_full_c()
-        if not raw_data.contains(self.data_roi):
-            raise ScribblingsOutOfBounds(scribblings=scribblings, raw_data=raw_data, offset=offset)
-
+    def __init__(self, scribblings:Scribblings, raw_data:DataSource):
+        if not raw_data.contains(scribblings.roi):
+            raise ScribblingsOutOfBounds(scribblings=scribblings, raw_data=raw_data)
         self.scribblings = scribblings
         self.raw_data = raw_data.full()
-        self.offset = offset
-        self.raw_data_slice = self.raw_data.clamped(self.data_roi)
 
     @classmethod
-    def from_png(cls, path:str, raw_data:DataSource, offset:Point5D=Point5D.zero()):
+    def from_png(cls, path:str, raw_data:DataSource, location:Point5D=Point5D.zero()):
         data = np.asarray(PilImage.open(path)).astype(np.uint32)
-        return cls(Scribblings(data, 'yx'), raw_data, offset=offset)
+        return cls(Scribblings(data, 'yx', location=location), raw_data)
 
     def get_samples(self, feature_extractor:FeatureExtractor) -> Samples:
         all_label_samples = []
         all_feature_samples = []
-        for data_tile in self.raw_data_slice.get_tiles(): #tiling allows for caching of the features
-            scribbled_area = data_tile.clamped(self.data_roi)
-            scribblings_roi = scribbled_area.offset(- self.offset).roi.with_full_c()
-            feature_roi = scribbled_area.mod_tile().roi.with_full_c()
-
-            scribblings_tile = self.scribblings.cut(scribblings_roi)
-            feature_tile = feature_extractor.compute(data_tile).cut(feature_roi)
+        annotated_roi = self.scribblings.roi.with_full_c()
+        for data_tile in self.raw_data.clamped(annotated_roi).get_tiles(): #tiling allows for caching of the features
+            scribblings_tile = self.scribblings.clamped(data_tile)
+            feature_tile = feature_extractor.compute(data_tile).clamped(scribblings_tile.roi.with_full_c())
 
             label_samples = LabelSamples.create(scribblings_tile)
             feature_samples = FeatureSamples.create(scribblings_tile, feature_tile)
-            assert feature_samples.shape.c == feature_extractor.get_expected_shape(data_tile).c
+            assert feature_samples.shape.c == feature_extractor.get_expected_roi(data_tile).shape.c
             all_label_samples.append(label_samples)
             all_feature_samples.append(feature_samples)
         return Samples(label_samples=all_label_samples[0].concatenate(*all_label_samples[1:]),

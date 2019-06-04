@@ -33,11 +33,10 @@ class VigraChannelwiseFilter(FlatChannelwiseFilter):
     def _compute_slice(self, source_roi:DataSource, out:FeatureData):
         source = ScalarImage.fromArray5D(source_roi.enlarged(self.halo).retrieve())
         source_axes = source.squeezed_shape.axiskeys
-        vigra_roi = out.shape.to_slice_5d().offset(self.halo).to_tuple(source_axes)
-        return self.filter_fn(source.raw(source_axes).astype(numpy.float32),
-                              sigma=self.sigma, window_size=self.window_size,
-                              out=out.raw(source_axes + 'c'),
-                              roi=vigra_roi)
+        source_raw = source.raw(source_axes).astype(numpy.float32)
+        target_raw = out.raw(source_axes + 'c').squeeze()
+        vigra_roi = out.shape.to_slice_5d().translated(self.halo).to_tuple(source_axes)
+        target_raw[...] = self.filter_fn(source_raw, sigma=self.sigma, window_size=self.window_size, roi=vigra_roi)
 
 #FIXME: Add appropriate "kernel_shape" property to filters
 class GaussianSmoothing(VigraChannelwiseFilter):

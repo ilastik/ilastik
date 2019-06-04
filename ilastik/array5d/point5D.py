@@ -48,9 +48,6 @@ class Point5D(JsonSerializable):
         contents = ",".join((f"{label}:{val}" for label, val in self._coords.items()))
         return f"{self.__class__.__name__}({contents})"
 
-    def __str__(self):
-        return self.__repr__()
-
     @classmethod
     def inf(cls, *, t:float=INF, x:float=INF, y:float=INF, z:float=INF, c:float=INF):
         return cls(t=t, x=x, y=y, z=z, c=c)
@@ -173,6 +170,10 @@ class Shape5D(Point5D):
     def __init__(cls, *, t:int=1, x:int=1, y:int=1, z:int=1, c:int=1):
         super().__init__(t=t, x=x, y=y, z=z, c=c)
 
+    def __repr__(self):
+        contents = ",".join((f"{label}:{val}" for label, val in self._coords.items() if val != 1))
+        return f"{self.__class__.__name__}({contents})"
+
     def to_tuple(self, axis_order:str):
         return tuple(int(v) for v in super().to_tuple(axis_order))
 
@@ -240,7 +241,7 @@ class Slice5D(JsonSerializable):
                                    for label, slc in self._slices.items()})
 
     def __eq__(self, other):
-        if not isinstance(other, self.__class__):
+        if not isinstance(other, Slice5D):
             return False
         return self._slices == other._slices
 
@@ -249,11 +250,6 @@ class Slice5D(JsonSerializable):
 
     def __hash__(self):
         return hash((self.start, self.stop))
-
-    def __eq__(self, other):
-        if not isinstance(other, Slice5D):
-            return False
-        return self._slices == other._slices
 
     def contains(self, other:'Slice5D'):
         assert other.is_defined()
@@ -381,14 +377,6 @@ class Slice5D(JsonSerializable):
             for plane in frame.planes(through_axis):
                 yield plane
 
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        return self.start == other.start and self.stop == other.stop
-
-    def __ne__(self, other):
-        return not self == other
-
     @property
     def shape(self) -> Shape5D:
         assert self.is_defined()
@@ -409,7 +397,7 @@ class Slice5D(JsonSerializable):
         stop = self.stop + radius
         return self.from_start_stop(start, stop)
 
-    def offset(self, offset:Point5D):
+    def translated(self, offset:Point5D):
         return self.from_start_stop(self.start + offset, self.stop + offset)
 
     def to_slices(self, axis_order:str=Point5D.LABELS):
@@ -425,8 +413,6 @@ class Slice5D(JsonSerializable):
         assert self.is_defined()
         return (self.start.to_np_int(axis_order), self.stop.to_np_int(axis_order))
 
-    def __str__(self):
-        return self.__repr__()
-
     def __repr__(self):
-        return str([self.start, self.stop])
+        assert all(int(v.start) == v.start and int(v.stop) == v.stop for v in self._slices.values() if v != slice(None))
+        return ','.join(f"{k}:{int(slc.start)}_{int(slc.stop)}" for k, slc in self._slices.items() if slc != slice(None))

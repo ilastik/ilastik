@@ -78,26 +78,28 @@ class Array5D:
     """A wrapper around np.ndarray with labeled axes. Enforces 5D, even if some
     dimensions are of size 1. Sliceable with Slice5D's"""
 
-    def __init__(self, arr:np.ndarray, axiskeys:str):
+    def __init__(self, arr:np.ndarray, axiskeys:str, location:Point5D=Point5D.zero()):
         assert len(arr.shape) == len(axiskeys)
         missing_keys = [key for key in Point5D.LABELS if key not in axiskeys]
         self._axiskeys = ''.join(missing_keys) + axiskeys
         assert sorted(self._axiskeys) == sorted(Point5D.LABELS)
         slices = tuple([np.newaxis for key  in missing_keys] + [...])
         self._data = arr[slices]
+        self.location = location
 
     @classmethod
-    def fromArray5D(cls, array):
-        return cls(array._data, array.axiskeys)
+    def fromArray5D(cls, array:'Array5D'):
+        return cls(array._data, array.axiskeys, array.location)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} {self.shape}>"
+        return f"<{self.__class__.__name__} {self.to_slice_5d()}>"
 
     @classmethod
-    def allocate(cls, shape:Shape5D, dtype, axiskeys:str=Point5D.LABELS, value:int=None):
+    def allocate(cls, slc:Slice5D, dtype, axiskeys:str=Point5D.LABELS, value:int=None):
         assert sorted(axiskeys) == sorted(Point5D.LABELS)
-        arr = np.empty(shape.to_tuple(axiskeys), dtype=dtype)
-        arr = cls(arr, axiskeys)
+        assert slc.is_defined() #FIXME: Create DefinedSlice class?
+        arr = np.empty(slc.shape.to_tuple(axiskeys), dtype=dtype)
+        arr = cls(arr, axiskeys, slc.start)
         if value is not None:
             arr._data[...] = value
         return arr
@@ -127,7 +129,7 @@ class Array5D:
         return Shape5D(**{key:value for key, value in zip(self.axiskeys, self._shape)})
 
     def iter_over(self, axis:str, step:int=1) -> Iterator['Array5D']:
-        for slc in self.shape.to_slice_5d().iter_over(axis, step):
+        for slc in self.roi.iter_over(axis, step):
             yield self.cut(slc)
 
     def frames(self) -> Iterator['Array5D']:
@@ -143,7 +145,7 @@ class Array5D:
         return self.iter_over('c', step=step)
 
     def images(self, through_axis='z') -> Iterator['Image']:
-        for image_slice in self.shape.to_slice_5d().images(through_axis):
+        for image_slice in self.roi.images(through_axis):
                 yield Image.fromArray5D(self.cut(image_slice))
 
     def as_mask(self) -> 'Array5D':
@@ -154,6 +156,9 @@ class Array5D:
         sampling_axes = self.with_c_as_last_axis().axiskeys
         raw_mask = mask.raw(sampling_axes.replace('c', ''))
         return StaticLine(self.raw(sampling_axes)[raw_mask], StaticLine.DEFAULT_AXES)
+
+    def setflags(self, *, write:bool):
+        self._data.setflags(write=write)
 
     def normalized(self, iteration_axes:str='tzc') -> 'Array5D':
         normalized = self.allocate(self.shape, self.dtype, self.axiskeys)
@@ -169,8 +174,9 @@ class Array5D:
                 dest_slice[...] = source_slice
         return normalized
 
-    def rebuild(self, arr:np.array, axiskeys:str) -> 'Array5D':
-        return self.__class__(arr, axiskeys)
+    def rebuild(self, arr:np.array, axiskeys:str, location:Point5D=None) -> 'Array5D':
+        location = self.location if location is None else location
+        return self.__class__(arr, axiskeys, location)
 
     def moveaxis(self, source:str, destination:str):
         source_indices = tuple(self.axiskeys.index(k) for k in source)
@@ -211,21 +217,33 @@ class Array5D:
 
         return self.rebuild(moved_arr, axiskeys=new_axes)
 
-    def cut_with(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
-        return self.cut(Slice5D(t=t, c=c, x=x, y=y, z=z))
+    def local_cut(self, roi:Slice5D, *, copy:bool=False) -> 'Array5D':
+        defined_roi = roi.defined_with(self.shape)
+        slices = defined_roi.to_slices(self.axiskeys)
+        if copy:
+            cut_data = np.copy(self._data[slices])
+        else:
+            cut_data = self._data[slices]
+        return self.rebuild(cut_data, self.axiskeys, location=self.location + defined_roi.start)
 
-    def cut(self, roi:Slice5D) -> 'Array5D':
-        slices = roi.to_slices(self.axiskeys)
-        return self.rebuild(self._data[slices], self.axiskeys)
+    def cut(self, roi:Slice5D, *, copy:bool=False) -> 'Array5D':
+        return self.local_cut(roi.translated(-self.location), copy=copy) #TODO: define before translate?
 
-    def set(self, value, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
-        slc = Slice5D(t=t, c=c, x=x, y=y, z=z)
-        self.set_slice(value, slc=slc)
+    def clamped(self, roi:Slice5D) -> 'Array5D':
+        return self.cut(self.roi.clamped(roi))
 
-    def set_slice(self, value, *, slc:Slice5D):
-        if isinstance(value, int):
-            value = self.from_int(value)
-        self.cut(slc).raw(Point5D.LABELS)[...] = value.raw(Point5D.LABELS)
+    def to_slice_5d(self):
+        return self.shape.to_slice_5d().translated(self.location)
+
+    @property
+    def roi(self):
+        return self.to_slice_5d()
+
+    def set(self, value:'Array5D', autocrop:bool=False):
+        if autocrop:
+            value_slc = value.roi.clamped(self.roi)
+            value = value.cut(value_slc)
+        self.cut(value.roi).raw(Point5D.LABELS)[...] = value.raw(Point5D.LABELS)
 
     def as_pil_images(self):
         return [img.as_pil_image() for img in self.images()]
@@ -293,8 +311,14 @@ class Image(StaticData, FlatData):
 
     def as_pil_image(self):
         assert self.dtype == np.uint8
-        raw_axis = 'yx' if self.shape.is_scalar else 'yxc'
-        return PilImage.fromarray(self.raw(raw_axis))
+        raw_axes = 'yx' if self.shape.is_scalar else 'yxc'
+        return PilImage.fromarray(self.raw(raw_axes))
+
+    def show(self):
+        for idx, img in enumerate(self.as_pil_images()):
+            path = f"/tmp/tmp_show_{idx}.png"
+            img.save(path)
+            import os; os.system(f"gimp {path}")
 
 class ScalarImage(Image, ScalarData):
     pass

@@ -21,8 +21,8 @@ class Predictions(Array5D):
         return Array5D((self._data * 255).astype(np.uint8), axiskeys=self.axiskeys)
 
     @classmethod
-    def allocate(cls, shape:Shape5D, dtype=np.float32, axiskeys:str=Point5D.LABELS, value:int=0):
-        return super().allocate(shape=shape, dtype=dtype, axiskeys=axiskeys, value=value)
+    def allocate(cls, slc:Slice5D, dtype=np.float32, axiskeys:str=Point5D.LABELS, value:int=0):
+        return super().allocate(slc, dtype=dtype, axiskeys=axiskeys, value=value)
 
 class PixelClassifier:
     def __init__(self, feature_extractor:FeatureExtractor, annotations:Tuple[Annotation],*,
@@ -57,16 +57,18 @@ class PixelClassifier:
     def get(cls, *classifier_args, **classifier_kwargs):
         return cls(*classifier_args, **classifier_kwargs)
 
-    def get_expected_shape(self, data_slice:DataSource):
-        return data_slice.shape.with_coord(c=self.num_classes)
+    def get_expected_roi(self, data_slice:DataSource):
+        c_start = data_slice.c.start
+        c_stop = c_start + self.num_classes
+        return data_slice.with_coord(c=slice(c_start, c_stop))
 
     def allocate_predictions(self, data_slice:DataSource):
-        return Predictions.allocate(self.get_expected_shape(data_slice))
+        return Predictions.allocate(self.get_expected_roi(data_slice))
 
     def predict(self, data_slice:DataSource, out:Predictions=None) -> Predictions:
         feature_data = self.feature_extractor.compute(data_slice)
         predictions = out or self.allocate_predictions(data_slice)
-        assert predictions.shape == self.get_expected_shape(data_slice)
+        assert predictions.roi == self.get_expected_roi(data_slice)
         raw_linear_predictions = predictions.linear_raw()
         lock = Lock()
 

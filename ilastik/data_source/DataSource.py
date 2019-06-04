@@ -29,6 +29,9 @@ class DataSource(Slice5D):
         self.roi = Slice5D(t=t, c=c, x=x, y=y, z=z).defined_with(self.full_shape)
         super().__init__(**self.roi.to_dict())
 
+    def __repr__(self):
+        return super().__repr__() + f"({self.url.split('/')[-1]})"
+
     def rebuild(self, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)) -> 'DataSource':
         return self.__class__(self.url, t=t, c=c, x=x, y=y, z=z)
 
@@ -36,9 +39,11 @@ class DataSource(Slice5D):
         return hash((self.url, self.roi))
 
     def __eq__(self, other):
-        if not isinstance(other, self.__class__):
+        if not super().__eq__(other):
             return False
-        return self.url == other.url and self.roi == other.roi
+        if isinstance(other, self.__class__):
+            return self.url == other.url
+        return True
 
     def full(self) -> 'DataSource':
         return self.__class__(self.url, **Slice5D.all().to_dict())
@@ -49,11 +54,8 @@ class DataSource(Slice5D):
         pass
 
     @abstractmethod
-    def do_retrieve(self) -> Array5D:
+    def get(self) -> Array5D:
         pass
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} {self.shape} from {self.url}>"
 
     def contains(self, slc:Slice5D) -> bool:
         return self.roi.contains(slc.defined_with(self.full_shape))
@@ -63,16 +65,17 @@ class DataSource(Slice5D):
         """A sensible tile shape. Override this with your data chunk size"""
         return Shape5D(x=2048, y=2048, c=self.shape.c)
 
-    def retrieve(self, halo:Point5D=Point5D.zero(), address_mode:AddressMode=AddressMode.BLACK) -> Array5D:
+    def clamped(self, slc:Slice5D=None) -> 'DataSource':
+        return super().clamped(slc or self.full())
+
+    def retrieve(self, address_mode:AddressMode=AddressMode.BLACK) -> Array5D:
         # FIXME: Remove address_mode or implement all variations and make feature extractors
         # use te correct one
-        out = Array5D.allocate(self.shape, dtype=self.dtype, value=0)
-
-        data_roi = self.clamped(self.full_shape.to_slice_5d())
-        data = data_roi.do_retrieve()
-
-        offset = data_roi.start - self.start
-        out.set_slice(data, slc=data.shape.to_slice_5d().offset(offset))
+        out = Image.allocate(self, dtype=self.dtype, value=0)
+        data_roi = self.clamped()
+        for tile in data_roi.get_tiles():
+            tile_data = tile.get()
+            out.set(tile_data, autocrop=True)
         return out #TODO: make slice read-only
 
     def get_tiles(self, tile_shape:Shape5D=None):
@@ -99,6 +102,10 @@ class FlatDataSource(DataSource):
         img = PilImage.open(url)
         return Shape5D(x=img.width, y=img.height, c=len(img.getbands()))
 
+    @property
+    def tile_shape(self):
+        return Shape5D(x=200, y=200, c=self.shape.c)
+
     def __init__(self, url:str, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
         raw_data = np.asarray(PilImage.open(url))
         axiskeys = 'yxc'[:len(raw_data.shape)]
@@ -109,5 +116,5 @@ class FlatDataSource(DataSource):
     def dtype(self):
         return self._data.dtype
 
-    def do_retrieve(self) -> Image:
-        return self._data.cut(self.roi)
+    def get(self) -> Image:
+        return self._data.cut(self.roi, copy=True)
