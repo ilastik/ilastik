@@ -630,6 +630,9 @@ class NNClassGui(LabelingGui):
 
         # If we're changing modes, enable/disable our controls and other applets accordingly
         if self.livePrediction != checked:
+            if checked:
+                self.updatePredictions()
+
             self.livePrediction = checked
             self.labelingDrawerUi.livePrediction.setChecked(checked)
             self.set_live_predict_icon(checked)
@@ -669,7 +672,7 @@ class NNClassGui(LabelingGui):
                 try:
                     model_state = factory.get_model_state()
                     print("SET MODEL STATE")
-                    config = self.topLevelOperatorView.TikTorchConfig.value
+                    config = self.topLevelOperatorView.TiktorchConfig.value
                     config[TRAINING][NUM_ITERATIONS_DONE] = model_state.num_iterations_done
                     config[TRAINING][NUM_ITERATIONS_MAX] = model_state.num_iterations_max
                     self.topLevelOperatorView.TikTorchConfig.disconnect()
