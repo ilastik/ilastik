@@ -15,12 +15,6 @@ from ilastik.annotations import Annotation
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier
 from ilastik.data_source import FlatDataSource
 
-def save_test_images(data:Array5D, prefix:str):
-    pil_images = [c.as_pil_image() for img in data.as_uint8().images() for c in img.channels()]
-    for idx, pi in enumerate(pil_images):
-        path = f"/tmp/intertest_{prefix}_{idx}.png"
-        pi.save(path)
-        import os; os.system(f"gimp {path}")
 
 p = Point5D(x=1, y=2, z=3, t=4, c=5)
 assert json.loads(p.to_json()) == p.to_dict()
@@ -86,7 +80,7 @@ with ThreadPoolExecutor() as executor:
 print(f"Ended predictions in {time.time() - t}")
 
 #apop_predictions, apop_features = apop_classifier.predict(apop_raw)
-save_test_images(apop_predictions, 'apoptotic')
+apop_predictions.show()
 
 
 print(f"Features cache info: {fc.compute.cache_info()}")

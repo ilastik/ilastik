@@ -17,12 +17,12 @@ class Predictions(Array5D):
     """An array of floats from 0.0 to 1.0. The value in each channel represents
     how likely that pixel is to belong to the classification class associated with
     that channel"""
-    def as_uint8(self):
-        return Array5D((self._data * 255).astype(np.uint8), axiskeys=self.axiskeys)
-
     @classmethod
     def allocate(cls, slc:Slice5D, dtype=np.float32, axiskeys:str=Point5D.LABELS, value:int=0):
         return super().allocate(slc, dtype=dtype, axiskeys=axiskeys, value=value)
+
+    def show(self):
+        return self.as_uint8().show_channels()
 
 class PixelClassifier:
     def __init__(self, feature_extractor:FeatureExtractor, annotations:Tuple[Annotation],*,

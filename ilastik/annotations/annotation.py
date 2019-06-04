@@ -26,11 +26,8 @@ class Scribblings(ScalarImage):
             return False
         return np.all(self._data == other._data)
 
-    def as_uint8(self):
-        return ScalarImage((self._data * 255).astype(np.uint8), axiskeys=self.axiskeys)
-
     def show(self):
-        return self.as_uint8().show()
+        return self.as_uint8(normalized=False).show()
 
 class LabelSamples(StaticLine):
     """A single-channel array with a single spacial dimension containing integers

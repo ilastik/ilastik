@@ -18,16 +18,8 @@ class FeatureData(Array5D):
         #FIXME:
         #assert arr.dtype == np.float32
 
-    def as_uint8(self):
-        return Array5D((self._data * 255).astype(np.uint8), axiskeys=self.axiskeys)
-
     def show(self):
-        for idx, channel in enumerate(next(self.as_uint8().images()).channels()):
-            path = f"/tmp/tmp_show_{idx}.png"
-            channel.as_pil_image().save(path)
-            import os; os.system(f"gimp {path}")
-
-
+        return self.as_uint8().show_channels()
 
 class FeatureDataMismatchException(Exception):
     def __init__(self, feature_extractor:'FeatureExtractor', data_source:DataSource):

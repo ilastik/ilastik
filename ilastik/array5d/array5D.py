@@ -1,9 +1,9 @@
 import itertools
 from typing import Iterator, List, Tuple
-from collections import OrderedDict
-
 import numpy as np
+import os
 from PIL import Image as PilImage
+import uuid
 
 from .point5D import Point5D, Slice5D, Shape5D
 
@@ -77,6 +77,8 @@ class RawShape:
 class Array5D:
     """A wrapper around np.ndarray with labeled axes. Enforces 5D, even if some
     dimensions are of size 1. Sliceable with Slice5D's"""
+    DISPLAY_IMAGE_PREFIX='/tmp/junk_test_image_'
+    os.system(f"rm -vf {DISPLAY_IMAGE_PREFIX}*")
 
     def __init__(self, arr:np.ndarray, axiskeys:str, location:Point5D=Point5D.zero()):
         assert len(arr.shape) == len(axiskeys)
@@ -254,6 +256,26 @@ class Array5D:
 
         return np.all(self._data == other._data)
 
+    def as_uint8(self, normalized=True):
+        multi = 255 if normalized else 1
+        return Array5D((self._data * multi).astype(np.uint8), axiskeys=self.axiskeys)
+
+    def _show(self):
+        path = f"{self.DISPLAY_IMAGE_PREFIX}_{uuid.uuid4()}.png"
+        self.as_pil_images()[0].save(path)
+        os.system(f"gimp {path}")
+
+    def show_images(self):
+        for img_idx, img in enumerate(self.images()):
+            for channel_idx, channel in enumerate(img.channels()):
+                channel._show()
+
+    def show_channels(self):
+        for img in self.images():
+            for channel in img.channels():
+                channel._show()
+
+
 class StaticData(Array5D):
     """An Array5D with a single time frame"""
 
@@ -313,12 +335,6 @@ class Image(StaticData, FlatData):
         assert self.dtype == np.uint8
         raw_axes = 'yx' if self.shape.is_scalar else 'yxc'
         return PilImage.fromarray(self.raw(raw_axes))
-
-    def show(self):
-        for idx, img in enumerate(self.as_pil_images()):
-            path = f"/tmp/tmp_show_{idx}.png"
-            img.save(path)
-            import os; os.system(f"gimp {path}")
 
 class ScalarImage(Image, ScalarData):
     pass
