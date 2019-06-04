@@ -186,7 +186,7 @@ class NNClassificationWorkflow(Workflow):
         input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
         opNNClassification = self.nnClassificationApplet.topLevelOperator
-        serverConfig_finished = opNNClassification.ClassifierFactory.ready()
+        serverConfig_finished = self.serverConfigApplet.topLevelOperator.ServerConfig.ready()
 
         opDataExport = self.dataExportApplet.topLevelOperator
 
@@ -203,13 +203,13 @@ class NNClassificationWorkflow(Workflow):
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not batch_processing_busy)
         self._shell.setAppletEnabled(self.serverConfigApplet, input_ready and not batch_processing_busy and not live_update_active)
-        self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and not batch_processing_busy)
+        self._shell.setAppletEnabled(self.nnClassificationApplet, input_ready and serverConfig_finished and not batch_processing_busy)
         self._shell.setAppletEnabled(
-            self.dataExportApplet, predictions_ready and not batch_processing_busy and not live_update_active
+            self.dataExportApplet, serverConfig_finished and predictions_ready and  not batch_processing_busy and not live_update_active
         )
 
         if self.batchProcessingApplet is not None:
-            self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
+            self._shell.setAppletEnabled(self.batchProcessingApplet, serverConfig_finished and predictions_ready and not batch_processing_busy)
 
         # Lastly, check for certain "busy" conditions, during which we
         #  should prevent the shell from closing the project.
