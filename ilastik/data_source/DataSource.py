@@ -104,7 +104,7 @@ class FlatDataSource(DataSource):
 
     @property
     def tile_shape(self):
-        return Shape5D(x=200, y=200, c=self.shape.c)
+        return Shape5D(x=1024, y=1024, c=self.shape.c)
 
     def __init__(self, url:str, *, t=slice(None), c=slice(None), x=slice(None), y=slice(None), z=slice(None)):
         raw_data = np.asarray(PilImage.open(url))

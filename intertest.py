@@ -1,8 +1,10 @@
+from concurrent.futures import ThreadPoolExecutor
 import json
 import vigra
 import numpy as np
 import pickle
 from PIL import Image as PilImage
+import time
 
 
 from ilastik.array5d.array5D import Array5D, Image, ScalarImage
@@ -61,14 +63,30 @@ fc = FeatureExtractorCollection((GaussianSmoothing(sigma=0.3),  HessianOfGaussia
 
 
 
-apoptotic_raw_data = FlatDataSource("/home/tomaz/ilastikTests/SampleData/2d_cells_apoptotic_1c/2d_cells_apoptotic_1c.png")
-apoptotic_annotations = (
+apop_raw = FlatDataSource("/home/tomaz/ilastikTests/SampleData/2d_cells_apoptotic_1c/2d_cells_apoptotic_1c.png")
+apop_annotations = (
     Annotation.from_png("/home/tomaz/ilastikTests/SampleData/2d_cells_apoptotic_1c/full_image_annotations.png",
-                        raw_data=apoptotic_raw_data),
+                        raw_data=apop_raw),
 )
-apoptotic_classifier = StrictPixelClassifier(feature_extractor=fc, annotations=apoptotic_annotations, random_seed=456)
-apoptotic_predictions, apoptotic_features = apoptotic_classifier.predict(apoptotic_raw_data)
-save_test_images(apoptotic_predictions, 'apoptotic')
+
+t = time.time()
+apop_classifier = StrictPixelClassifier(feature_extractor=fc, annotations=apop_annotations, random_seed=456)
+print(f"Ended training at {time.time() - t}")
+
+t = time.time()
+apop_predictions = apop_classifier.allocate_predictions(apop_raw)
+
+with ThreadPoolExecutor() as executor:
+    for raw_tile in apop_raw.get_tiles():
+        def predict_tile(raw_tile):
+            tile_prediction, tile_features = apop_classifier.predict(raw_tile)
+            apop_predictions.set(tile_prediction)
+        executor.submit(predict_tile, raw_tile)
+
+print(f"Ended predictions in {time.time() - t}")
+
+#apop_predictions, apop_features = apop_classifier.predict(apop_raw)
+save_test_images(apop_predictions, 'apoptotic')
 
 
 print(f"Features cache info: {fc.compute.cache_info()}")

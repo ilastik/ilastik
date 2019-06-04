@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Iterator, Tuple
 
 import vigra.filters
@@ -95,15 +96,19 @@ class Annotation:
         all_label_samples = []
         all_feature_samples = []
         annotated_roi = self.scribblings.roi.with_full_c()
-        for data_tile in self.raw_data.clamped(annotated_roi).get_tiles(): #tiling allows for caching of the features
-            scribblings_tile = self.scribblings.clamped(data_tile)
-            feature_tile = feature_extractor.compute(data_tile).clamped(scribblings_tile.roi.with_full_c())
 
-            label_samples = LabelSamples.create(scribblings_tile)
-            feature_samples = FeatureSamples.create(scribblings_tile, feature_tile)
-            assert feature_samples.shape.c == feature_extractor.get_expected_roi(data_tile).shape.c
-            all_label_samples.append(label_samples)
-            all_feature_samples.append(feature_samples)
+        with ThreadPoolExecutor() as executor:
+            for data_tile in self.raw_data.clamped(annotated_roi).get_tiles(): #tiling allows for caching of the features
+                def make_samples(data_tile):
+                    scribblings_tile = self.scribblings.clamped(data_tile)
+                    feature_tile = feature_extractor.compute(data_tile).clamped(scribblings_tile.roi.with_full_c())
+
+                    label_samples = LabelSamples.create(scribblings_tile)
+                    feature_samples = FeatureSamples.create(scribblings_tile, feature_tile)
+                    assert feature_samples.shape.c == feature_extractor.get_expected_roi(data_tile).shape.c
+                    all_label_samples.append(label_samples)
+                    all_feature_samples.append(feature_samples)
+                executor.submit(make_samples, data_tile)
         return Samples(label_samples=all_label_samples[0].concatenate(*all_label_samples[1:]),
                        feature_samples=all_feature_samples[0].concatenate(*all_feature_samples[1:]))
 
