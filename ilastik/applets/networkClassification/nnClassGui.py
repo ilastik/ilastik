@@ -262,7 +262,7 @@ class CheckpointManager:
         self._widget.clear()
         self._checkpoint_by_idx = {}
         for entry in data:
-            idx = self._widget.add_item(entry['name'])
+            idx = self._widget.add_item(entry["name"])
             self._checkpoint_by_idx[idx] = entry
 
     def _add(self):
@@ -271,10 +271,7 @@ class CheckpointManager:
         name = f"{self._count}: Epoch: {state.epoch}. Loss: {state.loss}"
 
         idx = self._widget.add_item(name)
-        self._checkpoint_by_idx[idx] = {
-            'name': name,
-            'state': state,
-        }
+        self._checkpoint_by_idx[idx] = {"name": name, "state": state}
         self._added(self._checkpoint_by_idx.values())
 
     def _remove(self, removed_idx):
@@ -284,7 +281,7 @@ class CheckpointManager:
     def _load(self, load_idx):
         if load_idx.isValid():
             val = self._checkpoint_by_idx[load_idx]
-            self._load_state(val['state'].model_state)
+            self._load_state(val["state"].model_state)
 
 
 class CheckpointWidget(QWidget):
@@ -675,13 +672,12 @@ class NNClassGui(LabelingGui):
                     config = self.topLevelOperatorView.TiktorchConfig.value
                     config[TRAINING][NUM_ITERATIONS_DONE] = model_state.num_iterations_done
                     config[TRAINING][NUM_ITERATIONS_MAX] = model_state.num_iterations_max
-                    self.topLevelOperatorView.TikTorchConfig.disconnect()
+                    self.topLevelOperatorView.TiktorchConfig.disconnect()
                     self.topLevelOperatorView.BinaryModelState.setValue(model_state.model_state)
                     self.topLevelOperatorView.BinaryOptimizerState.setValue(model_state.optimizer_state)
-                    self.topLevelOperatorView.TikTorchConfig.setValue(config)
+                    self.topLevelOperatorView.TiktorchConfig.setValue(config)
                 except Exception as e:
                     logger.warning(f"Could not retrieve updated model state due to {e}")
-
 
             self.labelingDrawerUi.liveTraining.setEnabled(True)
 
@@ -802,7 +798,6 @@ class NNClassGui(LabelingGui):
             self.set_NN_classifier_name(tiktorch_config["name"])
         else:
             self.set_NN_classifier_name("no model")
-
 
     def set_NN_classifier_name(self, name: str):
         self.labelingDrawerUi.addModel.setText(f"{name} loaded")
