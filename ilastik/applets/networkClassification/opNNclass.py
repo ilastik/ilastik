@@ -19,7 +19,6 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from functools import partial
-import traceback as tb
 import numpy
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -36,7 +35,6 @@ from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline, DatasetConstraintError
-from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_LOCAL_SERVER_CONFIG
 
 from tiktorch.types import ModelState
 
@@ -247,7 +245,7 @@ class OpNNClassification(Operator):
         # This cache stores exactly one object: the classifier itself.
         self.classifier_cache = OpValueCache(parent=self)
         self.classifier_cache.name = "OpNetworkClassification.classifier_cache"
-        self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs["Classifier"])
+        self.classifier_cache.inputs["Input"].connect(self.opTrain.Classifier)
         self.classifier_cache.inputs["fixAtCurrent"].connect(self.FreezePredictions)
         self.Classifier.connect(self.classifier_cache.Output)
 

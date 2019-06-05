@@ -509,7 +509,9 @@ class NNClassGui(LabelingGui):
     def updatePredictions(self):
         self.topLevelOperatorView.FreezePredictions.setValue(False)
         self.topLevelOperatorView.classifier_cache.Output.setDirty()
-        self.topLevelOperatorView.FreezePredictions.setValue(True)
+        current_classifier = self.topLevelOperatorView.Classifier[:]
+        current_classifier.wait()
+        # self.topLevelOperatorView.FreezePredictions.setValue(True)
 
     def initViewerControls(self):
         """
@@ -680,6 +682,8 @@ class NNClassGui(LabelingGui):
                     logger.warning(f"Could not retrieve updated model state due to {e}")
 
             self.labelingDrawerUi.liveTraining.setEnabled(True)
+
+        self.parentApplet.appletStateUpdateRequested()
 
     @pyqtSlot()
     def handleShowPredictionsClicked(self):
