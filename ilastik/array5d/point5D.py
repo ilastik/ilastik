@@ -290,7 +290,7 @@ class Slice5D(JsonSerializable):
         return cls(**cls.make_slices(start, stop))
 
     @classmethod
-    def from_json(cls, data:dict):
+    def from_json_data(cls, data:dict):
         start = Point5D.from_json(data['start'])
         stop = Point5D.from_json(data['stop'])
         return cls.create_from_start_stop(start, stop)

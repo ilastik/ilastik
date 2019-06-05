@@ -6,7 +6,7 @@ from inspect import signature
 class JsonSerializable(ABC):
     @property
     def json_data(self):
-        out_dict = {}
+        out_dict = {'__class__': self.__class__.__name__}
         for name, parameter in signature(self.__class__).parameters.items():
             value = getattr(self, name)
             if isinstance(value, JsonSerializable):
@@ -23,12 +23,22 @@ class JsonSerializable(ABC):
         return json.dumps(out_data)
 
     @classmethod
-    def from_json(cls, data:dict):
+    def from_json(cls, data:str):
+        return cls.from_json_data(json.loads(data))
+
+    @classmethod
+    def from_json_data(cls, data:dict):
+        data = data.copy()
+        assert '__class__' not in data or data['__class__'] == cls.__name__
         this_params = {}
         for name, parameter in signature(cls).parameters.items():
             assert parameter.annotation != inspect._empty
+            if name not in data: #might be a missing optional
+                continue
             if issubclass(parameter.annotation, JsonSerializable):
-                this_params[name] = parameter.annotation.from_json(data[name])
+                this_params[name] = parameter.annotation.from_json(data.pop(name))
             else:
-                this_params[name] = data[name]
+                this_params[name] = data.pop(name)
+        if len(data) > 0:
+            print(f"WARNING: Unused arguments when deserializing {cls.__name__}: {data}")
         return cls(**this_params)

@@ -11,6 +11,7 @@ import numpy as np
 from ilastik.array5d import Slice5D, Point5D, Shape5D
 from ilastik.array5d import Array5D, Image, ScalarImage, LinearData
 from ilastik.data_source import DataSource
+from ilastik.utility import JsonSerializable
 
 class FeatureData(Array5D):
     def __init__(self, *args, **kwargs):
@@ -26,7 +27,7 @@ class FeatureDataMismatchException(Exception):
         super().__init__(f"Feature {feature_extractor} can't be cleanly applied to {data_source}")
 
 
-class FeatureExtractor(ABC):
+class FeatureExtractor(JsonSerializable):
     """A specification of how feature data is to be (reproducibly) computed"""
 
     def __hash__(self):
@@ -105,7 +106,7 @@ class FlatChannelwiseFilter(ChannelwiseFeatureExtractor):
 
 
 class FeatureExtractorCollection(ChannelwiseFeatureExtractor):
-    def __init__(self, extractors:Tuple[FeatureExtractor]):
+    def __init__(self, extractors:List[FeatureExtractor]):
         assert len(extractors) > 0
         self.extractors = extractors
 
@@ -113,6 +114,11 @@ class FeatureExtractorCollection(ChannelwiseFeatureExtractor):
         for label in Point5D.LABELS:
             shape_params[label] = max(f.kernel_shape[label] for f in extractors)
         self._kernel_shape = Shape5D(**shape_params)
+
+    @classmethod
+    @functools.lru_cache()
+    def get(cls, extractors:Tuple[FeatureExtractor]):
+        return cls(extractors)
 
     def __repr__(self):
         return f"<{self.__class__.__name__} {[repr(f) for f in self.extractors]}>"
