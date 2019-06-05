@@ -509,8 +509,8 @@ class NNClassGui(LabelingGui):
     def updatePredictions(self):
         self.topLevelOperatorView.FreezePredictions.setValue(False)
         self.topLevelOperatorView.classifier_cache.Output.setDirty()
-        current_classifier = self.topLevelOperatorView.Classifier[:]
-        current_classifier.wait()
+        # current_classifier = self.topLevelOperatorView.Classifier[:]
+        # current_classifier.wait()
         # self.topLevelOperatorView.FreezePredictions.setValue(True)
 
     def initViewerControls(self):
