@@ -235,9 +235,9 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
     @property
     def description(self):
         if self.tikTorchClient:
-            return "pytorch network loaded."
+            return "TikTorch classifier (client available)"
         else:
-            return "pytorch network loading failed."
+            return "TikTorch classifier (client missing)"
 
     def estimated_ram_usage_per_requested_predictionchannel(self):
         # FIXME: compute from model size somehow??
