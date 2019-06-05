@@ -168,7 +168,7 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
                 axistags = self.Images[0].meta.axistags
                 classifier_factory.update(image_blocks, label_blocks, axistags, block_ids)
             except Exception as e:
-                logger.exception(e)
+                logger.debug(e, exc_info=True)
         else:
             super().propagateDirty(slot, subindex, roi)
 
