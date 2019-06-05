@@ -144,6 +144,8 @@ class ServerConfigGui(QWidget):
         self.remoteServerButton.setChecked(not use_local)
 
         def edit_button():
+            self.topLevelOperator.UseLocalServer.disconnect()
+            self.topLevelOperator.UseLocalServer.meta.NOTREADY = True
             for el in DEFAULT_REMOTE_SERVER_CONFIG.keys():
                 if self.localServerButton.isChecked() and el == "address":
                     continue
@@ -152,6 +154,8 @@ class ServerConfigGui(QWidget):
         self.editButton.clicked.connect(edit_button)
 
         def server_button():
+            self.topLevelOperator.UseLocalServer.disconnect()
+            self.topLevelOperator.UseLocalServer.meta.NOTREADY = True
             if self.localServerButton.isChecked():
                 assert not self.remoteServerButton.isChecked()
                 config = self.topLevelOperator.LocalServerConfig.value
@@ -185,7 +189,6 @@ class ServerConfigGui(QWidget):
                 else:
                     getattr(self, key).setText(value)
 
-            self.topLevelOperator.toggleServerConfig(use_local=self.localServerButton.isChecked())
             edit_button()  # enter 'edit mode' when switching between locale and remote server
 
         self.localServerButton.toggled.connect(server_button)
@@ -259,13 +262,18 @@ class ServerConfigGui(QWidget):
         self.get_devices_button.clicked.connect(get_devices_button)
 
         def save_button():
-            if self.localServerButton.isChecked():
+            self.topLevelOperator.UseLocalServer.disconnect()
+            self.topLevelOperator.UseLocalServer.meta.NOTREADY = True
+
+            use_local = self.localServerButton.isChecked()
+            if use_local:
                 assert not self.remoteServerButton.isChecked()
                 self.topLevelOperator.setLocalServerConfig(get_config(DEFAULT_LOCAL_SERVER_CONFIG.keys()))
             else:
                 assert self.remoteServerButton.isChecked()
                 self.topLevelOperator.setRemoteServerConfig(get_config(DEFAULT_REMOTE_SERVER_CONFIG.keys()))
 
+            self.topLevelOperator.UseLocalServer.setValue(use_local)
             self.parentApplet.appletStateUpdateRequested()
 
         self.saveButton.clicked.connect(save_button)

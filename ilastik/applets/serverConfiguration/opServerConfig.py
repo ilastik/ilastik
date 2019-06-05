@@ -53,13 +53,6 @@ class OpServerConfig(Operator):
             config = dict(DEFAULT_REMOTE_SERVER_CONFIG)
         self.RemoteServerConfig.setValue(config)
 
-    def toggleServerConfig(self, use_local=True):
-        if not self.UseLocalServer.ready():
-            self.UseLocalServer.setValue(use_local)
-        elif use_local != self.UseLocalServer.value:
-            self.ServerConfig.disconnect()
-            self.UseLocalServer.setValue(use_local)
-            self.setupOutputs()
 
     def setupOutputs(self):
         if self.UseLocalServer.value:

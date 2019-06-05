@@ -63,8 +63,25 @@ class OpTiktorchFactory(Operator):
             self.Tiktorch.meta.NOTREADY = True
         else:
             self.__conf = self.ServerConfig.value
+            if self.Tiktorch.ready():
+                # shutdown previous server
+                self.Tiktorch.value.shutdown()
+
             self.Tiktorch.disconnect()
             self.Tiktorch.setValue(tiktorch)
+
+    def __del__(self):
+        if self.Tiktorch.ready():
+            self.Tiktorch.value.shutdown()
+
+        super().__del__()
+
+    def cleanUp(self):
+        if self.Tiktorch.ready():
+            try:
+                self.Tiktorch.value.shutdown()
+            except Exception as e:
+                logger.warning(e)
 
     def propagateDirty(self, slot, subindex, roi):
         # self.Tiktorch.setDirty(slice(None))
@@ -186,7 +203,7 @@ class OpNNClassification(Operator):
 
     def cleanUp(self):
         try:
-            self.ClassifierFactory.value.launcher.shutdown()
+            self.ClassifierFactory.value.shutdown()
         except Exception as e:
             logger.warning(e)
 
