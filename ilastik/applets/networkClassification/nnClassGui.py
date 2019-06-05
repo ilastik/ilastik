@@ -25,6 +25,7 @@ from collections import OrderedDict
 
 import numpy
 import yaml
+import vigra
 
 from PyQt5 import uic
 from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QTimer, QStringListModel, QObject, QModelIndex, QPersistentModelIndex

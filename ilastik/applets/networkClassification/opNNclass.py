@@ -21,6 +21,7 @@
 from functools import partial
 import traceback as tb
 import numpy
+import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 from lazyflow.operators import (
@@ -150,6 +151,7 @@ class OpNNClassification(Operator):
     BinaryModel = InputSlot()
     BinaryModelState = InputSlot()
     BinaryOptimizerState = InputSlot()
+    ValidationImgMask = InputSlot(level=1, optional=True, allow_mask=True)
 
     Classifier = OutputSlot()
     PredictionProbabilities = OutputSlot(
