@@ -24,10 +24,10 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from typing import Optional, Dict
 
 DEFAULT_LOCAL_SERVER_CONFIG = {'username': '', 'password': '',
-                         'address': 'localhost', 'port1': '5556', 'port2': '5557', 'devices': [['cpu', 'CPU', True]]}
+                         'address': 'localhost', 'port1': '5556', 'port2': '5557', 'devices': []}
 # use remote defaults as user hints
 DEFAULT_REMOTE_SERVER_CONFIG = {'username': 'SSH user name', 'password': 'SSH password (no encrytpion!)', 'ssh_key': 'SSH key',
-                                'address': 'remote host or IP address', 'port1': '5556', 'port2': '5557', 'devices': [['cpu', 'CPU', True]]}
+                                'address': 'remote host or IP address', 'port1': '5556', 'port2': '5557', 'devices': []}
 
 
 class OpServerConfig(Operator):
@@ -63,9 +63,15 @@ class OpServerConfig(Operator):
 
     def setupOutputs(self):
         if self.UseLocalServer.value:
-            self.ServerConfig.connect(self.LocalServerConfig)
+            chosen_slot = self.LocalServerConfig
         else:
-            self.ServerConfig.connect(self.RemoteServerConfig)
+            chosen_slot = self.RemoteServerConfig
+
+        if chosen_slot.value["devices"]:
+            self.ServerConfig.connect(chosen_slot)
+        else:
+            self.ServerConfig.disconnect()
+            self.ServerConfig.meta.NOTREADY = True
 
     def propagateDirty(self, slot, subindex, roi):
         pass

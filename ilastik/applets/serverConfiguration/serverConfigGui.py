@@ -137,6 +137,12 @@ class ServerConfigGui(QWidget):
         self._state_machine = self._create_state_machine()
         self._state_machine.start()
 
+        use_local = (
+            True if not self.topLevelOperator.UseLocalServer.ready() else self.topLevelOperator.UseLocalServer.value
+        )
+        self.localServerButton.setChecked(use_local)
+        self.remoteServerButton.setChecked(not use_local)
+
         def edit_button():
             for el in DEFAULT_REMOTE_SERVER_CONFIG.keys():
                 if self.localServerButton.isChecked() and el == "address":
@@ -183,12 +189,6 @@ class ServerConfigGui(QWidget):
             edit_button()  # enter 'edit mode' when switching between locale and remote server
 
         self.localServerButton.toggled.connect(server_button)
-
-        use_local = (
-            True if not self.topLevelOperator.UseLocalServer.ready() else self.topLevelOperator.UseLocalServer.value
-        )
-        self.localServerButton.setChecked(use_local)
-        self.remoteServerButton.setChecked(not use_local)
         server_button()
 
         def get_config(configurables, with_devices=True):
