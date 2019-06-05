@@ -42,7 +42,7 @@ class PixelClassifier:
         self.num_classes = len(self.classes)
 
         X = gathered_samples.feature.linear_raw()
-        y = gathered_samples.label.linear_raw()
+        y = gathered_samples.label.linear_raw().astype(np.uint32)
         self.forests = [None] * num_forests
         self.oobs = [None] * num_forests
         with ThreadPoolExecutor(max_workers=num_forests) as executor:

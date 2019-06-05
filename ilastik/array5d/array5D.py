@@ -93,6 +93,11 @@ class Array5D:
     def fromArray5D(cls, array:'Array5D'):
         return cls(array._data, array.axiskeys, array.location)
 
+    @classmethod
+    def from_file(cls, path:str, location:Point5D=Point5D.zero()):
+        data = np.asarray(PilImage.open(path))
+        return cls(data, 'yxc'[:len(data.shape)], location=location)
+
     def __repr__(self):
         return f"<{self.__class__.__name__} {self.to_slice_5d()}>"
 

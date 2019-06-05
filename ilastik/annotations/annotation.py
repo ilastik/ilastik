@@ -14,10 +14,6 @@ from PIL import Image as PilImage
 class Scribblings(ScalarImage):
     """Single-channel image containing user scribblings"""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        assert self.dtype == np.uint32
-
     def __hash__(self):
         return hash(self._data.tobytes())
 
@@ -25,9 +21,6 @@ class Scribblings(ScalarImage):
         if isinstance(other, Scribblings):
             return False
         return np.all(self._data == other._data)
-
-    def show(self):
-        return self.as_uint8(normalized=False).show()
 
 class LabelSamples(StaticLine):
     """A single-channel array with a single spacial dimension containing integers

@@ -17,11 +17,10 @@ from ilastik.data_source import FlatDataSource
 
 
 p = Point5D(x=1, y=2, z=3, t=4, c=5)
-assert json.loads(p.to_json()) == p.to_dict()
-assert Point5D.from_json(json.loads(p.to_json())) == p
+assert Point5D.from_json(p.to_json()) == p
 
 slc = Slice5D(x=slice(100, 200), y=slice(200, 300))
-#assert Slice5D.from_json(json.loads(slc.to_json())) == slc
+#assert Slice5D.from_json(slc.to_json()) == slc
 
 
 #cutout_test_file = "/home/tomaz/ilastikTests/SampleData/c_cells/cropped/cropped1_numbered_tiles.png"
