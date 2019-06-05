@@ -388,6 +388,9 @@ class NNClassGui(LabelingGui):
             dlg = ValidationDlg(parent=self)
             dlg.exec_()
 
+            if dlg.valid_params:
+                self.topLevelOperatorView.set_validationMask(dlg.valid_params)
+
         advanced_menu.addAction("Validation Set").triggered.connect(validationMenu)
 
         menus += [advanced_menu]
