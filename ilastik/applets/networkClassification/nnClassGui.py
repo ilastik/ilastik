@@ -555,7 +555,6 @@ class NNClassGui(LabelingGui):
 
         labels = self.labelListData
 
-
         validationMask = self.topLevelOperatorView.ValidationImgMask
         # hack, axistags are none when defining in opNNclass
         validationMask.meta.axistags = vigra.defaultAxistags('zyxc')
