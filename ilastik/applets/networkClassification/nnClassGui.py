@@ -281,7 +281,7 @@ class CheckpointManager:
     def _load(self, load_idx):
         if load_idx.isValid():
             val = self._checkpoint_by_idx[load_idx]
-            self._load_state(val["state"].model_state)
+            self._load_state(val["state"])
 
 
 class CheckpointWidget(QWidget):
@@ -507,6 +507,7 @@ class NNClassGui(LabelingGui):
             self.set_NN_classifier_name(factory_slot.value.model.name)
 
     def updatePredictions(self):
+        logger.info("Invalidating predictions")
         self.topLevelOperatorView.FreezePredictions.setValue(False)
         self.topLevelOperatorView.classifier_cache.Output.setDirty()
         # current_classifier = self.topLevelOperatorView.Classifier[:]

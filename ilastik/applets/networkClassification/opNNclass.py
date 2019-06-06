@@ -37,6 +37,7 @@ from ilastik.utility import OpMultiLaneWrapper
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline, DatasetConstraintError
 
 from tiktorch.types import ModelState
+from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_MAX
 
 import logging
 
@@ -317,7 +318,7 @@ class OpNNClassification(Operator):
 
     def set_model_state(self, model_state: ModelState):
         config = self.TiktorchConfig.value
-        config["training"]["max_num_iterations"] = model_state.max_num_iterations
+        config[TRAINING][NUM_ITERATIONS_MAX] = model_state.num_iterations_max
         model = self.BinaryModel.value
         self.set_classifier(config, model, model_state.model_state, model_state.optimizer_state)
 
