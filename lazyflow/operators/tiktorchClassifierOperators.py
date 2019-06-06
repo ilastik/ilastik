@@ -35,7 +35,15 @@ import numpy
 
 # lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
-from lazyflow.roi import sliceToRoi, roiToSlice, getIntersection, roiFromShape, nonzero_bounding_box, enlargeRoiForHalo
+from lazyflow.roi import (
+    sliceToRoi,
+    roiToSlice,
+    getIntersection,
+    roiFromShape,
+    nonzero_bounding_box,
+    enlargeRoiForHalo,
+    getIntersectingBlocks,
+)
 from lazyflow.classifiers import (
     LazyflowVectorwiseClassifierABC,
     LazyflowVectorwiseClassifierFactoryABC,
@@ -77,12 +85,11 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
     def __init__(self, *args, **kwargs):
         super(OpTikTorchTrainPixelwiseClassifierBlocked, self).__init__(*args, **kwargs)
 
-    def _collect_blocks(self, image_slot, label_slot, nonzero_block_slot):
+    def _collect_blocks(self, image_slot, label_slot, block_slicings):
         classifier_factory = self.ClassifierFactory.value
         image_data_blocks = []
         label_data_blocks = []
         block_ids = []
-        block_slicings = nonzero_block_slot.value
         for block_slicing in block_slicings:
             # Get labels
             block_label_roi = sliceToRoi(block_slicing, label_slot.meta.shape)
@@ -91,37 +98,33 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
             bb_roi_within_block = numpy.array([[0, 0, 0, 0], list(block_label_data.shape)])
             block_label_bb_roi = bb_roi_within_block + block_label_roi[0]
 
-            # Double-check that there is at least 1 non-zero label in the block.
-            if (block_label_bb_roi[1] > block_label_bb_roi[0]).all():
-                # Ask for the halo needed by the classifier
-                axiskeys = image_slot.meta.getAxisKeys()
-                halo_shape = classifier_factory.get_halo_shape(axiskeys)
-                assert len(halo_shape) == len(block_label_roi[0])
-                assert halo_shape[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
+            # Ask for the halo needed by the classifier
+            axiskeys = image_slot.meta.getAxisKeys()
+            halo_shape = classifier_factory.get_halo_shape(axiskeys)
+            assert len(halo_shape) == len(block_label_roi[0])
+            assert halo_shape[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
 
-                # Expand block by halo, but keep clipped to image bounds
-                padded_label_roi, bb_roi_within_padded = enlargeRoiForHalo(
-                    *block_label_bb_roi, shape=label_slot.meta.shape, sigma=halo_shape, window=1, return_result_roi=True
-                )
+            # Expand block by halo, but keep clipped to image bounds
+            padded_label_roi, bb_roi_within_padded = enlargeRoiForHalo(
+                *block_label_bb_roi, shape=label_slot.meta.shape, sigma=halo_shape, window=1, return_result_roi=True
+            )
 
-                # Copy labels to new array, which has size == bounding-box + halo
-                padded_label_data = numpy.zeros(padded_label_roi[1] - padded_label_roi[0], label_slot.meta.dtype)
-                padded_label_data[roiToSlice(*bb_roi_within_padded)] = block_label_data[
-                    roiToSlice(*bb_roi_within_block)
-                ]
+            # Copy labels to new array, which has size == bounding-box + halo
+            padded_label_data = numpy.zeros(padded_label_roi[1] - padded_label_roi[0], label_slot.meta.dtype)
+            padded_label_data[roiToSlice(*bb_roi_within_padded)] = block_label_data[roiToSlice(*bb_roi_within_block)]
 
-                padded_image_roi = numpy.array(padded_label_roi)
-                assert (padded_image_roi[:, -1] == [0, 1]).all()
-                num_channels = image_slot.meta.shape[-1]
-                padded_image_roi[:, -1] = [0, num_channels]
+            padded_image_roi = numpy.array(padded_label_roi)
+            assert (padded_image_roi[:, -1] == [0, 1]).all()
+            num_channels = image_slot.meta.shape[-1]
+            padded_image_roi[:, -1] = [0, num_channels]
 
-                # Ensure the results are plain ndarray, not VigraArray,
-                #  which some classifiers might have trouble with.
-                padded_image_data = numpy.asarray(image_slot(*padded_image_roi).wait())
+            # Ensure the results are plain ndarray, not VigraArray,
+            #  which some classifiers might have trouble with.
+            padded_image_data = numpy.asarray(image_slot(*padded_image_roi).wait())
 
-                image_data_blocks.append(padded_image_data)
-                label_data_blocks.append(padded_label_data)
-                block_ids.append(tuple(int(block_label_bb_roi[0][i]) for i, key in enumerate(axiskeys) if key != "c"))
+            image_data_blocks.append(padded_image_data)
+            label_data_blocks.append(padded_label_data)
+            block_ids.append(tuple(int(block_label_bb_roi[0][i]) for i, key in enumerate(axiskeys) if key != "c"))
 
         return image_data_blocks, label_data_blocks, block_ids
 
@@ -132,23 +135,9 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
             "".format(type(classifier_factory))
         )
 
-        # Accumulate all non-zero blocks of each image into lists
-        image_data_blocks = []
-        label_data_blocks = []
-        block_ids = []
-        for image_slot, label_slot, nonzero_block_slot in zip(self.Images, self.Labels, self.nonzeroLabelBlocks):
-            slot_image_blocks, slot_label_blocks, slot_block_ids = self._collect_blocks(
-                image_slot, label_slot, nonzero_block_slot
-            )
-            image_data_blocks += slot_image_blocks
-            label_data_blocks += slot_label_blocks
-            block_ids += slot_block_ids
-
         channel_names = self.Images[0].meta.channel_names
         axistags = self.Images[0].meta.axistags
-        classifier = classifier_factory.create_and_train_pixelwise(
-            image_data_blocks, label_data_blocks, axistags, channel_names, block_ids
-        )
+        classifier = classifier_factory.create_and_train_pixelwise([], [], axistags, channel_names, [])
         result[0] = classifier
         if classifier is not None:
             assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), (
@@ -162,9 +151,24 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
                 classifier_factory = self.ClassifierFactory.value
                 image_slot = self.Images[subindex]
                 label_slot = self.Labels[subindex]
-                nonzero_block_slot = self.nonzeroLabelBlocks[subindex]
-                image_blocks, label_blocks, block_ids = self._collect_blocks(image_slot, label_slot, nonzero_block_slot)
-                channel_names = self.Images[0].meta.channel_names
+                # todo: get block shape in a less hacky way
+                block_shape = label_slot._real_operator.parent.parent.opBlockShape.BlockShapeTrain[0].value
+                block_starts = getIntersectingBlocks(block_shape, (roi.start, roi.stop))
+                label_shape = label_slot.meta.shape
+                axis_keys = label_slot.meta.getAxisKeys()
+                block_slicings = [
+                    [
+                        slice(None)
+                        if axis == "c"
+                        else slice(dmax - dblock, dmax)
+                        if dstart + dblock > dmax
+                        else slice(dstart, dstart + dblock)
+                        for dstart, dblock, dmax, axis in zip(block_start, block_shape, label_shape, axis_keys)
+                    ]
+                    for block_start in block_starts
+                ]
+
+                image_blocks, label_blocks, block_ids = self._collect_blocks(image_slot, label_slot, block_slicings)
                 axistags = self.Images[0].meta.axistags
                 classifier_factory.update(image_blocks, label_blocks, axistags, block_ids)
             except Exception as e:

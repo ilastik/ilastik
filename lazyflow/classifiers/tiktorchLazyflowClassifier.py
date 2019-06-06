@@ -186,7 +186,6 @@ class TikTorchLazyflowClassifierFactory(LazyflowOnlineClassifier):
         assert self.tikTorchClient is not None, "TikTorchLazyflowClassifierFactory not properly initialized."
 
         if self.train_model:
-            self.update(feature_images, label_images, axistags, image_ids)
             self.resume_training()
 
         logger.info(self.description)
