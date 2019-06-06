@@ -20,6 +20,7 @@
 ###############################################################################
 import os
 import logging
+
 from functools import partial
 from collections import OrderedDict
 
@@ -54,6 +55,9 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import PreferencesManager
+
+from tiktorch.types import ModelState
+from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
 
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 
@@ -259,7 +263,7 @@ class CheckpointManager:
         self._widget.clear()
         self._checkpoint_by_idx = {}
         for entry in data:
-            idx = self._widget.add_item(entry['name'])
+            idx = self._widget.add_item(entry["name"])
             self._checkpoint_by_idx[idx] = entry
 
     def _add(self):
@@ -268,10 +272,7 @@ class CheckpointManager:
         name = f"{self._count}: Epoch: {state.epoch}. Loss: {state.loss}"
 
         idx = self._widget.add_item(name)
-        self._checkpoint_by_idx[idx] = {
-            'name': name,
-            'state': state,
-        }
+        self._checkpoint_by_idx[idx] = {"name": name, "state": state}
         self._added(self._checkpoint_by_idx.values())
 
     def _remove(self, removed_idx):
@@ -281,7 +282,7 @@ class CheckpointManager:
     def _load(self, load_idx):
         if load_idx.isValid():
             val = self._checkpoint_by_idx[load_idx]
-            self._load_state(val['state'].model_state)
+            self._load_state(val["state"].model_state)
 
 
 class CheckpointWidget(QWidget):
@@ -469,13 +470,13 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.AddLabelButton.setEnabled(False)
         self.labelingDrawerUi.AddLabelButton.hide()
 
-        def FreezePredDirty():
-            self.toggleLivePrediction(not self.topLevelOperatorView.FreezePredictions.value)
-
-        self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
-        self.__cleanup_fns.append(
-            partial(self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty))
-        )
+        # def FreezePredDirty():
+        #     self.toggleLivePrediction(not self.topLevelOperatorView.FreezePredictions.value)
+        #
+        # self.topLevelOperatorView.FreezePredictions.notifyDirty(bind(FreezePredDirty))
+        # self.__cleanup_fns.append(
+        #     partial(self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty))
+        # )
 
         self.topLevelOperatorView.LabelNames.notifyDirty(bind(self.handleLabelSelectionChange))
         self.__cleanup_fns.append(
@@ -512,7 +513,9 @@ class NNClassGui(LabelingGui):
     def updatePredictions(self):
         self.topLevelOperatorView.FreezePredictions.setValue(False)
         self.topLevelOperatorView.classifier_cache.Output.setDirty()
-        self.topLevelOperatorView.FreezePredictions.setValue(True)
+        # current_classifier = self.topLevelOperatorView.Classifier[:]
+        # current_classifier.wait()
+        # self.topLevelOperatorView.FreezePredictions.setValue(True)
 
     def initViewerControls(self):
         """
@@ -640,6 +643,9 @@ class NNClassGui(LabelingGui):
 
         # If we're changing modes, enable/disable our controls and other applets accordingly
         if self.livePrediction != checked:
+            if checked:
+                self.updatePredictions()
+
             self.livePrediction = checked
             self.labelingDrawerUi.livePrediction.setChecked(checked)
             self.set_live_predict_icon(checked)
@@ -671,7 +677,7 @@ class NNClassGui(LabelingGui):
             if checked:
                 self.toggleLivePrediction(True)
                 factory.resume_training()
-                self.invalidatePredictionsTimer.start(20000)  # start updating regularly
+                self.invalidatePredictionsTimer.start(60000)  # start updating regularly
             else:
                 factory.pause_training()
                 self.invalidatePredictionsTimer.stop()
@@ -679,13 +685,19 @@ class NNClassGui(LabelingGui):
                 try:
                     model_state = factory.get_model_state()
                     print("SET MODEL STATE")
+                    config = self.topLevelOperatorView.TiktorchConfig.value
+                    config[TRAINING][NUM_ITERATIONS_DONE] = model_state.num_iterations_done
+                    config[TRAINING][NUM_ITERATIONS_MAX] = model_state.num_iterations_max
+                    self.topLevelOperatorView.TiktorchConfig.disconnect()
                     self.topLevelOperatorView.BinaryModelState.setValue(model_state.model_state)
                     self.topLevelOperatorView.BinaryOptimizerState.setValue(model_state.optimizer_state)
+                    self.topLevelOperatorView.TiktorchConfig.setValue(config)
                 except Exception as e:
                     logger.warning(f"Could not retrieve updated model state due to {e}")
 
-
             self.labelingDrawerUi.liveTraining.setEnabled(True)
+
+        self.parentApplet.appletStateUpdateRequested()
 
     @pyqtSlot()
     def handleShowPredictionsClicked(self):
@@ -747,7 +759,7 @@ class NNClassGui(LabelingGui):
             self.parentApplet.appletStateUpdateRequested()
             self.labelingDrawerUi.addModel.setEnabled(True)
 
-    def _load_checkpoint(self, model_state: bytes):
+    def _load_checkpoint(self, model_state: ModelState):
         self.topLevelOperatorView.set_model_state(model_state)
 
     def add_NN_classifiers(self, folder_path):
@@ -804,7 +816,6 @@ class NNClassGui(LabelingGui):
             self.set_NN_classifier_name(tiktorch_config["name"])
         else:
             self.set_NN_classifier_name("no model")
-
 
     def set_NN_classifier_name(self, name: str):
         self.labelingDrawerUi.addModel.setText(f"{name} loaded")

@@ -19,9 +19,9 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 from functools import partial
-import traceback as tb
 import numpy
 import vigra
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 from lazyflow.operators import (
@@ -36,7 +36,8 @@ from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline, DatasetConstraintError
-from ilastik.applets.serverConfiguration.opServerConfig import DEFAULT_LOCAL_SERVER_CONFIG
+
+from tiktorch.types import ModelState
 
 import logging
 
@@ -63,8 +64,25 @@ class OpTiktorchFactory(Operator):
             self.Tiktorch.meta.NOTREADY = True
         else:
             self.__conf = self.ServerConfig.value
+            if self.Tiktorch.ready():
+                # shutdown previous server
+                self.Tiktorch.value.shutdown()
+
             self.Tiktorch.disconnect()
             self.Tiktorch.setValue(tiktorch)
+
+    def __del__(self):
+        if self.Tiktorch.ready():
+            self.Tiktorch.value.shutdown()
+
+        super().__del__()
+
+    def cleanUp(self):
+        if self.Tiktorch.ready():
+            try:
+                self.Tiktorch.value.shutdown()
+            except Exception as e:
+                logger.warning(e)
 
     def propagateDirty(self, slot, subindex, roi):
         # self.Tiktorch.setDirty(slice(None))
@@ -187,7 +205,7 @@ class OpNNClassification(Operator):
 
     def cleanUp(self):
         try:
-            self.ClassifierFactory.value.launcher.shutdown()
+            self.ClassifierFactory.value.shutdown()
         except Exception as e:
             logger.warning(e)
 
@@ -246,7 +264,7 @@ class OpNNClassification(Operator):
         # This cache stores exactly one object: the classifier itself.
         self.classifier_cache = OpValueCache(parent=self)
         self.classifier_cache.name = "OpNetworkClassification.classifier_cache"
-        self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs["Classifier"])
+        self.classifier_cache.inputs["Input"].connect(self.opTrain.Classifier)
         self.classifier_cache.inputs["fixAtCurrent"].connect(self.FreezePredictions)
         self.Classifier.connect(self.classifier_cache.Output)
 
@@ -299,17 +317,18 @@ class OpNNClassification(Operator):
 
                     s1.notifyRemoved(partial(removeSlot, s2))
 
-    def set_model_state(self, model_state: bytes, optimizer_state: bytes = b""):
+    def set_model_state(self, model_state: ModelState):
         config = self.TiktorchConfig.value
+        config["training"]["max_num_iterations"] = model_state.max_num_iterations
         model = self.BinaryModel.value
-        self.set_classifier(config, model, model_state, optimizer_state)
+        self.set_classifier(config, model, model_state.model_state, model_state.optimizer_state)
 
     def set_classifier(
         self, tiktorch_config: dict, model_file: bytes, model_state: bytes, optimizer_state: bytes
     ) -> bool:
         # self.TiktorchConfig.disconnect()  # do not create TiktorchClassifierFactory with invalid intermediate settings
         # self.ClassifierFactory.disconnect()
-        self.FreezePredictions.setValue(False)
+        # self.FreezePredictions.setValue(False)
         self.BinaryModel.setValue(model_file)
         self.BinaryModelState.setValue(model_state)
         self.BinaryOptimizerState.setValue(optimizer_state)
