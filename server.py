@@ -3,6 +3,9 @@ from threading import Thread
 import json
 import os
 from flask import Flask, flash, request, redirect, url_for
+import uuid
+import numpy as np
+from PIL import Image as PilImage
 
 from ilastik.array5d.point5D import Point5D, Slice5D, Shape5D
 from ilastik.array5d import Array5D
@@ -10,6 +13,7 @@ from ilastik.annotations import Annotation
 from ilastik.classifiers.pixel_classifier import PixelClassifier, StrictPixelClassifier
 from ilastik.data_source import FlatDataSource
 from ilastik.features.vigra_features import GaussianSmoothing, HessianOfGaussian
+from ilastik.utility import flatten, unflatten, listify
 
 app = Flask("WebserverHack")
 app.config['DATA_DIR'] = '/tmp/flask_stuff/'
@@ -20,52 +24,62 @@ app.config['FEATURE_EXTRACTOR_MAP'] = {f.__name__:f for f in app.config['AVAILAB
 os.system(f"rm -rfv {app.config['DATA_DIR']}")
 os.system(f"mkdir -v {app.config['DATA_DIR']}")
 
+files = {}
 data_sources = {}
 annotations = {}
 classifiers = {}
 feature_extractors = {}
 
+class Context:
+    objects = {}
 
-from inspect import signature
-from abc import ABC, abstractmethod
-
-class RequestData(dict):
-    def __init__(self, req):
-        for k, v in req.files.items():
-            path = os.path.join(app.config['DATA_DIR'], v.filename)
-            v.save(path)
-            self[k] = path
-        for k, v in req.form.items():
-            assert k not in self
-            self[k] = json.loads(v)
-
-class WebAnnotation(Annotation):
     @classmethod
+    def create(cls, klass):
+        obj = klass.from_json_data(cls.get_request_params())
+        uid = uuid.uuid4()
+        cls.objects[uid] = obj
+        return obj, str(uid)
 
+    @classmethod
+    def get(cls, key):
+        uid = uuid.UUID(str(key))
+        return cls.objects[uid]
 
-def get_list_value_from_request(key:str, permissive:bool=True):
-    value = json.loads(request.form.get(key))
-    if not isinstance(value, list):
-        return [value]
-    return value
+    @classmethod
+    def loadObject(cls, uid:str):
+        try:
+            return cls.get(uid)
+        except KeyError:
+            raise ValueError(uid)
+
+    @classmethod
+    def deserialize(cls, value:str):
+        for deserializer in [cls.loadObject, int, float]:
+            try:
+                return deserializer(value)
+            except ValueError:
+                pass
+        return value
+
+    @classmethod
+    def get_request_params(cls):
+        payload = {}
+        for k, v in request.form.items():
+            payload[k] = cls.deserialize(v)
+        for k, v in request.files.items():
+            payload[k] = v.read()
+        return listify(unflatten(payload))
 
 @app.route('/data_sources', methods=['POST'])
 def create_data_source():
-    path = create_file_from_request('raw_data')
-    data_source =  FlatDataSource(path)
-    data_source_id = str(id(data_source))
-    data_sources[data_source_id] = data_source
-    return data_source_id
+    _, uid = Context.create(FlatDataSource)
+    return json.dumps(uid)
 
 @app.route('/annotations', methods=['POST'])
-def create_annotation(cls, raw_data:'FileStorage', data_source_id:str, location:dict):
-    path = create_file_from_request('raw_data')
-    data_source = data_sources[request.form.get('data_source_id')]
-    location = Point5D.from_json(request.form.get('location'))
-    annotation = Annotation.from_png(path, raw_data=data_source, location=location)
-    annotation_id = str(id(data_source))
-    annotations[annotation_id] = annotation
-    return annotation_id
+def create_annotation():
+    import pydevd; pydevd.settrace()
+    _, uid = Context.create(Annotation)
+    return json.dumps(uid)
 
 @app.route('/feature_extractors', methods=['GET'])
 def list_feature_extractors():
