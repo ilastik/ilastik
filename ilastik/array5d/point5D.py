@@ -16,7 +16,7 @@ class Point5D(JsonSerializable):
     INF = float('inf')
     NINF = -INF
 
-    def __init__(self, *, t:float, x:float, y:float, z:float, c:float):
+    def __init__(self, *, t:float=0, x:float=0, y:float=0, z:float=0, c:float=0):
         assert all(v == float('inf') or int(v) == v for v in (t,c,x,y,z)), f"Point5D accepts only ints or 'inf' {(t,c,x,y,z)}"
         self._coords = {'t':self.DTYPE(t), 'c':self.DTYPE(c),
                         'x':self.DTYPE(x), 'y':self.DTYPE(y), 'z':self.DTYPE(z)}
@@ -291,8 +291,8 @@ class Slice5D(JsonSerializable):
 
     @classmethod
     def from_json_data(cls, data:dict):
-        start = Point5D.from_json(data['start'])
-        stop = Point5D.from_json(data['stop'])
+        start = Point5D.from_json_data(data['start'])
+        stop = Point5D.from_json_data(data['stop'])
         return cls.create_from_start_stop(start, stop)
 
     @property

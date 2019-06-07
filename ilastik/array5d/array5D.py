@@ -1,11 +1,13 @@
 import itertools
 from typing import Iterator, List, Tuple
 import numpy as np
+import io
 import os
 from PIL import Image as PilImage
 import uuid
 
 from .point5D import Point5D, Slice5D, Shape5D
+from ilastik.utility import JsonSerializable
 
 class RawShape:
     def __init__(self, shape:Shape5D, *, t:int=None, c:int=None, x:int=None, y:int=None, z:int=None):
@@ -74,7 +76,7 @@ class RawShape:
             d[source_key], d[destination_key] = self.index_map[destination_key], self.index_map[source_key]
         return RawShape(self.shape, **d)
 
-class Array5D:
+class Array5D(JsonSerializable):
     """A wrapper around np.ndarray with labeled axes. Enforces 5D, even if some
     dimensions are of size 1. Sliceable with Slice5D's"""
     DISPLAY_IMAGE_PREFIX='/tmp/junk_test_image_'
@@ -94,8 +96,17 @@ class Array5D:
         return cls(array._data, array.axiskeys, array.location)
 
     @classmethod
-    def from_file(cls, path:str, location:Point5D=Point5D.zero()):
-        data = np.asarray(PilImage.open(path))
+    def from_json_data(cls, data:dict):
+        return cls.from_file(io.BytesIO(data['arr']), Point5D.from_json_data(data['location']))
+
+    @property
+    def json_data(self):
+        #FIXME
+        raise NotImplemented('json_data')
+
+    @classmethod
+    def from_file(cls, filelike, location:Point5D=Point5D.zero()):
+        data = np.asarray(PilImage.open(filelike))
         return cls(data, 'yxc'[:len(data.shape)], location=location)
 
     def __repr__(self):

@@ -26,3 +26,4 @@ from .opMultiLaneWrapper import OpMultiLaneWrapper
 from .log_exception import log_exception
 from .autocleaned_tempdir import autocleaned_tempdir
 from .JsonSerializable import JsonSerializable
+from .flatten import flatten, unflatten, listify

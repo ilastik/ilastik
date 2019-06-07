@@ -29,6 +29,17 @@ class DataSource(Slice5D):
         self.roi = Slice5D(t=t, c=c, x=x, y=y, z=z).defined_with(self.full_shape)
         super().__init__(**self.roi.to_dict())
 
+    @classmethod
+    def from_json_data(cls, data:dict):
+        start = Point5D.from_json_data(data['start']) if 'start' in data else Point5D.zero()
+        stop = Point5D.from_json_data(data['stop']) if 'stop' in data else Point5D.inf()
+        slices = cls.make_slices(start, stop)
+        return cls(data['url'], **slices)
+
+    @property
+    def json_data(self):
+        return {**super().json_data, 'url':self.url}
+
     def __repr__(self):
         return super().__repr__() + f"({self.url.split('/')[-1]})"
 

@@ -9,6 +9,7 @@ from ilastik.array5d import Slice5D, Point5D, Shape5D
 from ilastik.array5d import Array5D, Image, ScalarImage, StaticLine, LinearData
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
 from ilastik.data_source import DataSource
+from ilastik.utility import JsonSerializable
 from PIL import Image as PilImage
 
 class Scribblings(ScalarImage):
@@ -68,7 +69,7 @@ class WrongShapeException(Exception):
     def __init__(self, path:str, data:np.ndarray):
         super().__init__(f"Annotations from {path} have bad shape: {data.shape}")
 
-class Annotation:
+class Annotation(JsonSerializable):
     """User scribblings attached to the raw data onto which they were drawn"""
 
     def __init__(self, scribblings:Scribblings, raw_data:DataSource):

@@ -35,8 +35,10 @@ class JsonSerializable(ABC):
             assert parameter.annotation != inspect._empty
             if name not in data: #might be a missing optional
                 continue
-            if issubclass(parameter.annotation, JsonSerializable):
-                this_params[name] = parameter.annotation.from_json(data.pop(name))
+            elif issubclass(data[name].__class__, parameter.annotation):
+                this_params[name] = data.pop(name)
+            elif issubclass(parameter.annotation, JsonSerializable):
+                this_params[name] = parameter.annotation.from_json_data(data.pop(name))
             else:
                 this_params[name] = data.pop(name)
         if len(data) > 0:
