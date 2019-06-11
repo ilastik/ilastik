@@ -12,6 +12,7 @@ from ilastik.array5d.array5D import Array5D, Slice5D, Point5D, Shape5D
 from ilastik.features.feature_extractor import FeatureExtractor, FeatureData
 from ilastik.annotations import Annotation, FeatureSamples, LabelSamples
 from ilastik.data_source import DataSource
+from ilastik.utility import JsonSerializable
 
 class Predictions(Array5D):
     """An array of floats from 0.0 to 1.0. The value in each channel represents
@@ -24,9 +25,9 @@ class Predictions(Array5D):
     def show(self):
         return self.as_uint8().show_channels()
 
-class PixelClassifier:
-    def __init__(self, feature_extractor:FeatureExtractor, annotations:Tuple[Annotation],*,
-                 num_trees:int=100, num_forests:int=multiprocessing.cpu_count(), random_seed=0):
+class PixelClassifier(JsonSerializable):
+    def __init__(self, feature_extractor:FeatureExtractor, annotations:List[Annotation],*,
+                 num_trees:int=100, num_forests:int=multiprocessing.cpu_count(), random_seed:int=0):
         assert len(annotations) > 0
         self.feature_extractor = feature_extractor
         self.num_trees = num_trees

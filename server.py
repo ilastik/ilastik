@@ -77,35 +77,19 @@ def create_data_source():
 
 @app.route('/annotations', methods=['POST'])
 def create_annotation():
-    import pydevd; pydevd.settrace()
     _, uid = Context.create(Annotation)
     return json.dumps(uid)
-
-@app.route('/feature_extractors', methods=['GET'])
-def list_feature_extractors():
-    return json.dumps({extractor_id:extractor.json_data for extractor_id, extractor in feature_extractors.items()})
 
 @app.route('/feature_extractors/<class_name>', methods=['POST'])
 def create_feature_extractor(class_name:str):
     extractor_class = app.config['FEATURE_EXTRACTOR_MAP'][class_name.title().replace('_', '')]
-    extractor = extractor_class.from_json(request.form.get('extractor_params'))
-    extractor_id = str(hash(extractor))
-    if extractor_id not in feature_extractors:
-        feature_extractors[extractor_id] = extractor
-    return extractor_id
+    _, uid = Context.create(extractor_class)
+    return json.dumps(uid)
 
 @app.route('/pixel_classifier', methods=['POST'])
 def create_classifier():
-    print(f"==================>>>> {request.form.get('annotation_ids')}")
-    annotation_ids = get_list_value_from_request('annotation_ids')
-    selected_annotations = tuple(annotations[i] for i in annotation_ids)
-
-    extractor_ids = get_list_value_from_request('feature_extractor_ids')
-    selected_extractors = tuple(feature_extractors[i] for i in extractor_ids)
-
-    extractor = FeatureExtractorCollection.get(selected_extractors)
-    classifier = StrictPixelClassifier.get(extractor, selected_annotations)
-    return str(id(classifier))
+    _, uid = Context.create(PixelClassifier)
+    return json.dumps(uid)
 
 @app.route('/predictions/')
 def predict():
