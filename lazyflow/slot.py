@@ -1479,6 +1479,10 @@ class Slot(object):
             # call changed callbacks
             self._sig_changed(self)
 
+    def _invokeSetupOutputs(self):
+        if self.operator.configured():
+            self.operator._setupOutputs()
+
     def _configureOperator(self, slot, oldSize=0, newSize=0, notify=True):
         """Call setupOutputs of Operator if all slots of the operator
         are connected and configured.
@@ -1486,8 +1490,11 @@ class Slot(object):
         """
         if self.operator is not None:
             # check whether all slots are connected and notify operator
-            if self.operator.configured():
-                self.operator._setupOutputs()
+            transaction = getattr(self.operator, "_current_transaction", None)
+            if transaction:
+                transaction.on_exit(self._invokeSetupOutputs)
+            else:
+                self._invokeSetupOutputs()
 
     def _setupOutputs(self):
         """
