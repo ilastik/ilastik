@@ -731,6 +731,39 @@ class TestTransaction:
                 with op.transaction:
                     op.Input2.setValue("val2")
 
+    def test_chain(self):
+        class OpA(graph.Operator):
+            Input = graph.InputSlot()  # required slot
+
+            def setupOutputs(self):
+                pass
+
+            def propagateDirty(self, *a, **kw):
+                pass
+
+        class OpB(graph.Operator):
+            Input = graph.InputSlot()  # required slot
+            Output = graph.OutputSlot()
+
+            setupOutputs = mock.Mock()
+
+            def propagateDirty(self, *a, **kw):
+                pass
+
+        g = graph.Graph()
+
+        op_a = OpA(graph=g)
+        op_b = OpB(graph=g)
+
+        op_b.Input.connect(op_a.Input)
+        import time
+
+        with op_a.transaction:
+            op_a.Input.setValue("fadf")
+            op_b.setupOutputs.assert_not_called()
+
+        op_b.setupOutputs.assert_called_once()
+
 
 if __name__ == "__main__":
     import sys

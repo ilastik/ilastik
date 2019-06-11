@@ -32,14 +32,14 @@ from lazyflow.slot import InputSlot, OutputSlot, Slot
 
 class _Transaction:
     def __init__(self, operator):
-        self._on_exit = None
+        self._on_exit = set()
         self._operator = operator
 
     def on_exit(self, fn):
         """
         Register transaction completion callback
         """
-        self._on_exit = fn
+        self._on_exit.add(fn)
 
     def __enter__(self):
         assert self._operator._current_transaction is None, "Nested transactions are not implemented"
@@ -47,8 +47,9 @@ class _Transaction:
 
     def __exit__(self, *args, **kw):
         self._operator._current_transaction = None
-        if self._on_exit:
-            self._on_exit()
+
+        for cb in self._on_exit:
+            cb()
 
 
 class InputDict(collections.OrderedDict):
@@ -320,8 +321,7 @@ class Operator(metaclass=OperatorMetaClass):
             islot.notifyUnready(self.handleInputBecameUnready)
 
         self._initialized = True
-        if self.configured():
-            self._setupOutputs()
+        self._setupOutputs()
 
     def _instantiate_slots(self):
         # replicate input slot connections
@@ -488,6 +488,9 @@ class Operator(metaclass=OperatorMetaClass):
     def _setupOutputs(self):
         # Don't setup this operator if there are currently
         # requests on it.
+        if not self.configured():
+            return
+
         with self._condition:
             while self._executionCount > 0:
                 self._condition.wait()

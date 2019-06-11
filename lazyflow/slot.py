@@ -1443,6 +1443,15 @@ class Slot(object):
             s = OutputSlot(self.name, operator, **init_kwargs)
         return s
 
+    def _maybe_call_within_transaction(self, fn):
+        if self.operator:
+            trans = getattr(self.operator, "_current_transaction", None)
+            if trans:
+                trans.on_exit(fn)
+                return
+
+        fn()
+
     def _changed(self):
         oldMeta = self.meta
         old_ready = self.ready()
@@ -1467,7 +1476,8 @@ class Slot(object):
                 " This is currently not supported." % (self.operator.name, self.name)
             )
             for c in self.downstream_slots:
-                c._changed()
+                self._maybe_call_within_transaction(c._changed)
+
             self.meta._dirty = False
 
         if self._type != "output":
@@ -1479,10 +1489,6 @@ class Slot(object):
             # call changed callbacks
             self._sig_changed(self)
 
-    def _invokeSetupOutputs(self):
-        if self.operator.configured():
-            self.operator._setupOutputs()
-
     def _configureOperator(self, slot, oldSize=0, newSize=0, notify=True):
         """Call setupOutputs of Operator if all slots of the operator
         are connected and configured.
@@ -1490,11 +1496,7 @@ class Slot(object):
         """
         if self.operator is not None:
             # check whether all slots are connected and notify operator
-            transaction = getattr(self.operator, "_current_transaction", None)
-            if transaction:
-                transaction.on_exit(self._invokeSetupOutputs)
-            else:
-                self._invokeSetupOutputs()
+            self._maybe_call_within_transaction(self.operator._setupOutputs)
 
     def _setupOutputs(self):
         """
