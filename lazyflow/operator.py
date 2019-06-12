@@ -25,31 +25,10 @@ import logging
 import threading
 
 from abc import ABCMeta
+from typing import Optional
 
 # lazyflow
 from lazyflow.slot import InputSlot, OutputSlot, Slot
-
-
-class _Transaction:
-    def __init__(self, operator):
-        self._on_exit = set()
-        self._operator = operator
-
-    def on_exit(self, fn):
-        """
-        Register transaction completion callback
-        """
-        self._on_exit.add(fn)
-
-    def __enter__(self):
-        assert self._operator._current_transaction is None, "Nested transactions are not implemented"
-        self._operator._current_transaction = self
-
-    def __exit__(self, *args, **kw):
-        self._operator._current_transaction = None
-
-        for cb in self._on_exit:
-            cb()
 
 
 class InputDict(collections.OrderedDict):
@@ -204,16 +183,40 @@ class Operator(metaclass=OperatorMetaClass):
     description = ""
     category = "lazyflow"
 
-    _current_transaction = None
+    class Transaction:
+        def __init__(self, operator):
+            self._on_exit = []
+            self._operator = operator
+
+        def on_exit(self, fn):
+            """
+            Register transaction completion callback
+            """
+            if fn in self._on_exit:
+                return
+
+            self._on_exit.append(fn)
+
+        def __enter__(self):
+            assert self._operator._current_transaction is None, "Nested transactions are not implemented"
+            self._operator._current_transaction = self
+
+        def __exit__(self, *args, **kw):
+            self._operator._current_transaction = None
+
+            for cb in self._on_exit:
+                cb()
+
+    _current_transaction: Optional[Transaction] = None
 
     @property
-    def transaction(self):
+    def transaction(self) -> Transaction:
         """
         Create transaction for this operation deferring setupOutputs call
         until transaction is finished
         :returns: Transaction context manager
         """
-        return _Transaction(self)
+        return self._current_transaction or self.Transaction(self)
 
     def __new__(cls, *args, **kwargs):
         ##
