@@ -169,7 +169,7 @@ class OpNNClassification(Operator):
     BinaryModel = InputSlot()
     BinaryModelState = InputSlot()
     BinaryOptimizerState = InputSlot()
-    ValidationImgMask = InputSlot(level=1, optional=True, allow_mask=True)
+    MaskCoordinates = InputSlot(level=1, optional=True)
 
     Classifier = OutputSlot()
     PredictionProbabilities = OutputSlot(
@@ -234,6 +234,9 @@ class OpNNClassification(Operator):
 
         self.opTiktorchFactory = OpTiktorchFactory(parent=self.parent)
         self.opTiktorchFactory.ServerConfig.connect(self.ServerConfig)
+
+        self.opValidationMask = OpMultiLaneWrapper(OpValidationMask, parent=self)
+        self.opValidationMask.Coordinates.connect(self.MaskCoordinates)
 
         self.opModel = OpModel(parent=self.parent)
         self.opModel.TiktorchFactory.connect(self.opTiktorchFactory.Tiktorch)
@@ -470,6 +473,8 @@ class OpNNClassification(Operator):
         self.ValidationImgMask.meta.axistags = vigra.defaultAxistags('zyxc')
         self.ValidationImgMask.setValue(binarymask)
 
+        # self.opTrain.Labels.setDirty()
+
         # ToDo pass val_roi to tiktorchlazyflowclassifier
 
 
@@ -582,3 +587,21 @@ class OpPredictionPipeline(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass
+
+class OpValidationMask(Operator):
+    Coordinates = InputSlot()
+
+    def setupOutputs(self):
+        pass
+
+    def execute(self, slot, subindex, roi, result):
+        assert slot == self.Coordinates
+        result = 0
+        # todo: compare roi with self.Coordinates
+        result[x_start:] = 1
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        assert slot == self.Coordinates
+        # ... set label diry
+     

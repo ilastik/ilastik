@@ -390,7 +390,7 @@ class NNClassGui(LabelingGui):
             dlg.exec_()
 
             if dlg.valid_params:
-                self.topLevelOperatorView.set_validationMask(dlg.valid_params)
+                self.topLevelOperatorView.MaskCoordinates.setValue(dlg.valid_params)
 
         advanced_menu.addAction("Validation Set").triggered.connect(validationMenu)
 
