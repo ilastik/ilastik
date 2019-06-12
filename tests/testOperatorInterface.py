@@ -756,7 +756,6 @@ class TestTransaction:
         op_b = OpB(graph=g)
 
         op_b.Input.connect(op_a.Input)
-        import time
 
         with op_a.transaction:
             op_a.Input.setValue("fadf")
