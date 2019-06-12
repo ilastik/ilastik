@@ -25,6 +25,13 @@ class Predictions(Array5D):
     def show(self):
         return self.as_uint8().show_channels()
 
+    def as_pil_images(self):
+        pil_channel_images = []
+        for img in self.as_uint8().images():
+            for c in img.channels():
+                pil_channel_images.append(c.as_pil_images()[0])
+        return pil_channel_images
+
 class PixelClassifier(JsonSerializable):
     def __init__(self, feature_extractor:FeatureExtractor, annotations:List[Annotation],*,
                  num_trees:int=100, num_forests:int=multiprocessing.cpu_count(), random_seed:int=0):

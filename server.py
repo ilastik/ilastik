@@ -1,5 +1,7 @@
-from flask import Flask, request
+from flask import Flask, request, send_file
+from functools import partial
 from threading import Thread
+import io
 import json
 import os
 from flask import Flask, flash, request, redirect, url_for
@@ -46,26 +48,13 @@ class Context:
         return cls.objects[uid]
 
     @classmethod
-    def loadObject(cls, uid:str):
-        try:
-            return cls.get(uid)
-        except KeyError:
-            raise ValueError(uid)
-
-    @classmethod
-    def deserialize(cls, value:str):
-        for deserializer in [cls.loadObject, int, float]:
-            try:
-                return deserializer(value)
-            except ValueError:
-                pass
-        return value
-
-    @classmethod
     def get_request_params(cls):
         payload = {}
         for k, v in request.form.items():
-            payload[k] = cls.deserialize(v)
+            try:
+                payload[k] = cls.get(v)
+            except (ValueError, KeyError):
+                payload[k] = v
         for k, v in request.files.items():
             payload[k] = v.read()
         return listify(unflatten(payload))
@@ -91,8 +80,24 @@ def create_classifier():
     _, uid = Context.create(PixelClassifier)
     return json.dumps(uid)
 
-@app.route('/predictions/')
+@app.route('/pixel_predictions/', methods=['GET'])
 def predict():
-    pass
+    classifier = Context.get(request.args['pixel_classifier_id'])
+    roi_params = {}
+    for axis, v in request.args.items():
+        if axis in 'tcxyz':
+            start, stop = tuple(int(part) for part in v.split('_'))
+            roi_params[axis] = slice(start, stop)
+    roi = Slice5D(**roi_params)
+    data_source = Context.get(request.args['data_source_id']).resize(roi)
+    channel = int(request.args.get('channel', 0))
+    predictions, _ = classifier.predict(data_source)
 
-Thread(target=app.run).start()
+    out_image = predictions.as_pil_images()[channel]
+    out_file = io.BytesIO()
+    out_image.save(out_file, 'png')
+    out_file.seek(0)
+    return send_file(out_file, mimetype='image/png')
+
+
+Thread(target=partial(app.run, host='0.0.0.0')).start()

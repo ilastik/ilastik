@@ -59,6 +59,9 @@ class DataSource(Slice5D):
     def full(self) -> 'DataSource':
         return self.__class__(self.url, **Slice5D.all().to_dict())
 
+    def resize(self, slc:Slice5D):
+        return self.__class__(self.url, **slc.to_dict())
+
     @property
     @abstractmethod
     def dtype(self):

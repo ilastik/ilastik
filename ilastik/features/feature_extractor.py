@@ -19,6 +19,9 @@ class FeatureData(Array5D):
         #FIXME:
         #assert arr.dtype == np.float32
 
+    def as_pil_images(self):
+        return self.as_uint8().as_pil_images()
+
     def show(self):
         return self.as_uint8().show_channels()
 
