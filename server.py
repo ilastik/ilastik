@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, request, send_file
 from functools import partial
 from threading import Thread
@@ -82,16 +83,23 @@ def create_classifier():
 
 @app.route('/pixel_predictions/', methods=['GET'])
 def predict():
-    classifier = Context.get(request.args['pixel_classifier_id'])
     roi_params = {}
     for axis, v in request.args.items():
         if axis in 'tcxyz':
             start, stop = tuple(int(part) for part in v.split('_'))
             roi_params[axis] = slice(start, stop)
     roi = Slice5D(**roi_params)
+    classifier = Context.get(request.args['pixel_classifier_id'])
     data_source = Context.get(request.args['data_source_id']).resize(roi)
     channel = int(request.args.get('channel', 0))
-    predictions, _ = classifier.predict(data_source)
+
+    predictions = classifier.allocate_predictions(data_source)
+    with ThreadPoolExecutor() as executor:
+        for raw_tile in data_source.get_tiles():
+            def predict_tile(raw_tile):
+                tile_prediction, tile_features = classifier.predict(raw_tile)
+                predictions.set(tile_prediction, autocrop=True)
+            executor.submit(predict_tile, raw_tile)
 
     out_image = predictions.as_pil_images()[channel]
     out_file = io.BytesIO()
@@ -100,4 +108,5 @@ def predict():
     return send_file(out_file, mimetype='image/png')
 
 
-Thread(target=partial(app.run, host='0.0.0.0')).start()
+#Thread(target=partial(app.run, host='0.0.0.0')).start()
+Thread(target=app.run).start()
