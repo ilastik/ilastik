@@ -891,7 +891,9 @@ class Slot(object):
                     return inputSlot
         return "Couldn't find an upstream problem slot."
 
-    class RequestExecutionWrapper(object):
+    class RequestExecutionWrapper:
+        __slots__ = ("started", "finished", "slot", "operator", "roi")
+
         def __init__(self, slot, roi):
             self.started = False
             self.finished = False
