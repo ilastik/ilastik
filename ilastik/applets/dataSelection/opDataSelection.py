@@ -443,8 +443,7 @@ class OpDataSelection(Operator):
                 # Before we re-order, make sure no non-singleton
                 #  axes would be dropped by the forced order.
                 tagged_provider_shape = providerSlot.meta.getTaggedShape()
-                minimal_axes = [k_v for k_v in list(tagged_provider_shape.items()) if k_v[1] > 1]
-                minimal_axes = set(k for k, v in minimal_axes)
+                minimal_axes = {k for k, v in tagged_provider_shape.items() if v > 1}
 
                 # Pick the shortest of the possible 'forced' orders that
                 # still contains all the axes of the original dataset.
@@ -452,9 +451,8 @@ class OpDataSelection(Operator):
                 candidate_orders = [order for order in candidate_orders if minimal_axes.issubset(set(order))]
 
                 if len(candidate_orders) == 0:
-                    msg = "The axes of your dataset ({}) are not compatible with any of the allowed"\
-                          " axis configurations used by this workflow ({}). Please fix them."\
-                          .format(providerSlot.meta.getAxisKeys(), self.forceAxisOrder)
+                    msg = (f"The axes of your dataset ({providerSlot.meta.getAxisKeys()}) are not compatible with "
+                           f"any of the allowed axis configurations used by this workflow ({self.forceAxisOrder}).")
                     raise DatasetConstraintError("DataSelection", msg)
 
                 output_order = sorted(candidate_orders, key=len)[0]  # the shortest one
@@ -463,32 +461,17 @@ class OpDataSelection(Operator):
                 # No forced axisorder is supplied. Use original axisorder as
                 # output order: it is assumed by the export-applet, that the
                 # an OpReorderAxes operator is added in the beginning
-                output_order = "".join([x for x in providerSlot.meta.axistags.keys()])
+                output_order = providerSlot.meta.getAxisKeys()
+            if 'c' not in output_order:
+                output_order += 'c'
 
-            op5 = OpReorderAxes(parent=self)
-            op5.AxisOrder.setValue(output_order)
-            op5.Input.connect(providerSlot)
-            providerSlot = op5.Output
+            op5 = OpReorderAxes(parent=self, AxisOrder=output_order, Input=providerSlot)
             self._opReaders.append(op5)
 
-            # If the channel axis is missing, add it as last axis
-            if 'c' not in providerSlot.meta.axistags:
-                op5 = OpReorderAxes(parent=self)
-                keys = providerSlot.meta.getAxisKeys()
-
-                # Append
-                keys.append('c')
-                op5.AxisOrder.setValue("".join(keys))
-                op5.Input.connect(providerSlot)
-                providerSlot = op5.Output
-                self._opReaders.append(op5)
-
-            # Connect our external outputs to the internal operators we chose
-            self.Image.connect(providerSlot)
+            self.Image.connect(op5.Output)
 
             self.AllowLabels.setValue(datasetInfo.allowLabels)
 
-            # If the reading operator provides a nickname, use it.
             if self.Image.meta.nickname is not None:
                 datasetInfo.nickname = self.Image.meta.nickname
 
