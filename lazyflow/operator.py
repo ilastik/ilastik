@@ -23,9 +23,11 @@ import collections
 import functools
 import logging
 import threading
+import sys
+import inspect
 
 from abc import ABCMeta
-from typing import Optional
+from traceback import walk_tb, FrameSummary, format_list
 
 # lazyflow
 from lazyflow.slot import InputSlot, OutputSlot, Slot
@@ -598,3 +600,60 @@ class Operator(metaclass=OperatorMetaClass):
 #    @debug_text.setter
 #    def debug_text(self, text):
 #        self._debug_text = text
+
+
+def get_operator_method_name(module_name, code):
+    """
+    Get fully qualified operator method name
+    """
+    module = sys.modules.get(module_name, None)
+    if not module:
+        return
+
+    symbols = inspect.getmembers(module, inspect.isclass)
+    for symbol_name, symbol_info in symbols:
+        if not issubclass(symbol_info, Operator):
+            continue
+
+        members = inspect.getmembers(symbol_info, inspect.isfunction)
+        for method_name, method_info in members:
+            if method_info.__code__ is code:
+                return f"{module_name}.{symbol_name}.{method_name}"
+
+
+def format_operator_stack(tb):
+    """
+    Extract operator stacktrace from traceback
+    """
+    operator_stack = []
+    for frame, lineno in walk_tb(tb):
+        code = frame.f_code
+        filename = code.co_filename
+
+        op_name = get_operator_method_name(frame.f_globals["__name__"], code)
+        if op_name:
+            operator_stack.append(FrameSummary(filename, lineno, op_name, lookup_line=False, locals=None))
+
+    operator_stack.reverse()
+
+    if operator_stack:
+        return format_list(operator_stack)
+
+
+_original_excepthook = sys.excepthook
+
+
+def print_operator_stack(exc_type, exc, tb):
+    """
+    Enrich default exception output with operator stacktrace
+    """
+    _original_excepthook(exc_type, exc, tb)
+
+    formatted = format_operator_stack(tb)
+    if formatted:
+        print("\n===Operator stack===\n", file=sys.stderr)
+        print("".join(formatted), end="", file=sys.stderr)
+        print("\n===Operator stack end===\n", file=sys.stderr)
+
+
+sys.excepthook = print_operator_stack
