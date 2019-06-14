@@ -35,6 +35,7 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.utility import OpMultiLaneWrapper
+from lazyflow.array5d import Point5D, Shape5D
 from lazyflow.utility import PathComponents, isUrl, make_absolute
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -50,7 +51,8 @@ class DatasetInfo(object):
         PreloadedArray = 2
 
     def __init__(self, filepath=None, jsonNamespace=None, cwd=None,
-                 preloaded_array=None, sequence_axis=None):
+                 preloaded_array=None, sequence_axis=None, allowLabels=True,
+                 subvolume_roi=None):
         """
         filepath: may be a globstring or a full hdf5 path+dataset
 
@@ -72,7 +74,7 @@ class DatasetInfo(object):
         self._filePath = ""
         self._datasetId = ""                # The name of the data within the project file (if it is stored locally)
         # OBSOLETE: Whether or not this dataset should be used for training a classifier.
-        self.allowLabels = True
+        self.allowLabels = allowLabels
         self.drange = None
         self.normalizeDisplay = True
         self.sequenceAxis = None
@@ -86,7 +88,7 @@ class DatasetInfo(object):
         # A flag indicating whether the dataset is backed by a real source (e.g. file)
         # or by the fake provided (e.g. in headless mode when raw data are not necessary)
         self.realDataSource = True
-        self.subvolume_roi = None
+        self.subvolume_roi = subvolume_roi
         self.location = Location.FileSystem
         self.display_mode = 'default'  # choices: default, grayscale, rgba, random-colortable, binary-mask.
 
@@ -373,43 +375,29 @@ class OpDataSelection(Operator):
             # Also, inject if if dtype is uint8, which we can reasonably assume has drange (0,255)
             metadata = {}
             metadata['display_mode'] = datasetInfo.display_mode
-            role_name = self.RoleName.value
-            if 'c' not in providerSlot.meta.getTaggedShape():
-                num_channels = 0
-            else:
-                num_channels = providerSlot.meta.getTaggedShape()['c']
-            if num_channels > 1:
-                metadata['channel_names'] = ["{}-{}".format(role_name, i) for i in range(num_channels)]
-            else:
-                metadata['channel_names'] = [role_name]
+            metadata['channel_names'] = [f"{self.RoleName.value}-channel {i}" for i in range(providerSlot.meta.getShape5D().c)]
 
             if datasetInfo.drange is not None:
                 metadata['drange'] = datasetInfo.drange
             elif providerSlot.meta.dtype == numpy.uint8:
-                # SPECIAL case for uint8 data: Provide a default drange.
-                # The user can always override this herself if she wants.
                 metadata['drange'] = (0, 255)
             if datasetInfo.normalizeDisplay is not None:
                 metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
             if datasetInfo.axistags is not None:
-                if len(datasetInfo.axistags) != len(providerSlot.meta.shape):
-                    ts = providerSlot.meta.getTaggedShape()
-                    if 'c' in ts and 'c' not in datasetInfo.axistags and len(datasetInfo.axistags) + 1 == len(ts):
-                        # provider has no channel axis, but template has => add channel axis to provider
-                        # fixme: Optimize the axistag guess in BatchProcessingApplet instead of hoping for the best here
-                        metadata['axistags'] = vigra.defaultAxistags(''.join(datasetInfo.axistags.keys()) + 'c')
+                info_keys = [tag.key for tag in datasetInfo.axistags]
+                provider_squeezed_shape = {k:v for k, v in providerSlot.meta.getTaggedShape().items() if v > 1}
+                if len(info_keys) < len(provider_squeezed_shape.keys()):
+                    raise Exception(f"Cannot reinterpret input with shape {providerSlot.getTaggedShape} using "
+                                    f"given axis order of {info_keys}")
+                dummy_axes = set(Point5D.LABELS) - set(info_keys)
+                out_axes = ""
+                for k, v in providerSlot.meta.getTaggedShape().items():
+                    if k in provider_squeezed_shape:
+                        out_axes += info_keys.pop(0)
                     else:
-                        # This usually only happens when we copied a DatasetInfo from another lane,
-                        # and used it as a 'template' to initialize this lane.
-                        # This happens in the BatchProcessingApplet when it attempts to guess the axistags of
-                        # batch images based on the axistags chosen by the user in the interactive images.
-                        # If the interactive image tags don't make sense for the batch image, you get this error.
-                        raise Exception("Your dataset's provided axistags ({}) do not have the "
-                                        "correct dimensionality for your dataset, which has {} dimensions."
-                                        .format("".join(tag.key for tag in datasetInfo.axistags),
-                                                len(providerSlot.meta.shape)))
-                else:
-                    metadata['axistags'] = datasetInfo.axistags
+                        out_axes += dummy_axes.pop()
+                metadata['axistags'] = vigra.defaultAxistags(out_axes)
+
             if datasetInfo.original_axistags is not None:
                 metadata['original_axistags'] = datasetInfo.original_axistags
 

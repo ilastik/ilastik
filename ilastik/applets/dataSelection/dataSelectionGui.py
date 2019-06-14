@@ -552,27 +552,26 @@ class DataSelectionGui(QWidget):
         roi may be None, in which case it is ignored.
         """
         cwd = self.topLevelOperator.WorkingDirectory.value
-        datasetInfo = DatasetInfo(filePath, cwd=cwd)
-        datasetInfo.subvolume_roi = roi # (might be None)
-                
+        data_path = filePath
         absPath, relPath = getPathVariants(filePath, cwd)
         
         # If the file is in a totally different tree from the cwd,
         # then leave the path as absolute.  Otherwise, override with the relative path.
         if relPath is not None and len(os.path.commonprefix([cwd, absPath])) > 1:
-            datasetInfo.filePath = relPath
+            data_path = relPath
             
         h5Exts = ['.ilp', '.h5', '.hdf5']
         n5Exts = ['.n5']
-        if os.path.splitext(datasetInfo.filePath)[1] in h5Exts + n5Exts:
-            if os.path.splitext(datasetInfo.filePath)[1] in n5Exts:
+        file_extension = os.path.splitext(data_path)[1]
+        if file_extension in h5Exts + n5Exts:
+            if file_extension in n5Exts:
                 datasetNames = self.getPossibleN5InternalPaths( absPath )
             else:
                 datasetNames = self.getPossibleH5InternalPaths( absPath )
             if len(datasetNames) == 0:
-                raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
-            elif len(datasetNames) == 1:
-                datasetInfo.filePath += str(datasetNames[0])
+                raise RuntimeError(f"{file_extension} file {data_path} has no image datasets")
+            if len(datasetNames) == 1:
+                data_path += str(datasetNames[0])
             else:
                 # If exactly one of the file's datasets matches a user's previous choice, use it.
                 if roleIndex not in self._default_h5n5_volumes:
@@ -580,21 +579,23 @@ class DataSelectionGui(QWidget):
                 previous_selections = self._default_h5n5_volumes[roleIndex]
                 possible_auto_selections = previous_selections.intersection(datasetNames)
                 if len(possible_auto_selections) == 1:
-                    datasetInfo.filePath += str(list(possible_auto_selections)[0])
+                    data_path += str(list(possible_auto_selections)[0])
                 else:
                     # Ask the user which dataset to choose
                     dlg = H5N5VolumeSelectionDlg(datasetNames, self)
                     if dlg.exec_() == QDialog.Accepted:
                         selected_index = dlg.combo.currentIndex()
                         selected_dataset = str(datasetNames[selected_index])
-                        datasetInfo.filePath += selected_dataset
+                        data_path += selected_dataset
                         self._default_h5n5_volumes[roleIndex].add(selected_dataset)
                     else:
                         raise DataSelectionGui.UserCancelledError()
 
-        # Allow labels by default if this gui isn't being used for batch data.
-        datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
-        return datasetInfo
+        return DatasetInfo(
+            filepath=data_path,
+            cwd=cwd,
+            allowLabels=(self.guiMode == GuiMode.Normal),
+            subvolume_roi=roi)
 
     def _configureOpWithInfos(self, roleIndex, startingLane, endingLane, infos):
         """
