@@ -94,13 +94,14 @@ class Graph:
             return self._deferred_callbacks is not None
 
         def on_exit(self, fn):
+            assert self.active, "Cannot register callbacks on inactive transaction"
             if fn in self._deferred_callbacks:
                 return
             else:
                 self._deferred_callbacks.append(fn)
 
         def __enter__(self):
-            assert self._deferred_callbacks is None, "Nested transactions are not supported"
+            assert not self.active, "Nested transactions are not supported"
             self._deferred_callbacks = []
 
         def __exit__(self, *args, **kw):
