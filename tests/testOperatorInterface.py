@@ -25,13 +25,19 @@ from builtins import object
 
 import weakref
 import gc
+import time
+import types
 
-import nose
+from unittest import mock
+
 from lazyflow import graph
 from lazyflow import stype
+from lazyflow import slot
 from lazyflow import operators
-import numpy
 from lazyflow.graph import OperatorWrapper
+
+import numpy
+import pytest
 
 
 class OpA(graph.Operator):
@@ -664,6 +670,98 @@ class TestOperatorCleanup(object):
         del op2
         gc.collect()
         assert r() is None, "cleanup failed"
+
+
+class TransactionOp(graph.Operator):
+    Input1 = graph.InputSlot()  # required slot
+    Input2 = graph.InputSlot(optional=True)  # optional slot
+    Input3 = graph.InputSlot(value=3)  # required slot with default value, i.e. already connected
+
+    Output1 = graph.OutputSlot()
+
+    setupOutputs = mock.Mock()
+
+    def propagateDirty(self, slot, roid, index):
+        pass
+
+
+class TestTransaction:
+    def testTransactionMultipleSetsOnSameSlot(self):
+        g = graph.Graph()
+        op = TransactionOp(graph=g)
+
+        with op.transaction:
+            op.Input1.setValue("val1")
+            op.Input1.setValue("val2")
+
+        op.setupOutputs.assert_called_once()
+
+    def testTransactionSetMultipleSlots(self):
+        input1, input2 = None, None
+
+        def fetch_values(self, *args, **kwargs):
+            nonlocal input1, input2
+            input1 = self.Input1.value
+            input2 = self.Input2.value
+
+        g = graph.Graph()
+        op = TransactionOp(graph=g)
+
+        setup_mock = mock.Mock()
+        setup_mock.side_effect = fetch_values
+
+        op.setupOutputs = types.MethodType(setup_mock, op)
+
+        with op.transaction:
+            op.Input1.setValue("val1")
+            op.Input2.setValue("val2")
+
+        op.setupOutputs.assert_called_once()
+        assert input1 == "val1"
+        assert input2 == "val2"
+
+    def testNestedTransactionFails(self):
+        g = graph.Graph()
+        op = TransactionOp(graph=g)
+
+        with op.transaction:
+            op.Input1.setValue("val1")
+
+            with pytest.raises(AssertionError):
+                with op.transaction:
+                    op.Input2.setValue("val2")
+
+    def test_chain(self):
+        class OpA(graph.Operator):
+            Input = graph.InputSlot()  # required slot
+
+            def setupOutputs(self):
+                pass
+
+            def propagateDirty(self, *a, **kw):
+                pass
+
+        class OpB(graph.Operator):
+            Input = graph.InputSlot()  # required slot
+            Output = graph.OutputSlot()
+
+            setupOutputs = mock.Mock()
+
+            def propagateDirty(self, *a, **kw):
+                pass
+
+        g = graph.Graph()
+
+        op_a = OpA(graph=g)
+        op_b = OpB(graph=g)
+
+        op_b.Input.connect(op_a.Input)
+
+        with op_a.transaction:
+            op_a.Input.setValue("fadf")
+            op_b.setupOutputs.assert_not_called()
+
+        op_b.setupOutputs.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -35,6 +35,7 @@ import collections
 import itertools
 import threading
 from functools import partial, wraps
+from contextlib import contextmanager
 import warnings
 
 # SciPy
@@ -1443,7 +1444,16 @@ class Slot(object):
             s = OutputSlot(self.name, operator, **init_kwargs)
         return s
 
+    def maybe_call_within_transaction(self, fn):
+        if self.graph:
+            self.graph.maybe_call_within_transaction(fn)
+        else:
+            fn()
+
     def _changed(self):
+        self.maybe_call_within_transaction(self._changed_impl)
+
+    def _changed_impl(self):
         oldMeta = self.meta
         old_ready = self.ready()
         if self.upstream_slot is not None and self.meta != self.upstream_slot.meta:
@@ -1468,6 +1478,7 @@ class Slot(object):
             )
             for c in self.downstream_slots:
                 c._changed()
+
             self.meta._dirty = False
 
         if self._type != "output":
@@ -1486,8 +1497,7 @@ class Slot(object):
         """
         if self.operator is not None:
             # check whether all slots are connected and notify operator
-            if self.operator.configured():
-                self.operator._setupOutputs()
+            self.maybe_call_within_transaction(self.operator._setupOutputs)
 
     def _setupOutputs(self):
         """
