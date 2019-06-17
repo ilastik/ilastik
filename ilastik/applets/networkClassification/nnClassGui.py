@@ -390,7 +390,7 @@ class NNClassGui(LabelingGui):
             dlg.exec_()
 
             if dlg.valid_params:
-                self.topLevelOperatorView.MaskCoordinates.setValue(dlg.valid_params)
+                self.topLevelOperatorView.MaskCoordinates.setValue(dlg.valid_params)   
 
         advanced_menu.addAction("Validation Set").triggered.connect(validationMenu)
 
@@ -556,12 +556,9 @@ class NNClassGui(LabelingGui):
 
         labels = self.labelListData
 
-        validationMask = self.topLevelOperatorView.ValidationImgMask
-        # hack, axistags are none when defining in opNNclass
-        validationMask.meta.axistags = vigra.defaultAxistags('zyxc')
-
-        if validationMask.ready():
-            maskLayer = self._create_alpha_modulated_layer_from_slot(validationMask)
+        validationSlot = self.topLevelOperatorView.ValidationMask
+        if validationSlot.ready():
+            maskLayer = self._create_alpha_modulated_layer_from_slot(validationSlot)
             maskLayer.name = "Validation Mask"
             maskLayer.visible = True
             maskLayer.opacity = 0.25

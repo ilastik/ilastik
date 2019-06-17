@@ -52,6 +52,7 @@ class NNClassificationSerializer(AppletSerializer):
                 shrink_to_bb=True,
             ),
             SerialDictSlot(topLevelOperator.TiktorchConfig),
+            SerialDictSlot(topLevelOperator.MaskCoordinates),
             BinarySlot(topLevelOperator.BinaryModel),
             BinarySlot(topLevelOperator.BinaryModelState),
             BinarySlot(topLevelOperator.BinaryOptimizerState),

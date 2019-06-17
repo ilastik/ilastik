@@ -23,6 +23,7 @@ import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.roi import getIntersection
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 from lazyflow.operators import (
     OpMultiArraySlicer2,
@@ -180,6 +181,7 @@ class OpNNClassification(Operator):
     CachedPredictionProbabilities = OutputSlot(level=1)
     LabelImages = OutputSlot(level=1)
     NonzeroLabelBlocks = OutputSlot(level=1)
+    ValidationMask = OutputSlot(level=1)
 
     Halo_Size = InputSlot(value=0)
     Batch_Size = InputSlot(value=1)
@@ -238,6 +240,7 @@ class OpNNClassification(Operator):
 
         self.opValidationMask = OpMultiLaneWrapper(OpValidationMask, parent=self)
         self.opValidationMask.Coordinates.connect(self.MaskCoordinates)
+        self.ValidationMask.connect(self.opValidationMask.Mask)
 
         self.opModel = OpModel(parent=self.parent)
         self.opModel.TiktorchFactory.connect(self.opTiktorchFactory.Tiktorch)
@@ -460,24 +463,6 @@ class OpNNClassification(Operator):
         for laneIndex in range(len(self.InputImages)):
             self.getLane(laneIndex).opLabelPipeline.opLabelArray.clearLabel(label_value)
 
-    def set_validationMask(self, parameters):
-        img_shape = self.InputImages[0].meta.shape
-        z = parameters['z_coord']
-        y = parameters['y_coord']
-        x = parameters['x_coord']
-
-        binarymask = numpy.zeros(img_shape, dtype='uint8')
-
-        binarymask[z[0]: z[1], y[0]: y[1], x[0]: x[1], :] = 1
-
-        self.ValidationImgMask.meta.dtype = numpy.uint8
-        self.ValidationImgMask.meta.axistags = vigra.defaultAxistags('zyxc')
-        self.ValidationImgMask.setValue(binarymask)
-
-        # self.opTrain.Labels.setDirty()
-
-        # ToDo pass val_roi to tiktorchlazyflowclassifier
-
 
 class OpBlockShape(Operator):
     RawImage = InputSlot()
@@ -591,18 +576,35 @@ class OpPredictionPipeline(Operator):
 
 class OpValidationMask(Operator):
     Coordinates = InputSlot()
+    Mask = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super(OpValidationMask, self).__init__(*args, **kwargs)
 
     def setupOutputs(self):
-        pass
+        self.Mask.meta.dtype = numpy.uint8
+        self.Mask.meta.axistags = vigra.defaultAxistags('zyxc')
 
     def execute(self, slot, subindex, roi, result):
-        assert slot == self.Coordinates
-        result = 0
-        # todo: compare roi with self.Coordinates
-        result[x_start:] = 1
+        assert slot == self.Mask
+        result[:] = 0
+        parameters = self.Coordinates.value
+        z = parameters['z_coord']
+        y = parameters['y_coord']
+        x = parameters['x_coord']
+
+        coord_roi = slice((z[0], y[0], x[0], 0), (z[1], y[1], x[1], 1))
+
+        intersection = getIntersection((roi.start, roi.stop), (coord_roi.start, coord_roi.stop))
+
+        result[intersection] = 1
         return result
 
     def propagateDirty(self, slot, subindex, roi):
         assert slot == self.Coordinates
+        self.Mask.meta.shape = tuple(roi.stop - roi.start)
+
+        # OpNNClassification.LabelInputs[subindex].setDirty()
+
         # ... set label diry
      
