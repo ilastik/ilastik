@@ -880,9 +880,6 @@ class Slot(object):
             execWrapper = Slot.RequestExecutionWrapper(self, roi)
             request = Request(execWrapper)
 
-            # We must decrement the execution count even if the
-            # request is cancelled
-            request.notify_cancelled(execWrapper.handleCancel)
             return request
 
     @staticmethod
@@ -895,13 +892,14 @@ class Slot(object):
                     return inputSlot
         return "Couldn't find an upstream problem slot."
 
-    class RequestExecutionWrapper(object):
+    class RequestExecutionWrapper:
+        __slots__ = ("started", "finished", "slot", "operator", "roi")
+
         def __init__(self, slot, roi):
             self.started = False
             self.finished = False
             self.slot = slot
             self.operator = slot.operator
-            self.lock = threading.Lock()
             self.roi = roi
 
         def __call__(self, destination=None):
@@ -954,13 +952,10 @@ class Slot(object):
                     # check that the returned value is compatible with the requested roi
                     self.slot.stype.check_result_valid(self.roi, destination)
 
-                # Decrement the execution count
-                self._decrementOperatorExecutionCount()
                 return destination
-            except:  # except Request.CancellationException
-                # Decrement the execution count
+
+            finally:
                 self._decrementOperatorExecutionCount()
-                raise
 
         def _incrementOperatorExecutionCount(self):
             self.started = True
@@ -972,27 +967,15 @@ class Slot(object):
                     self.operator._condition.wait()
                 self.operator._executionCount += 1
 
-        def handleCancel(self, *args):
-            # The new request api does clean up by handling an
-            # exception, not in this callback. Only clean up if we are
-            # using the old request api
-            using_old_api = len(args) > 0 and not hasattr(args[0], "notify_cancelled")
-            if using_old_api:
-                self._decrementOperatorExecutionCount()
-
         def _decrementOperatorExecutionCount(self):
-            # Must lock here because cancel callbacks are
-            # asynchronous. (Perhaps it would be better if they were
-            # called from the worker thread instead...)
-            with self.lock:
-                # Only do this once per execution. If we were cancelled
-                # after we finished working, don't do anything
-                if self.started and not self.finished:
-                    assert self.operator._executionCount > 0, "BUG: Can't decrement the execution count below zero!"
-                    self.finished = True
-                    with self.operator._condition:
-                        self.operator._executionCount -= 1
-                        self.operator._condition.notifyAll()
+            # Only do this once per execution. If we were cancelled
+            # after we finished working, don't do anything
+            if self.started and not self.finished:
+                assert self.operator._executionCount > 0, "BUG: Can't decrement the execution count below zero!"
+                self.finished = True
+                with self.operator._condition:
+                    self.operator._executionCount -= 1
+                    self.operator._condition.notifyAll()
 
     @is_setup_fn
     def setDirty(self, *args, **kwargs):
