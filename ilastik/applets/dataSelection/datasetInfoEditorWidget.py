@@ -45,6 +45,12 @@ class StorageLocation(Enum):
     AbsoluteLink = "Absolute Link"
     RelativeLink = "Relative Link"
 
+def get_dtype_info(dtype):
+    try:
+        return numpy.iinfo(dtype)
+    except ValueError:
+        return numpy.finfo(dtype)
+
 class DatasetInfoEditorWidget(QDialog):
     """
     This dialog allows the user to edit the settings of one **OR MORE** datasets for a given role.
@@ -61,6 +67,7 @@ class DatasetInfoEditorWidget(QDialog):
         self._op = topLevelOperator
         self._laneIndexes = laneIndexes
         self.selected_ops = [topLevelOperator.innerOperators[li]._opDatasets[roleIndex]  for li in laneIndexes]
+        self.datasetinfo_slots = [topLevelOperator.DatasetGroup[li][roleIndex] for li in laneIndexes]
         self.current_infos = [op.Dataset.value for op in self.selected_ops]
         self.show_axis_details = show_axis_details
         self.encountered_exception = None
@@ -81,101 +88,115 @@ class DatasetInfoEditorWidget(QDialog):
         self.normalizeDisplayComboBox.addItem("True", userData=True)
         self.normalizeDisplayComboBox.addItem("False", userData=False)
         self.normalizeDisplayComboBox.addItem("Default", userData=None)
-        self.normalizeDisplayComboBox.setCurrentIndex(1)
+        self.normalizeDisplayComboBox.currentIndexChanged.connect(self._handleNormalizeDisplayChanged)
+        self.normalizeDisplayComboBox.setCurrentText("Default")
+
+        self.rangeMinSpinBox.setSpecialValueText("--")
+        self.rangeMaxSpinBox.setSpecialValueText("--")
+        self.clearRangeButton.clicked.connect(self._clearNormalizationRanges)
+        self._clearNormalizationRanges()
 
         self.okButton.clicked.connect(self.accept)
         self.cancelButton.clicked.connect(self.reject)
-        self.clearRangeButton.clicked.connect(self._handleClearRangeButton)
 
 
         input_axiskeys = []
         for op in self.selected_ops:
             tags = op.Image.meta.original_axistags or op.Image.meta.axistags
             keys = "".join(tag.key for tag in tags)
-            if not input_axiskeys or input_axiskeys[-1] != keys:
-                input_axiskeys.append(keys)
+            input_axiskeys.append(keys)
 
-        if len(input_axiskeys) > 1:
-            self.multi_axes_display.setText(", ".join(keys))
-            self.multi_axes_display.setVisible(True)
-            key = ''
-        else:
-            self.multi_axes_display.setVisible(False)
-            key = input_axiskeys[0]
         self.multi_axes_display.setEnabled(False)
-
-        for axis_index in range(5):
-            axis_selector = getattr(self, f"axesEdit_{axis_index}")
-            within_bounds = axis_index < len(key)
-            axis_selector.setVisible(within_bounds)
-            axis_selector.setCurrentText(key[axis_index] if within_bounds else 'x')
+        self.multi_axes_display.setText("Current: " + ", ".join(input_axiskeys))
+        if all(len(keys) == len(input_axiskeys[0]) for keys in input_axiskeys):
+            keys = input_axiskeys[0]
+            for axis_index in range(5):
+                axis_selector = getattr(self, f"axesEdit_{axis_index}")
+                within_bounds = axis_index < len(keys)
+                axis_selector.setVisible(within_bounds)
+                axis_selector.setCurrentText(keys[axis_index] if within_bounds else 'x')
+        else:
+            self.multi_axes_display.setToolTip("Select lanes with same number of axes to change their interpretation here")
 
 
         self.nicknameEdit.setText(', '.join(str(info.nickname) for info in self.current_infos))
-        self.nicknameEdit.setEnabled(len(self.selected_ops) == 1)
+        if len(self.selected_ops) == 1:
+            self.nicknameEdit.setEnabled(True)
+        else:
+            self.nicknameEdit.setEnabled(False)
+            self.nicknameEdit.setToolTip("Edit a single lane to modify its nickname")
+
 
         self.shapeLabel.setText(", ".join(str(op.Image.meta.shape) for op in self.selected_ops))
         self.dtypeLabel.setText(", ".join(op.Image.meta.dtype.__name__ for op in self.selected_ops))
 
-        modes = [op.Image.meta.display_mode or "default" for op in self.selected_ops]
-        if all(md == modes[0] for md in modes):
-            index = self.displayModeComboBox.findData(modes[0])
+
+        current_normalize_display = [op.Image.meta.normalizeDisplay for op in self.selected_ops]
+        if all(norm == current_normalize_display[0] for norm in current_normalize_display):
+            if current_normalize_display[0] == True:
+                self.normalizeDisplayComboBox.setCurrentIndex(0)
+            else:
+                self.normalizeDisplayComboBox.setCurrentIndex(1)
+        else:
+            self.normalizeDisplayComboBox.setCurrentIndex(2)
+
+
+        dranges = {op.Image.meta.drange for op in self.selected_ops}
+        if len(dranges) == 1:
+            common_drange = dranges.pop()
+            self.rangeMinSpinBox.setValue(common_drange[0])
+            self.rangeMaxSpinBox.setValue(common_drange[1])
+        else:
+            self._clearNormalizationRanges()
+
+
+        modes = {op.Image.meta.display_mode or "default" for op in self.selected_ops}
+        if len(modes) == 1:
+            mode = modes.pop()
+            index = self.displayModeComboBox.findData(mode)
             self.displayModeComboBox.setCurrentIndex(index)
             self.displayModeComboBox.setEnabled(True)
         else:
             self.displayModeComboBox.setEnabled(False)
 
-        #FIXME: range?
-        #self.rangeMinSpinBox.setValue( drange[0] )
-        #self.rangeMaxSpinBox.setValue( drange[1] )
 
-        current_normalize_display = [op.Image.meta.normalizeDisplay for op in self.selected_ops]
-        if all(norm == True for norm in current_normalize_display):
-            self.normalizeDisplayComboBox.setCurrentIndex(0)
-        if all(norm == False for norm in current_normalize_display):
-            self.normalizeDisplayComboBox.setCurrentIndex(1)
-        else:
-            self.normalizeDisplayComboBox.setCurrentIndex(2)
-            self.normalizeDisplayComboBox.setEnabled(False)
 
     def accept(self):
-        newAxisOrder = 'yxc'#FIXME: recover axes   str(self.axesEdit.currentText())
-        new_norm = self.normalizeDisplayComboBox.currentData()
-        new_drange = ( self.rangeMinSpinBox.value(), self.rangeMaxSpinBox.value() )
+        try:
+            new_axes_keys = ''
+            for axis_index in range(5):
+                axis_selector = getattr(self, f"axesEdit_{axis_index}")
+                if not axis_selector.isVisible():
+                    break
+                new_axes_keys += axis_selector.currentText()
 
-        if len(set(newAxisOrder)) != len(newAxisOrder):
-            raise Exception("Axis order has repeated axes.")
+            if len(set(new_axes_keys)) != len(new_axes_keys):
+                raise Exception(f"Repeated axes: {new_axes_keys}")
 
-        def get_dtype_info(dtype):
-            try:
-                return numpy.iinfo(dtype)
-            except ValueError:
-                return numpy.finfo(dtype)
+            normalize = self.normalizeDisplayComboBox.currentData()
+            new_drange = (self.rangeMinSpinBox.value(), self.rangeMaxSpinBox.value())
+            if normalize:
+                if new_drange[0] >= new_drange[1]:
+                    raise Exception("Can't apply data range values: Data range MIN must be lesser than MAX.")
 
-        if new_drange is not None:
-            if new_drange[0] >= new_drange[1]:
-                raise Exception("Can't apply data range values: Data range MAX must be greater than MIN.")
+                for op in self.selected_ops:
+                    dtype_info = get_dtype_info(op.Image.meta.dtype)
+                    if new_drange[0] < dtype_info.min or new_drange[1] > dtype_info.max:
+                        raise Exception(f"Data range values {new_drange} conflicts with the data type in lane {lane_idx}, "
+                                        f"which has range {(dtype_info.min, dtype_info.max)}")
 
-            for op in self.selected_ops:
-                dtype_info = get_dtype_info(op.Image.meta.dtype)
-                if new_drange[0] < dtype_info.min or new_drange[1] > dtype_info.max:
-                    raise Exception(f"Data range values {new_drange} conflicts with the data type in lane {lane_idx}")
-
-        newDisplayMode = self.displayModeComboBox.currentData()
-
-        for op in self.selected_ops:
-            info = copy.copy( op.Dataset.value )
-            dtype_info = get_dtype_info(op.Image.meta.dtype)
-            dtype = dtype_info.dtype.type
-            info.drange = ( dtype(new_drange[0]), dtype(new_drange[1]) )
-            info.normalizeDisplay = new_norm
-            info.axistags = newTags
-            if self.nicknameEdit.isEnabled():
-                info.nickname = self.nicknameEdit.text()
-            info.display_mode = newDisplayMode
-            op.Dataset.setValue( info )
-
-        super(DatasetInfoEditorWidget, self).accept()
+            for op, datasetinfo_slot in zip(self.selected_ops, self.datasetinfo_slots):
+                info = copy.copy( op.Dataset.value )
+                info.normalizeDisplay = info.normalizeDisplay if normalize is None else normalize
+                dtype = get_dtype_info(op.Image.meta.dtype).dtype.type
+                info.drange = (dtype(new_drange[0]), dtype(new_drange[1])) if normalize else info.drange
+                info.axistags = vigra.defaultAxistags(new_axes_keys) if new_axes_keys else info.axistags
+                info.nickname = self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname
+                info.display_mode = self.displayModeComboBox.currentData()
+                datasetinfo_slot.setValue(info)
+            super(DatasetInfoEditorWidget, self).accept()
+        except Exception as e:
+            QMessageBox.warning(self, "Error", str(e))
 
     def _initInternalDatasetNameCombo(self):
         # If any dataset is either (1) not hdf5 or (2) project-internal, then we can't change the internal path.
@@ -192,10 +213,7 @@ class DatasetInfoEditorWidget(QDialog):
         allInternalPaths = set()
         commonInternalPaths = None
         
-        for laneIndex in self._laneIndexes:
-            tmpOp = self.tempOps[laneIndex]
-            datasetInfo = tmpOp.Dataset.value
-            
+        for datasetInfo in self.current_infos:
             externalPath = PathComponents( datasetInfo.filePath ).externalPath
             absPath, _ = getPathVariants( externalPath, tmpOp.WorkingDirectory.value )
             internalPaths = set( self._getPossibleInternalPaths(absPath) )
@@ -245,10 +263,7 @@ class DatasetInfoEditorWidget(QDialog):
         
         internalPath = None
         
-        for laneIndex in self._laneIndexes:
-            tmpOp = self.tempOps[laneIndex]
-            datasetInfo = tmpOp.Dataset.value
-            
+        for datasetInfo in self.current_infos:
             nextPath = PathComponents( datasetInfo.filePath ).internalPath
             if internalPath is None:
                 internalPath = nextPath # init
@@ -351,7 +366,7 @@ class DatasetInfoEditorWidget(QDialog):
 
     def _applyStorageComboToTempOps(self, index):
         newStorageLocation = self.storageComboBox.itemData( index )
-        for op in self.selected_ops:
+        for info in self.current_infos:
             if info.location == DatasetInfo.Location.ProjectInternal:
                 thisLaneStorage = StorageLocation.ProjectFile
             elif info.location == DatasetInfo.Location.FileSystem:
@@ -378,8 +393,15 @@ class DatasetInfoEditorWidget(QDialog):
         self._error_fields.discard('Storage Location')
         return True
 
-    def _handleClearRangeButton(self):
-        self.rangeMinSpinBox.setValue( self.rangeMinSpinBox.minimum() )
-        self.rangeMaxSpinBox.setValue( self.rangeMaxSpinBox.minimum() )
+    def _clearNormalizationRanges(self):
+        self.rangeMinSpinBox.setValue(self.rangeMinSpinBox.minimum())
+        self.rangeMaxSpinBox.setValue(self.rangeMaxSpinBox.minimum())
+
+    def _handleNormalizeDisplayChanged(self):
+        normalize = bool(self.normalizeDisplayComboBox.currentData())
+        self.rangeMinSpinBox.setEnabled(normalize)
+        self.rangeMaxSpinBox.setEnabled(normalize)
+        self.clearRangeButton.setEnabled(normalize)
+
 
 
