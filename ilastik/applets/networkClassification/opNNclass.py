@@ -240,6 +240,7 @@ class OpNNClassification(Operator):
 
         self.opValidationMask = OpMultiLaneWrapper(OpValidationMask, parent=self)
         self.opValidationMask.Coordinates.connect(self.MaskCoordinates)
+        self.opValidationMask.RawImage.connect(self.InputImages)
         self.ValidationMask.connect(self.opValidationMask.Mask)
 
         self.opModel = OpModel(parent=self.parent)
@@ -576,6 +577,7 @@ class OpPredictionPipeline(Operator):
 
 class OpValidationMask(Operator):
     Coordinates = InputSlot()
+    RawImage = InputSlot()
     Mask = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -584,6 +586,7 @@ class OpValidationMask(Operator):
     def setupOutputs(self):
         self.Mask.meta.dtype = numpy.uint8
         self.Mask.meta.axistags = vigra.defaultAxistags('zyxc')
+        self.Mask.meta.shape = self.RawImage.meta.shape
 
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Mask
@@ -595,14 +598,17 @@ class OpValidationMask(Operator):
 
         coord_roi = slice((z[0], y[0], x[0], 0), (z[1], y[1], x[1], 1))
 
-        intersection = getIntersection((roi.start, roi.stop), (coord_roi.start, coord_roi.stop))
+        intsec = getIntersection((roi.start, roi.stop),
+                       (coord_roi.start, coord_roi.stop),
+                        assertIntersect=False)
 
-        result[intersection] = 1
+        if intsec is not None:
+            result[:, intsec[0][1]:intsec[1][1], intsec[0][2]:intsec[1][2], :] = 1
+
         return result
 
     def propagateDirty(self, slot, subindex, roi):
         assert slot == self.Coordinates
-        self.Mask.meta.shape = tuple(roi.stop - roi.start)
 
         # OpNNClassification.LabelInputs[subindex].setDirty()
 

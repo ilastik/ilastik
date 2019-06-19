@@ -52,6 +52,7 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.utility.gui import threadRouted
 from ilastik.utility import bind
 from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.applets.networkClassification.opNNclass import OpValidationMask
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import PreferencesManager
@@ -390,7 +391,8 @@ class NNClassGui(LabelingGui):
             dlg.exec_()
 
             if dlg.valid_params:
-                self.topLevelOperatorView.MaskCoordinates.setValue(dlg.valid_params)   
+                self.topLevelOperatorView.MaskCoordinates.setValue(dlg.valid_params)
+                self.topLevelOperatorView.ValidationMask.setDirty()
 
         advanced_menu.addAction("Validation Set").triggered.connect(validationMenu)
 
