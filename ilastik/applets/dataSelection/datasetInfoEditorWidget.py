@@ -69,21 +69,12 @@ class DatasetInfoEditorWidget(QDialog):
         self.selected_ops = [topLevelOperator.innerOperators[li]._opDatasets[roleIndex]  for li in laneIndexes]
         self.datasetinfo_slots = [topLevelOperator.DatasetGroup[li][roleIndex] for li in laneIndexes]
         self.current_infos = [op.Dataset.value for op in self.selected_ops]
-        self.show_axis_details = show_axis_details
-        self.encountered_exception = None
 
         # Load the ui file into this class (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         uiFilePath = os.path.join( localDir, 'datasetInfoEditorWidget.ui' )
         uic.loadUi(uiFilePath, self)
         self.setObjectName(f"DatasetInfoEditorWidget_Role_{roleIndex}")
-
-        self.displayModeComboBox.addItem("Default", userData="default")
-        self.displayModeComboBox.addItem("Grayscale", userData="grayscale")
-        self.displayModeComboBox.addItem("RGBA", userData="rgba")
-        self.displayModeComboBox.addItem("Random Colortable", userData="random-colortable")
-        self.displayModeComboBox.addItem("Alpha Modulated", userData="alpha-modulated")
-        self.displayModeComboBox.addItem("Binary Mask", userData="binary-mask")
 
         self.normalizeDisplayComboBox.addItem("True", userData=True)
         self.normalizeDisplayComboBox.addItem("False", userData=False)
@@ -99,7 +90,6 @@ class DatasetInfoEditorWidget(QDialog):
         self.okButton.clicked.connect(self.accept)
         self.cancelButton.clicked.connect(self.reject)
 
-
         input_axiskeys = []
         for op in self.selected_ops:
             tags = op.Image.meta.original_axistags or op.Image.meta.axistags
@@ -109,14 +99,18 @@ class DatasetInfoEditorWidget(QDialog):
         self.multi_axes_display.setEnabled(False)
         self.multi_axes_display.setText("Current: " + ", ".join(input_axiskeys))
         if all(len(keys) == len(input_axiskeys[0]) for keys in input_axiskeys):
-            keys = input_axiskeys[0]
-            for axis_index in range(5):
-                axis_selector = getattr(self, f"axesEdit_{axis_index}")
-                within_bounds = axis_index < len(keys)
-                axis_selector.setVisible(within_bounds)
-                axis_selector.setCurrentText(keys[axis_index] if within_bounds else 'x')
+            selector_keys = input_axiskeys[0]
         else:
+            selector_keys = ''
             self.multi_axes_display.setToolTip("Select lanes with same number of axes to change their interpretation here")
+
+        for axis_index in range(5):
+            axis_selector = getattr(self, f"axesEdit_{axis_index}")
+            within_bounds = axis_index < len(selector_keys)
+            axis_selector.setVisible(within_bounds)
+            axis_selector.setEnabled(within_bounds)
+            axis_selector.setCurrentText(selector_keys[axis_index] if within_bounds else 'x')
+
 
 
         self.nicknameEdit.setText(', '.join(str(info.nickname) for info in self.current_infos))
@@ -198,8 +192,16 @@ class DatasetInfoEditorWidget(QDialog):
         else:
             self.internalDatasetNameComboBox.setCurrentIndex(-1)
 
+        self.displayModeComboBox.addItem("Default", userData="default")
+        self.displayModeComboBox.addItem("Grayscale", userData="grayscale")
+        self.displayModeComboBox.addItem("RGBA", userData="rgba")
+        self.displayModeComboBox.addItem("Random Colortable", userData="random-colortable")
+        self.displayModeComboBox.addItem("Alpha Modulated", userData="alpha-modulated")
+        self.displayModeComboBox.addItem("Binary Mask", userData="binary-mask")
+
     def accept(self):
         try:
+            saved_datasetinfos = []
             new_axes_keys = ''
             for axis_index in range(5):
                 axis_selector = getattr(self, f"axesEdit_{axis_index}")
@@ -222,7 +224,6 @@ class DatasetInfoEditorWidget(QDialog):
                         raise Exception(f"Data range values {new_drange} conflicts with the data type in lane {lane_idx}, "
                                         f"which has range {(dtype_info.min, dtype_info.max)}")
 
-            saved_datasetinfos = []
             for op, datasetinfo_slot in zip(self.selected_ops, self.datasetinfo_slots):
                 info = copy.copy( op.Dataset.value )
                 saved_datasetinfos.append(info)
@@ -246,7 +247,6 @@ class DatasetInfoEditorWidget(QDialog):
         except Exception as e:
             for idx, datasetinfo in enumerate(saved_datasetinfos):
                 self.datasetinfo_slots[idx].setValue(datasetinfo)
-            print(f"Something went wrong: {e}")
             QMessageBox.warning(self, "Error", str(e))
 
     def _initStorageCombo(self):
