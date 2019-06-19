@@ -171,7 +171,7 @@ class DatasetInfo(object):
                                 file_list[i] += '/' + internalPaths[0]
 
             # For stacks, choose nickname based on a common prefix
-            if file_list:
+            if len(file_list) > 1:
                 fromstack = True
                 # Convert all paths to absolute
                 file_list = [make_absolute(f, cwd) for f in file_list]

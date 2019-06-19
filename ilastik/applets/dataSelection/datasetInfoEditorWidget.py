@@ -28,7 +28,7 @@ import numpy
 import vigra
 
 from PyQt5 import uic
-from PyQt5.QtCore import Qt, QEvent
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QDialog, QMessageBox, QDoubleSpinBox, QApplication
 
 from ilastik.utility import log_exception
@@ -41,9 +41,17 @@ logger = logging.getLogger(__name__)
 
 @unique
 class StorageLocation(Enum):
-    ProjectFile = "Copied to Project File"
+    ProjectFile = "Copied into Project File"
     AbsoluteLink = "Absolute Link"
     RelativeLink = "Relative Link"
+
+    @classmethod
+    def from_datasetinfo(cls, info:DatasetInfo):
+        if info.location == DatasetInfo.Location.ProjectInternal:
+            return cls.ProjectFile
+        if isUrl(info.filePath) or os.path.isabs(info.filePath):
+            return cls.AbsoluteLink
+        return cls.RelativeLink
 
 def get_dtype_info(dtype):
     try:
@@ -112,7 +120,6 @@ class DatasetInfoEditorWidget(QDialog):
             axis_selector.setCurrentText(selector_keys[axis_index] if within_bounds else 'x')
 
 
-
         self.nicknameEdit.setText(', '.join(str(info.nickname) for info in self.current_infos))
         if len(self.selected_ops) == 1:
             self.nicknameEdit.setEnabled(True)
@@ -158,39 +165,36 @@ class DatasetInfoEditorWidget(QDialog):
             self.internalDatasetNameLabel.setVisible(False)
             self.internalDatasetNameComboBox.setVisible(False)
             self.internalDatasetNameComboBox.setEnabled(False)
-            return
-
-        allInternalPaths = set()
-        commonInternalPaths = None
-        for info in hdf5_infos:
-            internalPaths = set(info.getPossibleInternalPaths())
-            if commonInternalPaths is None:
-                commonInternalPaths = internalPaths
-
-            allInternalPaths |= internalPaths
-            commonInternalPaths &= internalPaths
-            if len( commonInternalPaths ) == 0:
-                self.internalDatasetNameComboBox.addItem( "Couldn't find a dataset name common to all selected files." )
-                self.internalDatasetNameComboBox.setEnabled(False)
-                return
-
-        # Add all common paths to the combo
-        for path in sorted(commonInternalPaths):
-            self.internalDatasetNameComboBox.addItem( path )
-
-        # Add the remaining ones, but disable them since they aren't common to all files:
-        for path in sorted(allInternalPaths - commonInternalPaths):
-            self.internalDatasetNameComboBox.addItem( path )
-            # http://theworldwideinternet.blogspot.com/2011/01/disabling-qcombobox-items.html
-            model = self.internalDatasetNameComboBox.model()
-            index = model.index( self.internalDatasetNameComboBox.count()-1, 0 )
-            model.setData( index, 0, Qt.UserRole-1 )
-
-        internalPaths = [info.internalPath for info in hdf5_infos]
-        if all(ip == internalPaths[0] for ip in internalPaths):
-            self.internalDatasetNameComboBox.setCurrentText(internalPaths[0])
         else:
+            allInternalPaths = set()
+            commonInternalPaths = None
+            for info in hdf5_infos:
+                internalPaths = set(info.getPossibleInternalPaths())
+                if not commonInternalPaths is None:
+                    commonInternalPaths = internalPaths
+
+                allInternalPaths |= internalPaths
+                commonInternalPaths &= internalPaths
+                if len( commonInternalPaths ) == 0:
+                    self.internalDatasetNameComboBox.addItem( "Couldn't find a dataset name common to all selected files." )
+                    self.internalDatasetNameComboBox.setEnabled(False)
+
+            # Add all common paths to the combo
+            for path in sorted(commonInternalPaths):
+                self.internalDatasetNameComboBox.addItem( path )
+
+            # Add the remaining ones, but disable them since they aren't common to all files:
+            for path in sorted(allInternalPaths - commonInternalPaths):
+                self.internalDatasetNameComboBox.addItem( path )
+                # http://theworldwideinternet.blogspot.com/2011/01/disabling-qcombobox-items.html
+                model = self.internalDatasetNameComboBox.model()
+                index = model.index( self.internalDatasetNameComboBox.count()-1, 0 )
+                model.setData( index, 0, Qt.UserRole-1 )
+
+            internalPaths = [info.internalPath for info in hdf5_infos]
             self.internalDatasetNameComboBox.setCurrentIndex(-1)
+            if all(ip == internalPaths[0] for ip in internalPaths):
+                self.internalDatasetNameComboBox.setCurrentText(internalPaths[0])
 
         self.displayModeComboBox.addItem("Default", userData="default")
         self.displayModeComboBox.addItem("Grayscale", userData="grayscale")
@@ -198,6 +202,26 @@ class DatasetInfoEditorWidget(QDialog):
         self.displayModeComboBox.addItem("Random Colortable", userData="random-colortable")
         self.displayModeComboBox.addItem("Alpha Modulated", userData="alpha-modulated")
         self.displayModeComboBox.addItem("Binary Mask", userData="binary-mask")
+
+        for location in StorageLocation:
+            self.storageComboBox.addItem(location.value, userData=location)
+
+        import pydevd; pydevd.settrace()
+        current_locations = {StorageLocation.from_datasetinfo(info) for info in self.current_infos}
+        self.storageComboBox.setCurrentIndex(-1)
+        if len(current_locations) == 1:
+            comboIndex = self.storageComboBox.findData(current_locations.pop())
+            self.storageComboBox.setCurrentIndex(comboIndex)
+
+        if any(info.fromstack for info in self.current_infos):
+            # If any of the files were loaded from a stack, then you can't refer to them via a link.
+            absIndex = self.storageComboBox.findData( StorageLocation.AbsoluteLink )
+            relIndex = self.storageComboBox.findData( StorageLocation.RelativeLink )
+
+            # http://theworldwideinternet.blogspot.com/2011/01/disabling-qcombobox-items.html
+            model = self.storageComboBox.model()
+            model.setData( model.index( absIndex, 0 ), 0, Qt.UserRole-1 )
+            model.setData( model.index( relIndex, 0 ), 0, Qt.UserRole-1 )
 
     def accept(self):
         try:
@@ -217,12 +241,14 @@ class DatasetInfoEditorWidget(QDialog):
             if normalize:
                 if new_drange[0] >= new_drange[1]:
                     raise Exception("Can't apply data range values: Data range MIN must be lesser than MAX.")
-
                 for op in self.selected_ops:
                     dtype_info = get_dtype_info(op.Image.meta.dtype)
                     if new_drange[0] < dtype_info.min or new_drange[1] > dtype_info.max:
                         raise Exception(f"Data range values {new_drange} conflicts with the data type in lane {lane_idx}, "
                                         f"which has range {(dtype_info.min, dtype_info.max)}")
+
+            newStorageLocation = self.storageComboBox.currentData()
+            new_display_mode = self.displayModeComboBox.currentData()
 
             for op, datasetinfo_slot in zip(self.selected_ops, self.datasetinfo_slots):
                 info = copy.copy( op.Dataset.value )
@@ -234,13 +260,25 @@ class DatasetInfoEditorWidget(QDialog):
                     filePath = pathComponents.totalPath()
                 else:
                     filePath = info.filePath
+
+                if newStorageLocation == StorageLocation.ProjectFile:
+                    location = DatasetInfo.Location.ProjectInternal
+                else:
+                    location = DatasetInfo.Location.FileSystem
+                    absPath, relPath = getPathVariants(info.filePath, op.WorkingDirectory.value)
+                    if newStorageLocation == StorageLocation.RelativeLink:
+                        filePath = relPath
+                    else:
+                        filePath = absPath
+
                 dtype = get_dtype_info(op.Image.meta.dtype).dtype.type
 
                 info.nickname = self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname
                 info.axistags = vigra.defaultAxistags(new_axes_keys) if new_axes_keys else info.axistags
                 info.normalizeDisplay = info.normalizeDisplay if normalize is None else normalize
                 info.drange = (dtype(new_drange[0]), dtype(new_drange[1])) if normalize else info.drange
-                info.display_mode = self.displayModeComboBox.currentData()
+                info.display_mode = new_display_mode if new_display_mode != 'default' else info.display_mode
+                info.location = location
                 info.filePath = filePath
                 datasetinfo_slot.setValue(info)
             super(DatasetInfoEditorWidget, self).accept()
@@ -248,111 +286,6 @@ class DatasetInfoEditorWidget(QDialog):
             for idx, datasetinfo in enumerate(saved_datasetinfos):
                 self.datasetinfo_slots[idx].setValue(datasetinfo)
             QMessageBox.warning(self, "Error", str(e))
-
-    def _initStorageCombo(self):
-        # If there's only one dataset, show the path in the combo
-        showpaths = False
-        relPath = None
-        if len( self._laneIndexes ) == 1:
-            op = list(self.tempOps.values())[0]
-            info = op.Dataset.value
-            cwd = op.WorkingDirectory.value
-            filePath = PathComponents(info.filePath).externalPath
-            absPath, relPath = getPathVariants(filePath, cwd)
-            
-            # commented out: 
-            # Show the paths even if the data is from a stack (they are grayed out, but potentially informative)
-            #showpaths = not info.fromstack
-            showpaths = True
-
-        if showpaths:
-            self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
-            self.storageComboBox.addItem( ("Absolute Link: " + absPath), userData=StorageLocation.AbsoluteLink )
-            if relPath is not None:
-                self.storageComboBox.addItem( ("Relative Link: " + relPath), userData=StorageLocation.RelativeLink )
-        else:
-            self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
-            self.storageComboBox.addItem( "Absolute Link", userData=StorageLocation.AbsoluteLink )
-            self.storageComboBox.addItem( "Relative Link", userData=StorageLocation.RelativeLink )
-
-        self.storageComboBox.setCurrentIndex(-1)
-
-    def _updateStorageCombo(self):
-        sharedStorageSetting = None
-        for laneIndex in self._laneIndexes:
-            op = self.tempOps[laneIndex]
-            info = op.Dataset.value
-
-            # Determine the current setting
-            location = info.location
-    
-            if location == DatasetInfo.Location.ProjectInternal:
-                storageSetting = StorageLocation.ProjectFile
-            elif location == DatasetInfo.Location.FileSystem:
-                # Determine if the path is relative or absolute
-                if isUrl(info.filePath) or os.path.isabs(info.filePath):
-                    storageSetting = StorageLocation.AbsoluteLink
-                else:
-                    storageSetting = StorageLocation.RelativeLink
-        
-            if sharedStorageSetting is None:
-                sharedStorageSetting = storageSetting
-            elif sharedStorageSetting != storageSetting:
-                # Not all lanes have the same setting
-                sharedStorageSetting = -1
-                break
-
-        if sharedStorageSetting == -1:
-            self.storageComboBox.setCurrentIndex(-1)
-        else:
-            comboIndex = self.storageComboBox.findData( sharedStorageSetting )
-            self.storageComboBox.setCurrentIndex( comboIndex )
-
-        disableLinks = False
-        for laneIndex in self._laneIndexes:
-            op = self.tempOps[laneIndex]
-            info = op.Dataset.value
-            
-            disableLinks |= info.fromstack
-        
-        if disableLinks:
-            # If any of the files were loaded from a stack, then you can't refer to them via a link.
-            absIndex = self.storageComboBox.findData( StorageLocation.AbsoluteLink )
-            relIndex = self.storageComboBox.findData( StorageLocation.RelativeLink )
-
-            # http://theworldwideinternet.blogspot.com/2011/01/disabling-qcombobox-items.html
-            model = self.storageComboBox.model()
-            model.setData( model.index( absIndex, 0 ), 0, Qt.UserRole-1 )
-            model.setData( model.index( relIndex, 0 ), 0, Qt.UserRole-1 )
-
-    def _applyStorageComboToTempOps(self, index):
-        newStorageLocation = self.storageComboBox.itemData( index )
-        for info in self.current_infos:
-            if info.location == DatasetInfo.Location.ProjectInternal:
-                thisLaneStorage = StorageLocation.ProjectFile
-            elif info.location == DatasetInfo.Location.FileSystem:
-                # Determine if the path is relative or absolute
-                if isUrl(info.filePath) or os.path.isabs(info.filePath):
-                    thisLaneStorage = StorageLocation.AbsoluteLink
-                else:
-                    thisLaneStorage = StorageLocation.RelativeLink
-
-            if thisLaneStorage != newStorageLocation:
-                if newStorageLocation == StorageLocation.ProjectFile:
-                    info.location = DatasetInfo.Location.ProjectInternal
-                else:
-                    info.location = DatasetInfo.Location.FileSystem 
-                    cwd = op.WorkingDirectory.value
-                    absPath, relPath = getPathVariants( info.filePath, cwd )
-                    if relPath is not None and newStorageLocation == StorageLocation.RelativeLink:
-                        info.filePath = relPath
-                    elif newStorageLocation == StorageLocation.AbsoluteLink:
-                        info.filePath = absPath
-                    else:
-                        assert False, "Unknown storage location setting."
-                op.Dataset.setValue( info )
-        self._error_fields.discard('Storage Location')
-        return True
 
     def _clearNormalizationRanges(self):
         self.rangeMinSpinBox.setValue(self.rangeMinSpinBox.minimum())
@@ -363,6 +296,3 @@ class DatasetInfoEditorWidget(QDialog):
         self.rangeMinSpinBox.setEnabled(normalize)
         self.rangeMaxSpinBox.setEnabled(normalize)
         self.clearRangeButton.setEnabled(normalize)
-
-
-
