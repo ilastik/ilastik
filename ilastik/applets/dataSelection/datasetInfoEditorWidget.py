@@ -159,7 +159,44 @@ class DatasetInfoEditorWidget(QDialog):
         else:
             self.displayModeComboBox.setEnabled(False)
 
+        hdf5_infos = [info for info in self.current_infos if info.isHdf5()]
+        if not hdf5_infos:
+            self.internalDatasetNameLabel.setVisible(False)
+            self.internalDatasetNameComboBox.setVisible(False)
+            self.internalDatasetNameComboBox.setEnabled(False)
+            return
 
+        allInternalPaths = set()
+        commonInternalPaths = None
+        for info in hdf5_infos:
+            internalPaths = set(info.getPossibleInternalPaths())
+            if commonInternalPaths is None:
+                commonInternalPaths = internalPaths
+
+            allInternalPaths |= internalPaths
+            commonInternalPaths &= internalPaths
+            if len( commonInternalPaths ) == 0:
+                self.internalDatasetNameComboBox.addItem( "Couldn't find a dataset name common to all selected files." )
+                self.internalDatasetNameComboBox.setEnabled(False)
+                return
+
+        # Add all common paths to the combo
+        for path in sorted(commonInternalPaths):
+            self.internalDatasetNameComboBox.addItem( path )
+
+        # Add the remaining ones, but disable them since they aren't common to all files:
+        for path in sorted(allInternalPaths - commonInternalPaths):
+            self.internalDatasetNameComboBox.addItem( path )
+            # http://theworldwideinternet.blogspot.com/2011/01/disabling-qcombobox-items.html
+            model = self.internalDatasetNameComboBox.model()
+            index = model.index( self.internalDatasetNameComboBox.count()-1, 0 )
+            model.setData( index, 0, Qt.UserRole-1 )
+
+        internalPaths = [info.internalPath for info in hdf5_infos]
+        if all(ip == internalPaths[0] for ip in internalPaths):
+            self.internalDatasetNameComboBox.setCurrentText(internalPaths[0])
+        else:
+            self.internalDatasetNameComboBox.setCurrentIndex(-1)
 
     def accept(self):
         try:
@@ -185,108 +222,32 @@ class DatasetInfoEditorWidget(QDialog):
                         raise Exception(f"Data range values {new_drange} conflicts with the data type in lane {lane_idx}, "
                                         f"which has range {(dtype_info.min, dtype_info.max)}")
 
+            saved_datasetinfos = []
             for op, datasetinfo_slot in zip(self.selected_ops, self.datasetinfo_slots):
                 info = copy.copy( op.Dataset.value )
-                info.normalizeDisplay = info.normalizeDisplay if normalize is None else normalize
+                saved_datasetinfos.append(info)
+
+                if self.internalDatasetNameComboBox.isEnabled():
+                    pathComponents = PathComponents(info.filePath)
+                    pathComponents.internalPath = self.internalDatasetNameComboBox.currentText()
+                    filePath = pathComponents.totalPath()
+                else:
+                    filePath = info.filePath
                 dtype = get_dtype_info(op.Image.meta.dtype).dtype.type
-                info.drange = (dtype(new_drange[0]), dtype(new_drange[1])) if normalize else info.drange
-                info.axistags = vigra.defaultAxistags(new_axes_keys) if new_axes_keys else info.axistags
+
                 info.nickname = self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname
+                info.axistags = vigra.defaultAxistags(new_axes_keys) if new_axes_keys else info.axistags
+                info.normalizeDisplay = info.normalizeDisplay if normalize is None else normalize
+                info.drange = (dtype(new_drange[0]), dtype(new_drange[1])) if normalize else info.drange
                 info.display_mode = self.displayModeComboBox.currentData()
+                info.filePath = filePath
                 datasetinfo_slot.setValue(info)
             super(DatasetInfoEditorWidget, self).accept()
         except Exception as e:
+            for idx, datasetinfo in enumerate(saved_datasetinfos):
+                self.datasetinfo_slots[idx].setValue(datasetinfo)
+            print(f"Something went wrong: {e}")
             QMessageBox.warning(self, "Error", str(e))
-
-    def _initInternalDatasetNameCombo(self):
-        # If any dataset is either (1) not hdf5 or (2) project-internal, then we can't change the internal path.
-        h5Exts = ['.ilp', '.h5', '.hdf5']
-        for info in self.current_infos:
-            externalPath = PathComponents(info.filePath).externalPath
-            if os.path.splitext(externalPath)[1] not in h5Exts \
-            or datasetInfo.location == DatasetInfo.Location.ProjectInternal:
-                self.internalDatasetNameComboBox.addItem( "N/A" )
-                self.internalDatasetNameComboBox.setEnabled(False)
-                return
-        
-        # Enable IFF all datasets have at least one common internal dataset, and only show COMMON datasets
-        allInternalPaths = set()
-        commonInternalPaths = None
-        
-        for datasetInfo in self.current_infos:
-            externalPath = PathComponents( datasetInfo.filePath ).externalPath
-            absPath, _ = getPathVariants( externalPath, tmpOp.WorkingDirectory.value )
-            internalPaths = set( self._getPossibleInternalPaths(absPath) )
-            
-            if commonInternalPaths is None:
-                # Init with the first file's set of paths
-                commonInternalPaths = internalPaths
-            
-            # Set operations
-            allInternalPaths |= internalPaths
-            commonInternalPaths &= internalPaths
-            if len( commonInternalPaths ) == 0:
-                self.internalDatasetNameComboBox.addItem( "Couldn't find a dataset name common to all selected files." )
-                self.internalDatasetNameComboBox.setEnabled(False)
-                return
-
-        uncommonInternalPaths = allInternalPaths - commonInternalPaths
-        # Add all common paths to the combo
-        for path in sorted(commonInternalPaths):
-            self.internalDatasetNameComboBox.addItem( path )
-        
-        # Add the remaining ones, but disable them since they aren't common to all files:
-        for path in sorted(uncommonInternalPaths):
-            self.internalDatasetNameComboBox.addItem( path )
-            # http://theworldwideinternet.blogspot.com/2011/01/disabling-qcombobox-items.html
-            model = self.internalDatasetNameComboBox.model()
-            index = model.index( self.internalDatasetNameComboBox.count()-1, 0 )
-            model.setData( index, 0, Qt.UserRole-1 )
-
-        # Finally, initialize with NO item selected
-        self.internalDatasetNameComboBox.setCurrentIndex(-1)
-
-    def _getPossibleInternalPaths(self, absPath):
-        datasetNames = []
-        with h5py.File(absPath, 'r') as f:
-            def accumulateDatasetPaths(name, val):
-                if type(val) == h5py._hl.dataset.Dataset and 3 <= len(val.shape) <= 5:
-                    datasetNames.append( '/' + name )
-            f.visititems(accumulateDatasetPaths)
-        return datasetNames
-
-    def _updateInternalDatasetSelection(self):
-        # If all lanes have the same dataset selected, choose that item.
-        # Otherwise, leave it uninitialized
-        if not self.internalDatasetNameComboBox.isEnabled():
-            return
-        
-        internalPath = None
-        
-        for datasetInfo in self.current_infos:
-            nextPath = PathComponents( datasetInfo.filePath ).internalPath
-            if internalPath is None:
-                internalPath = nextPath # init
-            if internalPath != nextPath:
-                self.internalDatasetNameComboBox.setCurrentIndex(-1)
-                return
-
-        # Make sure the correct index is selected.        
-        index = self.internalDatasetNameComboBox.findText( internalPath )
-        self.internalDatasetNameComboBox.setCurrentIndex( index )
-
-    def _applyInternalPathToTempOps(self, index):
-        newInternalPath = str( self.internalDatasetNameComboBox.currentText() )
-
-        for laneIndex, op in list(self.tempOps.items()):
-            info = copy.copy( op.Dataset.value )
-            pathComponents = PathComponents(info.filePath)
-            if pathComponents.internalPath != newInternalPath:
-                pathComponents.internalPath = newInternalPath
-                info.filePath = pathComponents.totalPath()
-                op.Dataset.setValue( info )
-        self._error_fields.discard('Internal Dataset Name')
-        return True
 
     def _initStorageCombo(self):
         # If there's only one dataset, show the path in the combo

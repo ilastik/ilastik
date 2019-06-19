@@ -24,6 +24,8 @@ import os
 import uuid
 import vigra
 import copy
+import h5py
+from enum import Enum, unique
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.metaDict import MetaDict
@@ -45,7 +47,8 @@ class DatasetInfo(object):
     """
     Struct-like class for describing dataset info.
     """
-    class Location(object):
+    @unique
+    class Location(Enum):
         FileSystem = 0
         ProjectInternal = 1
         PreloadedArray = 2
@@ -206,6 +209,33 @@ class DatasetInfo(object):
         self._filePath = newPath
         # Reset our id any time the filepath changes
         self._datasetId = str(uuid.uuid1())
+
+    @property
+    def externalPath(self) -> str:
+        return PathComponents(self.filePath).externalPath
+
+    @property
+    def internalPath(self) -> str:
+        return PathComponents(self.filePath).internalPath
+
+    @property
+    def fileExtension(self) -> str:
+        return os.path.splitext(self.externalPath)[1]
+
+    def isHdf5(self) -> bool:
+        return self.fileExtension.lower() in ('.ilp', '.h5', '.hdf5')
+
+    def getPossibleInternalPaths(self):
+        assert self.isHdf5()
+        datasetNames = []
+        with h5py.File(self.externalPath, 'r') as f:
+            def accumulateDatasetPaths(name, val):
+                if type(val) == h5py._hl.dataset.Dataset and 3 <= len(val.shape) <= 5:
+                    datasetNames.append( '/' + name )
+            f.visititems(accumulateDatasetPaths)
+        return datasetNames
+
+
 
     @property
     def datasetId(self):
@@ -385,7 +415,7 @@ class OpDataSelection(Operator):
                 metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
             if datasetInfo.axistags is not None:
                 info_keys = [tag.key for tag in datasetInfo.axistags]
-                provider_squeezed_shape = {k:v for k, v in providerSlot.meta.getTaggedShape().items() if v > 1}
+                provider_squeezed_shape = providerSlot.meta.getShape5D().to_squeezed_dict()
                 if len(info_keys) < len(provider_squeezed_shape.keys()):
                     raise Exception(f"Cannot reinterpret input with shape {providerSlot.getTaggedShape} using "
                                     f"given axis order of {info_keys}")
