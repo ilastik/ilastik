@@ -151,15 +151,6 @@ class DatasetInfoEditorWidget(QDialog):
             self._clearNormalizationRanges()
 
 
-        modes = {op.Image.meta.display_mode or "default" for op in self.selected_ops}
-        if len(modes) == 1:
-            mode = modes.pop()
-            index = self.displayModeComboBox.findData(mode)
-            self.displayModeComboBox.setCurrentIndex(index)
-            self.displayModeComboBox.setEnabled(True)
-        else:
-            self.displayModeComboBox.setEnabled(False)
-
         hdf5_infos = [info for info in self.current_infos if info.isHdf5()]
         if not hdf5_infos:
             self.internalDatasetNameLabel.setVisible(False)
@@ -170,14 +161,13 @@ class DatasetInfoEditorWidget(QDialog):
             commonInternalPaths = None
             for info in hdf5_infos:
                 internalPaths = set(info.getPossibleInternalPaths())
-                if not commonInternalPaths is None:
-                    commonInternalPaths = internalPaths
-
+                commonInternalPaths = commonInternalPaths or internalPaths
                 allInternalPaths |= internalPaths
                 commonInternalPaths &= internalPaths
                 if len( commonInternalPaths ) == 0:
                     self.internalDatasetNameComboBox.addItem( "Couldn't find a dataset name common to all selected files." )
                     self.internalDatasetNameComboBox.setEnabled(False)
+                    break
 
             # Add all common paths to the combo
             for path in sorted(commonInternalPaths):
@@ -202,11 +192,16 @@ class DatasetInfoEditorWidget(QDialog):
         self.displayModeComboBox.addItem("Random Colortable", userData="random-colortable")
         self.displayModeComboBox.addItem("Alpha Modulated", userData="alpha-modulated")
         self.displayModeComboBox.addItem("Binary Mask", userData="binary-mask")
+        modes = {op.Image.meta.display_mode or "default" for op in self.selected_ops}
+        if len(modes) == 1:
+            index = self.displayModeComboBox.findData(modes.pop())
+            self.displayModeComboBox.setCurrentIndex(index)
+        else:
+            self.displayModeComboBox.setCurrentIndex(0)
 
         for location in StorageLocation:
             self.storageComboBox.addItem(location.value, userData=location)
 
-        import pydevd; pydevd.settrace()
         current_locations = {StorageLocation.from_datasetinfo(info) for info in self.current_infos}
         self.storageComboBox.setCurrentIndex(-1)
         if len(current_locations) == 1:
