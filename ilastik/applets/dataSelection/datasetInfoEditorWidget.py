@@ -218,19 +218,20 @@ class DatasetInfoEditorWidget(QDialog):
             model.setData( model.index( absIndex, 0 ), 0, Qt.UserRole-1 )
             model.setData( model.index( relIndex, 0 ), 0, Qt.UserRole-1 )
 
+    def get_new_axes_tags(self):
+        new_axes_keys = ''
+        for axis_index in range(5):
+            axis_selector = getattr(self, f"axesEdit_{axis_index}")
+            if not axis_selector.isVisible():
+                break
+            new_axes_keys += axis_selector.currentText()
+        if len(set(new_axes_keys)) != len(new_axes_keys):
+            raise Exception(f"Repeated axes: {new_axes_keys}")
+        return vigra.defaultAxistags(new_axes_keys) if new_axes_keys else None
+
     def accept(self):
         try:
             saved_datasetinfos = []
-            new_axes_keys = ''
-            for axis_index in range(5):
-                axis_selector = getattr(self, f"axesEdit_{axis_index}")
-                if not axis_selector.isVisible():
-                    break
-                new_axes_keys += axis_selector.currentText()
-
-            if len(set(new_axes_keys)) != len(new_axes_keys):
-                raise Exception(f"Repeated axes: {new_axes_keys}")
-
             normalize = self.normalizeDisplayComboBox.currentData()
             new_drange = (self.rangeMinSpinBox.value(), self.rangeMaxSpinBox.value())
             if normalize:
@@ -269,7 +270,7 @@ class DatasetInfoEditorWidget(QDialog):
                 dtype = get_dtype_info(op.Image.meta.dtype).dtype.type
 
                 info.nickname = self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname
-                info.axistags = vigra.defaultAxistags(new_axes_keys) if new_axes_keys else info.axistags
+                info.axistags = self.get_new_axes_tags() or info.axistags
                 info.normalizeDisplay = info.normalizeDisplay if normalize is None else normalize
                 info.drange = (dtype(new_drange[0]), dtype(new_drange[1])) if normalize else info.drange
                 info.display_mode = new_display_mode if new_display_mode != 'default' else info.display_mode
