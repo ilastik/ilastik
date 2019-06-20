@@ -583,6 +583,16 @@ class OpValidationMask(Operator):
     def __init__(self, *args, **kwargs):
         super(OpValidationMask, self).__init__(*args, **kwargs)
 
+        self.coord_roi = slice((0,),(0,))
+
+    def get_coordroi(self, coord_dict):
+        z = coord_dict['z_coord']
+        y = coord_dict['y_coord']
+        x = coord_dict['x_coord']
+
+        return slice((z[0], y[0], x[0], 0), (z[1], y[1], x[1], 1))
+
+
     def setupOutputs(self):
         self.Mask.meta.dtype = numpy.uint8
         self.Mask.meta.axistags = vigra.defaultAxistags('zyxc')
@@ -591,15 +601,11 @@ class OpValidationMask(Operator):
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Mask
         result[:] = 0
-        parameters = self.Coordinates.value
-        z = parameters['z_coord']
-        y = parameters['y_coord']
-        x = parameters['x_coord']
 
-        coord_roi = slice((z[0], y[0], x[0], 0), (z[1], y[1], x[1], 1))
+        self.coord_roi = self.get_coordroi(self.Coordinates.value)
 
         intsec = getIntersection((roi.start, roi.stop),
-                       (coord_roi.start, coord_roi.stop),
+                       (self.coord_roi.start, self.coord_roi.stop),
                         assertIntersect=False)
 
         if intsec is not None:
@@ -608,9 +614,19 @@ class OpValidationMask(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        assert slot == self.Coordinates
+        if slot == self.Coordinates:
+            new_coord_roi = self.get_coordroi(self.Coordinates.value)
+            intersec = getIntersection((new_coord_roi.start, new_coord_roi.stop),
+                       (self.coord_roi.start, self.coord_roi.stop),
+                        assertIntersect=False)
 
-        # OpNNClassification.LabelInputs[subindex].setDirty()
+            # if intersec == None:
+            #     # ... set label diry
+                
+            
+            # else:
+            #     # ... set label diry
 
-        # ... set label diry
+
+
      

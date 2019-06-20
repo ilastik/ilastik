@@ -179,11 +179,17 @@ class ValidationDlg(QDialog):
         super(QDialog, self).__init__(parent=parent)
 
         self.z_start = QLineEdit()
+        self.z_start.setPlaceholderText('0')
         self.z_end = QLineEdit()
+        self.z_end.setPlaceholderText('10')
         self.y_start = QLineEdit()
+        self.y_start.setPlaceholderText('0')
         self.y_end = QLineEdit()
+        self.y_end.setPlaceholderText('10')
         self.x_start = QLineEdit()
+        self.x_start.setPlaceholderText('0')
         self.x_end = QLineEdit()
+        self.x_end.setPlaceholderText('10')
 
         grid = QGridLayout()
         grid.setSpacing(10)
