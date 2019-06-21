@@ -22,9 +22,11 @@ from builtins import object
 #                 http://ilastik.org/license/
 ###############################################################################
 import os
+import re
 import fnmatch
 import errno
 import pathlib
+from typing import List
 
 import h5py
 import z5py
@@ -289,6 +291,15 @@ def isUrl(path):
     # For now, the simplest rule will work.
     return "://" in path
 
+def isRelative(path:str) -> bool:
+    return not isUrl(path) and not os.path.isabs(path)
+
+def splitPath(path:str) -> List[str]:
+    """Splits a string using path separator (e.g.: ':' in unix) without clobbering
+    protocol URLs like http://example.com"""
+
+    NOT_FOLLOWED_BY_DOUBLE_SLASH = r'(?!//)'
+    return re.split(os.path.pathsep + NOT_FOLLOWED_BY_DOUBLE_SLASH, path)
 
 def make_absolute(path, cwd=os.getcwd()):
     return PathComponents(path, cwd).totalPath()

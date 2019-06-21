@@ -45,7 +45,7 @@ from lazyflow.operators.ioOperators import (
     OpImageReader,
 )
 from lazyflow.utility.jsonConfig import JsonConfigParser
-from lazyflow.utility.pathHelpers import lsH5N5, isUrl, PathComponents
+from lazyflow.utility.pathHelpers import lsH5N5, isUrl, isRelative, splitPath, PathComponents
 
 from .opStreamingUfmfReader import OpStreamingUfmfReader
 from .opStreamingMmfReader import OpStreamingMmfReader
@@ -152,21 +152,18 @@ class OpInputDataReader(Operator):
         Inspect the file name and instantiate and connect an internal operator of the appropriate type.
         TODO: Handle datasets of non-standard (non-5d) dimensions.
         """
-        filePath = self.FilePath.value
-        assert isinstance(filePath, (str, unicode)), "Error: filePath is not of type str.  It's of type {}".format(
-            type(filePath)
-        )
+        path_components = splitPath(self.FilePath.value)
 
-        # Does this look like a relative path?
-        useRelativePath = not isUrl(filePath) and not os.path.isabs(filePath)
-
-        if useRelativePath:
-            # If using a relative path, we need both inputs before proceeding
-            if not self.WorkingDirectory.ready():
-                return
+        cwd = self.WorkingDirectory.value if self.WorkingDirectory.ready() else None
+        abs_paths = []
+        for path in path_components:
+            if isRelative(path):
+                if cwd is None:
+                    return #FIXME: this mirrors old logic but I'm not sure if it's safe
+                abs_paths.append(os.path.normpath(os.path.join(cwd, path)).replace("\\", "/"))
             else:
-                # Convert this relative path into an absolute path
-                filePath = os.path.normpath(os.path.join(self.WorkingDirectory.value, filePath)).replace("\\", "/")
+                abs_paths.append(path)
+        filePath = os.path.pathsep.join(abs_paths)
 
         # Clean up before reconfiguring
         if self.internalOperators:
