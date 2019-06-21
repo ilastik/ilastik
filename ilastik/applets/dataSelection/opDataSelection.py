@@ -222,20 +222,47 @@ class DatasetInfo(object):
     def fileExtension(self) -> str:
         return os.path.splitext(self.externalPath)[1]
 
-    def isHdf5(self) -> bool:
-        return self.fileExtension.lower() in ('.ilp', '.h5', '.hdf5')
+    @classmethod
+    def pathIsHdf5(cls, path:str) -> bool:
+        return os.path.splitext(path)[1].lower() in ('.ilp', '.h5', '.hdf5')
 
-    def getPossibleInternalPaths(self):
-        assert self.isHdf5()
+    def isHdf5(self) -> bool:
+        return self.pathIsHdf5(self.externalPath)
+
+    @classmethod
+    def pathIsN5(cls, path:str) -> bool:
+        return os.path.splitext(path)[1].lower() in ('.n5')
+
+    def isN5(self) -> bool:
+        return self.pathIsN5(self.externalPath)
+
+    @classmethod
+    def fileHasInternalPaths(cls, path:str) -> bool:
+        return cls.pathIsHdf5(path) or cls.pathIsN5(path)
+
+    @classmethod
+    def getPossibleInternalPathsFor(cls, file_path:str, min_ndim=2, max_ndim=5):
         datasetNames = []
-        with h5py.File(self.externalPath, 'r') as f:
-            def accumulateDatasetPaths(name, val):
-                if type(val) == h5py._hl.dataset.Dataset and 3 <= len(val.shape) <= 5:
-                    datasetNames.append( '/' + name )
-            f.visititems(accumulateDatasetPaths)
+
+        if cls.pathIsHdf5(file_path):
+            with h5py.File(file_path, 'r') as f:
+                def accumulateDatasetPaths(name, val):
+                    if type(val) == h5py._hl.dataset.Dataset and min_ndim <= len(val.shape) <= max_ndim:
+                        datasetNames.append( '/' + name )
+                f.visititems(accumulateDatasetPaths)
+        elif cls.pathIsN5(file_path):
+            with z5py.N5File(file_path, mode='r+') as f:
+                def accumulate_names(path, val):
+                    if isinstance(val, z5py.dataset.Dataset) and min_ndim <= len(val.shape) <= max_ndim:
+                        name = path.replace(file_path, '')  #FIXME: re.sub(r'^' + file_path, ...) ?
+                        datasetNames.append(name)
+                f.visititems(accumulate_names)
+
         return datasetNames
 
-
+    def getPossibleInternalPaths(self):
+        assert self.fileHasInternalPaths(self.externalPath)
+        return self.getPossibleInternalPathsFor(self.externalPath)
 
     @property
     def datasetId(self):

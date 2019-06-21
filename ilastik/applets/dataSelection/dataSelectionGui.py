@@ -560,14 +560,8 @@ class DataSelectionGui(QWidget):
         if relPath is not None and len(os.path.commonprefix([cwd, absPath])) > 1:
             data_path = relPath
             
-        h5Exts = ['.ilp', '.h5', '.hdf5']
-        n5Exts = ['.n5']
-        file_extension = os.path.splitext(data_path)[1]
-        if file_extension in h5Exts + n5Exts:
-            if file_extension in n5Exts:
-                datasetNames = self.getPossibleN5InternalPaths( absPath )
-            else:
-                datasetNames = self.getPossibleH5InternalPaths( absPath )
+        if DatasetInfo.fileHasInternalPaths(data_path):
+            datasetNames = DatasetInfo.getPossibleInternalPathsFor(absPath)
             if len(datasetNames) == 0:
                 raise RuntimeError(f"{file_extension} file {data_path} has no image datasets")
             if len(datasetNames) == 1:
@@ -728,35 +722,6 @@ class DataSelectionGui(QWidget):
                                             show_axis_details=self.show_axis_details)
         dlg_state, ex = editorDlg.exec_()
         return (dlg_state == QDialog.Accepted), ex
-
-    @classmethod
-    def getPossibleH5InternalPaths(cls, absPath, min_ndim=2, max_ndim=5):
-        datasetNames = []
-        # Open the file as a read-only so we can get a list of the internal paths
-        with h5py.File(absPath, 'r') as f:
-            # Define a closure to collect all of the dataset names in the file.
-            def accumulateDatasetPaths(name, val):
-                if type(val) == h5py._hl.dataset.Dataset and min_ndim <= len(val.shape) <= max_ndim:
-                    datasetNames.append( '/' + name )
-            # Visit every group/dataset in the file
-            f.visititems(accumulateDatasetPaths)
-        return datasetNames
-
-    @classmethod
-    def getPossibleN5InternalPaths(cls, absPath, min_ndim=2, max_ndim=5):
-        """
-        Returns the name of all datasets in the file with at least 2 axes.
-        """
-        datasetNames = []
-        # Open the file as a read-only so we can get a list of the internal paths
-        with z5py.N5File(absPath, mode='r+') as f:
-            def accumulate_names(path, val):
-                if isinstance(val, z5py.dataset.Dataset) and min_ndim <= len(val.shape) <= max_ndim:
-                    name = path.replace(absPath, '')  # Need only the internal path here
-                    datasetNames.append(name)
-
-        f.visititems(accumulate_names)
-        return datasetNames
 
     def addStack(self, roleIndex, laneIndex):
         """
