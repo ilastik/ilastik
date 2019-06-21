@@ -47,3 +47,4 @@ from .log_exception import log_exception
 from .transposed_view import TransposedView
 from .reorderAxesDecorator import reorder_options, reorder
 from .pipeline import Pipeline
+from .JsonSerializable import JsonSerializable
