@@ -261,7 +261,7 @@ class DatasetInfoEditorWidget(QDialog):
                     location = DatasetInfo.Location.ProjectInternal
                 else:
                     location = DatasetInfo.Location.FileSystem
-                    absPath, relPath = getPathVariants(info.filePath, op.WorkingDirectory.value)
+                    absPath, relPath = getPathVariants(filePath, op.WorkingDirectory.value)
                     if newStorageLocation == StorageLocation.RelativeLink:
                         filePath = relPath
                     else:
