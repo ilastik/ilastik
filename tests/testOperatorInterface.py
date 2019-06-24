@@ -764,6 +764,31 @@ class TestTransaction:
         op_b.setupOutputs.assert_called_once()
 
 
+class TestCompatibilityChecks:
+    class OpA(graph.Operator):
+        Output = graph.OutputSlot()
+
+        def setupOutputs(self):
+            self.Output.meta.shape = (3, 3)
+            self.Output.meta.dtype = int
+
+        def propagateDirty(self, *a, **kw):
+            pass
+
+        def execute(self, *args, **kwargs):
+            return numpy.ones((2, 2), dtype=int)
+
+    def test_arraylike_raises_if_shapes_are_mismatched(self, graph):
+        op = self.OpA(graph=graph)
+
+        with pytest.raises(Exception):
+            op.Output[:].wait()
+
+        op.execute = lambda *a, **kw: numpy.ones((3, 3), dtype=int)
+
+        op.Output[:].wait()
+
+
 if __name__ == "__main__":
     import sys
     import nose

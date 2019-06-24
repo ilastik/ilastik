@@ -280,4 +280,4 @@ class Opaque(SlotType):
         return True
 
     def copy_data(self, dst, src):
-        raise ("Not Implemented")
+        raise NotImplementedError()
