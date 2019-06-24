@@ -131,24 +131,22 @@ class DatasetInfoEditorWidget(QDialog):
         self.shapeLabel.setText(", ".join(str(op.Image.meta.shape) for op in self.selected_ops))
         self.dtypeLabel.setText(", ".join(op.Image.meta.dtype.__name__ for op in self.selected_ops))
 
-
-        current_normalize_display = [op.Image.meta.normalizeDisplay for op in self.selected_ops]
-        if all(norm == current_normalize_display[0] for norm in current_normalize_display):
-            if current_normalize_display[0] == True:
+        current_normalize_display = {op.Image.meta.normalizeDisplay for op in self.selected_ops}
+        dranges = {op.Image.meta.drange for op in self.selected_ops if op.Image.meta.drange is not None}
+        if len(current_normalize_display) == 1:
+            normalize = current_normalize_display.pop()
+            if normalize:
                 self.normalizeDisplayComboBox.setCurrentIndex(0)
+                if len(dranges) == 1:
+                    common_drange = dranges.pop()
+                    self.rangeMinSpinBox.setValue(common_drange[0])
+                    self.rangeMaxSpinBox.setValue(common_drange[1])
             else:
                 self.normalizeDisplayComboBox.setCurrentIndex(1)
         else:
             self.normalizeDisplayComboBox.setCurrentIndex(2)
 
 
-        dranges = {op.Image.meta.drange for op in self.selected_ops}
-        if len(dranges) == 1:
-            common_drange = dranges.pop()
-            self.rangeMinSpinBox.setValue(common_drange[0])
-            self.rangeMaxSpinBox.setValue(common_drange[1])
-        else:
-            self._clearNormalizationRanges()
 
 
         hdf5_infos = [info for info in self.current_infos if info.isHdf5()]
