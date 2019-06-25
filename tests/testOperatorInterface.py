@@ -767,10 +767,13 @@ class TestTransaction:
 class TestCompatibilityChecks:
     class OpA(graph.Operator):
         Output = graph.OutputSlot()
+        OutputOpaque = graph.OutputSlot(stype=stype.Opaque)
 
         def setupOutputs(self):
             self.Output.meta.shape = (3, 3)
             self.Output.meta.dtype = int
+            self.OutputOpaque.meta.shape = (1,)
+            self.OutputOpaque.meta.dtype = object
 
         def propagateDirty(self, *a, **kw):
             pass
@@ -778,8 +781,11 @@ class TestCompatibilityChecks:
         def execute(self, *args, **kwargs):
             return numpy.ones((2, 2), dtype=int)
 
-    def test_arraylike_raises_if_shapes_are_mismatched(self, graph):
-        op = self.OpA(graph=graph)
+    @pytest.fixture
+    def op(self, graph):
+        return self.OpA(graph=graph)
+
+    def test_arraylike_raises_if_shapes_are_mismatched(self, op):
 
         with pytest.raises(Exception):
             op.Output[:].wait()
@@ -787,6 +793,9 @@ class TestCompatibilityChecks:
         op.execute = lambda *a, **kw: numpy.ones((3, 3), dtype=int)
 
         op.Output[:].wait()
+
+    def test_access_opaque_slot_value_should_not_raise_error(self, op):
+        assert op.OutputOpaque.value
 
 
 if __name__ == "__main__":
