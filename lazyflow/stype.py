@@ -255,7 +255,7 @@ class ArrayLike(SlotType):
             # because it expects destinations of type h5py.Group.
             pass
         else:
-            raise InvalidResult(f"Result of type {type(result)} is not supported")
+            raise InvalidResult(f"Result of type {type(result).__name__} is not supported")
 
 
 class Opaque(SlotType):

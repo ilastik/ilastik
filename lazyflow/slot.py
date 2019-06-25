@@ -934,7 +934,7 @@ class Slot(object):
                 if result_op is not None:
                     self.slot.stype.check_result_valid(self.roi, result_op)
 
-                    if destination_given and id(result_op) != id(destination):
+                    if destination_given and result_op is not destination:
                         self.slot.stype.copy_data(dst=destination, src=result_op)
                     else:
                         destination = result_op
