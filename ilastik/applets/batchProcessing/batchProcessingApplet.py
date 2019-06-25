@@ -1,10 +1,8 @@
-from __future__ import division
-from __future__ import absolute_import
-from builtins import range
 import copy
 import weakref
 from collections import OrderedDict
 import logging
+import typing
 logger = logging.getLogger(__name__)  # noqa
 
 import numpy
@@ -65,32 +63,45 @@ class BatchProcessingApplet(Applet):
             parsed_args, role_names)
         return self.run_export(role_path_dict, parsed_args.input_axes, sequence_axis=parsed_args.stack_along)
 
-    def run_export(self, role_data_dict, input_axes=None, export_to_array=False, sequence_axis=None):
-        """
-        Run the export for each dataset listed in role_data_dict,
-        which must be a dict of {role_index : path-list} OR {role_index : DatasetInfo-list}
-
-        As shown above, you may pass either filepaths OR preconfigured DatasetInfo objects.
-        The latter is useful if you are batch processing data that already exists in memory as a numpy array.
-        (See DatasetInfo.preloaded_array for how to provide a numpy array instead of a filepath.)
+    def run_export(
+        self,
+        role_data_dict: typing.Dict[
+            typing.Hashable, typing.List[typing.Union[str, DatasetInfo]]
+        ],
+        input_axes: typing.Optional[str] = None,
+        export_to_array: bool = False,
+        sequence_axis: typing.Optional[str] = None,
+    ) -> typing.List[typing.Union[str, numpy.array]]:
+        """Run the export for each dataset listed in role_data_dict
 
         For each dataset:
-            1. Append a lane to the workflow
-            2. Configure the new lane's DataSelection inputs with the new file (or files, if there is more than one
-               role).
-            3. Export the results from the new lane
-            4. Remove the lane from the workflow.
+                1. Append a lane to the workflow
+                2. Configure the new lane's DataSelection inputs with the new file (or files, if there is more than one
+                   role).
+                3. Export the results from the new lane
+                4. Remove the lane from the workflow.
 
-        By appending/removing the batch lane for EACH dataset we process, we trigger the workflow's usual
-        prepareForNewLane() and connectLane() logic, which ensures that we get a fresh new lane that's
-        ready to process data.
+            By appending/removing the batch lane for EACH dataset we process, we trigger the workflow's usual
+            prepareForNewLane() and connectLane() logic, which ensures that we get a fresh new lane that's
+            ready to process data.
 
-        After each lane is processed, the given post-processing callback will be executed.
-        signature: lane_postprocessing_callback(batch_lane_index)
+            After each lane is processed, the given post-processing callback will be executed.
+            signature: lane_postprocessing_callback(batch_lane_index)
 
-        export_to_array: If True do NOT export to disk as usual.
-                         Instead, export the results to a list of arrays, which is returned.
-                         If False, return a list of the filenames we produced to.
+        Args:
+            role_data_dict: dict with role_name: list(paths) of data that should be processed.
+              You may pass either filepaths OR preconfigured DatasetInfo objects.
+              The latter is useful if you are batch processing data that already exists in memory as a numpy array.
+              (See DatasetInfo.preloaded_array for how to provide a numpy array instead of a filepath.)
+            input_axes: axis description to override from the default role
+            export_to_array: If True do NOT export to disk as usual.
+              Instead, export the results to a list of arrays, which is returned.
+              If False, return a list of the filenames we produced to.
+            sequence_axis: stack along this axis, overrides setting from default role
+
+        Returns:
+            list containing either strings of paths to exported files,
+              or numpy.arrays (depending on export_to_array)
         """
         results = []
 
