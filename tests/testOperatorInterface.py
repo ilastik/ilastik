@@ -764,6 +764,65 @@ class TestTransaction:
         op_b.setupOutputs.assert_called_once()
 
 
+class TestCompatibilityChecks:
+    class OpA(graph.Operator):
+        Output = graph.OutputSlot(stype=stype.ArrayLike)
+        OutputOpaque = graph.OutputSlot(stype=stype.Opaque)
+        OutputList = graph.OutputSlot(stype=stype.ArrayLike)
+        OutputUnsupportedType = graph.OutputSlot(stype=stype.ArrayLike)
+
+        def setupOutputs(self):
+            self.Output.meta.shape = (3, 3)
+            self.Output.meta.dtype = int
+            self.OutputOpaque.meta.shape = (1,)
+            self.OutputOpaque.meta.dtype = object
+            self.OutputList.meta.shape = (10,)
+            self.OutputList.meta.dtype = object
+            self.OutputUnsupportedType.meta.shape = (10,)
+            self.OutputUnsupportedType.meta.dtype = object
+
+        def propagateDirty(self, *a, **kw):
+            pass
+
+        def execute(self, slot, *args, **kwargs):
+            if slot == self.OutputList:
+                return [1, 2, 3]
+
+            elif slot == self.OutputOpaque:
+                return object()
+
+            elif slot == self.OutputUnsupportedType:
+                return object()
+
+            else:
+                return numpy.ones((2, 2), dtype=int)
+
+    @pytest.fixture
+    def op(self, graph):
+        return self.OpA(graph=graph)
+
+    def test_arraylike_raises_if_shapes_are_mismatched(self, op):
+        with pytest.raises(stype.InvalidResult):
+            op.Output[:].wait()
+
+        op.execute = lambda *a, **kw: numpy.ones((3, 3), dtype=int)
+
+        op.Output[:].wait()
+
+    def test_arraylike_raises_if_list_shape_is_mismatched(self, op):
+        with pytest.raises(stype.InvalidResult):
+            res = op.OutputList[1:2].wait()
+
+        assert op.OutputList[1:4].wait()
+
+    def test_access_opaque_slot_value_should_not_raise_error(self, op):
+        assert op.OutputOpaque.value
+
+    def test_arraylike_retun_non_arraylike_object_raises(self, op):
+        with pytest.raises(stype.InvalidResult):
+            assert op.OutputUnsupportedType.value
+
+
 if __name__ == "__main__":
     import sys
     import nose

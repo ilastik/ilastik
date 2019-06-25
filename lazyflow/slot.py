@@ -931,26 +931,13 @@ class Slot(object):
                 # returned result_op is different from destination.
                 # (but don't copy if result_op is None, this means
                 # legacy op which wrote into destination anyway)
-                if destination_given and result_op is not None and id(result_op) != id(destination):
-                    # check that the returned value is compatible with the requested roi
+                if result_op is not None:
                     self.slot.stype.check_result_valid(self.roi, result_op)
 
-                    self.slot.stype.copy_data(dst=destination, src=result_op)
-                elif result_op is not None:
-                    # FIXME: this should be moved to a isCompatible
-                    # check in stypes.py
-                    if hasattr(result_op, "shape"):
-                        assert result_op.shape == destination.shape, (
-                            "ERROR: Operator {} has failed to provide a"
-                            " result of correct shape. result shape is"
-                            " {} vs {}.  roi was {}".format(
-                                self.operator, result_op.shape, destination.shape, str(self.roi)
-                            )
-                        )
-                    destination = result_op
-
-                    # check that the returned value is compatible with the requested roi
-                    self.slot.stype.check_result_valid(self.roi, destination)
+                    if destination_given and result_op is not destination:
+                        self.slot.stype.copy_data(dst=destination, src=result_op)
+                    else:
+                        destination = result_op
 
                 return destination
 
