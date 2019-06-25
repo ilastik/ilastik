@@ -769,6 +769,7 @@ class TestCompatibilityChecks:
         Output = graph.OutputSlot(stype=stype.ArrayLike)
         OutputOpaque = graph.OutputSlot(stype=stype.Opaque)
         OutputList = graph.OutputSlot(stype=stype.ArrayLike)
+        OutputUnsupportedType = graph.OutputSlot(stype=stype.ArrayLike)
 
         def setupOutputs(self):
             self.Output.meta.shape = (3, 3)
@@ -777,6 +778,8 @@ class TestCompatibilityChecks:
             self.OutputOpaque.meta.dtype = object
             self.OutputList.meta.shape = (10,)
             self.OutputList.meta.dtype = object
+            self.OutputUnsupportedType.meta.shape = (10,)
+            self.OutputUnsupportedType.meta.dtype = object
 
         def propagateDirty(self, *a, **kw):
             pass
@@ -786,6 +789,9 @@ class TestCompatibilityChecks:
                 return [1, 2, 3]
 
             elif slot == self.OutputOpaque:
+                return object()
+
+            elif slot == self.OutputUnsupportedType:
                 return object()
 
             else:
@@ -811,6 +817,10 @@ class TestCompatibilityChecks:
 
     def test_access_opaque_slot_value_should_not_raise_error(self, op):
         assert op.OutputOpaque.value
+
+    def test_arraylike_retun_non_arraylike_object_raises(self, op):
+        with pytest.raises(stype.InvalidResult):
+            assert op.OutputUnsupportedType.value
 
 
 if __name__ == "__main__":
