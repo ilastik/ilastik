@@ -935,7 +935,6 @@ class Slot(object):
                     self.slot.stype.check_result_valid(self.roi, result_op)
 
                     if destination_given and id(result_op) != id(destination):
-                        # check that the returned value is compatible with the requested roi
                         self.slot.stype.copy_data(dst=destination, src=result_op)
                     else:
                         destination = result_op
