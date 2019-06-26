@@ -263,8 +263,6 @@ class Slot(object):
 
         self._resizing = False
 
-        self._settingUp = False
-
         # Allow slots to be sorted by their order of creation for
         # debug output and diagramming purposes.
         self._global_slot_id = next(Slot._global_counter)
