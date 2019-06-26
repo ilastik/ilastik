@@ -20,10 +20,9 @@ from __future__ import absolute_import
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
-from builtins import range
 import os
-import pathlib
-import typing
+from pathlib import Path
+from typing import List
 import sys
 import threading
 import h5py
@@ -60,6 +59,7 @@ from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget, H
 from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDetailedInfoTableModel
 from .datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 from .precomputedVolumeBrowser import PrecomputedVolumeBrowser
+from .ImageFileDialog import ImageFileDialog
 
 try:
     import libdvid
@@ -385,63 +385,17 @@ class DataSelectionGui(QWidget):
         Ask him to choose a file (or several) and add them to both
           the GUI table and the top-level operator inputs.
         """
-        # Find the directory of the most recently opened image file
-        mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
-        mostRecentImageFile = str(mostRecentImageFile)
-        if mostRecentImageFile is not None:
-            defaultDirectory = os.path.split(mostRecentImageFile)[0]
-        else:
-            defaultDirectory = os.path.expanduser('~')
 
         # Launch the "Open File" dialog
-        fileNames = self.getImageFileNamesToOpen(self, defaultDirectory)
+        paths = ImageFileDialog(self).getSelectedPaths()
 
         # If the user didn't cancel
-        if len(fileNames) > 0:
-            PreferencesManager().set('DataSelection', 'recent image', fileNames[0])
+        if len(paths) > 0:
             try:
-                self.addFileNames(fileNames, roleIndex, startingLane)
+                self.addFileNames(paths, roleIndex, startingLane)
             except Exception as ex:
                 log_exception( logger )
                 QMessageBox.critical(self, "Error loading file", str(ex))
-
-    @classmethod
-    def getImageFileNamesToOpen(cls, parent_window, defaultDirectory):
-        """
-        Launch an "Open File" dialog to ask the user for one or more image files.
-        """
-        extensions = OpDataSelection.SupportedExtensions
-        filter_strs = ["*." + x for x in extensions]
-        filters = ["{filt} ({filt})".format(filt=x) for x in filter_strs]
-        filt_all_str = "Image files (" + ' '.join(filter_strs) + ')'
-
-        fileNames = []
-        
-        file_dialog = QFileDialog(
-            parent_window, caption="Select Images", directory=defaultDirectory, filter=filt_all_str)
-        if ilastik_config.getboolean("ilastik", "debug"):
-            # use Qt dialog in debug mode (more portable?)
-            file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-
-        file_dialog.setFileMode(QFileDialog.ExistingFiles)
-        if not file_dialog.exec_():
-            return []
-        return cls.cleanFileList(file_dialog.selectedFiles())
-
-
-    @staticmethod
-    def cleanFileList(fileList: typing.List[str]) -> typing.List[str]:
-        fileNames = [pathlib.Path(selected_file) for selected_file in fileList]
-        # For the n5 extension the attributes.json file has to be selected in the file dialog.
-        # However we need just the *.n5 directory-file.
-        for i, fileName in enumerate(fileNames):
-            # On some OS's the open file dialog allows to return file names that do not exist
-            assert fileName.exists(), \
-                f"The file '{fileName}' does not exist."
-            if fileName.name.lower() == 'attributes.json' and any(p.suffix == ".n5" for p in fileName.parents):
-                fileNames[i] = fileName.parent
-        fileNames = [fileName.as_posix() for fileName in fileNames]
-        return fileNames
 
     def _findFirstEmptyLane(self, roleIndex):
         opTop = self.topLevelOperator
@@ -455,51 +409,82 @@ class DataSelectionGui(QWidget):
                 break
         return firstNewLane
 
-    def addFileNames(self, fileNames, roleIndex, startingLane=None, rois=None):
+    def getNumLanes(self) -> int:
+        return len(self.topLevelOperator.DatasetGroup)
+
+    def getInfoSlots(self, roleIndex:int):
+        return [self.topLevelOperator.DatasetGroup[laneIndex][roleIndex] for laneIndex in range(self.getNumLanes())]
+
+    def getImageSlots(self, roleIndex):
+        return [self.topLevelOperator.ImageGroup[lane_index][roleIndex] for laneIndex in range(self.getNumLanes())]
+
+    def addFileNames(self, paths:List[Path], roleIndex, startingLane=None, rois=None):
         """
         Add the given filenames to both the GUI table and the top-level operator inputs.
         If startingLane is None, the filenames will be *appended* to the role's list of files.
         
         If rois is provided, it must be a list of (start,stop) tuples (one for each fileName)
         """
-        # What lanes will we touch?
-        startingLane, endingLane = self._determineLaneRange(fileNames, roleIndex, startingLane)
-        if startingLane is None:
-            # Something went wrong.
-            return
+        originalNumLanes = self.getNumLanes()
+        startingLane, endingLane = self._determineLaneRange(paths, startingLane)
+        if originalNumLanes < endingLane+1:
+            self.topLevelOperator.DatasetGroup.resize(endingLane+1)
+        info_slots = self.getInfoSlots(roleIndex)[startingLane:endingLane+1]
 
-        # If we're only adding new lanes, NOT modifying existing lanes...
-        adding_only = startingLane == len(self.topLevelOperator)
-
-        # Create a list of DatasetInfos
         try:
-            infos = self._createDatasetInfos(roleIndex, fileNames, rois)
-        except DataSelectionGui.UserCancelledError:
-            return
-        # If no exception was thrown so far, set up the operator now
-        loaded_all = self._configureOpWithInfos(roleIndex, startingLane, endingLane, infos)
-        
-        if loaded_all:
+            new_infos = self._createDatasetInfos(roleIndex, paths, rois)
+            self.applyDatasetInfos(new_infos, info_slots)
+
             # Now check the resulting slots.
             # If they should be copied to the project file, say so.
             self._reconfigureDatasetLocations(roleIndex, startingLane, endingLane)
-    
+
             self._checkDataFormatWarnings(roleIndex, startingLane, endingLane)
-    
-            # If we succeeded in adding all images, show the first one.
+
+            # Show the first image
             self.showDataset(startingLane, roleIndex)
 
-        # Notify the workflow that we just added some new lanes.
-        if adding_only:
-            workflow = self.parentApplet.topLevelOperator.parent
-            workflow.handleNewLanesAdded()
+            # if only adding new lanes, notify the workflow
+            if startingLane >= originalNumLanes:
+                workflow = self.parentApplet.topLevelOperator.parent
+                workflow.handleNewLanesAdded()
 
-        # Notify the workflow that something that could affect applet readyness has occurred.
-        self.parentApplet.appletStateUpdateRequested()
+            # Notify the workflow that something that could affect applet readyness has occurred.
+            self.parentApplet.appletStateUpdateRequested()
 
-        self.updateInternalPathVisiblity()
+            self.updateInternalPathVisiblity()
+        except DataSelectionGui.UserCancelledError:
+            pass
+        except Exception as e:
+            self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
+            QMessageBox.warning(self, "File selection error", str(e))
 
-    def _determineLaneRange(self, fileNames, roleIndex, startingLane=None):
+    def applyDatasetInfos(self, new_infos:List[DatasetInfo], info_slots:List['Slot'], allow_fixing=True):
+        original_infos = []
+        try:
+            for new_info, info_slot in zip(new_infos, info_slots):
+                original_infos.append(info_slot.value if info_slot.ready() else None)
+                while True:
+                    try:
+                        info_slot.setValue(new_info)
+                        break
+                    except DatasetConstraintError as e:
+                        if not allow_fixing:
+                            raise e
+                        QMessageBox.warning(self, "Error", str(e))
+                        info_editor = DatasetInfoEditorWidget(self, [new_info], self.topLevelOperator.WorkingDirectory.value)
+                        if info_editor.exec_() == QDialog.Rejected:
+                            raise e
+                        new_info = info_editor.edited_infos[0]
+        except Exception as e:
+            for slot, original_info in zip(info_slots, original_infos):
+                if original_info is not None:
+                    slot.setValue(original_info)
+            raise e
+        finally:
+            self.parentApplet.appletStateUpdateRequested()
+
+    def _determineLaneRange(self, fileNames, startingLane=None):
         """
         Determine which lanes should be configured if the user wants to add the 
             given fileNames to the specified role, starting at startingLane.
@@ -511,27 +496,23 @@ class DataSelectionGui(QWidget):
             endingLane = startingLane+len(fileNames)-1
         else:
             assert startingLane < len(self.topLevelOperator.DatasetGroup)
-            max_files = len(self.topLevelOperator.DatasetGroup) - \
-                    startingLane
+            max_files = len(self.topLevelOperator.DatasetGroup) - startingLane
             if len(fileNames) > max_files:
                 msg = "You selected {num_selected} files for {num_slots} "\
                       "slots. To add new files use the 'Add new...' option "\
                       "in the context menu or the button in the last row."\
                               .format(num_selected=len(fileNames),
                                       num_slots=max_files)
-                QMessageBox.critical( self, "Too many files", msg )
-                return (None, None)
-            endingLane = min(startingLane+len(fileNames)-1,
-                    len(self.topLevelOperator.DatasetGroup))
+                raise Exception(msg)
+            endingLane = min(startingLane+len(fileNames)-1, len(self.topLevelOperator.DatasetGroup))
             
         if self._max_lanes and endingLane >= self._max_lanes:
             msg = "You may not add more than {} file(s) to this workflow.  Please try again.".format( self._max_lanes )
-            QMessageBox.critical( self, "Too many files", msg )
-            return (None, None)
+            raise Exception(msg)
 
         return (startingLane, endingLane)
 
-    def _createDatasetInfos(self, roleIndex, filePaths, rois):
+    def _createDatasetInfos(self, roleIndex:int, filePaths:List[Path], rois):
         """
         Create a list of DatasetInfos for the given filePaths and rois
         rois may be None, in which case it is ignored.
@@ -546,20 +527,17 @@ class DataSelectionGui(QWidget):
             infos.append(info)
         return infos
 
-    def _createDatasetInfo(self, roleIndex, filePath, roi):
+    def _createDatasetInfo(self, roleIndex:int, filePath:Path, roi):
         """
         Create a DatasetInfo object for the given filePath and roi.
         roi may be None, in which case it is ignored.
         """
         cwd = self.topLevelOperator.WorkingDirectory.value
-        data_path = filePath
-        absPath, relPath = getPathVariants(filePath, cwd)
-        
-        # If the file is in a totally different tree from the cwd,
-        # then leave the path as absolute.  Otherwise, override with the relative path.
-        if relPath is not None and len(os.path.commonprefix([cwd, absPath])) > 1:
-            data_path = relPath
-            
+        try:
+            data_path = filePath.absolute().relative_to(cwd)
+        except ValueError:
+            data_path = filePath.absolute()
+
         if DatasetInfo.fileHasInternalPaths(data_path):
             datasetNames = DatasetInfo.getPossibleInternalPathsFor(absPath)
             if len(datasetNames) == 0:
@@ -585,53 +563,11 @@ class DataSelectionGui(QWidget):
                     else:
                         raise DataSelectionGui.UserCancelledError()
 
-        return DatasetInfo(
-            filepath=data_path,
+        return DatasetInfo.default(
+            filepath=data_path.as_posix(), #FIXME: it would be much better to use Path rather than str
             cwd=cwd,
             allowLabels=(self.guiMode == GuiMode.Normal),
             subvolume_roi=roi)
-
-    def _configureOpWithInfos(self, roleIndex, startingLane, endingLane, infos):
-        """
-        Attempt to configure the specified role and lanes of the 
-        top-level operator with the given DatasetInfos.
-        
-        Returns True if all lanes were configured successfully, or False if something went wrong.
-        """
-        opTop = self.topLevelOperator
-        originalSize = len(opTop.DatasetGroup)
-
-        # Resize the slot if necessary            
-        if len( opTop.DatasetGroup ) < endingLane+1:
-            opTop.DatasetGroup.resize( endingLane+1 )
-
-        # Configure each subslot
-        for laneIndex, info in zip(list(range(startingLane, endingLane+1)), infos):
-            try:
-                self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
-            except DatasetConstraintError as ex:
-                return_val = [False]
-                # Give the user a chance to fix the problem
-                self.handleDatasetConstraintError(info, info.filePath, ex, roleIndex, laneIndex, return_val)
-                if return_val[0]:
-                    # Successfully repaired graph.
-                    continue
-                else:
-                    # Not successfully repaired.  Roll back the changes
-                    self._opTopRemoveDset(originalSize, laneIndex, roleIndex)
-                    return False
-            except OpDataSelection.InvalidDimensionalityError as ex:
-                    self._opTopRemoveDset(originalSize, laneIndex, roleIndex)
-                    QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
-                    return False
-            except Exception as ex:
-                self._opTopRemoveDset(originalSize, laneIndex, roleIndex)
-                msg = "Wasn't able to load your dataset into the workflow.  See error log for details."
-                log_exception( logger, msg )
-                QMessageBox.critical( self, "Dataset Load Error", msg )
-                return False
-
-        return True
 
     def _opTopRemoveDset(self, laneNum, laneIndex, roleIndex):
         """
@@ -686,43 +622,6 @@ class DataSelectionGui(QWidget):
                               "Check the console output for details.\n"
                               "(For HDF5 files, be sure to enable chunking on your dataset.)" )
 
-    @threadRouted
-    def handleDatasetConstraintError(self, info, filename, ex, roleIndex, laneIndex, return_val=[False]):
-        if ex.unfixable:
-            msg = ( "Can't use dataset:\n\n"
-                    + filename + "\n\n"
-                    + "because it violates a constraint of the {} component.\n\n".format( ex.appletName )
-                    + ex.message + "\n\n" )
-
-            QMessageBox.warning( self, "Can't use dataset", msg )
-            return_val[0] = False
-        else:
-            assert isinstance(ex, DatasetConstraintError)
-            accepted = True
-            while isinstance(ex, DatasetConstraintError) and accepted:
-                msg = (
-                    f"Can't use given properties for dataset:\n\n{filename}\n\nbecause it violates a constraint of "
-                    f"the {ex.appletName} component.\n\n{ex.message}\n\nIf possible, fix this problem by adjusting "
-                    f"the applet settings and or the dataset properties in the next window(s).")
-                QMessageBox.warning(self, "Dataset Needs Correction", msg)
-                for dlg in ex.fixing_dialogs:
-                    dlg()
-
-                accepted, ex = self.repairDatasetInfo(info, roleIndex, laneIndex)
-
-            # The success of this is 'returned' via our special out-param
-            # (We can't return a value from this method because it is @threadRouted.
-            return_val[0] = accepted and ex is None  # successfully repaired
-
-    def repairDatasetInfo(self, info, roleIndex, laneIndex):
-        """Open the dataset properties editor and return True if the new properties are acceptable."""
-        defaultInfos = {}
-        defaultInfos[laneIndex] = info
-        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, [laneIndex], defaultInfos,
-                                            show_axis_details=self.show_axis_details)
-        dlg_state, ex = editorDlg.exec_()
-        return (dlg_state == QDialog.Accepted), ex
-
     def addStack(self, roleIndex, laneIndex):
         """
         The user clicked the "Import Stack Files" button.
@@ -752,7 +651,9 @@ class DataSelectionGui(QWidget):
 
             # Serializer will update the operator for us, which will propagate to the GUI.
             try:
-                self.serializer.importStackAsLocalDataset( info, sequence_axis )
+                stack_internal_path = self.serializer.importStackAsLocalDataset(files, sequence_axis)
+                info = DatasetInfo(filePath=stack_internal_path, cwd=cwd, location=DatasetInfo.Location.ProjectInternal,
+                                   fromstack=True)
                 try:
                     self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(info)
                 except DatasetConstraintError as ex:
@@ -800,9 +701,12 @@ class DataSelectionGui(QWidget):
         self.parentApplet.appletStateUpdateRequested()
 
     def editDatasetInfo(self, roleIndex, laneIndexes):
-        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, laneIndexes, show_axis_details=self.show_axis_details)
-        editorDlg.exec_()
-        self.parentApplet.appletStateUpdateRequested()
+        all_info_slots = self.getInfoSlots(roleIndex)
+        selected_info_slots = [all_info_slots[idx] for idx in laneIndexes]
+        infos = [slot.value for slot in selected_info_slots]
+        editorDlg = DatasetInfoEditorWidget(self, infos, self.topLevelOperator.WorkingDirectory.value)
+        if editorDlg.exec_() == QDialog.Accepted:
+            self.applyDatasetInfos(editorDlg.edited_infos, selected_info_slots)
 
     def updateInternalPathVisiblity(self):
         for view in self._detailViewerWidgets:

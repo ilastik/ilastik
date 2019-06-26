@@ -20,7 +20,8 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from builtins import range
+from typing import List
+
 from .opDataSelection import OpDataSelection, DatasetInfo
 from lazyflow.operators.ioOperators import OpStackLoader, OpH5N5WriterBigDataset
 from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
@@ -198,7 +199,7 @@ class DataSelectionSerializer( AppletSerializer ):
 
         self._dirty = False
 
-    def importStackAsLocalDataset(self, info, sequence_axis='t'):
+    def importStackAsLocalDataset(self, paths:List[str], sequence_axis='t'):
         """
         Add the given stack data to the project file as a local dataset.
         Does not update the topLevelOperator.
@@ -211,16 +212,11 @@ class DataSelectionSerializer( AppletSerializer ):
 
         projectFileHdf5 = self.topLevelOperator.ProjectFile.value
 
-        globstring = info.filePath
-        info.location = DatasetInfo.Location.ProjectInternal
-        firstPathParts = PathComponents(info.filePath.split(os.path.pathsep)[0])
-        info.filePath = firstPathParts.externalDirectory + '/??' + firstPathParts.extension
-        info.fromstack = True
-
         # Use absolute path
         cwd = self.topLevelOperator.WorkingDirectory
-        if os.path.pathsep not in globstring and not os.path.isabs(globstring):
-            globstring = os.path.normpath( os.path.join(cwd, globstring) )
+        abs_paths = [getPathVariants(path, cwd)[0 if isRelative(path) else 1] for path in paths]
+
+        firstPathParts = PathComponents(files[0])
 
         if firstPathParts.extension.lower() in OpTiffReader.TIFF_EXTS:
             # Special loader for TIFFs
@@ -268,9 +264,10 @@ class DataSelectionSerializer( AppletSerializer ):
             data_slot = opLoader.stack
 
         try:
+            internal_path = '/local_data/' + DatasetInfo.generate_id()
             opWriter = OpH5N5WriterBigDataset(parent=self.topLevelOperator.parent)
             opWriter.h5N5File.setValue(projectFileHdf5)
-            opWriter.h5N5Path.setValue(self.topGroupName + '/local_data/' + info.datasetId)
+            opWriter.h5N5Path.setValue(self.topGroupName + internal_path)
             opWriter.CompressionEnabled.setValue(False)
             # We assume that the main bottleneck is the hard disk, 
             #  so adding lots of threads to access it at once seems like a bad idea.
@@ -281,12 +278,12 @@ class DataSelectionSerializer( AppletSerializer ):
             opWriter.progressSignal.subscribe(self.progressSignal)
 
             success = opWriter.WriteImage.value
+            return internal_path
         finally:
             opWriter.cleanUp()
             opLoader.cleanUp()
             self.progressSignal(100)
 
-        return success
 
     def initWithoutTopGroup(self, hdf5File, projectFilePath):
         """

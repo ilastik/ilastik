@@ -38,6 +38,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.utility import OpMultiLaneWrapper
 from lazyflow.array5d import Point5D, Shape5D
+from lazyflow.graph import Graph
 from lazyflow.utility import PathComponents, isUrl, make_absolute
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -55,7 +56,10 @@ class DatasetInfo(object):
 
     def __init__(self, filepath=None, jsonNamespace=None, cwd=None,
                  preloaded_array=None, sequence_axis=None, allowLabels=True,
-                 subvolume_roi=None):
+                 subvolume_roi=None, location=Location.FileSystem,
+                 fromstack=False, axistags=None, drange=None, display_mode='default',
+                 nickname='', original_axistags=None, shape=None, normalizeDisplay=True,
+                 sequenceAxis=None, dtype=None):
         """
         filepath: may be a globstring or a full hdf5 path+dataset
 
@@ -78,13 +82,15 @@ class DatasetInfo(object):
         self._datasetId = ""                # The name of the data within the project file (if it is stored locally)
         # OBSOLETE: Whether or not this dataset should be used for training a classifier.
         self.allowLabels = allowLabels
-        self.drange = None
-        self.normalizeDisplay = True
-        self.sequenceAxis = None
-        self.fromstack = False
-        self.nickname = ""
-        self.axistags = None
-        self.original_axistags = None
+        self.drange = drange
+        self.normalizeDisplay = normalizeDisplay
+        self.sequenceAxis = sequenceAxis
+        self.fromstack = fromstack
+        self.nickname = nickname
+        self.axistags = axistags
+        self.original_axistags = original_axistags
+        self.shape = shape
+        self.dtype = dtype
         # Necessary in headless mode in order to recover the shape of the raw data
         self.laneShape = None
         self.laneDtype = None
@@ -92,8 +98,8 @@ class DatasetInfo(object):
         # or by the fake provided (e.g. in headless mode when raw data are not necessary)
         self.realDataSource = True
         self.subvolume_roi = subvolume_roi
-        self.location = Location.FileSystem
-        self.display_mode = 'default'  # choices: default, grayscale, rgba, random-colortable, binary-mask.
+        self.location = location
+        self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
 
         if self.preloaded_array is not None:
             self.filePath = ""  # set property to ensure unique _datasetId
@@ -200,6 +206,39 @@ class DatasetInfo(object):
         if jsonNamespace is not None:
             self.updateFromJson(jsonNamespace)
 
+    def modified_with(self, **kwargs):
+        #FIXME: call the constructor again
+        info = copy.copy(self)
+        for k, v in kwargs.items():
+            setattr(info, k, v)
+        return info
+
+    @classmethod
+    def default(cls, filepath:str, **kwargs) -> 'DatasetInfo':
+        op_reader = OpInputDataReader(graph=Graph())
+        if 'cwd' in kwargs:
+            op_reader.WorkingDirectory.setValue(kwargs['cwd'])
+        op_reader.FilePath.setValue(filepath)
+        return cls.from_slot(op_reader.Output, filepath, **kwargs)
+
+    @classmethod
+    def from_slot(cls, slot, filepath:str, **kwargs):
+        meta = slot.meta
+        info_params = {
+            'filepath': filepath,
+            'axistags': meta.axistags,
+            'shape': meta.shape,
+        }
+        for key in ('drange', 'display_mode', 'normalizeDisplay', 'dtype'):
+            if key in meta:
+                info_params[key] = meta[key]
+        info_params.update(kwargs)
+        return cls(**info_params)
+
+    @classmethod
+    def generate_id(cls) -> str:
+        return str(uuid.uuid1())
+
     @property
     def filePath(self):
         return self._filePath
@@ -208,7 +247,7 @@ class DatasetInfo(object):
     def filePath(self, newPath):
         self._filePath = newPath
         # Reset our id any time the filepath changes
-        self._datasetId = str(uuid.uuid1())
+        self._datasetId = self.generate_id()
 
     @property
     def externalPath(self) -> str:

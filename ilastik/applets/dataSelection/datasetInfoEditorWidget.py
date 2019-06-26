@@ -22,6 +22,8 @@ from __future__ import absolute_import
 import os
 import copy
 from enum import Enum, unique
+from pathlib import Path
+from typing import List
 
 import h5py
 import numpy
@@ -41,6 +43,7 @@ logger = logging.getLogger(__name__)
 
 @unique
 class StorageLocation(Enum):
+    Default = "Default"
     ProjectFile = "Copied into Project File"
     AbsoluteLink = "Absolute Link"
     RelativeLink = "Relative Link"
@@ -63,32 +66,22 @@ class DatasetInfoEditorWidget(QDialog):
     """
     This dialog allows the user to edit the settings of one **OR MORE** datasets for a given role.
     """
-    def __init__(self, parent, topLevelOperator, roleIndex, laneIndexes, defaultInfos={}, show_axis_details=False):
+    def __init__(self, parent, infos:List[DatasetInfo], projectFileDir:str):
         """
         :param topLevelOperator: The applet's OpMultiLaneDataSelectionGroup instance
         :param roleIndex: The role of the dataset(s) we're editing
         :param laneIndexes: A list of lanes this dialog will apply settings to. (Same role for each lane.)
         :param defaultInfos: ignored
         """
-        assert len(laneIndexes) > 0
         super( DatasetInfoEditorWidget, self ).__init__(parent)
-        self._op = topLevelOperator
-        self._laneIndexes = laneIndexes
-        self.selected_ops = [topLevelOperator.innerOperators[li]._opDatasets[roleIndex]  for li in laneIndexes]
-        self.datasetinfo_slots = [topLevelOperator.DatasetGroup[li][roleIndex] for li in laneIndexes]
-        self.current_infos = [op.Dataset.value for op in self.selected_ops]
+        self.current_infos = infos
+        self.projectFileDir = projectFileDir
+        self.edited_infos = []
 
         # Load the ui file into this class (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         uiFilePath = os.path.join( localDir, 'datasetInfoEditorWidget.ui' )
         uic.loadUi(uiFilePath, self)
-        self.setObjectName(f"DatasetInfoEditorWidget_Role_{roleIndex}")
-
-        self.normalizeDisplayComboBox.addItem("True", userData=True)
-        self.normalizeDisplayComboBox.addItem("False", userData=False)
-        self.normalizeDisplayComboBox.addItem("Default", userData=None)
-        self.normalizeDisplayComboBox.currentIndexChanged.connect(self._handleNormalizeDisplayChanged)
-        self.normalizeDisplayComboBox.setCurrentText("Default")
 
         self.rangeMinSpinBox.setSpecialValueText("--")
         self.rangeMaxSpinBox.setSpecialValueText("--")
@@ -98,11 +91,7 @@ class DatasetInfoEditorWidget(QDialog):
         self.okButton.clicked.connect(self.accept)
         self.cancelButton.clicked.connect(self.reject)
 
-        input_axiskeys = []
-        for op in self.selected_ops:
-            tags = op.Image.meta.original_axistags or op.Image.meta.axistags
-            keys = "".join(tag.key for tag in tags)
-            input_axiskeys.append(keys)
+        input_axiskeys = ["".join(tag.key for tag in info.axistags) for info in infos]
 
         self.multi_axes_display.setEnabled(False)
         self.multi_axes_display.setText("Current: " + ", ".join(input_axiskeys))
@@ -121,18 +110,22 @@ class DatasetInfoEditorWidget(QDialog):
 
 
         self.nicknameEdit.setText(', '.join(str(info.nickname) for info in self.current_infos))
-        if len(self.selected_ops) == 1:
+        if len(infos) == 1:
             self.nicknameEdit.setEnabled(True)
         else:
             self.nicknameEdit.setEnabled(False)
             self.nicknameEdit.setToolTip("Edit a single lane to modify its nickname")
 
 
-        self.shapeLabel.setText(", ".join(str(op.Image.meta.shape) for op in self.selected_ops))
-        self.dtypeLabel.setText(", ".join(op.Image.meta.dtype.__name__ for op in self.selected_ops))
+        self.shapeLabel.setText(", ".join(str(info.shape) for info in infos))
+        self.dtypeLabel.setText(", ".join(info.dtype.__name__ for info in infos))
 
-        current_normalize_display = {op.Image.meta.normalizeDisplay for op in self.selected_ops}
-        dranges = {op.Image.meta.drange for op in self.selected_ops if op.Image.meta.drange is not None}
+        self.normalizeDisplayComboBox.addItem("True", userData=True)
+        self.normalizeDisplayComboBox.addItem("False", userData=False)
+        self.normalizeDisplayComboBox.addItem("Default", userData=None)
+        self.normalizeDisplayComboBox.currentIndexChanged.connect(self._handleNormalizeDisplayChanged)
+        current_normalize_display = {info.normalizeDisplay for info in infos}
+        dranges = {info.drange for info in infos if info.drange is not None}
         if len(current_normalize_display) == 1:
             normalize = current_normalize_display.pop()
             if normalize:
@@ -147,9 +140,7 @@ class DatasetInfoEditorWidget(QDialog):
             self.normalizeDisplayComboBox.setCurrentIndex(2)
 
 
-
-
-        hdf5_infos = [info for info in self.current_infos if info.isHdf5()]
+        hdf5_infos = [info for info in infos if info.isHdf5()]
         if not hdf5_infos:
             self.internalDatasetNameLabel.setVisible(False)
             self.internalDatasetNameComboBox.setVisible(False)
@@ -190,21 +181,31 @@ class DatasetInfoEditorWidget(QDialog):
         self.displayModeComboBox.addItem("Random Colortable", userData="random-colortable")
         self.displayModeComboBox.addItem("Alpha Modulated", userData="alpha-modulated")
         self.displayModeComboBox.addItem("Binary Mask", userData="binary-mask")
-        modes = {op.Image.meta.display_mode or "default" for op in self.selected_ops}
+        modes = {info.display_mode or "default" for info in infos}
         if len(modes) == 1:
             index = self.displayModeComboBox.findData(modes.pop())
             self.displayModeComboBox.setCurrentIndex(index)
         else:
             self.displayModeComboBox.setCurrentIndex(0)
 
-        for location in StorageLocation:
-            self.storageComboBox.addItem(location.value, userData=location)
 
-        current_locations = {StorageLocation.from_datasetinfo(info) for info in self.current_infos}
-        self.storageComboBox.setCurrentIndex(-1)
+        self.storageComboBox.addItem(StorageLocation.Default.value, userData=StorageLocation.Default)
+        self.storageComboBox.addItem(StorageLocation.ProjectFile.value, userData=StorageLocation.ProjectFile)
+        self.storageComboBox.addItem(StorageLocation.AbsoluteLink.value, userData=StorageLocation.AbsoluteLink)
+        for info in infos:
+            try:
+                Path(info.filePath).relative_to(projectFileDir)
+            except ValueError:
+                break
+        else:
+            self.storageComboBox.addItem(StorageLocation.RelativeLink.value, userData=StorageLocation.RelativeLink)
+
+        current_locations = {StorageLocation.from_datasetinfo(info) for info in infos}
         if len(current_locations) == 1:
             comboIndex = self.storageComboBox.findData(current_locations.pop())
-            self.storageComboBox.setCurrentIndex(comboIndex)
+        else:
+            comboIndex = self.storageComboBox.findData(StorageLocation.Default)
+        self.storageComboBox.setCurrentIndex(comboIndex)
 
         if any(info.fromstack for info in self.current_infos):
             # If any of the files were loaded from a stack, then you can't refer to them via a link.
@@ -235,8 +236,8 @@ class DatasetInfoEditorWidget(QDialog):
             if normalize:
                 if new_drange[0] >= new_drange[1]:
                     raise Exception("Can't apply data range values: Data range MIN must be lesser than MAX.")
-                for op in self.selected_ops:
-                    dtype_info = get_dtype_info(op.Image.meta.dtype)
+                for info in self.current_infos:
+                    dtype_info = get_dtype_info(info.dtype)
                     if new_drange[0] < dtype_info.min or new_drange[1] > dtype_info.max:
                         raise Exception(f"Data range values {new_drange} conflicts with the data type in lane {lane_idx}, "
                                         f"which has range {(dtype_info.min, dtype_info.max)}")
@@ -244,10 +245,8 @@ class DatasetInfoEditorWidget(QDialog):
             newStorageLocation = self.storageComboBox.currentData()
             new_display_mode = self.displayModeComboBox.currentData()
 
-            for op, datasetinfo_slot in zip(self.selected_ops, self.datasetinfo_slots):
-                info = copy.copy( op.Dataset.value )
-                saved_datasetinfos.append(info)
-
+            self.edited_infos = []
+            for info in self.current_infos:
                 if self.internalDatasetNameComboBox.isEnabled():
                     pathComponents = PathComponents(info.filePath)
                     pathComponents.internalPath = self.internalDatasetNameComboBox.currentText()
@@ -257,29 +256,27 @@ class DatasetInfoEditorWidget(QDialog):
 
                 if newStorageLocation == StorageLocation.ProjectFile:
                     location = DatasetInfo.Location.ProjectInternal
+                elif newStorageLocation == StorageLocation.Default:
+                    location = info.location
                 else:
                     location = DatasetInfo.Location.FileSystem
-                    absPath, relPath = getPathVariants(filePath, op.WorkingDirectory.value)
                     if newStorageLocation == StorageLocation.RelativeLink:
-                        filePath = relPath
+                        filePath = Path(filePath).absolute().relative_to(self.projectFileDir).as_posix()
                     else:
-                        filePath = absPath
+                        filePath = Path(filePath).absolute().as_posix()
 
-                dtype = get_dtype_info(op.Image.meta.dtype).dtype.type
-
-                info.nickname = self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname
-                info.axistags = self.get_new_axes_tags() or info.axistags
-                info.normalizeDisplay = info.normalizeDisplay if normalize is None else normalize
-                info.drange = (dtype(new_drange[0]), dtype(new_drange[1])) if normalize else info.drange
-                info.display_mode = new_display_mode if new_display_mode != 'default' else info.display_mode
-                info.location = location
-                info.filePath = filePath
-                datasetinfo_slot.setValue(info)
+                edited_info = info.modified_with(
+                    nickname=self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname,
+                    axistags=self.get_new_axes_tags() or info.axistags,
+                    normalizeDisplay=info.normalizeDisplay if normalize is None else normalize,
+                    drange=(info.dtype(new_drange[0]), info.dtype(new_drange[1])) if normalize else info.drange,
+                    display_mode=new_display_mode if new_display_mode != 'default' else info.display_mode,
+                    location=location,
+                    filePath=filePath)
+                self.edited_infos.append(edited_info)
             super(DatasetInfoEditorWidget, self).accept()
         except Exception as e:
-            for idx, datasetinfo in enumerate(saved_datasetinfos):
-                self.datasetinfo_slots[idx].setValue(datasetinfo)
-            QMessageBox.warning(self, "Error", str(e))
+            QMessageBox.warning(self, "File selection error", str(e))
 
     def _clearNormalizationRanges(self):
         self.rangeMinSpinBox.setValue(self.rangeMinSpinBox.minimum())
