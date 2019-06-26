@@ -856,6 +856,22 @@ class TestOperatorStackFormatter:
         assert "TestOperatorStackFormatter.BrokenOp.execute" in stack[0]
 
 
+def test_operator_str():
+    g = graph.Graph()
+
+    class OpA(graph.Operator):
+        Input = graph.InputSlot(level=2)
+
+    op = OpA(graph=g)
+    op.Input.resize(2)
+
+    assert "level=1" in str(op.Input[0])
+    assert "index=(0,)" in str(op.Input[0])
+
+    assert "len=2" in str(op.Input)
+    assert "index" not in str(op.Input)
+
+
 if __name__ == "__main__":
     import sys
     import nose

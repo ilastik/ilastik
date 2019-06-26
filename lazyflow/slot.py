@@ -1510,20 +1510,16 @@ class Slot(object):
         tmpshape[self.meta.axistags.index(axis)] = size
         self.meta.shape = tuple(tmpshape)
 
-    def __str__(self):
-        mslot_info = ""
-        if self.level > 0 or isinstance(self.operator, Slot):
-            mslot_info += "["
-            if isinstance(self.operator, Slot):
-                if self in self.operator._subSlots:
-                    mslot_info += " index={}".format(self.operator.index(self))
-                else:
-                    mslot_info += " index=NOTFOUND"
-            if self.level > 0:
-                mslot_info += " len={}".format(len(self))
-                if self.level > 1:
-                    mslot_info += " level={}".format(self.level)
-            mslot_info += " ] "
+    def __repr__(self):
+        mslot_info = []
+
+        if self.level > 0:
+            mslot_info.append(f"len={len(self)} level={self.level}")
+
+        if self.subindex:
+            mslot_info.append(f"index={self.subindex}")
+
+        mslot_info_str = ' '.join(mslot_info)
 
         # For debugging:
         # Should actually never happen if the operator is constructed correctly,
@@ -1533,10 +1529,7 @@ class Slot(object):
         else:
             realOpName = self.operator.name
 
-        return "{}.{} {}: \t{}".format(realOpName, self.name, mslot_info, self.meta)
-
-    def __repr__(self):
-        return self.__str__()
+        return f"{realOpName}.{self.name} [{mslot_info_str}]: \t{self.meta}"
 
 
 class InputSlot(Slot):
