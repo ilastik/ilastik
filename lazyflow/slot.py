@@ -160,7 +160,7 @@ class Slot(object):
         nonlane=False,
         allow_mask=False,
         subindex=None,
-        parent_slot=None,
+        top_level_slot=None,
     ):
         """Constructor of the Slot class.
 
@@ -188,7 +188,7 @@ class Slot(object):
 
         :param subindex: index within the parent slot
 
-        :param parent_slot: in case of multilevel slots slot on one level above
+        :param top_level_slot: in case of multilevel slots with highest level
         """
         # This assertion is here for a reason: default values do NOT work on OutputSlots.
         # (We should probably change that at some point...)
@@ -221,7 +221,7 @@ class Slot(object):
         self.upstream_slot = None
         self.level = level
         self.subindex = subindex or ()
-        self.parent_slot = parent_slot
+        self._top_level_slot = top_level_slot
 
         # in the case of an InputSlot one can directly assign a value
         # to a slot instead of connecting it to an upstream_slot, this
@@ -926,9 +926,7 @@ class Slot(object):
             try:
                 # Execute the workload, which might not ever return
                 # (if we get cancelled).
-                result_op = self.operator.execute(
-                    self.slot.getTopLevelSlot(), self.slot.subindex, self.roi, destination
-                )
+                result_op = self.operator.execute(self.slot.top_level_slot, self.slot.subindex, self.roi, destination)
 
                 # copy data from result_op to destination, if
                 # destination was actually given by the user, and the
@@ -994,7 +992,7 @@ class Slot(object):
             self._sig_dirty(self, roi)
 
             if self._type == "input" and self.operator.configured():
-                self.operator.propagateDirty(self.getTopLevelSlot(), self.subindex, roi)
+                self.operator.propagateDirty(self.top_level_slot, self.subindex, roi)
 
     def __iter__(self):
         assert self.level >= 1
@@ -1373,11 +1371,12 @@ class Slot(object):
         roi = self.rtype(self, *args, **kwargs)
         return self.get(roi)
 
-    def getTopLevelSlot(self):
-        slot = self
-        while slot.parent_slot is not None:
-            slot = slot.parent_slot
-        return slot
+    @property
+    def top_level_slot(self):
+        if self._top_level_slot is None:
+            return self
+        else:
+            return self._top_level_slot
 
     def getRealOperator(self):
         """If a slot is owned by a higher-level slot, self.operator is
@@ -1503,7 +1502,10 @@ class Slot(object):
         """
         assert position >= 0 and position <= len(self._subSlots)
         slot = self._getInstance(
-            operator=self.operator, level=self.level - 1, subindex=self.subindex + (position,), parent_slot=self
+            operator=self.operator,
+            level=self.level - 1,
+            subindex=self.subindex + (position,),
+            top_level_slot=self.top_level_slot,
         )
         self._subSlots.insert(position, slot)
         slot.name = self.name
