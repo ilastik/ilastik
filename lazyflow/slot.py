@@ -219,7 +219,7 @@ class Slot(object):
         self.upstream_slot = None
         self.level = level
         self.subindex = subindex or ()
-        self.parent_slot = parent_slot or None
+        self.parent_slot = parent_slot
 
         # in the case of an InputSlot one can directly assign a value
         # to a slot instead of connecting it to an upstream_slot, this
@@ -994,7 +994,7 @@ class Slot(object):
             self._sig_dirty(self, roi)
 
             if self._type == "input" and self.operator.configured():
-                self.operator.propagateDirty(self, (), roi)
+                self.operator.propagateDirty(self.getRealSlot(), self.subindex, roi)
 
     def __iter__(self):
         assert self.level >= 1
@@ -1510,7 +1510,9 @@ class Slot(object):
 
         """
         assert position >= 0 and position <= len(self._subSlots)
-        slot = self._getInstance(self, level=self.level - 1, subindex=self.subindex + (position,), parent_slot=self)
+        slot = self._getInstance(
+            operator=self.operator, level=self.level - 1, subindex=self.subindex + (position,), parent_slot=self
+        )
         self._subSlots.insert(position, slot)
         slot.name = self.name
         if self._value is not None:
@@ -1521,15 +1523,6 @@ class Slot(object):
         if index < 0:
             index = len(self) + index
         self._subSlots.pop(index)
-
-    def propagateDirty(self, slot, subindex, roi):
-        """Slots with level > 0 must implement part of the operator
-         interface so they look like an operator as far as their
-         subslots are concerned. That's why this function is here.
-
-        """
-        totalIndex = (self._subSlots.index(slot),) + subindex
-        self.operator.propagateDirty(self, totalIndex, roi)
 
     ######################################
     # methods aimed to enhance usability #
@@ -1563,7 +1556,7 @@ class Slot(object):
         else:
             realOpName = self.getRealOperator().name
 
-        return "{}.{} {}: \t{}\n".format(realOpName, self.name, mslot_info, self.meta)
+        return "{}.{} {}: \t{}".format(realOpName, self.name, mslot_info, self.meta)
 
     def __repr__(self):
         return self.__str__()
