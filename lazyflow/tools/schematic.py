@@ -426,7 +426,7 @@ def get_column_within_parent(op):
     for slot in list(op.inputs.values()):
         if slot.upstream_slot is None:
             continue
-        upstream_op = slot.upstream_slot.getRealOperator()
+        upstream_op = slot.upstream_slot.operator
         if upstream_op is not op.parent and upstream_op is not op:
             assert upstream_op.parent is op.parent, (
                 "Slot '{}' of operator '{}' and it's upstream_slot"

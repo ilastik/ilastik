@@ -212,7 +212,6 @@ class Slot(object):
         self._optional = optional
         self.operator = operator
         self.allow_mask = allow_mask
-        self._real_operator = None  # Memoized in getRealOperator()
 
         # in the case of an InputSlot this is the slot to which it is
         # connected
@@ -261,9 +260,7 @@ class Slot(object):
 
         self._resizing = False
 
-        self._executionCount = 0
         self._settingUp = False
-        self._condition = threading.Condition()
 
         # Allow slots to be sorted by their order of creation for
         # debug output and diagramming purposes.
@@ -540,8 +537,8 @@ class Slot(object):
                 % (self.operator.name, self.name, upstream_slot.name, upstream_slot.operator.name)
             )
 
-            my_op = self.getRealOperator()
-            partner_op = upstream_slot.getRealOperator()
+            my_op = self.operator
+            partner_op = upstream_slot.operator
             if partner_op and not (
                 partner_op.parent is my_op.parent
                 or (self._type == "output" and partner_op.parent is my_op)
@@ -568,7 +565,7 @@ class Slot(object):
                 if upstream_slot.level == self.level:
                     assert upstream_slot.stype.isCompatible(type(self.stype)), (
                         "Can't connect slots of non-matching stypes!"
-                        f"Tried to connect {self.getRealOperator()} with {upstream_slot.getRealOperator()}."
+                        f"Tried to connect {self.operator} with {upstream_slot.operator}."
                         " Attempting to connect '{}' (stype: {}) to '{}' (stype: {})".format(
                             self.name, self.stype, upstream_slot.name, upstream_slot.stype
                         )
@@ -625,10 +622,10 @@ class Slot(object):
                         " (Implicit OpearatorWrapper creation"
                         " is no longer supported.)"
                     ).format(
-                        self.getRealOperator().name,
+                        self.operator.name,
                         self.name,
                         self.level,
-                        upstream_slot.getRealOperator().name,
+                        upstream_slot.operator.name,
                         upstream_slot.name,
                         upstream_slot.level,
                     )
@@ -670,7 +667,7 @@ class Slot(object):
         """
         Disconnect a InputSlot from its upstream_slot
         """
-        if self.backpropagate_values and self.getRealOperator() and not self.getRealOperator()._cleaningUp:
+        if self.backpropagate_values and self.operator and not self.operator._cleaningUp:
             if self.upstream_slot is not None:
                 self.upstream_slot.disconnect()
             return
@@ -693,7 +690,7 @@ class Slot(object):
         oldReady = self.meta._ready
         self.meta = MetaDict()
 
-        if len(self._subSlots) > 0 and self.getRealOperator() and not self.getRealOperator()._cleaningUp:
+        if len(self._subSlots) > 0 and self.operator and not self.operator._cleaningUp:
             self.resize(0)
 
         # call callbacks
@@ -866,9 +863,9 @@ class Slot(object):
                 problem_slot = Slot._findUpstreamProblemSlot(self)
                 problem_str = str(problem_slot)
                 if isinstance(problem_slot, Slot):
-                    problem_op = problem_slot.getRealOperator()
+                    problem_op = problem_slot.operator
                     problem_str = problem_op.name + "/" + str(problem_slot)
-                msg = msg.format(self.getRealOperator() and self.getRealOperator().__class__, self.name, problem_str)
+                msg = msg.format(self.operator and self.operator.__class__, self.name, problem_str)
                 raise Slot.SlotNotReadyError(msg)
 
             # If someone is asking for data from an inputslot that has
@@ -890,8 +887,8 @@ class Slot(object):
     def _findUpstreamProblemSlot(slot):
         if slot.upstream_slot is not None:
             return Slot._findUpstreamProblemSlot(slot.upstream_slot)
-        if slot.getRealOperator() is not None:
-            for inputSlot in list(slot.getRealOperator().inputs.values()):
+        if slot.operator is not None:
+            for inputSlot in list(slot.operator.inputs.values()):
                 if not inputSlot._optional and not inputSlot.ready():
                     return inputSlot
         return "Couldn't find an upstream problem slot."
@@ -903,7 +900,7 @@ class Slot(object):
             self.started = False
             self.finished = False
             self.slot = slot
-            self.operator = slot.getRealOperator()
+            self.operator = slot.operator
             self.roi = roi
 
         def __call__(self, destination=None):
@@ -928,7 +925,9 @@ class Slot(object):
             try:
                 # Execute the workload, which might not ever return
                 # (if we get cancelled).
-                result_op = self.operator.execute(self.slot.getRealSlot(), self.slot.subindex, self.roi, destination)
+                result_op = self.operator.execute(
+                    self.slot.getTopLevelSlot(), self.slot.subindex, self.roi, destination
+                )
 
                 # copy data from result_op to destination, if
                 # destination was actually given by the user, and the
@@ -994,7 +993,7 @@ class Slot(object):
             self._sig_dirty(self, roi)
 
             if self._type == "input" and self.operator.configured():
-                self.operator.propagateDirty(self.getRealSlot(), self.subindex, roi)
+                self.operator.propagateDirty(self.getTopLevelSlot(), self.subindex, roi)
 
     def __iter__(self):
         assert self.level >= 1
@@ -1028,7 +1027,7 @@ class Slot(object):
                     problem_slot = Slot._findUpstreamProblemSlot(self)
                     problem_str = str(problem_slot)
                     if isinstance(problem_slot, Slot):
-                        problem_op = problem_slot.getRealOperator()
+                        problem_op = problem_slot.operator
                         if problem_op is not None:
                             problem_str = problem_op.name + "/" + str(problem_slot)
                         else:
@@ -1037,7 +1036,7 @@ class Slot(object):
                         "Can't get data from slot {}.{} yet."
                         " It isn't ready."
                         "First upstream problem slot is: {}"
-                        "".format(self.getRealOperator() and self.getRealOperator().__class__, self.name, problem_str)
+                        "".format(self.operator and self.operator.__class__, self.name, problem_str)
                     )
                     # self.logger.error(slotInfoMsg)
                     raise Slot.SlotNotReadyError(slotInfoMsg)
@@ -1373,7 +1372,7 @@ class Slot(object):
         roi = self.rtype(self, *args, **kwargs)
         return self.get(roi)
 
-    def getRealSlot(self):
+    def getTopLevelSlot(self):
         slot = self
         while slot.parent_slot is not None:
             slot = slot.parent_slot
@@ -1385,16 +1384,8 @@ class Slot(object):
         finds the actual operator this slot belongs to.
 
         """
-        if self._real_operator is not None:
-            # use memoized
-            return self._real_operator
-
-        if isinstance(self.operator, Slot):
-            self._real_operator = self.operator.getRealOperator()
-        else:
-            self._real_operator = self.operator
-
-        return self._real_operator
+        warnings.warn("Deprecated use slot.operator property instead")
+        return self.operator
 
     #####################
     #  Private  Methods #
@@ -1462,7 +1453,7 @@ class Slot(object):
             self.meta._dirty = False
 
         if self._type != "output":
-            op = self.getRealOperator()
+            op = self.operator
             if op is not None and not op._cleaningUp:
                 self._configureOperator(self)
 
@@ -1551,10 +1542,10 @@ class Slot(object):
         # For debugging:
         # Should actually never happen if the operator is constructed correctly,
         # however, if it is not, the resulting error message was too cryptic
-        if self.getRealOperator() is None:
+        if self.operator is None:
             realOpName = "Unassigned"
         else:
-            realOpName = self.getRealOperator().name
+            realOpName = self.operator.name
 
         return "{}.{} {}: \t{}".format(realOpName, self.name, mslot_info, self.meta)
 
