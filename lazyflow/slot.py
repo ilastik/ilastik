@@ -1068,7 +1068,7 @@ class Slot(object):
             # the chain
             self.setDirty(roi)
         if self._type == "input":
-            self.operator.setInSlot(self, (), roi, value)
+            self.operator.setInSlot(self.top_level_slot, self.subindex, roi, value)
 
         # Forward to downstream_slots
         for p in self.downstream_slots:
@@ -1076,23 +1076,6 @@ class Slot(object):
 
     def index(self, slot):
         return self._subSlots.index(slot)
-
-    @is_setup_fn
-    def setInSlot(self, slot, subindex, roi, value):
-        """For now, Slots of level > 0 pretend to be operators (as far
-        as their subslots are concerned). That's why they have to have
-        this setInSlot() method.
-
-        """
-        # If we do not support masked arrays, ensure that we are not being passed one.
-        assert self.allow_mask or not (self.meta.has_mask or isinstance(value, numpy.ma.masked_array)), (
-            'The operator, "%s", is being setup to receive a masked array as input to slot, "%s".'
-            " This is currently not supported." % (self.operator.name, self.name)
-        )
-        # Determine which subslot this is and prepend it to the totalIndex
-        totalIndex = (self._subSlots.index(slot),) + subindex
-        # Forward the call to our operator
-        self.operator.setInSlot(self, totalIndex, roi, value)
 
     def __len__(self):
         """In the case of a MultiSlot this returns the number of
