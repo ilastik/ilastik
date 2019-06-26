@@ -159,7 +159,7 @@ class Slot(object):
         level=0,
         nonlane=False,
         allow_mask=False,
-        subindex=None,
+        subindex=(),
         top_level_slot=None,
     ):
         """Constructor of the Slot class.
@@ -220,7 +220,7 @@ class Slot(object):
         # connected
         self.upstream_slot = None
         self.level = level
-        self.subindex = subindex or ()
+        self.subindex = subindex
         self._top_level_slot = top_level_slot
 
         # in the case of an InputSlot one can directly assign a value
@@ -1519,7 +1519,7 @@ class Slot(object):
         if self.subindex:
             mslot_info.append(f"index={self.subindex}")
 
-        mslot_info_str = ' '.join(mslot_info)
+        mslot_info_str = " ".join(mslot_info)
 
         # For debugging:
         # Should actually never happen if the operator is constructed correctly,
