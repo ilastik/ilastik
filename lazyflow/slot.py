@@ -159,6 +159,8 @@ class Slot(object):
         level=0,
         nonlane=False,
         allow_mask=False,
+        subindex=None,
+        parent_slot=None,
     ):
         """Constructor of the Slot class.
 
@@ -216,6 +218,8 @@ class Slot(object):
         # connected
         self.upstream_slot = None
         self.level = level
+        self.subindex = subindex or ()
+        self.parent_slot = parent_slot or None
 
         # in the case of an InputSlot one can directly assign a value
         # to a slot instead of connecting it to an upstream_slot, this
@@ -899,7 +903,7 @@ class Slot(object):
             self.started = False
             self.finished = False
             self.slot = slot
-            self.operator = slot.operator
+            self.operator = slot.getRealOperator()
             self.roi = roi
 
         def __call__(self, destination=None):
@@ -924,7 +928,7 @@ class Slot(object):
             try:
                 # Execute the workload, which might not ever return
                 # (if we get cancelled).
-                result_op = self.operator.execute(self.slot, (), self.roi, destination)
+                result_op = self.operator.execute(self.slot.getRealSlot(), self.slot.subindex, self.roi, destination)
 
                 # copy data from result_op to destination, if
                 # destination was actually given by the user, and the
@@ -1369,6 +1373,12 @@ class Slot(object):
         roi = self.rtype(self, *args, **kwargs)
         return self.get(roi)
 
+    def getRealSlot(self):
+        slot = self
+        while slot.parent_slot is not None:
+            slot = slot.parent_slot
+        return slot
+
     def getRealOperator(self):
         """If a slot is owned by a higher-level slot, self.operator is
         a slot. This function keeps going up the hierarchy until it
@@ -1500,7 +1510,7 @@ class Slot(object):
 
         """
         assert position >= 0 and position <= len(self._subSlots)
-        slot = self._getInstance(self, level=self.level - 1)
+        slot = self._getInstance(self, level=self.level - 1, subindex=self.subindex + (position,), parent_slot=self)
         self._subSlots.insert(position, slot)
         slot.name = self.name
         if self._value is not None:
@@ -1593,11 +1603,3 @@ class OutputSlot(Slot):
         super(OutputSlot, self).__init__(*args, **kwargs)
         self._type = "output"
         assert "optional" not in kwargs, '"optional" init arg cannot be used with OutputSlot'
-
-    def execute(self, slot, subindex, roi, result):
-        """For now, OutputSlots with level > 0 must pretend to be
-        operators. That's why this function is here.
-
-        """
-        totalIndex = (self._subSlots.index(slot),) + subindex
-        return self.operator.execute(self, totalIndex, roi, result)
