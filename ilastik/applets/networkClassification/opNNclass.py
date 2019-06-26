@@ -267,6 +267,7 @@ class OpNNClassification(Operator):
         self.opTrain.Labels.connect(self.opLabelPipeline.Output)
         self.opTrain.Images.connect(self.InputImages)
         self.opTrain.nonzeroLabelBlocks.connect(self.opLabelPipeline.nonzeroBlocks)
+        self.opTrain.ValidationCoord.connect(self.MaskCoordinates)
 
         # CLASSIFIER CACHE
         # This cache stores exactly one object: the classifier itself.
@@ -614,18 +615,8 @@ class OpValidationMask(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.Coordinates:
-            new_coord_roi = self.get_coordroi(self.Coordinates.value)
-            intersec = getIntersection((new_coord_roi.start, new_coord_roi.stop),
-                       (self.coord_roi.start, self.coord_roi.stop),
-                        assertIntersect=False)
+        pass
 
-            # if intersec == None:
-            #     # ... set label diry
-                
-            
-            # else:
-            #     # ... set label diry
 
 
 
