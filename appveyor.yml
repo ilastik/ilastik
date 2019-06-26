@@ -4,6 +4,7 @@ environment:
   ENV_NAME: test-env
   # set miniconda version explicitly
   MINICONDA: C:\Miniconda37-x64
+  VOLUMINA_SHOW_3D_WIDGET: 0
 
 
 install:
