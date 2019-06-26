@@ -388,11 +388,16 @@ class DataSelectionGui(QWidget):
 
         # Launch the "Open File" dialog
         paths = ImageFileDialog(self).getSelectedPaths()
+        self.addFileNames(paths, roleIndex, startingLane)
 
+    def addFileNames(self, paths:List[str], roleIndex:int, startingLane:int):
         # If the user didn't cancel
         if len(paths) > 0:
             try:
-                self.addFileNames(paths, roleIndex, startingLane)
+                new_infos = self._createDatasetInfos(roleIndex, paths)
+                self.addLanes(new_infos, roleIndex=roleIndex, startingLane=startingLane)
+            except DataSelectionGui.UserCancelledError:
+                pass
             except Exception as ex:
                 log_exception( logger )
                 QMessageBox.critical(self, "Error loading file", str(ex))
@@ -418,7 +423,7 @@ class DataSelectionGui(QWidget):
     def getImageSlots(self, roleIndex):
         return [self.topLevelOperator.ImageGroup[lane_index][roleIndex] for laneIndex in range(self.getNumLanes())]
 
-    def addFileNames(self, paths:List[Path], roleIndex, startingLane=None, rois=None):
+    def addLanes(self, new_infos:List[DatasetInfo], roleIndex, startingLane=None, rois=None):
         """
         Add the given filenames to both the GUI table and the top-level operator inputs.
         If startingLane is None, the filenames will be *appended* to the role's list of files.
@@ -426,13 +431,12 @@ class DataSelectionGui(QWidget):
         If rois is provided, it must be a list of (start,stop) tuples (one for each fileName)
         """
         originalNumLanes = self.getNumLanes()
-        startingLane, endingLane = self._determineLaneRange(paths, startingLane)
+        startingLane, endingLane = self._determineLaneRange(new_infos, startingLane)
         if originalNumLanes < endingLane+1:
             self.topLevelOperator.DatasetGroup.resize(endingLane+1)
         info_slots = self.getInfoSlots(roleIndex)[startingLane:endingLane+1]
 
         try:
-            new_infos = self._createDatasetInfos(roleIndex, paths, rois)
             self.applyDatasetInfos(new_infos, info_slots)
 
             # Now check the resulting slots.
@@ -453,8 +457,6 @@ class DataSelectionGui(QWidget):
             self.parentApplet.appletStateUpdateRequested()
 
             self.updateInternalPathVisiblity()
-        except DataSelectionGui.UserCancelledError:
-            pass
         except Exception as e:
             self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
             QMessageBox.warning(self, "File selection error", str(e))
@@ -484,27 +486,27 @@ class DataSelectionGui(QWidget):
         finally:
             self.parentApplet.appletStateUpdateRequested()
 
-    def _determineLaneRange(self, fileNames, startingLane=None):
+    def _determineLaneRange(self, infos:List[DatasetInfo], startingLane=None):
         """
         Determine which lanes should be configured if the user wants to add the 
-            given fileNames to the specified role, starting at startingLane.
+            given infos to the specified role, starting at startingLane.
         If startingLane is None, assume the user wants to APPEND the 
             files to the role's slots.
         """
         if startingLane is None or startingLane == -1:
             startingLane = len(self.topLevelOperator.DatasetGroup)
-            endingLane = startingLane+len(fileNames)-1
+            endingLane = startingLane+len(infos)-1
         else:
             assert startingLane < len(self.topLevelOperator.DatasetGroup)
             max_files = len(self.topLevelOperator.DatasetGroup) - startingLane
-            if len(fileNames) > max_files:
+            if len(infos) > max_files:
                 msg = "You selected {num_selected} files for {num_slots} "\
                       "slots. To add new files use the 'Add new...' option "\
                       "in the context menu or the button in the last row."\
-                              .format(num_selected=len(fileNames),
+                              .format(num_selected=len(infos),
                                       num_slots=max_files)
                 raise Exception(msg)
-            endingLane = min(startingLane+len(fileNames)-1, len(self.topLevelOperator.DatasetGroup))
+            endingLane = min(startingLane+len(infos)-1, len(self.topLevelOperator.DatasetGroup))
             
         if self._max_lanes and endingLane >= self._max_lanes:
             msg = "You may not add more than {} file(s) to this workflow.  Please try again.".format( self._max_lanes )
@@ -512,11 +514,12 @@ class DataSelectionGui(QWidget):
 
         return (startingLane, endingLane)
 
-    def _createDatasetInfos(self, roleIndex:int, filePaths:List[Path], rois):
+    def _createDatasetInfos(self, roleIndex:int, filePaths:List[Path], rois=None):
         """
         Create a list of DatasetInfos for the given filePaths and rois
         rois may be None, in which case it is ignored.
         """
+        filePaths = [Path(p) for p in filePaths]
         if rois is None:
             rois = [None]*len(filePaths)
         assert len(rois) == len(filePaths)
@@ -628,52 +631,19 @@ class DataSelectionGui(QWidget):
         """
         stackDlg = StackFileSelectionWidget(self)
         stackDlg.exec_()
-        if stackDlg.result() != QDialog.Accepted :
+        if stackDlg.result() != QDialog.Accepted or len(stackDlg.selectedFiles) == 0:
             return
-        files = stackDlg.selectedFiles
+        globstring = os.path.pathsep.join(stackDlg.selectedFiles)
         sequence_axis = stackDlg.sequence_axis
-        if len(files) == 0:
-            return
-
         cwd = self.topLevelOperator.WorkingDirectory.value
-        info = DatasetInfo(os.path.pathsep.join(files), cwd=cwd)
-
-        originalNumLanes = len(self.topLevelOperator.DatasetGroup)
-
-        if laneIndex is None or laneIndex == -1:
-            laneIndex = len(self.topLevelOperator.DatasetGroup)
-        if len(self.topLevelOperator.DatasetGroup) < laneIndex+1:
-            self.topLevelOperator.DatasetGroup.resize(laneIndex+1)
-
-        def importStack():
-            self.parentApplet.busy = True
-            self.parentApplet.appletStateUpdateRequested()
-
-            # Serializer will update the operator for us, which will propagate to the GUI.
-            try:
-                stack_internal_path = self.serializer.importStackAsLocalDataset(files, sequence_axis)
-                info = DatasetInfo(filePath=stack_internal_path, cwd=cwd, location=DatasetInfo.Location.ProjectInternal,
-                                   fromstack=True)
-                try:
-                    self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(info)
-                except DatasetConstraintError as ex:
-                    # Give the user a chance to repair the problem.
-                    filename = files[0] + "\n...\n" + files[-1]
-                    return_val = [False]
-                    self.parentApplet.busy = False  # required for possible fixing dialogs from DatasetConstraintError
-                    self.parentApplet.appletStateUpdateRequested()
-                    self.handleDatasetConstraintError( info, filename, ex, roleIndex, laneIndex, return_val )
-                    if not return_val[0]:
-                        # Not successfully repaired.  Roll back the changes and give up.
-                        self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
-            finally:
-                self.parentApplet.busy = False
-                self.parentApplet.appletStateUpdateRequested()
-
-        req = Request( importStack )
-        req.notify_finished( lambda result: self.showDataset(laneIndex, roleIndex) )
-        req.notify_failed( partial(self.handleFailedStackLoad, files, originalNumLanes ) )
-        req.submit()
+        self.parentApplet.busy = True
+        stack_internal_id = self.serializer.importStackAsLocalDataset(globstring, sequence_axis)
+        self.parentApplet.busy = False
+        info = DatasetInfo.default(globstring, sequence_axis=sequence_axis,
+                                   cwd=cwd, fromstack=True,
+                                   location=DatasetInfo.Location.ProjectInternal,
+                                   datasetId=stack_internal_id)
+        self.addLanes([info], roleIndex, laneIndex)
 
     @threadRouted
     def handleFailedStackLoad(self, files, originalNumLanes, exc, exc_info):

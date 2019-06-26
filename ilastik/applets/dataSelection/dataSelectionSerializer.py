@@ -39,7 +39,7 @@ import numpy
 from lazyflow.utility import PathComponents
 from lazyflow.utility.timer import timeLogged
 from ilastik.utility import bind
-from lazyflow.utility.pathHelpers import getPathVariants, isUrl
+from lazyflow.utility.pathHelpers import getPathVariants, isUrl, isRelative, splitPath
 import ilastik.utility.globals
 
 from ilastik.applets.base.appletSerializer import \
@@ -199,7 +199,7 @@ class DataSelectionSerializer( AppletSerializer ):
 
         self._dirty = False
 
-    def importStackAsLocalDataset(self, paths:List[str], sequence_axis='t'):
+    def importStackAsLocalDataset(self, globstring:str, sequence_axis='t'):
         """
         Add the given stack data to the project file as a local dataset.
         Does not update the topLevelOperator.
@@ -210,13 +210,12 @@ class DataSelectionSerializer( AppletSerializer ):
         """
         self.progressSignal(0)
 
-        projectFileHdf5 = self.topLevelOperator.ProjectFile.value
-
         # Use absolute path
-        cwd = self.topLevelOperator.WorkingDirectory
-        abs_paths = [getPathVariants(path, cwd)[0 if isRelative(path) else 1] for path in paths]
+        cwd = self.topLevelOperator.WorkingDirectory.value
+        abs_paths =  [getPathVariants(p) if isRelative(p) else p for p in splitPath(globstring)]
+        globstring = os.path.pathsep.join(abs_paths)
 
-        firstPathParts = PathComponents(files[0])
+        firstPathParts = PathComponents(abs_paths[0])
 
         if firstPathParts.extension.lower() in OpTiffReader.TIFF_EXTS:
             # Special loader for TIFFs
@@ -264,7 +263,9 @@ class DataSelectionSerializer( AppletSerializer ):
             data_slot = opLoader.stack
 
         try:
-            internal_path = '/local_data/' + DatasetInfo.generate_id()
+            internal_data_id = DatasetInfo.generate_id()
+            internal_path = '/local_data/' + internal_data_id
+            projectFileHdf5 = self.topLevelOperator.ProjectFile.value
             opWriter = OpH5N5WriterBigDataset(parent=self.topLevelOperator.parent)
             opWriter.h5N5File.setValue(projectFileHdf5)
             opWriter.h5N5Path.setValue(self.topGroupName + internal_path)
@@ -278,7 +279,7 @@ class DataSelectionSerializer( AppletSerializer ):
             opWriter.progressSignal.subscribe(self.progressSignal)
 
             success = opWriter.WriteImage.value
-            return internal_path
+            return internal_data_id
         finally:
             opWriter.cleanUp()
             opLoader.cleanUp()

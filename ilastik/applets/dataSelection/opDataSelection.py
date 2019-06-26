@@ -59,7 +59,7 @@ class DatasetInfo(object):
                  subvolume_roi=None, location=Location.FileSystem,
                  fromstack=False, axistags=None, drange=None, display_mode='default',
                  nickname='', original_axistags=None, shape=None, normalizeDisplay=True,
-                 sequenceAxis=None, dtype=None):
+                 sequenceAxis=None, dtype=None, datasetId:str=""):
         """
         filepath: may be a globstring or a full hdf5 path+dataset
 
@@ -79,7 +79,7 @@ class DatasetInfo(object):
         Location = DatasetInfo.Location
         # The original path to the data (also used as a fallback if the data isn't in the project yet)
         self._filePath = ""
-        self._datasetId = ""                # The name of the data within the project file (if it is stored locally)
+        self._datasetId = datasetId # The name of the data within the project file (if it is stored locally)
         # OBSOLETE: Whether or not this dataset should be used for training a classifier.
         self.allowLabels = allowLabels
         self.drange = drange
@@ -199,7 +199,9 @@ class DatasetInfo(object):
 
             self.location = DatasetInfo.Location.FileSystem
             self.nickname = nickname
-            self.filePath = filepath
+            self.filePath = filepath #FIXME: stop clobbering user-provided id
+            if datasetId:
+                self._datasetId = datasetId #FIXME: stop clobbering user-provided id
             self.fromstack = fromstack
             self.sequenceAxis = sequence_axis
 
@@ -214,10 +216,12 @@ class DatasetInfo(object):
         return info
 
     @classmethod
-    def default(cls, filepath:str, **kwargs) -> 'DatasetInfo':
+    def default(cls, filepath:str, sequence_axis=None, **kwargs) -> 'DatasetInfo':
         op_reader = OpInputDataReader(graph=Graph())
         if 'cwd' in kwargs:
             op_reader.WorkingDirectory.setValue(kwargs['cwd'])
+        if sequence_axis is not None:
+            op_reader.SequenceAxis.setValue(sequence_axis)
         op_reader.FilePath.setValue(filepath)
         return cls.from_slot(op_reader.Output, filepath, **kwargs)
 
