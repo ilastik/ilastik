@@ -186,6 +186,9 @@ class Slot(object):
         :param nonlane: For multislot, this flag protects it from
           being considered lane-indexed
 
+        :param subindex: index within the parent slot
+
+        :param parent_slot: in case of multilevel slots slot on one level above
         """
         # This assertion is here for a reason: default values do NOT work on OutputSlots.
         # (We should probably change that at some point...)
