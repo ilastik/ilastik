@@ -462,6 +462,7 @@ class DataSelectionGui(QWidget):
             QMessageBox.warning(self, "File selection error", str(e))
 
     def applyDatasetInfos(self, new_infos:List[DatasetInfo], info_slots:List['Slot'], allow_fixing=True):
+        fixed_once = False
         original_infos = []
         try:
             for new_info, info_slot in zip(new_infos, info_slots):
@@ -473,8 +474,10 @@ class DataSelectionGui(QWidget):
                     except DatasetConstraintError as e:
                         if not allow_fixing:
                             raise e
-                        QMessageBox.warning(self, "Error", str(e))
+                        if fixed_once:
+                            QMessageBox.warning(self, "Error", str(e))
                         info_editor = DatasetInfoEditorWidget(self, [new_info], self.topLevelOperator.WorkingDirectory.value)
+                        fixed_once = True
                         if info_editor.exec_() == QDialog.Rejected:
                             raise e
                         new_info = info_editor.edited_infos[0]
