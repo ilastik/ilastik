@@ -71,10 +71,8 @@ class DatasetInfoEditorWidget(QDialog):
     """
     def __init__(self, parent, infos:List[DatasetInfo], projectFileDir:str):
         """
-        :param topLevelOperator: The applet's OpMultiLaneDataSelectionGroup instance
-        :param roleIndex: The role of the dataset(s) we're editing
-        :param laneIndexes: A list of lanes this dialog will apply settings to. (Same role for each lane.)
-        :param defaultInfos: ignored
+        :param infos: DatasetInfo infos to be edited by this widget
+        :param projectFileDir: path containing the current project file
         """
         super( DatasetInfoEditorWidget, self ).__init__(parent)
         self.current_infos = infos
