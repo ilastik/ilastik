@@ -21,6 +21,7 @@ from __future__ import absolute_import
 ###############################################################################
 #Python
 import os
+import re
 from pathlib import Path
 from typing import List
 import sys
@@ -548,11 +549,11 @@ class DataSelectionGui(QWidget):
             data_path = filePath.absolute()
 
         if DatasetInfo.fileHasInternalPaths(data_path):
-            datasetNames = DatasetInfo.getPossibleInternalPathsFor(absPath)
+            datasetNames = DatasetInfo.getPossibleInternalPathsFor(filePath.absolute())
             if len(datasetNames) == 0:
                 raise RuntimeError(f"{file_extension} file {data_path} has no image datasets")
             if len(datasetNames) == 1:
-                data_path += str(datasetNames[0])
+                selected_dataset = str(datasetNames[0])
             else:
                 # If exactly one of the file's datasets matches a user's previous choice, use it.
                 if roleIndex not in self._default_h5n5_volumes:
@@ -560,17 +561,17 @@ class DataSelectionGui(QWidget):
                 previous_selections = self._default_h5n5_volumes[roleIndex]
                 possible_auto_selections = previous_selections.intersection(datasetNames)
                 if len(possible_auto_selections) == 1:
-                    data_path += str(list(possible_auto_selections)[0])
+                    selected_dataset = str(list(possible_auto_selections)[0])
                 else:
                     # Ask the user which dataset to choose
                     dlg = H5N5VolumeSelectionDlg(datasetNames, self)
                     if dlg.exec_() == QDialog.Accepted:
                         selected_index = dlg.combo.currentIndex()
                         selected_dataset = str(datasetNames[selected_index])
-                        data_path += selected_dataset
                         self._default_h5n5_volumes[roleIndex].add(selected_dataset)
                     else:
                         raise DataSelectionGui.UserCancelledError()
+            data_path = data_path / re.sub('^/', '', selected_dataset)
 
         return DatasetInfo.default(
             filepath=data_path.as_posix(), #FIXME: it would be much better to use Path rather than str

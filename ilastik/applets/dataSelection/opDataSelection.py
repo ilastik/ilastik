@@ -58,8 +58,8 @@ class DatasetInfo(object):
                  preloaded_array=None, sequence_axis=None, allowLabels=True,
                  subvolume_roi=None, location=Location.FileSystem,
                  fromstack=False, axistags=None, drange=None, display_mode='default',
-                 nickname='', original_axistags=None, shape=None, normalizeDisplay=True,
-                 sequenceAxis=None, dtype=None, datasetId:str=""):
+                 nickname='', original_axistags=None, shape=None, normalizeDisplay:bool=None,
+                 sequenceAxis:str=None, dtype=None, datasetId:str=""):
         """
         filepath: may be a globstring or a full hdf5 path+dataset
 
@@ -83,7 +83,7 @@ class DatasetInfo(object):
         # OBSOLETE: Whether or not this dataset should be used for training a classifier.
         self.allowLabels = allowLabels
         self.drange = drange
-        self.normalizeDisplay = normalizeDisplay
+        self.normalizeDisplay = (drange is not None) if normalizeDisplay is None else normalizeDisplay
         self.sequenceAxis = sequenceAxis
         self.fromstack = fromstack
         self.nickname = nickname

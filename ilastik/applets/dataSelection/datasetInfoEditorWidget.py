@@ -126,20 +126,18 @@ class DatasetInfoEditorWidget(QDialog):
         self.normalizeDisplayComboBox.addItem("Default", userData=None)
         self.normalizeDisplayComboBox.currentIndexChanged.connect(self._handleNormalizeDisplayChanged)
         current_normalize_display = {info.normalizeDisplay for info in infos}
-        dranges = {info.drange for info in infos if info.drange is not None}
-        if len(current_normalize_display) == 1:
-            normalize = current_normalize_display.pop()
-            if normalize:
-                self.normalizeDisplayComboBox.setCurrentIndex(0)
-                if len(dranges) == 1:
-                    common_drange = dranges.pop()
-                    self.rangeMinSpinBox.setValue(common_drange[0])
-                    self.rangeMaxSpinBox.setValue(common_drange[1])
-            else:
-                self.normalizeDisplayComboBox.setCurrentIndex(1)
-        else:
-            self.normalizeDisplayComboBox.setCurrentIndex(2)
+        normalize = len(current_normalize_display) == 1 and current_normalize_display.pop()
 
+        dranges = {info.drange for info in infos if info.drange is not None}
+        if len(dranges) == 1:
+            common_drange = dranges.pop()
+            self.rangeMinSpinBox.setValue(common_drange[0])
+            self.rangeMaxSpinBox.setValue(common_drange[1])
+        elif normalize:
+            normalize = None
+
+        selected_normalize_index = self.normalizeDisplayComboBox.findData(normalize)
+        self.normalizeDisplayComboBox.setCurrentIndex(selected_normalize_index)
 
         hdf5_infos = [info for info in infos if info.isHdf5()]
         if not hdf5_infos:
