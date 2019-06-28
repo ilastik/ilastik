@@ -62,6 +62,9 @@ def get_dtype_info(dtype):
     except ValueError:
         return numpy.finfo(dtype)
 
+class InvalidDatasetinfoException(Exception):
+    pass
+
 class DatasetInfoEditorWidget(QDialog):
     """
     This dialog allows the user to edit the settings of one **OR MORE** datasets for a given role.
@@ -225,7 +228,7 @@ class DatasetInfoEditorWidget(QDialog):
                 break
             new_axes_keys += axis_selector.currentText()
         if len(set(new_axes_keys)) != len(new_axes_keys):
-            raise Exception(f"Repeated axes: {new_axes_keys}")
+            raise InvalidDatasetinfoException(f"Repeated axes: {new_axes_keys}")
         return vigra.defaultAxistags(new_axes_keys) if new_axes_keys else None
 
     def accept(self):
@@ -235,11 +238,11 @@ class DatasetInfoEditorWidget(QDialog):
             new_drange = (self.rangeMinSpinBox.value(), self.rangeMaxSpinBox.value())
             if normalize:
                 if new_drange[0] >= new_drange[1]:
-                    raise Exception("Can't apply data range values: Data range MIN must be lesser than MAX.")
+                    raise InvalidDatasetinfoException("Can't apply data range values: Data range MIN must be lesser than MAX.")
                 for info in self.current_infos:
                     dtype_info = get_dtype_info(info.dtype)
                     if new_drange[0] < dtype_info.min or new_drange[1] > dtype_info.max:
-                        raise Exception(f"Data range values {new_drange} conflicts with the data type in lane {lane_idx}, "
+                        raise InvalidDatasetinfoException(f"Data range values {new_drange} conflicts with the data type in lane {lane_idx}, "
                                         f"which has range {(dtype_info.min, dtype_info.max)}")
 
             newStorageLocation = self.storageComboBox.currentData()
@@ -275,7 +278,7 @@ class DatasetInfoEditorWidget(QDialog):
                     filePath=filePath)
                 self.edited_infos.append(edited_info)
             super(DatasetInfoEditorWidget, self).accept()
-        except Exception as e:
+        except InvalidDatasetinfoException as e:
             QMessageBox.warning(self, "File selection error", str(e))
 
     def _clearNormalizationRanges(self):

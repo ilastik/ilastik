@@ -437,7 +437,9 @@ class DataSelectionGui(QWidget):
         info_slots = self.getInfoSlots(roleIndex)[startingLane:endingLane+1]
 
         try:
-            self.applyDatasetInfos(new_infos, info_slots)
+            if not self.applyDatasetInfos(new_infos, info_slots):
+                self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
+                return
 
             # Now check the resulting slots.
             # If they should be copied to the project file, say so.
@@ -459,11 +461,14 @@ class DataSelectionGui(QWidget):
             self.updateInternalPathVisiblity()
         except Exception as e:
             self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
-            QMessageBox.warning(self, "File selection error", str(e))
+            QMessageBox.critical(self, "File selection error", str(e))
 
-    def applyDatasetInfos(self, new_infos:List[DatasetInfo], info_slots:List['Slot'], allow_fixing=True):
-        fixed_once = False
+    def applyDatasetInfos(self, new_infos:List[DatasetInfo], info_slots:List['Slot'], fixed_once=False):
         original_infos = []
+        def revert():
+            for slot, original_info in zip(info_slots, original_infos):
+                if original_info is not None:
+                    slot.setValue(original_info)
         try:
             for new_info, info_slot in zip(new_infos, info_slots):
                 original_infos.append(info_slot.value if info_slot.ready() else None)
@@ -472,19 +477,17 @@ class DataSelectionGui(QWidget):
                         info_slot.setValue(new_info)
                         break
                     except DatasetConstraintError as e:
-                        if not allow_fixing:
-                            raise e
                         if fixed_once:
-                            QMessageBox.warning(self, "Error", str(e))
+                            QMessageBox.warning(self, "Incompatible dataset", str(e))
                         info_editor = DatasetInfoEditorWidget(self, [new_info], self.topLevelOperator.WorkingDirectory.value)
                         fixed_once = True
                         if info_editor.exec_() == QDialog.Rejected:
-                            raise e
+                            revert()
+                            return False
                         new_info = info_editor.edited_infos[0]
+            return True
         except Exception as e:
-            for slot, original_info in zip(info_slots, original_infos):
-                if original_info is not None:
-                    slot.setValue(original_info)
+            revert()
             raise e
         finally:
             self.parentApplet.appletStateUpdateRequested()
@@ -679,7 +682,7 @@ class DataSelectionGui(QWidget):
         infos = [slot.value for slot in selected_info_slots]
         editorDlg = DatasetInfoEditorWidget(self, infos, self.topLevelOperator.WorkingDirectory.value)
         if editorDlg.exec_() == QDialog.Accepted:
-            self.applyDatasetInfos(editorDlg.edited_infos, selected_info_slots)
+            self.applyDatasetInfos(editorDlg.edited_infos, selected_info_slots, fixed_once=True)
 
     def updateInternalPathVisiblity(self):
         for view in self._detailViewerWidgets:
