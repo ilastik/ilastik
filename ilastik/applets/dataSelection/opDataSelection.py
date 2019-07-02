@@ -497,7 +497,6 @@ class OpDataSelection(Operator):
                 provider_shape = providerSlot.meta.shape
                 provider_keys = providerSlot.meta.getAxisKeys()
                 provider_squeezed_shape = providerSlot.meta.getShape5D().to_squeezed_dict()
-                print(f"info_keys: {info_keys}   provider_shape: {providerSlot.meta.getTaggedShape()}")
                 if len(info_keys) == len(provider_shape):
                     metadata['axistags'] = datasetInfo.axistags
                 elif len(info_keys) == len(provider_shape) - 1 and set(provider_keys) - set(info_keys) == set('c'):
