@@ -163,7 +163,6 @@ class TestOpDataSelection_Basic2D(object):
             # Will be read from the filesystem since the data won't be found in the project file.
             info.location = DatasetInfo.Location.ProjectInternal
             info.filePath = fileName
-            info.internalPath = ""
             info.invertColors = False
             info.convertToGrayscale = False
 
@@ -197,7 +196,6 @@ class TestOpDataSelection_Basic2D(object):
             # Will be read from the filesystem since the data won't be found in the project file.
             info.location = DatasetInfo.Location.ProjectInternal
             info.filePath = fileName
-            info.internalPath = ""
             info.invertColors = False
             info.convertToGrayscale = False
 
@@ -230,7 +228,6 @@ class TestOpDataSelection_Basic2D(object):
 #        info = DatasetInfo()
 #        info.location = DatasetInfo.Location.FileSystem
 #        info.filePath = self.testNpyFileName
-#        info.internalPath = ""
 #        info.invertColors = True
 #        info.convertToGrayscale = False
 #        datasetInfos.append(info)
@@ -239,7 +236,6 @@ class TestOpDataSelection_Basic2D(object):
 #        info = DatasetInfo()
 #        info.location = DatasetInfo.Location.FileSystem
 #        info.filePath = self.testPngFileName
-#        info.internalPath = ""
 #        info.invertColors = True
 #        info.convertToGrayscale = False
 #        datasetInfos.append(info)
@@ -274,7 +270,6 @@ class TestOpDataSelection_Basic2D(object):
 #        info = DatasetInfo()
 #        info.location = DatasetInfo.Location.FileSystem
 #        info.filePath = self.testPngFileName
-#        info.internalPath = ""
 #        info.invertColors = False
 #        info.convertToGrayscale = True
 #        datasetInfos.append(info)
@@ -304,7 +299,6 @@ class TestOpDataSelection_Basic2D(object):
 #        info = DatasetInfo()
 #        info.location = DatasetInfo.Location.FileSystem
 #        info.filePath = self.testPngFileName
-#        info.internalPath = ""
 #        info.invertColors = True
 #        info.convertToGrayscale = True
 #        datasetInfos.append(info)
@@ -445,7 +439,6 @@ class TestOpDataSelection_Basic_native_3D(object):
             # Will be read from the filesystem since the data won't be found in the project file.
             info.location = DatasetInfo.Location.ProjectInternal
             info.filePath = fileName
-            info.internalPath = ""
             info.invertColors = False
             info.convertToGrayscale = False
 
@@ -474,7 +467,6 @@ class TestOpDataSelection_Basic_native_3D(object):
             # Will be read from the filesystem since the data won't be found in the project file.
             info.location = DatasetInfo.Location.ProjectInternal
             info.filePath = fileName
-            info.internalPath = ""
             info.invertColors = False
             info.convertToGrayscale = False
             info.axistags = vigra.defaultAxistags('tzyc')
@@ -501,7 +493,6 @@ class TestOpDataSelection_Basic_native_3D(object):
             # Will be read from the filesystem since the data won't be found in the project file.
             info.location = DatasetInfo.Location.ProjectInternal
             info.filePath = fileName
-            info.internalPath = ""
             info.invertColors = False
             info.convertToGrayscale = False
 
@@ -715,7 +706,6 @@ class TestOpDataSelection_3DStacks(object):
             # Will be read from the filesystem since the data won't be found in the project file.
             info.location = DatasetInfo.Location.ProjectInternal
             info.filePath = fileName
-            info.internalPath = ""
             info.invertColors = False
             info.convertToGrayscale = False
 
@@ -746,7 +736,6 @@ class TestOpDataSelection_3DStacks(object):
             info = DatasetInfo(filepath=fileNameString)
             # Will be read from the filesystem since the data won't be found in the project file.
             info.location = DatasetInfo.Location.ProjectInternal
-            info.internalPath = ""
             info.invertColors = False
             info.convertToGrayscale = False
 
@@ -778,7 +767,6 @@ class TestOpDataSelection_3DStacks(object):
             # Will be read from the filesystem since the data won't be found in the project file.
             info.location = DatasetInfo.Location.ProjectInternal
             info.filePath = fileName
-            info.internalPath = ""
             info.invertColors = False
             info.convertToGrayscale = False
 
@@ -848,7 +836,6 @@ class TestOpDataSelection_SingleFileH5Stacks():
         info = DatasetInfo(filepath=self.glob_string)
         # Will be read from the filesystem since the data won't be found in the project file.
         info.location = DatasetInfo.Location.ProjectInternal
-        info.internalPath = ""
         info.invertColors = False
         info.convertToGrayscale = False
 
@@ -873,7 +860,6 @@ class TestOpDataSelection_SingleFileH5Stacks():
         info = DatasetInfo(filepath=fileNameString)
         # Will be read from the filesystem since the data won't be found in the project file.
         info.location = DatasetInfo.Location.ProjectInternal
-        info.internalPath = ""
         info.invertColors = False
         info.convertToGrayscale = False
 
@@ -933,7 +919,6 @@ class TestOpDataSelection_FakeDataReader():
         # Will be read from the filesystem since the data won't be found in the project file.
         info.location = DatasetInfo.Location.ProjectInternal
         info.filePath = self.testRawDataFileName
-        info.internalPath = ""
         info.invertColors = False
         info.convertToGrayscale = False
         #Use real data source
@@ -959,7 +944,6 @@ class TestOpDataSelection_FakeDataReader():
         # Will be read from the filesystem since the data won't be found in the project file.
         info.location = DatasetInfo.Location.ProjectInternal
         info.filePath = self.testRawDataFileName
-        info.internalPath = ""
         info.invertColors = False
         info.convertToGrayscale = False
         # Use *fake* data source
