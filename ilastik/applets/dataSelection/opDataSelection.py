@@ -475,7 +475,16 @@ class OpDataSelection(Operator):
             # Also, inject if if dtype is uint8, which we can reasonably assume has drange (0,255)
             metadata = {}
             metadata['display_mode'] = datasetInfo.display_mode
-            metadata['channel_names'] = [f"{self.RoleName.value}-channel {i}" for i in range(providerSlot.meta.getShape5D().c)]
+
+            role_name = self.RoleName.value
+            if 'c' not in providerSlot.meta.getTaggedShape():
+                num_channels = 0
+            else:
+                num_channels = providerSlot.meta.getTaggedShape()['c']
+            if num_channels > 1:
+                metadata['channel_names'] = ["{}-{}".format(role_name, i) for i in range(num_channels)]
+            else:
+                metadata['channel_names'] = [role_name]
 
             if datasetInfo.drange is not None:
                 metadata['drange'] = datasetInfo.drange
