@@ -485,19 +485,26 @@ class OpDataSelection(Operator):
                 metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
             if datasetInfo.axistags is not None:
                 info_keys = [tag.key for tag in datasetInfo.axistags]
+                provider_shape = providerSlot.meta.shape
+                provider_keys = providerSlot.meta.getAxisKeys()
                 provider_squeezed_shape = providerSlot.meta.getShape5D().to_squeezed_dict()
-                if len(info_keys) < len(provider_squeezed_shape.keys()):
-                    raise Exception(f"Cannot reinterpret input with shape {providerSlot.getTaggedShape} using "
+                print(f"info_keys: {info_keys}   provider_shape: {providerSlot.meta.getTaggedShape()}")
+                if len(info_keys) == len(provider_shape):
+                    metadata['axistags'] = datasetInfo.axistags
+                elif len(info_keys) == len(provider_shape) - 1 and set(provider_keys) - set(info_keys) == set('c'):
+                    metadata['axistags'] = vigra.defaultAxistags(''.join(info_keys) + 'c')
+                elif len(info_keys) == len(provider_squeezed_shape.keys()):
+                    dummy_axes = set(Point5D.LABELS) - set(info_keys)
+                    out_axes = ""
+                    for k, v in providerSlot.meta.getTaggedShape().items():
+                        if k in provider_squeezed_shape:
+                            out_axes += info_keys.pop(0)
+                        else:
+                            out_axes += dummy_axes.pop()
+                    metadata['axistags'] = vigra.defaultAxistags(out_axes)
+                else:
+                    raise Exception(f"Cannot reinterpret input with shape {providerSlot.meta.getTaggedShape()} using "
                                     f"given axis order of {info_keys}")
-                dummy_axes = set(Point5D.LABELS) - set(info_keys)
-                out_axes = ""
-                for k, v in providerSlot.meta.getTaggedShape().items():
-                    if k in provider_squeezed_shape:
-                        out_axes += info_keys.pop(0)
-                    else:
-                        out_axes += dummy_axes.pop()
-                metadata['axistags'] = vigra.defaultAxistags(out_axes)
-
             if datasetInfo.original_axistags is not None:
                 metadata['original_axistags'] = datasetInfo.original_axistags
 
