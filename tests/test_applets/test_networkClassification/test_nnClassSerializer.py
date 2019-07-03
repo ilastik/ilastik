@@ -64,7 +64,7 @@ class TestModelSlotSerialization:
 
         outfile.close()
 
-    def test_deserializetion(self, graph, serialized):
+    def test_deserialization(self, graph, serialized):
         op_a = self.OpA(graph=graph)
         serializer = self.NNSerializer(op_a, "mygroup")
         serializer.deserializeFromHdf5(serialized, None)
