@@ -80,10 +80,9 @@ class TestModelSlotSerialization:
         assert not op.Out.value
         assert op.Out.value is Model.Empty
 
-    def test_serialization_with_embedded_nulls(self, op):
+    def test_serialization_with_embedded_nulls(self, op, outfile):
         op.Out.setValue(Model(code=b"\x00nullbyteshere", config={}))
         serializer = self.NNSerializer(op, "mygroup")
-        outfile = h5py.File("/tmp/data.h5", "w")
 
         serializer.serializeToHdf5(outfile, None)
         serializer.deserializeFromHdf5(outfile, None)
