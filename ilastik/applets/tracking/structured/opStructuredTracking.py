@@ -531,19 +531,22 @@ class OpStructuredTracking(OpConservationTracking):
             elif type != None:
                 return [type]
 
-    def getLabel(self, time, track, labels):
+    @staticmethod
+    def getLabel(time, track, labels):
         for label in list(labels[time].keys()):
             if labels[time][label] == set([track]):
                 return label
         return False
 
-    def getLabelT(self, track, labelsT):
+    @staticmethod
+    def getLabelT(track, labelsT):
         for label in list(labelsT.keys()):
             if labelsT[label] == set([track]):
                 return label
         return False
 
-    def insertAnnotationsToHypothesesGraph(self, traxelgraph, annotations,misdetectionLabel=-1):
+    @classmethod
+    def insertAnnotationsToHypothesesGraph(cls, traxelgraph, annotations, misdetectionLabel=-1):
         '''
         Add solution values to nodes and arcs from annotations.
         The resulting graph (=model) gets an additional property "value" that represents the number of objects inside a detection/arc
@@ -590,9 +593,9 @@ class OpStructuredTracking(OpConservationTracking):
         for parentTrack in list(divisions.keys()):
             t = divisions[parentTrack][1]
             childrenTracks = divisions[parentTrack][0]
-            parent = self.getLabelT(parentTrack,labels[t])
+            parent = cls.getLabelT(parentTrack, labels[t])
             for childTrack in childrenTracks:
-                child = self.getLabelT(childTrack,labels[t+1])
+                child = cls.getLabelT(childTrack,labels[t+1])
                 traxelgraph._graph.edge[(t,parent)][(t+1,child)]['value'] = 1
                 traxelgraph._graph.edge[(t,parent)][(t+1,child)]['gap'] = 1
             traxelgraph._graph.node[(t,parent)]['divisionValue'] = True
