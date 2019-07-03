@@ -19,19 +19,19 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import pickle
+import json
+
+from tiktorch.types import Model, ModelState
 
 from ilastik.applets.base.appletSerializer import (
     AppletSerializer,
+    SerialSlot,
     SerialListSlot,
     SerialDictSlot,
     SerialBlockSlot,
     SerialPickleableSlot,
     BinarySlot,
 )
-
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 class NNClassificationSerializer(AppletSerializer):
@@ -51,11 +51,65 @@ class NNClassificationSerializer(AppletSerializer):
                 selfdepends=False,
                 shrink_to_bb=True,
             ),
-            # SerialDictSlot(topLevelOperator.TiktorchConfig),
-            # BinarySlot(topLevelOperator.BinaryModel),
-            # BinarySlot(topLevelOperator.BinaryModelState),
-            # BinarySlot(topLevelOperator.BinaryOptimizerState),
+            SerialModelSlot(topLevelOperator.Model),
+            SerialModelStateSlot(topLevelOperator.ModelState),
             SerialPickleableSlot(topLevelOperator.Checkpoints, version=4),
         ]
 
         super().__init__(projectFileGroupName, slots)
+
+
+def json_dumps_binary(value):
+    return json.dumps(value, ensure_ascii=False).encode("utf-8")
+
+
+def json_loads_binary(value):
+    return json.loads(value.decode("utf-8"))
+
+
+def maybe_get(dset, key, default=None):
+    if key in dset:
+        return dset[key][()]
+    else:
+        return default
+
+
+class SerialModelSlot(SerialSlot):
+    def _saveValue(self, group, name: str, value: Model) -> None:
+        model_group = group.require_group(self.name)
+
+        if value:
+            model_group.create_dataset("code", data=value.code)
+            model_group.create_dataset("config", data=json_dumps_binary(value.config))
+        else:
+            model_group.create_dataset("code", data=b"")
+            model_group.create_dataset("config", data=b"")
+
+    def _getValue(self, dset, slot):
+        code = maybe_get(dset, "code")
+
+        if not code:
+            slot.setValue(Model.Empty)
+            return
+
+        model = Model(code=code, config=json.loads(maybe_get(dset, "config", b"")))
+        slot.setValue(model)
+
+
+class SerialModelStateSlot(SerialSlot):
+    OPTIMIZER = "optimizer"
+    MODEL = "model"
+
+    def _saveValue(self, group, name: str, value: ModelState):
+        model_group = group.require_group(self.name)
+
+        if value:
+            model_group.create_dataset(self.MODEL, data=value.model_state)
+            model_group.create_dataset(self.OPTIMIZER, data=value.optimizer_state)
+
+    def _getValue(self, dset, slot):
+        model = maybe_get(dset, self.MODEL, b"")
+        optimizer = maybe_get(dset, self.OPTIMIZER, b"")
+
+        state = ModelState(model_state=model, optimizer_state=optimizer)
+        slot.setValue(state)
