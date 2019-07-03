@@ -18,6 +18,12 @@ def graph():
     return Graph()
 
 
+@pytest.fixture
+def outfile(tmp_path):
+    out = tmp_path / "data.h5"
+    return h5py.File(str(out), "w")
+
+
 class TestModelSlotSerialization:
     class NNSerializer(AppletSerializer):
         def __init__(self, topLevelOperator, projectFileGroupName):
@@ -51,21 +57,12 @@ class TestModelSlotSerialization:
         return self.NNSerializer(op, "mygroup")
 
     @pytest.fixture
-    def serialized(self, serializer, op):
-        outfile = h5py.File("/tmp/data.h5", "w")
-
+    def serialized(self, outfile, serializer, op):
         serializer.serializeToHdf5(outfile, None)
 
         yield outfile
 
         outfile.close()
-
-    def test_serialization(self, graph, serialized):
-        # NOTE: Should we actually test internals of hdf5 file or does it break encapsulation?
-        key_to_serialized = [("code", b"code"), ("config", b'{"val": 1}')]
-
-        for key, serialized_value in key_to_serialized:
-            assert serialized[f"mygroup/Out/{key}"][()] == serialized_value
 
     def test_deserializetion(self, graph, serialized):
         op_a = self.OpA(graph=graph)
@@ -82,6 +79,14 @@ class TestModelSlotSerialization:
 
         assert not op.Out.value
         assert op.Out.value is Model.Empty
+
+    def test_serialization_with_embedded_nulls(self, op):
+        op.Out.setValue(Model(code=b"\x00nullbyteshere", config={}))
+        serializer = self.NNSerializer(op, "mygroup")
+        outfile = h5py.File("/tmp/data.h5", "w")
+
+        serializer.serializeToHdf5(outfile, None)
+        serializer.deserializeFromHdf5(outfile, None)
 
 
 class TestModelStateSlotSerialization:
@@ -119,8 +124,7 @@ class TestModelStateSlotSerialization:
         return self.NNSerializer(op, "mygroup")
 
     @pytest.fixture
-    def serialized(self, serializer, op):
-        outfile = h5py.File("/tmp/data.h5", "w")
+    def serialized(self, outfile, serializer, op):
 
         serializer.serializeToHdf5(outfile, None)
 
@@ -128,7 +132,7 @@ class TestModelStateSlotSerialization:
 
         outfile.close()
 
-    def test_deserializetion(self, graph, serialized):
+    def test_deserialization(self, graph, op, serialized):
         op_a = self.OpA(graph=graph)
         serializer = self.NNSerializer(op_a, "mygroup")
         serializer.deserializeFromHdf5(serialized, None)
@@ -145,3 +149,14 @@ class TestModelStateSlotSerialization:
         serializer.deserializeFromHdf5(serialized, None)
 
         assert not op.Out.value
+
+    def test_serialization_with_null_bytes(self, serializer, outfile, op):
+        state = ModelState(model_state=b"\x00null0", optimizer_state=b"\x00null1")
+        op.Out.setValue(state)
+
+        serializer.serializeToHdf5(outfile, None)
+        op.Out.setValue(None)
+        serializer.deserializeFromHdf5(outfile, None)
+
+        assert state is not op.Out.value
+        assert state == op.Out.value

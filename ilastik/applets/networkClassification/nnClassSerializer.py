@@ -21,6 +21,8 @@
 import pickle
 import json
 
+import numpy as np
+
 from tiktorch.types import Model, ModelState
 
 from ilastik.applets.base.appletSerializer import (
@@ -69,7 +71,7 @@ def json_loads_binary(value):
 
 def maybe_get(dset, key, default=None):
     if key in dset:
-        return dset[key][()]
+        return dset[key][()].tostring()
     else:
         return default
 
@@ -79,11 +81,8 @@ class SerialModelSlot(SerialSlot):
         model_group = group.require_group(self.name)
 
         if value:
-            model_group.create_dataset("code", data=value.code)
-            model_group.create_dataset("config", data=json_dumps_binary(value.config))
-        else:
-            model_group.create_dataset("code", data=b"")
-            model_group.create_dataset("config", data=b"")
+            model_group.create_dataset("code", data=np.void(value.code))
+            model_group.create_dataset("config", data=np.void(json_dumps_binary(value.config)))
 
     def _getValue(self, dset, slot):
         code = maybe_get(dset, "code")
@@ -103,9 +102,14 @@ class SerialModelStateSlot(SerialSlot):
     def _saveValue(self, group, name: str, value: ModelState):
         model_group = group.require_group(self.name)
 
-        if value:
-            model_group.create_dataset(self.MODEL, data=value.model_state)
-            model_group.create_dataset(self.OPTIMIZER, data=value.optimizer_state)
+        if not value:
+            return
+
+        if value.model_state:
+            model_group.create_dataset(self.MODEL, data=np.void(value.model_state))
+
+        if value.optimizer_state:
+            model_group.create_dataset(self.OPTIMIZER, data=np.void(value.optimizer_state))
 
     def _getValue(self, dset, slot):
         model = maybe_get(dset, self.MODEL, b"")
