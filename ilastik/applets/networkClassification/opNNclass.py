@@ -22,6 +22,7 @@ from functools import partial
 import numpy
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow import stype
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
 from lazyflow.operators import (
     OpMultiArraySlicer2,
@@ -91,10 +92,8 @@ class OpTiktorchFactory(Operator):
 
 class OpModel(Operator):
     TiktorchFactory = InputSlot()  #  OpTiktorchFactory.TikTorch
-    TiktorchConfig = InputSlot()
-    BinaryModel = InputSlot()
-    BinaryModelState = InputSlot()
-    BinaryOptimizerState = InputSlot()
+    Model = InputSlot(stype=stype.Opaque)
+    ModelState = InputSlot(stype=stype.Opaque)
 
     TiktorchModel = OutputSlot()  #  OpTiktorchFactory.TikTorch
 
@@ -105,30 +104,11 @@ class OpModel(Operator):
     def setupOutputs(self):
         tiktorch = self.TiktorchFactory.value
 
-        # todo: Deserialize sequences as tuple of ints, not as numpy.ndarray
-        # (which is a weird, implicit default in SerialDictSlot)
-        # also note: converting form numpy.int32, etc to python's int
-        def make_good(bad):
-            good = bad
-            if isinstance(bad, dict):
-                good = {}
-                for key, bad_value in bad.items():
-                    good[key] = make_good(bad_value)
-            elif isinstance(bad, numpy.integer):
-                good = int(bad)
-            elif isinstance(bad, numpy.ndarray):
-                good = tuple(make_good(v) for v in bad)
-            return good
-
-        tiktorch_config = make_good(self.TiktorchConfig.value)
-
-        model_binary = bytes(self.BinaryModel.value)
-        model_state = bytes(self.BinaryModelState.value)
-        opt_state = bytes(self.BinaryOptimizerState.value)
-        model = Model(code=model_binary, config=tiktorch_config)
-        state = ModelState(model_state=model_state, optimizer_state=opt_state)
+        model = self.Model.value
+        state = self.ModelState.value
 
         exept = tiktorch.load_model(model, state)
+
         if exept is None:
             self.TiktorchModel.setValue(tiktorch)
             try:
@@ -167,10 +147,8 @@ class OpNNClassification(Operator):
     LabelInputs = InputSlot(optional=True, level=1)
     FreezePredictions = InputSlot(stype="bool", value=False, nonlane=True)
     ClassifierFactory = InputSlot()
-    TiktorchConfig = InputSlot()
-    BinaryModel = InputSlot()
-    BinaryModelState = InputSlot()
-    BinaryOptimizerState = InputSlot()
+    Model = InputSlot(stype=stype.Opaque)
+    ModelState = InputSlot(stype=stype.Opaque)
 
     Classifier = OutputSlot()
     PredictionProbabilities = OutputSlot(
@@ -238,10 +216,8 @@ class OpNNClassification(Operator):
 
         self.opModel = OpModel(parent=self.parent)
         self.opModel.TiktorchFactory.connect(self.opTiktorchFactory.Tiktorch)
-        self.opModel.TiktorchConfig.connect(self.TiktorchConfig)
-        self.opModel.BinaryModel.connect(self.BinaryModel)
-        self.opModel.BinaryModelState.connect(self.BinaryModelState)
-        self.opModel.BinaryOptimizerState.connect(self.BinaryOptimizerState)
+        self.opModel.Model.connect(self.Model)
+        self.opModel.ModelState.connect(self.ModelState)
 
         self.ClassifierFactory.connect(self.opModel.TiktorchModel)
 
@@ -319,22 +295,15 @@ class OpNNClassification(Operator):
                     s1.notifyRemoved(partial(removeSlot, s2))
 
     def set_model_state(self, model_state: ModelState):
-        config = self.TiktorchConfig.value
+        model = self.Model.value
+        config = model.config
         config[TRAINING][NUM_ITERATIONS_MAX] = model_state.num_iterations_max
-        model = self.BinaryModel.value
-        self.set_classifier(config, model, model_state.model_state, model_state.optimizer_state)
+        self.set_classifier(model, model_state)
 
-    def set_classifier(
-        self, tiktorch_config: dict, model_file: bytes, model_state: bytes, optimizer_state: bytes
-    ) -> bool:
-        # self.TiktorchConfig.disconnect()  # do not create TiktorchClassifierFactory with invalid intermediate settings
-        # self.ClassifierFactory.disconnect()
-        # self.FreezePredictions.setValue(False)
-        self.BinaryModel.setValue(model_file)
-        self.BinaryModelState.setValue(model_state)
-        self.BinaryOptimizerState.setValue(optimizer_state)
-        # now all non-server settings are up to date...
-        self.TiktorchConfig.setValue(tiktorch_config)  # ...setupOutputs can initialize a tiktorchClassifierFactory
+    def set_classifier(self, model: Model, state: ModelState) -> bool:
+        self.Model.disconnect()  # do not create TiktorchClassifierFactory with invalid intermediate settings
+        self.ModelState.setValue(state)
+        self.Model.setValue(model)  # ...setupOutputs can initialize a tiktorchClassifierFactory
         return self.opModel.TiktorchModel.ready()
 
     def update_config(self, partial_config: dict):

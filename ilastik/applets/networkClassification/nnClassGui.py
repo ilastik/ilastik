@@ -55,7 +55,7 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import PreferencesManager
 
-from tiktorch.types import ModelState
+from tiktorch.types import ModelState, Model
 from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
 
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
@@ -671,14 +671,13 @@ class NNClassGui(LabelingGui):
                 self.updatePredictions()  # update one last time
                 try:
                     model_state = factory.get_model_state()
-                    print("SET MODEL STATE")
-                    config = self.topLevelOperatorView.TiktorchConfig.value
+                    model = self.topLevelOperatorView.model
+                    config = model.config
                     config[TRAINING][NUM_ITERATIONS_DONE] = model_state.num_iterations_done
                     config[TRAINING][NUM_ITERATIONS_MAX] = model_state.num_iterations_max
-                    self.topLevelOperatorView.TiktorchConfig.disconnect()
-                    self.topLevelOperatorView.BinaryModelState.setValue(model_state.model_state)
-                    self.topLevelOperatorView.BinaryOptimizerState.setValue(model_state.optimizer_state)
-                    self.topLevelOperatorView.TiktorchConfig.setValue(config)
+                    self.topLevelOperatorView.Model.disconnect()
+                    self.topLevelOperatorView.ModelState.setValue(model_state)
+                    self.topLevelOperatorView.Model.setValue(model)
                 except Exception as e:
                     logger.warning(f"Could not retrieve updated model state due to {e}")
 
@@ -753,8 +752,6 @@ class NNClassGui(LabelingGui):
         """
         Adds the chosen FilePath to the classifierDictionary and to the ComboBox
         """
-        print("ADD NN CLASSIFIER", folder_path)
-
         # clear first the comboBox or addItems will duplicate names
         # self.labelingDrawerUi.comboBox.clear()
         # self.labelingDrawerUi.comboBox.addItems(self.classifiers)
@@ -790,7 +787,9 @@ class NNClassGui(LabelingGui):
             else:
                 binary_states.append(b"")
 
-        success = self.topLevelOperatorView.set_classifier(tiktorch_config, binary_model_file, *binary_states)
+        model = Model(config=tiktorch_config, code=binary_model_file)
+        state = ModelState(model_state=binary_states[0], optimizer_state=binary_states[1])
+        success = self.topLevelOperatorView.set_classifier(model, state)
         if success:
             num_classes = len(self.topLevelOperatorView.opModel.TiktorchModel.value.known_classes)
             self.minLabelNumber = num_classes

@@ -51,10 +51,10 @@ class NNClassificationSerializer(AppletSerializer):
                 selfdepends=False,
                 shrink_to_bb=True,
             ),
-            SerialDictSlot(topLevelOperator.TiktorchConfig),
-            BinarySlot(topLevelOperator.BinaryModel),
-            BinarySlot(topLevelOperator.BinaryModelState),
-            BinarySlot(topLevelOperator.BinaryOptimizerState),
+            # SerialDictSlot(topLevelOperator.TiktorchConfig),
+            # BinarySlot(topLevelOperator.BinaryModel),
+            # BinarySlot(topLevelOperator.BinaryModelState),
+            # BinarySlot(topLevelOperator.BinaryOptimizerState),
             SerialPickleableSlot(topLevelOperator.Checkpoints, version=4),
         ]
 
