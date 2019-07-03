@@ -26,6 +26,8 @@ from future.utils import with_metaclass
 logger = logging.getLogger(__name__)
 
 from abc import ABCMeta
+from typing import Union
+import collections
 
 from ilastik.config import cfg as ilastik_config
 from lazyflow.utility.orderedSignal import OrderedSignal
@@ -44,45 +46,64 @@ from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.utility import timeLogged
 from lazyflow.slot import OutputSlot
 
-#######################
-# Convenience methods #
-#######################
 
-def slicingToString(slicing):
-    """Convert the given slicing into a string of the form
-    '[0:1,2:3,4:5]'
+class Slicing(collections.UserList):
+    """List of slices.
 
-    The result is a utf-8 encoded bytes, for easy storage via h5py
+    Examples:
+        >>> Slicing([slice(0, 1), slice(2, 3)])
+        [slice(0, 1, None), slice(2, 3, None)]
+        >>> str(Slicing([slice(0, 1), slice(2, 3)]))
+        '[0:1,2:3]'
+        >>> bytes(Slicing([slice(0, 1), slice(2, 3)]))
+        b'[0:1,2:3]'
     """
-    strSlicing = '['
-    for s in slicing:
-        strSlicing += str(s.start)
-        strSlicing += ':'
-        strSlicing += str(s.stop)
-        strSlicing += ','
 
-    strSlicing = strSlicing[:-1] # Drop the last comma
-    strSlicing += ']'
-    return strSlicing.encode('utf-8')
+    def __str__(self):
+        items = ",".join(f"{s.start}:{s.stop}" for s in self)
+        return f"[{items}]"
 
-def stringToSlicing(strSlicing):
-    """Parse a string of the form '[0:1,2:3,4:5]' into a slicing (i.e.
-    list of slices)
+    def __bytes__(self):
+        return str(self).encode()
 
-    """
-    if isinstance(strSlicing, bytes):
-        strSlicing = strSlicing.decode('utf-8')
-    
-    slicing = []
-    strSlicing = strSlicing[1:-1] # Drop brackets
-    sliceStrings = strSlicing.split(',')
-    for s in sliceStrings:
-        ends = s.split(':')
-        start = int(ends[0])
-        stop = int(ends[1])
-        slicing.append(slice(start, stop))
+    @classmethod
+    def parse(cls, s: Union[str, bytes]) -> "Slicing":
+        """Create slicing from str or bytes.
 
-    return slicing
+        Raises:
+            ValueError: invalid input
+
+        Examples:
+            >>> Slicing.parse(b'[0:1,2:3]')
+            [slice(0, 1, None), slice(2, 3, None)]
+        """
+        if isinstance(s, bytes):
+            s = s.decode()
+
+        s = s.strip()
+        if not s:
+            raise ValueError("empty input")
+
+        if s[0] != "[" or s[-1] != "]":
+            raise ValueError("missing brackets")
+
+        s = s[1:-1].strip()
+        if not s:
+            return cls()
+
+        slices = []
+
+        for item in s.split(","):
+            item = item.strip()
+
+            try:
+                start, stop = map(int, item.split(":"))
+            except ValueError as e:
+                raise ValueError(f"invalid slice {item!r}") from e
+
+            slices.append(slice(start, stop))
+
+        return cls(slices)
 
 
 class SerialSlot(object):
@@ -485,10 +506,10 @@ class SerialBlockSlot(SerialSlot):
                     )
                     block_group.create_dataset("fill_value", data=block.fill_value)
 
-                    block_group.attrs['blockSlice'] = slicingToString(slicing)
+                    block_group.attrs['blockSlice'] = bytes(Slicing(slicing))
                 else:
                     subgroup.create_dataset(blockName, data=block)
-                    subgroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
+                    subgroup[blockName].attrs['blockSlice'] = bytes(Slicing(slicing))
 
     @timeLogged(logger, logging.DEBUG)
     def _deserialize(self, mygroup, slot):
@@ -505,7 +526,7 @@ class SerialBlockSlot(SerialSlot):
         for index, t in enumerate(sorted(list(mygroup.items()), key=lambda k_v: extract_index(k_v[0]))):
             groupName, labelGroup = t
             for blockData in list(labelGroup.values()):
-                slicing = stringToSlicing(blockData.attrs['blockSlice'])
+                slicing = Slicing.parse(blockData.attrs['blockSlice']).data
 
                 # If it is suppose to be a masked array,
                 # deserialize the pieces and rebuild the masked array.
