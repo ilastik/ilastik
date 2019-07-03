@@ -36,7 +36,7 @@ from ilastik.utility import OpMultiLaneWrapper
 
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline, DatasetConstraintError
 
-from tiktorch.types import ModelState
+from tiktorch.types import Model, ModelState
 from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_MAX
 
 import logging
@@ -125,8 +125,10 @@ class OpModel(Operator):
         model_binary = bytes(self.BinaryModel.value)
         model_state = bytes(self.BinaryModelState.value)
         opt_state = bytes(self.BinaryOptimizerState.value)
+        model = Model(code=model_binary, config=tiktorch_config)
+        state = ModelState(model_state=model_state, optimizer_state=opt_state)
 
-        exept = tiktorch.load_model(tiktorch_config, model_binary, model_state, opt_state)
+        exept = tiktorch.load_model(model, state)
         if exept is None:
             self.TiktorchModel.setValue(tiktorch)
             try:
