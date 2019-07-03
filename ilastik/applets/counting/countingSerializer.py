@@ -21,7 +21,7 @@
 from __future__ import division
 from builtins import range
 from ilastik.applets.base.appletSerializer import \
-    AppletSerializer, deleteIfPresent, SerialSlot, SerialCountingSlot, \
+    AppletSerializer, SerialSlot, SerialCountingSlot, \
     SerialBlockSlot, SerialListSlot
 from lazyflow.operators.ioOperators import OpStreamingH5N5Reader, OpH5N5WriterBigDataset
 from lazyflow.utility.orderedSignal import OrderedSignal
@@ -155,7 +155,7 @@ class SerialPredictionSlot(SerialSlot):
 
             # If we were cancelled, delete the predictions we just started
             if not self.predictionStorageEnabled or failedToSave:
-                deleteIfPresent(group, name)
+                group.pop(name, None)
 
     def deserialize(self, group):
         # override because we need to set self._predictionsPresent

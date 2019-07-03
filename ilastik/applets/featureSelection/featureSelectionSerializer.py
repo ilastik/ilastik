@@ -20,7 +20,7 @@
 ###############################################################################
 import numpy
 
-from ilastik.applets.base.appletSerializer import AppletSerializer, deleteIfPresent
+from ilastik.applets.base.appletSerializer import AppletSerializer
 
 from ilastik.utility import bind
 from lazyflow.utility.timer import timeLogged
@@ -56,11 +56,11 @@ class FeatureSelectionSerializer(AppletSerializer):
             return
 
         # Delete previous entries if they exist
-        deleteIfPresent(topGroup, 'Scales')
-        deleteIfPresent(topGroup, 'FeatureIds')
-        deleteIfPresent(topGroup, 'SelectionMatrix')
-        deleteIfPresent(topGroup, 'FeatureListFilename')
-        deleteIfPresent(topGroup, 'ComputeIn2d')
+        topGroup.pop('Scales', None)
+        topGroup.pop('FeatureIds', None)
+        topGroup.pop('SelectionMatrix', None)
+        topGroup.pop('FeatureListFilename', None)
+        topGroup.pop('ComputeIn2d', None)
 
         # Store the new values (as numpy arrays)
 

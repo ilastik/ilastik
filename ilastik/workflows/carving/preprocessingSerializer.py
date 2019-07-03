@@ -19,7 +19,7 @@ from __future__ import absolute_import
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
+from ilastik.applets.base.appletSerializer import AppletSerializer
 import h5py
 import numpy
 import os
@@ -43,14 +43,14 @@ class PreprocessingSerializer( AppletSerializer ):
                 #values of the last valid preprocess
                 #!These may differ from the current settings!
                 
-                deleteIfPresent(preproc, "sigma")
-                deleteIfPresent(preproc, "filter")
-                deleteIfPresent(preproc, "graph")
+                preproc.pop("sigma", None)
+                preproc.pop("filter", None)
+                preproc.pop("graph", None)
 
                 preproc.create_dataset("sigma", data=opPre.initialSigma)
                 preproc.create_dataset("filter", data=opPre.initialFilter)
 
-                preprocgraph = getOrCreateGroup(preproc, "graph")
+                preprocgraph = preproc.require_group("graph")
                 mst.saveH5G(preprocgraph)
             
             opPre._unsavedData = False

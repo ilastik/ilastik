@@ -30,7 +30,7 @@ from lazyflow.roi import getIntersectingBlocks, TinyVector, getBlockBounds, roiT
 from lazyflow.request import Request, RequestLock, RequestPool
 
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    deleteIfPresent, getOrCreateGroup, SerialSlot, SerialBlockSlot, \
+    SerialSlot, SerialBlockSlot, \
     SerialDictSlot, SerialObjectFeatureNamesSlot
 from ilastik.utility.commandLineProcessing import convertStringToList
 
@@ -51,12 +51,12 @@ class SerialObjectFeaturesSlot(SerialSlot):
     def serialize(self, group):
         if not self.shouldSerialize(group):
             return
-        deleteIfPresent(group, self.name)
-        group = getOrCreateGroup(group, self.name)
+        group.pop(self.name, None)
+        group = group.require_group(self.name)
         mainOperator = self.slot.getRealOperator()
 
         for i in range(len(mainOperator)):
-            subgroup = getOrCreateGroup(group, "{:04}".format(i))
+            subgroup = group.require_group("{:04}".format(i))
 
             cleanBlockRois = self.blockslot[i].value
             for roi in cleanBlockRois:
@@ -67,7 +67,7 @@ class SerialObjectFeaturesSlot(SerialSlot):
                 roi_grp = subgroup.create_group(name=str(roi_string))
                 logger.debug('Saving region features into group: "{}"'.format( roi_grp.name ))
                 for key, val in region_features.items():
-                    plugin_group = getOrCreateGroup(roi_grp, key)
+                    plugin_group = roi_grp.require_group(key)
                     for featname, featval in val.items():
                         plugin_group.create_dataset(name=featname, data=featval)
 

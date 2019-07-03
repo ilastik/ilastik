@@ -48,21 +48,6 @@ from lazyflow.slot import OutputSlot
 # Convenience methods #
 #######################
 
-def getOrCreateGroup(parentGroup, groupName):
-    """Returns parentGroup[groupName], creating first it if
-    necessary.
-
-    """
-
-    return parentGroup.require_group(groupName)
-
-def deleteIfPresent(parentGroup, name):
-    """Deletes parentGroup[name], if it exists."""
-    # Check first. If we try to delete a non-existent key, 
-    # hdf5 will complain on the console.
-    if name in parentGroup:
-        del parentGroup[name]
-
 def slicingToString(slicing):
     """Convert the given slicing into a string of the form
     '[0:1,2:3,4:5]'
@@ -200,7 +185,7 @@ class SerialSlot(object):
         """
         if not self.shouldSerialize(group):
             return
-        deleteIfPresent(group, self.name)
+        group.pop(self.name, None)
         if self.slot.ready():
             self._serialize(group, self.name, self.slot)
         self.dirty = False
@@ -963,7 +948,7 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
         # Need to check if slots should be serialized. First must verify that self.topGroupName is not an empty string
         # (as this seems to happen sometimes).
         if self.topGroupName:
-            topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
+            topGroup = hdf5File.require_group(self.topGroupName)
             return any([ss.shouldSerialize(topGroup) for ss in self.serialSlots])
 
         return False
@@ -1007,14 +992,14 @@ class AppletSerializer(with_metaclass(ABCMeta, object)):
             (Most serializers do not use this parameter.)
 
         """
-        topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
+        topGroup = hdf5File.require_group(self.topGroupName)
 
         progress = 0
         self.progressSignal(progress)
 
         # Set the version
         key = 'StorageVersion'
-        deleteIfPresent(topGroup, key)
+        topGroup.pop(key, None)
         topGroup.create_dataset(key, data=self.version)
 
         try:

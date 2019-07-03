@@ -42,7 +42,7 @@ from lazyflow.utility.pathHelpers import getPathVariants, isUrl
 import ilastik.utility.globals
 
 from ilastik.applets.base.appletSerializer import \
-    AppletSerializer, getOrCreateGroup, deleteIfPresent
+    AppletSerializer
 
 import logging
 logger = logging.getLogger(__name__)
@@ -90,7 +90,7 @@ class DataSelectionSerializer( AppletSerializer ):
     @timeLogged(logger, logging.DEBUG)
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Write any missing local datasets to the local_data group
-        localDataGroup = getOrCreateGroup(topGroup, 'local_data')
+        localDataGroup = topGroup.require_group('local_data')
         wroteInternalData = False
         for laneIndex, multislot in enumerate(self.topLevelOperator.DatasetGroup):
             for roleIndex, slot in enumerate( multislot ):
@@ -149,12 +149,12 @@ class DataSelectionSerializer( AppletSerializer ):
                 firstInfo = self.topLevelOperator.DatasetGroup[0][0].value
                 self.topLevelOperator.DatasetGroup[0][0].setValue(firstInfo, check_changed=False)
 
-        deleteIfPresent(topGroup, 'Role Names')
+        topGroup.pop('Role Names', None)
         role_names = [name.encode('utf-8') for name in self.topLevelOperator.DatasetRoles.value]
         topGroup.create_dataset('Role Names', data=role_names)
 
         # Access the info group
-        infoDir = getOrCreateGroup(topGroup, 'infos')
+        infoDir = topGroup.require_group('infos')
         
         # Delete all infos
         for infoName in list(infoDir.keys()):

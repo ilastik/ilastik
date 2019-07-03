@@ -19,14 +19,14 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    SerialSlot, deleteIfPresent, getOrCreateGroup, SerialPickleableSlot
+    SerialSlot, SerialPickleableSlot
 
 class SerialDivisionsSlot(SerialSlot):
     def serialize(self, group):
         if not self.shouldSerialize(group):
             return
-        deleteIfPresent(group, self.name)
-        group = getOrCreateGroup(group, self.name)
+        group.pop(self.name, None)
+        group = group.require_group(self.name)
         mainOperator = self.slot.getRealOperator()
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
@@ -57,14 +57,14 @@ class SerialLabelsSlot(SerialSlot):
     def serialize(self, group):
         if not self.shouldSerialize(group):
             return
-        deleteIfPresent(group, self.name)
-        group = getOrCreateGroup(group, self.name)
+        group.pop(self.name, None)
+        group = group.require_group(self.name)
         mainOperator = self.slot.getRealOperator()
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
-            gr = getOrCreateGroup(group, str(i))
+            gr = group.require_group(str(i))
             for t in list(op.labels.keys()):
-                t_gr = getOrCreateGroup(gr, str(t))
+                t_gr = gr.require_group(str(t))
                 for oid in list(op.labels[t].keys()):
                     l = op.labels[t][oid]
                     dset = list(l)

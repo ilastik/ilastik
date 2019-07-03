@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 
 from builtins import range
 from ilastik.applets.base.appletSerializer import (
-    AppletSerializer, getOrCreateGroup, deleteIfPresent, SerialSlot
+    AppletSerializer, SerialSlot
 )
 import numpy
 
@@ -43,7 +43,7 @@ class CarvingSerializer(AppletSerializer):
         self._o = operator
 
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
-        obj = getOrCreateGroup(topGroup, "objects")
+        obj = topGroup.require_group("objects")
         for imageIndex, opCarving in enumerate( self._o.innerOperators ):
             mst = opCarving._mst
 
@@ -73,15 +73,15 @@ class CarvingSerializer(AppletSerializer):
 
                 if name not in mst.object_seeds_fg_voxels:
                     # this object was deleted
-                    deleteIfPresent(obj, name)
+                    obj.pop(name, None)
                     continue
 
-                g = getOrCreateGroup(obj, name)
-                deleteIfPresent(g, "fg_voxels")
-                deleteIfPresent(g, "bg_voxels")
-                deleteIfPresent(g, "sv")
-                deleteIfPresent(g, "bg_prio")
-                deleteIfPresent(g, "no_bias_below")
+                g = obj.require_group(name)
+                g.pop("fg_voxels", None)
+                g.pop("bg_voxels", None)
+                g.pop("sv", None)
+                g.pop("bg_prio", None)
+                g.pop("no_bias_below", None)
 
                 v = mst.object_seeds_fg_voxels[name]
                 v = [v[i][:,numpy.newaxis] for i in range(3)]
@@ -101,8 +101,8 @@ class CarvingSerializer(AppletSerializer):
             opCarving._dirtyObjects = set()
 
             # save current seeds
-            deleteIfPresent(topGroup, "fg_voxels")
-            deleteIfPresent(topGroup, "bg_voxels")
+            topGroup.pop("fg_voxels", None)
+            topGroup.pop("bg_voxels", None)
 
             fg_voxels, bg_voxels = opCarving.get_label_voxels()
             if fg_voxels is None:
