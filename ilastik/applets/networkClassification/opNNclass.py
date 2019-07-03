@@ -60,7 +60,7 @@ class OpTiktorchFactory(Operator):
         try:
             tiktorch = TikTorchLazyflowClassifierFactory(self.ServerConfig.value)
         except Exception as e:
-            logger.info("Could not statt Tiktorch server with %s", self.ServerConfig.value, exc_info=e)
+            logger.info("Could not start Tiktorch server with %s", self.ServerConfig.value, exc_info=e)
             self.Tiktorch.meta.NOTREADY = True
         else:
             self.__conf = self.ServerConfig.value
