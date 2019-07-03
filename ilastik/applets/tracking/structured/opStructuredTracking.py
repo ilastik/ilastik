@@ -280,7 +280,7 @@ class OpStructuredTracking(OpConservationTracking):
                                             # print "Looking at in edge {} of node {}, searching for ({},{})".format(edge, sink, time-1, previous_label)
                                             if edge[0][0] == time-1 and edge[0][1] == int(previous_label): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
                                                 foundAllArcs = True
-                                                hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = int(trackCountIntersection)
+                                                hypothesesGraph._graph.edges[edge[0], edge[1]]['value'] = int(trackCountIntersection)
                                                 break
                                         if not foundAllArcs:
                                             logger.info("[structuredTrackingGui] Increasing max nearest neighbors! LABELS/MERGERS t:{} id:{}".format(time-1, int(previous_label)))
@@ -336,7 +336,7 @@ class OpStructuredTracking(OpConservationTracking):
                                 for edge in hypothesesGraph._graph.out_edges(parentNode): # an edge is a tuple of source and target nodes
                                     if edge[1][0] == time+1 and edge[1][1] == int(child): # every node 'id' is a tuple (timestep, label), so we need the in-edge coming from previous_label
                                         foundAllArcs = True
-                                        hypothesesGraph._graph.edge[edge[0]][edge[1]]['value'] = 1
+                                        hypothesesGraph._graph.edges[edge[0], edge[1]]['value'] = 1
                                         break
                                 if not foundAllArcs:
                                     break
@@ -572,7 +572,7 @@ class OpStructuredTracking(OpConservationTracking):
             for obj in labels[t]:
                 trackSet = labels[t][obj]
                 if (not -1 in trackSet) and str(obj) in list(traxelToUuidMap[str(t)].keys()):
-                    traxelgraph._graph.node[(t,obj)]['value'] = len(trackSet)
+                    traxelgraph._graph.nodes[(t,obj)]['value'] = len(trackSet)
 
         for t in list(labels.keys()):
             if t < max(list(labels.keys())):
@@ -582,22 +582,22 @@ class OpStructuredTracking(OpConservationTracking):
                             if (misdetectionLabel not in labels[t+1][dest]):
                                 intersectSet = labels[t][source].intersection(labels[t+1][dest])
                                 lenIntersectSet = len(intersectSet)
-                                assert ((t,source) in list(traxelgraph._graph.edge.keys()) and (t+1,dest) in list(traxelgraph._graph.edge[(t,source)].keys()),
+                                assert ((t,source) in list(traxelgraph._graph.edges.keys()) and (t+1,dest) in list(traxelgraph._graph.edges[(t,source)].keys()),
                                         "Annotated arc that you are setting 'value' of is NOT in the hypotheses graph. " + \
                                         "Your two objects have either very dissimilar features or they are spatially distant. " + \
                                         "Increase maxNearestNeighbors in your project or force the addition of this arc by changing the code here :)" + \
                                         "source ---- dest "+str(source)+"--->"+str(dest)+"       : "+str(lenIntersectSet)+" , "+str(intersectSet))
                                 if lenIntersectSet > 0:
-                                    traxelgraph._graph.edge[(t,source)][(t+1,dest)]['value'] = lenIntersectSet
+                                    traxelgraph._graph.edges[((t,source), (t+1,dest))]['value'] = lenIntersectSet
 
         for parentTrack in list(divisions.keys()):
             t = divisions[parentTrack][1]
             childrenTracks = divisions[parentTrack][0]
             parent = cls.getLabelT(parentTrack, labels[t])
             for childTrack in childrenTracks:
-                child = cls.getLabelT(childTrack,labels[t+1])
-                traxelgraph._graph.edge[(t,parent)][(t+1,child)]['value'] = 1
-                traxelgraph._graph.edge[(t,parent)][(t+1,child)]['gap'] = 1
+                child = cls.getLabelT(childTrack, labels[t+1])
+                traxelgraph._graph.edges[((t,parent), (t+1,child))]['value'] = 1
+                traxelgraph._graph.edges[((t,parent), (t+1,child))]['gap'] = 1
             traxelgraph._graph.node[(t,parent)]['divisionValue'] = True
 
         return traxelgraph
