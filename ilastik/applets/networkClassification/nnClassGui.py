@@ -56,6 +56,7 @@ from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import PreferencesManager
 
 from tiktorch.types import ModelState, Model
+from tiktorch.utils_client import read_model
 from tiktorch.configkeys import TRAINING, NUM_ITERATIONS_DONE, NUM_ITERATIONS_MAX
 
 from lazyflow.classifiers import TikTorchLazyflowClassifierFactory
@@ -758,38 +759,10 @@ class NNClassGui(LabelingGui):
         self.labelingDrawerUi.liveTraining.setEnabled(True)
         self.labelingDrawerUi.livePrediction.setEnabled(True)
 
-        # Read tiktorch config
-        config_file_name = os.path.join(folder_path, "tiktorch_config.yml")
-        if not os.path.exists(config_file_name):
-            raise FileNotFoundError(f"Config file not found at: {config_file_name}.")
+        res = read_model(folder_path)
+        config = res.model.config
 
-        with open(config_file_name, "r") as f:
-            tiktorch_config = yaml.load(f, Loader=yaml.SafeLoader)
-
-        if "name" not in tiktorch_config:
-            tiktorch_config["name"] = os.path.basename(os.path.normpath(folder_path))
-
-        # Read model.py
-        file_name = os.path.join(folder_path, "model.py")
-        if not os.path.exists(file_name):
-            raise FileNotFoundError(f"Model file not found at: {file_name}.")
-
-        with open(file_name, "rb") as f:
-            binary_model_file = f.read()
-
-        # Read model and optimizer states if they exist
-        binary_states = []
-        for fn in ["state.nn", "optimizer.nn"]:
-            fn = os.path.join(folder_path, fn)
-            if os.path.exists(fn):
-                with open(fn, "rb") as f:
-                    binary_states.append(f.read())
-            else:
-                binary_states.append(b"")
-
-        model = Model(config=tiktorch_config, code=binary_model_file)
-        state = ModelState(model_state=binary_states[0], optimizer_state=binary_states[1])
-        success = self.topLevelOperatorView.set_classifier(model, state)
+        success = self.topLevelOperatorView.set_classifier(res.model, res.state)
         if success:
             num_classes = len(self.topLevelOperatorView.opModel.TiktorchModel.value.known_classes)
             self.minLabelNumber = num_classes
@@ -799,7 +772,7 @@ class NNClassGui(LabelingGui):
             # self.setupLayers()
             self.updateAllLayers()
 
-            self.set_NN_classifier_name(tiktorch_config["name"])
+            self.set_NN_classifier_name(config["name"])
         else:
             self.set_NN_classifier_name("no model")
 
