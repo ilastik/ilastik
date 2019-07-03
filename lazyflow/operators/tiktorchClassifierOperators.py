@@ -180,9 +180,6 @@ class OpTikTorchTrainPixelwiseClassifierBlocked(OpTrainPixelwiseClassifierBlocke
 class OpTikTorchClassifierPredict(OpClassifierPredict):
     BlockShape = InputSlot()
 
-    def __init__(self, *args, **kwargs):
-        super(OpTikTorchClassifierPredict, self).__init__(*args, **kwargs)
-
     def setupOutputs(self):
         # Construct an inner operator depending on the type of classifier we'll be using.
         # We don't want to access the classifier directly here because that would trigger the full computation already.
