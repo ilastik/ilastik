@@ -25,7 +25,7 @@ from builtins import zip
 import copy
 import numpy
 from collections import OrderedDict, defaultdict
-from lazyflow.array5d import Shape5D
+from ndstructs import Shape5D
 
 
 class MetaDict(defaultdict):
