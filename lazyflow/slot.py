@@ -47,7 +47,7 @@ import vigra
 from lazyflow import rtype
 from lazyflow.roi import TinyVector
 from lazyflow.request import Request
-from lazyflow.stype import ArrayLike
+from lazyflow.stype import ArrayLike, Opaque
 from lazyflow.metaDict import MetaDict
 from lazyflow.utility import slicingtools, OrderedSignal
 
@@ -1121,7 +1121,7 @@ class Slot(object):
             if temp.shape == (1,):
                 return temp[0]
             return temp
-        elif isinstance(temp, list):
+        elif isinstance(temp, list) and self.stype != Opaque:
             return temp[0]
         else:
             warnings.warn(
