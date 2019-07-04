@@ -37,7 +37,7 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.utility import OpMultiLaneWrapper
-from lazyflow.array5d import Point5D, Shape5D
+from ndstructs import Point5D
 from lazyflow.graph import Graph
 from lazyflow.utility import PathComponents, isUrl, make_absolute
 from lazyflow.utility.helpers import get_default_axisordering
