@@ -22,6 +22,7 @@ import pickle
 import json
 
 import numpy as np
+import typing
 
 from tiktorch.types import Model, ModelState
 
@@ -55,7 +56,7 @@ class NNClassificationSerializer(AppletSerializer):
             ),
             SerialModelSlot(topLevelOperator.Model),
             SerialModelStateSlot(topLevelOperator.ModelState),
-            SerialPickleableSlot(topLevelOperator.Checkpoints, version=4),
+            SerialListModelStateSlot(topLevelOperator.Checkpoints, version=4),
         ]
 
         super().__init__(projectFileGroupName, slots)
@@ -69,7 +70,7 @@ def json_loads_binary(value):
     return json.loads(value.decode("utf-8"))
 
 
-def maybe_get(dset, key, default=None):
+def maybe_get_value(dset, key, default=None):
     if key in dset:
         return dset[key][()].tostring()
     else:
@@ -85,35 +86,83 @@ class SerialModelSlot(SerialSlot):
             model_group.create_dataset("config", data=np.void(json_dumps_binary(value.config)))
 
     def _getValue(self, dset, slot):
-        code = maybe_get(dset, "code")
+        code = maybe_get_value(dset, "code")
 
         if not code:
             slot.setValue(Model.Empty)
             return
 
-        model = Model(code=code, config=json.loads(maybe_get(dset, "config", b"")))
+        model = Model(code=code, config=json.loads(maybe_get_value(dset, "config", b"")))
         slot.setValue(model)
 
 
-class SerialModelStateSlot(SerialSlot):
+class ModelStateSerializer:
     OPTIMIZER = "optimizer"
     MODEL = "model"
+    META = "metadata"
 
-    def _saveValue(self, group, name: str, value: ModelState):
-        model_group = group.require_group(self.name)
-
-        if not value:
+    @classmethod
+    def dump_model_state(cls, group, state: ModelState) -> None:
+        if not state:
             return
 
-        if value.model_state:
-            model_group.create_dataset(self.MODEL, data=np.void(value.model_state))
+        if state.model_state:
+            group.create_dataset(cls.MODEL, data=np.void(state.model_state))
 
-        if value.optimizer_state:
-            model_group.create_dataset(self.OPTIMIZER, data=np.void(value.optimizer_state))
+        if state.optimizer_state:
+            group.create_dataset(cls.OPTIMIZER, data=np.void(state.optimizer_state))
+
+        metadata = {
+            "loss": state.loss,
+            "epoch": state.epoch,
+        }
+
+        group.create_dataset(cls.META, data=np.void(json_dumps_binary(metadata)))
+
+    @classmethod
+    def load_model_state(cls, group) -> ModelState:
+        model = maybe_get_value(group, cls.MODEL, b"")
+        optimizer = maybe_get_value(group, cls.OPTIMIZER, b"")
+        metadata = json_loads_binary(maybe_get_value(group, cls.META, b"{}"))
+
+        return ModelState(
+            model_state=bytes(model),
+            optimizer_state=bytes(optimizer),
+            **metadata
+        )
+
+
+class SerialModelStateSlot(SerialSlot):
+    def _saveValue(self, group, name: str, value: ModelState):
+        model_group = group.require_group(self.name)
+        ModelStateSerializer.dump_model_state(model_group, value)
 
     def _getValue(self, dset, slot):
-        model = maybe_get(dset, self.MODEL, b"")
-        optimizer = maybe_get(dset, self.OPTIMIZER, b"")
-
-        state = ModelState(model_state=model, optimizer_state=optimizer)
+        state = ModelStateSerializer.load_model_state(dset)
         slot.setValue(state)
+
+
+class SerialListModelStateSlot(SerialSlot):
+    def _saveValue(self, group, name: str, value: typing.List[ModelState]):
+        if value is None:
+            return
+
+        model_group = group.require_group(self.name)
+
+        states = value
+
+        for idx, state in enumerate(states):
+            state_group = model_group.require_group(str(idx))
+            ModelStateSerializer.dump_model_state(state_group, state)
+
+        model_group.attrs['length'] = len(states)
+
+    def _getValue(self, dset, slot):
+        states = []
+
+        for idx in range(dset.attrs['length']):
+            state_group = dset[str(idx)]
+            model_state = ModelStateSerializer.load_model_state(state_group)
+            states.append(model_state)
+
+        slot.setValue(states)
