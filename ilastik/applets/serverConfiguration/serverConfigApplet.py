@@ -27,6 +27,10 @@ class ServerConfigApplet(StandardApplet):
         self._topLevelOperator = OpServerConfig(parent=workflow)
         super().__init__("Server configuration", workflow)
         self._serializableItems = [ServerConfigSerializer('ServerConfiguration', operator=self._topLevelOperator)]
+    #     self._topLevelOperator.ServerConfig.notifyReady(self._requestUpdate)
+
+    # def _requestUpdate(self, *args, **kwargs):
+    #     self.appletStateUpdateRequested()
 
     @property
     def topLevelOperator(self):

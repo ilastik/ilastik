@@ -20,50 +20,28 @@
 ###############################################################################
 from ilastik.utility.operatorSubView import OperatorSubView
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow import stype
 
 from typing import Optional, Dict
 
-DEFAULT_LOCAL_SERVER_CONFIG = {'username': '', 'password': '',
-                         'address': 'localhost', 'port1': '5556', 'port2': '5557', 'devices': []}
-# use remote defaults as user hints
-DEFAULT_REMOTE_SERVER_CONFIG = {'username': 'SSH user name', 'password': 'SSH password (no encrytpion!)', 'ssh_key': 'SSH key',
-                                'address': 'remote host or IP address', 'port1': '5556', 'port2': '5557', 'devices': []}
+from .configStorage import SERVER_CONFIG
 
 
 class OpServerConfig(Operator):
     name = "OpServerConfig"
     category = "top-level"
 
-    LocalServerConfig = InputSlot(value=dict(DEFAULT_LOCAL_SERVER_CONFIG))
-    RemoteServerConfig = InputSlot(value=dict(DEFAULT_REMOTE_SERVER_CONFIG))
-    UseLocalServer = InputSlot()
+    ServerId = InputSlot(stype=stype.Opaque)
 
     ServerConfig = OutputSlot()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def setLocalServerConfig(self, config: Optional[Dict] = None):
-        if config is None:
-            config = dict(DEFAULT_LOCAL_SERVER_CONFIG)
-        self.LocalServerConfig.setValue(config)
-
-    def setRemoteServerConfig(self, config: Optional[Dict] = None):
-        if config is None:
-            config = dict(DEFAULT_REMOTE_SERVER_CONFIG)
-        self.RemoteServerConfig.setValue(config)
-
-
     def setupOutputs(self):
-        if self.UseLocalServer.value:
-            chosen_slot = self.LocalServerConfig
+        serverId = self.ServerId.value
+        srv = SERVER_CONFIG.get_server(serverId)
+        if srv:
+            self.ServerConfig.meta.NOTREADY = False
+            self.ServerConfig.setValue(srv)
         else:
-            chosen_slot = self.RemoteServerConfig
-
-        if chosen_slot.value["devices"]:
-            self.ServerConfig.connect(chosen_slot)
-        else:
-            self.ServerConfig.disconnect()
             self.ServerConfig.meta.NOTREADY = True
 
     def propagateDirty(self, slot, subindex, roi):

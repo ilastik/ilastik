@@ -7,6 +7,7 @@ from ilastik.applets.networkClassification.nnClassSerializer import (
 )
 from ilastik.applets.base.appletSerializer import AppletSerializer
 from tiktorch.types import Model, ModelState
+from tiktorch.rpc import RPCFuture
 
 import h5py
 import numpy as np
