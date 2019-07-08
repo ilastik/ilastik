@@ -56,7 +56,9 @@ from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5N5VolumeSelectionDlg
+from ilastik.applets.dataSelection.dataSelectionGui import ImageFileDialog
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
+from ilastik.applets.dataSelection import DatasetInfo
 
 # import IPython
 from .FeatureSelectionDialog import FeatureSelectionDialog
@@ -301,13 +303,7 @@ class PixelClassificationGui(LabelingGui):
         advanced_menu.addAction("Variable Importance Table").triggered.connect(showVarImpDlg)
         
         def handleImportLabelsAction():
-            # Find the directory of the most recently opened image file
-            mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
-            if mostRecentImageFile is not None:
-                defaultDirectory = os.path.split(mostRecentImageFile)[0]
-            else:
-                defaultDirectory = os.path.expanduser('~')
-            fileNames = DataSelectionGui.getImageFileNamesToOpen(self, defaultDirectory)
+            fileNames = ImageFileDialog(self, preferences_group='DataSelection', preferences_setting='recent image').getSelectedPaths()
             fileNames = list(map(str, fileNames))
             
             # For now, we require a single hdf5 file
@@ -320,7 +316,7 @@ class PixelClassificationGui(LabelingGui):
                 return
             
             file_path = fileNames[0]
-            internal_paths = DataSelectionGui.getPossibleInternalPaths(file_path)
+            internal_paths = DatasetInfo.getPossibleInternalPathsFor(file_path)
             if len(internal_paths) == 0:
                 QMessageBox.critical(self, "No volumes in file", 
                                      "Couldn't find a suitable dataset in your hdf5 file.")
