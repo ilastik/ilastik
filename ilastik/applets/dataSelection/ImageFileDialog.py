@@ -9,9 +9,11 @@ from .opDataSelection import OpDataSelection, DatasetInfo
 from ilastik.config import cfg as ilastik_config
 
 class ImageFileDialog(QFileDialog):
-    def __init__(self, parent_window):
+    def __init__(self, parent_window, preferences_group : str = 'DataSelection', preferences_setting : str = 'recent image'):
+        self.preferences_group = preferences_group
+        self.preferences_setting = preferences_setting
         # Find the directory of the most recently opened image file
-        mostRecentImageFile = PreferencesManager().get('DataSelection', 'recent image' )
+        mostRecentImageFile = PreferencesManager().get(preferences_group, preferences_setting )
         mostRecentImageFile = str(mostRecentImageFile)
         if mostRecentImageFile is not None:
             defaultDirectory = os.path.split(mostRecentImageFile)[0]
@@ -33,7 +35,7 @@ class ImageFileDialog(QFileDialog):
         if not super().exec_():
             return []
         filePaths = [Path(selected_file) for selected_file in self.selectedFiles()]
-        PreferencesManager().set('DataSelection', 'recent image', filePaths[0].as_posix())#FIXME: use platform style, maybe?
+        PreferencesManager().set(self.preferences_group, self.preferences_setting, filePaths[0].as_posix())#FIXME: use platform style, maybe?
         # For the n5 extension the attributes.json file has to be selected in the file dialog.
         # However we need just the *.n5 directory-file.
         for i, path in enumerate(filePaths):

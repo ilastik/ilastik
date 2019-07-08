@@ -34,6 +34,7 @@ from volumina.utility import PreferencesManager
 from ilastik.utility import log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui # We borrow the file selection window function.
+from ilastik.applets.dataSelection.dataSelectionGui import ImageFileDialog
 
 class BatchProcessingGui( QTabWidget ):
     """
@@ -136,16 +137,10 @@ class BatchProcessingGui( QTabWidget ):
         
     def select_files(self, role_index):
         preference_name = 'recent-dir-role-{}'.format(role_index)
-        recent_processing_directory = PreferencesManager().get( 'BatchProcessing', 
-                                                                preference_name, 
-                                                                default=os.path.normpath('~') )
-        file_paths = DataSelectionGui.getImageFileNamesToOpen(self, recent_processing_directory)
+        file_paths = ImageFileDialog(self, preferences_group='BatchProcessing', preferences_setting=preference_name).getSelectedPaths()
         if file_paths:
-            recent_processing_directory = os.path.dirname(file_paths[0])
-            PreferencesManager().set( 'BatchProcessing', preference_name, recent_processing_directory )
-        
             self.list_widgets[role_index].clear()
-            self.list_widgets[role_index].addItems(file_paths)
+            self.list_widgets[role_index].addItems(str(path) for path in file_paths)
 
     def clear_files(self, role_index):
         self.list_widgets[role_index].clear()
