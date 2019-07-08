@@ -183,16 +183,13 @@ class DataSelectionApplet(Applet):
 
     @classmethod
     def _role_name_to_arg_name(cls, role_name):
-        arg_name = role_name
-        arg_name = arg_name.lower()
-        arg_name = arg_name.replace(' ', '_').replace('-', '_')
-        return arg_name
+        return role_name.lower().replace(' ', '_').replace('-', '_')
 
-    @classmethod
-    def role_paths_from_parsed_args(cls, parsed_args, role_names):
+    def role_paths_from_parsed_args(self, parsed_args):
+        role_names = self.topLevelOperator.DatasetRoles.value
         role_paths = collections.OrderedDict()
         for role_index, role_name in enumerate(role_names):
-            arg_name = cls._role_name_to_arg_name(role_name)
+            arg_name = self._role_name_to_arg_name(role_name)
             input_paths = getattr(parsed_args, arg_name)
             role_paths[role_index] = input_paths or []
 

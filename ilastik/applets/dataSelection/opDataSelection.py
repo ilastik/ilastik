@@ -59,7 +59,7 @@ class DatasetInfo(object):
                  subvolume_roi=None, location=Location.FileSystem,
                  fromstack=False, axistags=None, drange=None, display_mode='default',
                  nickname='', original_axistags=None, shape=None, normalizeDisplay:bool=None,
-                 sequenceAxis:str=None, dtype=None, datasetId:str=""):
+                 sequenceAxis:str=None, dtype=None, datasetId:str="", realDataSource=True):
         """
         filepath: may be a globstring or a full hdf5 path+dataset
 
@@ -96,7 +96,7 @@ class DatasetInfo(object):
         self.laneDtype = None
         # A flag indicating whether the dataset is backed by a real source (e.g. file)
         # or by the fake provided (e.g. in headless mode when raw data are not necessary)
-        self.realDataSource = True
+        self.realDataSource = realDataSource
         self.subvolume_roi = subvolume_roi
         self.location = location
         self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
@@ -236,7 +236,7 @@ class DatasetInfo(object):
         for key in ('drange', 'display_mode', 'normalizeDisplay', 'dtype'):
             if key in meta:
                 info_params[key] = meta[key]
-        info_params.update(kwargs)
+        info_params.update({k:v for k, v in kwargs.items() if v is not None})
         return cls(**info_params)
 
     @classmethod
