@@ -49,6 +49,7 @@ from lazyflow.operators.valueProviders import OpMetadataInjector
 
 # ilastik
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
+from ilastik.applets.dataSelection.dataSelectionGui import ImageFileDialog
 
 def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
     """
@@ -63,25 +64,11 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
     assert isinstance(opLabels, lazyflow.graph.Operator), "slot's operator is of type %r" % (type(opLabels))
 
 
-    recentlyImported = PreferencesManager().get('labeling', 'recently imported')
-    mostRecentProjectPath = PreferencesManager().get('shell', 'recently opened')
-    mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
-    if recentlyImported:
-        defaultDirectory = os.path.split(recentlyImported)[0]
-    elif mostRecentProjectPath:
-        defaultDirectory = os.path.split(mostRecentProjectPath)[0]
-    elif mostRecentImageFile:
-        defaultDirectory = os.path.split(mostRecentImageFile)[0]
-    else:
-        defaultDirectory = os.path.expanduser('~')
-
-    fileNames = DataSelectionGui.getImageFileNamesToOpen(parent_widget, defaultDirectory)
+    fileNames = ImageFileDialog(parent_widget, preferences_group='labeling', preferences_setting='recently imported').getSelectedPaths()
     fileNames = list(map(str, fileNames))
 
     if not fileNames:
         return
-
-    PreferencesManager().set('labeling', 'recently imported', fileNames[0])
 
     try:
         # Initialize operators
@@ -95,8 +82,6 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         #   opImport --> (opCache) --> opMetadataInjector --------> opReorderAxes --(inject via setInSlot)--> labelInput
         #                             /                            /
         #     User-specified axisorder    labelInput.meta.axistags
-    
-        opImport.WorkingDirectory.setValue(defaultDirectory)
         opImport.FilePath.setValue(fileNames[0] if len(fileNames) == 1 else
                                    os.path.pathsep.join(fileNames))
         assert opImport.Output.ready()
