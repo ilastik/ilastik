@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)  # noqa
 
 import numpy
 import vigra
+from vigra.vigranumpycore import AxisTags
 from lazyflow.request import Request
 from ilastik.utility import log_exception
 from ilastik.applets.base.applet import Applet
@@ -52,9 +53,7 @@ class BatchProcessingApplet(Applet):
 
     def parse_known_cmdline_args(self, cmdline_args):
         # We use the same parser as the DataSelectionApplet
-        role_names = self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
-        parsed_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(
-            cmdline_args, role_names)
+        parsed_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(cmdline_args, self.role_names)
         return parsed_args, unused_args
 
     def run_export_from_parsed_args(self, parsed_args):
@@ -67,6 +66,16 @@ class BatchProcessingApplet(Applet):
             result = self.run_export(role_input_paths, parsed_args.input_axes, sequence_axis=parsed_args.stack_along)
             results.append(result)
 
+    def get_previous_axes_tags(self) -> List[AxisTags]:
+        if self.num_lanes == 0:
+            return [None] * len(self.role_names)
+
+        infos = []
+        for role_index, _ in enumerate(self.role_names):
+            info_slot = self.dataSelectionApplet.topLevelOperator.DatasetGroup[self.num_lanes - 1][role_index]
+            infos.append(info_slot.value.axistags if info_slot.ready() else None)
+        return infos
+
     def run_export(self, role_input_paths:List[str], input_axes:str=None, export_to_array:bool=False, sequence_axis:str=None):
         """
         Configures a lane using the paths specified in the paths from role_input_paths and runs the workflow.
@@ -78,19 +87,20 @@ class BatchProcessingApplet(Applet):
                          If False, return a list of the filenames we produced to.
         """
 
+        original_num_lanes = self.num_lanes
+        previous_axes_tags = self.get_previous_axes_tags()
         # Call customization hook
         self.dataExportApplet.prepare_for_entire_export()
         # Add a lane to the end of the workflow for batch processing
         # (Expanding OpDataSelection by one has the effect of expanding the whole workflow.)
-        original_num_lanes = self.num_lanes
         self.dataSelectionApplet.topLevelOperator.addLane(self.num_lanes)
         batch_lane = self.dataSelectionApplet.topLevelOperator.getLane(self.num_lanes - 1)
         try:
-            for role_index, role_input_path in enumerate(role_input_paths):
+            for role_index, (role_input_path, role_axis_tags) in enumerate(zip(role_input_paths, previous_axes_tags)):
                 if role_input_path:
                     role_info = DatasetInfo.default(
                         role_input_path,
-                        axistags=vigra.defaultAxistags(input_axes) if input_axes else None,
+                        axistags=vigra.defaultAxistags(input_axes) if input_axes else role_axis_tags,
                         sequence_axis=sequence_axis
                     )
                     batch_lane.DatasetGroup[role_index].setValue(role_info)
@@ -118,8 +128,8 @@ class BatchProcessingApplet(Applet):
         return len(self.dataSelectionApplet.topLevelOperator.DatasetGroup)
 
     @property
-    def input_roles(self) -> int:
-        return self.dataSelectionApplet.topLevelOperator.DatasetGroup.value
+    def role_names(self) -> int:
+        return self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
 
     def get_template_info(self, role_index:int) -> DatasetInfo:
         if self.num_lanes == 0:
