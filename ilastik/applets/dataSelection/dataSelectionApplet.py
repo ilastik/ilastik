@@ -211,7 +211,7 @@ class DataSelectionApplet(Applet):
         :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
         """
         role_names = self.topLevelOperator.DatasetRoles.value
-        role_paths = self.role_paths_from_parsed_args(parsed_args, role_names)
+        role_paths = self.role_paths_from_parsed_args(parsed_args)
 
         for role_index, input_paths in list(role_paths.items()):
             # If the user doesn't want image stacks to be copied into the project file,
