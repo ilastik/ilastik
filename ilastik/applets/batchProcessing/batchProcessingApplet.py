@@ -4,7 +4,7 @@ from builtins import range
 import copy
 import weakref
 from collections import OrderedDict
-from typing import List
+from typing import List, Callable, Dict, Iterable
 import logging
 logger = logging.getLogger(__name__)  # noqa
 
@@ -61,10 +61,23 @@ class BatchProcessingApplet(Applet):
         Run the export for each dataset listed in parsed_args (we use the same parser as DataSelectionApplet).
         """
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args)
-        results = []
-        for role_input_paths in zip(*role_path_dict.values()): #FIXME progress signals
-            result = self.run_export(role_input_paths, parsed_args.input_axes, sequence_axis=parsed_args.stack_along)
-            results.append(result)
+        return self.run_export(role_path_dict, parsed_args.input_axes, sequence_axis=parsed_args.stack_along)
+
+    def run_export(self, role_data_dict:Dict[int, List[str]], input_axes:str=None, export_to_array:bool=False, sequence_axis:str=None):
+        self.progressSignal(0)
+        batches = list(zip(*role_data_dict.values()))
+        try:
+            results = []
+            for batch_dataset_index, role_input_paths in enumerate(batches):
+                def emit_progress(dataset_percent):
+                    overall_progress = (batch_dataset_index + dataset_percent / 100.0) / len(batches)
+                    self.progressSignal(100 * overall_progress)
+                result = self.export_dataset(
+                    role_input_paths, input_axes=input_axes, export_to_array=export_to_array, sequence_axis=sequence_axis, progress_callback=emit_progress)
+                results.append(result)
+            return results
+        finally:
+            self.progressSignal(100)
 
     def get_previous_axes_tags(self) -> List[AxisTags]:
         if self.num_lanes == 0:
@@ -76,7 +89,7 @@ class BatchProcessingApplet(Applet):
             infos.append(info_slot.value.axistags if info_slot.ready() else None)
         return infos
 
-    def run_export(self, role_input_paths:List[str], input_axes:str=None, export_to_array:bool=False, sequence_axis:str=None):
+    def export_dataset(self, role_input_paths:List[str], input_axes:str=None, export_to_array:bool=False, sequence_axis:str=None, progress_callback:Callable=None):
         """
         Configures a lane using the paths specified in the paths from role_input_paths and runs the workflow.
 
@@ -86,7 +99,7 @@ class BatchProcessingApplet(Applet):
                          Instead, export the results to a list of arrays, which is returned.
                          If False, return a list of the filenames we produced to.
         """
-
+        progress_callback = progress_callback or self.progressSignal
         original_num_lanes = self.num_lanes
         previous_axes_tags = self.get_previous_axes_tags()
         # Call customization hook
@@ -108,6 +121,7 @@ class BatchProcessingApplet(Applet):
             # Call customization hook
             self.dataExportApplet.prepare_lane_for_export(self.num_lanes - 1)
             opDataExport = self.dataExportApplet.topLevelOperator.getLane(self.num_lanes - 1)
+            opDataExport.progressSignal.subscribe(progress_callback)
             if export_to_array:
                 logger.info("Exporting to in-memory array.")
                 result = opDataExport.run_export_to_array()
