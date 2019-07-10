@@ -311,6 +311,10 @@ class DatasetInfo(object):
     def datasetId(self):
         return self._datasetId
 
+    @property
+    def axiskeys(self):
+        return "".join(tag.key for tag in self.axistags)
+
     def __str__(self):
         s = "{ "
         s += "filepath: {},\n".format(self.filePath)
