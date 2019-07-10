@@ -321,9 +321,9 @@ class StructuredTrackingWorkflowBase(Workflow):
         opStructuredTracking.MaxNumObj.connect(opCellClassification.MaxNumObj)
 
         opDataTrackingExport.Inputs.resize(3)
-        opDataTrackingExport.Inputs[0].connect(opStructuredTracking.RelabeledImage)
+        opDataTrackingExport.Inputs[0].connect(opStructuredTracking.Output)
         opDataTrackingExport.Inputs[1].connect(opStructuredTracking.MergerOutput)
-        opDataTrackingExport.Inputs[2].connect(opStructuredTracking.LabelImage)
+        opDataTrackingExport.Inputs[2].connect(opStructuredTracking.RelabeledImage)
         opDataTrackingExport.RawData.connect(op5Raw.Output)
         opDataTrackingExport.RawDatasetInfo.connect(opData.DatasetGroup[0])
 
