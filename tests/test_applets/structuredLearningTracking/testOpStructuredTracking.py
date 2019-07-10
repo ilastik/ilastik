@@ -9,17 +9,21 @@ from ilastik.applets.tracking.structured.opStructuredTracking import (
 
 @pytest.fixture
 def tracklet_graph():
-    #               /  2   4
+    #               /  2    4
     #      0  ->  1       /
-    #               \  3  division
+    #               \  3
     #                     \
-    #                      5
+    #                       5
+    #
+    #             6 -> 7 -> 8
     #
     # t:   0      1    2    3
+
     h = HypothesesGraph()
     h._graph.add_path([(0, 0), (1, 1), (2, 2)])
     h._graph.add_path([(1, 1), (2, 3), (3, 4)])
     h._graph.add_path([(2, 3), (3, 5)])
+    h._graph.add_path([(1, 6), (2, 7), (3, 8)])
     for n in h._graph.nodes:
         h._graph.nodes[n]["id"] = n[1]
         h._graph.nodes[n]["traxel"] = Traxel()
@@ -32,6 +36,19 @@ def tracklet_graph():
 @pytest.fixture
 def annotations():
     """
+    Annotations resulting in the following graph:
+
+                   /  2    4
+          0  ->  1        /
+                   \  3 =
+                          \
+                           5
+
+     t:   0      1    2    3
+
+    = denote divisions
+
+    annotations format:
         labels: {timeframe: {object_id: set(track_ids)}}
         divisions: {parent_track_id: ([child_track_id1, child_track_id2], timeframe)}
     """
@@ -65,8 +82,8 @@ class InstantTraxel(Traxel):
         return False
 
 
-def test_annotations_insertion(tracklet_graph, annotations):
-    """reproduces ilastik/#2052"""
+@pytest.fixture
+def expected():
     expected = {
         "nodes": {
             (0, 0): {
@@ -105,6 +122,24 @@ def test_annotations_insertion(tracklet_graph, annotations):
                 "value": 1,
                 "divisionValue": False,
             },
+            (1, 6): {
+                "id": 6,
+                "traxel": InstantTraxel(timestep=1, uid=6),
+                "value": 0,
+                "divisionValue": False,
+            },
+            (2, 7): {
+                "id": 7,
+                "traxel": InstantTraxel(timestep=2, uid=7),
+                "value": 0,
+                "divisionValue": False,
+            },
+            (3, 8): {
+                "id": 8,
+                "traxel": InstantTraxel(timestep=3, uid=8),
+                "value": 0,
+                "divisionValue": False,
+            },
         },
         "edges": {
             ((0, 0), (1, 1)): {"value": 2, "gap": 1},
@@ -112,22 +147,32 @@ def test_annotations_insertion(tracklet_graph, annotations):
             ((1, 1), (2, 3)): {"value": 1, "gap": 1},
             ((2, 3), (3, 4)): {"value": 1, "gap": 1},
             ((2, 3), (3, 5)): {"value": 1, "gap": 1},
+            ((1, 6), (2, 7)): {"value": 0, "gap": 1},
+            ((2, 7), (3, 8)): {"value": 0, "gap": 1},
         },
     }
 
+    return expected
+
+
+def check_graph(graph, expected):
+    assert graph.number_of_edges() == len(expected["edges"])
+    for edge in graph.edges:
+        assert edge in expected["edges"], f"at {edge!r}"
+        assert graph.edges[edge] == expected["edges"][edge], f"at {edge!r}"
+
+    assert graph.number_of_nodes() == len(expected["nodes"])
+    for node in graph.nodes:
+        assert node in expected["nodes"], f"at {node!r}"
+        assert graph.nodes[node] == expected["nodes"][node], f"at {node!r}"
+
+
+def test_annotations_insertion(tracklet_graph, annotations, expected):
+    """reproduces ilastik/#2052"""
     annotated_graph = OpStructuredTracking.insertAnnotationsToHypothesesGraph(
         tracklet_graph, annotations
     )
-
-    assert annotated_graph._graph.number_of_edges() == len(expected["edges"])
-    for edge in annotated_graph._graph.edges:
-        assert edge in expected["edges"]
-        assert annotated_graph._graph.edges[edge] == expected["edges"][edge]
-
-    assert annotated_graph._graph.number_of_nodes() == len(expected["nodes"])
-    for node in annotated_graph._graph.nodes:
-        assert node in expected["nodes"]
-        assert annotated_graph._graph.nodes[node] == expected["nodes"][node]
+    check_graph(annotated_graph._graph, expected)
 
 
 def test_annotation_mismatch_raises(tracklet_graph, annotations):
@@ -137,3 +182,23 @@ def test_annotation_mismatch_raises(tracklet_graph, annotations):
         OpStructuredTracking.insertAnnotationsToHypothesesGraph(
             tracklet_graph, annotations
         )
+
+
+def test_annotation_with_misdetection(tracklet_graph, annotations, expected):
+    """add some annotations with misdetection:
+
+                     6*-> 7 -> 8*
+        * denote misdetections
+    """
+    annotations["labels"][1][6] = {-1, 5}
+    annotations["labels"][2][7] = {5}
+    annotations["labels"][3][8] = {-1, 5}
+
+    # modify expected values accordingly:
+    expected["nodes"][(2, 7)]["value"] = 1
+
+    annotated_graph = OpStructuredTracking.insertAnnotationsToHypothesesGraph(
+        tracklet_graph, annotations
+    )
+
+    check_graph(annotated_graph._graph, expected)
