@@ -1,5 +1,3 @@
-from __future__ import print_function
-from __future__ import division
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -20,46 +18,42 @@ from __future__ import division
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-#===============================================================================
-# Implements a mechanism to keep in sinc the GUI elements with the operators
-# for the counting applet
-# way round
-#===============================================================================
 
-
-from builtins import range
-from past.utils import old_div
-from PyQt5 import QtCore
-from PyQt5.QtCore import Qt, QTimer, QPointF, QRectF, QObject, QRect, QSize, pyqtSignal, QEvent, QPoint, pyqtSlot
-from PyQt5.QtGui import QPen, QFont, QBrush, QColor, QMouseEvent
-from PyQt5.QtWidgets import QApplication, QGraphicsItem, QGraphicsRectItem, QGraphicsTextItem, QRubberBand, QStylePainter
-
-
-from volumina.pixelpipeline.datasources import LazyflowSource
-from volumina.api import Viewer
-from volumina.layer import ColortableLayer
-from volumina.colortables import jet
-from volumina import colortables
+import colorsys
+import logging
+import time
+import warnings
 
 import numpy as np
+
 import vigra
-
-from lazyflow.operator import InputSlot
-from lazyflow.graph import Operator, OutputSlot, Graph
-from lazyflow.operators.generic import OpSubRegion
-##add tot hte pos model
+from ilastik.utility.gui import roi2rect
 from ilastik.widgets.boxListModel import BoxLabel, BoxListModel
+from lazyflow.graph import Graph, Operator, OutputSlot
+from lazyflow.operator import InputSlot
+from lazyflow.operators.generic import OpSubRegion
+from past.utils import old_div
+from PyQt5.QtCore import QEvent, QObject, QPoint, QPointF, QRect, QRectF, QSize, Qt, QTimer, pyqtSignal, pyqtSlot
+from PyQt5.QtGui import QBrush, QColor, QFont, QPen
+from PyQt5.QtWidgets import (
+    QApplication,
+    QGraphicsItem,
+    QGraphicsRectItem,
+    QGraphicsTextItem,
+    QRubberBand,
+    QStylePainter,
+)
+from volumina import colortables
+from volumina.api import Viewer
+from volumina.colortables import jet
+from volumina.layer import ColortableLayer
+from volumina.pixelpipeline.datasources import LazyflowSource
 
-import warnings
-import threading
-
-import time
-
-import logging
 logger = logging.getLogger(__name__)
 
 DELAY=10 #In millisec,delay in updating the text in the handles, needed because lazy flow cannot stay back the
          #user shuffling the boxes
+
 
 class Tool(object):
 
@@ -128,9 +122,6 @@ class ResizeHandle(QGraphicsRectItem):
                     QApplication.setOverrideCursor(Qt.SplitVCursor)
                 else:
                     QApplication.setOverrideCursor(Qt.SplitHCursor)
-                
-
-            
 
     def hoverLeaveEvent(self, event):
         super(ResizeHandle, self).hoverLeaveEvent(event)
@@ -214,7 +205,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
          x y should be the original positions in scene coordinates
          h,w are the height and the width of the rectangle
         """
-        
+
         self._editor = editor
 
         QGraphicsRectItem.__init__(self,0,0,w,h,parent=parent)
@@ -476,7 +467,6 @@ class QGraphicsResizableRect(QGraphicsRectItem):
         QApplication.restoreOverrideCursor()
         return QGraphicsRectItem.mouseReleaseEvent(self, event)
 
-    
     def itemChange(self, change,value):
         if change==QGraphicsRectItem.ItemPositionChange:
             newPos=value #new position in scene coordinates
@@ -536,17 +526,14 @@ class RedRubberBand(QRubberBand):
 #===============================================================================
 
 class CoupledRectangleElement(object):
-    def __init__(self, x, y, h, w, inputSlot, editor=None, scene=None, parent=None, qcolor=QColor(0, 0, 255)):
+    def __init__(self, pos: QRect, inputSlot, editor=None, scene=None, parent=None, qcolor=QColor(0, 0, 255)):
         '''
         Couples the functionality of the lazyflow operator OpSubRegion which gets a subregion of interest
         and the functionality of the resizable rectangle Item.
         Keeps the two functionality separated
 
 
-        :param x: initial position scene coordinates
-        :param y: initial position scene coordinates
-        :param h: initial height
-        :param w: initial width
+        :param pos: initial position
         :param inputSlot: Should be the output slot of another operator from which you would like monitor a subregion
         :param scene: the scene where to put the graphics item
         :param parent: the parent object if any
@@ -555,7 +542,7 @@ class CoupledRectangleElement(object):
         assert inputSlot.meta.getTaggedShape()['c'] == 1
 
         assert parent is None, 'FIXME: QT structure does not seem to be implemented thoroughly. parent is always None!'
-        self._rectItem = QGraphicsResizableRect(x, y, h, w, scene, parent, editor)
+        self._rectItem = QGraphicsResizableRect(pos.x(), pos.y(), pos.height(), pos.width(), scene, parent, editor)
         # self._rectItem.color=qcolor  # FIXME: color can't be set
 
         # sub region corresponding to the rectangle region
@@ -740,7 +727,7 @@ class CoupledRectangleElement(object):
 class BoxInterpreter(QObject):
     rightClickReceived = pyqtSignal(object, QPoint) # list of indexes, global window coordinate of click
     leftClickReceived = pyqtSignal(object, QPoint)
-    leftClickReleased = pyqtSignal(object, object)
+    leftClickReleased = pyqtSignal(QRect)
     #boxAdded= pyqtSignal(object, object)
     #focusObjectChages= pyqtSignal(object, QPoint)
     cursorPositionChanged  = pyqtSignal(object)
@@ -848,14 +835,14 @@ class BoxInterpreter(QObject):
             if not self.origin.isNull():
                 self.rubberBand.setGeometry(QRect(self.origin,
                                                   event.pos()).normalized())
-        #Relasing the button
-        if event.type() == QEvent.MouseButtonRelease:
-            pos = [int(i) for i in self._posModel.cursorPos]
-            pos = [self._posModel.time] + pos + [self._posModel.channel]
-            if self.rubberBand.isVisible():
-                if event.button() == Qt.LeftButton:
-                    self.rubberBand.hide()
-                    self.leftClickReleased.emit( self.originpos,pos )
+
+        if (
+            event.type() == QEvent.MouseButtonRelease
+            and event.button() == Qt.LeftButton
+            and self.rubberBand.isVisible()
+        ):
+            self.rubberBand.hide()
+            self.leftClickReleased.emit(roi2rect(("x", "y"), self.originpos[1:3], self._posModel.cursorPos[:2]))
 
         # Event is always forwarded to the navigation interpreter.
         return self.baseInterpret.eventFilter(watched, event)
@@ -879,7 +866,7 @@ class BoxController(QObject):
 
         scene = editor.imageScenes[2]
         self._editor = editor
-        
+
         QObject.__init__(self,parent=scene.parent())
         self._setUpRandomColors()
         self.scene=scene
@@ -901,51 +888,27 @@ class BoxController(QObject):
     def getCurrentActiveBox(self):
         pass
 
-
-    def addNewBox(self,pos5Dstart,pos5Dstop):
-        modifiers=QApplication.keyboardModifiers()
-        if modifiers == Qt.ControlModifier: #add stuff
+    def addNewBox(self, pos: QRect) -> None:
+        if QApplication.keyboardModifiers() == Qt.ControlModifier:
             return
 
-        for el  in self.scene.selectedItems(): #retun if there is an handle on the scene at that position
-            if isinstance(el, ResizeHandle): return
+        if any(isinstance(elem, ResizeHandle) for elem in self.scene.selectedItems()):
+            return
 
-#
-#         print "Start = ",pos5Dstart,
-#         print "Stop =", pos5Dstop
-        oldstart=pos5Dstart[1:3]
-        oldstop=pos5Dstop[1:3]
-        start=[]
-        stop=[]
-        for s1,s2 in zip(oldstart,oldstop):
-            start.append(np.minimum(s1,s2))
-            stop.append(np.maximum(s1,s2))
+        # Avoid accidental click-drags.
+        # FIXME: Exploratory testing showed that a single no-drag click makes a 4x4 rectangle, which is probably wrong.
+        if pos.width() <= 4 and pos.height() <= 4:
+            return
 
-
-
-#         itemsall1=self.scene.items(QPointF(*pos5Dstart[1:3]))
-#         itemsall1 =filter(lambda el: isinstance(el, ResizeHandle), itemsall1)
-#         itemsall2=self.scene.items(QPointF(*pos5Dstop[1:3]))
-#         itemsall2 =filter(lambda el: isinstance(el, ResizeHandle), itemsall2)
-#         itemsall=itemsall1+itemsall2
-#         print itemsall
-
-
-
-        h=stop[1]-start[1]
-        w=stop[0]-start[0]
-        if h*w<9: return #too small
-
-        rect=CoupledRectangleElement(start[0],start[1],h,w,self.connectionInput,editor = self._editor, scene=self.scene,parent=self.scene.parent())
+        rect=CoupledRectangleElement(
+            pos, self.connectionInput, editor=self._editor, scene=self.scene, parent=self.scene.parent()
+        )
         rect.setZValue(len(self._currentBoxesList))
         rect.setColor(self.currentColor)
-        #self.counter-=1
         self._currentBoxesList.append(rect)
 
-
-
-        newRow=self.boxListModel.rowCount()
-        box = BoxLabel( "Box%d"%newRow, self.currentColor)
+        newRow = self.boxListModel.rowCount()
+        box = BoxLabel(f"Box{newRow}", self.currentColor)
 
         box.colorChanged.connect(rect.setColor)
         box.lineWidthChanged.connect(rect.setLineWidth)
@@ -954,14 +917,13 @@ class BoxController(QObject):
         box.isFixedChanged.connect(self._fixedBoxesChanged)
         box.existenceChanged.connect(self._viewBoxesChanged)
 
-
-        self.boxListModel.insertRow( newRow, box )
+        self.boxListModel.insertRow(newRow, box)
         box.existenceChanged.emit()
-        rect.boxLabel=box
+        rect.boxLabel = box
         box.isFixedChanged.connect(rect._rectItem.fixSelf)
         rect._updateTextWhenChanges()
 
-        self.currentColor=self._getNextBoxColor()
+        self.currentColor = self._getNextBoxColor()
 
     def _fixedBoxesChanged(self, *args):
         boxes = {"rois" : [], "values" : []}
@@ -973,7 +935,7 @@ class BoxController(QObject):
         self.fixedBoxesChanged.emit(boxes)
 
         self._viewBoxesChanged()
-    
+
     def _viewBoxesChanged(self, *args):
         boxes = {"rois" : []}
         for box, rect in zip(self.boxListModel._elements, self._currentBoxesList):
@@ -1088,8 +1050,6 @@ class BoxController(QObject):
 # Random colors
 #===============================================================================
 
-import numpy as np
-import colorsys
 
 def RandomColorGenerator(seed=42):
     np.random.seed(seed)
@@ -1183,9 +1143,6 @@ class OpArrayPiper2(Operator):
         self.outputs["Output"][key] = value
 
 
-
-
-import sys
 if __name__=="__main__":
 
     #===========================================================================
@@ -1256,9 +1213,3 @@ if __name__=="__main__":
     mainwin.show()
 
     app.exec_()
-
-
-
-
-
-
