@@ -582,12 +582,12 @@ class OpStructuredTracking(OpConservationTracking):
                             if (misdetectionLabel not in labels[t+1][dest]):
                                 intersectSet = labels[t][source].intersection(labels[t+1][dest])
                                 lenIntersectSet = len(intersectSet)
-                                assert ((t,source) in list(traxelgraph._graph.edges.keys()) and (t+1,dest) in list(traxelgraph._graph.edges[(t,source)].keys()),
+                                if lenIntersectSet > 0:
+                                    assert ((t, source), (t+1, dest)) in traxelgraph._graph.edges.keys(), (
                                         "Annotated arc that you are setting 'value' of is NOT in the hypotheses graph. " + \
                                         "Your two objects have either very dissimilar features or they are spatially distant. " + \
                                         "Increase maxNearestNeighbors in your project or force the addition of this arc by changing the code here :)" + \
                                         "source ---- dest "+str(source)+"--->"+str(dest)+"       : "+str(lenIntersectSet)+" , "+str(intersectSet))
-                                if lenIntersectSet > 0:
                                     traxelgraph._graph.edges[((t,source), (t+1,dest))]['value'] = lenIntersectSet
 
         for parentTrack in list(divisions.keys()):

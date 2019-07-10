@@ -127,3 +127,12 @@ def test_annotations_insertion(tracklet_graph, annotations):
     for node in annotated_graph._graph.nodes:
         assert node in expected["nodes"]
         assert annotated_graph._graph.nodes[node] == expected["nodes"][node]
+
+
+def test_annotation_mismatch_raises(tracklet_graph, annotations):
+    # add annotations that is not represented in the graph:
+    annotations['labels'][3][4] = {1, 3}
+    with pytest.raises(AssertionError):
+        OpStructuredTracking.insertAnnotationsToHypothesesGraph(
+            tracklet_graph, annotations
+        )
