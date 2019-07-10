@@ -56,9 +56,11 @@ def create_and_modify_widget(
 
     assert widget.multi_axes_display.text() == "Current: " + ", ".join(info.axiskeys for info in infos)
 
-    for axis_selector, value in zip(widget.axis_selectors[:len(axiskeys)], axiskeys):
-        assert axis_selector.isEnabled() and axis_selector.isVisible()
-        axis_selector.setCurrentText(value)
+    if axiskeys:
+        assert widget.axesEdit.isVisible()
+        assert widget.axesEdit.isEnabled()
+        assert widget.axesEdit.maxLength() == len(axiskeys)
+        widget.axesEdit.setText(axiskeys)
 
     if nickname:
         assert widget.nicknameEdit.isEnabled()
@@ -95,8 +97,7 @@ def test_datasetinfo_editor_widget_shows_correct_data_on_single_info(qtbot, imag
     qtbot.addWidget(editor_widget)
     editor_widget.show()
 
-    assert all(selector.isVisible() for selector in editor_widget.axis_selectors[:3])
-    assert not any(selector.isVisible() for selector in editor_widget.axis_selectors[3:])
+    assert editor_widget.axesEdit.maxLength() == 3
     assert "".join(tag.key for tag in editor_widget.get_new_axes_tags()) == 'yxc'
     assert editor_widget.nicknameEdit.text() == Path(image_yxc_path).stem
     assert editor_widget.nicknameEdit.isEnabled()
@@ -136,8 +137,7 @@ def test_datasetinfo_editor_widget_shows_correct_data_on_multiple_info(qtbot, im
                                      [info, info_2],
                                      project_file_dir)
 
-    assert all(selector.isVisible() for selector in widget.axis_selectors[:3])
-    assert not any(selector.isVisible() for selector in widget.axis_selectors[3:])
+    assert widget.axesEdit.maxLength() == 3
     assert "".join(tag.key for tag in widget.get_new_axes_tags()) == 'yxc'
     assert not widget.nicknameEdit.isEnabled()
     assert widget.nicknameEdit.text() == Path(image_yxc_path).stem + ', ' + Path(another_image_yxc_path).stem
@@ -167,7 +167,7 @@ def test_cannot_edit_axis_tags_on_images_of_different_dimensionality(qtbot, imag
     project_file_dir = str(Path(image_yxc_path).parent)
 
     widget = create_and_modify_widget(qtbot, [info_1, info_2], project_file_dir)
-    assert not any(selector.isEnabled() for selector in widget.axis_selectors)
+    assert not widget.axesEdit.isEnabled() and not widget.axesEdit.isVisible()
 
     edited_infos = accept_widget(qtbot, widget)
     assert edited_infos[0].axiskeys == info_1.axiskeys  and edited_infos[1].axiskeys == info_2.axiskeys

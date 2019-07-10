@@ -69,6 +69,34 @@ class DatasetInfoEditorWidget(QDialog):
     """
     This dialog allows the user to edit the settings of one **OR MORE** datasets for a given role.
     """
+
+    def handle_invalid_axeskeys(self, message:str):
+        self.axes_error_display.setText(message)
+        self.okButton.setEnabled(False)
+
+    def handle_valid_axeskeys(self):
+        self.axes_error_display.setText("")
+        self.okButton.setEnabled(True)
+
+    def validate_new_axiskeys(self, new_axiskeys:str):
+        if not new_axiskeys:
+            return self.handle_valid_axeskeys()
+
+        dataset_dims = self.axesEdit.maxLength()
+        if 0 != len(new_axiskeys) < dataset_dims:
+            return self.handle_invalid_axeskeys(f"Dataset has {dataset_dims} dimensions, so you need to provide that many axes keys")
+
+        if not set(new_axiskeys).issubset(set("xyztc")):
+            return self.handle_invalid_axeskeys("Axes must be a combination of \"xyztc\"")
+
+        if len(set(new_axiskeys)) < len(new_axiskeys):
+            return self.handle_invalid_axeskeys("Repeated axis keys")
+
+        if not set('xy').issubset(set(new_axiskeys)):
+            return self.handle_invalid_axeskeys("x and y need to be present")
+
+        self.handle_valid_axeskeys()
+
     def __init__(self, parent, infos:List[DatasetInfo], projectFileDir:str):
         """
         :param infos: DatasetInfo infos to be edited by this widget
@@ -92,22 +120,19 @@ class DatasetInfoEditorWidget(QDialog):
         self.okButton.clicked.connect(self.accept)
         self.cancelButton.clicked.connect(self.reject)
 
-        input_axiskeys = ["".join(tag.key for tag in info.axistags) for info in infos]
-
+        input_axiskeys = [info.axiskeys for info in infos]
         self.multi_axes_display.setEnabled(False)
         self.multi_axes_display.setText("Current: " + ", ".join(input_axiskeys))
         if all(len(keys) == len(input_axiskeys[0]) for keys in input_axiskeys):
-            selector_keys = input_axiskeys[0]
+            self.axesEdit.setMaxLength(len(input_axiskeys[0]))
+            self.axesEdit.textChanged.connect(self.validate_new_axiskeys)
+            different_axiskeys = set(input_axiskeys)
+            if len(different_axiskeys) == 1:
+                self.axesEdit.setText(different_axiskeys.pop())
         else:
-            selector_keys = ''
             self.multi_axes_display.setToolTip("Select lanes with same number of axes to change their interpretation here")
-
-        for axis_index, axis_selector in enumerate(self.axis_selectors):
-            axis_selector = self.axis_selectors[axis_index]
-            within_bounds = axis_index < len(selector_keys)
-            axis_selector.setVisible(within_bounds)
-            axis_selector.setEnabled(within_bounds)
-            axis_selector.setCurrentText(selector_keys[axis_index] if within_bounds else 'x')
+            self.axesEdit.setEnabled(False)
+            self.axesEdit.setVisible(False)
 
 
         self.nicknameEdit.setText(', '.join(str(info.nickname) for info in self.current_infos))
@@ -216,19 +241,10 @@ class DatasetInfoEditorWidget(QDialog):
             model.setData( model.index( absIndex, 0 ), 0, Qt.UserRole-1 )
             model.setData( model.index( relIndex, 0 ), 0, Qt.UserRole-1 )
 
-    @property
-    def axis_selectors(self):
-        return [getattr(self, f"axesSelector_{index}") for index in range(5)]
-
     def get_new_axes_tags(self):
-        new_axes_keys = ''
-        for axis_selector in self.axis_selectors:
-            if not axis_selector.isVisible():
-                break
-            new_axes_keys += axis_selector.currentText()
-        if len(set(new_axes_keys)) != len(new_axes_keys):
-            raise InvalidDatasetinfoException(f"Repeated axes: {new_axes_keys}")
-        return vigra.defaultAxistags(new_axes_keys) if new_axes_keys else None
+        if self.axesEdit.isEnabled() and self.axesEdit.text():
+            return vigra.defaultAxistags(self.axesEdit.text())
+        return None
 
     def accept(self):
         try:

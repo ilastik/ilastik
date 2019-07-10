@@ -55,67 +55,31 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="1" colspan="2">
 
-      <layout class="QGridLayout" name="axesComboBoxes">
-       <item row="0" column="0">
-          <widget class="QComboBox" name="axesSelector_0">
-            <item> <property name="text"> <string>x</string> </property> </item>
-            <item> <property name="text"> <string>y</string> </property> </item>
-            <item> <property name="text"> <string>z</string> </property> </item>
-            <item> <property name="text"> <string>t</string> </property> </item>
-            <item> <property name="text"> <string>c</string> </property> </item>
-          </widget>
-       </item>
-       <item row="0" column="1">
-          <widget class="QComboBox" name="axesSelector_1">
-            <item> <property name="text"> <string>x</string> </property> </item>
-            <item> <property name="text"> <string>y</string> </property> </item>
-            <item> <property name="text"> <string>z</string> </property> </item>
-            <item> <property name="text"> <string>t</string> </property> </item>
-            <item> <property name="text"> <string>c</string> </property> </item>
-          </widget>
-       </item>
-       <item row="0" column="2">
-          <widget class="QComboBox" name="axesSelector_2">
-            <item> <property name="text"> <string>x</string> </property> </item>
-            <item> <property name="text"> <string>y</string> </property> </item>
-            <item> <property name="text"> <string>z</string> </property> </item>
-            <item> <property name="text"> <string>t</string> </property> </item>
-            <item> <property name="text"> <string>c</string> </property> </item>
-          </widget>
-       </item>
-       <item row="0" column="3">
-          <widget class="QComboBox" name="axesSelector_3">
-            <item> <property name="text"> <string>x</string> </property> </item>
-            <item> <property name="text"> <string>y</string> </property> </item>
-            <item> <property name="text"> <string>z</string> </property> </item>
-            <item> <property name="text"> <string>t</string> </property> </item>
-            <item> <property name="text"> <string>c</string> </property> </item>
-          </widget>
-       </item>
-       <item row="0" column="4">
-          <widget class="QComboBox" name="axesSelector_4">
-            <item> <property name="text"> <string>x</string> </property> </item>
-            <item> <property name="text"> <string>y</string> </property> </item>
-            <item> <property name="text"> <string>z</string> </property> </item>
-            <item> <property name="text"> <string>t</string> </property> </item>
-            <item> <property name="text"> <string>c</string> </property> </item>
-          </widget>
-       </item>
-       <item row="0" column="5" colspan="1">
-          <widget class="QLineEdit" name="multi_axes_display">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-          </widget>
-       </item>
-      </layout>
-
+     <item row="3" column="1">
+      <widget class="QLineEdit" name="axesEdit">
+      </widget>
      </item>
+
+     <item row="3" column="2">
+      <widget class="QLineEdit" name="multi_axes_display">
+      </widget>
+     </item>
+
+      <item row="4" column="1" colspan="5">
+       <widget class="QLabel" name="axes_error_display">
+        <property name="styleSheet">
+         <string notr="true">color: red; font-style: italic</string>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+       </widget>
+      </item>
+
      <item row="5" column="0">
       <widget class="QLabel" name="label_9">
        <property name="sizePolicy">
@@ -392,7 +356,7 @@
  </customwidgets>
  <tabstops>
   <tabstop>nicknameEdit</tabstop>
-  <!--<tabstop>axesEdit</tabstop>-->
+  <tabstop>axesEdit</tabstop>
   <tabstop>rangeMinSpinBox</tabstop>
   <tabstop>rangeMaxSpinBox</tabstop>
   <tabstop>clearRangeButton</tabstop>
