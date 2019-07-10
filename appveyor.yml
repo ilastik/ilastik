@@ -4,6 +4,8 @@ environment:
   ENV_NAME: test-env
   # set miniconda version explicitly
   MINICONDA: C:\Miniconda37-x64
+  IlASTIK_ROOT: C:\ilastik
+  VOLUMINA_SHOW_3D_WIDGET: 0
 
 
 install:
@@ -11,33 +13,24 @@ install:
   - cmd: where conda
   - cmd: conda config --set always_yes yes --set changeps1 no
   - cmd: conda update -q conda
-  - cmd: conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers pytest-qt
-  # Remove the conda ilastik-meta
-  # --force in order not to remove/update anything else
-  - cmd: conda remove -n %ENV_NAME% --force ilastik-meta
-  - cmd: CALL activate %ENV_NAME%
-  - cmd: cd \
   # Get the current master of all submodules
-  - cmd: git clone https://github.com/ilastik/ilastik-meta c:\ilastik\ilastik-meta
-  - cmd: cd ilastik\ilastik-meta
+  - cmd: git clone https://github.com/ilastik/ilastik-meta %IlASTIK_ROOT%\ilastik-meta
+  - cmd: cd %IlASTIK_ROOT%\ilastik-meta
   - cmd: git submodule update --init --recursive
   - cmd: git submodule foreach "git checkout master"
-  - ps: rm -Force -Recurse c:\ilastik\ilastik-meta\ilastik\
+  - ps: rm -Force -Recurse $env:IlASTIK_ROOT\ilastik-meta\ilastik\
   # replace with whatever version of ilastik triggered the appveyor
-  - ps: cp -recurse C:\projects\ilastik c:\ilastik\ilastik-meta\ilastik
+  - ps: cp -recurse C:\projects\ilastik $env:IlASTIK_ROOT\ilastik-meta\ilastik
   # Point to the current ilastik-meta
-  - cmd: set ILASTIK_PTH=%MINICONDA%/envs/%ENV_NAME%/Lib/site-packages/ilastik-meta.pth
-  - cmd: echo C:/ilastik/ilastik-meta/lazyflow > %ILASTIK_PTH%
-  - cmd: echo C:/ilastik/ilastik-meta/volumina >> %ILASTIK_PTH%
-  - cmd: echo C:/ilastik/ilastik-meta/ilastik >> %ILASTIK_PTH%
+  - python ilastik/scripts/devenv.py create -n %ENV_NAME% -c ilastik-forge conda-forge -p ilastik-dependencies-no-solvers
 
 build: off
 
 test_script:
-  - cmd: set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
+  - cmd: set PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - cmd: CALL activate %ENV_NAME%
-  - cmd: cd \
-  - cmd: cd ilastik\ilastik-meta\ilastik\tests
+  - cmd: cd %IlASTIK_ROOT%\ilastik-meta\ilastik\tests
+  - cmd: set VOLUMINA_SHOW_3D_WIDGET=0
   - cmd: pytest --run-legacy-gui
 
 # on_finish:

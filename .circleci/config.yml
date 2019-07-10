@@ -8,14 +8,14 @@ jobs:
     environment:
       CONDA_ROOT: /home/ubuntu/miniconda
       TEST_ENV_NAME: test-env
-      TEST_ENV_PREFIX: /home/ubuntu/miniconda/envs/test-env
+      ILASTIK_ROOT: /home/ubuntu/ilastik
+      VOLUMINA_SHOW_3D_WIDGET: 0
     docker:
     - image: circleci/build-image:ubuntu-14.04-XXL-upstart-1189-5614f37
       command: /sbin/init
     steps:
     # add interpolated environment variables (CircleCI 2.0 does not support direct interpolation)
-    - run: echo 'export PATH=${TEST_ENV_PREFIX}/bin:${CONDA_ROOT}/bin:${PATH}' >> $BASH_ENV
-    - run: echo 'export PYTHONPATH=${PYTHONPATH}:${TEST_ENV_PREFIX}/ilastik-meta/lazyflow:${TEST_ENV_PREFIX}/ilastik-meta/volumina:${TEST_ENV_PREFIX}/ilastik-meta/ilastik' >> $BASH_ENV
+    - run: echo 'export PATH=${CONDA_ROOT}/bin:${PATH}' >> $BASH_ENV
     - checkout
     # Prepare for artifact and test results  collection equivalent to how it was done on 1.0.
     # In many cases you can simplify this from what is generated here.
@@ -25,12 +25,12 @@ jobs:
     - restore_cache:
         keys:
         # This branch if available
-        - v1.33b3-dep-{{ .Branch }}-
+        - v1.33b4-dep-{{ .Branch }}-
         # Default branch if not
-        - v1.33b3-dep-master-
+        - v1.33b4-dep-master-
         # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
-        - v1.33b3-dep-
-    - run: |
+        - v1.33b4-dep-
+    - run: >
         if [[ ! -d ${CONDA_ROOT} ]]; then
             echo "Installing Miniconda...";
             wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh &&
@@ -38,26 +38,32 @@ jobs:
         else
             echo "Using cached Miniconda install";
         fi
-    - run: |
-        if [ ! -d ${TEST_ENV_PREFIX} ]; then
-            conda create -y -n ${TEST_ENV_NAME} -c ilastik-forge -c conda-forge pytest-qt ilastik-dependencies-no-solvers;
-        else
-            conda install -y -n ${TEST_ENV_NAME} -c ilastik-forge -c conda-forge pytest-qt ilastik-dependencies-no-solvers;
-        fi
-    - run: rm -rf ${TEST_ENV_PREFIX}/ilastik-meta
-    - run: git clone http://github.com/ilastik/ilastik-meta ${TEST_ENV_PREFIX}/ilastik-meta
-    - run: cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule init
-    - run: cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule update --recursive
-    - run: cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule foreach "git checkout master"
-    - run: rm -rf ${TEST_ENV_PREFIX}/ilastik-meta/ilastik
-    - run: ln -s `pwd` ${TEST_ENV_PREFIX}/ilastik-meta/ilastik
+    - run: conda init bash
+    - run: git clone http://github.com/ilastik/ilastik-meta ${ILASTIK_ROOT}/ilastik-meta
+    - run: >
+        cd ${ILASTIK_ROOT}/ilastik-meta &&
+        git submodule init &&
+        git submodule update --recursive &&
+        git submodule foreach "git checkout master"
+    - run: >
+        rm -rf ${ILASTIK_ROOT}/ilastik-meta/ilastik &&
+        ln -s `pwd` ${ILASTIK_ROOT}/ilastik-meta/ilastik
+    - run: >
+        conda activate base &&
+        cd ${ILASTIK_ROOT}/ilastik-meta &&
+        python ilastik/scripts/devenv.py create -n ${TEST_ENV_NAME}
+        -p pytest-qt ilastik-dependencies-no-solvers
+        -c ilastik-forge conda-forge defaults
     # Save dependency cache
     - save_cache:
-        key: v1.33b3-dep-{{ .Branch }}-{{ epoch }}
+        key: v1.33b4-dep-{{ .Branch }}-{{ epoch }}
         paths:
         - /home/ubuntu/miniconda
     # Test
-    - run: cd ${TEST_ENV_PREFIX}/ilastik-meta/ilastik/tests && pytest --run-legacy-gui
+    - run: >
+        conda activate ${TEST_ENV_NAME} &&
+        cd ${ILASTIK_ROOT}/ilastik-meta/ilastik/tests &&
+        pytest --run-legacy-gui
     # Teardown
     #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
     # Save test results
