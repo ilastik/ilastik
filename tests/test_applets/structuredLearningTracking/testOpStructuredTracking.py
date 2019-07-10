@@ -2,6 +2,7 @@ import pytest
 from hytra.core.hypothesesgraph import HypothesesGraph
 from hytra.core.probabilitygenerator import Traxel
 from ilastik.applets.tracking.structured.opStructuredTracking import (
+    AnnotationHypothesisgraphMismatchException,
     OpStructuredTracking,
 )
 
@@ -130,9 +131,9 @@ def test_annotations_insertion(tracklet_graph, annotations):
 
 
 def test_annotation_mismatch_raises(tracklet_graph, annotations):
-    # add annotations that is not represented in the graph:
+    """add annotations that is not represented in the graph"""
     annotations['labels'][3][4] = {1, 3}
-    with pytest.raises(AssertionError):
+    with pytest.raises(AnnotationHypothesisgraphMismatchException):
         OpStructuredTracking.insertAnnotationsToHypothesesGraph(
             tracklet_graph, annotations
         )

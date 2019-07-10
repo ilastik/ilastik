@@ -27,6 +27,10 @@ except ImportError:
         logger.warning("Could not find any ILP solver")
 
 
+class AnnotationHypothesisgraphMismatchException(Exception):
+    pass
+
+
 class OpStructuredTracking(OpConservationTracking):
     Labels = InputSlot(stype=Opaque, rtype=List)
     Divisions = InputSlot(stype=Opaque, rtype=List)
@@ -568,28 +572,41 @@ class OpStructuredTracking(OpConservationTracking):
         labels = annotations['labels']
         divisions = annotations['divisions']
 
-        for t in list(labels.keys()):
+        for t in labels.keys():
             for obj in labels[t]:
                 trackSet = labels[t][obj]
-                if (not -1 in trackSet) and str(obj) in list(traxelToUuidMap[str(t)].keys()):
+                if (misdetectionLabel not in trackSet) and str(obj) in list(traxelToUuidMap[str(t)].keys()):
                     traxelgraph._graph.nodes[(t,obj)]['value'] = len(trackSet)
 
-        for t in list(labels.keys()):
-            if t < max(list(labels.keys())):
-                for source in list(labels[t].keys()):
-                    if (misdetectionLabel not in labels[t][source]) and t+1 in list(labels.keys()):
-                        for dest in list(labels[t+1].keys()):
-                            if (misdetectionLabel not in labels[t+1][dest]):
-                                intersectSet = labels[t][source].intersection(labels[t+1][dest])
-                                lenIntersectSet = len(intersectSet)
-                                if lenIntersectSet > 0:
-                                    assert ((t, source), (t+1, dest)) in traxelgraph._graph.edges.keys(), (
-                                        "Annotated arc that you are setting 'value' of is NOT in the hypotheses graph. " + \
-                                        "Your two objects have either very dissimilar features or they are spatially distant. " + \
-                                        "Increase maxNearestNeighbors in your project or force the addition of this arc by changing the code here :)" + \
-                                        "source ---- dest "+str(source)+"--->"+str(dest)+"       : "+str(lenIntersectSet)+" , "+str(intersectSet))
-                                    traxelgraph._graph.edges[((t,source), (t+1,dest))]['value'] = lenIntersectSet
+        # over time
+        for t in sorted(labels.keys())[:-1:]:
+            for source_object_id in labels[t].keys():
 
+                # check not marked as misdetection, if there is an annotation at all in the next frame
+                if (misdetectionLabel in labels[t][source_object_id]) or (t+1 not in labels.keys()):
+                    continue
+
+                # check object ids in the following frame
+                for destination_object_id in labels[t+1].keys():
+                    # skip if misdetection inside
+                    if (misdetectionLabel in labels[t+1][destination_object_id]):
+                        continue
+
+                    intersectSet = labels[t][source_object_id].intersection(labels[t+1][destination_object_id])
+                    lenIntersectSet = len(intersectSet)
+                    if lenIntersectSet > 0:
+                        if ((t, source_object_id), (t+1, destination_object_id)) not in traxelgraph._graph.edges.keys():
+                            raise AnnotationHypothesisgraphMismatchException(
+                                "Annotated arc that you are setting 'value' of is NOT in the hypotheses graph. "
+                                "Your two objects have either very dissimilar features or they are spatially distant. "
+                                "Increase maxNearestNeighbors in your project or force the addition of this arc by changing the code here :)\n"
+                                f"source_object_id({source_object_id!r}) ----> destination_object_id({source_object_id!r}"
+                                f"Annotated track ids: {intersectSet!r}\n"
+                            )
+
+                        traxelgraph._graph.edges[((t, source_object_id), (t+1, destination_object_id))]['value'] = lenIntersectSet
+
+        # check divisions
         for parentTrack in list(divisions.keys()):
             t = divisions[parentTrack][1]
             childrenTracks = divisions[parentTrack][0]
