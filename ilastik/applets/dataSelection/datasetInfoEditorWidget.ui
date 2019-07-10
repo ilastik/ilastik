@@ -59,7 +59,7 @@
 
       <layout class="QGridLayout" name="axesComboBoxes">
        <item row="0" column="0">
-          <widget class="QComboBox" name="axesEdit_0">
+          <widget class="QComboBox" name="axesSelector_0">
             <item> <property name="text"> <string>x</string> </property> </item>
             <item> <property name="text"> <string>y</string> </property> </item>
             <item> <property name="text"> <string>z</string> </property> </item>
@@ -68,7 +68,7 @@
           </widget>
        </item>
        <item row="0" column="1">
-          <widget class="QComboBox" name="axesEdit_1">
+          <widget class="QComboBox" name="axesSelector_1">
             <item> <property name="text"> <string>x</string> </property> </item>
             <item> <property name="text"> <string>y</string> </property> </item>
             <item> <property name="text"> <string>z</string> </property> </item>
@@ -77,7 +77,7 @@
           </widget>
        </item>
        <item row="0" column="2">
-          <widget class="QComboBox" name="axesEdit_2">
+          <widget class="QComboBox" name="axesSelector_2">
             <item> <property name="text"> <string>x</string> </property> </item>
             <item> <property name="text"> <string>y</string> </property> </item>
             <item> <property name="text"> <string>z</string> </property> </item>
@@ -86,7 +86,7 @@
           </widget>
        </item>
        <item row="0" column="3">
-          <widget class="QComboBox" name="axesEdit_3">
+          <widget class="QComboBox" name="axesSelector_3">
             <item> <property name="text"> <string>x</string> </property> </item>
             <item> <property name="text"> <string>y</string> </property> </item>
             <item> <property name="text"> <string>z</string> </property> </item>
@@ -95,7 +95,7 @@
           </widget>
        </item>
        <item row="0" column="4">
-          <widget class="QComboBox" name="axesEdit_4">
+          <widget class="QComboBox" name="axesSelector_4">
             <item> <property name="text"> <string>x</string> </property> </item>
             <item> <property name="text"> <string>y</string> </property> </item>
             <item> <property name="text"> <string>z</string> </property> </item>

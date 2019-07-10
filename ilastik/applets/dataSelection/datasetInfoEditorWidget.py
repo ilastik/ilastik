@@ -102,8 +102,8 @@ class DatasetInfoEditorWidget(QDialog):
             selector_keys = ''
             self.multi_axes_display.setToolTip("Select lanes with same number of axes to change their interpretation here")
 
-        for axis_index in range(5):
-            axis_selector = getattr(self, f"axesEdit_{axis_index}")
+        for axis_index, axis_selector in enumerate(self.axis_selectors):
+            axis_selector = self.axis_selectors[axis_index]
             within_bounds = axis_index < len(selector_keys)
             axis_selector.setVisible(within_bounds)
             axis_selector.setEnabled(within_bounds)
@@ -126,14 +126,14 @@ class DatasetInfoEditorWidget(QDialog):
         self.normalizeDisplayComboBox.addItem("Default", userData=None)
         self.normalizeDisplayComboBox.currentIndexChanged.connect(self._handleNormalizeDisplayChanged)
         current_normalize_display = {info.normalizeDisplay for info in infos}
-        normalize = len(current_normalize_display) == 1 and current_normalize_display.pop()
+        normalize = current_normalize_display.pop() if len(current_normalize_display) == 1 else None
 
         dranges = {info.drange for info in infos if info.drange is not None}
         if len(dranges) == 1:
             common_drange = dranges.pop()
             self.rangeMinSpinBox.setValue(common_drange[0])
             self.rangeMaxSpinBox.setValue(common_drange[1])
-        elif normalize:
+        else:
             normalize = None
 
         selected_normalize_index = self.normalizeDisplayComboBox.findData(normalize)
@@ -216,10 +216,13 @@ class DatasetInfoEditorWidget(QDialog):
             model.setData( model.index( absIndex, 0 ), 0, Qt.UserRole-1 )
             model.setData( model.index( relIndex, 0 ), 0, Qt.UserRole-1 )
 
+    @property
+    def axis_selectors(self):
+        return [getattr(self, f"axesSelector_{index}") for index in range(5)]
+
     def get_new_axes_tags(self):
         new_axes_keys = ''
-        for axis_index in range(5):
-            axis_selector = getattr(self, f"axesEdit_{axis_index}")
+        for axis_selector in self.axis_selectors:
             if not axis_selector.isVisible():
                 break
             new_axes_keys += axis_selector.currentText()
