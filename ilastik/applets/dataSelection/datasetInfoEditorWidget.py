@@ -23,7 +23,8 @@ import os
 import copy
 from enum import Enum, unique
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
+from numbers import Number
 
 import h5py
 import numpy
@@ -70,33 +71,6 @@ class DatasetInfoEditorWidget(QDialog):
     This dialog allows the user to edit the settings of one **OR MORE** datasets for a given role.
     """
 
-    def handle_invalid_axeskeys(self, message:str):
-        self.axes_error_display.setText(message)
-        self.okButton.setEnabled(False)
-
-    def handle_valid_axeskeys(self):
-        self.axes_error_display.setText("")
-        self.okButton.setEnabled(True)
-
-    def validate_new_axiskeys(self, new_axiskeys:str):
-        if not new_axiskeys:
-            return self.handle_valid_axeskeys()
-
-        dataset_dims = self.axesEdit.maxLength()
-        if 0 != len(new_axiskeys) < dataset_dims:
-            return self.handle_invalid_axeskeys(f"Dataset has {dataset_dims} dimensions, so you need to provide that many axes keys")
-
-        if not set(new_axiskeys).issubset(set("xyztc")):
-            return self.handle_invalid_axeskeys("Axes must be a combination of \"xyztc\"")
-
-        if len(set(new_axiskeys)) < len(new_axiskeys):
-            return self.handle_invalid_axeskeys("Repeated axis keys")
-
-        if not set('xy').issubset(set(new_axiskeys)):
-            return self.handle_invalid_axeskeys("x and y need to be present")
-
-        self.handle_valid_axeskeys()
-
     def __init__(self, parent, infos:List[DatasetInfo], projectFileDir:str):
         """
         :param infos: DatasetInfo infos to be edited by this widget
@@ -112,10 +86,12 @@ class DatasetInfoEditorWidget(QDialog):
         uiFilePath = os.path.join( localDir, 'datasetInfoEditorWidget.ui' )
         uic.loadUi(uiFilePath, self)
 
-        self.rangeMinSpinBox.setSpecialValueText("--")
-        self.rangeMaxSpinBox.setSpecialValueText("--")
-        self.clearRangeButton.clicked.connect(self._clearNormalizationRanges)
-        self._clearNormalizationRanges()
+        self.rangeMinSpinBox.valueChanged.connect(self.validate_new_data)
+        self.rangeMaxSpinBox.setMinimum(max(get_dtype_info(info.dtype).min for info in infos))
+        self.rangeMaxSpinBox.valueChanged.connect(self.validate_new_data)
+        self.rangeMaxSpinBox.setMaximum(min(get_dtype_info(info.dtype).max for info in infos))
+        self.clearRangeButton.clicked.connect(self.clearNormalization)
+        self.clearNormalization()
 
         self.okButton.clicked.connect(self.accept)
         self.cancelButton.clicked.connect(self.reject)
@@ -125,14 +101,15 @@ class DatasetInfoEditorWidget(QDialog):
         self.multi_axes_display.setText("Current: " + ", ".join(input_axiskeys))
         if all(len(keys) == len(input_axiskeys[0]) for keys in input_axiskeys):
             self.axesEdit.setMaxLength(len(input_axiskeys[0]))
-            self.axesEdit.textChanged.connect(self.validate_new_axiskeys)
+            self.axesEdit.textChanged.connect(self.validate_new_data)
             different_axiskeys = set(input_axiskeys)
             if len(different_axiskeys) == 1:
                 self.axesEdit.setText(different_axiskeys.pop())
         else:
-            self.multi_axes_display.setToolTip("Select lanes with same number of axes to change their interpretation here")
+            axes_uneditable_reason = "Select lanes with same number of axes to change their interpretation here"
+            self.multi_axes_display.setToolTip(axes_uneditable_reason)
+            self.axesEdit.setToolTip(axes_uneditable_reason)
             self.axesEdit.setEnabled(False)
-            self.axesEdit.setVisible(False)
 
 
         self.nicknameEdit.setText(', '.join(str(info.nickname) for info in self.current_infos))
@@ -246,62 +223,122 @@ class DatasetInfoEditorWidget(QDialog):
             return vigra.defaultAxistags(self.axesEdit.text())
         return None
 
+    def get_new_normalization(self) -> bool:
+        return self.normalizeDisplayComboBox.currentData()
+
+    def get_new_drange(self) -> Tuple[Number, Number]:
+        if self.get_new_normalization():
+            return (self.rangeMinSpinBox.value(), self.rangeMaxSpinBox.value())
+        return None
+
+    def validate_new_data(self, *args, **kwargs):
+        invalid_inputs = False
+
+        axis_error_msg = ""
+        new_axiskeys = self.axesEdit.text()
+        if new_axiskeys:
+            dataset_dims = self.axesEdit.maxLength()
+            if 0 != len(new_axiskeys) < dataset_dims:
+                axis_error_msg = f"Dataset has {dataset_dims} dimensions, so you need to provide that many axes keys"
+            elif not set(new_axiskeys).issubset(set("xyztc")):
+                axis_error_msg = "Axes must be a combination of \"xyztc\""
+            elif len(set(new_axiskeys)) < len(new_axiskeys):
+                axis_error_msg = "Repeated axis keys"
+            elif not set('xy').issubset(set(new_axiskeys)):
+                axis_error_msg = "x and y need to be present"
+        self.axes_error_display.setText(axis_error_msg)
+        invalid_inputs |= bool(axis_error_msg)
+
+
+        drange_error_msg = ""
+        new_drange = self.get_new_drange()
+        if self.get_new_normalization() and new_drange[0] >= new_drange[1]:
+                drange_error_msg = "MIN must be lesser than MAX."
+        self.drange_error_display.setText(drange_error_msg)
+        invalid_inputs = invalid_inputs or bool(drange_error_msg)
+
+        self.okButton.setEnabled(not invalid_inputs)
+
     def accept(self):
-        try:
-            saved_datasetinfos = []
-            normalize = self.normalizeDisplayComboBox.currentData()
-            new_drange = (self.rangeMinSpinBox.value(), self.rangeMaxSpinBox.value())
-            if normalize:
-                if new_drange[0] >= new_drange[1]:
-                    raise InvalidDatasetinfoException("Can't apply data range values: Data range MIN must be lesser than MAX.")
-                for info in self.current_infos:
-                    dtype_info = get_dtype_info(info.dtype)
-                    if new_drange[0] < dtype_info.min or new_drange[1] > dtype_info.max:
-                        raise InvalidDatasetinfoException(f"Data range values {new_drange} conflicts with the data type in lane {lane_idx}, "
-                                        f"which has range {(dtype_info.min, dtype_info.max)}")
+        normalize = self.get_new_normalization()
+        new_drange = self.get_new_drange()
+        newStorageLocation = self.storageComboBox.currentData()
+        new_display_mode = self.displayModeComboBox.currentData()
 
-            newStorageLocation = self.storageComboBox.currentData()
-            new_display_mode = self.displayModeComboBox.currentData()
+        self.edited_infos = []
+        for info in self.current_infos:
+            if self.internalDatasetNameComboBox.isEnabled():
+                pathComponents = PathComponents(info.filePath)
+                pathComponents.internalPath = self.internalDatasetNameComboBox.currentText()
+                filePath = pathComponents.totalPath()
+            else:
+                filePath = info.filePath
 
-            self.edited_infos = []
-            for info in self.current_infos:
-                if self.internalDatasetNameComboBox.isEnabled():
-                    pathComponents = PathComponents(info.filePath)
-                    pathComponents.internalPath = self.internalDatasetNameComboBox.currentText()
-                    filePath = pathComponents.totalPath()
+            if newStorageLocation == StorageLocation.ProjectFile:
+                location = DatasetInfo.Location.ProjectInternal
+            elif newStorageLocation == StorageLocation.Default:
+                location = info.location
+            else:
+                location = DatasetInfo.Location.FileSystem
+                if newStorageLocation == StorageLocation.RelativeLink:
+                    filePath = Path(filePath).absolute().relative_to(self.projectFileDir).as_posix()
                 else:
-                    filePath = info.filePath
+                    filePath = Path(filePath).absolute().as_posix()
 
-                if newStorageLocation == StorageLocation.ProjectFile:
-                    location = DatasetInfo.Location.ProjectInternal
-                elif newStorageLocation == StorageLocation.Default:
-                    location = info.location
-                else:
-                    location = DatasetInfo.Location.FileSystem
-                    if newStorageLocation == StorageLocation.RelativeLink:
-                        filePath = Path(filePath).absolute().relative_to(self.projectFileDir).as_posix()
-                    else:
-                        filePath = Path(filePath).absolute().as_posix()
+            edited_info = info.modified_with(
+                nickname=self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname,
+                axistags=self.get_new_axes_tags() or info.axistags,
+                normalizeDisplay=info.normalizeDisplay if normalize is None else normalize,
+                drange=(info.dtype(new_drange[0]), info.dtype(new_drange[1])) if normalize else info.drange,
+                display_mode=new_display_mode if new_display_mode != 'default' else info.display_mode,
+                location=location,
+                filePath=filePath)
+            self.edited_infos.append(edited_info)
+        super(DatasetInfoEditorWidget, self).accept()
 
-                edited_info = info.modified_with(
-                    nickname=self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname,
-                    axistags=self.get_new_axes_tags() or info.axistags,
-                    normalizeDisplay=info.normalizeDisplay if normalize is None else normalize,
-                    drange=(info.dtype(new_drange[0]), info.dtype(new_drange[1])) if normalize else info.drange,
-                    display_mode=new_display_mode if new_display_mode != 'default' else info.display_mode,
-                    location=location,
-                    filePath=filePath)
-                self.edited_infos.append(edited_info)
-            super(DatasetInfoEditorWidget, self).accept()
-        except InvalidDatasetinfoException as e:
-            QMessageBox.warning(self, "File selection error", str(e))
+    def _do_accept(self, normalize:bool, new_drange:Tuple[Number, Number], newStorageLocation):
+        pass
 
-    def _clearNormalizationRanges(self):
+    def clearNormalization(self):
+        selected_normalize_index = self.normalizeDisplayComboBox.findData(None)
+        self.normalizeDisplayComboBox.setCurrentIndex(selected_normalize_index)
         self.rangeMinSpinBox.setValue(self.rangeMinSpinBox.minimum())
-        self.rangeMaxSpinBox.setValue(self.rangeMaxSpinBox.minimum())
+        self.rangeMaxSpinBox.setValue(self.rangeMaxSpinBox.maximum())
 
     def _handleNormalizeDisplayChanged(self):
         normalize = bool(self.normalizeDisplayComboBox.currentData())
         self.rangeMinSpinBox.setEnabled(normalize)
         self.rangeMaxSpinBox.setEnabled(normalize)
         self.clearRangeButton.setEnabled(normalize)
+
+    def handle_invalid_axeskeys(self, message:str):
+        self.axes_error_display.setText(message)
+        self.okButton.setEnabled(False)
+
+    def handle_valid_edition(self):
+        self.axes_error_display.setText("")
+        self.okButton.setEnabled(True)
+
+    def validate_data(self, *args, **kwargs):
+        if not new_axiskeys:
+            return self.handle_valid_axeskeys()
+
+        dataset_dims = self.axesEdit.maxLength()
+        if 0 != len(new_axiskeys) < dataset_dims:
+            return self.handle_invalid_axeskeys(f"Dataset has {dataset_dims} dimensions, so you need to provide that many axes keys")
+
+        if not set(new_axiskeys).issubset(set("xyztc")):
+            return self.handle_invalid_axeskeys("Axes must be a combination of \"xyztc\"")
+
+        if len(set(new_axiskeys)) < len(new_axiskeys):
+            return self.handle_invalid_axeskeys("Repeated axis keys")
+
+        if not set('xy').issubset(set(new_axiskeys)):
+            return self.handle_invalid_axeskeys("x and y need to be present")
+
+        self.handle_valid_axeskeys()
+
+    def validate_new_drange(self, new_value):
+        if not self.normalizeDisplayComboBox.currentData():
+            self.okButton.setEnabled()
+

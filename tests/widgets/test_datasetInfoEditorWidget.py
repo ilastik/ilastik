@@ -27,6 +27,11 @@ def image_yxc_path():
     os.remove(path)
 
 @pytest.fixture(scope='function')
+def image_yxc_info(image_yxc_path):
+    return DatasetInfo.default(image_yxc_path)
+
+
+@pytest.fixture(scope='function')
 def another_image_yxc_path():
     path =  download_test_image("http://data.ilastik.org/pixel-classification/2d/c_cells_2.png", "c_cells_2.png")
     yield path
@@ -59,7 +64,6 @@ def create_and_modify_widget(
     if axiskeys:
         assert widget.axesEdit.isVisible()
         assert widget.axesEdit.isEnabled()
-        assert widget.axesEdit.maxLength() == len(axiskeys)
         widget.axesEdit.setText(axiskeys)
 
     if nickname:
@@ -167,7 +171,7 @@ def test_cannot_edit_axis_tags_on_images_of_different_dimensionality(qtbot, imag
     project_file_dir = str(Path(image_yxc_path).parent)
 
     widget = create_and_modify_widget(qtbot, [info_1, info_2], project_file_dir)
-    assert not widget.axesEdit.isEnabled() and not widget.axesEdit.isVisible()
+    assert not widget.axesEdit.isEnabled()
 
     edited_infos = accept_widget(qtbot, widget)
     assert edited_infos[0].axiskeys == info_1.axiskeys  and edited_infos[1].axiskeys == info_2.axiskeys
@@ -190,3 +194,16 @@ def test_immediate_accept_does_not_change_values(qtbot, image_yxc_path, image_zy
     assert info_1.normalizeDisplay == edited_infos[0].normalizeDisplay == False
     assert info_2.normalizeDisplay == edited_infos[1].normalizeDisplay == True
     assert info_2.drange == edited_infos[1].drange == (56, 78)
+
+
+def test_too_few_axeskeys_shows_error(qtbot, image_yxc_info):
+    widget = create_and_modify_widget(qtbot, [image_yxc_info], '/some/path', axiskeys="xy")
+    assert widget.axes_error_display.text() != ''
+
+def test_garbled_axeskeys_shows_error(qtbot, image_yxc_info):
+    widget = create_and_modify_widget(qtbot, [image_yxc_info], '/some/path', axiskeys="ab")
+    assert widget.axes_error_display.text() != ''
+
+def test_repeated_axeskeys_shows_error(qtbot, image_yxc_info):
+    widget = create_and_modify_widget(qtbot, [image_yxc_info], '/some/path', axiskeys="yy")
+    assert widget.axes_error_display.text() != ''
