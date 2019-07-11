@@ -28,7 +28,15 @@ except ImportError:
 
 
 class AnnotationHypothesisgraphMismatchException(Exception):
-    pass
+    def __init__(self, source_object_id, track_ids):
+        msg = (
+            "Annotated arc that you are setting 'value' of is NOT in the hypotheses graph. "
+            "Your two objects have either very dissimilar features or they are spatially distant. "
+            "Increase maxNearestNeighbors in your project or force the addition of this arc by changing the code here :)\n"
+            f"source_object_id({source_object_id!r}) ----> destination_object_id({source_object_id!r}"
+            f"Annotated track ids: {track_ids!r}\n"
+        )
+        super().__init__(msg)
 
 
 class OpStructuredTracking(OpConservationTracking):
@@ -596,13 +604,7 @@ class OpStructuredTracking(OpConservationTracking):
                     lenIntersectSet = len(intersectSet)
                     if lenIntersectSet > 0:
                         if ((t, source_object_id), (t+1, destination_object_id)) not in traxelgraph._graph.edges.keys():
-                            raise AnnotationHypothesisgraphMismatchException(
-                                "Annotated arc that you are setting 'value' of is NOT in the hypotheses graph. "
-                                "Your two objects have either very dissimilar features or they are spatially distant. "
-                                "Increase maxNearestNeighbors in your project or force the addition of this arc by changing the code here :)\n"
-                                f"source_object_id({source_object_id!r}) ----> destination_object_id({source_object_id!r}"
-                                f"Annotated track ids: {intersectSet!r}\n"
-                            )
+                            raise AnnotationHypothesisgraphMismatchException(source_object_id, intersectSet)
 
                         traxelgraph._graph.edges[((t, source_object_id), (t+1, destination_object_id))]['value'] = lenIntersectSet
 
