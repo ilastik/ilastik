@@ -6,7 +6,7 @@ env:
   global:
     - CONDA_ROOT=$HOME/miniconda
     - TEST_ENV=test-env
-    - TEST_ENV_PREFIX=$CONDA_ROOT/envs/$TEST_ENV
+    - ILASTIK_ROOT=$HOME/ilastik
 
 cache:
   directories:
@@ -19,7 +19,6 @@ install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export MINICONDA=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh; fi
   - echo $CONDA_ROOT
   - echo $TEST_ENV
-  - echo $TEST_ENV_PREFIX
   - if [[ ! -d ${CONDA_ROOT} ]]; then
       echo "Installing Miniconda...";
       wget $MINICONDA -O miniconda.sh &&
@@ -35,24 +34,24 @@ install:
   # Useful for debugging any issues with conda
   # - conda info -a
 
-  - if [[ ! -d $TEST_ENV_PREFIX ]]; then
-      conda create -q -n $TEST_ENV -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers pytest-cov coveralls black;
-    else
-      conda install -y -n ${TEST_ENV} -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers pytest-cov coveralls black;
-    fi
-  # remove installed ilastik
-  - rm -rf ${TEST_ENV_PREFIX}/ilastik-meta
+  - conda env remove -n ${TEST_ENV}
   # install current master
-  - git clone http://github.com/ilastik/ilastik-meta ${TEST_ENV_PREFIX}/ilastik-meta
-  - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule init && git submodule update --recursive && git submodule foreach "git checkout master"
-  - rm -rf ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow
-  - ln -s $TRAVIS_BUILD_DIR ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow
+  - git clone http://github.com/ilastik/ilastik-meta ${ILASTIK_ROOT}/ilastik-meta
+  - cd ${ILASTIK_ROOT}/ilastik-meta && git submodule init && git submodule update --recursive && git submodule foreach "git checkout master"
+  - rm -rf ${ILASTIK_ROOT}/ilastik-meta/lazyflow
+  - ln -s $TRAVIS_BUILD_DIR ${ILASTIK_ROOT}/ilastik-meta/lazyflow
+  - conda activate base
+  - >
+    cd ${ILASTIK_ROOT}/ilastik-meta &&
+    python ilastik/scripts/devenv.py create -n ${TEST_ENV}
+    -p ilastik-dependencies-no-solvers pytest-cov coveralls black
+    -c ilastik-forge conda-forge defaults
 
 script:
   - conda activate $TEST_ENV
   - echo `which python`
   - echo `which pytest`
-  - cd ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow 
-  - pytest --capture=no --cov=lazyflow 
+  - cd ${ILASTIK_ROOT}/ilastik-meta/lazyflow
+  - pytest --capture=no --cov=lazyflow
   - coveralls || echo "Failed to submit coveralls"
   - cd $TRAVIS_BUILD_DIR && git diff --name-only --diff-filter=AM master.. | grep ".*\.py" | xargs black --check --line-length=120
