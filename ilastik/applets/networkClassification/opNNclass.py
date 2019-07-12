@@ -171,7 +171,8 @@ class OpNNClassification(Operator):
     BinaryModel = InputSlot()
     BinaryModelState = InputSlot()
     BinaryOptimizerState = InputSlot()
-    MaskCoordinates = InputSlot(level=1, optional=True)
+    MaskCoordinates = InputSlot(level=1, value=dict(z=(0, 0), y=(0, 0),
+                                                    x=(0, 0)))
 
     Classifier = OutputSlot()
     PredictionProbabilities = OutputSlot(
@@ -576,6 +577,7 @@ class OpPredictionPipeline(Operator):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass
 
+
 class OpValidationMask(Operator):
     Coordinates = InputSlot()
     RawImage = InputSlot()
@@ -584,15 +586,14 @@ class OpValidationMask(Operator):
     def __init__(self, *args, **kwargs):
         super(OpValidationMask, self).__init__(*args, **kwargs)
 
-        self.coord_roi = slice((0,),(0,))
+        self.coord_roi = slice((0,), (0,))
 
     def get_coordroi(self, coord_dict):
-        z = coord_dict['z_coord']
-        y = coord_dict['y_coord']
-        x = coord_dict['x_coord']
+        z = coord_dict['z']
+        y = coord_dict['y']
+        x = coord_dict['x']
 
         return slice((z[0], y[0], x[0], 0), (z[1], y[1], x[1], 1))
-
 
     def setupOutputs(self):
         self.Mask.meta.dtype = numpy.uint8
