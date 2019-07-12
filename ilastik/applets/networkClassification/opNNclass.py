@@ -171,8 +171,7 @@ class OpNNClassification(Operator):
     BinaryModel = InputSlot()
     BinaryModelState = InputSlot()
     BinaryOptimizerState = InputSlot()
-    MaskCoordinates = InputSlot(level=1, value=dict(z=(0, 0), y=(0, 0),
-                                                    x=(0, 0)))
+    MaskCoordinates = InputSlot(level=1, value=dict(z=(0, 0), y=(0, 0), x=(0, 0)))
 
     Classifier = OutputSlot()
     PredictionProbabilities = OutputSlot(
@@ -586,18 +585,18 @@ class OpValidationMask(Operator):
     def __init__(self, *args, **kwargs):
         super(OpValidationMask, self).__init__(*args, **kwargs)
 
-        self.coord_roi = slice((0,), (0,))
+        self.coord_roi = (slice(0,), slice(0,), slice(0,), slice(0,))
 
     def get_coordroi(self, coord_dict):
-        z = coord_dict['z']
-        y = coord_dict['y']
-        x = coord_dict['x']
+        z = coord_dict["z"]
+        y = coord_dict["y"]
+        x = coord_dict["x"]
 
-        return slice((z[0], y[0], x[0], 0), (z[1], y[1], x[1], 1))
+        return (slice(z[0], z[1]), slice(y[0], y[1]), slice(x[0], x[1]), slice(0, 1))
 
     def setupOutputs(self):
         self.Mask.meta.dtype = numpy.uint8
-        self.Mask.meta.axistags = vigra.defaultAxistags('zyxc')
+        self.Mask.meta.axistags = vigra.defaultAxistags("zyxc")
         self.Mask.meta.shape = self.RawImage.meta.shape
 
     def execute(self, slot, subindex, roi, result):
@@ -606,19 +605,14 @@ class OpValidationMask(Operator):
 
         self.coord_roi = self.get_coordroi(self.Coordinates.value)
 
-        intsec = getIntersection((roi.start, roi.stop),
-                       (self.coord_roi.start, self.coord_roi.stop),
-                        assertIntersect=False)
+        intsec = getIntersection(
+            (roi.start, roi.stop), ([c.start for c in self.coord_roi], [c.stop for c in self.coord_roi]), assertIntersect=False
+        )
 
         if intsec is not None:
-            result[:, intsec[0][1]:intsec[1][1], intsec[0][2]:intsec[1][2], :] = 1
+            result[:, intsec[0][1] : intsec[1][1], intsec[0][2] : intsec[1][2], :] = 1
 
         return result
 
     def propagateDirty(self, slot, subindex, roi):
         pass
-
-
-
-
-     

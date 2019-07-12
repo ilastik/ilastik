@@ -173,6 +173,7 @@ class ValidationDlg(QDialog):
     """
     Settings for choosing the validation set
     """
+
     def __init__(self, parent, coords):
         self.valid_params = None
 
@@ -185,29 +186,29 @@ class ValidationDlg(QDialog):
         self.x_start = QLineEdit()
         self.x_end = QLineEdit()
 
-        self.z_start.setPlaceholderText(str(coords['z'][0]))
-        self.z_end.setPlaceholderText(str(coords['z'][1]))
-        self.y_start.setPlaceholderText(str(coords['y'][0]))
-        self.y_end.setPlaceholderText(str(coords['y'][1]))
-        self.x_start.setPlaceholderText(str(coords['x'][0]))
-        self.x_end.setPlaceholderText(str(coords['x'][1]))
+        self.z_start.setPlaceholderText(str(coords["z"][0]))
+        self.z_end.setPlaceholderText(str(coords["z"][1]))
+        self.y_start.setPlaceholderText(str(coords["y"][0]))
+        self.y_end.setPlaceholderText(str(coords["y"][1]))
+        self.x_start.setPlaceholderText(str(coords["x"][0]))
+        self.x_end.setPlaceholderText(str(coords["x"][1]))
 
         grid = QGridLayout()
         grid.setSpacing(10)
 
-        grid.addWidget(QLabel('Z-Axis:'), 1, 0)
+        grid.addWidget(QLabel("Z-Axis:"), 1, 0)
         grid.addWidget(self.z_start, 1, 1)
-        grid.addWidget(QLabel('to'), 1, 2)
+        grid.addWidget(QLabel("to"), 1, 2)
         grid.addWidget(self.z_end, 1, 3)
 
-        grid.addWidget(QLabel('Y-Axis:'), 2, 0)
+        grid.addWidget(QLabel("Y-Axis:"), 2, 0)
         grid.addWidget(self.y_start, 2, 1)
-        grid.addWidget(QLabel('to'), 2, 2)
+        grid.addWidget(QLabel("to"), 2, 2)
         grid.addWidget(self.y_end, 2, 3)
 
-        grid.addWidget(QLabel('X-Axis:'), 3, 0)
+        grid.addWidget(QLabel("X-Axis:"), 3, 0)
         grid.addWidget(self.x_start, 3, 1)
-        grid.addWidget(QLabel('to'), 3, 2)
+        grid.addWidget(QLabel("to"), 3, 2)
         grid.addWidget(self.x_end, 3, 3)
 
         okButton = QPushButton("OK")
@@ -242,9 +243,7 @@ class ValidationDlg(QDialog):
         z_coord = (int(self.z_start.text()), int(self.z_end.text()))
         y_coord = (int(self.y_start.text()), int(self.y_end.text()))
         x_coord = (int(self.x_start.text()), int(self.x_end.text()))
-        self.valid_params = dict(z=z_coord,
-                                 y=y_coord,
-                                 x=x_coord)
+        self.valid_params = dict(z=z_coord, y=y_coord, x=x_coord)
 
         self.close()
 
