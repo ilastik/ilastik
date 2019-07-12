@@ -27,6 +27,7 @@ import sys
 import inspect
 
 from abc import ABCMeta
+from contextlib import contextmanager
 from traceback import walk_tb, FrameSummary, format_list
 
 # lazyflow
@@ -602,25 +603,6 @@ class Operator(metaclass=OperatorMetaClass):
 #        self._debug_text = text
 
 
-def get_operator_method_name(module_name, code):
-    """
-    Get fully qualified operator method name
-    """
-    module = sys.modules.get(module_name, None)
-    if not module:
-        return
-
-    symbols = inspect.getmembers(module, inspect.isclass)
-    for symbol_name, symbol_info in symbols:
-        if not issubclass(symbol_info, Operator):
-            continue
-
-        members = inspect.getmembers(symbol_info, inspect.isfunction)
-        for method_name, method_info in members:
-            if method_info.__code__ is code:
-                return f"{module_name}.{symbol_name}.{method_name}"
-
-
 def format_operator_stack(tb):
     """
     Extract operator stacktrace from traceback
@@ -629,10 +611,18 @@ def format_operator_stack(tb):
     for frame, lineno in walk_tb(tb):
         code = frame.f_code
         filename = code.co_filename
+        locals_ = frame.f_locals
+        mod_name = frame.f_globals["__name__"]
 
-        op_name = get_operator_method_name(frame.f_globals["__name__"], code)
+        maybe_op = locals_.get("self", None)
+        if not isinstance(maybe_op, Operator):
+            continue
+
+        op_name = type(maybe_op).__qualname__
+        qualname = f"{mod_name}.{op_name}.{code.co_name}"
+
         if op_name:
-            operator_stack.append(FrameSummary(filename, lineno, op_name, lookup_line=False, locals=None))
+            operator_stack.append(FrameSummary(filename, lineno, qualname, lookup_line=False, locals=None))
 
     operator_stack.reverse()
 
@@ -656,4 +646,16 @@ def print_operator_stack(exc_type, exc, tb):
         print("\n===Operator stack end===\n", file=sys.stderr)
 
 
-sys.excepthook = print_operator_stack
+def install_except_hook():
+    sys.excepthook = print_operator_stack
+
+
+def uninstall_except_hook():
+    sys.excepthook = _original_excepthook
+
+
+@contextmanager
+def except_hook():
+    install_except_hook()
+    yield
+    uninstall_except_hook()
