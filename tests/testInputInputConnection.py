@@ -29,7 +29,6 @@ from lazyflow import operators
 import logging
 
 logger = logging.getLogger()
-logger.addHandler(logging.NullHandler())
 
 
 class OpB(Operator):

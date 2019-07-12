@@ -25,6 +25,7 @@ import logging
 import threading
 
 from abc import ABCMeta
+from typing import Optional
 
 # lazyflow
 from lazyflow.slot import InputSlot, OutputSlot, Slot
@@ -182,6 +183,15 @@ class Operator(metaclass=OperatorMetaClass):
     description = ""
     category = "lazyflow"
 
+    @property
+    def transaction(self):
+        """
+        Create transaction for this operation deferring setupOutputs call
+        until transaction is finished
+        :returns: Transaction context manager
+        """
+        return self.graph.transaction
+
     def __new__(cls, *args, **kwargs):
         ##
         # before __init__
@@ -288,8 +298,7 @@ class Operator(metaclass=OperatorMetaClass):
             islot.notifyUnready(self.handleInputBecameUnready)
 
         self._initialized = True
-        if self.configured():
-            self._setupOutputs()
+        self._setupOutputs()
 
     def _instantiate_slots(self):
         # replicate input slot connections
@@ -456,6 +465,9 @@ class Operator(metaclass=OperatorMetaClass):
     def _setupOutputs(self):
         # Don't setup this operator if there are currently
         # requests on it.
+        if not self.configured():
+            return
+
         with self._condition:
             while self._executionCount > 0:
                 self._condition.wait()

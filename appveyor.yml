@@ -4,40 +4,36 @@ environment:
   ENV_NAME: test-env
   # set miniconda version explicitly
   MINICONDA: C:\Miniconda37-x64
+  IlASTIK_ROOT: C:\ilastik
 
 install:
   - set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  - conda create -q --yes -n %ENV_NAME% -c ilastik-forge -c conda-forge ilastik-dependencies-no-solvers
-  - activate %ENV_NAME%
+  - activate base
   - cd \
   # Get the current master of all submodules
-  - git clone https://github.com/ilastik/ilastik-meta c:\ilastik\ilastik-meta
-  - cd ilastik\ilastik-meta
+  - git clone https://github.com/ilastik/ilastik-meta %ILASTIK_ROOT%\ilastik-meta
+  - cd %ILASTIK_ROOT%\ilastik-meta
   - git submodule update --init --recursive
   - git submodule foreach "git checkout master"
-  # Remove the conda ilastik-meta
-  - conda remove ilastik-meta
-  - ps: rm -Force -Recurse c:\ilastik\ilastik-meta\lazyflow
+  - ps: rm -Force -Recurse $env:ILASTIK_ROOT\ilastik-meta\lazyflow
   - timeout 10
   # replace with whatever version of lazyflow triggered the appveyor
-  - ps: cp -recurse C:\projects\lazyflow c:\ilastik\ilastik-meta\lazyflow
+  - ps: cp -recurse C:\projects\lazyflow $env:ILASTIK_ROOT\ilastik-meta\lazyflow
   - timeout 10
-  # Point to the current ilastik-meta
-  - set ILASTIK_PTH=%MINICONDA%/envs/%ENV_NAME%/Lib/site-packages/ilastik-meta.pth
-  - echo C:/ilastik/ilastik-meta/lazyflow > %ILASTIK_PTH%
-  - echo C:/ilastik/ilastik-meta/volumina >> %ILASTIK_PTH%
-  - echo C:/ilastik/ilastik-meta/ilastik >> %ILASTIK_PTH%
+  - cd %ILASTIK_ROOT%\ilastik-meta
+  - >
+    python ilastik/scripts/devenv.py create -n %ENV_NAME%
+    -p ilastik-dependencies-no-solvers pytest-cov coveralls black
+    -c ilastik-forge conda-forge defaults
 
 build: off
 
 test_script:
   - set "PATH=%MINICONDA%;%MINICONDA%\Scripts;%MINICONDA%\Library\bin;%PATH%
   - activate %ENV_NAME%
-  - cd \
-  - cd ilastik\ilastik-meta\lazyflow
-  - set Path=C:\ilastik\scripts;%Path%
+  - cd %ILASTIK_ROOT%\ilastik-meta\lazyflow
   - >
       pytest
       --capture=no

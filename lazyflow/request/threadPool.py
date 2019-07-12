@@ -1,6 +1,3 @@
-from builtins import range
-from builtins import object
-
 ###############################################################################
 #   lazyflow: data flow based lazy parallel computation framework
 #
@@ -24,20 +21,18 @@ from builtins import object
 ###############################################################################
 # Built-in
 import atexit
-import collections
-import heapq
 import threading
-import platform
 import time
-import os
 import ctypes
+import logging
 
-import psutil
+logger = logging.getLogger(__name__)
+
 
 from lazyflow.utility.priorityQueue import PriorityQueue
 
 
-class ThreadPool(object):
+class ThreadPool:
     """
     Manages a set of worker threads and dispatches tasks to them.
     """
@@ -162,7 +157,10 @@ class _Worker(threading.Thread):
         while not self.stopped:
             # Start (or resume) the work by switching to its greenlet
             self.state = "running task"
-            next_task()
+            try:
+                next_task()
+            except Exception:
+                logger.exception("Exception during processing %s", next_task)
 
             # We're done with this request.
             # Free it immediately for garbage collection.
@@ -245,33 +243,3 @@ class _Worker(threading.Thread):
             )  # If this fails, then your callable is some built-in that doesn't allow arbitrary
             #  members (e.g. .assigned_worker) to be "monkey-patched" onto it.  You may have to wrap it in a custom class first.
             return task
-
-    def raise_exc(self, excobj):
-        """
-        I HAVEN'T TESTED THIS YET.  (But it looks useful.)
-        http://code.activestate.com/recipes/496960-thread2-killable-threads
-
-        Debugging method.
-        Asynchronously raise an exception in this thread.
-        See docstring for _async_raise() for more details.
-        """
-        assert self.isAlive(), "thread must be started"
-        for tid, tobj in list(threading._active.items()):
-            if tobj is self:
-                _Worker._async_raise(tid, excobj)
-                return
-
-    @staticmethod
-    def _async_raise(tid, excobj):
-        """
-        Raise an exception in the thread with the given id.
-        http://code.activestate.com/recipes/496960-thread2-killable-threads
-        """
-        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(excobj))
-        if res == 0:
-            raise ValueError("nonexistent thread id")
-        elif res > 1:
-            # """if it returns a number greater than one, you're in trouble,
-            # and you should call it again with exc=NULL to revert the effect"""
-            ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, 0)
-            raise SystemError("PyThreadState_SetAsyncExc failed")

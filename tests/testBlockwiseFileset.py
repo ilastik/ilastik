@@ -41,11 +41,6 @@ from lazyflow.roi import sliceToRoi, roiToSlice, getIntersectingBlocks
 import logging
 
 logger = logging.getLogger(__name__)
-# logger.addHandler(logging.StreamHandler(sys.stdout))
-logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
-
-logger.setLevel(logging.INFO)
-# logger.setLevel(logging.DEBUG)
 
 
 class TestBlockwiseFileset(object):

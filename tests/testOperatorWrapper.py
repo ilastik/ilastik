@@ -21,9 +21,13 @@ from builtins import object
 # This information is also available on the ilastik web site at:
 # 		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper
-import numpy
 import copy
+
+from unittest import mock
+
+import numpy
+
+from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper
 
 
 class OpSimple(Operator):
@@ -170,6 +174,27 @@ class TestMultiOutputToWrapped(object):
 
         assert wrappedCopier.Output[0].value == values[0]
         assert wrappedCopier.Output[1].value == values[1]
+
+
+class TestOperatorWrapperTransaction:
+    def test_transaction(self, graph):
+        class OpTest(Operator):
+            Input = InputSlot()
+            Output = OutputSlot()
+
+            setupOutputs = mock.Mock()
+
+            def propagateDirty(self, inputSlot, subindex, roi):
+                self.Output.setDirty(roi)
+
+        wrapped = OperatorWrapper(OpTest, graph=graph)
+        values = ["Subslot One", "Subslot Two"]
+
+        with wrapped.transaction:
+            wrapped.Input.setValues(values)
+            OpTest.setupOutputs.assert_not_called()
+
+        assert OpTest.setupOutputs.call_count == 2, "Should call setupOutputs for each lane on exit"
 
 
 if __name__ == "__main__":

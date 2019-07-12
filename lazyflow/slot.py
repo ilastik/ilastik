@@ -35,6 +35,7 @@ import collections
 import itertools
 import threading
 from functools import partial, wraps
+from contextlib import contextmanager
 import warnings
 
 # SciPy
@@ -879,9 +880,6 @@ class Slot(object):
             execWrapper = Slot.RequestExecutionWrapper(self, roi)
             request = Request(execWrapper)
 
-            # We must decrement the execution count even if the
-            # request is cancelled
-            request.notify_cancelled(execWrapper.handleCancel)
             return request
 
     @staticmethod
@@ -894,13 +892,14 @@ class Slot(object):
                     return inputSlot
         return "Couldn't find an upstream problem slot."
 
-    class RequestExecutionWrapper(object):
+    class RequestExecutionWrapper:
+        __slots__ = ("started", "finished", "slot", "operator", "roi")
+
         def __init__(self, slot, roi):
             self.started = False
             self.finished = False
             self.slot = slot
             self.operator = slot.operator
-            self.lock = threading.Lock()
             self.roi = roi
 
         def __call__(self, destination=None):
@@ -932,34 +931,18 @@ class Slot(object):
                 # returned result_op is different from destination.
                 # (but don't copy if result_op is None, this means
                 # legacy op which wrote into destination anyway)
-                if destination_given and result_op is not None and id(result_op) != id(destination):
-                    # check that the returned value is compatible with the requested roi
+                if result_op is not None:
                     self.slot.stype.check_result_valid(self.roi, result_op)
 
-                    self.slot.stype.copy_data(dst=destination, src=result_op)
-                elif result_op is not None:
-                    # FIXME: this should be moved to a isCompatible
-                    # check in stypes.py
-                    if hasattr(result_op, "shape"):
-                        assert result_op.shape == destination.shape, (
-                            "ERROR: Operator {} has failed to provide a"
-                            " result of correct shape. result shape is"
-                            " {} vs {}.  roi was {}".format(
-                                self.operator, result_op.shape, destination.shape, str(self.roi)
-                            )
-                        )
-                    destination = result_op
+                    if destination_given and result_op is not destination:
+                        self.slot.stype.copy_data(dst=destination, src=result_op)
+                    else:
+                        destination = result_op
 
-                    # check that the returned value is compatible with the requested roi
-                    self.slot.stype.check_result_valid(self.roi, destination)
-
-                # Decrement the execution count
-                self._decrementOperatorExecutionCount()
                 return destination
-            except:  # except Request.CancellationException
-                # Decrement the execution count
+
+            finally:
                 self._decrementOperatorExecutionCount()
-                raise
 
         def _incrementOperatorExecutionCount(self):
             self.started = True
@@ -971,27 +954,15 @@ class Slot(object):
                     self.operator._condition.wait()
                 self.operator._executionCount += 1
 
-        def handleCancel(self, *args):
-            # The new request api does clean up by handling an
-            # exception, not in this callback. Only clean up if we are
-            # using the old request api
-            using_old_api = len(args) > 0 and not hasattr(args[0], "notify_cancelled")
-            if using_old_api:
-                self._decrementOperatorExecutionCount()
-
         def _decrementOperatorExecutionCount(self):
-            # Must lock here because cancel callbacks are
-            # asynchronous. (Perhaps it would be better if they were
-            # called from the worker thread instead...)
-            with self.lock:
-                # Only do this once per execution. If we were cancelled
-                # after we finished working, don't do anything
-                if self.started and not self.finished:
-                    assert self.operator._executionCount > 0, "BUG: Can't decrement the execution count below zero!"
-                    self.finished = True
-                    with self.operator._condition:
-                        self.operator._executionCount -= 1
-                        self.operator._condition.notifyAll()
+            # Only do this once per execution. If we were cancelled
+            # after we finished working, don't do anything
+            if self.started and not self.finished:
+                assert self.operator._executionCount > 0, "BUG: Can't decrement the execution count below zero!"
+                self.finished = True
+                with self.operator._condition:
+                    self.operator._executionCount -= 1
+                    self.operator._condition.notifyAll()
 
     @is_setup_fn
     def setDirty(self, *args, **kwargs):
@@ -1443,7 +1414,16 @@ class Slot(object):
             s = OutputSlot(self.name, operator, **init_kwargs)
         return s
 
+    def maybe_call_within_transaction(self, fn):
+        if self.graph:
+            self.graph.maybe_call_within_transaction(fn)
+        else:
+            fn()
+
     def _changed(self):
+        self.maybe_call_within_transaction(self._changed_impl)
+
+    def _changed_impl(self):
         oldMeta = self.meta
         old_ready = self.ready()
         if self.upstream_slot is not None and self.meta != self.upstream_slot.meta:
@@ -1468,6 +1448,7 @@ class Slot(object):
             )
             for c in self.downstream_slots:
                 c._changed()
+
             self.meta._dirty = False
 
         if self._type != "output":
@@ -1486,8 +1467,7 @@ class Slot(object):
         """
         if self.operator is not None:
             # check whether all slots are connected and notify operator
-            if self.operator.configured():
-                self.operator._setupOutputs()
+            self.maybe_call_within_transaction(self.operator._setupOutputs)
 
     def _setupOutputs(self):
         """

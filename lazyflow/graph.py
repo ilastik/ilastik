@@ -44,7 +44,6 @@ result = operator2.outputs["Output"][:].wait()
 ---
 
 """
-from builtins import object
 
 # Python
 import sys
@@ -80,16 +79,43 @@ from lazyflow.operatorWrapper import OperatorWrapper
 from lazyflow.metaDict import MetaDict
 
 
-class Graph(object):
+class Graph:
     """
     A Graph instance is shared by all connected operators and contains any
     bookkeeping or globally accessible state needed by all operators/slots in the graph.
     """
 
+    class Transaction:
+        def __init__(self):
+            self._deferred_callbacks = None
+
+        @property
+        def active(self):
+            return self._deferred_callbacks is not None
+
+        def on_exit(self, fn):
+            assert self.active, "Cannot register callbacks on inactive transaction"
+            if fn in self._deferred_callbacks:
+                return
+            else:
+                self._deferred_callbacks.append(fn)
+
+        def __enter__(self):
+            assert not self.active, "Nested transactions are not supported"
+            self._deferred_callbacks = []
+
+        def __exit__(self, *args, **kw):
+            try:
+                for cb in self._deferred_callbacks:
+                    cb()
+            finally:
+                self._deferred_callbacks = None
+
     def __init__(self):
         self._setup_depth = 0
         self._sig_setup_complete = None
         self._lock = threading.Lock()
+        self.transaction = self.Transaction()
 
     def call_when_setup_finished(self, fn):
         # The graph is considered in "setup" mode if any slot is executing a function that affects the state of the graph.
@@ -109,6 +135,12 @@ class Graph(object):
         else:
             # Subscribe to the next completion.
             self._sig_setup_complete.subscribe(fn)
+
+    def maybe_call_within_transaction(self, fn):
+        if self.transaction.active:
+            self.transaction.on_exit(fn)
+        else:
+            fn()
 
     class SetupDepthContext(object):
         """

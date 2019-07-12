@@ -33,6 +33,14 @@ from lazyflow.utility.helpers import warn_deprecated
 import h5py
 
 
+class InvalidResult(ValueError):
+    """
+    Raised within check_result_valid
+    """
+
+    pass
+
+
 class SlotType(object):
     def __init__(self, slot):
         self.slot = slot
@@ -232,26 +240,22 @@ class ArrayLike(SlotType):
 
     def check_result_valid(self, roi, result):
         if isinstance(result, numpy.ndarray):
-            assert len(roi.start) == result.ndim, (
-                "check_result_valid: result has wrong number of dimensions (%d instead of %d)"
-                % (result.ndim, len(roi.start))
-            )
-            for d in range(result.ndim):
-                assert (
-                    result.shape == (roi.stop - roi.start)
-                ).all(), "check_result_valid: result has wrong shape.  Got {}, expected {}".format(
-                    result.shape, roi.stop - roi.start
-                )
+            expected_shape = roi.stop - roi.start
+            if not numpy.array_equal(result.shape, expected_shape):
+                raise InvalidResult(f"Result has shape {result.shape}, but expected {expected_shape}")
+
         elif isinstance(result, list):
-            s = roi.stop[0] - roi.start[0]
-            assert len(result) == s, "check_result_valid: result has wrong shape (%d instead of %d)" % (len(result), s)
+            expected_shape = roi.stop[0] - roi.start[0]
+            if len(result) != expected_shape:
+                raise InvalidResult(f"Result has shape {len(result)}, but expected {expected_shape}")
+
         elif isinstance(result, h5py.Group):
             # FIXME: this is a hack. the slot
             # OpCompressedCache.OutputHdf5 is not really array-like,
             # because it expects destinations of type h5py.Group.
             pass
         else:
-            assert False, "check_result_valid: result type is not supported"
+            raise InvalidResult(f"Result of type {type(result).__name__} is not supported")
 
 
 class Opaque(SlotType):
@@ -280,4 +284,4 @@ class Opaque(SlotType):
         return True
 
     def copy_data(self, dst, src):
-        raise ("Not Implemented")
+        raise NotImplementedError()

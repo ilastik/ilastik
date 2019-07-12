@@ -38,10 +38,6 @@ from lazyflow.utility import BigRequestStreamer
 import logging
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler(sys.stdout))
-
-logger.setLevel(logging.INFO)
-# logger.setLevel(logging.DEBUG)
 
 
 class OpNonsense(Operator):

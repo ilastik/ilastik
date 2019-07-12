@@ -25,13 +25,19 @@ from builtins import object
 
 import weakref
 import gc
+import time
+import types
 
-import nose
+from unittest import mock
+
 from lazyflow import graph
 from lazyflow import stype
+from lazyflow import slot
 from lazyflow import operators
-import numpy
 from lazyflow.graph import OperatorWrapper
+
+import numpy
+import pytest
 
 
 class OpA(graph.Operator):
@@ -664,6 +670,157 @@ class TestOperatorCleanup(object):
         del op2
         gc.collect()
         assert r() is None, "cleanup failed"
+
+
+class TransactionOp(graph.Operator):
+    Input1 = graph.InputSlot()  # required slot
+    Input2 = graph.InputSlot(optional=True)  # optional slot
+    Input3 = graph.InputSlot(value=3)  # required slot with default value, i.e. already connected
+
+    Output1 = graph.OutputSlot()
+
+    setupOutputs = mock.Mock()
+
+    def propagateDirty(self, slot, roid, index):
+        pass
+
+
+class TestTransaction:
+    def testTransactionMultipleSetsOnSameSlot(self):
+        g = graph.Graph()
+        op = TransactionOp(graph=g)
+
+        with op.transaction:
+            op.Input1.setValue("val1")
+            op.Input1.setValue("val2")
+
+        op.setupOutputs.assert_called_once()
+
+    def testTransactionSetMultipleSlots(self):
+        input1, input2 = None, None
+
+        def fetch_values(self, *args, **kwargs):
+            nonlocal input1, input2
+            input1 = self.Input1.value
+            input2 = self.Input2.value
+
+        g = graph.Graph()
+        op = TransactionOp(graph=g)
+
+        setup_mock = mock.Mock()
+        setup_mock.side_effect = fetch_values
+
+        op.setupOutputs = types.MethodType(setup_mock, op)
+
+        with op.transaction:
+            op.Input1.setValue("val1")
+            op.Input2.setValue("val2")
+
+        op.setupOutputs.assert_called_once()
+        assert input1 == "val1"
+        assert input2 == "val2"
+
+    def testNestedTransactionFails(self):
+        g = graph.Graph()
+        op = TransactionOp(graph=g)
+
+        with op.transaction:
+            op.Input1.setValue("val1")
+
+            with pytest.raises(AssertionError):
+                with op.transaction:
+                    op.Input2.setValue("val2")
+
+    def test_chain(self):
+        class OpA(graph.Operator):
+            Input = graph.InputSlot()  # required slot
+
+            def setupOutputs(self):
+                pass
+
+            def propagateDirty(self, *a, **kw):
+                pass
+
+        class OpB(graph.Operator):
+            Input = graph.InputSlot()  # required slot
+            Output = graph.OutputSlot()
+
+            setupOutputs = mock.Mock()
+
+            def propagateDirty(self, *a, **kw):
+                pass
+
+        g = graph.Graph()
+
+        op_a = OpA(graph=g)
+        op_b = OpB(graph=g)
+
+        op_b.Input.connect(op_a.Input)
+
+        with op_a.transaction:
+            op_a.Input.setValue("fadf")
+            op_b.setupOutputs.assert_not_called()
+
+        op_b.setupOutputs.assert_called_once()
+
+
+class TestCompatibilityChecks:
+    class OpA(graph.Operator):
+        Output = graph.OutputSlot(stype=stype.ArrayLike)
+        OutputOpaque = graph.OutputSlot(stype=stype.Opaque)
+        OutputList = graph.OutputSlot(stype=stype.ArrayLike)
+        OutputUnsupportedType = graph.OutputSlot(stype=stype.ArrayLike)
+
+        def setupOutputs(self):
+            self.Output.meta.shape = (3, 3)
+            self.Output.meta.dtype = int
+            self.OutputOpaque.meta.shape = (1,)
+            self.OutputOpaque.meta.dtype = object
+            self.OutputList.meta.shape = (10,)
+            self.OutputList.meta.dtype = object
+            self.OutputUnsupportedType.meta.shape = (10,)
+            self.OutputUnsupportedType.meta.dtype = object
+
+        def propagateDirty(self, *a, **kw):
+            pass
+
+        def execute(self, slot, *args, **kwargs):
+            if slot == self.OutputList:
+                return [1, 2, 3]
+
+            elif slot == self.OutputOpaque:
+                return object()
+
+            elif slot == self.OutputUnsupportedType:
+                return object()
+
+            else:
+                return numpy.ones((2, 2), dtype=int)
+
+    @pytest.fixture
+    def op(self, graph):
+        return self.OpA(graph=graph)
+
+    def test_arraylike_raises_if_shapes_are_mismatched(self, op):
+        with pytest.raises(stype.InvalidResult):
+            op.Output[:].wait()
+
+        op.execute = lambda *a, **kw: numpy.ones((3, 3), dtype=int)
+
+        op.Output[:].wait()
+
+    def test_arraylike_raises_if_list_shape_is_mismatched(self, op):
+        with pytest.raises(stype.InvalidResult):
+            res = op.OutputList[1:2].wait()
+
+        assert op.OutputList[1:4].wait()
+
+    def test_access_opaque_slot_value_should_not_raise_error(self, op):
+        assert op.OutputOpaque.value
+
+    def test_arraylike_retun_non_arraylike_object_raises(self, op):
+        with pytest.raises(stype.InvalidResult):
+            assert op.OutputUnsupportedType.value
 
 
 if __name__ == "__main__":
