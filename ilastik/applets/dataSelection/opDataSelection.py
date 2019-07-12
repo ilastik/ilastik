@@ -19,13 +19,17 @@
 #          http://ilastik.org/license.html
 ###############################################################################
 import glob
-import numpy
 import os
 import uuid
-import vigra
 import copy
-import h5py
 from enum import Enum, unique
+from typing import List
+import re
+
+import numpy
+import vigra
+import h5py
+import z5py
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.metaDict import MetaDict
@@ -40,6 +44,7 @@ from ilastik.utility import OpMultiLaneWrapper
 from ndstructs import Point5D
 from lazyflow.graph import Graph
 from lazyflow.utility import PathComponents, isUrl, make_absolute
+from lazyflow.utility.pathHelpers import splitPath, globH5N5
 from lazyflow.utility.helpers import get_default_axisordering
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
@@ -57,9 +62,9 @@ class DatasetInfo(object):
     def __init__(self, filepath=None, jsonNamespace=None, cwd=None,
                  preloaded_array=None, sequence_axis=None, allowLabels=True,
                  subvolume_roi=None, location=Location.FileSystem,
-                 fromstack=False, axistags=None, drange=None, display_mode='default',
-                 nickname='', original_axistags=None, shape=None, normalizeDisplay:bool=None,
-                 sequenceAxis:str=None, dtype=None, datasetId:str=""):
+                 axistags=None, drange=None, display_mode='default',
+                 nickname='', original_axistags=None, laneShape=None, normalizeDisplay:bool=None,
+                 laneDtype=None, datasetId:str=""):
         """
         filepath: may be a globstring or a full hdf5 path+dataset
 
@@ -67,7 +72,7 @@ class DatasetInfo(object):
 
         cwd: The working directory for interpeting relative paths.  If not provided, os.getcwd() is used.
 
-        preloaded_array: Instead of providing a filePath to read from, a pre-loaded array can be directly provided.
+        preloaded_array: Instead of providing a filepath to read from, a pre-loaded array can be directly provided.
                          In that case, you'll probably want to configure the axistags member, or provide a tagged
                          vigra.VigraArray.
 
@@ -78,22 +83,19 @@ class DatasetInfo(object):
         self.preloaded_array = preloaded_array  # See description above.
         Location = DatasetInfo.Location
         # The original path to the data (also used as a fallback if the data isn't in the project yet)
-        self._filePath = ""
+        self._filePath = filepath
         self._datasetId = datasetId # The name of the data within the project file (if it is stored locally)
         # OBSOLETE: Whether or not this dataset should be used for training a classifier.
         self.allowLabels = allowLabels
         self.drange = drange
         self.normalizeDisplay = (drange is not None) if normalizeDisplay is None else normalizeDisplay
-        self.sequenceAxis = sequenceAxis
-        self.fromstack = fromstack
+        self.sequenceAxis = None
         self.nickname = nickname
         self.axistags = axistags
         self.original_axistags = original_axistags
-        self.shape = shape
-        self.dtype = dtype
         # Necessary in headless mode in order to recover the shape of the raw data
-        self.laneShape = None
-        self.laneDtype = None
+        self.laneShape = laneShape
+        self.laneDtype = laneDtype
         # A flag indicating whether the dataset is backed by a real source (e.g. file)
         # or by the fake provided (e.g. in headless mode when raw data are not necessary)
         self.realDataSource = True
@@ -101,112 +103,40 @@ class DatasetInfo(object):
         self.location = location
         self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
 
-        if self.preloaded_array is not None:
+        if self.preloaded_array:
             self.filePath = ""  # set property to ensure unique _datasetId
             self.location = Location.PreloadedArray
             self.nickname = "preloaded-{}-array".format(self.preloaded_array.dtype.name)
             if hasattr(self.preloaded_array, 'axistags'):
                 self.axistags = self.preloaded_array.axistags
-
-        # Set defaults for location, nickname, filepath, and fromstack
-        if filepath:
-            # Check for sequences (either globstring or separated paths),
-            file_list = None
-
-            # To support h5 sequences, filepath may contain external and
-            # internal path components
-            if not isUrl(filepath):
-                file_list = filepath.split(os.path.pathsep)
-
-                pathComponents = [PathComponents(x) for x in file_list]
-                externalPaths = [pc.externalPath for pc in pathComponents]
-                internalPaths = [pc.internalPath for pc in pathComponents]
-
-                if len(file_list) > 0:
-                    if len(externalPaths) == 1:
-                        if '*' in externalPaths[0]:
-                            if internalPaths[0] is not None:
-                                assert ('*' not in internalPaths[0]), (
-                                    "Only internal OR external glob placeholder supported"
-                                )
-                            file_list = sorted(glob.glob(filepath))
-                        else:
-                            file_list = [externalPaths[0]]
-                            if internalPaths[0] is not None:
-                                if '*' in internalPaths[0]:
-                                    # overwrite internalPaths, will be assembled further down
-                                    glob_string = "{}{}".format(externalPaths[0], internalPaths[0])
-                                    internalPaths = \
-                                        OpStreamingH5N5SequenceReaderS.expandGlobStrings(
-                                            externalPaths[0], glob_string)
-                                    if internalPaths:
-                                        file_list = [externalPaths[0]] * len(internalPaths)
-                                    else:
-                                        file_list = None
-
-                    else:
-                        assert (not any('*' in ep for ep in externalPaths)), (
-                            "Multiple glob paths shouldn't be happening"
-                        )
-                        file_list = [ex for ex in externalPaths]
-
-                    assert all(pc.extension == pathComponents[0].extension
-                               for pc in pathComponents[1::]), (
-                        "Supplied multiple files with multiple extensions"
-                    )
-                    # The following is necessary for h5 as well as npz-files
-                    internalPathExts = (
-                        OpInputDataReader.h5_n5_Exts +
-                        OpInputDataReader.npzExts
-                    )
-                    internalPathExts = [".{}".format(ipx) for ipx in internalPathExts]
-
-                    if pathComponents[0].extension in internalPathExts and internalPaths:
-                        if len(file_list) == len(internalPaths):
-                            # assuming a matching internal paths to external paths
-                            file_list_with_internal = []
-                            for external, internal in zip(file_list, internalPaths):
-                                if internal:
-                                    file_list_with_internal.append('{}/{}'.format(external, internal))
-                                else:
-                                    file_list_with_internal.append(external)
-                            file_list = file_list_with_internal
-                        else:
-                            # sort of fallback, in case of a mismatch in lengths
-                            for i in range(len(file_list)):
-                                file_list[i] += '/' + internalPaths[0]
-
-            # For stacks, choose nickname based on a common prefix
-            if len(file_list) > 1:
-                fromstack = True
-                # Convert all paths to absolute
-                file_list = [make_absolute(f, cwd) for f in file_list]
-                if '*' in filepath:
-                    filepath = make_absolute(filepath, cwd)
-                else:
-                    filepath = os.path.pathsep.join(file_list)
-
-                # Add an underscore for each wildcard digit
-                prefix = os.path.commonprefix(file_list)
-                num_wildcards = len(file_list[-1]) - len(prefix) - len(os.path.splitext(file_list[-1])[1])
-                nickname = PathComponents(prefix).filenameBase + ("_" * num_wildcards)
-            else:
-                fromstack = False
-                if not isUrl(filepath):
-                    # Convert all (non-url) paths to absolute
-                    filepath = make_absolute(filepath, cwd)
-                nickname = PathComponents(filepath).filenameBase
-
+        elif filepath and not isUrl(filepath):
             self.location = DatasetInfo.Location.FileSystem
-            self.nickname = nickname
-            self.filePath = filepath #FIXME: stop clobbering user-provided id
-            if datasetId:
-                self._datasetId = datasetId #FIXME: stop clobbering user-provided id
-            self.fromstack = fromstack
+            self.expanded_paths = self.expandPath(filepath, cwd=cwd)
+            extensions = [PathComponents(ep).extension for ep in self.expanded_paths]
+            if any(ext != extensions[0] for ext in extensions):
+                raise Exception(f"Multiple extensions unsupported as a single data source: {filePath}")
+            self.filePath = os.path.pathsep.join(self.expanded_paths)
+
+            external_nickname = os.path.commonprefix([PathComponents(ep).externalPath for ep in self.expanded_paths])
+            if external_nickname:
+                external_nickname = external_nickname.split(os.path.sep)[-1]
+            else:
+                external_nickname = "stack_at-" + PathComponents(self.expanded_paths[0]).externalPath
+            internal_nickname = os.path.commonprefix([PathComponents(ep).internalPath or "" for ep in self.expanded_paths]).lstrip('/')
+            self.nickname = external_nickname + ('-' + internal_nickname.replace('/', '-') if internal_nickname else '')
+            self.fromstack = len(self.expanded_paths) > 1
+            if self.fromstack and not sequence_axis:
+                raise Exception("sequence_axis must be specified when creating DatasetInfo out of stacks")
             self.sequenceAxis = sequence_axis
+        else:
+            self.filePath = filepath
+
+        if datasetId:
+            self._datasetId = datasetId
 
         if jsonNamespace is not None:
             self.updateFromJson(jsonNamespace)
+
 
     def modified_with(self, **kwargs):
         #FIXME: call the constructor again
@@ -223,7 +153,7 @@ class DatasetInfo(object):
         if sequence_axis is not None:
             op_reader.SequenceAxis.setValue(sequence_axis)
         op_reader.FilePath.setValue(filepath)
-        return cls.from_slot(op_reader.Output, filepath, **kwargs)
+        return cls.from_slot(op_reader.Output, filepath, sequence_axis=sequence_axis, **kwargs)
 
     @classmethod
     def from_slot(cls, slot, filepath:str, **kwargs):
@@ -231,9 +161,10 @@ class DatasetInfo(object):
         info_params = {
             'filepath': filepath,
             'axistags': meta.axistags,
-            'shape': meta.shape,
+            'laneShape': meta.shape,
+            'laneDtype': meta.dtype
         }
-        for key in ('drange', 'display_mode', 'normalizeDisplay', 'dtype'):
+        for key in ('drange', 'display_mode', 'normalizeDisplay'):
             if key in meta:
                 info_params[key] = meta[key]
         info_params.update(kwargs)
@@ -261,20 +192,59 @@ class DatasetInfo(object):
     def internalPath(self) -> str:
         return PathComponents(self.filePath).internalPath
 
+    @classmethod
+    def expandPath(cls, file_path:str, cwd:str=None) -> List[str]:
+        cwd = cwd or os.getcwd()
+        pathComponents = [PathComponents(path) for path in splitPath(file_path)]
+        expanded_paths = []
+        for components in pathComponents:
+            if os.path.isabs(components.externalPath):
+                externalPath = components.externalPath
+            else:
+                externalPath = os.path.join(cwd, components.externalPath)
+            unglobbed_paths = glob.glob(os.path.expanduser(externalPath))
+            if not unglobbed_paths:
+                raise Exception(f"Could not find file at {components.externalPath}")
+            for ext_path in unglobbed_paths:
+                if not cls.fileHasInternalPaths(ext_path) or not components.internalPath:
+                    expanded_paths.append(ext_path)
+                    continue
+                internal_paths = cls.globInternalPaths(ext_path, components.internalPath)
+                expanded_paths.extend([os.path.join(ext_path, int_path) for int_path in internal_paths])
+        return sorted(expanded_paths)
+
+    @classmethod
+    def globInternalPaths(cls, file_path:str, glob_str:str, cwd:str=None) -> List[str]:
+        common_internal_paths = set()
+        for path in cls.expandPath(file_path, cwd=cwd):
+            f = None
+            try:
+                if cls.pathIsHdf5(path):
+                    f = h5py.File(path, 'r')
+                elif cls.pathIsN5(path):
+                    f = z5py.N5File(path) #FIXME
+                else:
+                    raise Exception(f"{path} is not an 'n5' or 'h5' file")
+                common_internal_paths |= set(globH5N5(f, glob_str.lstrip('/')))
+            finally:
+                if f is not None:
+                    f.close()
+        return sorted(common_internal_paths)
+
     @property
     def fileExtension(self) -> str:
         return os.path.splitext(self.externalPath)[1]
 
     @classmethod
     def pathIsHdf5(cls, path:str) -> bool:
-        return os.path.splitext(path)[1].lower() in ('.ilp', '.h5', '.hdf5')
+        return PathComponents(path).extension in ['.ilp', '.h5', '.hdf5']
 
     def isHdf5(self) -> bool:
         return self.pathIsHdf5(self.externalPath)
 
     @classmethod
     def pathIsN5(cls, path:str) -> bool:
-        return os.path.splitext(path)[1].lower() in ('.n5')
+        return PathComponents(path).extension in ['.n5']
 
     def isN5(self) -> bool:
         return self.pathIsN5(self.externalPath)
