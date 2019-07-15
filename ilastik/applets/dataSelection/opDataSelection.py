@@ -64,7 +64,7 @@ class DatasetInfo(object):
                  subvolume_roi=None, location=Location.FileSystem,
                  axistags=None, drange=None, display_mode='default',
                  nickname='', original_axistags=None, laneShape=None, normalizeDisplay:bool=None,
-                 laneDtype=None, datasetId:str=""):
+                 laneDtype=None):
         """
         filepath: may be a globstring or a full hdf5 path+dataset
 
@@ -81,16 +81,13 @@ class DatasetInfo(object):
         assert preloaded_array is None or not filepath, "You can't provide filepath and a preloaded_array"
         cwd = cwd or os.getcwd()
         self.preloaded_array = preloaded_array  # See description above.
-        Location = DatasetInfo.Location
         # The original path to the data (also used as a fallback if the data isn't in the project yet)
-        self._filePath = filepath
-        self._datasetId = datasetId # The name of the data within the project file (if it is stored locally)
+        self.filePath = filepath
         # OBSOLETE: Whether or not this dataset should be used for training a classifier.
         self.allowLabels = allowLabels
         self.drange = drange
         self.normalizeDisplay = (drange is not None) if normalizeDisplay is None else normalizeDisplay
-        self.sequenceAxis = None
-        self.nickname = nickname
+        self.sequenceAxis = sequence_axis
         self.axistags = axistags
         self.original_axistags = original_axistags
         # Necessary in headless mode in order to recover the shape of the raw data
@@ -102,28 +99,18 @@ class DatasetInfo(object):
         self.subvolume_roi = subvolume_roi
         self.location = location
         self.display_mode = display_mode  # choices: default, grayscale, rgba, random-colortable, binary-mask.
+        self.fromstack = False
+        self.original_paths = splitPath(filepath)
 
         if self.preloaded_array:
-            self.filePath = ""  # set property to ensure unique _datasetId
             self.location = Location.PreloadedArray
             self.nickname = "preloaded-{}-array".format(self.preloaded_array.dtype.name)
             if hasattr(self.preloaded_array, 'axistags'):
                 self.axistags = self.preloaded_array.axistags
-        elif filepath and not isUrl(filepath):
-            self.location = DatasetInfo.Location.FileSystem
-            self.expanded_paths = self.expandPath(filepath, cwd=cwd)
-            extensions = [PathComponents(ep).extension for ep in self.expanded_paths]
-            if any(ext != extensions[0] for ext in extensions):
-                raise Exception(f"Multiple extensions unsupported as a single data source: {filePath}")
+        elif filepath and not isUrl(filepath) and location == self.Location.FileSystem:
+            self.location = self.Location.FileSystem
+            self.nickname, self.expanded_paths = self.create_nickname(filepath, cwd=cwd)
             self.filePath = os.path.pathsep.join(self.expanded_paths)
-
-            external_nickname = os.path.commonprefix([PathComponents(ep).externalPath for ep in self.expanded_paths])
-            if external_nickname:
-                external_nickname = external_nickname.split(os.path.sep)[-1]
-            else:
-                external_nickname = "stack_at-" + PathComponents(self.expanded_paths[0]).externalPath
-            internal_nickname = os.path.commonprefix([PathComponents(ep).internalPath or "" for ep in self.expanded_paths]).lstrip('/')
-            self.nickname = external_nickname + ('-' + internal_nickname.replace('/', '-') if internal_nickname else '')
             self.fromstack = len(self.expanded_paths) > 1
             if self.fromstack and not sequence_axis:
                 raise Exception("sequence_axis must be specified when creating DatasetInfo out of stacks")
@@ -131,12 +118,45 @@ class DatasetInfo(object):
         else:
             self.filePath = filepath
 
-        if datasetId:
-            self._datasetId = datasetId
-
         if jsonNamespace is not None:
             self.updateFromJson(jsonNamespace)
 
+        if nickname:
+            self.nickname = nickname
+
+    @classmethod
+    def create_nickname(cls, filepath:str, cwd=None):
+        expanded_paths = cls.expandPath(filepath, cwd=cwd)
+        components = [PathComponents(ep) for ep in expanded_paths]
+        if any(comp.extension !=  components[0].extension for comp in components):
+            raise Exception(f"Multiple extensions unsupported as a single data source: {filePath}")
+
+        external_nickname = os.path.commonprefix([re.sub(comp.extension + '$', '', comp.externalPath) for comp in components])
+        if external_nickname:
+            external_nickname = external_nickname.split(os.path.sep)[-1]
+        else:
+            external_nickname = "stack_at-" + PathComponents(expanded_paths[0]).externalPath
+        internal_nickname = os.path.commonprefix([PathComponents(ep).internalPath or "" for ep in expanded_paths]).lstrip('/')
+        nickname = external_nickname + ('-' + internal_nickname.replace('/', '-') if internal_nickname else '')
+        return nickname, expanded_paths
+
+    @property
+    def effective_uris(self):
+        if self.location == self.Location.PreloadedArray:
+            return []
+        elif self.location == self.Location.ProjectInternal:
+            return [self.filePath]
+        elif self.location == self.Location.FileSystem:
+            if self.is_path_absolute():
+                return self.expanded_paths[:]
+            else:
+                return self.original_paths[:]
+
+    def is_path_relative(self):
+        return not any(isUrl(p) or os.path.isabs(p) for p in self.original_paths)
+
+    def is_path_absolute(self):
+        return not self.is_path_relative()
 
     def modified_with(self, **kwargs):
         #FIXME: call the constructor again
@@ -279,7 +299,10 @@ class DatasetInfo(object):
 
     @property
     def datasetId(self):
-        return self._datasetId
+        #FIXME: this prop should not be necessary, we should just trust
+        #the filePath to retrieve the data out of the .ilp file
+        assert self.location == self.Location.ProjectInternal
+        return self.filePath.split(os.path.pathsep)[-1]
 
     @property
     def axiskeys(self):
@@ -400,18 +423,11 @@ class OpDataSelection(Operator):
         datasetInfo = self.Dataset.value
 
         try:
-            # Data only comes from the project file if the user said so AND it exists in the project
-            datasetInProject = (datasetInfo.location == DatasetInfo.Location.ProjectInternal)
-            datasetInProject &= self.ProjectFile.ready()
-            if datasetInProject:
-                internalPath = self.ProjectDataGroup.value + '/' + datasetInfo.datasetId
-                datasetInProject &= internalPath in self.ProjectFile.value
-
             # If we should find the data in the project file, use a dataset reader
-            if datasetInProject:
+            if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
                 opReader = OpStreamingH5N5Reader(parent=self)
                 opReader.H5N5File.setValue(self.ProjectFile.value)
-                opReader.InternalPath.setValue(internalPath)
+                opReader.InternalPath.setValue(datasetInfo.filePath)
                 providerSlot = opReader.OutputImage
             elif datasetInfo.location == DatasetInfo.Location.PreloadedArray:
                 preloaded_array = datasetInfo.preloaded_array

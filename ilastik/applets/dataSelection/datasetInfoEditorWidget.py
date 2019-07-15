@@ -87,9 +87,9 @@ class DatasetInfoEditorWidget(QDialog):
         uic.loadUi(uiFilePath, self)
 
         self.rangeMinSpinBox.valueChanged.connect(self.validate_new_data)
-        self.rangeMaxSpinBox.setMinimum(max(get_dtype_info(info.dtype).min for info in infos))
+        self.rangeMaxSpinBox.setMinimum(max(get_dtype_info(info.laneDtype).min for info in infos))
         self.rangeMaxSpinBox.valueChanged.connect(self.validate_new_data)
-        self.rangeMaxSpinBox.setMaximum(min(get_dtype_info(info.dtype).max for info in infos))
+        self.rangeMaxSpinBox.setMaximum(min(get_dtype_info(info.laneDtype).max for info in infos))
         self.clearRangeButton.clicked.connect(self.clearNormalization)
         self.clearNormalization()
 
@@ -120,8 +120,8 @@ class DatasetInfoEditorWidget(QDialog):
             self.nicknameEdit.setToolTip("Edit a single lane to modify its nickname")
 
 
-        self.shapeLabel.setText(", ".join(str(info.shape) for info in infos))
-        self.dtypeLabel.setText(", ".join(info.dtype.__name__ for info in infos))
+        self.shapeLabel.setText(", ".join(str(info.laneShape) for info in infos))
+        self.dtypeLabel.setText(", ".join(info.laneDtype.__name__ for info in infos))
 
         self.normalizeDisplayComboBox.addItem("True", userData=True)
         self.normalizeDisplayComboBox.addItem("False", userData=False)
@@ -289,7 +289,7 @@ class DatasetInfoEditorWidget(QDialog):
                 nickname=self.nicknameEdit.text() if self.nicknameEdit.isEnabled() else info.nickname,
                 axistags=self.get_new_axes_tags() or info.axistags,
                 normalizeDisplay=info.normalizeDisplay if normalize is None else normalize,
-                drange=(info.dtype(new_drange[0]), info.dtype(new_drange[1])) if normalize else info.drange,
+                drange=(info.laneDtype(new_drange[0]), info.laneDtype(new_drange[1])) if normalize else info.drange,
                 display_mode=new_display_mode if new_display_mode != 'default' else info.display_mode,
                 location=location,
                 filePath=filePath)

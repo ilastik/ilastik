@@ -204,14 +204,12 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         # Location
         if index.column() == DatasetDetailedInfoColumn.Location:
             if datasetInfo.location == DatasetInfo.Location.FileSystem:
-                if isUrl(datasetInfo.filePath) or os.path.isabs(datasetInfo.filePath):
-                    text = "Absolute Link: {}".format( filePathComponents.externalPath )
-                    return text
+                if datasetInfo.is_path_absolute():
+                    return f"Absolute Link: {datasetInfo.effective_uris}"
                 else:
-                    text = "Relative Link: {}".format( filePathComponents.externalPath )
-                    return text
+                    return f"Relative Link: {datasetInfo.effective_uris}"
             else:
-                return "Project File"
+                return f"Project File: {datasetInfo.effective_uris}"
 
         # Internal ID        
         if index.column() == DatasetDetailedInfoColumn.InternalID:

@@ -537,7 +537,7 @@ class DataSelectionGui(QWidget):
             infos.append(info)
         return infos
 
-    def _createDatasetInfo(self, roleIndex:int, filePath:Path, roi):
+    def _createDatasetInfo(self, roleIndex:int, filePath:Path, roi=None):
         """
         Create a DatasetInfo object for the given filePath and roi.
         roi may be None, in which case it is ignored.
@@ -548,8 +548,8 @@ class DataSelectionGui(QWidget):
         except ValueError:
             data_path = filePath.absolute()
 
-        if DatasetInfo.fileHasInternalPaths(data_path):
-            datasetNames = DatasetInfo.getPossibleInternalPathsFor(filePath.absolute())
+        if DatasetInfo.fileHasInternalPaths(str(data_path)):
+            datasetNames = DatasetInfo.getPossibleInternalPathsFor(str(filePath.absolute()))
             if len(datasetNames) == 0:
                 raise RuntimeError(f"{file_extension} file {data_path} has no image datasets")
             if len(datasetNames) == 1:
@@ -574,7 +574,7 @@ class DataSelectionGui(QWidget):
             data_path = data_path / re.sub('^/', '', selected_dataset)
 
         return DatasetInfo.default(
-            filepath=data_path.as_posix(), #FIXME: it would be much better to use Path rather than str
+            filepath=str(data_path),
             cwd=cwd,
             allowLabels=(self.guiMode == GuiMode.Normal),
             subvolume_roi=roi)
@@ -644,12 +644,8 @@ class DataSelectionGui(QWidget):
         sequence_axis = stackDlg.sequence_axis
         cwd = self.topLevelOperator.WorkingDirectory.value
         self.parentApplet.busy = True
-        stack_internal_id = self.serializer.importStackAsLocalDataset(globstring, sequence_axis)
+        info = self.serializer.importStackAsLocalDataset(globstring, sequence_axis)
         self.parentApplet.busy = False
-        info = DatasetInfo.default(globstring, sequence_axis=sequence_axis,
-                                   cwd=cwd, fromstack=True,
-                                   location=DatasetInfo.Location.ProjectInternal,
-                                   datasetId=stack_internal_id)
         self.addLanes([info], roleIndex, laneIndex)
 
     @threadRouted

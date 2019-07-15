@@ -199,7 +199,7 @@ class DataSelectionSerializer( AppletSerializer ):
 
         self._dirty = False
 
-    def importStackAsLocalDataset(self, globstring:str, sequence_axis='t'):
+    def importStackAsLocalDataset(self, globstring:str, sequence_axis='t') -> str:
         """
         Add the given stack data to the project file as a local dataset.
         Does not update the topLevelOperator.
@@ -264,11 +264,11 @@ class DataSelectionSerializer( AppletSerializer ):
 
         try:
             internal_data_id = DatasetInfo.generate_id()
-            internal_path = '/local_data/' + internal_data_id
+            internal_path = self.topGroupName + '/local_data/' + internal_data_id
             projectFileHdf5 = self.topLevelOperator.ProjectFile.value
             opWriter = OpH5N5WriterBigDataset(parent=self.topLevelOperator.parent)
             opWriter.h5N5File.setValue(projectFileHdf5)
-            opWriter.h5N5Path.setValue(self.topGroupName + internal_path)
+            opWriter.h5N5Path.setValue(internal_path)
             opWriter.CompressionEnabled.setValue(False)
             # We assume that the main bottleneck is the hard disk, 
             #  so adding lots of threads to access it at once seems like a bad idea.
@@ -277,9 +277,18 @@ class DataSelectionSerializer( AppletSerializer ):
                 
             # Forward progress from the writer directly to our applet                
             opWriter.progressSignal.subscribe(self.progressSignal)
-
             success = opWriter.WriteImage.value
-            return internal_data_id
+
+            nickname, _ = DatasetInfo.create_nickname(globstring, cwd)
+
+            return DatasetInfo(filepath=internal_path,
+                               nickname=nickname,
+                               cwd=cwd,
+                               axistags=data_slot.meta.axistags,
+                               laneShape=data_slot.meta.shape,
+                               laneDtype=data_slot.meta.dtype,
+                               sequence_axis=sequence_axis,
+                               location=DatasetInfo.Location.ProjectInternal)
         finally:
             opWriter.cleanUp()
             opLoader.cleanUp()
