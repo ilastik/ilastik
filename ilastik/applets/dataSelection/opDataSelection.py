@@ -60,7 +60,7 @@ class DatasetInfo(object):
         PreloadedArray = 2
 
     def __init__(self, filepath=None, jsonNamespace=None, cwd=None,
-                 preloaded_array=None, sequence_axis=None, allowLabels=True,
+                 preloaded_array=None, sequence_axis=None, allowLabels=None,
                  subvolume_roi=None, location=Location.FileSystem,
                  axistags=None, drange=None, display_mode='default',
                  nickname='', original_axistags=None, laneShape=None, normalizeDisplay:bool=None,
@@ -84,7 +84,7 @@ class DatasetInfo(object):
         # The original path to the data (also used as a fallback if the data isn't in the project yet)
         self.filePath = filepath
         # OBSOLETE: Whether or not this dataset should be used for training a classifier.
-        self.allowLabels = allowLabels
+        self.allowLabels = allowLabels if allowLabels is not None else True
         self.drange = drange
         self.normalizeDisplay = (drange is not None) if normalizeDisplay is None else normalizeDisplay
         self.sequenceAxis = sequence_axis
@@ -195,16 +195,6 @@ class DatasetInfo(object):
         return str(uuid.uuid1())
 
     @property
-    def filePath(self):
-        return self._filePath
-
-    @filePath.setter
-    def filePath(self, newPath):
-        self._filePath = newPath
-        # Reset our id any time the filepath changes
-        self._datasetId = self.generate_id()
-
-    @property
     def externalPath(self) -> str:
         return PathComponents(self.filePath).externalPath
 
@@ -302,7 +292,7 @@ class DatasetInfo(object):
         #FIXME: this prop should not be necessary, we should just trust
         #the filePath to retrieve the data out of the .ilp file
         assert self.location == self.Location.ProjectInternal
-        return self.filePath.split(os.path.pathsep)[-1]
+        return self.filePath.split(os.path.sep)[-1] #is this a problem in windows?
 
     @property
     def axiskeys(self):

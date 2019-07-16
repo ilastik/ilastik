@@ -99,8 +99,7 @@ class DataSelectionSerializer( AppletSerializer ):
                     continue
                 info = slot.value
                 # If this dataset should be stored in the project, but it isn't there yet
-                if  info.location == DatasetInfo.Location.ProjectInternal \
-                and info.datasetId not in list(localDataGroup.keys()):
+                if  info.location == DatasetInfo.Location.ProjectInternal and info.filePath not in topGroup.file:
                     # Obtain the data from the corresponding output and store it to the project.
                     dataSlot = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex]
 
@@ -109,8 +108,8 @@ class DataSelectionSerializer( AppletSerializer ):
                         # Compression slows down browsing a lot, and raw data tends
                         # to be noisy and doesn't compress very well, anyway.
                         opWriter.CompressionEnabled.setValue(False)
-                        opWriter.h5N5File.setValue( localDataGroup )
-                        opWriter.h5N5Path.setValue( info.datasetId )
+                        opWriter.h5N5File.setValue(localDataGroup.file)
+                        opWriter.h5N5Path.setValue(info.filePath) #FIXME: double check that this actually works
                         opWriter.Image.connect(dataSlot)
         
                         # Trigger the copy
@@ -126,7 +125,7 @@ class DataSelectionSerializer( AppletSerializer ):
     
                     # Make sure the dataSlot's axistags are updated with the dataset as we just wrote it
                     # (The top-level operator may use an OpReorderAxes, which changed the axisorder)
-                    info.axistags = dataSlot.meta.axistags
+                    info.axistags = dataSlot.meta.axistags #FIXME: stop modifying datasetinfo from the outside
     
                     wroteInternalData = True
 
@@ -138,6 +137,7 @@ class DataSelectionSerializer( AppletSerializer ):
                     localDatasetIds.add( slot.value.datasetId )
         
         # Delete any datasets in the project that aren't needed any more
+        #FIXME": move this logic somewhere close to datasetinfoEditorWdiget or data selection gui
         for datasetName in list(localDataGroup.keys()):
             if datasetName not in localDatasetIds:
                 del localDataGroup[datasetName]
@@ -174,7 +174,6 @@ class DataSelectionSerializer( AppletSerializer ):
                     locationString = self.LocationStrings[datasetInfo.location]
                     infoGroup.create_dataset('location', data=locationString.encode('utf-8'))
                     infoGroup.create_dataset('filePath', data=datasetInfo.filePath.encode('utf-8'))
-                    infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId.encode('utf-8'))
                     infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
                     infoGroup.create_dataset('nickname', data=datasetInfo.nickname.encode('utf-8'))
                     infoGroup.create_dataset('fromstack', data=datasetInfo.fromstack)
@@ -182,6 +181,7 @@ class DataSelectionSerializer( AppletSerializer ):
                     if datasetInfo.drange is not None:
                         infoGroup.create_dataset('drange', data=datasetInfo.drange)
 
+                    # FIXME: grab all of this stuff straight out of datasetinfo
                     # Pull the axistags from the NonTransposedImage, 
                     #  which is what the image looks like before 'forceAxisOrder' is applied, 
                     #  and before 'c' is automatically appended
@@ -382,104 +382,79 @@ class DataSelectionSerializer( AppletSerializer ):
         if len( infoGroup ) == 0:
             return None, False
 
-        datasetInfo = DatasetInfo()
+
+        info_params = {}
 
         # Make a reverse-lookup of the location storage strings
         LocationLookup = { v:k for k,v in list(self.LocationStrings.items()) }
-        datasetInfo.location = LocationLookup[ infoGroup['location'].value.decode('utf-8') ]
-        
-        # Write to the 'private' members to avoid resetting the dataset id
-        datasetInfo._filePath = infoGroup['filePath'].value.decode('utf-8')
-        datasetInfo._datasetId = infoGroup['datasetId'].value.decode('utf-8')
+        location = LocationLookup[ infoGroup['location'].value.decode('utf-8') ]
+        info_params['location'] = location
 
-        try:
-            datasetInfo.allowLabels = infoGroup['allowLabels'].value
-        except KeyError:
-            pass
-        
-        try:
-            datasetInfo.drange = tuple( infoGroup['drange'].value )
-        except KeyError:
-            pass
+        if 'allowLabels' in infoGroup:
+            info_params['allowLabels'] = infoGroup['allowLabels'].value
 
-        try:
-            datasetInfo.laneShape = tuple(infoGroup['shape'].value)
-        except KeyError:
-            pass
+        if 'drange' in infoGroup:
+           info_params['drange'] = tuple( infoGroup['drange'].value )
 
-        try:
-            datasetInfo.laneDtype = numpy.dtype(infoGroup['dtype'].value.decode('utf-8'))
-        except KeyError:
-            pass
+        if 'shape' in infoGroup:
+            info_params['laneShape'] = tuple(infoGroup['shape'].value)
 
-        try:
-            datasetInfo.display_mode = infoGroup['display_mode'].value.decode('utf-8')
-        except KeyError:
-            pass
-        
-        try:
-            datasetInfo.nickname = infoGroup['nickname'].value.decode('utf-8')
-        except KeyError:
-            datasetInfo.nickname = PathComponents(datasetInfo.filePath).filenameBase
-        
-        try:
-            datasetInfo.fromstack = infoGroup['fromstack'].value
-        except KeyError:
-            # Guess based on the storage setting and original filepath
-            datasetInfo.fromstack = ( datasetInfo.location == DatasetInfo.Location.ProjectInternal
-                                      and ( ('?' in datasetInfo._filePath) or (os.path.pathsep in datasetInfo._filePath) ) )
+        if 'dtype' in infoGroup:
+            info_params['laneDtype'] = numpy.dtype(infoGroup['dtype'].value.decode('utf-8'))
 
-        try:
+        if 'display_mode' in infoGroup:
+            info_params['display_mode'] = infoGroup['display_mode'].value.decode('utf-8')
+
+        if 'nickname' in infoGroup:
+            info_params['nickname'] = infoGroup['nickname'].value.decode('utf-8')
+
+        if 'axistags' in infoGroup:
             tags = vigra.AxisTags.fromJSON( infoGroup['axistags'].value.decode('utf-8') )
-            datasetInfo.axistags = tags
-        except KeyError:
+            info_params['axistags'] = tags
+        elif 'axisorder' in infoGroup:
             # Old projects just have an 'axisorder' field instead of full axistags
-            try:
-                axisorder = infoGroup['axisorder'].value.decode('utf-8')
-                datasetInfo.axistags = vigra.defaultAxistags(axisorder)
-            except KeyError:
-                pass
-        
-        try:
+            axisorder = infoGroup['axisorder'].value.decode('utf-8')
+            info_params['axistags'] = vigra.defaultAxistags(axisorder)
+
+        if 'subvolume_roi' in infoGroup:
             start, stop = list(map( tuple, infoGroup['subvolume_roi'].value ))
-            datasetInfo.subvolume_roi = (start, stop)
-        except KeyError:
-            pass
+            subvolume_roi = (start, stop)
 
-        # If the data is supposed to be in the project,
-        #  check for it now.
-        if datasetInfo.location == DatasetInfo.Location.ProjectInternal:
-            if not datasetInfo.datasetId in list(localDataGroup.keys()):
-                raise RuntimeError("Corrupt project file.  Could not find data for " + infoGroup.name)
-
+        project_dir_path = os.path.split(projectFilePath)[0]
+        info_params['cwd'] = project_dir_path
         dirty = False
 
-        # If the data is supposed to exist outside the project, make sure it really does.
-        if datasetInfo.location == DatasetInfo.Location.FileSystem \
-                and not isUrl(datasetInfo.filePath):
-            pathData = PathComponents(datasetInfo.filePath, os.path.split(projectFilePath)[0])
-            filePath = pathData.externalPath
-            if not os.path.exists(filePath):
+        if location == DatasetInfo.Location.FileSystem:
+            filepath = infoGroup['filePath'].value.decode('utf-8')
+            expanded_paths = DatasetInfo.expandPath(filepath, cwd=project_dir_path)
+            restored_paths = []
+            # If the data is supposed to exist outside the project, make sure it really does.
+            for path in expanded_paths:
+                if isUrl(path) or os.path.exists(path):
+                    restored_paths.append(path)
+                    continue
                 if headless:
-                    if self._shouldRetrain:
-                        raise RuntimeError(
-                            "Retrain was passed in headless mode, "
-                            "but could not find data at " + filePath)
-                    else:
-                        assert datasetInfo.laneShape, \
-                            "Headless mode without raw data not supported in old (pre 1.3.2) project files"
-                        # Raw data does not exist in headless, use fake data provider
-                        datasetInfo.realDataSource = False
-                else:
-                    # Try to get a new path for the lost file from the user
-                    filt = "Image files (" + ' '.join('*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
-                    newpath = self.repairFile(filePath, filt)
-                    if pathData.internalPath is not None:
-                        newpath += pathData.internalPath
-                    datasetInfo._filePath = \
-                    getPathVariants(newpath, os.path.split(projectFilePath)[0])[0]
-                    dirty = True
-        
+                    raise Exception(f"File not found: {path}")
+                # Try to get a new path for the lost file from the user
+                dirty = True
+                filt = "Image files (" + ' '.join('*.' + x for x in OpDataSelection.SupportedExtensions) + ')'
+                newpath = self.repairFile(path, filt) #FIXME: make repairFile also show interpath-picking dialog
+                restored_paths.append(newpath)
+            filepath = os.path.pathsep.join(restored_paths)
+        else: #ProjectInternal
+            if 'datasetId' in infoGroup:
+                dataset_id = infoGroup['datasetId'].value.decode('utf-8')
+                filepath = localDataGroup.name + '/' + dataset_id
+            else:
+                filepath = infoGroup['filePath'].value.decode('utf-8')
+
+            saved_data = localDataGroup.file[filepath].value
+            laneShape = saved_data.shape
+            laneDtype = saved_data.dtype
+        info_params['filepath'] = filepath
+
+        datasetInfo = DatasetInfo(**info_params)
+
         return datasetInfo, dirty
 
     def updateWorkingDirectory(self,newpath,oldpath):
@@ -556,6 +531,7 @@ class Ilastik05DataSelectionDeserializer(AppletSerializer):
         pass
 
     def deserializeFromHdf5(self, hdf5File, projectFilePath, headless = False):
+        #FIXME: convert old file to new schema
         # Check the overall file version
         ilastikVersion = hdf5File["ilastikVersion"].value
 

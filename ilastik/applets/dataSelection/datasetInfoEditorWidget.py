@@ -208,8 +208,8 @@ class DatasetInfoEditorWidget(QDialog):
             comboIndex = self.storageComboBox.findData(StorageLocation.Default)
         self.storageComboBox.setCurrentIndex(comboIndex)
 
-        if any(info.fromstack for info in self.current_infos):
-            # If any of the files were loaded from a stack, then you can't refer to them via a link.
+        if any(info.location == DatasetInfo.ProjectInternal for info in self.current_infos):
+            # If any of the files copyed into the project file, then you can't refer to them via a link.
             absIndex = self.storageComboBox.findData( StorageLocation.AbsoluteLink )
             relIndex = self.storageComboBox.findData( StorageLocation.RelativeLink )
 
