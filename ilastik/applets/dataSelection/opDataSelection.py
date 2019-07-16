@@ -167,12 +167,10 @@ class DatasetInfo(object):
 
     @classmethod
     def default(cls, filepath:str, sequence_axis=None, **kwargs) -> 'DatasetInfo':
-        op_reader = OpInputDataReader(graph=Graph())
-        if 'cwd' in kwargs:
-            op_reader.WorkingDirectory.setValue(kwargs['cwd'])
-        if sequence_axis is not None:
-            op_reader.SequenceAxis.setValue(sequence_axis)
-        op_reader.FilePath.setValue(filepath)
+        op_reader = OpInputDataReader(graph=Graph(),
+                                      WorkingDirectory=kwargs.get('cwd', None),
+                                      FilePath=filepath,
+                                      SequenceAxis=sequence_axis)
         return cls.from_slot(op_reader.Output, filepath, sequence_axis=sequence_axis, **kwargs)
 
     @classmethod
