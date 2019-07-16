@@ -585,7 +585,7 @@ class OpValidationMask(Operator):
     def __init__(self, *args, **kwargs):
         super(OpValidationMask, self).__init__(*args, **kwargs)
 
-        self.coord_roi = (slice(0,), slice(0,), slice(0,), slice(0,))
+        self.coord_roi = (slice(0, 0), slice(0, 0), slice(0, 0), slice(0, 0))
 
     def get_coordroi(self, coord_dict):
         z = coord_dict["z"]
@@ -596,7 +596,7 @@ class OpValidationMask(Operator):
 
     def setupOutputs(self):
         self.Mask.meta.dtype = numpy.uint8
-        self.Mask.meta.axistags = vigra.defaultAxistags("zyxc")
+        self.Mask.meta.axistags = self.RawImage.meta.axistags
         self.Mask.meta.shape = self.RawImage.meta.shape
 
     def execute(self, slot, subindex, roi, result):
@@ -604,7 +604,6 @@ class OpValidationMask(Operator):
         result[:] = 0
 
         self.coord_roi = self.get_coordroi(self.Coordinates.value)
-
         intsec = getIntersection(
             (roi.start, roi.stop), ([c.start for c in self.coord_roi], [c.stop for c in self.coord_roi]), assertIntersect=False
         )
