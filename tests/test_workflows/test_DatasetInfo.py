@@ -126,6 +126,14 @@ def test_default_via_star_glob(png_star_stack:str):
     assert info.fromstack
     assert info.location == DatasetInfo.Location.FileSystem
 
+def test_default_via_star_glob(png_colon_path_stack:str):
+    info = DatasetInfo.default(png_colon_path_stack, sequence_axis='z')
+    assert info.nickname == 'c_cells_'
+    assert info.laneDtype == numpy.uint8
+    assert info.laneShape == (3,520,697,3)
+    assert info.fromstack
+    assert info.location == DatasetInfo.Location.FileSystem
+
 def test_stack_via_colon_glob(png_colon_path_stack):
     info = DatasetInfo(png_colon_path_stack, sequence_axis='t')
     assert info.nickname == 'c_cells_'
